@@ -105,7 +105,7 @@ function setCardset(cardSet) {
     toggleCard('break01', str.charAt(15));
 }
 
-function updateDao(isonload) {
+function updateDao(isOnLoad) {
     const url = './dao.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
     //alert(url);
     fetch(url)
@@ -114,73 +114,75 @@ function updateDao(isonload) {
         })
         .then((myJson) => {
 
-            localStorage.setItem('all_players_ready', myJson.all_players_ready);
-
-            var e = document.getElementById('nameinput');
-            if (isonload) {
-                e.value = myJson.name;
-                nameUpdate(e);
-            }
-            else if (e !== document.activeElement && e.value != myJson.name) {
-                e.value = myJson.name;
-                nameUpdate(e);
-            }
-
-            /* Cardset einstellen */
-            setCardset(myJson.cardset);
-
-            e = document.getElementById("cardbox");
-
-            var needsUpdate = false;
-
-            if (e.childElementCount === myJson.players.length) {
-                for (var i = 0; i < e.childElementCount; i++) {
-                    if (e.children[0].children[0].getAttribute('src') !== 'src/c_' + myJson.players[i].display_card_key + '.png') needsUpdate = true;
-                    if (e.children[0].children[1].innerHTML !== myJson.players[i].name) needsUpdate = true;
-                    if (e.children[0].children[2].getAttribute('onclick') !== 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
-                }
-            }
-            else needsUpdate = true;
-
-
-            if (needsUpdate) {
-                
-                var htmlStr='';
-                for (var i in myJson.players) {
-                    htmlStr = htmlStr
-                        + '<div class="card">'
-                        + '<img class="background" src = "src/c_' + myJson.players[i].display_card_key +'.png" alt = "' + myJson.players[i].name + '" >'
-                        + '<span>' + myJson.players[i].name + '</span>'
-                        + '<img onclick="deletePlayer(' + myJson.players[i].mkey + ')" class="delete" src="src/delete.png" alt="Delete">'
-                        + '</div>';
-                }
-
-                e.innerHTML = htmlStr;
-            }
-            
-
-            updateSelectedCard(myJson.selected_card_key);
-
-            if (myJson.one_ore_more_player_ready === 'true') {
-                document.getElementById('newroundbtn').style.display = 'unset';
-                if (myJson.all_players_ready === 'true')
-                    document.getElementById('newroundbtn').value = 'New Round';
-                else
-                    document.getElementById('newroundbtn').value = 'Cancel Round';
-                }
-            else 
-                document.getElementById('newroundbtn').style.display = 'none';
-
-
-         
-            controlsDsp(myJson);
-           
-  
+            updateDom(myJson, isOnLoad)
 
         });
 }
 
+function updateDom(myJson, isOnLoad) {
+    localStorage.setItem('all_players_ready', myJson.all_players_ready);
+
+    let e = document.getElementById('nameinput');
+    if (isOnLoad) {
+        e.value = myJson.name;
+        nameUpdate(e);
+    }
+    else if (e !== document.activeElement && e.value != myJson.name) {
+        e.value = myJson.name;
+        nameUpdate(e);
+    }
+
+    /* Cardset einstellen */
+    setCardset(myJson.cardset);
+
+    e = document.getElementById("cardbox");
+
+    let needsUpdate = false;
+
+    if (e.childElementCount === myJson.players.length) {
+        for (let i = 0; i < e.childElementCount; i++) {
+            if (e.children[0].children[0].getAttribute('src') !== 'src/c_' + myJson.players[i].display_card_key + '.png') needsUpdate = true;
+            if (e.children[0].children[1].innerHTML !== myJson.players[i].name) needsUpdate = true;
+            if (e.children[0].children[2].getAttribute('onclick') !== 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
+        }
+    }
+    else needsUpdate = true;
+
+
+    if (needsUpdate) {
+
+        let htmlStr='';
+        for (let i in myJson.players) {
+            htmlStr = htmlStr
+                + '<div class="card">'
+                + '<img class="background" src = "src/c_' + myJson.players[i].display_card_key +'.png" alt = "' + myJson.players[i].name + '" >'
+                + '<span>' + myJson.players[i].name + '</span>'
+                + '<img onclick="deletePlayer(' + myJson.players[i].mkey + ')" class="delete" src="src/delete.png" alt="Delete">'
+                + '</div>';
+        }
+
+        e.innerHTML = htmlStr;
+    }
+
+
+    updateSelectedCard(myJson.selected_card_key);
+
+    if (myJson.one_ore_more_player_ready === 'true') {
+        document.getElementById('newroundbtn').style.display = 'unset';
+        if (myJson.all_players_ready === 'true')
+            document.getElementById('newroundbtn').value = 'New Round';
+        else
+            document.getElementById('newroundbtn').value = 'Cancel Round';
+    }
+    else
+        document.getElementById('newroundbtn').style.display = 'none';
+
+
+    controlsDsp(myJson);
+
+}
+
+
 var myInterval = setInterval(function () {
     updateDao(false);
-}, 500); 
-
+}, 500);
