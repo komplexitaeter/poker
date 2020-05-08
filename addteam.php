@@ -1,5 +1,6 @@
 <?php
 require 'config.php';
+require 'lib.php';
 
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 $id = '';
@@ -19,7 +20,7 @@ if (strlen($t) > 0) {
                _MYSQL_PORT
         );
 
-        $sql = "INSERT INTO teams(id, cardset) VALUES('".$t."','')";
+        $sql = "INSERT INTO pok_teams_tbl(id, cardset) VALUES('".$t."','65520')";
 
         if ($result = $link->query($sql)) {
             $id = $t; 
@@ -31,4 +32,4 @@ if (strlen($t) > 0) {
 
 print('{"id": "'.$id.'"}');
 
-?>
+

@@ -1,9 +1,11 @@
 <?php
 require 'config.php';
+require 'lib.php';
+
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 validate_team($t) or exit;
 
-$sql = "UPDATE players SET card_key = null WHERE team_id ='".$t."'";
+$sql = "UPDATE pok_players_tbl SET card_key = null WHERE team_id ='".$t."'";
 
 $link = mysqli_init();
 $success = mysqli_real_connect(
@@ -15,9 +17,5 @@ $success = mysqli_real_connect(
        _MYSQL_PORT
 );
 
-if ($result = $link->query($sql)) {  
-}
-
+$link->query($sql);
 $link->close();
-
-?>

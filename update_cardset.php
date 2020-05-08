@@ -1,12 +1,14 @@
 <?php
 require 'config.php';
+require 'lib.php';
+
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 validate_team($t) or exit;
 
 $cardset = filter_input(INPUT_GET, "cardset", FILTER_SANITIZE_NUMBER_INT);
 
-$sql = "UPDATE teams SET cardset = '".$cardset."' WHERE id ='".$t."'";
-error_log($sql);
+$sql = "UPDATE pok_teams_tbl SET cardset = '".$cardset."' WHERE id ='".$t."'";
+
 $link = mysqli_init();
 $success = mysqli_real_connect(
        $link, 
@@ -17,9 +19,6 @@ $success = mysqli_real_connect(
        _MYSQL_PORT
 );
 
-if ($result = $link->query($sql)) {  
-}
+$link->query($sql);
 
 $link->close();
-
-?>

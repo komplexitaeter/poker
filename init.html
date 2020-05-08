@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <title>Agile Poker Cards Online</title>
@@ -39,7 +39,7 @@
             _MYSQL_PORT
             );
 
-            $sql = "SELECT id FROM teams ORDER BY id";
+            $sql = "SELECT id FROM pok_teams_tbl ORDER BY id";
 
             if ($result = $link->query($sql)) {
             while(  $obj = $result->fetch_object()) {

@@ -1,5 +1,7 @@
 <?php
 require 'config.php';
+require 'lib.php';
+
 $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
 
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
@@ -21,7 +23,7 @@ $success = mysqli_real_connect(
    _MYSQL_PORT 
 );
 
-$sql = "SELECT * FROM players WHERE team_id = '".$t."' ORDER BY name";
+$sql = "SELECT * FROM pok_players_tbl WHERE team_id = '".$t."' ORDER BY name";
 
 $objs = array();
 
@@ -49,38 +51,29 @@ $link->close();
 if ($all_players_ready) $all_players_ready_s = 'true'; else $all_players_ready_s = 'false';
 if ($one_ore_more_player_ready) $one_ore_more_player_ready_s = 'true'; else $one_ore_more_player_ready_s = 'false';
 
-print('{
-  "name": "'.$name.'",
-  "mkey": "'.$mkey.'",
-  "id": "'.$id.'",
-  "cardset": "'.$cardset.'",
-  "selected_card_key": "'.$card_key.'",
-  "all_players_ready": "'.$all_players_ready_s.'",
-  "one_ore_more_player_ready": "'.$one_ore_more_player_ready_s.'",
-  "players": [');
-
-
-
-$firstln=true;
+$players=array();
 foreach($objs as $obj) {
 
- if ($firstln) $firstln=false; 
-  else print(',');
+    if ($all_players_ready)
+        $card_key = $obj->card_key;
+    else if (is_null($obj->card_key))
+        $card_key = 'prgrss1';
+        else
+            $card_key = 'done001';
 
- if ($all_players_ready) $card_key = $obj->card_key;
-  else if (is_null($obj->card_key)) $card_key = 'prgrss1';
-    else $card_key = 'done001';
+    $player = (object) array("name"=>$obj->name
+                            ,"mkey"=>$obj->mkey
+                            ,"display_card_key"=>$card_key);
+    array_push($players, $player);
 
- 
-
- print('
-    {
-      "name": "'.$obj->name.'",
-      "mkey": "'.$obj->mkey.'",
-      "display_card_key": "'.$card_key.'"
-    }');
 }
 
-print(']}');
-
-?>
+echo(json_encode(
+    array(  "name"=> $name,
+            "mkey"=>$mkey,
+            "id"=>$id,
+            "cardset"=>$cardset,
+            "selected_card_key"=>$card_key,
+            "all_players_ready"=>$all_players_ready_s,
+            "one_ore_more_player_ready"=>$one_ore_more_player_ready_s,
+            "players"=>$players )));

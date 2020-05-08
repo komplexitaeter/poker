@@ -14,7 +14,7 @@ $success = mysqli_real_connect(
        _MYSQL_PORT
 );
 
-$sql = "INSERT INTO feedback (id, fb_stars, fb_text) VALUES ('".$id."','".$stars."','".$text."')";
+$sql = "INSERT INTO pok_feedback_tbl (id, fb_stars, fb_text) VALUES ('".$id."','".$stars."','".$text."')";
 
 if (!$link->query($sql)) {
     echo 'Error: ', $link->error;
@@ -22,5 +22,3 @@ if (!$link->query($sql)) {
 
 
 $link->close();
-
-?>

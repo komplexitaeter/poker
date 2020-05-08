@@ -1,5 +1,7 @@
 <?php
 require 'config.php';
+require 'lib.php';
+
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 validate_team($t) or exit;
 
@@ -19,21 +21,18 @@ $success = mysqli_real_connect(
        _MYSQL_PORT
 );
 
-$isindb=false;
-$sql = "SELECT count(1) cnt FROM players WHERE id = '".$id."' and team_id = '".$t."'";
+$is_in_db=false;
+$sql = "SELECT count(1) cnt FROM pok_players_tbl WHERE id = '".$id."' and team_id = '".$t."'";
 if ($result = $link->query($sql)) {
     $obj = $result->fetch_object();
-    if ($obj->cnt==1) $isindb=true;
+    if ($obj->cnt==1) $is_in_db=true;
     $result->close();
 }
 
-if (strlen($name)==0) $sql = "DELETE FROM players WHERE id = '".$id."' and team_id = '".$t."'";
-else if ($isindb) $sql = "UPDATE players set name = '".$name."' WHERE id = '".$id."' and team_id = '".$t."'";
-else $sql = "INSERT INTO players (id, team_id, name) VALUES ('".$id."','".$t."' ,'".$name."')";
+if (strlen($name)==0) $sql = "DELETE FROM pok_players_tbl WHERE id = '".$id."' and team_id = '".$t."'";
+else if ($is_in_db) $sql = "UPDATE pok_players_tbl set name = '".$name."' WHERE id = '".$id."' and team_id = '".$t."'";
+else $sql = "INSERT INTO pok_players_tbl (id, team_id, name) VALUES ('".$id."','".$t."' ,'".$name."')";
 
 
-if ($result = $link->query($sql)) {  
-}
+$link->query($sql);
 $link->close();
-
-?>
