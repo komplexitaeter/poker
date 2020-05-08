@@ -1,0 +1,402 @@
+﻿body {
+    margin: 0px;
+    outline: none;
+    padding: 0px;
+}
+
+#brand {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 120px;
+    outline: none;
+}
+
+#nameinput {
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: medium;
+    padding: 5pt;
+    text-align: center;
+    margin-top: 60px;
+    width: 200px;
+    border-radius: 5pt;
+}
+
+#newroundbtn {
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: medium;
+    padding: 5pt;
+    text-align: center;
+    margin-top: 60px;
+    width: 200px;
+    border-radius: 15pt;
+    display: none;
+}
+
+
+    #nameinput:focus {
+        outline: none;
+        border-color: #84cbff;
+        text-align: left;
+        background-image: url('src/edit.png');
+        background-size: 18pt;
+        background-repeat: no-repeat;
+        background-position: center right;
+    }
+
+    #nameinput:hover {
+        border-color: #84cbff;
+        background-image: url('src/edit.png');
+        background-size: 18pt;
+        background-repeat: no-repeat;
+        background-position: center right;
+    }
+
+    #newroundbtn:hover {
+        border-color: #84cbff;
+        color: #84cbff;
+    }
+
+
+
+#teaminput {
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: medium;
+    padding: 5pt;
+    text-align: center;
+    margin-top: 60px;
+    width: 250px;
+    border-radius: 5pt;
+    outline: none;
+}
+#teaminput:focus {
+    outline: none;
+    border-color: #84cbff;
+    text-align: center;
+    background-size: 18pt;
+    background-repeat: no-repeat;
+    background-position: center right;
+}
+
+
+#teambtn {
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: medium;
+    padding: 5pt;
+    text-align: center;
+    margin-top: 60px;
+    width: 200px;
+    border-radius: 15pt;
+    display: normal;
+}
+
+#teambtn:hover {
+    border-color: #84cbff;
+    color: #84cbff;
+}
+
+#teamlink {
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-size: medium;
+    padding: 5pt;
+    text-align: center;
+    margin-top: 60px;
+    width: 200px;
+    border-radius: 15pt;
+    display: none;
+}
+
+    #teamlink:hover {
+        border-color: #84cbff;
+        color: #84cbff;
+    }
+
+
+.controls {
+    position: absolute;
+    width: 100%;
+    bottom: 10px;
+    display: none;
+}
+
+    .controls img {
+        width: 45px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+
+        .controls .ctl_hover {
+            width: 45px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            cursor: pointer;
+        }    
+        .controls .ctl_hover:hover {
+            width: 75px;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            margin-bottom: -7px;
+        }
+
+        .controls .off {
+           display: none;
+        }
+        .controls .on {
+            display: unset;
+        }
+
+    .controls .selected {
+        width: 75px;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+        margin-bottom: -7px; 
+    }
+
+    .controls .ctl {
+    }
+
+body {
+    background: black;
+    text-align: center;
+}
+
+div#cardbox {
+    margin-top: 40px;
+    outline: none;
+}
+
+
+.card {
+    position: relative;
+    text-align: left;
+    display: inline-block;
+    margin: 4px;
+}
+
+
+    .card .background {
+        display: block;
+        width: 100px;
+        height: 148px;
+        border: 1px solid white;
+        border-radius: 15px;
+    }
+
+    .card:hover .delete {
+        display: block;
+        cursor: pointer;
+    }
+
+    .card:hover .background {
+        border-color: #84cbff;
+    }
+
+
+    .card .delete {
+        display: none;
+        width: 20px;
+        height: 20px;
+        border: none;
+        position: absolute;
+        bottom: -10px;
+        right: 5px;
+        border: 1px solid #84cbff;
+        border-radius: 10px;
+        background: black;
+    }
+
+        .card .delete:hover {
+            content: url(src/delete_red.png);
+            border-color: #df3636;
+        }
+
+    .card span {
+        position: absolute;
+        top: 4px;
+        width: 100%;
+        line-height: 2em;
+        text-align: center;
+        color: white;
+        font-size: 8pt;
+    }
+
+.topnav_btn {
+    position: absolute;
+    top: 15px;
+    width: 23px;
+    -webkit-transition: -webkit-transform .5s ease-in-out;
+    transition: transform .5s ease-in-out;
+}
+    .topnav_btn:hover {
+        cursor: pointer;
+        -webkit-transform: scale(1.2);
+        transform: scale(1.2);
+    }
+
+    .topnav_btn_on {
+        cursor: pointer;
+        -webkit-transform: scale(1.2);
+        transform: scale(1.2);
+    }
+
+    #home_btn {
+        right: 69px;
+    }
+
+    #cardset_btn {
+        right: 42px;
+    }
+
+    #feedback_btn {
+        right: 15px;
+    }
+
+    .topnav_btn_bling {
+        -webkit-transform: scale(1.6);
+        transform: scale(1.6);
+    }
+
+
+#feedback_box {
+    position: absolute;
+    right: 15px;
+    top: 40px;
+    border: 1px solid white;
+    width: 200px;
+    height: 255px;
+    border-radius: 15px;
+    background: #202020;
+    display: none;
+    z-index: 999999;
+
+}
+
+.feedback_star {
+    width: 20px;
+    padding-left: 0px;
+    padding-right: 0px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    cursor: pointer;
+    transition: all 0.4s ease-out;
+}
+
+    .feedback_star:hover {
+        transform: scale(1.2);
+    }
+    .feedback_star.blink {
+        transform: scale(1.4);
+    }
+
+
+#feedback_txt {
+    width: 88%;
+    height: 170px;
+    outline: none;
+    border: 1px solid #999999;
+    border-radius: 3pt;
+    background: #444444;
+    color: white;
+    resize: none;
+    padding: 5px;
+}
+
+#feedback_sbmt {
+    background: #202020;
+    border: 1px solid #999999;
+    color: white;
+    font-size: smaller;
+    padding: 4px;
+    padding-left: 15px;
+    padding-right: 15px;
+    border-radius: 12px;
+}
+
+#feedback_sbmt:hover {
+    border-color: #84cbff;
+    color: #84cbff;
+}
+
+
+#cardset_box {
+    position: absolute;
+    right: 42px;
+    top: 40px;
+    border: 1px solid white;
+    width: 250px;
+    height: 255px;
+    border-radius: 15px;
+    background: #202020;
+    display: none;
+    z-index: 999999;
+}
+
+
+#cardset_pre {
+    background: #202020;
+    border: 1px solid #999999;
+    color: white;
+    font-size: smaller;
+    margin-top: 20px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    width: 90%;
+}
+
+.cs_card {
+    width: 33px;
+    height: 49px;
+    border-radius: 5px;
+    border: 1px solid #666666;
+    filter: grayscale(100%);
+    opacity: 0.4;
+    -webkit-transition: -webkit-transform .5s ease-in-out;
+    transition: transform .5s ease-in-out;
+}
+    .cs_card:hover {
+        cursor: pointer;
+        -webkit-transform: scale(1.1);
+        transform: scale(1.1);
+        opacity: 1;
+    }
+
+.cs_card_on {
+    filter: unset;
+    border: 1px solid #999999;
+    opacity: 1;
+}
+
+#teamlist {
+    text-align: center;
+    overflow-y: auto;
+    position: absolute;
+    left: 0px;
+    top: 125px;
+    bottom: 0px;
+    right: 0px;
+}
+
+.teamul {
+    list-style-type: none;
+}
+
+.teamli {
+    color: #999999;
+    text-decoration: none;
+    font-size: large;
+}
+
+    .teamli:hover {
+        color: white;
+    }

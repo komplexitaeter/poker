@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Agile Poker Cards Online - Team <?php echo($t); ?></title>
+    <link rel="stylesheet" href="style.css" media="screen" />
+</head>
+<body onload="updateDao(true)">
+
+    <a href="https://komplexitaeter.de" target="_blank"><img src="src/brand.png" id="brand" /></a>
+
+    <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn" /></a>
+    <img onclick="toggle_box('cardset');" src="src/cardset.png" id="cardset_btn" class="topnav topnav_btn" />
+    <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn" />
+
+    <div id="feedback_box" class="topnav">
+        <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" />
+        <textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve." id="feedback_txt" class="topnav"></textarea>
+        <input id="feedback_sbmt" type="button" onclick="feedback_submit();" value="Send Feedback" class="topnav" />
+    </div>
+
+
+    <div id="cardset_box" class="topnav">
+        <select id="cardset_pre" onchange="preSetDeck(this);" class="topnav">
+            <option value="0" selected>Select a preset deck of cards ...</option>
+            <option value="1">Fibonacci</option>
+            <option value="2">Fibonacci Short</option>
+            <option value="3">Traffic Lights</option>
+            <option value="4">Random Cards</option>
+        </select>
+        <div class="topnav">
+            <img id="_zero001" src="src/c_zero001.png" class="topnav cs_card" onclick="toggleCardSet(this, 1)" />
+            <img id="_1pnt501" src="src/c_1pnt501.png" class="topnav cs_card" onclick="toggleCardSet(this, 2)" />
+            <img id="_one0001" src="src/c_one0001.png" class="topnav cs_card" onclick="toggleCardSet(this, 3)" />
+            <img id="_two0001" src="src/c_two0001.png" class="topnav cs_card" onclick="toggleCardSet(this, 4)" />
+            <img id="_three01" src="src/c_three01.png" class="topnav cs_card" onclick="toggleCardSet(this, 5)" />
+            <img id="_five001" src="src/c_five001.png" class="topnav cs_card" onclick="toggleCardSet(this, 6)" />
+            <img id="_eight01" src="src/c_eight01.png" class="topnav cs_card" onclick="toggleCardSet(this, 7)" />
+            <img id="_thrtn01" src="src/c_thrtn01.png" class="topnav cs_card" onclick="toggleCardSet(this, 8)" />
+            <img id="_twnty01" src="src/c_twnty01.png" class="topnav cs_card" onclick="toggleCardSet(this, 9)" />
+            <img id="_4ty0001" src="src/c_4ty0001.png" class="topnav cs_card" onclick="toggleCardSet(this, 10)" />
+            <img id="_hundro1" src="src/c_hundro1.png" class="topnav cs_card" onclick="toggleCardSet(this, 11)" />
+            <img id="_infin01" src="src/c_infin01.png" class="topnav cs_card" onclick="toggleCardSet(this, 12)" />
+            <img id="_green01" src="src/c_green01.png" class="topnav cs_card" onclick="toggleCardSet(this, 13)" />
+            <img id="_yellow1" src="src/c_yellow1.png" class="topnav cs_card" onclick="toggleCardSet(this, 14)" />
+            <img id="_red0001" src="src/c_red0001.png" class="topnav cs_card" onclick="toggleCardSet(this, 15)" />
+            <img id="_break01" src="src/c_break01.png" class="topnav cs_card" onclick="toggleCardSet(this, 16)" />
+        </div>
+    </div>
+
+    <input id="nameinput" onchange="nameChanged(this);" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
+
+    <div id="cardbox" tabindex="2">
+
+        <!--
+        <div class="card">
+            <img class="background" src="src/c_prgrss1.jpg" alt="Mara">
+            <span>Mara</span>
+            <img onclick="deletePlayer(3)" class="delete" src="delete.png" alt="Delete">
+        </div>
+        -->
+
+    </div>
+
+    <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" />
+
+    <div class="controls" id="ctl">
+        <img id="zero001" src="src/c_zero001.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="1pnt501" src="src/c_1pnt501.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="one0001" src="src/c_one0001.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="two0001" src="src/c_two0001.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="three01" src="src/c_three01.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="five001" src="src/c_five001.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="eight01" src="src/c_eight01.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="thrtn01" src="src/c_thrtn01.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="twnty01" src="src/c_twnty01.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="4ty0001" src="src/c_4ty0001.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="hundro1" src="src/c_hundro1.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="infin01" src="src/c_infin01.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="green01" src="src/c_green01.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="yellow1" src="src/c_yellow1.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="red0001" src="src/c_red0001.png" class="ctl ctl_hover off" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+        <img id="break01" src="src/c_break01.png" class="ctl ctl_hover" onclick="setCard(this);" onmouseleave="setCardHover(this);">
+    </div>
+
+
+    <input type="hidden" id="t" value="<?php echo($t); ?>" />
+
+    <script src="script_feedback.js" type="text/javascript" defer></script>
+    <script src="script.js" type="text/javascript" defer></script>
+</body>
+</html>
