@@ -127,7 +127,7 @@ function updateDom(myJson, isOnLoad) {
         e.value = myJson.name;
         nameUpdate(e);
     }
-    else if (e !== document.activeElement && e.value != myJson.name) {
+    else if (e !== document.activeElement && e.value !== myJson.name) {
         e.value = myJson.name;
         nameUpdate(e);
     }
@@ -182,7 +182,19 @@ function updateDom(myJson, isOnLoad) {
 
 }
 
-
+/*
 var myInterval = setInterval(function () {
     updateDao(false);
 }, 500);
+*/
+
+function handleNewData(event) {
+    let myJson = JSON.parse(event.data);
+    updateDom(myJson, false);
+}
+
+const stream_url = './dao_stream.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
+const evtSource = new EventSource(stream_url);
+evtSource.addEventListener("dao", handleNewData);
+
+

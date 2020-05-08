@@ -1,5 +1,5 @@
 <?php
-function validate_team_conf($t, &$cardset) {
+function validate_team($t) {
 
     $link = mysqli_init();
     mysqli_real_connect(
@@ -11,14 +11,13 @@ function validate_team_conf($t, &$cardset) {
         _MYSQL_PORT
     );
 
-    $sql = "SELECT count(1) cnt, max(cardset) cardset FROM pok_teams_tbl WHERE id = '".$t."'";
+    $sql = "SELECT count(1) cnt FROM pok_teams_tbl WHERE id = '".$t."'";
 
     if ($result = $link->query($sql)) {
         $obj = $result->fetch_object();
 
         if ($obj->cnt==1) {
             $is_valid = true;
-            $cardset = $obj->cardset;
         }
         else {
             $is_valid = false;
@@ -34,16 +33,13 @@ function validate_team_conf($t, &$cardset) {
     return $is_valid;
 }
 
-function validate_team($t) {
-    return validate_team_conf($t, $cardset);
-}
-
-function getDao($t, $id, $cardset) {
+function getDao($t, $id) {
     $all_players_ready = true;
     $one_ore_more_player_ready = false;
     $name = '';
     $mkey = '';
     $card_key = '';
+    $cardset = null;
 
     $link = mysqli_init();
     mysqli_real_connect(
@@ -55,7 +51,13 @@ function getDao($t, $id, $cardset) {
         _MYSQL_PORT
     );
 
-    $sql = "SELECT * FROM pok_players_tbl WHERE team_id = '".$t."' ORDER BY name";
+    $sql = "SELECT p.* 
+                  ,t.cardset
+              FROM pok_players_tbl p
+        LEFT OUTER JOIN pok_teams_tbl as t 
+                    ON t.id = p.team_id
+             WHERE p.team_id = '$t' 
+             ORDER BY p.name";
 
     $objs = array();
 
@@ -68,6 +70,7 @@ function getDao($t, $id, $cardset) {
                 $name=$obj->name;
                 $mkey=$obj->mkey;
                 $card_key=$obj->card_key;
+                $cardset=$obj->cardset;
             }
 
             if (is_null($obj->card_key)) $all_players_ready = false;
