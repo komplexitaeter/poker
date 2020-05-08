@@ -20,5 +20,4 @@ $success = mysqli_real_connect(
 );
 
 $link->query($sql);
-
 $link->close();

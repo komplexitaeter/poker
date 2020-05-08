@@ -16,9 +16,5 @@ $success = mysqli_real_connect(
 
 $sql = "INSERT INTO pok_feedback_tbl (id, fb_stars, fb_text) VALUES ('".$id."','".$stars."','".$text."')";
 
-if (!$link->query($sql)) {
-    echo 'Error: ', $link->error;
-}
-
-
+$link->query($sql);
 $link->close();
