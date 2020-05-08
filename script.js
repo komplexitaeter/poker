@@ -152,14 +152,17 @@ function updateDom(myJson, isOnLoad) {
     if (needsUpdate) {
 
         let htmlStr='';
-        for (let i in myJson.players) {
+
+
+
+        myJson.players.forEach(player=>{
             htmlStr = htmlStr
                 + '<div class="card">'
-                + '<img class="background" src = "src/c_' + myJson.players[i].display_card_key +'.png" alt = "' + myJson.players[i].name + '" >'
-                + '<span>' + myJson.players[i].name + '</span>'
-                + '<img onclick="deletePlayer(' + myJson.players[i].mkey + ')" class="delete" src="src/delete.png" alt="Delete">'
+                + '<img class="background" src = "src/c_' + player.display_card_key +'.png" alt = "' + player.name + '" >'
+                + '<span>' + player.name + '</span>'
+                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete" src="src/delete.png" alt="Delete">'
                 + '</div>';
-        }
+        });
 
         e.innerHTML = htmlStr;
     }
