@@ -196,8 +196,19 @@ function handleNewData(event) {
     updateDom(myJson, false);
 }
 
+
+
+function onVisibilityChange() {
+    if (document.visibilityState == 'hidden') {
+        evtSource.close();
+    }
+    else {
+        evtSource = new EventSource(stream_url);
+        evtSource.addEventListener("dao", handleNewData);
+    }
+}
+
 const stream_url = './dao_stream.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
-const evtSource = new EventSource(stream_url);
+let evtSource = new EventSource(stream_url);
 evtSource.addEventListener("dao", handleNewData);
-
-
+document.addEventListener("visibilitychange", onVisibilityChange);

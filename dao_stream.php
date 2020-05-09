@@ -14,9 +14,10 @@ $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	)
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 validate_team($t) or exit;
 
+$count = 0;
 
-
-while (true) {
+/* force client reconnect after 1h */
+while ($count<150) {
 
     echo "event: dao\n";
     echo "data: ".json_encode(getDao($t, $id));
@@ -25,5 +26,7 @@ while (true) {
     if(ob_get_length() > 0) ob_end_flush();
     flush();
     usleep(400000);
+
+    $count++;
 
 }
