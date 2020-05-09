@@ -1,4 +1,4 @@
-﻿var sid = localStorage.getItem('SID');
+var sid = localStorage.getItem('SID');
 if (sid === null) {
     var uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
     localStorage.setItem('SID', uid);

@@ -1,4 +1,4 @@
-﻿
+
 function toggleTopnav(e) {
     if (!e.target.classList.contains('topnav')) {
         toggle_feedback_box(false);
