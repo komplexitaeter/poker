@@ -66,11 +66,12 @@ function getDao($t, $id) {
 
         while(  $obj = $result->fetch_object()) {
 
+            if ($cardset == null) $cardset=$obj->cardset;
+
             if ($obj->id == $id) {
                 $name=$obj->name;
                 $mkey=$obj->mkey;
                 $card_key=$obj->card_key;
-                $cardset=$obj->cardset;
             }
 
             if (is_null($obj->card_key)) $all_players_ready = false;
