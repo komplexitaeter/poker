@@ -132,7 +132,6 @@ function toggleCardSet(e, cardIdx) {
     }
 
     updateCardset(parseInt(str, 2));
-    setTimeout(function () { updateDao(false) }, 1);
 
 }
 
@@ -158,8 +157,6 @@ function preSetDeck(e) {
     }
 
     updateCardset(int);
-
-    setTimeout(function () { updateDao(false) }, 1);
 
     os = e.options;
     os[0].selected = true;

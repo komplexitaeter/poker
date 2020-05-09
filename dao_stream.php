@@ -16,8 +16,8 @@ validate_team($t) or exit;
 
 $count = 0;
 
-/* force client reconnect after 1h */
-while ($count<150) {
+/* force client reconnect after a couple of minutes*/
+while ($count<2500) {
 
     echo "event: dao\n";
     echo "data: ".json_encode(getDao($t, $id));
@@ -33,7 +33,7 @@ while ($count<150) {
 
     if(ob_get_length() > 0) ob_end_flush();
     flush();
-    usleep(400000);
+    usleep(300000);
 
     $count++;
 

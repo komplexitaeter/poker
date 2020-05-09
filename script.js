@@ -185,12 +185,6 @@ function updateDom(myJson, isOnLoad) {
 
 }
 
-/*
-var myInterval = setInterval(function () {
-    updateDao(false);
-}, 500);
-*/
-
 function handleNewData(event) {
     let myJson = JSON.parse(event.data);
     updateDom(myJson, false);
