@@ -61,7 +61,6 @@ function setCard(e) {
     }
     else
         fetch('./setcard.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.id + '&t=' + document.getElementById("t").value);
-    updateSelectedCard(e.id);
 }
 
 function setCardHover(e) {
@@ -184,6 +183,12 @@ function updateDom(myJson, isOnLoad) {
     controlsDsp(myJson);
 
 }
+
+/*
+var myInterval = setInterval(function () {
+    updateDao(false);
+}, 500);
+*/
 
 function handleNewData(event) {
     let myJson = JSON.parse(event.data);
