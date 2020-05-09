@@ -51,22 +51,21 @@ function getDao($t, $id) {
         _MYSQL_PORT
     );
 
+    $sql = "SELECT t.cardset
+              FROM pok_teams_tbl as t 
+             WHERE t.id = '$t'";
+    if ($result = $link->query($sql)) {
+        $obj = $result->fetch_object();
+        $cardset=$obj->cardset;
+    }
+
     $sql = "SELECT p.* 
-                  ,t.cardset
               FROM pok_players_tbl p
-        LEFT OUTER JOIN pok_teams_tbl as t 
-                    ON t.id = p.team_id
              WHERE p.team_id = '$t' 
              ORDER BY p.name";
-
     $objs = array();
-
     if ($result = $link->query($sql)) {
-
-
         while(  $obj = $result->fetch_object()) {
-
-            if ($cardset == null) $cardset=$obj->cardset;
 
             if ($obj->id == $id) {
                 $name=$obj->name;
