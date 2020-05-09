@@ -23,6 +23,14 @@ while ($count<150) {
     echo "data: ".json_encode(getDao($t, $id));
     echo "\n\n";
 
+    $trash = '';
+    for ($i=1;$i<4096;$i++) {
+        $trash.="X";
+    }
+    echo "event: trash\n";
+    echo "data: ".json_encode($trash);
+    echo "\n\n";
+
     if(ob_get_length() > 0) ob_end_flush();
     flush();
     usleep(400000);
