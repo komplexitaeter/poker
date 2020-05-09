@@ -1,14 +1,20 @@
 <?php
+ob_implicit_flush(1);
+header("Cache-Control: no-cache");
+header("Pragma-directive: no-cache");
+header("Cache-directive: no-cache");
+header("Pragma: no-cache");
+header("Expires: 0");
+header("Content-Type: text/event-stream");
 require 'config.php';
 require 'lib.php';
-
-header("Cache-Control: no-cache");
-header("Content-Type: text/event-stream");
 
 $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
 
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 validate_team($t) or exit;
+
+
 
 while (true) {
 
