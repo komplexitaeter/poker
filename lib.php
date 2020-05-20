@@ -51,6 +51,13 @@ function getDao($t, $id) {
         _MYSQL_PORT
     );
 
+    /* set last callback of current player */
+    $sql = "UPDATE pok_players_tbl 
+               SET last_callback_time = current_timestamp 
+             WHERE id='$id'
+               AND team_id='$t'";
+    $link->query($sql);
+
     $sql = "SELECT t.cardset
               FROM pok_teams_tbl as t 
              WHERE t.id = '$t'";
