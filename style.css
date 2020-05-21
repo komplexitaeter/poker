@@ -400,3 +400,19 @@ div#cardbox {
     .teamli:hover {
         color: white;
     }
+
+table {
+    color: #999999;
+    margin-left: auto;
+    margin-right: auto;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+table tr:first-child{
+    border-bottom: 1px solid white;
+}

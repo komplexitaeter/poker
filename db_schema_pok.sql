@@ -22,6 +22,14 @@ CREATE TABLE `pok_teams_tbl` (
                              `cardset` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+create table `pok_roundstats_tbl`
+(
+    `team_id` int not null,
+    `creation_date` timestamp default CURRENT_TIMESTAMP not null,
+    `players_count` int not null,
+    `type_code` varchar(50) default 'NEW_ROUND' not null
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 ALTER TABLE `pok_players_tbl`
     ADD PRIMARY KEY (`id`,`team_id`),
@@ -33,3 +41,4 @@ ALTER TABLE `pok_teams_tbl`
 
 ALTER TABLE `pok_players_tbl`
     MODIFY `mkey` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
