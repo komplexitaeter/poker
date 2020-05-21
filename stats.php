@@ -22,7 +22,7 @@ $sql = "select d.day
       ,ifnull(p.team_registrations_cnt, 0) as team_registrations_cnt
       ,ifnull(r.new_round_cnt, 0) as new_round_cnt
       ,ifnull(round(r.new_round_players_avg, 2), 0) as new_round_players_avg
-  from (select date_format(timestampadd(DAY,-1*i.n,current_timestamp+i.n), '%Y-%m-%d') as day
+  from (select date_format(timestampadd(DAY,-1*i.n,current_timestamp), '%Y-%m-%d') as day
         from (select 0 as n union select 1 union select 2 union  select 3
             union select 4 union select 5 union select 6 union select 7
             union select 8 union select 9 union select 10 union select 11
