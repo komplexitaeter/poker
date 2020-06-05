@@ -44,7 +44,7 @@
             if ($result = $link->query($sql)) {
             while(  $obj = $result->fetch_object()) {
             print('
-            <li><a class="teamli" href="?t='.$obj->id.'">'.$obj->id.'</a></li>');
+            <li><a class="teamli" href="?t='.$obj->id.'&ref=o">'.$obj->id.'</a></li>');
             }
             }
             $link->close();
