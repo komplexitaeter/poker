@@ -10,15 +10,7 @@ if (strlen($t) > 0) {
         $id = $t;
     }
     else {
-        $link = mysqli_init();
-        $success = mysqli_real_connect(
-               $link, 
-               _MYSQL_HOST, 
-               _MYSQL_USER, 
-               _MYSQL_PWD, 
-               _MYSQL_DB,
-               _MYSQL_PORT
-        );
+        $link = db_init();
 
         $sql = "INSERT INTO pok_teams_tbl(id, cardset) VALUES('".$t."','65520')";
 

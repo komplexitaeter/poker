@@ -1,8 +1,7 @@
 <?php
-function validate_team($t) {
-
+function db_init() {
     $link = mysqli_init();
-    mysqli_real_connect(
+    $success = mysqli_real_connect(
         $link,
         _MYSQL_HOST,
         _MYSQL_USER,
@@ -10,6 +9,13 @@ function validate_team($t) {
         _MYSQL_DB,
         _MYSQL_PORT
     );
+    $link->set_charset("utf8");
+    return $link;
+}
+
+function validate_team($t) {
+
+    $link = db_init();
 
     $sql = "SELECT count(1) cnt FROM pok_teams_tbl WHERE id = '".$t."'";
 
@@ -41,15 +47,7 @@ function getDao($t, $id) {
     $card_key = '';
     $cardset = null;
 
-    $link = mysqli_init();
-    mysqli_real_connect(
-        $link,
-        _MYSQL_HOST,
-        _MYSQL_USER,
-        _MYSQL_PWD,
-        _MYSQL_DB,
-        _MYSQL_PORT
-    );
+    $link = db_init();
 
     /* set last callback of current player */
     $sql = "UPDATE pok_players_tbl 

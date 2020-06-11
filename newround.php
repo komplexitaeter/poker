@@ -18,15 +18,7 @@ $sql_stats = "insert into pok_roundstats_tbl(team_id, players_count, type_code)
                  where team_id = '$t'
                  group by team_id";
 
-$link = mysqli_init();
-$success = mysqli_real_connect(
-       $link, 
-       _MYSQL_HOST, 
-       _MYSQL_USER, 
-       _MYSQL_PWD, 
-       _MYSQL_DB,
-       _MYSQL_PORT
-);
+$link = db_init();
 
 $link->query($sql_stats);
 $link->query($sql);

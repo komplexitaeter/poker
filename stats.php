@@ -17,6 +17,7 @@
 
 <?php
 require 'config.php';
+require 'lib.php';
 
 $sql = "select d.day
       ,ifnull(p.team_registrations_cnt, 0) as team_registrations_cnt
@@ -42,15 +43,7 @@ on r.day = d.day
 order by d.day desc
 ";
 
-$link = mysqli_init();
-$success = mysqli_real_connect(
-    $link,
-    _MYSQL_HOST,
-    _MYSQL_USER,
-    _MYSQL_PWD,
-    _MYSQL_DB,
-    _MYSQL_PORT
-);
+$link = db_init();
 
 $result = $link->query($sql);
 while(  $obj = $result->fetch_object()) {

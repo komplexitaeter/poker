@@ -20,7 +20,7 @@ $count = 0;
 while ($count<2500) {
 
     echo "event: dao\n";
-    echo "data: ".json_encode(getDao($t, $id));
+    echo "data: ".json_encode(getDao($t, $id), JSON_UNESCAPED_UNICODE);
     echo "\n\n";
 
     $trash = '';

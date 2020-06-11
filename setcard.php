@@ -14,15 +14,7 @@ if (strlen($cardkey)>0)
 else
     $sql = "UPDATE pok_players_tbl SET card_key = null WHERE id = '".$id."' and team_id ='".$t."'";
 
-$link = mysqli_init();
-$success = mysqli_real_connect(
-       $link, 
-       _MYSQL_HOST, 
-       _MYSQL_USER, 
-       _MYSQL_PWD, 
-       _MYSQL_DB,
-       _MYSQL_PORT
-);
+$link = db_init();
 
 $link->query($sql);
 $link->close();

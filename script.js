@@ -14,14 +14,14 @@ function newRound() {
     document.getElementById('newroundbtn').style.display = 'none';
 }
 
-function nameUpdate(e) {
+function nameUpdate(e, isOnLoad) {
     if (e.value === null || e.value === "") {
         document.getElementById("ctl").style.display = 'none';
-        e.focus();
+        if (isOnLoad) e.focus();
     }
     else {
         document.getElementById("ctl").style.display = 'block';
-        document.getElementById('cardbox').focus();
+        if (isOnLoad) document.getElementById('cardbox').focus();
     }
 }
 
@@ -122,13 +122,10 @@ function updateDom(myJson, isOnLoad) {
     localStorage.setItem('all_players_ready', myJson.all_players_ready);
 
     let e = document.getElementById('nameinput');
-    if (isOnLoad) {
-        e.value = myJson.name;
-        nameUpdate(e);
-    }
-    else if (e !== document.activeElement && e.value !== myJson.name) {
-        e.value = myJson.name;
-        nameUpdate(e);
+    if (isOnLoad ||
+     (e !== document.activeElement && e.value !== myJson.name)) {
+        e.value =         e.value = unescape(myJson.name);
+        nameUpdate(e, isOnLoad);
     }
 
     /* Cardset einstellen */
@@ -140,19 +137,16 @@ function updateDom(myJson, isOnLoad) {
 
     if (e.childElementCount === myJson.players.length) {
         for (let i = 0; i < e.childElementCount; i++) {
-            if (e.children[0].children[0].getAttribute('src') !== 'src/c_' + myJson.players[i].display_card_key + '.png') needsUpdate = true;
-            if (e.children[0].children[1].innerHTML !== myJson.players[i].name) needsUpdate = true;
-            if (e.children[0].children[2].getAttribute('onclick') !== 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
+            if (e.children[i].children[0].getAttribute('src') !== 'src/c_' + myJson.players[i].display_card_key + '.png') needsUpdate = true;
+            if (e.children[i].children[1].innerHTML !== myJson.players[i].name) needsUpdate = true;
+            if (e.children[i].children[2].getAttribute('onclick') != 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
         }
     }
     else needsUpdate = true;
 
 
     if (needsUpdate) {
-
         let htmlStr='';
-
-
 
         myJson.players.forEach(player=>{
             htmlStr = htmlStr
