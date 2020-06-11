@@ -6,7 +6,7 @@ if (sid === null) {
 
 function nameChanged(e) {
     fetch('./name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + document.getElementById("t").value);
-    nameUpdate(e);
+    document.getElementById('cardbox').focus();
 }
 
 function newRound() {
@@ -15,7 +15,7 @@ function newRound() {
 }
 
 function nameUpdate(e) {
-    if (e.value === null || e.value === '') {
+    if (e.value === null || e.value === "") {
         document.getElementById("ctl").style.display = 'none';
         e.focus();
     }
