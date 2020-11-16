@@ -1,7 +1,8 @@
 <?php
 function db_init() {
+    //sleep(5);
     $link = mysqli_init();
-    $success = mysqli_real_connect(
+    mysqli_real_connect(
         $link,
         _MYSQL_HOST,
         _MYSQL_USER,
@@ -11,6 +12,23 @@ function db_init() {
     );
     $link->set_charset("utf8");
     return $link;
+}
+
+function set_header($content_type) {
+    if ($content_type=='json') {
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    else if ($content_type=='event-stream') {
+        header("Content-Type: text/event-stream; charset=utf-8");
+    }
+    else if ($content_type=='svg') {
+        header('Content-type: image/svg+xml');
+    }
+    header('Pragma-directive: no-cache');
+    header('Cache-directive: no-cache');
+    header('Cache-control: no-cache');
+    header('Pragma: no-cache');
+    header('Expires: 0');
 }
 
 function validate_team($t) {

@@ -143,14 +143,14 @@ function preSet(e) {
     let int;
     switch (e.target.value) {
         case '1':
-            str = '111111111111000' + localStorage.getItem('cardSet').charAt(15);
+            str = '111111111111000' + localStorage.getItem('cSet').charAt(15);
             int = parseInt(str, 2);
             break;
         case '2':
-            str = '101111111100000' + localStorage.getItem('cardSet').charAt(15);
+            str = '101111111100000' + localStorage.getItem('cSet').charAt(15);
             int = parseInt(str, 2);            break;
         case '3':
-            str = '000000000000111' + localStorage.getItem('cardSet').charAt(15);
+            str = '000000000000111' + localStorage.getItem('cSet').charAt(15);
             int = parseInt(str, 2);
             break;
         default:

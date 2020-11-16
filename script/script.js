@@ -178,24 +178,13 @@ function updateDom(myJson, isOnLoad) {
 }
 
 
-function handleNewData(event) {
-    let myJson = JSON.parse(event.data);
-    updateDom(myJson, false);
+function handleNewData() {
+    updateDao(false);
 }
 
-
-
-function onVisibilityChange() {
-    if (document.visibilityState === 'hidden') {
-        evtSource.close();
-    }
-    else {
-        evtSource = new EventSource(stream_url);
-        evtSource.addEventListener("dao", handleNewData);
-    }
+let baseUrl = 'api/dao';
+let params = {
+    "id" :  localStorage.getItem('SID'),
+    "t" : document.getElementById("t").value,
 }
-
-const stream_url = './api/dao_stream.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
-let evtSource = new EventSource(stream_url);
-evtSource.addEventListener("dao", handleNewData);
-document.addEventListener("visibilitychange", onVisibilityChange);
+initializeConnection(baseUrl, params, handleNewData);
