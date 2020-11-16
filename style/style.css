@@ -75,10 +75,11 @@
     border-radius: 5pt;
     outline: none;
 }
+
 #teaminput:focus {
     outline: none;
     border-color: #84cbff;
-    text-align: center;
+    text-align: left;
     background-size: 18pt;
     background-repeat: no-repeat;
     background-position: center right;
