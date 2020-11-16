@@ -1,6 +1,6 @@
 <?php
-require 'config.php';
-require 'lib.php';
+require '../config.php';
+require './lib.php';
 
 $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
 

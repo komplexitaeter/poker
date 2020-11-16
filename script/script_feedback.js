@@ -1,4 +1,3 @@
-
 function toggleTopnav(e) {
     if (!e.target.classList.contains('topnav')) {
         toggle_feedback_box(false);
@@ -8,7 +7,7 @@ function toggleTopnav(e) {
 
 function feedback_star_blink() {
     const offset = 300;
-    setTimeout(function () { document.getElementById('fb_star_1').classList.add('blink') }, offset + 0);
+    setTimeout(function () { document.getElementById('fb_star_1').classList.add('blink') }, offset);
     setTimeout(function () { document.getElementById('fb_star_1').classList.remove('blink') }, offset + 400);
     setTimeout(function () { document.getElementById('fb_star_2').classList.add('blink') }, offset + 200);
     setTimeout(function () { document.getElementById('fb_star_2').classList.remove('blink') }, offset + 600);
@@ -22,7 +21,7 @@ function feedback_star_blink() {
 
 function toggle_box(boxName) {
     if (boxName === 'feedback') {
-        var e = document.getElementById('feedback_box');
+        let e = document.getElementById('feedback_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
             toggle_feedback_box(true);
             toggle_cardset_box(false)
@@ -32,8 +31,8 @@ function toggle_box(boxName) {
             toggle_cardset_box(false)
         }
     }
-    if (boxName === 'cardset') {
-        var e = document.getElementById('cardset_box');
+    if (boxName === 'cset') {
+        let e = document.getElementById('cset_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
             toggle_feedback_box(false);
             toggle_cardset_box(true)
@@ -47,7 +46,7 @@ function toggle_box(boxName) {
 }
 
 function toggle_feedback_box(setOn) {
-    var e = document.getElementById('feedback_box');
+    let e = document.getElementById('feedback_box');
 
     if (setOn) {
         e.style.display = 'block';
@@ -69,17 +68,17 @@ function toggle_feedback_box(setOn) {
 }
 
 function toggle_cardset_box(setOn) {
-    var e = document.getElementById('cardset_box');
+    let e = document.getElementById('cset_box');
     if (e !== null) {
         if (setOn) {
             e.style.display = 'block';
-            document.getElementById('cardset_btn').classList.add('topnav_btn_on');
-            document.getElementById('cardset_btn').src = 'src/cardset_on.png'
+            document.getElementById('cset_btn').classList.add('topnav_btn_on');
+            document.getElementById('cset_btn').src = 'src/cset_on.png'
         }
         else {
             e.style.display = 'none';
-            document.getElementById('cardset_btn').classList.remove('topnav_btn_on');
-            document.getElementById('cardset_btn').src = 'src/cardset.png'
+            document.getElementById('cset_btn').classList.remove('topnav_btn_on');
+            document.getElementById('cset_btn').src = 'src/cset.png'
         }
     }
 }
@@ -100,9 +99,9 @@ function feedback_rate(val, db) {
 
 function feedback_submit() {
     const s1 = 'src/star_on.png';
-    var fb_text = document.getElementById('feedback_txt').value;
-    var fb_star = 0;
-    for (i = 1; i <= 5; i++) {
+    let fb_text = document.getElementById('feedback_txt').value;
+    let fb_star = 0;
+    for (let i = 1; i <= 5; i++) {
         if (document.getElementById('fb_star_' + i).src.includes(s1)) {
             fb_star = i;
         }
@@ -112,18 +111,18 @@ function feedback_submit() {
     feedback_rate(0, false);
     document.getElementById('feedback_txt').value = '';
 
-    fetch('./feedback.php?id=' + localStorage.getItem('SID')
+    fetch('./api/feedback.php?id=' + localStorage.getItem('SID')
         + '&stars=' + fb_star
         + '&text=' + fb_text
-    );
+    ).then();
 }
 
 function setCharAt(str, index, chr) {
     return str.substr(0, index) + chr + str.substr(index + 1);
 }
 
-function toggleCardSet(e, cardIdx) {
-    str = localStorage.getItem('cardSet');
+function toggleCSet(e, cardIdx) {
+    let str = localStorage.getItem('cSet');
     if (str.charAt(cardIdx - 1) === '1') {
         str = setCharAt(str, cardIdx-1, '0');
     }
@@ -136,11 +135,13 @@ function toggleCardSet(e, cardIdx) {
 }
 
 function updateCardset(cardSetDec) {
-    fetch('./update_cardset.php?cardset=' + cardSetDec + '&t=' + document.getElementById("t").value);
+    fetch('./api/update_cardset.php?cardset=' + cardSetDec + '&t=' + document.getElementById("t").value).then();
 }
 
-function preSetDeck(e) {
-    switch (e.value) {
+function preSet(e) {
+    let str;
+    let int;
+    switch (e.target.value) {
         case '1':
             str = '111111111111000' + localStorage.getItem('cardSet').charAt(15);
             int = parseInt(str, 2);
@@ -158,8 +159,7 @@ function preSetDeck(e) {
 
     updateCardset(int);
 
-    os = e.options;
-    os[0].selected = true;
+    e.target.value = "0";
 }
 
 /**
@@ -178,4 +178,4 @@ function feedback_bling() {
 }
 
 document.addEventListener('click', toggleTopnav);
-setTimeout(function () { feedback_bling() }, getRandom(1 * 60 * 1000, 4 * 60 * 1000));
+setTimeout(function () { feedback_bling() }, getRandom(60 * 1000, 4 * 60 * 1000));

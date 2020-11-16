@@ -1,16 +1,16 @@
-var sid = localStorage.getItem('SID');
+let sid = localStorage.getItem('SID');
 if (sid === null) {
-    var uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
+    let uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
     localStorage.setItem('SID', uid);
 }
 
 function nameChanged(e) {
-    fetch('./name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + document.getElementById("t").value);
-    document.getElementById('cardbox').focus();
+    fetch('./api/name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + document.getElementById("t").value).then();
+    document.getElementById('cbox').focus();
 }
 
 function newRound() {
-    fetch('./newround.php?t=' + document.getElementById("t").value);
+    fetch('./api/newround.php?t=' + document.getElementById("t").value).then();
     document.getElementById('newroundbtn').style.display = 'none';
 }
 
@@ -21,7 +21,7 @@ function nameUpdate(e, isOnLoad) {
     }
     else {
         document.getElementById("ctl").style.display = 'block';
-        if (isOnLoad) document.getElementById('cardbox').focus();
+        if (isOnLoad) document.getElementById('cbox').focus();
     }
 }
 
@@ -35,12 +35,12 @@ function controlsDsp(e) {
 }
 
 function deletePlayer(mkey) {
-    fetch('./delete.php?mkey=' + mkey + '&t=' + document.getElementById("t").value);
+    fetch('./api/delete.php?mkey=' + mkey + '&t=' + document.getElementById("t").value).then();
 }
 
-function updateSelectedCard(currKey) {
-    var e = document.getElementsByClassName('ctl');
-    for (var i = 0; i < e.length; i++) {
+function updateSelectedC(currKey) {
+    let e = document.getElementsByClassName('ctl');
+    for (let i = 0; i < e.length; i++) {
         if (e[i].id === currKey) {
             e[i].classList.add('selected');
         }
@@ -50,62 +50,62 @@ function updateSelectedCard(currKey) {
     }
 }
 
-function setCard(e) {
+function setC(e) {
     if (e.classList.contains('selected')) {
-        var all_players_ready = localStorage.getItem('all_players_ready');
+        let all_players_ready = localStorage.getItem('all_players_ready');
         if (all_players_ready === 'false') {
-            fetch('./setcard.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value);
+            fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value).then();
             e.classList.remove('ctl_hover');
             e.classList.remove('selected');
         }
     }
     else
-        fetch('./setcard.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.id + '&t=' + document.getElementById("t").value);
+        fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.id + '&t=' + document.getElementById("t").value).then();
 }
 
-function setCardHover(e) {
+function setCHover(e) {
     e.classList.add('ctl_hover');
 }
 
-function toggleCard(cardId, flag) {
-    var e = document.getElementById(cardId);
-    var e_conf = document.getElementById('_'+cardId);
+function toggleC(cardId, flag) {
+    let e = document.getElementById(cardId);
+    let e_conf = document.getElementById('_'+cardId);
     if (flag === '1') {
         e.classList.add('on');
         e.classList.remove('off');
-        e_conf.classList.add('cs_card_on');
+        e_conf.classList.add('cs_c_on');
     }
     else {
         e.classList.remove('on');
         e.classList.add('off');
-        e_conf.classList.remove('cs_card_on');
+        e_conf.classList.remove('cs_c_on');
     }
 }
 
-function setCardset(cardSet) {
-    var str = parseInt(cardSet).toString(2).padStart(16, '0');
+function setCSet(cSet) {
+    let str = parseInt(cSet).toString(2).padStart(16, '0');
 
-    localStorage.setItem('cardSet', str);
-    toggleCard('zero001', str.charAt(0));
-    toggleCard('1pnt501', str.charAt(1));
-    toggleCard('one0001', str.charAt(2));
-    toggleCard('two0001', str.charAt(3));
-    toggleCard('three01', str.charAt(4));
-    toggleCard('five001', str.charAt(5));
-    toggleCard('eight01', str.charAt(6));
-    toggleCard('thrtn01', str.charAt(7));
-    toggleCard('twnty01', str.charAt(8));
-    toggleCard('4ty0001', str.charAt(9));
-    toggleCard('hundro1', str.charAt(10));
-    toggleCard('infin01', str.charAt(11));
-    toggleCard('green01', str.charAt(12));
-    toggleCard('yellow1', str.charAt(13));
-    toggleCard('red0001', str.charAt(14));
-    toggleCard('break01', str.charAt(15));
+    localStorage.setItem('cSet', str);
+    toggleC('zero001', str.charAt(0));
+    toggleC('1pnt501', str.charAt(1));
+    toggleC('one0001', str.charAt(2));
+    toggleC('two0001', str.charAt(3));
+    toggleC('three01', str.charAt(4));
+    toggleC('five001', str.charAt(5));
+    toggleC('eight01', str.charAt(6));
+    toggleC('thrtn01', str.charAt(7));
+    toggleC('twnty01', str.charAt(8));
+    toggleC('4ty0001', str.charAt(9));
+    toggleC('hundro1', str.charAt(10));
+    toggleC('infin01', str.charAt(11));
+    toggleC('green01', str.charAt(12));
+    toggleC('yellow1', str.charAt(13));
+    toggleC('red0001', str.charAt(14));
+    toggleC('break01', str.charAt(15));
 }
 
 function updateDao(isOnLoad) {
-    const url = './dao.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
+    const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
     //alert(url);
     fetch(url)
         .then((response) => {
@@ -128,10 +128,9 @@ function updateDom(myJson, isOnLoad) {
         nameUpdate(e, isOnLoad);
     }
 
-    /* Cardset einstellen */
-    setCardset(myJson.cardset);
+    setCSet(myJson.cardset);
 
-    e = document.getElementById("cardbox");
+    e = document.getElementById("cbox");
 
     let needsUpdate = false;
 
@@ -139,7 +138,7 @@ function updateDom(myJson, isOnLoad) {
         for (let i = 0; i < e.childElementCount; i++) {
             if (e.children[i].children[0].getAttribute('src') !== 'src/c_' + myJson.players[i].display_card_key + '.png') needsUpdate = true;
             if (e.children[i].children[1].innerHTML !== myJson.players[i].name) needsUpdate = true;
-            if (e.children[i].children[2].getAttribute('onclick') != 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
+            if (e.children[i].children[2].getAttribute('onclick') !== 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
         }
     }
     else needsUpdate = true;
@@ -150,10 +149,10 @@ function updateDom(myJson, isOnLoad) {
 
         myJson.players.forEach(player=>{
             htmlStr = htmlStr
-                + '<div class="card">'
+                + '<div class="c">'
                 + '<img class="background" src = "src/c_' + player.display_card_key +'.png" alt = "' + player.name + '" >'
                 + '<span>' + player.name + '</span>'
-                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete" src="src/delete.png" alt="Delete">'
+                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete" src="./src/delete.png" alt="Delete">'
                 + '</div>';
         });
 
@@ -161,7 +160,7 @@ function updateDom(myJson, isOnLoad) {
     }
 
 
-    updateSelectedCard(myJson.selected_card_key);
+    updateSelectedC(myJson.selected_card_key);
 
     if (myJson.one_ore_more_player_ready === 'true') {
         document.getElementById('newroundbtn').style.display = 'unset';
@@ -178,11 +177,6 @@ function updateDom(myJson, isOnLoad) {
 
 }
 
-/*
-var myInterval = setInterval(function () {
-    updateDao(false);
-}, 500);
-*/
 
 function handleNewData(event) {
     let myJson = JSON.parse(event.data);
@@ -192,7 +186,7 @@ function handleNewData(event) {
 
 
 function onVisibilityChange() {
-    if (document.visibilityState == 'hidden') {
+    if (document.visibilityState === 'hidden') {
         evtSource.close();
     }
     else {
@@ -201,7 +195,7 @@ function onVisibilityChange() {
     }
 }
 
-const stream_url = './dao_stream.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
+const stream_url = './api/dao_stream.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
 let evtSource = new EventSource(stream_url);
 evtSource.addEventListener("dao", handleNewData);
 document.addEventListener("visibilitychange", onVisibilityChange);

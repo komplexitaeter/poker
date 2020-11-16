@@ -42,7 +42,7 @@
         outline: none;
         border-color: #84cbff;
         text-align: left;
-        background-image: url('src/edit.png');
+        background-image: url('../src/edit.png');
         background-size: 18pt;
         background-repeat: no-repeat;
         background-position: center right;
@@ -50,7 +50,7 @@
 
     #nameinput:hover {
         border-color: #84cbff;
-        background-image: url('src/edit.png');
+        background-image: url('../src/edit.png');
         background-size: 18pt;
         background-repeat: no-repeat;
         background-position: center right;
@@ -171,13 +171,13 @@ body {
     text-align: center;
 }
 
-div#cardbox {
+div#cbox {
     margin-top: 40px;
     outline: none;
 }
 
 
-.card {
+.c {
     position: relative;
     text-align: left;
     display: inline-block;
@@ -185,7 +185,7 @@ div#cardbox {
 }
 
 
-    .card .background {
+    .c .background {
         display: block;
         width: 100px;
         height: 148px;
@@ -193,17 +193,17 @@ div#cardbox {
         border-radius: 15px;
     }
 
-    .card:hover .delete {
+    .c:hover .delete {
         display: block;
         cursor: pointer;
     }
 
-    .card:hover .background {
+    .c:hover .background {
         border-color: #84cbff;
     }
 
 
-    .card .delete {
+    .c .delete {
         display: none;
         width: 20px;
         height: 20px;
@@ -216,12 +216,12 @@ div#cardbox {
         background: black;
     }
 
-        .card .delete:hover {
-            content: url(src/delete_red.png);
+        .c .delete:hover {
+            content: url(../src/delete_red.png);
             border-color: #df3636;
         }
 
-    .card span {
+    .c span {
         position: absolute;
         top: 4px;
         width: 100%;
@@ -254,7 +254,7 @@ div#cardbox {
         right: 69px;
     }
 
-    #cardset_btn {
+    #cset_btn {
         right: 42px;
     }
 
@@ -329,7 +329,7 @@ div#cardbox {
 }
 
 
-#cardset_box {
+#cset_box {
     position: absolute;
     right: 42px;
     top: 40px;
@@ -343,7 +343,7 @@ div#cardbox {
 }
 
 
-#cardset_pre {
+#cet_pre {
     background: #202020;
     border: 1px solid #999999;
     color: white;
@@ -354,7 +354,7 @@ div#cardbox {
     width: 90%;
 }
 
-.cs_card {
+.cs_c {
     width: 33px;
     height: 49px;
     border-radius: 5px;
@@ -364,14 +364,14 @@ div#cardbox {
     -webkit-transition: -webkit-transform .5s ease-in-out;
     transition: transform .5s ease-in-out;
 }
-    .cs_card:hover {
+    .cs_c:hover {
         cursor: pointer;
         -webkit-transform: scale(1.1);
         transform: scale(1.1);
         opacity: 1;
     }
 
-.cs_card_on {
+.cs_c_on {
     filter: unset;
     border: 1px solid #999999;
     opacity: 1;

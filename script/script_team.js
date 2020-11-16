@@ -5,7 +5,7 @@
     }
     else {
 
-        fetch('./addteam.php?t=' + e.value)
+        fetch('./api/addteam.php?t=' + e.value)
             .then((response) => {
                 return response.json();
             })

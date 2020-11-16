@@ -1,6 +1,6 @@
 <?php
-require 'config.php';
-require 'lib.php';
+require '../config.php';
+require './lib.php';
 
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 $id = '';

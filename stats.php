@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <title>Agile Poker Cards Online - Statistics</title>
-    <link rel="stylesheet" href="style.css" media="screen" />
+    <link rel="stylesheet" href="style/style.css" media="screen" />
 </head>
 <body>
 
@@ -16,8 +16,8 @@
         </tr>
 
 <?php
-require 'config.php';
-require 'lib.php';
+require './config.php';
+require './api/lib.php';
 
 $sql = "select d.day
       ,ifnull(p.team_registrations_cnt, 0) as team_registrations_cnt
