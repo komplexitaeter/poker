@@ -124,7 +124,7 @@ function setCharAt(str, index, chr) {
 function toggleCSet(e, cardIdx) {
     let str = localStorage.getItem('cSet');
     if (str.charAt(cardIdx - 1) === '1') {
-        str = setCharAt(str, cardIdx-1, '0');
+        str = setCharAt(str, cardIdx - 1, '0');
     }
     else {
         str = setCharAt(str, cardIdx - 1, '1');
@@ -143,14 +143,22 @@ function preSet(e) {
     let int;
     switch (e.target.value) {
         case '1':
-            str = '111111111111000' + localStorage.getItem('cSet').charAt(15);
+            str = '111110100111111000' + localStorage.getItem('cSet').charAt(18);
             int = parseInt(str, 2);
             break;
         case '2':
-            str = '101111111100000' + localStorage.getItem('cSet').charAt(15);
+            str = '101110100111100000' + localStorage.getItem('cSet').charAt(18);
             int = parseInt(str, 2);            break;
         case '3':
-            str = '000000000000111' + localStorage.getItem('cSet').charAt(15);
+            str = '000000000000000111' + localStorage.getItem('cSet').charAt(18);
+            int = parseInt(str, 2);
+            break;
+        case '4':
+            str = '001111111000000000' + localStorage.getItem('cSet').charAt(18);
+            int = parseInt(str, 2);
+            break;
+        case '5':
+            str = '101111110000000000' + localStorage.getItem('cSet').charAt(18);
             int = parseInt(str, 2);
             break;
         default:

@@ -35,6 +35,7 @@
     width: 200px;
     border-radius: 15pt;
     display: none;
+    outline: none;
 }
 
 
@@ -336,7 +337,7 @@ div#cbox {
     top: 40px;
     border: 1px solid white;
     width: 250px;
-    height: 255px;
+    height: 300px;
     border-radius: 15px;
     background: #202020;
     display: none;
