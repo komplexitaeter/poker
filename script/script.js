@@ -83,7 +83,7 @@ function toggleC(cardId, flag) {
 }
 
 function setCSet(cSet) {
-    let str = parseInt(cSet).toString(2).padStart(19, '0');
+    let str = cSet.padEnd(19, '0');
 
     localStorage.setItem('cSet', str);
     toggleC('zero001', str.charAt(0));
@@ -131,7 +131,7 @@ function updateDom(myJson, isOnLoad) {
         nameUpdate(e, isOnLoad);
     }
 
-    setCSet(myJson.cardset);
+    setCSet(myJson.cardset_flags);
 
     e = document.getElementById("cbox");
 

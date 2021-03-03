@@ -63,7 +63,7 @@ function getDao($t, $id) {
     $name = '';
     $mkey = '';
     $card_key = '';
-    $cardset = null;
+    $cardset_flags = null;
 
     $link = db_init();
 
@@ -74,12 +74,12 @@ function getDao($t, $id) {
                AND team_id='$t'";
     $link->query($sql);
 
-    $sql = "SELECT t.cardset
+    $sql = "SELECT t.cardset_flags
               FROM pok_teams_tbl as t 
              WHERE t.id = '$t'";
     if ($result = $link->query($sql)) {
         $obj = $result->fetch_object();
-        $cardset=$obj->cardset;
+        $cardset_flags=$obj->cardset_flags;
     }
 
     $sql = "SELECT p.* 
@@ -127,7 +127,7 @@ function getDao($t, $id) {
     return array(  "name"=> $name,
         "mkey"=>$mkey,
         "id"=>$id,
-        "cardset"=>$cardset,
+        "cardset_flags"=>$cardset_flags,
         "selected_card_key"=>$card_key,
         "all_players_ready"=>$all_players_ready_s,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready_s,

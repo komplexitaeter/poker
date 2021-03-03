@@ -1,4 +1,4 @@
-﻿function addTeam() {
+function addTeam() {
     var e = document.getElementById('teaminput');
     if (e.value === '') {
         e.focus();

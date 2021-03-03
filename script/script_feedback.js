@@ -130,42 +130,37 @@ function toggleCSet(e, cardIdx) {
         str = setCharAt(str, cardIdx - 1, '1');
     }
 
-    updateCardset(parseInt(str, 2));
+    updateCardset(str);
 
 }
 
 function updateCardset(cardSetDec) {
-    fetch('./api/update_cardset.php?cardset=' + cardSetDec + '&t=' + document.getElementById("t").value).then();
+    fetch('./api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + document.getElementById("t").value).then();
 }
 
 function preSet(e) {
     let str;
-    let int;
     switch (e.target.value) {
         case '1':
             str = '111110100111111000' + localStorage.getItem('cSet').charAt(18);
-            int = parseInt(str, 2);
             break;
         case '2':
             str = '101110100111100000' + localStorage.getItem('cSet').charAt(18);
-            int = parseInt(str, 2);            break;
+            break;
         case '3':
             str = '000000000000000111' + localStorage.getItem('cSet').charAt(18);
-            int = parseInt(str, 2);
             break;
         case '4':
             str = '001111111000000000' + localStorage.getItem('cSet').charAt(18);
-            int = parseInt(str, 2);
             break;
         case '5':
             str = '101111110000000000' + localStorage.getItem('cSet').charAt(18);
-            int = parseInt(str, 2);
             break;
         default:
-            int = getRandom(0, 65535 + 1);
+            str = '111110100111111000' + '1';
     }
 
-    updateCardset(int);
+    updateCardset(str);
 
     e.target.value = "0";
 }
