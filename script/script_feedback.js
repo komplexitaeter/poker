@@ -142,22 +142,25 @@ function preSet(e) {
     let str;
     switch (e.target.value) {
         case '1':
-            str = '111110100111111000' + localStorage.getItem('cSet').charAt(18);
+            str = '111110100111111000000000' + localStorage.getItem('cSet').charAt(24);
             break;
         case '2':
-            str = '101110100111100000' + localStorage.getItem('cSet').charAt(18);
+            str = '101110100111100000000000' + localStorage.getItem('cSet').charAt(24);
             break;
         case '3':
-            str = '000000000000000111' + localStorage.getItem('cSet').charAt(18);
+            str = '000000000000000111000000' + localStorage.getItem('cSet').charAt(24);
             break;
         case '4':
-            str = '001111111000000000' + localStorage.getItem('cSet').charAt(18);
+            str = '001111111000000000000000' + localStorage.getItem('cSet').charAt(24);
             break;
         case '5':
-            str = '101111110000000000' + localStorage.getItem('cSet').charAt(18);
+            str = '101111110000000000000000' + localStorage.getItem('cSet').charAt(24);
+            break;
+        case '6':
+            str = '000000000000000000111111' + localStorage.getItem('cSet').charAt(24);
             break;
         default:
-            str = '111110100111111000' + '1';
+            str = '111110100111111000000000' + '1';
     }
 
     updateCardset(str);

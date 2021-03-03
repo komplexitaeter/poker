@@ -83,7 +83,7 @@ function toggleC(cardId, flag) {
 }
 
 function setCSet(cSet) {
-    let str = cSet.padEnd(19, '0');
+    let str = cSet.padEnd(25, '0');
 
     localStorage.setItem('cSet', str);
     toggleC('zero001', str.charAt(0));
@@ -100,11 +100,21 @@ function setCSet(cSet) {
     toggleC('twnty01', str.charAt(11));
     toggleC('4ty0001', str.charAt(12));
     toggleC('hundro1', str.charAt(13));
+
     toggleC('infin01', str.charAt(14));
+
     toggleC('green01', str.charAt(15));
     toggleC('yellow1', str.charAt(16));
     toggleC('red0001', str.charAt(17));
-    toggleC('break01', str.charAt(18));
+
+    toggleC('satis01', str.charAt(18));
+    toggleC('annoy01', str.charAt(19));
+    toggleC('sad0001', str.charAt(20));
+    toggleC('unint01', str.charAt(21));
+    toggleC('angry01', str.charAt(22));
+    toggleC('enthu01', str.charAt(23));
+
+    toggleC('break01', str.charAt(24));
 }
 
 function updateDao(isOnLoad) {

@@ -29,6 +29,7 @@
             <option value="3">Traffic Lights</option>
             <option value="4">Delegation Poker</option>
             <option value="5">JUDGE Decision</option>
+            <option value="6">Emotions (Team Assessment)</option>
         </select>
         <div class="topnav">
             <img id="_zero001" src="src/c_zero001.png" class="topnav cs_c" onclick="toggleCSet(this, 1)" alt="0" />
@@ -36,20 +37,29 @@
             <img id="_one0001" src="src/c_one0001.png" class="topnav cs_c" onclick="toggleCSet(this, 3)" alt="1" />
             <img id="_two0001" src="src/c_two0001.png" class="topnav cs_c" onclick="toggleCSet(this, 4)" alt="2" />
             <img id="_three01" src="src/c_three01.png" class="topnav cs_c" onclick="toggleCSet(this, 5)" alt="3" />
-            <img id="_four001" src="src/c_four001.png" class="topnav cs_c" onclick="toggleCSet(this, 6)" alt="3" />
+            <img id="_four001" src="src/c_four001.png" class="topnav cs_c" onclick="toggleCSet(this, 6)" alt="4" />
             <img id="_five001" src="src/c_five001.png" class="topnav cs_c" onclick="toggleCSet(this, 7)" alt="5" />
-            <img id="_six0001" src="src/c_six0001.png" class="topnav cs_c" onclick="toggleCSet(this, 8)" alt="3" />
-            <img id="_seven01" src="src/c_seven01.png" class="topnav cs_c" onclick="toggleCSet(this, 9)" alt="3" />
+            <img id="_six0001" src="src/c_six0001.png" class="topnav cs_c" onclick="toggleCSet(this, 8)" alt="6" />
+            <img id="_seven01" src="src/c_seven01.png" class="topnav cs_c" onclick="toggleCSet(this, 9)" alt="7" />
             <img id="_eight01" src="src/c_eight01.png" class="topnav cs_c" onclick="toggleCSet(this, 10)" alt="8" />
             <img id="_thrtn01" src="src/c_thrtn01.png" class="topnav cs_c" onclick="toggleCSet(this, 11)" alt="13" />
             <img id="_twnty01" src="src/c_twnty01.png" class="topnav cs_c" onclick="toggleCSet(this, 12)" alt="20" />
             <img id="_4ty0001" src="src/c_4ty0001.png" class="topnav cs_c" onclick="toggleCSet(this, 13)" alt="40" />
             <img id="_hundro1" src="src/c_hundro1.png" class="topnav cs_c" onclick="toggleCSet(this, 14)" alt="100" />
             <img id="_infin01" src="src/c_infin01.png" class="topnav cs_c" onclick="toggleCSet(this, 15)" alt="infinity" />
+
             <img id="_green01" src="src/c_green01.png" class="topnav cs_c" onclick="toggleCSet(this, 16)" alt="green" />
             <img id="_yellow1" src="src/c_yellow1.png" class="topnav cs_c" onclick="toggleCSet(this, 17)" alt="yellow" />
             <img id="_red0001" src="src/c_red0001.png" class="topnav cs_c" onclick="toggleCSet(this, 18)" alt="red" />
-            <img id="_break01" src="src/c_break01.png" class="topnav cs_c" onclick="toggleCSet(this, 19)" alt="need a break" />
+
+            <img id="_satis01" src="src/c_satis01.png" class="topnav cs_c" onclick="toggleCSet(this, 19)" alt="satisfied" />
+            <img id="_annoy01" src="src/c_annoy01.png" class="topnav cs_c" onclick="toggleCSet(this, 20)" alt="annoyed" />
+            <img id="_sad0001" src="src/c_sad0001.png" class="topnav cs_c" onclick="toggleCSet(this, 21)" alt="sad" />
+            <img id="_unint01" src="src/c_unint01.png" class="topnav cs_c" onclick="toggleCSet(this, 22)" alt="uninterested" />
+            <img id="_angry01" src="src/c_angry01.png" class="topnav cs_c" onclick="toggleCSet(this, 23)" alt="angry" />
+            <img id="_enthu01" src="src/c_enthu01.png" class="topnav cs_c" onclick="toggleCSet(this, 24)" alt="enthusiastic" />
+
+            <img id="_break01" src="src/c_break01.png" class="topnav cs_c" onclick="toggleCSet(this, 25)" alt="need a break" />
         </div>
     </div>
 
@@ -74,10 +84,20 @@
         <img id="twnty01" src="src/c_twnty01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="20" />
         <img id="4ty0001" src="src/c_4ty0001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="40" />
         <img id="hundro1" src="src/c_hundro1.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="100" />
+
         <img id="infin01" src="src/c_infin01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="infinity" />
+
         <img id="green01" src="src/c_green01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="green" />
         <img id="yellow1" src="src/c_yellow1.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="yellow" />
         <img id="red0001" src="src/c_red0001.png" class="ctl ctl_hover off" onclick="setC(this);" onmouseleave="setCHover(this);" alt="red" />
+
+        <img id="satis01" src="src/c_satis01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="satisfied" />
+        <img id="annoy01" src="src/c_annoy01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="annoyed" />
+        <img id="sad0001" src="src/c_sad0001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="sad" />
+        <img id="unint01" src="src/c_unint01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="uninterested" />
+        <img id="angry01" src="src/c_angry01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="angry" />
+        <img id="enthu01" src="src/c_enthu01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="enthusiastic" />
+
         <img id="break01" src="src/c_break01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="need a break" />
     </div>
 

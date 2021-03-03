@@ -12,7 +12,7 @@ if (strlen($t) > 0) {
     else {
         $link = db_init();
 
-        $sql = "INSERT INTO pok_teams_tbl(id, cardset_flags) VALUES('".$t."','1111101001111110001')";
+        $sql = "INSERT INTO pok_teams_tbl(id, cardset_flags) VALUES('".$t."','1111101001111110000000001')";
 
         if ($result = $link->query($sql)) {
             $id = $t; 
