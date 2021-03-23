@@ -353,6 +353,7 @@ div#cbox {
     padding: 7px 15px 7px 15px;
     border-radius: 15px;
     transition: width 0.8s;
+    cursor: pointer;
 }
 
 #info_sbmt:hover {
@@ -411,10 +412,9 @@ div#cbox {
     border: 1px solid #999999;
     color: white;
     font-size: smaller;
-    padding: 4px;
-    padding-left: 15px;
-    padding-right: 15px;
+    padding: 4px 15px;
     border-radius: 12px;
+    cursor: pointer;
 }
 
 #feedback_sbmt:hover {
