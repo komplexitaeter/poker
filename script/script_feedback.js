@@ -27,6 +27,7 @@ function toggle_box(boxName) {
             toggle_feedback_box(true);
             toggle_cardset_box(false);
             toggle_info_box(false);
+            measureEvent("OPEN_FEEDBACK_BOX");
         }
         else {
             toggle_feedback_box(false);
@@ -40,6 +41,7 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_cardset_box(true);
             toggle_info_box(false);
+            measureEvent("OPEN_SETUP_BOX");
         }
         else {
             toggle_feedback_box(false);
@@ -53,6 +55,7 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_cardset_box(false);
             toggle_info_box(true);
+            measureEvent("OPEN_INFO_BOX");
         }
         else {
             toggle_feedback_box(false);

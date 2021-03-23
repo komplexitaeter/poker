@@ -129,7 +129,8 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
 
         });
-    //if (isOnLoad) toggle_info_box(true);
+
+    if (isOnLoad) measureEvent("BOARD_ON_LOAD");
 }
 
 function updateDom(myJson, isOnLoad) {
@@ -202,3 +203,8 @@ let params = {
     "t" : document.getElementById("t").value,
 }
 initializeConnection(baseUrl, params, handleNewData);
+
+function measureEvent(eventCode) {
+    const url = "./api/measure_event.php?id="+sid+"&event_code="+eventCode;
+    fetch(url).then();
+}
