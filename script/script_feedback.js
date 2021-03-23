@@ -2,6 +2,7 @@ function toggleTopnav(e) {
     if (!e.target.classList.contains('topnav')) {
         toggle_feedback_box(false);
         toggle_cardset_box(false);
+        toggle_info_box(false);
     }
 }
 
@@ -24,22 +25,39 @@ function toggle_box(boxName) {
         let e = document.getElementById('feedback_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
             toggle_feedback_box(true);
-            toggle_cardset_box(false)
+            toggle_cardset_box(false);
+            toggle_info_box(false);
         }
         else {
             toggle_feedback_box(false);
-            toggle_cardset_box(false)
+            toggle_cardset_box(false);
+            toggle_info_box(false);
         }
     }
     if (boxName === 'cset') {
         let e = document.getElementById('cset_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
             toggle_feedback_box(false);
-            toggle_cardset_box(true)
+            toggle_cardset_box(true);
+            toggle_info_box(false);
         }
         else {
             toggle_feedback_box(false);
             toggle_cardset_box(false)
+            toggle_info_box(false);
+        }
+    }
+    if (boxName === 'info') {
+        let e = document.getElementById('info_box');
+        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
+            toggle_feedback_box(false);
+            toggle_cardset_box(false);
+            toggle_info_box(true);
+        }
+        else {
+            toggle_feedback_box(false);
+            toggle_cardset_box(false);
+            toggle_info_box(false);
         }
     }
 
@@ -79,6 +97,22 @@ function toggle_cardset_box(setOn) {
             e.style.display = 'none';
             document.getElementById('cset_btn').classList.remove('topnav_btn_on');
             document.getElementById('cset_btn').src = 'src/cset.png'
+        }
+    }
+}
+
+function toggle_info_box(setOn) {
+    let e = document.getElementById('info_box');
+    if (e !== null) {
+        if (setOn) {
+            e.style.display = 'block';
+            document.getElementById('info_btn').classList.add('topnav_btn_on');
+            document.getElementById('info_btn').src = 'src/info_on.png'
+        }
+        else {
+            e.style.display = 'none';
+            document.getElementById('info_btn').classList.remove('topnav_btn_on');
+            document.getElementById('info_btn').src = 'src/info.png'
         }
     }
 }

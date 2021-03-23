@@ -8,10 +8,29 @@
 <body onload="updateDao(true)">
 
     <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand.png" alt="Komplexitäter"/></a>
+    <img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn" alt="Info" />
 
     <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn" alt="Home" /></a>
     <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn" alt="Setup" />
     <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn" alt="Feedback" />
+
+
+    <div id="info_box" class="topnav">
+        <div id="marquee" class="marquee topnav"><span class="topnav">--- CRAZY BREAKING SECRET NEWS --- CRAZY BREAKING SECRET NEWS --- CRAZY BREAKING SECRET NEWS --- CRAZY BREAKING SECRET NEWS ---</span></div>
+        <div class="info_text topnav">
+            23rd of March, 2021</br>
+            <div class="headline">Out now: Kanban Simulation Online!</div>
+            <br/>No matter if you do by Scrum, Kanban or whatever. Experience with your entire team what it really means to work according to "stop starting, start finishing".
+        </div>
+
+        <a href="https://www.komplexitaeter.de/en/simulation-en/?source=poker" target="_blank"><input id="info_sbmt" type="button" onclick="" value="WANNA SEE IT"  /></a>
+
+        <div class="info_text topnav">
+            You are an experienced facilitator? Get a free Demo version immediately <a href="https://www.komplexitaeter.de/kfs/login.html?language_code=en&source=poker" target="_blank">here</a>.</br></br>
+        </div>
+        <input id="feedback_sbmt" type="button" onclick="" value="Hide News"  />
+
+    </div>
 
     <div id="feedback_box" class="topnav">
         <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />

@@ -129,6 +129,7 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
 
         });
+    //if (isOnLoad) toggle_info_box(true);
 }
 
 function updateDom(myJson, isOnLoad) {
