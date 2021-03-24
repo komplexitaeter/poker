@@ -84,11 +84,34 @@ while(  $obj = $result->fetch_object()) {
     echo("\t\t\t<td>$obj->open_setup_box</td>\n");
     echo("\t\t</tr>\n\n");
 }
+echo("</table>\n\n");
+
+
+$sql = "select *
+  from pok_feedback_tbl t
+where timestampdiff(month, t.datum, current_timestamp) < 3
+order by datum desc";
+
+$result = $link->query($sql);
+while(  $obj = $result->fetch_object()) {
+    echo('\t\t<div class="feedback">');
+    echo("<h1>$obj->datum</h1>");
+    echo("<h1>");
+    for ($i=0;$i<5;$i++) {
+        if ($obj->fb_stars>$i) echo("*");
+        else echo("_");
+    }
+    echo("</h1>");
+    echo("<div>\"$obj->fb_text\"</div>");
+    echo("</div>\n");
+}
+
+
 
 $link->close();
 ?>
 
-    </table>
+
 
 </body>
 </html>

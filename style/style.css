@@ -510,3 +510,26 @@ th, td {
 table tr:first-child{
     border-bottom: 1px solid white;
 }
+
+.feedback {
+    color: white;
+    margin-top: 2em;
+    width: 40%;
+    margin-left: auto;
+    margin-right: auto;
+    min-width: 500px;
+}
+
+.feedback>h1 {
+    font-size: 10pt;
+    margin: 0.2em;
+}
+
+.feedback>div {
+    text-align: justify;
+    background-color: #444444;
+    padding: 1em;
+    font-style: italic;
+    border: 1px solid gray;
+    border-radius: 0.3em;
+}
