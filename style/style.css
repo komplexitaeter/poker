@@ -407,7 +407,7 @@ div#cbox {
     padding: 5px;
 }
 
-#feedback_sbmt {
+.box_sbmt_button {
     background: #202020;
     border: 1px solid #999999;
     color: white;
@@ -417,7 +417,7 @@ div#cbox {
     cursor: pointer;
 }
 
-#feedback_sbmt:hover {
+.box_sbmt_button:hover {
     border-color: #84cbff;
     color: #84cbff;
 }
