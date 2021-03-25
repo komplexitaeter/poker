@@ -18,8 +18,10 @@
         <input class="feedback_sbmt" type="button" onclick="feedback_submit();" value="Send Feedback" class="topnav" />
     </div>
 
-    <input id="teaminput" type="text" size="15" maxlength="40" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
-    <input id="teambtn" type="button" onclick="addTeam();" value="Create Team Board" tabindex="1" />
+    <form onsubmit="event.preventDefault(); addTeam();">
+        <input id="teaminput" type="text"  size="15" maxlength="40" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
+        <input id="teambtn" type="submit" value="Create Team Board" tabindex="1" />
+    </form>
 
     <script src="script/script_feedback.js" type="text/javascript" defer></script>
     <script src="script/script_team.js" type="text/javascript" defer></script>

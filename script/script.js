@@ -258,4 +258,11 @@ function copyLink() {
     dummy.select();
     document.execCommand('copy');
     document.body.removeChild(dummy);
+    setTimeout(function () {
+        document.getElementById("copy_link_btn").classList.remove("react");
+    }, 10);
+    setTimeout(function () {
+        document.getElementById("copy_link_btn").classList.add("react");
+    }, 75);
+
 }
