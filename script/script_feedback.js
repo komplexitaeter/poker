@@ -84,7 +84,7 @@ function toggle_feedback_box(setOn) {
         document.getElementById('fb_star_4').classList.remove('blink');
         document.getElementById('fb_star_5').classList.remove('blink');
         document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/feedback.png'
+        document.getElementById('feedback_btn').src = 'src/feedback.png';
     }
 }
 
@@ -94,12 +94,12 @@ function toggle_cardset_box(setOn) {
         if (setOn) {
             e.style.display = 'block';
             document.getElementById('cset_btn').classList.add('topnav_btn_on');
-            document.getElementById('cset_btn').src = 'src/cset_on.png'
+            document.getElementById('cset_btn').src = 'src/cset_on.png';
         }
         else {
             e.style.display = 'none';
             document.getElementById('cset_btn').classList.remove('topnav_btn_on');
-            document.getElementById('cset_btn').src = 'src/cset.png'
+            document.getElementById('cset_btn').src = 'src/cset.png';
         }
     }
 }
@@ -110,12 +110,14 @@ function toggle_info_box(setOn) {
         if (setOn) {
             e.style.display = 'block';
             document.getElementById('info_btn').classList.add('topnav_btn_on');
-            document.getElementById('info_btn').src = 'src/info_on.png'
+            document.getElementById('info_btn').src = 'src/info_on.png';
         }
         else {
-            e.style.display = 'none';
-            document.getElementById('info_btn').classList.remove('topnav_btn_on');
-            document.getElementById('info_btn').src = 'src/info.png'
+            if (document.getElementById('info_btn').classList.contains("topnav_btn_on")) {
+                e.style.display = 'none';
+                document.getElementById('info_btn').classList.remove('topnav_btn_on');
+                document.getElementById('info_btn').src = 'src/info.png';
+            }
         }
     }
 }
