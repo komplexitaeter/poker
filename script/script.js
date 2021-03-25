@@ -1,4 +1,6 @@
 let sid = localStorage.getItem('SID');
+let gColorMode = "dark";
+
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
     localStorage.setItem('SID', uid);
@@ -130,7 +132,10 @@ function updateDao(isOnLoad) {
 
         });
 
-    if (isOnLoad) measureEvent("BOARD_ON_LOAD");
+    if (isOnLoad) {
+        measureEvent("BOARD_ON_LOAD");
+        setColor();
+    }
 }
 
 function updateDom(myJson, isOnLoad) {
@@ -207,4 +212,35 @@ initializeConnection(baseUrl, params, handleNewData);
 function measureEvent(eventCode) {
     const url = "./api/measure_event.php?id="+sid+"&event_code="+eventCode;
     fetch(url).then();
+}
+
+
+function setColor() {
+
+    let toggleImg = document.getElementById("cmode_btn");
+    Array.from(document.getElementsByClassName("switchable")).forEach(element => {
+        if (gColorMode === "dark") {
+            element.classList.add("dark");
+            element.classList.remove("light");
+            toggleImg.src = "./src/toggle_light.png";
+        } else {
+            element.classList.add("light");
+            element.classList.remove("dark");
+            toggleImg.src = "./src/toggle_dark.png";
+        }
+    });
+
+    if (gColorMode === "dark") {
+        document.body.style.backgroundColor = "black";
+    } else {
+    document.body.style.backgroundColor = "white";
+    }
+
+}
+
+function switchColorMode(){
+    if (gColorMode === "dark") gColorMode = "light";
+    else gColorMode = "dark";
+    measureEvent("USE_COLOR_SWITCH");
+    setColor();
 }

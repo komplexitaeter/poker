@@ -19,6 +19,7 @@
             <th>link simulation login</th>
             <th>open feedback box</th>
             <th>open setup box</th>
+            <th>use color switch</th>
         </tr>
 
 <?php
@@ -47,6 +48,9 @@ $sql = "select d.day
      ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
          and event_code = 'OPEN_SETUP_BOX') as open_setup_box
+      ,(select count(1) from pok_analytics_events_tbl
+       where date_format(creation_date, '%Y-%m-%d') = d.day
+         and event_code = 'USE_COLOR_SWITCH') as use_color_switch
 from (select date_format(timestampadd(DAY,-1*i.n,current_timestamp), '%Y-%m-%d') as day
       from (select 0 as n union select 1 union select 2 union  select 3
             union select 4 union select 5 union select 6 union select 7
@@ -82,6 +86,7 @@ while(  $obj = $result->fetch_object()) {
     echo("\t\t\t<td>$obj->link_simulation_login</td>\n");
     echo("\t\t\t<td>$obj->open_feedback_box</td>\n");
     echo("\t\t\t<td>$obj->open_setup_box</td>\n");
+    echo("\t\t\t<td>$obj->use_color_switch</td>\n");
     echo("\t\t</tr>\n\n");
 }
 echo("</table>\n\n");

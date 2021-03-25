@@ -256,6 +256,18 @@ div#cbox {
         left: 135px;
     }
 
+    #cmode_btn{
+        right: 104px;
+        margin-top: 1px;
+        height: 17px;
+        width:auto;
+    }
+
+        #cmode_btn:hover{
+            -webkit-transform: scale(1);
+            transform: scale(1);
+        }
+
     #home_btn {
         right: 69px;
     }
@@ -532,4 +544,18 @@ table tr:first-child{
     font-style: italic;
     border: 1px solid gray;
     border-radius: 0.3em;
+}
+
+.switchable{
+
+}
+
+.dark{
+    -webkit-filter: invert(0%);
+    filter: invert(0%);
+}
+
+.light{
+    -webkit-filter: invert(100%);
+    filter: invert(100%);
 }

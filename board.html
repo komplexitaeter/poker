@@ -7,15 +7,16 @@
 </head>
 <body onload="updateDao(true)">
 
-    <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand.png" alt="Komplexitäter"/></a>
+    <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand.png" alt="Komplexitäter" class="switchable"/></a>
     <img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn" alt="Info" />
 
     <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn" alt="Home" /></a>
+    <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn" alt="Color mode" />
     <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn" alt="Setup" />
     <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn" alt="Feedback" />
 
 
-    <div id="info_box" class="topnav">
+    <div id="info_box" class="topnav switchable">
         <div id="marquee" class="marquee topnav"><span class="topnav">--- CRAZY BREAKING SECRET NEWS --- CRAZY BREAKING SECRET NEWS --- CRAZY BREAKING SECRET NEWS --- CRAZY BREAKING SECRET NEWS ---</span></div>
         <div class="info_text topnav">
             23rd of March, 2021</br>
@@ -31,15 +32,14 @@
         <input class="box_sbmt_button" type="button" onclick="" value="Hide News"  />
 
     </div>
-
-    <div id="feedback_box" class="topnav">
+    <div id="feedback_box" class="topnav switchable">
         <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
         <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve." id="feedback_txt" class="topnav"></textarea>
         <input class="box_sbmt_button" type="button" onclick="feedback_submit();" value="Send Feedback" class="topnav" />
     </div>
 
 
-    <div id="cset_box" class="topnav">
+    <div id="cset_box" class="topnav switchable">
         <label for="cet_pre"></label>
         <select id="cet_pre" onchange="preSet(event);" class="topnav">
             <option value="0" selected>Select a preset ...</option>
@@ -82,42 +82,42 @@
         </div>
     </div>
 
-    <label for="nameinput"></label><input id="nameinput" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
+    <label for="nameinput"></label><input id="nameinput" class="switchable" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
 
-    <div id="cbox" tabindex="2"></div>
+    <div id="cbox" tabindex="2" class="switchable"></div>
 
-    <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" />
+    <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable" />
 
-    <div class="controls" id="ctl">
-        <img id="zero001" src="src/c_zero001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="0" />
-        <img id="1pnt501" src="src/c_1pnt501.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="0.5" />
-        <img id="one0001" src="src/c_one0001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="1" />
-        <img id="two0001" src="src/c_two0001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="2" />
-        <img id="three01" src="src/c_three01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="3" />
-        <img id="four001" src="src/c_four001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="4" />
-        <img id="five001" src="src/c_five001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="5" />
-        <img id="six0001" src="src/c_six0001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="6" />
-        <img id="seven01" src="src/c_seven01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="7" />
-        <img id="eight01" src="src/c_eight01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="8" />
-        <img id="thrtn01" src="src/c_thrtn01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="13" />
-        <img id="twnty01" src="src/c_twnty01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="20" />
-        <img id="4ty0001" src="src/c_4ty0001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="40" />
-        <img id="hundro1" src="src/c_hundro1.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="100" />
+    <div class="controls" id="ctl" class="">
+        <img id="zero001" src="src/c_zero001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="0" />
+        <img id="1pnt501" src="src/c_1pnt501.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="0.5" />
+        <img id="one0001" src="src/c_one0001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="1" />
+        <img id="two0001" src="src/c_two0001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="2" />
+        <img id="three01" src="src/c_three01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="3" />
+        <img id="four001" src="src/c_four001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="4" />
+        <img id="five001" src="src/c_five001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="5" />
+        <img id="six0001" src="src/c_six0001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="6" />
+        <img id="seven01" src="src/c_seven01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="7" />
+        <img id="eight01" src="src/c_eight01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="8" />
+        <img id="thrtn01" src="src/c_thrtn01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="13" />
+        <img id="twnty01" src="src/c_twnty01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="20" />
+        <img id="4ty0001" src="src/c_4ty0001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="40" />
+        <img id="hundro1" src="src/c_hundro1.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="100" />
 
-        <img id="infin01" src="src/c_infin01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="infinity" />
+        <img id="infin01" src="src/c_infin01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="infinity" />
 
-        <img id="green01" src="src/c_green01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="green" />
-        <img id="yellow1" src="src/c_yellow1.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="yellow" />
-        <img id="red0001" src="src/c_red0001.png" class="ctl ctl_hover off" onclick="setC(this);" onmouseleave="setCHover(this);" alt="red" />
+        <img id="green01" src="src/c_green01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="green" />
+        <img id="yellow1" src="src/c_yellow1.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="yellow" />
+        <img id="red0001" src="src/c_red0001.png" class="ctl ctl_hover off switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="red" />
 
-        <img id="satis01" src="src/c_satis01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="satisfied" />
-        <img id="annoy01" src="src/c_annoy01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="annoyed" />
-        <img id="sad0001" src="src/c_sad0001.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="sad" />
-        <img id="unint01" src="src/c_unint01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="uninterested" />
-        <img id="angry01" src="src/c_angry01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="angry" />
-        <img id="enthu01" src="src/c_enthu01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="enthusiastic" />
+        <img id="satis01" src="src/c_satis01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="satisfied" />
+        <img id="annoy01" src="src/c_annoy01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="annoyed" />
+        <img id="sad0001" src="src/c_sad0001.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="sad" />
+        <img id="unint01" src="src/c_unint01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="uninterested" />
+        <img id="angry01" src="src/c_angry01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="angry" />
+        <img id="enthu01" src="src/c_enthu01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="enthusiastic" />
 
-        <img id="break01" src="src/c_break01.png" class="ctl ctl_hover" onclick="setC(this);" onmouseleave="setCHover(this);" alt="need a break" />
+        <img id="break01" src="src/c_break01.png" class="ctl ctl_hover switchable" onclick="setC(this);" onmouseleave="setCHover(this);" alt="need a break" />
     </div>
 
 
