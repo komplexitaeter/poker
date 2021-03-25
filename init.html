@@ -15,42 +15,11 @@
     <div id="feedback_box" class="topnav">
         <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" />
         <textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve." id="feedback_txt" class="topnav"></textarea>
-        <input id="feedback_sbmt" type="button" onclick="feedback_submit();" value="Send Feedback" class="topnav" />
+        <input class="feedback_sbmt" type="button" onclick="feedback_submit();" value="Send Feedback" class="topnav" />
     </div>
 
-    <input id="teaminput" type="text" size="15" maxlength="15" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
+    <input id="teaminput" type="text" size="15" maxlength="40" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
     <input id="teambtn" type="button" onclick="addTeam();" value="Create Team Board" tabindex="1" />
-    <input id="teamlink" type="button" onclick="goTeam();" value="Go to Team Board" tabindex="1" />
-
-
-
-    <div id="teamlist">
-        <ul class="teamul">
-            <?php
-            require_once 'config.php';
-
-            $link = mysqli_init();
-            $success = mysqli_real_connect(
-            $link,
-            _MYSQL_HOST,
-            _MYSQL_USER,
-            _MYSQL_PWD,
-            _MYSQL_DB,
-            _MYSQL_PORT
-            );
-
-            $sql = "SELECT id FROM pok_teams_tbl ORDER BY id";
-
-            if ($result = $link->query($sql)) {
-            while(  $obj = $result->fetch_object()) {
-            print('
-            <li><a class="teamli" href="?t='.$obj->id.'&ref=o">'.$obj->id.'</a></li>');
-            }
-            }
-            $link->close();
-            ?>
-        </ul>
-    </div>
 
     <script src="script/script_feedback.js" type="text/javascript" defer></script>
     <script src="script/script_team.js" type="text/javascript" defer></script>

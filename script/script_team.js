@@ -1,5 +1,5 @@
 function addTeam() {
-    var e = document.getElementById('teaminput');
+    let e = document.getElementById('teaminput');
     if (e.value === '') {
         e.focus();
     }
@@ -15,16 +15,10 @@ function addTeam() {
                     e.focus();
                 }
                 else {
-                    e.value = myJson.id;
                     e.disabled = true;
-                    document.getElementById('teambtn').style.display = 'none';
-                    document.getElementById('teamlink').style.display = 'inline';
+                    location.href = '?t=' + myJson.id;
                 }
             });
-
     }
 }
 
-function goTeam() {
-    location.href = '?t=' + document.getElementById('teaminput').value; 
-}

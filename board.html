@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Agile Estimations Online - Team <?php echo($t); ?></title>
+    <title>Agile Estimations Online -</title>
     <link rel="stylesheet" href="style/style.css" media="screen" />
 </head>
 <body onload="updateDao(true)">
 
     <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand.png" alt="Komplexitäter" class="switchable"/></a>
     <img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn" alt="Info" />
+
+    <div class="topnav_title switchable">
+        <div id="team_name"></div>
+        <div class="topnav_clink" onclick="copyLink()">Copy Link</div>
+    </div>
 
     <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn" alt="Home" /></a>
     <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn" alt="Color mode" />

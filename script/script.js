@@ -148,6 +148,11 @@ function updateDom(myJson, isOnLoad) {
         nameUpdate(e, isOnLoad);
     }
 
+    if (isOnLoad) {
+        document.title += " " + myJson.team_name;
+        document.getElementById("team_name").innerHTML = myJson.team_name;
+    }
+
     setCSet(myJson.cardset_flags);
 
     e = document.getElementById("cbox");
@@ -243,4 +248,14 @@ function switchColorMode(){
     else gColorMode = "dark";
     measureEvent("USE_COLOR_SWITCH");
     setColor();
+}
+
+function copyLink() {
+    let dummy = document.createElement('input'),
+        text = window.location.href;
+    document.body.appendChild(dummy);
+    dummy.value = text;
+    dummy.select();
+    document.execCommand('copy');
+    document.body.removeChild(dummy);
 }

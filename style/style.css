@@ -233,6 +233,43 @@ div#cbox {
         font-size: 8pt;
     }
 
+.topnav_title {
+    position: relative;
+    top: 15px;
+    color: white;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 16pt;
+    font-weight: bold;
+}
+
+.topnav_title>div {
+    display: inline;
+}
+
+.topnav_clink {
+    position: absolute;
+    top: 0;
+    font-size: 7pt;
+    border: 1px solid white;
+    border-radius: 0.4rem;
+    padding: 0.3rem;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    transition: transform 2s ease-in-out;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.topnav_clink:hover {
+    color: #84cbff;
+    border-color: #84cbff;
+}
+
+.topnav_clink:active {
+    width: 0px;
+}
+
 .topnav_btn {
     position: absolute;
     top: 15px;
