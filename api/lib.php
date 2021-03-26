@@ -65,6 +65,7 @@ function getDao($t, $id) {
     $card_key = '';
     $cardset_flags = null;
     $team_name = null;
+    $color_mode = 'dark';
 
     $link = db_init();
 
@@ -104,6 +105,25 @@ function getDao($t, $id) {
             array_push($objs, $obj);
         }
     }
+
+
+    $sql = $link->prepare("SELECT count(1) as user_exists
+                                       ,max(color_mode) as color_mode
+                                    FROM pok_user_tbl WHERE id=?");
+    $sql->bind_param('s', $id);
+    $sql->execute();
+    $result = $sql->get_result();
+    if ($obj = $result->fetch_object()) {
+        if ($obj->user_exists == 0) {
+            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id) values(?)");
+            $sql_i->bind_param('s', $id);
+            $sql_i->execute();
+        } else {
+            $color_mode=$obj->color_mode;
+        }
+    }
+
+
     $link->close();
 
     if ($all_players_ready) $all_players_ready_s = 'true'; else $all_players_ready_s = 'false';
@@ -126,9 +146,12 @@ function getDao($t, $id) {
 
     }
 
+
+
     return array(  "name"=> $name,
         "mkey"=>$mkey,
         "id"=>$id,
+        "color_mode"=>(String)$color_mode,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
         "selected_card_key"=>$card_key,
@@ -180,6 +203,10 @@ function name2id($name) {
         "." => array('-','_'),
         "-" => array('-','_'),
         "_" => array('-','_'),
+        "?" => array('S'),
+        " " => array('_'),
+        "_" => array('_','-'),
+        "-" => array('-','_'),
         "*" => array('0','1','2','3','4','5','6','7','8','9')
     );
     $null_signs = array('x','X','0','o','O');

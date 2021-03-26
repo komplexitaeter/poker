@@ -134,7 +134,6 @@ function updateDao(isOnLoad) {
 
     if (isOnLoad) {
         measureEvent("BOARD_ON_LOAD");
-        setColor();
     }
 }
 
@@ -149,8 +148,15 @@ function updateDom(myJson, isOnLoad) {
     }
 
     if (isOnLoad) {
+        if (myJson.color_mode && myJson.color_mode.length > 0) {
+            gColorMode = myJson.color_mode;
+        }
+
+        setColor();
+
         document.title += " " + myJson.team_name;
         document.getElementById("team_name").innerHTML = myJson.team_name;
+
     }
 
     setCSet(myJson.cardset_flags);
@@ -248,6 +254,7 @@ function switchColorMode(){
     else gColorMode = "dark";
     measureEvent("USE_COLOR_SWITCH");
     setColor();
+    fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&color_mode=' + gColorMode).then();
 }
 
 function copyLink() {
