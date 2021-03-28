@@ -1,5 +1,20 @@
 let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
+let getBrowserWidth = function(){
+    if(window.innerWidth < 768){
+        // Extra Small Device
+        return "xs";
+    } else if(window.innerWidth < 991){
+        // Small Device
+        return "sm";
+    } else if(window.innerWidth < 1199){
+        // Medium Device
+        return "md";
+    } else {
+        // Large Device
+        return "lg";
+    }
+};
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
@@ -17,22 +32,25 @@ function newRound() {
 }
 
 function nameUpdate(e, isOnLoad) {
+    let ctl = document.getElementById("ctl");
     if (e.value === null || e.value === "") {
-        document.getElementById("ctl").style.display = 'none';
+        toggleStyleClass(ctl, "display_none", "display_block");
         if (isOnLoad) e.focus();
     }
     else {
-        document.getElementById("ctl").style.display = 'block';
+        toggleStyleClass(ctl, "display_block", "display_none");
         if (isOnLoad) document.getElementById('cbox').focus();
     }
 }
 
 function controlsDsp(e) {
     if (e.name !== null && e.name !== '') {
-        document.getElementById("ctl").style.display = 'block';
+        document.getElementById("ctl").classList.add("display_block");
+        document.getElementById("ctl").classList.remove("display_none");
     }
     else {
-        document.getElementById("ctl").style.display = 'none';
+        document.getElementById("ctl").classList.add("display_none");
+        document.getElementById("ctl").classList.remove("display_block");
     }
 }
 
@@ -142,8 +160,8 @@ function updateDom(myJson, isOnLoad) {
 
     let e = document.getElementById('nameinput');
     if (isOnLoad ||
-     (e !== document.activeElement && e.value !== myJson.name)) {
-        e.value =         e.value = unescape(myJson.name);
+        (e !== document.activeElement && e.value !== myJson.name)) {
+        e.value = e.value = unescape(myJson.name);
         nameUpdate(e, isOnLoad);
     }
 
@@ -171,19 +189,18 @@ function updateDom(myJson, isOnLoad) {
             if (e.children[i].children[1].innerHTML !== myJson.players[i].name) needsUpdate = true;
             if (e.children[i].children[2].getAttribute('onclick') !== 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
         }
-    }
-    else needsUpdate = true;
+    } else needsUpdate = true;
 
 
     if (needsUpdate) {
-        let htmlStr='';
+        let htmlStr = '';
 
-        myJson.players.forEach(player=>{
+        myJson.players.forEach(player => {
             htmlStr = htmlStr
-                + '<div class="c">'
-                + '<img class="background" src = "src/c_' + player.display_card_key +'.png" alt = "' + player.name + '" >'
-                + '<span>' + player.name + '</span>'
-                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete" src="./src/delete.png" alt="Delete">'
+                + '<div class="c sizefit">'
+                + '<img class="background sizefit" src = "src/c_' + player.display_card_key + '.png" alt = "' + player.name + '" >'
+                + '<span class="sizefit">' + player.name + '</span>'
+                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete sizefit" src="./src/delete.png" alt="Delete">'
                 + '</div>';
         });
 
@@ -193,18 +210,22 @@ function updateDom(myJson, isOnLoad) {
 
     updateSelectedC(myJson.selected_card_key);
 
-    if (myJson.one_ore_more_player_ready === 'true') {
-        document.getElementById('newroundbtn').style.display = 'unset';
-        if (myJson.all_players_ready === 'true')
-            document.getElementById('newroundbtn').value = 'New Round';
-        else
-            document.getElementById('newroundbtn').value = 'Cancel Round';
-    }
-    else
-        document.getElementById('newroundbtn').style.display = 'none';
+    let newroundbtn = document.getElementById('newroundbtn');
 
+    if (myJson.one_ore_more_player_ready === 'true') {
+        toggleStyleClass(newroundbtn, "display_unset", "display_none");
+        if (myJson.all_players_ready === 'true') {
+            document.getElementById('newroundbtn').value = 'New Round';
+        } else {
+            document.getElementById('newroundbtn').value = 'Cancel Round';
+        }
+    }
+    else {
+    toggleStyleClass(newroundbtn, "display_none", "display_unset");
+    }
 
     controlsDsp(myJson);
+    adaptToDevice();
 
 }
 
@@ -273,3 +294,38 @@ function copyLink() {
     }, 75);
 
 }
+
+function adaptToDevice(){
+    let size = getBrowserWidth();
+    if(size === "xs" || size === "sm"){
+        Array.from(document.getElementsByClassName("sizefit")).forEach( e => {
+           e.classList.add("mobile");
+           e.classList.remove("desktop");
+           //measureEvent("LOAD_MOBILE");
+        });
+    }
+    else{
+        Array.from(document.getElementsByClassName("sizefit")).forEach( e => {
+            e.classList.add("desktop");
+            e.classList.remove("mobile");
+            //measureEvent("LOAD_DESKTOP");
+        });
+    }
+}
+
+/*** COMMON JS FUNCTIONS ****/
+
+function addStyleClass(element, className) {
+    if (!element.classList.contains(className)) element.classList.add(className);
+}
+
+function removeStyleClass(element, className) {
+    if (element.classList.contains(className)) element.classList.remove(className);
+}
+
+function toggleStyleClass(element, addClassName, removeClassName) {
+    removeStyleClass(element, removeClassName);
+    addStyleClass(element, addClassName);
+}
+
+/*** ******** ****/
