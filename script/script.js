@@ -14,7 +14,10 @@ let getBrowserWidth = function(){
         // Large Device
         return "lg";
     }
+    console.log("run");
 };
+
+let gBrowserWidth = getBrowserWidth();
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
@@ -278,6 +281,14 @@ function switchColorMode(){
     fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&color_mode=' + gColorMode).then();
 }
 
+
+function toggleMobileMenu(target_state){
+    let menu = document.getElementById("mobile-menu");
+    if(menu.getAttribute('data-state') !== target_state && (getBrowserWidth() === "xs" || getBrowserWidth() === "sm")){
+        menu.setAttribute('data-state', target_state);
+    }
+}
+
 function copyLink() {
     let dummy = document.createElement('input'),
         text = window.location.href;
@@ -297,18 +308,19 @@ function copyLink() {
 
 function adaptToDevice(){
     let size = getBrowserWidth();
-    if(size === "xs" || size === "sm"){
-        Array.from(document.getElementsByClassName("sizefit")).forEach( e => {
-           e.classList.add("mobile");
-           e.classList.remove("desktop");
-           //measureEvent("LOAD_MOBILE");
+    if (size === "xs" || size === "sm") {
+        Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
+            e.classList.add("mobile");
+            e.classList.remove("desktop");
+            //measureEvent("LOAD_MOBILE");
+            gBrowserWidth = size;
         });
-    }
-    else{
-        Array.from(document.getElementsByClassName("sizefit")).forEach( e => {
+    } else {
+        Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
             e.classList.add("desktop");
             e.classList.remove("mobile");
             //measureEvent("LOAD_DESKTOP");
+            gBrowserWidth = size;
         });
     }
 }

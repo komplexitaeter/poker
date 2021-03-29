@@ -134,6 +134,7 @@ function feedback_rate(val, db) {
     if (db) {
 
     }
+    document.getElementById('feedback_txt').focus();
 }
 
 function feedback_submit() {

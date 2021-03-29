@@ -1,9 +1,15 @@
+html {
+    height: 100%;
+}
+
 body {
     margin: 0px;
     outline: none;
     padding: 0px;
     background: black;
     text-align: center;
+    overflow-y: scroll;
+    min-height: 100%;
 }
 
 .sizefit{
@@ -31,11 +37,11 @@ body {
 }
 
     #nameinput.mobile {
-        width: 45%;
+        width: 65%;
         margin-top: 5%;
         line-height: 2rem;
         padding: 0.5rem;
-        font-size: 1.5rem;
+        font-size: 2.5rem;
     }
 
     #nameinput.desktop {
@@ -168,7 +174,11 @@ body {
 }
 
     .controls.mobile{
-        bottom:1%;
+        bottom:0%;
+        background-color: black;
+        position: sticky;
+        position: -webkit-sticky;
+        margin-top: 10%;
         display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
@@ -393,11 +403,22 @@ div#cbox {
 
 }
 
-.mobile-menu.desktop {
-    display:none;
+.sticky-container{
+    height:100%;
 }
 
-.mobile-menu.mobile {
+.mobile-menu.desktop {
+    top: 0;
+    width: 100%;
+    position: absolute;
+    z-index: 1;
+}
+
+    .mobile-menu.desktop .open_menu{
+        display: none;
+    }
+
+.mobile-menu.mobile[data-state=closed]  {
     position: absolute;
     top: 1%;
     right: 1%;
@@ -405,10 +426,73 @@ div#cbox {
     height: 9%;
     margin-left: auto;
     margin-right: auto;
-    background-image: url("../src/mmenu.png");
-    background-repeat: no-repeat;
-    background-size: contain;
 }
+
+        .mobile-menu.mobile[data-state=closed] .open_menu{
+            height: auto;
+            width: available;
+        }
+
+        .mobile-menu.mobile[data-state=open] .open_menu{
+            display: none;
+        }
+
+    .close-menu{
+        display: none;
+    }
+
+    .mobile-menu.mobile[data-state=open] .close-menu{
+        display: block;
+        position: absolute;
+        right: 1%;
+        top: 1%;
+        height: 7%;
+        width: 7%;
+        background-image: url("../src/cross_black.png");
+        background-size: 100%;
+        background-repeat: no-repeat;
+    }
+
+        .mobile-menu.mobile .close-menu:active{
+            transform: scale(0.5) translate(-1rem, -2rem);
+        }
+
+    .mobile-menu.mobile[data-state=open] {
+        position: absolute;
+        width: 95%;
+        height: 95%;
+        min-height: 95%;
+        right: 2.5%;
+        background-color: #444444;
+        z-index: 1;
+        border-radius: 2rem;
+        background-image: unset;
+    }
+
+    .mobile-menu.mobile[data-state=open] .topnav_btn{
+        display: unset;
+        width:10%;
+        height: auto;
+        top:10%;
+    }
+
+    .mobile-menu.mobile #info_btn{
+        left:5%;
+    }
+    .mobile-menu.mobile #cmode_btn{
+        right:15%;
+        width:13%;
+        height:auto;
+    }
+    .mobile-menu.mobile #home_btn{
+        left:18%;
+    }
+    .mobile-menu.mobile #cset_btn{
+        left:31%;
+    }
+    .mobile-menu.mobile #feedback_btn{
+        left:44%;
+    }
 
 .topnav_btn {
     position: absolute;
@@ -482,6 +566,13 @@ div#cbox {
     z-index: 999999;
 
 }
+
+    #info_box.mobile {
+        top: 16%;
+        width:95%;
+        height: 25%;
+        right: 2.5%;
+    }
 
 #info_box>h1 {
     color: white;
@@ -572,6 +663,15 @@ div#cbox {
     z-index: 999999;
 }
 
+    #feedback_box.mobile {
+
+        margin-top: 16%;
+        width:95%;
+        height: 45%;
+        min-height: 650px;
+        right: 2.5%;
+    }
+
 .feedback_star {
     width: 20px;
     padding-left: 0px;
@@ -582,6 +682,15 @@ div#cbox {
     transition: all 0.4s ease-out;
 }
 
+    .feedback_star.mobile {
+        width: 7%;
+        padding-left: 0px;
+        padding-right: 0px;
+        padding-top: 2%;
+        padding-bottom: 2%;
+        transition: all 0.4s ease-out;
+    }
+
     .feedback_star:hover {
         transform: scale(1.2);
     }
@@ -591,26 +700,49 @@ div#cbox {
 
 
 #feedback_txt {
-    width: 88%;
-    height: 170px;
     outline: none;
     border: 1px solid #999999;
     border-radius: 3pt;
     background: #444444;
     color: white;
     resize: none;
-    padding: 5px;
 }
+
+    #feedback_txt.desktop {
+        width: 88%;
+        height: 170px;
+        border-radius: 3pt;
+        padding: 5px;
+    }
+
+    #feedback_txt.mobile {
+        width: 88%;
+        height: 55%;
+        min-height: 300px;
+        border-radius: 1rem;
+        padding: 2rem;
+        font-size: 3rem;
+    }
 
 .box_sbmt_button {
     background: #202020;
     border: 1px solid #999999;
     color: white;
-    font-size: smaller;
-    padding: 4px 15px;
-    border-radius: 12px;
-    cursor: pointer;
 }
+
+    .box_sbmt_button.desktop {
+        font-size: smaller;
+        padding: 4px 15px;
+        border-radius: 12px;
+        cursor: pointer;
+    }
+
+    .box_sbmt_button.mobile {
+        font-size: 2rem;
+        padding: 1rem 2rem;
+        border-radius: 2rem;
+        margin-top: 2rem;
+    }
 
 .box_sbmt_button:hover {
     border-color: #84cbff;
@@ -631,22 +763,42 @@ div#cbox {
     z-index: 999999;
 }
 
+    #cset_box.mobile {
+        top: 16%;
+        width:95%;
+        height: 70%;
+        right: 2.5%;
+    }
+
 
 #cet_pre {
     background: #202020;
     border: 1px solid #999999;
     color: white;
-    font-size: smaller;
-    margin-top: 20px;
-    margin-bottom: 25px;
-    border-radius: 12px;
-    width: 90%;
 }
 
+    #cet_pre.desktop {
+        font-size: smaller;
+        margin-top: 20px;
+        margin-bottom: 25px;
+        border-radius: 12px;
+        width: 90%;
+    }
+
+    #cet_pre.mobile {
+        font-size: 3rem;
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+        border-radius: 1rem;
+        width: 90%;
+    }
+
+    #cet_pre.mobile option{
+        font-size: medium;
+        top:100%;
+    }
+
 .cs_c {
-    width: 33px;
-    height: 49px;
-    border-radius: 5px;
     border: 1px solid #666666;
     filter: grayscale(100%);
     opacity: 0.4;
@@ -654,10 +806,28 @@ div#cbox {
     transition: transform .5s ease-in-out;
 }
     .cs_c:hover {
-        cursor: pointer;
         -webkit-transform: scale(1.1);
         transform: scale(1.1);
         opacity: 1;
+    }
+
+    .cs_c.desktop {
+        width: 33px;
+        height: 49px;
+        border-radius: 5px;
+    }
+    .cs_c.desktop:hover {
+        cursor: pointer;
+    }
+
+
+    .cs_c.mobile {
+        width: 15%;
+        height: auto;
+        border-radius: 2rem;
+    }
+    .cs_c.mobile:hover {
+
     }
 
 .cs_c_on {
