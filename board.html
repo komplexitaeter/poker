@@ -6,7 +6,8 @@
     <link rel="stylesheet" href="style/style.css" media="screen" />
 </head>
 <body onload="updateDao(true)">
-<div class="sticky-container">
+<div class="container">
+    <div class="up-container">
     <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand.png" alt="Komplexitäter" class="switchable sizefit"/></a>
 
 
@@ -103,7 +104,8 @@
     <div id="cbox" tabindex="2" class="switchable sizefit"></div>
 
     <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" />
-
+    </div>
+    <div class="down-container">
     <div class="controls sizefit" id="ctl">
         <img id="zero001" src="src/c_zero001.png" class="ctl ctl_hover switchable sizefit" onclick="setC(this);" onmouseleave="setCHover(this);" alt="0" />
         <img id="1pnt501" src="src/c_1pnt501.png" class="ctl ctl_hover switchable sizefit" onclick="setC(this);" onmouseleave="setCHover(this);" alt="0.5" />
@@ -135,7 +137,7 @@
 
         <img id="break01" src="src/c_break01.png" class="ctl ctl_hover switchable sizefit" onclick="setC(this);" onmouseleave="setCHover(this);" alt="need a break" />
     </div>
-
+    </div>
 
     <!-- todo: use param in js -->
     <input type="hidden" id="t" value="<?php echo($t); ?>" />
