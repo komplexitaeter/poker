@@ -430,7 +430,8 @@ div#cbox {
 
         .mobile-menu.mobile[data-state=closed] .open_menu{
             height: auto;
-            width: available;
+            width: 100%;
+            z-index:2;
         }
 
         .mobile-menu.mobile[data-state=open] .open_menu{
