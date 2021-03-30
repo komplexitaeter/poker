@@ -196,6 +196,9 @@ body {
 
     .controls img.mobile{
         width:13%;
+        height: auto;
+        align-self: center;
+        float: right;
     }
 
     .controls img.desktop{
