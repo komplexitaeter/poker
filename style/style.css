@@ -413,8 +413,15 @@ div#cbox {
     position: absolute;
     height: 89vh;
     width: 100%;
-    overflow-y: scroll;
 }
+
+    .up-container.desktop{
+        overflow: hidden;
+    }
+
+    .up-container.mobile{
+        overflow-y: scroll;
+    }
 
 .down-container{
     padding-bottom: 2%;
