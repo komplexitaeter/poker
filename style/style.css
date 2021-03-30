@@ -39,9 +39,9 @@ body {
     #nameinput.mobile {
         width: 65%;
         margin-top: 5%;
-        line-height: 2rem;
-        padding: 0.5rem;
-        font-size: 2.5rem;
+        line-height: 1rem;
+        padding: 0.1rem;
+        font-size: 1.2rem;
     }
 
     #nameinput.desktop {
@@ -340,7 +340,7 @@ div#cbox {
     }
 
     .c span.mobile{
-        font-size: 22pt;
+        font-size: 1rem;
     }
 
     .c span.desktop{
@@ -355,8 +355,8 @@ div#cbox {
     font-weight: bold;
 }
     .topnav_title.mobile {
-        top:1rem;
-        font-size: 2rem;
+        top:0.5rem;
+        font-size: 1.2rem;
     }
 
     .topnav_title.desktop {
@@ -382,8 +382,8 @@ div#cbox {
 }
 
     .topnav_clink.mobile {
-        font-size: 1rem;
-        top:10%;
+        font-size: 0.3rem;
+        top: 0.1rem;
     }
 
     .topnav_clink.desktop {
@@ -472,8 +472,8 @@ div#cbox {
     .mobile-menu.mobile[data-state=open] .close-menu{
         display: block;
         position: absolute;
-        right: 1%;
-        top: 1%;
+        right: 1rem;
+        top: 1rem;
         height: 7%;
         width: 7%;
         background-image: url("../src/cross_black.png");
@@ -488,9 +488,10 @@ div#cbox {
     .mobile-menu.mobile[data-state=open] {
         position: absolute;
         width: 95%;
-        height: 95%;
+        height: 99%;
         min-height: 95%;
         right: 2.5%;
+        top: 0.3rem;
         background-color: #444444;
         z-index: 1;
         border-radius: 2rem;
@@ -597,9 +598,10 @@ div#cbox {
 
     #info_box.mobile {
         top: 16%;
-        width:95%;
-        height: 25%;
+        width: 95%;
+        height: auto;
         right: 2.5%;
+        left: unset;
     }
 
 #info_box>h1 {
@@ -674,10 +676,6 @@ div#cbox {
     width: 60%;
 }
 
-
-
-
-
 #feedback_box {
     position: absolute;
     right: 15px;
@@ -692,12 +690,11 @@ div#cbox {
 }
 
     #feedback_box.mobile {
-
-        margin-top: 16%;
+        margin-top: 9vh;
         width:95%;
         height: 45%;
-        min-height: 650px;
         right: 2.5%;
+        padding-bottom: 1rem;
     }
 
 .feedback_star {
@@ -744,12 +741,11 @@ div#cbox {
     }
 
     #feedback_txt.mobile {
-        width: 88%;
-        height: 55%;
-        min-height: 300px;
+        width: 80%;
+        height: 3rem;
         border-radius: 1rem;
-        padding: 2rem;
-        font-size: 3rem;
+        padding: 1rem;
+        font-size: 1rem;
     }
 
 .box_sbmt_button {
@@ -766,10 +762,11 @@ div#cbox {
     }
 
     .box_sbmt_button.mobile {
-        font-size: 2rem;
-        padding: 1rem 2rem;
+        font-size: 1rem;
+        padding: 0.5rem 0.5rem;
         border-radius: 2rem;
-        margin-top: 2rem;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
     }
 
 .box_sbmt_button:hover {
@@ -793,8 +790,8 @@ div#cbox {
 
     #cset_box.mobile {
         top: 16%;
-        width:95%;
-        height: 70%;
+        width: 95%;
+        height: 73vh;
         right: 2.5%;
     }
 
@@ -814,9 +811,9 @@ div#cbox {
     }
 
     #cet_pre.mobile {
-        font-size: 3rem;
+        font-size: 1rem;
         margin-top: 1rem;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
         border-radius: 1rem;
         width: 90%;
     }
@@ -850,9 +847,9 @@ div#cbox {
 
 
     .cs_c.mobile {
-        width: 15%;
+        width: 14vw;
         height: auto;
-        border-radius: 2rem;
+        border-radius: 0.6rem;
     }
     .cs_c.mobile:hover {
 

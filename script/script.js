@@ -1,6 +1,8 @@
 let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
-let getBrowserWidth = function(){
+window.addEventListener('resize', adaptToDevice);
+
+function getBrowserWidth(){
     if(window.innerWidth < 768){
         // Extra Small Device
         return "xs";
@@ -14,10 +16,7 @@ let getBrowserWidth = function(){
         // Large Device
         return "lg";
     }
-    console.log("run");
 };
-
-let gBrowserWidth = getBrowserWidth();
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
@@ -228,7 +227,10 @@ function updateDom(myJson, isOnLoad) {
     }
 
     controlsDsp(myJson);
-    adaptToDevice();
+
+    if(isOnLoad){
+        adaptToDevice();
+    }
 
 }
 
@@ -307,20 +309,21 @@ function copyLink() {
 }
 
 function adaptToDevice(){
+    console.log("running adapttodevice");
+    /*TODO: find out why this line registers twice in log when switching viewport size*/
+
     let size = getBrowserWidth();
     if (size === "xs" || size === "sm") {
         Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
             e.classList.add("mobile");
             e.classList.remove("desktop");
             //measureEvent("LOAD_MOBILE");
-            gBrowserWidth = size;
         });
     } else {
         Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
             e.classList.add("desktop");
             e.classList.remove("mobile");
             //measureEvent("LOAD_DESKTOP");
-            gBrowserWidth = size;
         });
     }
 }
