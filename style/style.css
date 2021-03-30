@@ -28,6 +28,14 @@ body {
         display:none;
     }
 
+    .mobile-menu.mobile[data-state=open] #brand.mobile{
+        height: auto;
+        top: 6rem;
+        width: 8rem;
+        display: unset;
+        margin-top: 1rem;
+    }
+
 #nameinput {
     background: black;
     border: 1px solid white;
@@ -52,24 +60,35 @@ body {
     }
 
 #newroundbtn {
-
+    background: black;
+    border: 1px solid white;
+    color: white;
+    text-align: center;
+    outline: none;
 }
 
     #newroundbtn.desktop{
-        background: black;
-        border: 1px solid white;
-        color: white;
         font-size: medium;
         padding: 5pt;
-        text-align: center;
         margin-top: 60px;
         width: 200px;
         border-radius: 15pt;
-        display: none;
-        outline: none;
     }
 
     #newroundbtn.mobile{
+        font-size: 1rem;
+        border-radius: 2rem;
+    }
+
+    #newroundbtn.mobile[data-state=open]{
+        z-index: 5;
+        top: 3vh;
+        left:20vw;
+        position: absolute;
+        padding: 0.2rem 0.8rem;
+    }
+
+    #newroundbtn.mobile[data-state=closed]{
         display: none;
     }
 

@@ -30,7 +30,8 @@ function nameChanged(e) {
 
 function newRound() {
     fetch('./api/newround.php?t=' + document.getElementById("t").value).then();
-    document.getElementById('newroundbtn').style.display = 'none';
+    toggleStyleClass(document.getElementById('newroundbtn'), "display_none", "display_unset");
+    toggleMobileMenu("closed");
 }
 
 function nameUpdate(e, isOnLoad) {
@@ -207,6 +208,7 @@ function updateDom(myJson, isOnLoad) {
         });
 
         e.innerHTML = htmlStr;
+        adaptToDevice();
     }
 
 
@@ -286,8 +288,10 @@ function switchColorMode(){
 
 function toggleMobileMenu(target_state){
     let menu = document.getElementById("mobile-menu");
+    let newroundbtn = document.getElementById("newroundbtn");
     if(menu.getAttribute('data-state') !== target_state && (getBrowserWidth() === "xs" || getBrowserWidth() === "sm")){
         menu.setAttribute('data-state', target_state);
+        newroundbtn.setAttribute('data-state', target_state);
     }
 }
 
