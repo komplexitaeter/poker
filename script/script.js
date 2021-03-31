@@ -155,10 +155,6 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
 
         });
-
-    if (isOnLoad) {
-        measureEvent("BOARD_ON_LOAD");
-    }
 }
 
 function updateDom(myJson, isOnLoad) {
@@ -236,6 +232,7 @@ function updateDom(myJson, isOnLoad) {
     if(isOnLoad){
         adaptToDevice();
         document.body.style.display = "unset";
+        measureEvent("BOARD_ON_LOAD");
     }
 
 }
