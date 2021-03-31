@@ -501,7 +501,7 @@ div#cbox {
     }
 
         .mobile-menu.mobile .close-menu:active{
-            transform: scale(0.5) translate(-1rem, -2rem);
+            filter: invert(100%);
         }
 
     .mobile-menu.mobile[data-state=open] {
