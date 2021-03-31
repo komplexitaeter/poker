@@ -1,7 +1,6 @@
 let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
 let gDisplayType = null;
-window.addEventListener('resize', adaptToDevice);
 
 function getBrowserWidth(){
 
@@ -20,7 +19,7 @@ function getBrowserWidth(){
     }
 
     return gDisplayType;
-};
+}
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
@@ -229,12 +228,7 @@ function updateDom(myJson, isOnLoad) {
 
     controlsDsp(myJson);
 
-    if(isOnLoad){
-        adaptToDevice();
-        document.body.style.display = "unset";
-        measureEvent("BOARD_ON_LOAD");
-    }
-
+    if (isOnLoad) document.body.style.display = 'inherit';
 }
 
 
@@ -242,12 +236,26 @@ function handleNewData() {
     updateDao(false);
 }
 
-let baseUrl = 'api/dao';
-let params = {
-    "id" :  localStorage.getItem('SID'),
-    "t" : document.getElementById("t").value,
+function loadBoard() {
+    let baseUrl = 'api/dao';
+    let params = {
+        "id": localStorage.getItem('SID'),
+        "t": document.getElementById("t").value,
+    }
+
+    updateDao(true);
+
+    initializeConnection(baseUrl, params, handleNewData);
+    initDisplayHandling();
+
+    measureEvent("BOARD_ON_LOAD");
 }
-initializeConnection(baseUrl, params, handleNewData);
+
+function loadInit() {
+    initDisplayHandling();
+    document.body.style.display = "unset";
+    measureEvent("INIT_ON_LOAD");
+}
 
 function measureEvent(eventCode) {
     const url = "./api/measure_event.php?id="+sid
@@ -348,6 +356,11 @@ function removeStyleClass(element, className) {
 function toggleStyleClass(element, addClassName, removeClassName) {
     removeStyleClass(element, removeClassName);
     addStyleClass(element, addClassName);
+}
+
+function initDisplayHandling() {
+    adaptToDevice();
+    window.addEventListener('resize', adaptToDevice);
 }
 
 /*** ******** ****/
