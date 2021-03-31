@@ -3,24 +3,30 @@
 <head>
     <meta charset="utf-8" />
     <title>Agile Estimations Online</title>
+    <meta name="viewport" content="width=device-width">
+    <meta name="viewport" content="initial-scale=1.0">
     <link rel="stylesheet" href="style/style.css" media="screen" />
 </head>
 <body>
 
-    <a href="https://komplexitaeter.de" target="_blank"><img src="src/brand.png" id="brand" /></a>
+    <a href="https://komplexitaeter.de" target="_blank"><img src="src/brand.png" id="brand" class="sizefit"/></a>
 
-    <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn" />
+    <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit" />
 
 
-    <div id="feedback_box" class="topnav">
-        <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" /><img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" />
-        <textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve." id="feedback_txt" class="topnav"></textarea>
-        <input class="feedback_sbmt" type="button" onclick="feedback_submit();" value="Send Feedback" class="topnav" />
+    <div id="feedback_box" class="topnav sizefit">
+        <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
+        <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
+        <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
+        <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
+        <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
+        <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve." id="feedback_txt" class="topnav sizefit"></textarea>
+        <input class="box_sbmt_button topnav sizefit" type="button" onclick="feedback_submit();" value="Send Feedback"/>
     </div>
 
     <form onsubmit="event.preventDefault(); addTeam();">
-        <input id="teaminput" type="text"  size="15" maxlength="40" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
-        <input id="teambtn" type="submit" value="Create Team Board" tabindex="1" />
+        <input id="teaminput" class="sizefit" type="text"  size="15" maxlength="40" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
+        <input id="teambtn" class="sizefit" type="submit" value="Create Team Board" tabindex="1" />
     </form>
 
     <script src="script/script_feedback.js" type="text/javascript" defer></script>
