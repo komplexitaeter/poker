@@ -37,23 +37,22 @@ function newRound() {
 function nameUpdate(e, isOnLoad) {
     let ctl = document.getElementById("ctl");
     if (e.value === null || e.value === "") {
-        toggleStyleClass(ctl, "display_none", "display_block");
+        toggleStyleClass(ctl, "hidden", "visible");
         if (isOnLoad) e.focus();
     }
     else {
-        toggleStyleClass(ctl, "display_block", "display_none");
+        toggleStyleClass(ctl, "visible", "hidden");
         if (isOnLoad) document.getElementById('cbox').focus();
     }
 }
 
 function controlsDsp(e) {
+    let ctl = document.getElementById("ctl");
     if (e.name !== null && e.name !== '') {
-        document.getElementById("ctl").classList.add("display_block");
-        document.getElementById("ctl").classList.remove("display_none");
+        toggleStyleClass(ctl, "visible", "hidden");
     }
     else {
-        document.getElementById("ctl").classList.add("display_none");
-        document.getElementById("ctl").classList.remove("display_block");
+        toggleStyleClass(ctl, "hidden", "visible");
     }
 }
 
@@ -232,6 +231,7 @@ function updateDom(myJson, isOnLoad) {
 
     if(isOnLoad){
         adaptToDevice();
+        document.body.style.display = "unset";
     }
 
 }

@@ -10,6 +10,7 @@ body {
     text-align: center;
     overflow-y: scroll;
     min-height: 100%;
+    display: none;
 }
 
 .sizefit{
@@ -190,6 +191,14 @@ body {
 }
 .display_none{
     display:none;
+}
+
+.visible{
+    visibility: visible;
+}
+
+.hidden{
+    visibility: hidden;
 }
 
     .controls.mobile{
@@ -812,6 +821,7 @@ div#cbox {
         width: 95%;
         height: 73vh;
         right: 2.5%;
+        overflow: scroll;
     }
 
 
