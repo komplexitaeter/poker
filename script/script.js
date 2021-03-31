@@ -287,11 +287,13 @@ function switchColorMode(){
 
 
 function toggleMobileMenu(target_state){
+    if(target_state === "closed"){alert("ups");}
     let menu = document.getElementById("mobile-menu");
     let newroundbtn = document.getElementById("newroundbtn");
     if(menu.getAttribute('data-state') !== target_state && (getBrowserWidth() === "xs" || getBrowserWidth() === "sm")){
         menu.setAttribute('data-state', target_state);
         newroundbtn.setAttribute('data-state', target_state);
+        if(target_state === "closed"){alert("ups2");}
     }
 }
 
