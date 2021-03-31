@@ -17,13 +17,13 @@
     </div>
 
     <div id="mobile-menu" class="mobile-menu switchable sizefit" data-state="closed">
-        <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="switchable sizefit"/></a>
+        <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit"/></a>
         <img src="src/mmenu.png" class="open_menu" alt="Menu" onclick="toggleMobileMenu('open')"/>
-        <img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit" alt="Info" />
-        <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit" alt="Home" /></a>
-        <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit" alt="Color mode" />
-        <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit" alt="Setup" />
-        <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit" alt="Feedback" />
+        <img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />
+        <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" /></a>
+        <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit switchable" alt="Color mode" />
+        <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" />
+        <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" />
         <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
         <div id="feedback_box" class="topnav sizefit">
             <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
