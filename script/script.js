@@ -1,21 +1,25 @@
 let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
+let gDisplayType = null;
 window.addEventListener('resize', adaptToDevice);
 
 function getBrowserWidth(){
+
     if(window.innerWidth < 768){
         // Extra Small Device
-        return "xs";
+        gDisplayType = "xs";
     } else if(window.innerWidth < 991){
         // Small Device
-        return "sm";
+        gDisplayType = "sm";
     } else if(window.innerWidth < 1199){
         // Medium Device
-        return "md";
+        gDisplayType = "md";
     } else {
         // Large Device
-        return "lg";
+        gDisplayType = "lg";
     }
+
+    return gDisplayType;
 };
 
 if (sid === null) {
@@ -249,7 +253,9 @@ let params = {
 initializeConnection(baseUrl, params, handleNewData);
 
 function measureEvent(eventCode) {
-    const url = "./api/measure_event.php?id="+sid+"&event_code="+eventCode;
+    const url = "./api/measure_event.php?id="+sid
+            +"&event_code="+eventCode
+            +"&display_type="+gDisplayType;
     fetch(url).then();
 }
 
