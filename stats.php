@@ -13,7 +13,7 @@
             <th>team registrations</th>
             <th>new round clicks</th>
             <th>average players</th>
-            <th>board on load</th>
+            <th>board on load (mobile)</th>
             <th>open info box</th>
             <th>link simulation infos</th>
             <th>link simulation login</th>
@@ -33,6 +33,10 @@ $sql = "select d.day
     ,(select count(1) from pok_analytics_events_tbl
         where date_format(creation_date, '%Y-%m-%d') = d.day
         and event_code = 'BOARD_ON_LOAD') as board_on_load
+     ,(select count(1) from pok_analytics_events_tbl
+        where date_format(creation_date, '%Y-%m-%d') = d.day
+        and event_code = 'BOARD_ON_LOAD'
+        and display_type in ('xs','sm')) as board_on_load_mobile
      ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
          and event_code = 'OPEN_INFO_BOX') as open_info_box
@@ -80,7 +84,7 @@ while(  $obj = $result->fetch_object()) {
     echo("\t\t\t<td>$obj->team_registrations_cnt</td>\n");
     echo("\t\t\t<td>$obj->new_round_cnt</td>\n");
     echo("\t\t\t<td>$obj->new_round_players_avg</td>\n");
-    echo("\t\t\t<td>$obj->board_on_load</td>\n");
+    echo("\t\t\t<td>$obj->board_on_load ($obj->board_on_load_mobile)</td>\n");
     echo("\t\t\t<td>$obj->open_info_box</td>\n");
     echo("\t\t\t<td>$obj->link_simulation_infos</td>\n");
     echo("\t\t\t<td>$obj->link_simulation_login</td>\n");
