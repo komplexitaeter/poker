@@ -32,29 +32,37 @@ $sql = "select d.day
      ,ifnull(round(r.new_round_players_avg, 2), 0) as new_round_players_avg
     ,(select count(1) from pok_analytics_events_tbl
         where date_format(creation_date, '%Y-%m-%d') = d.day
-        and event_code = 'BOARD_ON_LOAD') as board_on_load
+        and event_code = 'BOARD_ON_LOAD'
+        and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as board_on_load
      ,(select count(1) from pok_analytics_events_tbl
         where date_format(creation_date, '%Y-%m-%d') = d.day
         and event_code = 'BOARD_ON_LOAD'
-        and display_type in ('xs','sm')) as board_on_load_mobile
+        and display_type in ('xs','sm')
+        and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as board_on_load_mobile
      ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
-         and event_code = 'OPEN_INFO_BOX') as open_info_box
+         and event_code = 'OPEN_INFO_BOX'
+         and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as open_info_box
      ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
-         and event_code = 'LINK_SIMULATION_INFOS') as link_simulation_infos
+         and event_code = 'LINK_SIMULATION_INFOS'
+         and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as link_simulation_infos
      ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
-         and event_code = 'LINK_SIMULATION_LOGIN') as link_simulation_login
+         and event_code = 'LINK_SIMULATION_LOGIN'
+         and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as link_simulation_login
      ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
-         and event_code = 'OPEN_FEEDBACK_BOX') as open_feedback_box
+         and event_code = 'OPEN_FEEDBACK_BOX'
+         and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as open_feedback_box
      ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
-         and event_code = 'OPEN_SETUP_BOX') as open_setup_box
+         and event_code = 'OPEN_SETUP_BOX'
+         and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as open_setup_box
       ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
-         and event_code = 'USE_COLOR_SWITCH') as use_color_switch
+         and event_code = 'USE_COLOR_SWITCH'
+        and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as use_color_switch
 from (select date_format(timestampadd(DAY,-1*i.n,current_timestamp), '%Y-%m-%d') as day
       from (select 0 as n union select 1 union select 2 union  select 3
             union select 4 union select 5 union select 6 union select 7
