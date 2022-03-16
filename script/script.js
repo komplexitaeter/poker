@@ -195,13 +195,19 @@ function updateDom(myJson, isOnLoad) {
 
     if (needsUpdate) {
         let htmlStr = '';
+        let currentColorClass;
+        if (gColorMode === "dark") {
+            currentColorClass = "dark"
+        } else {
+            currentColorClass = "light"
+        }
 
         myJson.players.forEach(player => {
             htmlStr = htmlStr
                 + '<div class="c sizefit">'
-                + '<img class="background sizefit" src = "src/c_' + player.display_card_key + '.png" alt = "' + player.name + '" >'
-                + '<span class="sizefit switchable">' + player.name + '</span>'
-                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete sizefit switchable" src="./src/delete.png" alt="Delete">'
+                + '<img class="background sizefit switchable '+currentColorClass+'" src = "src/c_' + player.display_card_key + '.png" alt = "' + player.name + '" >'
+                + '<span class="sizefit">' + player.name + '</span>'
+                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete sizefit" src="./src/delete.png" alt="Delete">'
                 + '</div>';
         });
 
@@ -325,7 +331,6 @@ function copyLink() {
 }
 
 function adaptToDevice(){
-    console.log("running adapttodevice");
     /*TODO: find out why this line registers twice in log when switching viewport size*/
 
     let size = getBrowserWidth();

@@ -214,7 +214,7 @@ body {
 
     .controls.mobile{
         /* bottom: 0%; */
-        background-color: black;
+        /* background-color: black; */
         /* position: sticky; */
         position: -webkit-sticky;
         /* margin-top: 10%; */
