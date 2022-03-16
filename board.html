@@ -19,11 +19,12 @@
     <div id="mobile-menu" class="mobile-menu switchable sizefit" data-state="closed">
         <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit"/></a>
         <img src="src/mmenu.png" class="open_menu" alt="Menu" onclick="toggleMobileMenu('open')"/>
-        <img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />
+        <!--<img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />-->
         <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" /></a>
         <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit switchable" alt="Color mode" />
         <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" />
         <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" />
+        <img src="src/cta_design.png" id="cta_design" class="topnav sizefit" atl="we love feedback!" />
         <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
         <div id="feedback_box" class="topnav sizefit">
             <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
@@ -31,7 +32,8 @@
             <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
             <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
             <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
-            <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve." id="feedback_txt" class="topnav sizefit"></textarea>
+            <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
+Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav sizefit"></textarea>
             <input class="box_sbmt_button topnav sizefit" type="button" onclick="feedback_submit();" value="Send Feedback"/>
         </div>
         <div id="cset_box" class="topnav sizefit">
@@ -76,7 +78,7 @@
                 <img id="_break01" src="src/c_break01.png" class="topnav cs_c sizefit switchable" onclick="toggleCSet(this, 25)" alt="need a break" />
             </div>
         </div>
-        <div id="info_box" class="topnav sizefit">
+        <!-- <div id="info_box" class="topnav sizefit">
             <div id="marquee" class="marquee topnav sizefit"><span class="topnav sizefit">--- NEWS AND UPCOMING FEATURES ---  NEWS AND UPCOMING FEATURES ---  NEWS AND UPCOMING FEATURES --- </span></div>
             <div class="info_text topnav sizefit">
                 16th of March, 2022</br>
@@ -93,6 +95,7 @@
             <input class="box_sbmt_button sizefit" type="button" onclick="" value="Hide News"  />
 
         </div>
+        -->
     </div>
 
 
