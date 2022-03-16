@@ -320,7 +320,7 @@ div#cbox {
 
     .c .background {
         display: block;
-        border: 1px solid white;
+        border: 1px solid gray;
         border-radius: 15px;
     }
 
@@ -976,6 +976,22 @@ table tr:first-child{
 .light{
     -webkit-filter: invert(100%);
     filter: invert(100%);
+}
+
+.cs_c.light{
+    filter: invert(100%) grayscale(100%);
+}
+
+.cs_c_on.cs_c.light{
+    filter: invert(100%) grayscale(0%);
+}
+
+.cs_c.dark{
+    filter: invert(0%) grayscale(100%);
+}
+
+.cs_c_on.cs_c.dark{
+    filter: invert(0%) grayscale(0%);
 }
 
 .react {

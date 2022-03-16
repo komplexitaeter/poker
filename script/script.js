@@ -200,13 +200,14 @@ function updateDom(myJson, isOnLoad) {
             htmlStr = htmlStr
                 + '<div class="c sizefit">'
                 + '<img class="background sizefit" src = "src/c_' + player.display_card_key + '.png" alt = "' + player.name + '" >'
-                + '<span class="sizefit">' + player.name + '</span>'
-                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete sizefit" src="./src/delete.png" alt="Delete">'
+                + '<span class="sizefit switchable">' + player.name + '</span>'
+                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete sizefit switchable" src="./src/delete.png" alt="Delete">'
                 + '</div>';
         });
 
         e.innerHTML = htmlStr;
         adaptToDevice();
+
     }
 
 
