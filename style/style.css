@@ -616,9 +616,9 @@ div#cbox {
     }
 
     #cta_design{
-        right :23px;
+        right :18px;
         width: 6rem;
-        top: 35px;
+        top: 33px;
         position: absolute;
     }
 
@@ -990,18 +990,22 @@ table tr:first-child{
 }
 
 .cs_c.light{
+    -webkit-filter: invert(100%) grayscale(100%);
     filter: invert(100%) grayscale(100%);
 }
 
 .cs_c_on.cs_c.light{
+    -webkit-filter: invert(100%) grayscale(0%);
     filter: invert(100%) grayscale(0%);
 }
 
 .cs_c.dark{
+    -webkit-filter: invert(0%) grayscale(100%);
     filter: invert(0%) grayscale(100%);
 }
 
 .cs_c_on.cs_c.dark{
+    -webkit-filter: invert(0%) grayscale(0%);
     filter: invert(0%) grayscale(0%);
 }
 
