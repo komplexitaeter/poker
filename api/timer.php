@@ -9,7 +9,11 @@ $link = db_init();
 
 if ($action=='start') {
     $sql = $link->prepare( "update pok_teams_tbl t
-                                 set t.timer_start_time = current_timestamp
+                                 set t.timer_start_time = current_timestamp - (
+                                         ifnull(timer_pause_time, current_timestamp)
+                                       - ifnull(timer_start_time, current_timestamp)
+                                             )
+                                    ,t.timer_pause_time = null
                                where t.id=?;");
     $sql->bind_param('s', $t);
     $sql->execute();
