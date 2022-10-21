@@ -352,6 +352,9 @@ function adaptToDevice(){
 }
 
 function updateStopwatch(timer_status, timer_time){
+
+    timer_time = new Date(timer_time * 1000).toISOString().substr(11, 8);
+
     switch(timer_status){
         case "PAUSED":
             addStyleClass(document.getElementById("stopwatch_pause"),"display_none");
@@ -361,11 +364,14 @@ function updateStopwatch(timer_status, timer_time){
         case "RUNNING":
             addStyleClass(document.getElementById("stopwatch_start"),"display_none");
             removeStyleClass(document.getElementById("stopwatch_pause"),"display_none");
-            document.getElementById("stopwatch_timer").value = new Date(timer_time * 1000).toISOString().substr(11, 8);
         break;
 
         default:
         break;
+    }
+
+    if(document.getElementById("stopwatch_timer").value != timer_time){
+        document.getElementById("stopwatch_timer").value = timer_time;
     }
 }
 
