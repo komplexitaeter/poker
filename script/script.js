@@ -379,6 +379,7 @@ function stopwatchPause(){
 
 function stopwatchReset(){
     fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=reset');
+    document.getElementById("stopwatch_timer").value = "00:00:00";
 
 }
 

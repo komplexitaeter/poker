@@ -693,8 +693,10 @@ div#cbox {
 .stopwatch_control>input{
     border:none;
     background-color: transparent;
-    font-family: Impact;
     text-align: center;
+    font-size: large;
+    vertical-align: super;
+    color: white;
 }
 
 .info_text {
