@@ -235,6 +235,8 @@ function updateDom(myJson, isOnLoad) {
 
     controlsDsp(myJson);
 
+    updateStopwatch(myJson.timer_status, myJson.timer_time);
+
     if (isOnLoad) document.body.style.display = 'inherit';
 }
 
@@ -349,20 +351,34 @@ function adaptToDevice(){
     }
 }
 
+function updateStopwatch(timer_status, timer_time){
+    switch(timer_status){
+        case "PAUSED":
+            addStyleClass(document.getElementById("stopwatch_pause"),"display_none");
+            removeStyleClass(document.getElementById("stopwatch_start"),"display_none");
+        break;
+
+        case "RUNNING":
+            addStyleClass(document.getElementById("stopwatch_start"),"display_none");
+            removeStyleClass(document.getElementById("stopwatch_pause"),"display_none");
+            document.getElementById("stopwatch_timer").value = timer_time;
+        break;
+
+        default:
+        break;
+    }
+}
+
 function stopwatchStart(){
-    addStyleClass(document.getElementById("stopwatch_start"),"display_none");
-    removeStyleClass(document.getElementById("stopwatch_pause"),"display_none");
-    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&action=start');
+    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value + '&action=start');
 }
 
 function stopwatchPause(){
-    removeStyleClass(document.getElementById("stopwatch_start"),"display_none");
-    addStyleClass(document.getElementById("stopwatch_pause"),"display_none");
-    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&action=pause');
+    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value + '&action=pause');
 }
 
 function stopwatchReset(){
-    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&action=reset');
+    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value + '&action=reset');
 
 }
 
