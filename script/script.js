@@ -370,15 +370,15 @@ function updateStopwatch(timer_status, timer_time){
 }
 
 function stopwatchStart(){
-    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value + '&action=start');
+    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=start');
 }
 
 function stopwatchPause(){
-    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value + '&action=pause');
+    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=pause');
 }
 
 function stopwatchReset(){
-    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value + '&action=reset');
+    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=reset');
 
 }
 
