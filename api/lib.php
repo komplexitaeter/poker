@@ -62,6 +62,8 @@ function getDao($t, $id) {
     $one_ore_more_player_ready = false;
     $name = '';
     $mkey = '';
+    $timer_time = null;
+    $timer_status = null;
     $card_key = '';
     $cardset_flags = null;
     $team_name = null;
@@ -76,13 +78,24 @@ function getDao($t, $id) {
                AND team_id='$t'";
     $link->query($sql);
 
-    $sql = "SELECT t.cardset_flags, t.name
-              FROM pok_teams_tbl as t 
+    $sql = "SELECT t.cardset_flags
+                  ,t.name
+                  ,if(not isnull(t.timer_start_time) and isnull(t.timer_pause_time)
+                      ,'RUNNING'
+                      ,'PAUSED') timer_status
+                  ,timestampdiff(SECOND
+                                ,ifnull(t.timer_start_time, current_timestamp)
+                                ,ifnull(t.timer_pause_time, current_timestamp)) timer_time
+                  ,t.timer_start_time
+                  ,t.timer_pause_time
+            FROM pok_teams_tbl as t
              WHERE t.id = '$t'";
     if ($result = $link->query($sql)) {
         $obj = $result->fetch_object();
         $cardset_flags = $obj->cardset_flags;
         $team_name = $obj->name;
+        $timer_status = $obj->timer_status;
+        $timer_time = $obj->timer_time;
     }
 
     $sql = "SELECT p.* 
@@ -154,6 +167,8 @@ function getDao($t, $id) {
         "color_mode"=>(String)$color_mode,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
+        "timer_status="=>$timer_status,
+        "timer_time"=>(Int)$timer_time,
         "selected_card_key"=>$card_key,
         "all_players_ready"=>$all_players_ready_s,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready_s,
