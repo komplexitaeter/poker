@@ -681,6 +681,22 @@ div#cbox {
     animation-play-state: paused
 }
 
+.stopwatch_control{
+    margin-top:1rem;
+}
+
+.stopwatch_control>img{
+    width:30px;
+    height:auto;
+}
+
+.stopwatch_control>input{
+    border:none;
+    background-color: transparent;
+    font-family: Impact;
+    text-align: center;
+}
+
 .info_text {
     color: white;
     margin: 10px;

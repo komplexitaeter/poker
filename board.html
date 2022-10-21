@@ -108,6 +108,13 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
     <div id="cbox" tabindex="2" class="sizefit switchable"></div>
 
     <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
+    <div id="stopwatch" class="stopwatch_control">
+        <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()"/>
+        <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()"/>
+        <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00" class="switchable sizefit"/>
+        <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()"/>
+    </div>
+
     </div>
     <div class="down-container sizefit" id="down-container">
     <div class="controls sizefit" id="ctl">

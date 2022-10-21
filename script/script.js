@@ -349,6 +349,23 @@ function adaptToDevice(){
     }
 }
 
+function stopwatchStart(){
+    addStyleClass(document.getElementById("stopwatch_start"),"display_none");
+    removeStyleClass(document.getElementById("stopwatch_pause"),"display_none");
+    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&action=start');
+}
+
+function stopwatchPause(){
+    removeStyleClass(document.getElementById("stopwatch_start"),"display_none");
+    addStyleClass(document.getElementById("stopwatch_pause"),"display_none");
+    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&action=pause');
+}
+
+function stopwatchReset(){
+    fetch('./api/timer.php?id=' + localStorage.getItem('SID') + '&action=reset');
+
+}
+
 /*** COMMON JS FUNCTIONS ****/
 
 function addStyleClass(element, className) {
