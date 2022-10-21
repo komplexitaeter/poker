@@ -167,7 +167,7 @@ function getDao($t, $id) {
         "color_mode"=>(String)$color_mode,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
-        "timer_status="=>$timer_status,
+        "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
         "selected_card_key"=>$card_key,
         "all_players_ready"=>$all_players_ready_s,
