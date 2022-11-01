@@ -64,6 +64,7 @@ function getDao($t, $id) {
     $mkey = '';
     $timer_time = null;
     $timer_status = null;
+    $timer_visibility = 0;
     $card_key = '';
     $cardset_flags = null;
     $team_name = null;
@@ -86,8 +87,7 @@ function getDao($t, $id) {
                   ,timestampdiff(SECOND
                                 ,ifnull(t.timer_start_time, current_timestamp)
                                 ,ifnull(t.timer_pause_time, current_timestamp)) timer_time
-                  ,t.timer_start_time
-                  ,t.timer_pause_time
+                  ,t.timer_visibility
             FROM pok_teams_tbl as t
              WHERE t.id = '$t'";
     if ($result = $link->query($sql)) {
@@ -96,6 +96,7 @@ function getDao($t, $id) {
         $team_name = $obj->name;
         $timer_status = $obj->timer_status;
         $timer_time = $obj->timer_time;
+        $timer_visibility = $obj->timer_visibility;
     }
 
     $sql = "SELECT p.* 
@@ -169,6 +170,7 @@ function getDao($t, $id) {
         "cardset_flags"=>$cardset_flags,
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
+        "timer_visibility"=>(Int)$timer_visibility,
         "selected_card_key"=>$card_key,
         "all_players_ready"=>$all_players_ready_s,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready_s,

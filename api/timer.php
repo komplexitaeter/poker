@@ -47,5 +47,12 @@ if ($action=='reset') {
     $sql->execute();
 }
 
+if ($action=='toggle_visibility') {
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_visibility = not t.timer_visibility
+                                   where t.id=?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+}
 
 $link->close();
