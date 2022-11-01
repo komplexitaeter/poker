@@ -390,6 +390,7 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
 
 function switchStopwatchVisiblity(){
     fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=toggle_visibility');
+    measureEvent("TOGGLE_TIMER");
 }
 
 function stopwatchStart(){
