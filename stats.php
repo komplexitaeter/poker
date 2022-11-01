@@ -20,6 +20,7 @@
             <th>open feedback box</th>
             <th>open setup box</th>
             <th>use color switch</th>
+            <th>use stopwatch switch</th>
         </tr>
 
 <?php
@@ -63,6 +64,10 @@ $sql = "select d.day
        where date_format(creation_date, '%Y-%m-%d') = d.day
          and event_code = 'USE_COLOR_SWITCH'
         and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as use_color_switch
+      ,(select count(1) from pok_analytics_events_tbl
+       where date_format(creation_date, '%Y-%m-%d') = d.day
+         and event_code = 'TOGGLE_STOPWATCH'
+        and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as toggle_stopwatch
 from (select date_format(timestampadd(DAY,-1*i.n,current_timestamp), '%Y-%m-%d') as day
       from (select 0 as n union select 1 union select 2 union  select 3
             union select 4 union select 5 union select 6 union select 7
@@ -99,6 +104,7 @@ while(  $obj = $result->fetch_object()) {
     echo("\t\t\t<td>$obj->open_feedback_box</td>\n");
     echo("\t\t\t<td>$obj->open_setup_box</td>\n");
     echo("\t\t\t<td>$obj->use_color_switch</td>\n");
+    echo("\t\t\t<td>$obj->toggle_stopwatch</td>\n");
     echo("\t\t</tr>\n\n");
 }
 echo("</table>\n\n");
