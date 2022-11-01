@@ -558,8 +558,12 @@ div#cbox {
     .mobile-menu.mobile #cset_btn{
         left:31%;
     }
-    .mobile-menu.mobile #feedback_btn{
+
+    .mobile-menu.mobile #stopwatch_btn{
         left:44%;
+    }
+    .mobile-menu.mobile #feedback_btn{
+        left:57%;
     }
 
 .topnav_btn {
@@ -592,7 +596,7 @@ div#cbox {
     }
 
     #cmode_btn{
-        right: 104px;
+        right: 131px;
         margin-top: 1px;
         height: 17px;
         width:auto;
@@ -604,10 +608,14 @@ div#cbox {
         }
 
     #home_btn {
-        right: 69px;
+        right: 96px;
     }
 
     #cset_btn {
+        right: 69px;
+    }
+
+    #stopwatch_btn{
         right: 42px;
     }
 

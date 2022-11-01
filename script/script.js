@@ -235,7 +235,7 @@ function updateDom(myJson, isOnLoad) {
 
     controlsDsp(myJson);
 
-    updateStopwatch(myJson.timer_status, myJson.timer_time);
+    updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
 
     if (isOnLoad) document.body.style.display = 'inherit';
 }
@@ -351,7 +351,7 @@ function adaptToDevice(){
     }
 }
 
-function updateStopwatch(timer_status, timer_time){
+function updateStopwatch(timer_status, timer_time, timer_visibility){
 
     timer_time = new Date(timer_time * 1000).toISOString().substr(11, 8);
 
@@ -373,6 +373,23 @@ function updateStopwatch(timer_status, timer_time){
     if(document.getElementById("stopwatch_timer").value != timer_time){
         document.getElementById("stopwatch_timer").value = timer_time;
     }
+
+    switch(timer_visibility){
+        case 0:
+            addStyleClass(document.getElementById("stopwatch"),"display_none");
+        break;
+
+        case 1:
+            removeStyleClass(document.getElementById("stopwatch"),"display_none");
+        break;
+
+        default:
+        break;
+    }
+}
+
+function switchStopwatchVisiblity(){
+    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=toggle_visibility');
 }
 
 function stopwatchStart(){
