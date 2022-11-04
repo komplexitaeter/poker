@@ -203,17 +203,17 @@ function reset_topic(){
 
 function save_topic(){
     let t = document.getElementById("t").value;
-    let parameters = {
-        topic: document.getElementById('topic_txt').value,
-    };
+    let topic = document.getElementById('topic_txt').value;
 
-    let options = {
-        method: 'POST',
-        body: JSON.stringify(parameters)
-    };
+    const url = './api/update_topic.php?t='+t;
+    let httpRequest = new XMLHttpRequest();
 
-    console.log({parameters, options});
-    fetch( './api/update_topic.php?t='+t, options );
+    httpRequest.open("POST", url, true);
+    httpRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    httpRequest.send(
+        "topic=" + topic
+    );
+
     toggle_topic_box();
 }
 
