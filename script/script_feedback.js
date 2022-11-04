@@ -202,10 +202,9 @@ function reset_topic(){
 }
 
 function save_topic(){
-
+    let t = document.getElementById("t").value;
     let parameters = {
         topic: document.getElementById('topic_txt').value,
-        t: document.getElementById("t").value
     };
 
     let options = {
@@ -213,7 +212,8 @@ function save_topic(){
         body: JSON.stringify(parameters)
     };
 
-    fetch( './api/update_topic.php', options );
+    console.log({parameters, options});
+    fetch( './api/update_topic.php?t='+t, options );
     toggle_topic_box();
 }
 
