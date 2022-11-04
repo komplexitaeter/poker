@@ -24,10 +24,10 @@ function toggle_box(boxName) {
     if (boxName === 'feedback') {
         let e = document.getElementById('feedback_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-            /*toggle_feedback_box(true);
+            toggle_feedback_box(true);
             toggle_cardset_box(false);
-            toggle_info_box(false);*/
-            window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');
+            toggle_info_box(false);
+            //window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');
             measureEvent("OPEN_FEEDBACK_BOX");
         }
         else {
