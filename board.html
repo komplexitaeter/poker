@@ -22,11 +22,17 @@
         <!--<img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />-->
         <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" /></a>
         <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit switchable" alt="Color mode" />
+        <img onclick="toggle_box('topic');" src="src/topic.png" id="topic_btn" class="topnav topnav_btn sizefit switchable" alt="Topic" />
         <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.png" id="stopwatch_btn" class="topnav topnav_btn sizefit switchable" alt="Stopwatch" />
         <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" />
         <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" />
         <img src="src/cta_design.png" id="cta_design" class="topnav sizefit" atl="we love feedback!" />
         <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
+        <div id="topic_box" class="topnav sizefit">
+            <label for="topic_txt"></label><textarea maxlength="1800" placeholder="Short description of what you are talking about in the coming round" id="topic_txt" class="topnav sizefit"></textarea>
+            <input class="box_sbmt_button topnav sizefit" type="button" onclick=reset_topic();" value="Reset"/>
+            <input class="box_sbmt_button topnav sizefit" type="button" onclick="save_topic();" value="Save"/>
+        </div>
         <div id="feedback_box" class="topnav sizefit">
             <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
             <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />

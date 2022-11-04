@@ -551,19 +551,26 @@ div#cbox {
         right:15%;
         width:13%;
         height:auto;
+        top: 18%;
     }
     .mobile-menu.mobile #home_btn{
         left:18%;
     }
-    .mobile-menu.mobile #cset_btn{
+
+    .mobile-menu.mobile #stopwatch_btn{
         left:31%;
     }
 
-    .mobile-menu.mobile #stopwatch_btn{
+    .mobile-menu.mobile #cset_btn{
         left:44%;
     }
-    .mobile-menu.mobile #feedback_btn{
+
+    .mobile-menu.mobile #topic_btn{
         left:57%;
+    }
+
+    .mobile-menu.mobile #feedback_btn{
+        left:70%;
     }
 
 .topnav_btn {
@@ -596,7 +603,7 @@ div#cbox {
     }
 
     #cmode_btn{
-        right: 131px;
+        right: 158px;
         margin-top: 1px;
         height: 17px;
         width:auto;
@@ -608,6 +615,10 @@ div#cbox {
         }
 
     #home_btn {
+        right: 123px;
+    }
+
+    #topic_btn{
         right: 96px;
     }
 
@@ -750,6 +761,52 @@ div#cbox {
 
 #info_sbmt:hover {
     width: 60%;
+}
+
+#topic_box {
+    position: absolute;
+    right: 15px;
+    top: 40px;
+    border: 1px solid white;
+    width: 200px;
+    height: 255px;
+    border-radius: 15px;
+    background: #202020;
+    display: none;
+    z-index: 999999;
+}
+
+#topic_box.mobile {
+    margin-top: 9vh;
+    width:95%;
+    height: 45%;
+    right: 2.5%;
+    padding-bottom: 1rem;
+}
+
+#topic_txt {
+    margin-top: 3vh;
+    outline: none;
+    border: 1px solid #999999;
+    border-radius: 3pt;
+    background: #444444;
+    color: white;
+    resize: none;
+}
+
+#topic_txt.desktop {
+    width: 88%;
+    height: 170px;
+    border-radius: 3pt;
+    padding: 5px;
+}
+
+#topic_txt.mobile {
+    width: 80%;
+    height: 6rem;
+    border-radius: 1rem;
+    padding: 1rem;
+    font-size: 1rem;
 }
 
 #feedback_box {

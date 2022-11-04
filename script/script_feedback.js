@@ -1,6 +1,7 @@
 function toggleTopnav(e) {
     if (!e.target.classList.contains('topnav')) {
         toggle_feedback_box(false);
+        toggle_topic_box(false);
         toggle_cardset_box(false);
         toggle_info_box(false);
     }
@@ -24,14 +25,32 @@ function toggle_box(boxName) {
     if (boxName === 'feedback') {
         let e = document.getElementById('feedback_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-            toggle_feedback_box(true);
+            /*toggle_feedback_box(true);
+            toggle_topic_box(false);
             toggle_cardset_box(false);
-            toggle_info_box(false);
-            //window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');
+            toggle_info_box(false);*/
+            window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');
             measureEvent("OPEN_FEEDBACK_BOX");
         }
         else {
             toggle_feedback_box(false);
+            toggle_topic_box(false);
+            toggle_cardset_box(false);
+            toggle_info_box(false);
+        }
+    }
+    if (boxName === 'topic') {
+        let e = document.getElementById('topic_box');
+        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
+            toggle_feedback_box(false);
+            toggle_topic_box(true);
+            toggle_cardset_box(false);
+            toggle_info_box(false);
+            measureEvent("OPEN_TOPIC_BOX");
+        }
+        else {
+            toggle_feedback_box(false);
+            toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(false);
         }
@@ -40,12 +59,14 @@ function toggle_box(boxName) {
         let e = document.getElementById('cset_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
             toggle_feedback_box(false);
+            toggle_topic_box(false);
             toggle_cardset_box(true);
             toggle_info_box(false);
             measureEvent("OPEN_SETUP_BOX");
         }
         else {
             toggle_feedback_box(false);
+            toggle_topic_box(false);
             toggle_cardset_box(false)
             toggle_info_box(false);
         }
@@ -54,12 +75,14 @@ function toggle_box(boxName) {
         let e = document.getElementById('info_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
             toggle_feedback_box(false);
+            toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(true);
             measureEvent("OPEN_INFO_BOX");
         }
         else {
             toggle_feedback_box(false);
+            toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(false);
         }
@@ -86,6 +109,22 @@ function toggle_feedback_box(setOn) {
         document.getElementById('fb_star_5').classList.remove('blink');
         document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
         document.getElementById('feedback_btn').src = 'src/feedback.png';
+    }
+}
+
+function toggle_topic_box(setOn) {
+    let e = document.getElementById('topic_box');
+
+    if (setOn) {
+        e.style.display = 'block';
+        document.getElementById('topic_btn').classList.add('topnav_btn_on');
+        document.getElementById('topic_btn').src = 'src/topic_on.png'
+        document.getElementById('topic_txt').focus();
+    }
+    else {
+        e.style.display = 'none';
+        document.getElementById('topic_btn').classList.remove('topnav_btn_on');
+        document.getElementById('topic_btn').src = 'src/topic.png';
     }
 }
 
@@ -157,6 +196,27 @@ function feedback_submit() {
         + '&text=' + fb_text
     ).then();
 }
+
+function reset_topic(){
+    toggle_topic_box();
+}
+
+function save_topic(){
+
+    let parameters = {
+        topic_text: document.getElementById('topic_txt').value,
+        t: document.getElementById("t").value
+    };
+
+    let options = {
+        method: 'POST',
+        body: JSON.stringify(parameters)
+    };
+
+    //fetch( './api/update_topic.php', options );
+    toggle_topic_box();
+}
+
 
 function setCharAt(str, index, chr) {
     return str.substr(0, index) + chr + str.substr(index + 1);
