@@ -204,7 +204,7 @@ function reset_topic(){
 function save_topic(){
 
     let parameters = {
-        topic_text: document.getElementById('topic_txt').value,
+        topic: document.getElementById('topic_txt').value,
         t: document.getElementById("t").value
     };
 
@@ -213,7 +213,7 @@ function save_topic(){
         body: JSON.stringify(parameters)
     };
 
-    //fetch( './api/update_topic.php', options );
+    fetch( './api/update_topic.php', options );
     toggle_topic_box();
 }
 
