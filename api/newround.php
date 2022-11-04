@@ -14,7 +14,7 @@ $sql_stats = "insert into pok_roundstats_tbl(team_id, players_count, type_code, 
                          then 'NEW_ROUND' 
                          else 'CANCEL_ROUND' 
                        end
-                     , p.topic = (select topic from pok_teams_tbl t where t.team_id = p.team_id)
+                     , (select topic from pok_teams_tbl t where t.id = p.team_id)
                   from pok_players_tbl p
                  where team_id = '$t'
                  group by team_id";
