@@ -1,3 +1,5 @@
+gTopicChangePending = false;
+
 function toggleTopnav(e) {
     if (!e.target.classList.contains('topnav')) {
         toggle_feedback_box(false);
@@ -116,6 +118,14 @@ function toggle_topic_box(setOn) {
     let e = document.getElementById('topic_box');
 
     if (setOn) {
+        if (gTopicChangePending) {
+            document.getElementById("topic_reset").disabled = false;
+            document.getElementById("topic_save").disabled = false;
+        } else {
+            document.getElementById("topic_reset").disabled = true;
+            document.getElementById("topic_save").disabled = true;
+        }
+
         e.style.display = 'block';
         document.getElementById('topic_btn').classList.add('topnav_btn_on');
         document.getElementById('topic_btn').src = 'src/topic_on.png'
@@ -197,11 +207,20 @@ function feedback_submit() {
     ).then();
 }
 
+function topicChanged() {
+    gTopicChangePending = true;
+    document.getElementById("topic_reset").disabled = false;
+    document.getElementById("topic_save").disabled = false;
+}
+
 function reset_topic(){
+    gTopicChangePending = false;
     toggle_topic_box();
 }
 
 function save_topic(){
+    gTopicChangePending = false;
+
     let t = document.getElementById("t").value;
     let topic = document.getElementById('topic_txt').value;
 

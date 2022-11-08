@@ -902,11 +902,16 @@ div#cbox {
         margin-bottom: 1rem;
     }
 
-.box_sbmt_button:hover {
+.box_sbmt_button:enabled:hover {
     border-color: #84cbff;
     color: #84cbff;
 }
 
+.box_sbmt_button:disabled {
+    border-color: #999999;
+    color: #999999;
+    cursor: not-allowed;
+}
 
 #cset_box {
     position: absolute;
