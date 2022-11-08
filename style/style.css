@@ -66,6 +66,11 @@ body {
     color: white;
 }
 
+a {
+    color: dodgerblue;
+    cursor: pointer;
+}
+
 #newroundbtn {
     background: black;
     border: 1px solid white;
@@ -564,7 +569,7 @@ div#cbox {
     }
 
     .mobile-menu.mobile #stopwatch_btn{
-        left:31%;
+        left:57%;
     }
 
     .mobile-menu.mobile #cset_btn{
@@ -572,7 +577,7 @@ div#cbox {
     }
 
     .mobile-menu.mobile #topic_btn{
-        left:57%;
+        left:31%;
     }
 
     .mobile-menu.mobile #feedback_btn{

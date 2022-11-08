@@ -181,7 +181,19 @@ function updateDom(myJson, isOnLoad) {
     let topicHash = myJson.topic.hashCode();
     if (topic.getAttribute("data-hash") !== topicHash) {
         topic.setAttribute("data-hash", topicHash);
-        topic.textContent = myJson.topic;
+
+        let markDown = new Remarkable({
+            html: false, // Enable HTML tags in source
+            xhtmlOut: true, // Use '/' to close single tags (<br />)
+            breaks: true, // Convert '\n' in paragraphs into <br>
+            linkify: true, // Autoconvert URL-like text to links
+            // Enable some language-neutral replacement + quotes beautification
+            typographer: false,
+            // Double + single quotes replacement pairs, when typographer enabled,
+            // and smartquotes on. Set doubles to '«»' for Russian, '„“' for German.
+            quotes: '“”‘’'
+        });
+        topic.innerHTML = markDown.render(myJson.topic);
     }
 
     if (isOnLoad) {

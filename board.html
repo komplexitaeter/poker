@@ -29,7 +29,7 @@
         <img src="src/cta_design.png" id="cta_design" class="topnav sizefit" atl="we love feedback!" />
         <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
         <div id="topic_box" class="topnav sizefit">
-            <label for="topic_txt"></label><textarea maxlength="1800" placeholder="Short description of what you are talking about in the coming round" id="topic_txt" class="topnav sizefit" onkeydown="topicChanged()"></textarea>
+            <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about" id="topic_txt" class="topnav sizefit" onkeydown="topicChanged()"></textarea>
             <input id="topic_reset" class="box_sbmt_button topnav sizefit" type="button" onclick="reset_topic()" value="Undo"/>
             <input id="topic_save" class="box_sbmt_button topnav sizefit" type="button" onclick="save_topic()" value="Save"/>
         </div>
@@ -115,7 +115,7 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
 
     <div id="cbox" tabindex="2" class="sizefit switchable"></div>
 
-    <div id="topic" data-hash="0"></div>
+    <div id="topic" class="switchable" data-hash="0"></div>
 
     <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
     <div id="stopwatch" class="stopwatch_control">
@@ -163,6 +163,7 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
     <!-- todo: use param in js -->
     <input type="hidden" id="t" value="<?php echo($t); ?>" />
 
+    <script src="https://cdn.jsdelivr.net/remarkable/1.7.1/remarkable.min.js"></script>
     <script src="script/ajax.js" type="text/javascript" defer></script>
     <script src="script/script_feedback.js" type="text/javascript" defer></script>
     <script src="script/script.js" type="text/javascript" defer></script>
