@@ -130,7 +130,7 @@ function toggle_topic_box(setOn) {
         e.style.display = 'block';
         document.getElementById('topic_btn').classList.add('topnav_btn_on');
         document.getElementById('topic_btn').src = 'src/topic_on.png'
-        document.getElementById('topic_txt').focus();
+        document.getElementById('topic_txt').select();
     }
     else {
         e.style.display = 'none';
