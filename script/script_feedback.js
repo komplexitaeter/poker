@@ -1,4 +1,4 @@
-gTopicChangePending = false;
+let gTopicChangePending = false;
 
 function toggleTopnav(e) {
     if (!e.target.classList.contains('topnav')) {
@@ -124,6 +124,7 @@ function toggle_topic_box(setOn) {
         } else {
             document.getElementById("topic_reset").disabled = true;
             document.getElementById("topic_save").disabled = true;
+            document.getElementById("topic_txt").value = document.getElementById("topic").textContent;
         }
 
         e.style.display = 'block';
@@ -215,7 +216,9 @@ function topicChanged() {
 
 function reset_topic(){
     gTopicChangePending = false;
-    toggle_topic_box();
+    document.getElementById("topic_reset").disabled = true;
+    document.getElementById("topic_save").disabled = true;
+    document.getElementById("topic_txt").value = document.getElementById("topic").textContent;
 }
 
 function save_topic(){

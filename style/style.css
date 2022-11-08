@@ -60,6 +60,12 @@ body {
         width: 200px;
     }
 
+#topic {
+    height: 2em;
+    margin-top: 1em;
+    color: white;
+}
+
 #newroundbtn {
     background: black;
     border: 1px solid white;

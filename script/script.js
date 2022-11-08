@@ -2,6 +2,17 @@ let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
 let gDisplayType = null;
 
+String.prototype.hashCode = function(){
+    var hash = 0;
+    if (this.length == 0) return hash;
+    for (i = 0; i < this.length; i++) {
+        char = this.charCodeAt(i);
+        hash = ((hash<<5)-hash)+char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash;
+}
+
 function getBrowserWidth(){
 
     if(window.innerWidth < 768){
@@ -164,6 +175,13 @@ function updateDom(myJson, isOnLoad) {
         (e !== document.activeElement && e.value !== myJson.name)) {
         e.value = e.value = unescape(myJson.name);
         nameUpdate(e, isOnLoad);
+    }
+
+    let topic = document.getElementById('topic');
+    let topicHash = myJson.topic.hashCode();
+    if (topic.getAttribute("data-hash") !== topicHash) {
+        topic.setAttribute("data-hash", topicHash);
+        topic.textContent = myJson.topic;
     }
 
     if (isOnLoad) {
