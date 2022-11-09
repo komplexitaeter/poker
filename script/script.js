@@ -1,6 +1,8 @@
 let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
 let gDisplayType = null;
+let gTopic = null;
+
 
 String.prototype.hashCode = function(){
     var hash = 0;
@@ -180,7 +182,9 @@ function updateDom(myJson, isOnLoad) {
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode();
     if (topic.getAttribute("data-hash") !== topicHash) {
+
         topic.setAttribute("data-hash", topicHash);
+        gTopic = myJson.topic;
 
         let markDown = new Remarkable({
             html: false, // Enable HTML tags in source

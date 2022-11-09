@@ -124,7 +124,7 @@ function toggle_topic_box(setOn) {
         } else {
             document.getElementById("topic_reset").disabled = true;
             document.getElementById("topic_save").disabled = true;
-            document.getElementById("topic_txt").value = document.getElementById("topic").textContent;
+            document.getElementById("topic_txt").value = gTopic;
         }
 
         e.style.display = 'block';
@@ -218,7 +218,7 @@ function reset_topic(){
     gTopicChangePending = false;
     document.getElementById("topic_reset").disabled = true;
     document.getElementById("topic_save").disabled = true;
-    document.getElementById("topic_txt").value = document.getElementById("topic").textContent;
+    document.getElementById("topic_txt").value = gTopic;
 }
 
 function save_topic(){
