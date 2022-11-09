@@ -5,23 +5,35 @@ require './lib.php';
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 validate_team($t) or exit;
 
-$sql = "UPDATE pok_players_tbl SET card_key = null WHERE team_id ='".$t."'";
-
-$sql_stats = "insert into pok_roundstats_tbl(team_id, players_count, type_code, topic)
-                select team_id
-                     , count(1)
-                     , case when count(1) = count(card_key) 
-                         then 'NEW_ROUND' 
-                         else 'CANCEL_ROUND' 
-                       end
-                     , (select topic from pok_teams_tbl t where t.id = p.team_id)
-                  from pok_players_tbl p
-                 where team_id = '$t'
-                 group by team_id";
 
 $link = db_init();
 
-$link->query($sql_stats);
-$link->query($sql);
+$sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, type_code, timer_start_time
+                            , timer_pause_time ,timer_visibility, topic)
+                select p.team_id
+                     , count(1) players_count
+                     , case when count(1) = count(p.card_key) 
+                         then 'NEW_ROUND' 
+                         else 'CANCEL_ROUND' 
+                       end type_code
+                     , t.timer_start_time
+                     , t.timer_pause_time
+                     , t.timer_visibility
+                     , t.topic
+                  from pok_players_tbl p, pok_teams_tbl t
+                 where p.team_id = ?
+                   and t.id = p.team_id
+                 group by p.team_id, t.timer_start_time, t.timer_pause_time, t.timer_visibility, t.topic");
+
+$sql->bind_param('s', $t);
+$sql->execute();
+
+$sql = $link->prepare( "update pok_players_tbl p
+                                     set card_key = null
+                                   where p.team_id=?");
+$sql->bind_param('s', $t);
+$sql->execute();
+
+
 
 $link->close();
