@@ -194,6 +194,13 @@ function updateDom(myJson, isOnLoad) {
             quotes: '“”‘’'
         });
         topic.innerHTML = markDown.render(myJson.topic);
+
+        if (topicHash == 0) {
+            topic.classList.add("display_none");
+        } else {
+            topic.classList.remove("display_none");
+        }
+
     }
 
     if (isOnLoad) {

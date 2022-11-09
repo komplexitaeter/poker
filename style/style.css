@@ -62,13 +62,30 @@ body {
 
 #topic {
     margin-top: 1.5em;
-    color: white;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 0;
+    border-radius: 0.5em;
+    color: #fc91f5;
     height: fit-content;
-    min-height: 3.5em;
+    width: fit-content;
+    padding-left: 1em;
+    padding-right: 1em;
+    background: #800176;
+    border: 2px dotted #fc91f5;
 }
 
+    #topic.desktop {
+        min-width: 50%;
+    }
+
+    #topic.mobile {
+        min-width: 90%;
+    }
+
+
 a {
-    color: dodgerblue;
+    color: #ee01da;
     cursor: pointer;
 }
 
@@ -308,10 +325,8 @@ a {
     }
 
 div#cbox {
-    margin-top: 0.2em;
+    margin-top: 1.5em;
     outline: none;
-
-
     width: 100%;
     flex-wrap: wrap;
     display: inline-flex;
