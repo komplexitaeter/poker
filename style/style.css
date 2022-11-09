@@ -61,9 +61,10 @@ body {
     }
 
 #topic {
-    height: 2em;
-    margin-top: 1em;
+    margin-top: 1.5em;
     color: white;
+    height: fit-content;
+    min-height: 3.5em;
 }
 
 a {
@@ -307,7 +308,7 @@ a {
     }
 
 div#cbox {
-    margin-top: 40px;
+    margin-top: 0.2em;
     outline: none;
 
 
