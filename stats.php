@@ -21,6 +21,7 @@
             <th>open setup box</th>
             <th>use color switch</th>
             <th>use stopwatch switch</th>
+            <th>topic saved</th>
         </tr>
 
 <?php
@@ -67,7 +68,12 @@ $sql = "select d.day
       ,(select count(1) from pok_analytics_events_tbl
        where date_format(creation_date, '%Y-%m-%d') = d.day
          and event_code = 'TOGGLE_TIMER'
-        and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as toggle_timer
+        and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as toggle_timer      
+     ,(select count(1) from pok_analytics_events_tbl
+       where date_format(creation_date, '%Y-%m-%d') = d.day
+         and event_code = 'TOPIC_SAVED'
+        and creation_date > timestampadd(day,-14, CURRENT_TIMESTAMP )) as topic_saved
+
 from (select date_format(timestampadd(DAY,-1*i.n,current_timestamp), '%Y-%m-%d') as day
       from (select 0 as n union select 1 union select 2 union  select 3
             union select 4 union select 5 union select 6 union select 7
@@ -105,6 +111,7 @@ while(  $obj = $result->fetch_object()) {
     echo("\t\t\t<td>$obj->open_setup_box</td>\n");
     echo("\t\t\t<td>$obj->use_color_switch</td>\n");
     echo("\t\t\t<td>$obj->toggle_timer</td>\n");
+    echo("\t\t\t<td>$obj->topic_saved</td>\n");
     echo("\t\t</tr>\n\n");
 }
 echo("</table>\n\n");

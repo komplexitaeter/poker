@@ -237,6 +237,8 @@ function save_topic(){
     );
 
     toggle_topic_box();
+
+    measureEvent("TOPIC_SAVED");
 }
 
 
