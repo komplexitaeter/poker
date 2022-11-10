@@ -315,6 +315,8 @@ a {
     }
 
     .controls .ctl {
+        margin-left: 2px;
+        margin-right: 2px;
     }
 
     .controls .ctl.mobile{
@@ -991,6 +993,8 @@ div#cbox {
 
 .cs_c {
     border: 1px solid #666666;
+    margin-left: 2px;
+    margin-right: 2px;
     filter: grayscale(100%);
     opacity: 0.4;
     -webkit-transition: -webkit-transform .5s ease-in-out;

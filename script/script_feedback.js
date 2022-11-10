@@ -246,15 +246,18 @@ function setCharAt(str, index, chr) {
     return str.substr(0, index) + chr + str.substr(index + 1);
 }
 
-function toggleCSet(e, cardIdx) {
+function toggleCSet(e) {
     let str = localStorage.getItem('cSet');
-    if (str.charAt(cardIdx - 1) === '1') {
-        str = setCharAt(str, cardIdx - 1, '0');
+    let cardIdx = gCardsConfig.find(card => card.card_key === e.target.getAttribute("data-card_key")).index;
+
+    if (str.charAt(cardIdx) === '1') {
+        str = setCharAt(str, cardIdx, '0');
     }
     else {
-        str = setCharAt(str, cardIdx - 1, '1');
+        str = setCharAt(str, cardIdx, '1');
     }
 
+    for (let i=gCardsConfig.length - str.length; i>0 ; i--) str = str + "0";
     updateCardset(str);
 
 }
@@ -264,33 +267,33 @@ function updateCardset(cardSetDec) {
 }
 
 function preSet(e) {
-    let str;
-    switch (e.target.value) {
-        case '1':
-            str = '111110100111111000000000' + localStorage.getItem('cSet').charAt(24);
-            break;
-        case '2':
-            str = '101110100111100000000000' + localStorage.getItem('cSet').charAt(24);
-            break;
-        case '3':
-            str = '000000000000000111000000' + localStorage.getItem('cSet').charAt(24);
-            break;
-        case '4':
-            str = '001111111000000000000000' + localStorage.getItem('cSet').charAt(24);
-            break;
-        case '5':
-            str = '101111110000000000000000' + localStorage.getItem('cSet').charAt(24);
-            break;
-        case '6':
-            str = '000000000000000000111111' + localStorage.getItem('cSet').charAt(24);
-            break;
-        default:
-            str = '111110100111111000000000' + '1';
+
+    if  (e.target.value !== "0") {
+
+        let str = "";
+        let indexList = gCardsPresets.find(preSet => preSet.id == e.target.value).index_list;
+
+        gCardsConfig.forEach(card => {
+            let s;
+            if (card.flow_control) {
+                if (card.index + 1 <= localStorage.getItem('cSet').length) {
+                    s = localStorage.getItem('cSet').charAt(card.index);
+                } else {
+                    s = "0";
+                }
+            } else {
+                if (indexList.includes(card.index)) {
+                    s = "1";
+                } else {
+                    s = "0";
+                }
+            }
+            str = str + s;
+        });
+
+        updateCardset(str);
+        e.target.value = "0";
     }
-
-    updateCardset(str);
-
-    e.target.value = "0";
 }
 
 /**

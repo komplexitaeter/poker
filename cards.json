@@ -1,0 +1,211 @@
+{"presets": [
+  {"id": 1, "description": "Fibonacci", "index_list": [0,1,2,3,4,6,9,10,11,12,13,14]},
+  {"id": 2, "description": "Fibonacci Short", "index_list": [0,2,3,4,6,9,10,11,12]},
+  {"id": 3, "description": "Traffic Lights", "index_list": [15,16,17]},
+  {"id": 4, "description": "Delegation Poker", "index_list": [2,3,4,5,6,7,8]},
+  {"id": 5, "description": "JUDGE Decision", "index_list": [0,2,3,4,5,6,7]},
+  {"id": 6, "description": "Emotions (Team Assessment)", "index_list": [18,19,20,21,22,23,24]}
+],
+  "cards": [
+  {
+    "index": 0,
+    "card_key": "zero001",
+    "sort_order": 100,
+    "description": "0",
+    "numeric_value": 0,
+    "flow_control": false
+  },
+  {
+    "index": 1,
+    "card_key": "1pnt501",
+    "sort_order": 200,
+    "description": "0.5",
+    "numeric_value": 0.5,
+    "flow_control": false
+  },
+  {
+    "index": 2,
+    "card_key": "one0001",
+    "sort_order": 300,
+    "description": "1",
+    "numeric_value": 1,
+    "flow_control": false
+  },
+  {
+    "index": 3,
+    "card_key": "two0001",
+    "sort_order": 400,
+    "description": "2",
+    "numeric_value": 2,
+    "flow_control": false
+  },
+  {
+    "index": 4,
+    "card_key": "three01",
+    "sort_order": 500,
+    "description": "3",
+    "numeric_value": 3,
+    "flow_control": false
+  },
+  {
+    "index": 5,
+    "card_key": "four001",
+    "sort_order": 600,
+    "description": "4",
+    "numeric_value": 4,
+    "flow_control": false
+  },
+  {
+    "index": 6,
+    "card_key": "five001",
+    "sort_order": 700,
+    "description": "5",
+    "numeric_value": 5,
+    "flow_control": false
+  },
+  {
+    "index": 7,
+    "card_key": "six0001",
+    "sort_order": 800,
+    "description": "6",
+    "numeric_value": 6,
+    "flow_control": false
+  },
+  {
+    "index": 8,
+    "card_key": "seven01",
+    "sort_order": 900,
+    "description": "7",
+    "numeric_value": 7,
+    "flow_control": false
+  },
+  {
+    "index": 9,
+    "card_key": "eight01",
+    "sort_order": 1000,
+    "description": "8",
+    "numeric_value": 8,
+    "flow_control": false
+  },
+  {
+    "index": 10,
+    "card_key": "thrtn01",
+    "sort_order": 1100,
+    "description": "13",
+    "numeric_value": 13,
+    "flow_control": false
+  },
+  {
+    "index": 11,
+    "card_key": "twnty01",
+    "sort_order": 1200,
+    "description": "20",
+    "numeric_value": 20,
+    "flow_control": false
+  },
+  {
+    "index": 12,
+    "card_key": "4ty0001",
+    "sort_order": 1300,
+    "description": "40",
+    "numeric_value": 40,
+    "flow_control": false
+  },
+  {
+    "index": 13,
+    "card_key": "hundro1",
+    "sort_order": 1400,
+    "description": "100",
+    "numeric_value": 100,
+    "flow_control": false
+  },
+  {
+    "index": 14,
+    "card_key": "infin01",
+    "sort_order": 1500,
+    "description": "infinity",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 15,
+    "card_key": "green01",
+    "sort_order": 1600,
+    "description": "green traffic light",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 16,
+    "card_key": "yellow1",
+    "sort_order": 1700,
+    "description": "yellow traffic light",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 17,
+    "card_key": "red0001",
+    "sort_order": 1800,
+    "description": "red traffic light",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 18,
+    "card_key": "satis01",
+    "sort_order": 1900,
+    "description": "satisfied",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 19,
+    "card_key": "annoy01",
+    "sort_order": 2000,
+    "description": "annoyed",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 20,
+    "card_key": "sad0001",
+    "sort_order": 2100,
+    "description": "sad",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 21,
+    "card_key": "unint01",
+    "sort_order": 2200,
+    "description": "uninterested",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 22,
+    "card_key": "angry01",
+    "sort_order": 2300,
+    "description": "angry",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 23,
+    "card_key": "enthu01",
+    "sort_order": 2400,
+    "description": "enthusiastic",
+    "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 24,
+    "card_key": "break01",
+    "sort_order": 99000,
+    "description": "need a break",
+    "numeric_value": null,
+    "flow_control": true
+  }
+]
+}

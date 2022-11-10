@@ -2,6 +2,8 @@ let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
 let gDisplayType = null;
 let gTopic = null;
+let gCardsConfig = null;
+let gCardsPresets = null;
 
 
 String.prototype.hashCode = function(){
@@ -89,26 +91,29 @@ function updateSelectedC(currKey) {
 }
 
 function setC(e) {
-    if (e.classList.contains('selected')) {
+    if (e.target.classList.contains('selected')) {
         let all_players_ready = localStorage.getItem('all_players_ready');
         if (all_players_ready === 'false') {
             fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value).then();
-            e.classList.remove('ctl_hover');
-            e.classList.remove('selected');
+            e.target.classList.remove('ctl_hover');
+            e.target.classList.remove('selected');
         }
     }
     else
-        fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.id + '&t=' + document.getElementById("t").value).then();
+        fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + document.getElementById("t").value).then();
 }
 
 function setCHover(e) {
-    e.classList.add('ctl_hover');
+    e.target.classList.add('ctl_hover');
 }
 
 function toggleC(cardId, flag) {
     let e = document.getElementById(cardId);
     let e_conf = document.getElementById('_'+cardId);
     if (flag === '1') {
+        if (e===null) {
+            alert(cardId);
+        }
         e.classList.add('on');
         e.classList.remove('off');
         e_conf.classList.add('cs_c_on');
@@ -121,38 +126,13 @@ function toggleC(cardId, flag) {
 }
 
 function setCSet(cSet) {
-    let str = cSet.padEnd(25, '0');
+    let str = cSet.padEnd(gCardsConfig.length, '0');
 
     localStorage.setItem('cSet', str);
-    toggleC('zero001', str.charAt(0));
-    toggleC('1pnt501', str.charAt(1));
-    toggleC('one0001', str.charAt(2));
-    toggleC('two0001', str.charAt(3));
-    toggleC('three01', str.charAt(4));
-    toggleC('four001', str.charAt(5));
-    toggleC('five001', str.charAt(6));
-    toggleC('six0001', str.charAt(7));
-    toggleC('seven01', str.charAt(8));
-    toggleC('eight01', str.charAt(9));
-    toggleC('thrtn01', str.charAt(10));
-    toggleC('twnty01', str.charAt(11));
-    toggleC('4ty0001', str.charAt(12));
-    toggleC('hundro1', str.charAt(13));
 
-    toggleC('infin01', str.charAt(14));
-
-    toggleC('green01', str.charAt(15));
-    toggleC('yellow1', str.charAt(16));
-    toggleC('red0001', str.charAt(17));
-
-    toggleC('satis01', str.charAt(18));
-    toggleC('annoy01', str.charAt(19));
-    toggleC('sad0001', str.charAt(20));
-    toggleC('unint01', str.charAt(21));
-    toggleC('angry01', str.charAt(22));
-    toggleC('enthu01', str.charAt(23));
-
-    toggleC('break01', str.charAt(24));
+    gCardsConfig.forEach(card => {
+        toggleC(card.card_key, str.charAt(card.index));
+    });
 }
 
 function updateDao(isOnLoad) {
@@ -208,6 +188,7 @@ function updateDom(myJson, isOnLoad) {
     }
 
     if (isOnLoad) {
+
         if (myJson.color_mode && myJson.color_mode.length > 0) {
             gColorMode = myJson.color_mode;
         }
@@ -287,6 +268,8 @@ function handleNewData() {
 }
 
 function loadBoard() {
+    loadCardConfig();
+
     let baseUrl = 'api/dao';
     let params = {
         "id": localStorage.getItem('SID'),
@@ -445,6 +428,92 @@ function stopwatchPause(){
 function stopwatchReset(){
     fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=reset');
 }
+
+function loadCardConfig() {
+    /* - load card config from cards.json to create all the html needed
+       - to add new cards to the config, put them at the end of the json file
+       - increment the index attribute so that all cards get a unique int index,
+         starting by 0
+       - only change index values of existing cards, if you really know what you are doing!!!
+       - to chang the order of the cards just use the attribute sort_order
+       - sort_order does not have to be unique, but it will help to maintain consistency
+     */
+
+    const url = "./cards.json";
+    let jsonCardsConf = loadJSON(url);
+    gCardsConfig = jsonCardsConf.cards;
+    gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
+
+    gCardsPresets = jsonCardsConf.presets;
+
+    let ctl = document.getElementById("ctl");
+    let cardsThumbs = document.getElementById("cards_thumbs");
+
+    gCardsConfig.forEach(card => {
+        let cardElement = document.createElement("img");
+        cardElement.id = card.card_key;
+        cardElement.src = "src/c_" + card.card_key + ".png";
+        cardElement.classList.add("ctl");
+        cardElement.classList.add("ctl_hover");
+        cardElement.classList.add("sizefit");
+        cardElement.alt = card.description;
+        cardElement.addEventListener("click", setC);
+        cardElement.addEventListener("mouseleave", setCHover);
+        ctl.appendChild(cardElement);
+
+        let thumbElement = document.createElement("img");
+        thumbElement.id = "_" + card.card_key;
+        thumbElement.src = "src/c_" + card.card_key + ".png";
+        thumbElement.setAttribute("data-card_key", card.card_key);
+        thumbElement.src = "src/c_" + card.card_key + ".png";
+        thumbElement.classList.add("topnav");
+        thumbElement.classList.add("cs_c");
+        thumbElement.classList.add("sizefit");
+        thumbElement.classList.add("switchable");
+        thumbElement.alt = card.description;
+        thumbElement.addEventListener("click", toggleCSet);
+        cardsThumbs.appendChild(thumbElement);
+    });
+
+    let cetPre = document.getElementById("cet_pre");
+
+    gCardsPresets.forEach(preSet => {
+        let option = document.createElement("option");
+        option.value = preSet.id;
+        option.textContent = preSet.description;
+        cetPre.appendChild(option);
+    });
+}
+
+
+// Load JSON text from server hosted file and return JSON parsed object
+function loadJSON(filePath) {
+    // Load json file;
+    let json = loadTextFileAjaxSync(filePath, "application/json");
+    // Parse json
+    return JSON.parse(json);
+}
+
+// Load text with Ajax synchronously: takes path to file and optional MIME type
+function loadTextFileAjaxSync(filePath, mimeType)
+{
+    let xmlHttp = new XMLHttpRequest();
+    xmlHttp.open("GET",filePath,false);
+    if (mimeType != null) {
+        if (xmlHttp.overrideMimeType) {
+            xmlHttp.overrideMimeType(mimeType);
+        }
+    }
+    xmlHttp.send();
+    if (xmlHttp.status==200 && xmlHttp.readyState == 4 )
+    {
+        return xmlHttp.responseText;
+    }
+    else {
+        return null;
+    }
+}
+
 
 /*** COMMON JS FUNCTIONS ****/
 
