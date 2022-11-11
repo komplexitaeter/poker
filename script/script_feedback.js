@@ -272,8 +272,10 @@ function preSet(e) {
 
         let str = "";
         let indexList = gCardsPresets.find(preSet => preSet.id == e.target.value).index_list;
+        let cardsConfig = gCardsConfig;
+        cardsConfig.sort((a,b) => a.index - b.index);
 
-        gCardsConfig.forEach(card => {
+        cardsConfig.forEach(card => {
             let s;
             if (card.flow_control) {
                 if (card.index + 1 <= localStorage.getItem('cSet').length) {
