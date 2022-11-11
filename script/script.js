@@ -4,6 +4,7 @@ let gDisplayType = null;
 let gTopic = null;
 let gCardsConfig = null;
 let gCardsPresets = null;
+let gOnLoadFocus = null;
 
 
 String.prototype.hashCode = function(){
@@ -52,15 +53,15 @@ function newRound() {
     toggleMobileMenu("closed");
 }
 
-function nameUpdate(e, isOnLoad) {
+function nameUpdate(e) {
     let ctl = document.getElementById("ctl");
     if (e.value === null || e.value === "") {
         toggleStyleClass(ctl, "hidden", "visible");
-        if (isOnLoad) e.focus();
+        gOnLoadFocus = e;
     }
     else {
         toggleStyleClass(ctl, "visible", "hidden");
-        if (isOnLoad) document.getElementById('cbox').focus();
+        gOnLoadFocus = document.getElementById('cbox');
     }
 }
 
@@ -112,7 +113,7 @@ function toggleC(cardId, flag) {
     let e_conf = document.getElementById('_'+cardId);
     if (flag === '1') {
         if (e===null) {
-            alert(cardId);
+            console.log(cardId);
         }
         e.classList.add('on');
         e.classList.remove('off');
@@ -137,7 +138,7 @@ function setCSet(cSet) {
 
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
-    //alert(url);
+
     fetch(url)
         .then((response) => {
             return response.json();
@@ -156,7 +157,7 @@ function updateDom(myJson, isOnLoad) {
     if (isOnLoad ||
         (e !== document.activeElement && e.value !== myJson.name)) {
         e.value = e.value = unescape(myJson.name);
-        nameUpdate(e, isOnLoad);
+        nameUpdate(e);
     }
 
     let topic = document.getElementById('topic');
@@ -259,7 +260,14 @@ function updateDom(myJson, isOnLoad) {
 
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
 
-    if (isOnLoad) document.body.style.display = 'inherit';
+    if (isOnLoad) {
+        document.body.style.display = 'inherit';
+
+        if (gOnLoadFocus) {
+            gOnLoadFocus.focus();
+            gOnLoadFocus = null;
+        }
+    }
 }
 
 
@@ -287,6 +295,7 @@ function loadBoard() {
 function loadInit() {
     initDisplayHandling();
     document.body.style.display = "unset";
+    document.getElementById("teaminput").focus();
     measureEvent("INIT_ON_LOAD");
 }
 
