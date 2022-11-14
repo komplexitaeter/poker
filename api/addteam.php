@@ -15,7 +15,7 @@ $id = get_team_id($t, $link);
 
 /* determine default preset from cards.json config file */
 $cards_conf = json_decode(file_get_contents('../cards.json'), true);
-$cardset_flags = str_pad("", count($cards_conf["cards"]), "0", STR_PAD_RIGHT);
+$cardset_flags = str_pad("", count($cards_conf["cards"]), "0");
 
 /* rule1: load default preset (the first preset in the config file) and set the flags accordingly */
 foreach ($cards_conf["presets"][0]["index_list"] as $index ) {

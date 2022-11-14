@@ -55,10 +55,8 @@ function initialize_pulling($resource_name) {
 
 function get_data_obj($resource_name, $t, $id) {
     $data_obj = null;
-    switch($resource_name) {
-        case 'dao':
-            $data_obj = getDao($t, $id);
-            break;
+    if ($resource_name == 'dao') {
+        $data_obj = getDao($t, $id);
     }
     return $data_obj;
 }

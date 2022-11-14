@@ -119,7 +119,7 @@ function getDao($t, $id) {
             if (is_null($obj->card_key)) $all_players_ready = false;
             else $one_ore_more_player_ready = true;
 
-            array_push($objs, $obj);
+            $objs[] = $obj;
         }
     }
 
@@ -159,7 +159,7 @@ function getDao($t, $id) {
         $player = (object) array("name"=>$obj->name
         ,"mkey"=>$obj->mkey
         ,"display_card_key"=>$display_card_key);
-        array_push($players, $player);
+        $players[] = $player;
 
     }
 
@@ -195,7 +195,6 @@ function name2id($name) {
         "9" => array('9','g'),
         "a" => array('a','A','4'),
         "b" => array('b','B','3'),
-        "a" => array('a','A','4'),
         "c" => array('c','C'),
         "d" => array('d','D','0','O'),
         "e" => array('e','E','3'),
@@ -225,8 +224,6 @@ function name2id($name) {
         "_" => array('-','_'),
         "?" => array('S'),
         " " => array('_'),
-        "_" => array('_','-'),
-        "-" => array('-','_'),
         "*" => array('0','1','2','3','4','5','6','7','8','9')
     );
     $null_signs = array('x','X','0','o','O');
