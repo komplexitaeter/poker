@@ -948,7 +948,7 @@ div#cbox {
     top: 40px;
     border: 1px solid white;
     width: 250px;
-    height: 350px;
+    height: auto;
     border-radius: 15px;
     background: #202020;
     display: none;
@@ -958,7 +958,7 @@ div#cbox {
     #cset_box.mobile {
         top: 16%;
         width: 95%;
-        height: 73vh;
+        height: 80%;
         right: 2.5%;
         overflow: scroll;
     }
