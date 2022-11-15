@@ -4,8 +4,9 @@
   {"id": 3, "description": "Traffic Lights", "index_list": [15,16,17]},
   {"id": 4, "description": "Delegation Poker", "index_list": [2,3,4,5,6,7,8]},
   {"id": 5, "description": "JUDGE Decision", "index_list": [0,2,3,4,5,6,7]},
-  {"id": 6, "description": "Emotions (Team Assessment)", "index_list": [18,19,20,21,22,23,24]},
-  {"id": 7, "description": "T-shirt sizes", "index_list": [24,25,26,27,28,29,30,31]}
+  {"id": 6, "description": "Emotions (Team Assessment)", "index_list": [18,19,20,21,22,23]},
+  {"id": 7, "description": "T-Shirt Sizes", "index_list": [25,26,27,28,29,30,31]},
+  {"id": 8, "description": "0 to 5 Stars", "index_list": [32,33,34,35,36,37]}
 ],
   "cards": [
   {
@@ -262,6 +263,54 @@
     "sort_order": 3100,
     "description": "XL",
     "numeric_value": null,
+    "flow_control": false
+  },
+  {
+    "index": 32,
+    "card_key": "0star01",
+    "sort_order": 3200,
+    "description": "zero star",
+    "numeric_value": 0,
+    "flow_control": false
+  },
+  {
+    "index": 33,
+    "card_key": "1star01",
+    "sort_order": 3300,
+    "description": "one star",
+    "numeric_value": 1,
+    "flow_control": false
+  },
+  {
+    "index": 34,
+    "card_key": "2stars1",
+    "sort_order": 3400,
+    "description": "two stars",
+    "numeric_value": 2,
+    "flow_control": false
+  },
+  {
+    "index": 35,
+    "card_key": "3stars1",
+    "sort_order": 3500,
+    "description": "three stars",
+    "numeric_value": 3,
+    "flow_control": false
+  },
+  {
+    "index": 36,
+    "card_key": "4stars1",
+    "sort_order": 3600,
+    "description": "four stars",
+    "numeric_value": 4,
+    "flow_control": false
+  },
+  {
+    "index": 37,
+    "card_key": "5stars1",
+    "sort_order": 3700,
+    "description": "five stars",
+    "numeric_value": 5,
     "flow_control": false
   }
   ]
