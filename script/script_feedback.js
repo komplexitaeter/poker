@@ -30,8 +30,9 @@ function toggle_box(boxName) {
             /*toggle_feedback_box(true);
             toggle_topic_box(false);
             toggle_cardset_box(false);
-            toggle_info_box(false);*/
-            window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');
+            toggle_info_box(false);
+            window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');*/
+            window.open("https://twitter.com/AgileEstimation", '_blank');
             measureEvent("OPEN_FEEDBACK_BOX");
         }
         else {
