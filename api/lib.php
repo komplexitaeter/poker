@@ -69,6 +69,8 @@ function getDao($t, $id) {
     $cardset_flags = null;
     $team_name = null;
     $color_mode = 'dark';
+    $survey_vote = null;
+    $survey_skipped = false;
     $topic = null;
 
     $link = db_init();
@@ -126,6 +128,8 @@ function getDao($t, $id) {
 
     $sql = $link->prepare("SELECT count(1) as user_exists
                                        ,max(color_mode) as color_mode
+                                       ,max(survey_vote) as survey_vote
+                                       ,max(survey_skipped) as survey_skipped
                                     FROM pok_user_tbl WHERE id=?");
     $sql->bind_param('s', $id);
     $sql->execute();
@@ -136,7 +140,9 @@ function getDao($t, $id) {
             $sql_i->bind_param('s', $id);
             $sql_i->execute();
         } else {
-            $color_mode=$obj->color_mode;
+            $color_mode = $obj->color_mode;
+            $survey_vote = $obj->survey_vote;
+            $survey_skipped = $obj->survey_skipped;
         }
     }
 
@@ -168,6 +174,8 @@ function getDao($t, $id) {
         "mkey"=>$mkey,
         "id"=>$id,
         "color_mode"=>(String)$color_mode,
+        "survey_vote"=>(Int)$survey_vote,
+        "survey_skipped"=>(Int)$survey_skipped,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
         "topic"=>(String)$topic,
