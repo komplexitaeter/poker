@@ -860,6 +860,7 @@ div#cbox {
     }
 
 .feedback_star {
+    display: none;
     width: 20px;
     padding-left: 0px;
     padding-right: 0px;
@@ -893,6 +894,7 @@ div#cbox {
     background: #444444;
     color: white;
     resize: none;
+    margin-top: 2em;
 }
 
     #feedback_txt.desktop {

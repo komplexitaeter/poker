@@ -27,12 +27,12 @@ function toggle_box(boxName) {
     if (boxName === 'feedback') {
         let e = document.getElementById('feedback_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-            /*toggle_feedback_box(true);
+            toggle_feedback_box(true);
             toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(false);
-            window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');*/
-            window.open("https://twitter.com/AgileEstimation", '_blank');
+            /*window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');
+            window.open("https://twitter.com/AgileEstimation", '_blank');*/
             measureEvent("OPEN_FEEDBACK_BOX");
         }
         else {
@@ -99,7 +99,7 @@ function toggle_feedback_box(setOn) {
     if (setOn) {
         e.style.display = 'block';
         document.getElementById('feedback_btn').classList.add('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/twitter.png'
+        document.getElementById('feedback_btn').src = 'src/feedback_on.png'
         document.getElementById('feedback_txt').focus();
         feedback_star_blink();
     }
@@ -111,7 +111,7 @@ function toggle_feedback_box(setOn) {
         document.getElementById('fb_star_4').classList.remove('blink');
         document.getElementById('fb_star_5').classList.remove('blink');
         document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/twitter.png';
+        document.getElementById('feedback_btn').src = 'src/feedback.png';
     }
 }
 
