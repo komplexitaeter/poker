@@ -80,6 +80,35 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
         <div class="controls sizefit" id="ctl">
         </div>
 
+        <footer class="survey-container">
+            <button id="survey-button" onclick="toggleSurvey()">Survey<i id="survey-arrow" class="arrow up"></i></button>
+            <div id="survey-content" class="survey-closed" data-state="closed">
+                <div id="survey_intro">Currently working on a feature to sort the cards after reveal by values (and not by player's names, like it is now).
+                    Would you like it...</div>
+                <div id="vote_options">
+                    <button id="vote_option_1" value="1" class="vote_option">no (leave as is)</button>
+                    <button id="vote_option_2" value="2" class="vote_option">to automatically sort</button>
+                    <button id="vote_option_3" value="3" class="vote_option">to have a button to sort</button>
+                    <button id="vote_option_4" value="4" class="vote_option">configurable over toggle</button>
+                </div>
+                <div id="vote_results">
+                    <div class="vote_results_bar">
+                        <span class="vote_results_bar_value" id="vote_option_results_1">no (leave as is) [28%]</span>
+                    </div>
+                    <div class="vote_results_bar">
+                        <span class="vote_results_bar_value" id="vote_option_results_2">to automatically sort</span>
+                    </div>
+                    <div class="vote_results_bar">
+                        <span class="vote_results_bar_value" id="vote_option_results_3">to have a button to sort</span>
+                    </div>
+                    <div class="vote_results_bar">
+                        <span class="vote_results_bar_value" id="vote_option_results_4">configurable over toggle</span>
+                    </div>
+                </div>
+                <div id="vote_count">97 votes</div>
+            </div>
+        </footer>
+
     </div>
 
     <!-- todo: use param in js -->

@@ -174,6 +174,26 @@ function toggle_info_box(setOn) {
     }
 }
 
+function toggleSurvey(){
+    let survey = document.getElementById('survey-content');
+    let surveyArrow = document.getElementById('survey-arrow');
+    let surveyDisplayStatus = survey.getAttribute('data-state');
+    switch(surveyDisplayStatus){
+        case "closed":
+            toggleStyleClass(survey, 'survey-open', 'survey-closed');
+            toggleStyleClass(surveyArrow, 'down', 'up');
+            survey.setAttribute('data-state', "open");
+            break;
+
+        default:
+            toggleStyleClass(survey, 'survey-closed', 'survey-open');
+            toggleStyleClass(surveyArrow, 'up', 'down');
+            survey.setAttribute('data-state', "closed");
+            break;
+
+    }
+}
+
 function feedback_rate(val, db) {
     const s0 = 'src/star_off.png';
     const s1 = 'src/star_on.png';
