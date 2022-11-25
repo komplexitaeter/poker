@@ -202,7 +202,6 @@ function toggleSurvey(forceSurvey){
             toggleStyleClass(surveyArrow, 'up', 'down');
             survey.setAttribute('data-state', "closed");
             fetch(url);
-            console.log(url);
             break;
 
     }
