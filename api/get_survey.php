@@ -2,7 +2,7 @@
 require '../config.php';
 require './lib.php';
 set_header('json');
-
+/*
 $vote_results = array();
 
 $link = db_init();
@@ -21,7 +21,7 @@ while ($obj = $result->fetch_object()) {
 }
 
 $link->close();
-
+*/
 $temp = '{
   "survey_id": 1,
   "votes_count": 200,
