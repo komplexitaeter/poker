@@ -174,12 +174,23 @@ function toggle_info_box(setOn) {
     }
 }
 
-function toggleSurvey(){
+function toggleSurvey(forceSurvey){
+
     let survey = document.getElementById('survey-content');
     let surveyArrow = document.getElementById('survey-arrow');
-    let surveyDisplayStatus = survey.getAttribute('data-state');
+    let surveyDisplayStatus;
+    if(!forceSurvey){
+        surveyDisplayStatus = survey.getAttribute('data-state');
+    }
+    else{
+        if(gSurvey == "LOUD") {
+            surveyDisplayStatus = "closed";
+        }
+    }
+
     switch(surveyDisplayStatus){
         case "closed":
+            generateSurveyContents();
             toggleStyleClass(survey, 'survey-open', 'survey-closed');
             toggleStyleClass(surveyArrow, 'down', 'up');
             survey.setAttribute('data-state', "open");
@@ -189,9 +200,42 @@ function toggleSurvey(){
             toggleStyleClass(survey, 'survey-closed', 'survey-open');
             toggleStyleClass(surveyArrow, 'up', 'down');
             survey.setAttribute('data-state', "closed");
+            fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_skipped=1');
             break;
 
     }
+}
+
+function generateSurveyContents(){
+    let url = './api/get_survey.php?id=' + localStorage.getItem('SID');
+    let htmlStr = '';
+
+    fetch(url)
+        .then((response) => {
+            return response.json();
+        })
+        .then((myJson) => {
+            htmlStr += '<div id="survey_intro">' + myJson.survey_intro+ '</div>';
+
+            if(gSurvey == "LOUD" || gSurvey == "SILENT") {
+                htmlStr += '<div id="vote_options">';
+                myJson.vote_options.forEach(vote_option => {
+                    htmlStr += '<button id="vote_option_' + vote_option.id + '" value="' + vote_option.id + '" class="vote_option">' + vote_option.text + '</button>';
+                });
+                htmlStr += '</div>';
+            }
+            if (gSurvey == "VOTED") {
+                htmlStr += '<div id="vote_results">';
+                myJson.vote_options.forEach(vote_option => {
+                    htmlStr += '<div class="vote_results_bar">' +
+                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
+                });
+                htmlStr += '</div>';
+            }
+
+            htmlStr+= '<div id="vote_count">'+myJson.votes_count+' votes</div>';
+            document.getElementById("survey-content").innerHTML = htmlStr;
+        });
 }
 
 function feedback_rate(val, db) {

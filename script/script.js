@@ -5,6 +5,7 @@ let gTopic = null;
 let gCardsConfig = null;
 let gCardsPresets = null;
 let gOnLoadFocus = null;
+let gSurvey = null;
 
 
 String.prototype.hashCode = function(){
@@ -158,6 +159,9 @@ function updateDom(myJson, isOnLoad) {
         (e !== document.activeElement && e.value !== myJson.name)) {
         e.value = e.value = unescape(myJson.name);
         nameUpdate(e);
+        setTimeout(function () {
+            toggleSurvey(true);
+        }, 5000);
     }
 
     let topic = document.getElementById('topic');
@@ -166,6 +170,7 @@ function updateDom(myJson, isOnLoad) {
 
         topic.setAttribute("data-hash", topicHash);
         gTopic = myJson.topic;
+        gSurvey = myJson.survey;
 
         let markDown = new Remarkable({
             html: false, // Enable HTML tags in source
@@ -192,6 +197,10 @@ function updateDom(myJson, isOnLoad) {
 
         if (myJson.color_mode && myJson.color_mode.length > 0) {
             gColorMode = myJson.color_mode;
+        }
+
+        if(gSurvey != "NO"){
+            document.getElementById("survey-container").style.visibility="visible";
         }
 
         setColor();
@@ -257,7 +266,6 @@ function updateDom(myJson, isOnLoad) {
     }
 
     controlsDsp(myJson);
-
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
 
     if (isOnLoad) {
@@ -268,6 +276,8 @@ function updateDom(myJson, isOnLoad) {
             gOnLoadFocus = null;
         }
     }
+
+
 }
 
 
@@ -437,6 +447,8 @@ function stopwatchPause(){
 function stopwatchReset(){
     fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=reset');
 }
+
+
 
 function loadCardConfig() {
     /* - load card config from cards.json to create all the html needed
