@@ -16,7 +16,7 @@ if (in_array($color_mode, ['dark', 'light'])) {
 }
 
 if ($survey_skipped >= 0 && $survey_skipped <= 1) {
-    error_log($survey_skipped);
+    echo($survey_skipped);
     $sql = $link->prepare("UPDATE pok_user_tbl
                                      SET survey_skipped=?
                                        , survey_skipped_date=CURRENT_TIMESTAMP
