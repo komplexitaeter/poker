@@ -197,10 +197,12 @@ function toggleSurvey(forceSurvey){
             break;
 
         default:
+            let url = './api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_skipped=1';
             toggleStyleClass(survey, 'survey-closed', 'survey-open');
             toggleStyleClass(surveyArrow, 'up', 'down');
             survey.setAttribute('data-state', "closed");
-            fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_skipped=1');
+            fetch(url);
+            console.log(url);
             break;
 
     }
@@ -220,7 +222,7 @@ function generateSurveyContents(){
             if(gSurvey == "LOUD" || gSurvey == "SILENT") {
                 htmlStr += '<div id="vote_options">';
                 myJson.vote_options.forEach(vote_option => {
-                    htmlStr += '<button id="vote_option_' + vote_option.id + '" value="' + vote_option.id + '" class="vote_option">' + vote_option.text + '</button>';
+                    htmlStr += '<button id="vote_option_' + vote_option.id + '" value="' + vote_option.id + '" class="vote_option" onclick="vote('+vote_option.id+')">' + vote_option.text + '</button>';
                 });
                 htmlStr += '</div>';
             }
@@ -236,6 +238,12 @@ function generateSurveyContents(){
             htmlStr+= '<div id="vote_count">'+myJson.votes_count+' votes</div>';
             document.getElementById("survey-content").innerHTML = htmlStr;
         });
+}
+
+function vote(option_id){
+    let url = './api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_vote='+option_id;
+    fetch(url);
+    generateSurveyContents();
 }
 
 function feedback_rate(val, db) {
