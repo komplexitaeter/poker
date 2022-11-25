@@ -20,7 +20,7 @@ if ($survey_skipped >= 0 && $survey_skipped <= 1) {
                                      SET survey_skipped=1
                                        , survey_skipped_date=CURRENT_TIMESTAMP
                                    WHERE id=?");
-    $sql->bind_param('is', $survey_skipped, $id);
+    $sql->bind_param('s',  $id);
 
     $sql->execute();
 }
