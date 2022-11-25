@@ -11,6 +11,7 @@ body {
     overflow-y: scroll;
     min-height: 100%;
     display: none;
+    font-family: Arial;
 }
 
 .sizefit{
@@ -603,7 +604,7 @@ div#cbox {
     }
 
 .survey-container {
-    font-size: medium;
+    font-size: small;
     width:auto;
     max-width: 25%;
     position:absolute;
@@ -611,7 +612,7 @@ div#cbox {
     right:0;
     margin:0 auto;
 }
-#survey-button, #close {
+#survey-button {
     cursor:pointer;
     display:block;
     width: auto;
@@ -624,11 +625,16 @@ div#cbox {
     border-top-left-radius:10px;
     border-top-right-radius:10px;
 }
+
+#survey-button:hover{
+    opacity: 0.7;
+}
+
 #survey-content {
     display:block;
     background:#2d2d2a;
     color:#fff;
-    width:90%;
+    width:auto;
     text-align:left;
     border-top-left-radius:10px;
     border-top-right-radius:10px;
@@ -649,37 +655,38 @@ div#cbox {
 #survey_intro{
     margin-bottom: 1rem;
     background-color: #4f4e4e;
-    width: 99%;
+    width: auto;
     height: auto;
     padding: 0.5rem;
-    border-radius: 1rem;
+    border-radius: 0.5rem;
 }
 
 #vote_options{
     display:block;
     margin-bottom: 1rem;
     background-color: #4f4e4e;
-    width: 99%;
+    width: auto;
     height: auto;
     padding: 0.5rem;
-    border-radius: 1rem;
+    border-radius: 0.5rem;
 }
 
 .vote_option {
     cursor: pointer;
+    display: flex;
     padding: 0.3rem 0rem 0.3rem 1rem;
     color: white;
-    font-weight: bold;
     border: 1px solid white;
     border-radius: 1rem;
-    margin-top: 0.6rem;
+    margin: 0.3rem auto;
     width: 99%;
-    text-align: left;
     background-color: transparent;
+    justify-content: center;
 }
 
 .vote_option:hover{
     background-color: #666666;
+    font-weight: bold;
 }
 
 #vote_count{
@@ -692,16 +699,16 @@ div#cbox {
     display:block;
     margin-bottom: 1rem;
     background-color: #4f4e4e;
-    width: 99%;
+    width: auto;
     height: auto;
     padding: 0.5rem;
-    border-radius: 1rem;
+    border-radius: 0.5rem;
 }
 
-.vote_results_bar {
+.vote_results_bar{
     border: 1px solid white;
     border-radius: 1rem;
-    margin-top: 0.6rem;
+    margin: 0.3rem auto;
     width: 99%;
     text-align: left;
     background-color: transparent;
