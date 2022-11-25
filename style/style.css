@@ -721,10 +721,10 @@ div#cbox {
 }
 
 .vote_results_bar_value {
-    animation: load 3s normal forwards;
+    /*animation: load 3s normal forwards;*/
     border-radius: 1rem;
     padding: 0.3rem 0rem 0.3rem 1rem;
-    background: #666666;
+    background: rgba(0, 0, 0, 0.67);
     height: auto;
     width: 0;
     white-space: nowrap;
@@ -732,9 +732,13 @@ div#cbox {
     text-overflow: ellipsis;
 }
 
+:root {
+    --my-end-width: 100%;
+}
+
 @keyframes load {
     0% { width: 0; }
-    100% { width: 28%; }
+    100% { width: var(--my-end-width); }
 }
 
 .arrow {

@@ -159,9 +159,11 @@ function updateDom(myJson, isOnLoad) {
         (e !== document.activeElement && e.value !== myJson.name)) {
         e.value = e.value = unescape(myJson.name);
         nameUpdate(e);
-        setTimeout(function () {
-            toggleSurvey(true);
-        }, 5000);
+        if(myJson.survey == "LOUD") {
+            setTimeout(function () {
+                toggleSurvey(true);
+            }, 5000);
+        }
     }
 
     let topic = document.getElementById('topic');

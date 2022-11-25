@@ -228,8 +228,10 @@ function generateSurveyContents(){
             if (gSurvey == "VOTED") {
                 htmlStr += '<div id="vote_results">';
                 myJson.vote_options.forEach(vote_option => {
+
                     htmlStr += '<div class="vote_results_bar">' +
-                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
+                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '" style="width:'+vote_option.votes_percentage+'%">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
+
                 });
                 htmlStr += '</div>';
             }
@@ -241,8 +243,12 @@ function generateSurveyContents(){
 
 function vote(option_id){
     let url = './api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_vote='+option_id;
-    fetch(url);
-    generateSurveyContents();
+    fetch(url).then( response => {
+        gSurvey = "VOTED";
+        console.log(gSurvey);
+        generateSurveyContents();
+    });
+
 }
 
 function feedback_rate(val, db) {
