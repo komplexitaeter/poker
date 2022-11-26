@@ -139,8 +139,11 @@ function getDao($t, $id) {
     $result = $sql->get_result();
     if ($obj = $result->fetch_object()) {
         if ($obj->user_exists == 0) {
-            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id) values(?)");
-            $sql_i->bind_param('s', $id);
+            require './survey_selector.php';
+            $survey_id = get_survey_id($link, $t, $id);
+            if ($survey_id != null) $survey = 'LOUD';
+            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id,survey_id) values(?,?)");
+            $sql_i->bind_param('si', $id, $survey_id);
             $sql_i->execute();
         } else {
             $color_mode = $obj->color_mode;
