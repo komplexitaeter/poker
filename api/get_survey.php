@@ -2,38 +2,70 @@
 require '../config.php';
 require './lib.php';
 set_header('json');
-/*
-$vote_results = array();
+$id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
 
-$link = db_init();
 
-$sql = $link->prepare("select survey_vote vote_option
-                                    ,count(1) total_count 
-                                from pok_user_tbl
-                                where survey_vote is not null
-                               group by survey_vote");
-$sql->execute();
-$result = $sql->get_result();
-while ($obj = $result->fetch_object()) {
-    $vote_result = (object) array("vote_option"=>(Int)$obj->vote_option
-                          ,"total_count"=>(Int)$obj->total_count);
-    $vote_results[] = $vote_result;
+$survey_id = null;
+$votes_count = 0;
+$intro = null;
+$vote_options = array();
+
+
+if ($id != null) {
+
+    $link = db_init();
+
+    $sql = $link->prepare("  select s.survey_id
+                                      ,(select count(1)
+                                          from pok_survey_votes_tbl v
+                                         where v.survey_id = u.survey_id) votes_count
+                                      ,s.intro
+                                  from pok_user_tbl u
+                                  join pok_survey_tbl s on s.survey_id = u.survey_id
+                                 where u.id = ?
+                                ;");
+    $sql->bind_param('i', $id);
+    $sql->execute();
+    $result = $sql->get_result();
+    if ($obj = $result->fetch_object()) {
+        $survey_id = $obj->survey_id;
+        $votes_count = $obj->votes_count;
+        $intro = $obj->intro;
+    }
+
+    if ($survey_id != null) {
+
+        $sql = $link->prepare("select    o.vote_option_id
+                                          ,o.text
+                                          ,count(v.vote_option_id) votes_count
+                                    from pok_survey_vote_options_tbl o
+                                      left outer join pok_survey_votes_tbl v on v.vote_option_id = o.vote_option_id
+                                     where o.survey_id = ?
+                                     group by
+                                           o.vote_option_id
+                                          ,o.text");
+        $sql->bind_param('i', $survey_id);
+        $sql->execute();
+        $result = $sql->get_result();
+        $votes_percentage = null;
+
+        while ($obj = $result->fetch_object()) {
+
+            if ($votes_count != null and $votes_count > 0) {
+                $votes_percentage = round($obj->votes_count * 100 / $votes_count, 0);
+            }
+
+            $vote_option = (object)array("id" => (int)$obj->vote_option_id
+            , "text" => (string)$obj->text
+            , "total_count" => (int)$obj->votes_count
+            , "votes_percentage" => (int)$votes_percentage);
+            $vote_options[] = $vote_option;
+        }
+    }
+    $link->close();
 }
 
-$link->close();
-*/
-$temp = '{
-  "survey_id": 1,
-  "votes_count": 200,
-  "survey_intro": "Currently working on a feature to sort the cards (after revealed) by values and not by player\'s names, like it is now). Would you like it...",
-  "vote_options": [
-    {"id": 1, "text": "no (leave as is)", "votes_count": 66, "votes_percentage": 33},
-    {"id": 2, "text": "to automatically sort", "votes_count": 42, "votes_percentage": 21},
-    {"id": 3, "text": "to have a button to sort", "votes_count": 32, "votes_percentage": 16},
-    {"id": 4, "text": "configurable over toggle", "votes_count": 60, "votes_percentage": 30}
-  ]
-}';
-
-//echo json_encode(array("vote_results"=>$vote_results), JSON_UNESCAPED_UNICODE);
-
-echo $temp;
+echo json_encode(array( "survey_id"=>$survey_id,
+                        "votes_count"=>$votes_count,
+                        "survey_intro"=>$intro,
+                        "vote_options"=>$vote_options), JSON_UNESCAPED_UNICODE);
