@@ -210,7 +210,6 @@ function toggleSurvey(forceSurvey){
 function generateSurveyContents(){
     let url = './api/get_survey.php?id=' + localStorage.getItem('SID');
     let htmlStr = '';
-
     fetch(url)
         .then((response) => {
             return response.json();
@@ -230,7 +229,7 @@ function generateSurveyContents(){
                 myJson.vote_options.forEach(vote_option => {
 
                     htmlStr += '<div class="vote_results_bar">' +
-                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '" style="width:'+vote_option.votes_percentage+'%">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
+                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '"style="width:0%;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
 
                 });
                 htmlStr += '</div>';
@@ -238,14 +237,46 @@ function generateSurveyContents(){
 
             htmlStr+= '<div id="vote_count">'+myJson.votes_count+' votes</div>';
             document.getElementById("survey-content").innerHTML = htmlStr;
+
+            if(gSurvey == "VOTED") {
+                let interval = 25;
+                let needsFilling = true;
+                let wasFilled = false;
+                let fillBars = document.getElementsByClassName("vote_results_bar_value");
+                setTimeout(function () {
+                    fillResultsBars(myJson, needsFilling, wasFilled, fillBars, interval);
+                }, interval);
+            }
         });
+}
+
+function fillResultsBars(myJson, needsFilling, wasFilled, fillBars, interval){
+
+    myJson.vote_options.forEach(vote_option => {
+        let currentWidth = parseInt(fillBars[vote_option.id - 1].style.width, 10);
+        if (currentWidth < vote_option.votes_percentage) {
+            fillBars[vote_option.id - 1].style.width = currentWidth + 1 + '%';
+            wasFilled = true;
+        }
+        if(wasFilled == true){needsFilling = true;}
+        else{needsFilling = false;}
+        if(currentWidth == 0){
+            fillBars[vote_option.id - 1].style.background = "transparent";
+        }
+        else{fillBars[vote_option.id - 1].style.background = "";}
+    });
+
+    if(needsFilling == true) {
+        setTimeout(function() {
+            fillResultsBars(myJson, needsFilling, false, fillBars, interval);
+        }, interval);
+    }
 }
 
 function vote(option_id){
     let url = './api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_vote='+option_id;
     fetch(url).then( response => {
         gSurvey = "VOTED";
-        console.log(gSurvey);
         generateSurveyContents();
     });
 

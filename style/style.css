@@ -732,15 +732,6 @@ div#cbox {
     text-overflow: ellipsis;
 }
 
-:root {
-    --my-end-width: 100%;
-}
-
-@keyframes load {
-    0% { width: 0; }
-    100% { width: var(--my-end-width); }
-}
-
 .arrow {
     border: solid black;
     border-width: 0 3px 3px 0;
