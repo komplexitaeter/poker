@@ -159,10 +159,11 @@ function updateDom(myJson, isOnLoad) {
         (e !== document.activeElement && e.value !== myJson.name)) {
         e.value = e.value = unescape(myJson.name);
         nameUpdate(e);
+        const delayMinutes = Math.random() * 10;
         if(myJson.survey == "LOUD") {
             setTimeout(function () {
                 toggleSurvey(true);
-            }, 5000);
+            }, Math.round(1000 * 60 * delayMinutes));
         }
     }
 
