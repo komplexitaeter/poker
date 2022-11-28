@@ -185,7 +185,7 @@ function toggleSurvey(forceSurvey){
     else{
         if(gSurvey == "LOUD") {
             surveyDisplayStatus = "closed";
-        }
+        } else return;
     }
 
     switch(surveyDisplayStatus){
