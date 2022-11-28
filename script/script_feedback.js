@@ -229,7 +229,7 @@ function generateSurveyContents(){
                 myJson.vote_options.forEach(vote_option => {
 
                     htmlStr += '<div class="vote_results_bar">' +
-                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '"style="width:0%;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
+                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '"style="width:0%;background:transparent;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
 
                 });
                 htmlStr += '</div>';
@@ -245,7 +245,7 @@ function generateSurveyContents(){
                 let fillBars = document.getElementsByClassName("vote_results_bar_value");
                 setTimeout(function () {
                     fillResultsBars(myJson, needsFilling, wasFilled, fillBars, interval);
-                }, interval);
+                }, 1000);
             }
         });
 }
