@@ -44,18 +44,18 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
             <input class="box_sbmt_button topnav sizefit" type="button" onclick="feedback_submit();" value="Send Feedback"/>
         </div>
         <div id="cset_box" class="topnav sizefit">
-            <label for="cet_pre" class="topnav">Set of Cards</label>
+            <label for="cet_pre" class="topnav">Define your deck of cards</label>
             <select id="cet_pre" onchange="preSet(event);" class="topnav sizefit">
                 <option value="0" selected>Select a preset ...</option>
             </select>
 
             <div id="cards_thumbs" class="topnav sizefit"></div>
 
-            <label for="cet_order_by" class="topnav">Revealed cards sort-order</label>
+            <label for="cet_order_by" class="topnav">Choose how to arrange revealed cards</label>
             <select id="cet_order_by" onchange="changeSortOrder(event)" class="topnav sizefit">
-                <option value="NAME" selected>Always by players name (default)</option>
-                <option value="SEQUENCE">Always by card sequence</option>
-                <option value="CHOOSE">Decide in-game</option>
+                <option value="NAME" selected>Always order by players name (default)</option>
+                <option value="SEQUENCE">Always order by card sequence</option>
+                <option value="CHOOSE">Define the sort order in-game</option>
             </select>
         </div>
 
