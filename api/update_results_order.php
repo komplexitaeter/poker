@@ -10,7 +10,7 @@ $results_order = substr( filter_input(INPUT_GET, "results_order", FILTER_SANITIZ
 $link = db_init();
 validate_team($t, $link) or exit;
 
-if ($results_order != null and in_array($results_order, ['NAME', 'SEQUENCE', 'CHOOSE'])) {
+if ($results_order != null and in_array($results_order, ['NAME', 'SEQUENCE', 'CHOOSE', 'CHOOSE:NAME', 'CHOOSE:SEQUENCE'])) {
     if ($results_order == 'CHOOSE') {
         $sql = $link->prepare( "select results_order 
                                          from  pok_teams_tbl

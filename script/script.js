@@ -50,7 +50,6 @@ function nameChanged(e) {
 
 function newRound() {
     fetch('./api/newround.php?t=' + document.getElementById("t").value).then();
-    toggleStyleClass(document.getElementById('newroundbtn'), "display_none", "display_unset");
     toggleMobileMenu("closed");
 }
 
@@ -149,6 +148,31 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
 
         });
+}
+
+function updateOrderByButtons(results_order, all_players_ready) {
+    let orderByNameBtn = document.getElementById("order_by_name_btn");
+    let orderBySequenceBtn = document.getElementById("order_by_sequence_btn");
+
+    if (results_order.includes('CHOOSE')) {
+        if (all_players_ready === 'true') {
+            if (results_order.includes('SEQUENCE')) {
+                orderByNameBtn.disabled = false;
+                orderBySequenceBtn.disabled = true;
+            } else {
+                orderByNameBtn.disabled = true;
+                orderBySequenceBtn.disabled = false;
+            }
+            removeStyleClass(orderByNameBtn, "display_none");
+            removeStyleClass(orderBySequenceBtn, "display_none");
+        } else {
+            addStyleClass(orderByNameBtn, "display_none");
+            addStyleClass(orderBySequenceBtn, "display_none");
+        }
+    } else {
+        addStyleClass(orderByNameBtn, "display_none");
+        addStyleClass(orderBySequenceBtn, "display_none");
+    }
 }
 
 function updateDom(myJson, isOnLoad) {
@@ -265,10 +289,12 @@ function updateDom(myJson, isOnLoad) {
         }
     }
     else {
-    toggleStyleClass(newroundbtn, "display_none", "display_unset");
+        toggleStyleClass(newroundbtn, "display_none", "display_unset");
     }
 
+
     controlsDsp(myJson);
+    updateOrderByButtons(myJson.results_order, myJson.all_players_ready);
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
     updateOrderByConfig(myJson.results_order);
 
@@ -523,6 +549,16 @@ function loadCardConfig() {
     });
 }
 
+function orderBy(opt) {
+    const t = document.getElementById("t").value;
+    let url = './api/update_results_order.php?t='+t+'&results_order=';
+    if (opt === 'sequence') {
+        url += 'CHOOSE:SEQUENCE';
+    } else {
+        url += 'CHOOSE:NAME';
+    }
+    fetch(url).then();
+}
 
 // Load JSON text from server hosted file and return JSON parsed object
 function loadJSON(filePath) {

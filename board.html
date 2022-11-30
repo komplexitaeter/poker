@@ -54,7 +54,7 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
             <label for="cet_order_by" class="topnav">Revealed cards sort-order</label>
             <select id="cet_order_by" onchange="changeSortOrder(event)" class="topnav sizefit">
                 <option value="NAME" selected>Always by players name (default)</option>
-                <option value="SEQUENCE">Always by cards sequence</option>
+                <option value="SEQUENCE">Always by card sequence</option>
                 <option value="CHOOSE">Decide in-game</option>
             </select>
         </div>
@@ -72,7 +72,11 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
 
     <div id="cbox" tabindex="2" class="sizefit switchable"></div>
 
-    <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
+    <div>
+        <button id="order_by_name_btn" onclick="orderBy('name')">Order by players name</button>
+        <button id="order_by_sequence_btn" onclick="orderBy('sequence')">Order by card sequence</button>
+    </div>
+        <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
     <div id="stopwatch" class="stopwatch_control">
         <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()"/>
         <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()"/>
