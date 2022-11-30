@@ -31,9 +31,7 @@ function set_header($content_type) {
     header('Expires: 0');
 }
 
-function validate_team($t) {
-
-    $link = db_init();
+function validate_team($t, $link) {
 
     $sql = "SELECT count(1) cnt FROM pok_teams_tbl WHERE id = '".$t."'";
 
@@ -52,8 +50,6 @@ function validate_team($t) {
         $is_valid = false;
     }
 
-    $link->close();
-
     return $is_valid;
 }
 
@@ -71,8 +67,11 @@ function getDao($t, $id) {
     $color_mode = 'dark';
     $survey = 'NO';
     $topic = null;
+    $results_order = 'NAME';
 
     $link = db_init();
+
+    validate_team($t, $link) or exit;
 
     /* set last callback of current player */
     $sql = "UPDATE pok_players_tbl 
@@ -91,6 +90,7 @@ function getDao($t, $id) {
                                 ,ifnull(t.timer_pause_time, current_timestamp)) timer_time
                   ,t.timer_visibility
                   ,t.topic
+                  ,t.results_order
             FROM pok_teams_tbl as t
              WHERE t.id = '$t'";
     if ($result = $link->query($sql)) {
@@ -101,6 +101,7 @@ function getDao($t, $id) {
         $timer_time = $obj->timer_time;
         $timer_visibility = $obj->timer_visibility;
         $topic = $obj->topic;
+        $results_order = $obj->results_order;
     }
 
     $sql = "SELECT p.* 
@@ -202,6 +203,7 @@ function getDao($t, $id) {
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
         "timer_visibility"=>(Int)$timer_visibility,
+        "results_order"=>$results_order,
         "selected_card_key"=>$card_key,
         "all_players_ready"=>$all_players_ready_s,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready_s,

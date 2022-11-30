@@ -3,9 +3,9 @@ require '../config.php';
 require './lib.php';
 
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
-validate_team($t) or exit;
 
 $link = db_init();
+validate_team($t, $link) or exit;
 
 $sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, type_code, timer_start_time
                             , timer_pause_time ,timer_visibility, topic)

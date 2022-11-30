@@ -3,7 +3,6 @@ require '../config.php';
 require './lib.php';
 
 $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
-validate_team($t) or exit;
 
 $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
 $name = substr( filter_input(INPUT_GET, "name", FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES	) ,0,15);
@@ -12,6 +11,8 @@ print('id: '.$id.' ');
 print('name: '.$name);
 
 $link = db_init();
+validate_team($t, $link) or exit;
+
 
 $is_in_db=false;
 $sql = "SELECT count(1) cnt FROM pok_players_tbl WHERE id = '".$id."' and team_id = '".$t."'";

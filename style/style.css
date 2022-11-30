@@ -964,7 +964,7 @@ div#cbox {
 
 #topic_box {
     position: absolute;
-    right: 15px;
+    right: 95px;
     top: 40px;
     border: 1px solid white;
     width: 200px;
@@ -984,7 +984,7 @@ div#cbox {
 }
 
 #topic_txt {
-    margin-top: 3vh;
+    margin-top: 0.5rem;
     outline: none;
     border: 1px solid #999999;
     border-radius: 3pt;
@@ -1064,7 +1064,7 @@ div#cbox {
     background: #444444;
     color: white;
     resize: none;
-    margin-top: 2em;
+    margin-top: 1em;
 }
 
     #feedback_txt.desktop {
@@ -1116,10 +1116,11 @@ div#cbox {
 
 #cset_box {
     position: absolute;
-    right: 42px;
+    right: 67px;
     top: 40px;
     border: 1px solid white;
-    width: 250px;
+    width: 340px;
+    padding-bottom: 1rem;
     height: auto;
     border-radius: 15px;
     background: #202020;
@@ -1144,15 +1145,13 @@ div#cbox {
 
     #cet_pre.desktop {
         font-size: smaller;
-        margin-top: 20px;
-        margin-bottom: 25px;
+        margin-bottom: 1rem;
         border-radius: 12px;
         width: 90%;
     }
 
     #cet_pre.mobile {
         font-size: 1rem;
-        margin-top: 1rem;
         margin-bottom: 1rem;
         border-radius: 1rem;
         width: 90%;
@@ -1162,6 +1161,39 @@ div#cbox {
         font-size: medium;
         top:100%;
     }
+
+#cet_order_by {
+    background: #202020;
+    border: 1px solid #999999;
+    color: white;
+}
+
+#cet_order_by.desktop {
+    font-size: smaller;
+    border-radius: 12px;
+    width: 90%;
+}
+
+#cet_order_by.mobile {
+    font-size: 1rem;
+    border-radius: 1rem;
+    width: 90%;
+}
+
+#cet_order_by.mobile option{
+    font-size: medium;
+    top:100%;
+}
+
+.topnav label {
+    display: block;
+    margin-top: 1rem;
+    margin-left: 1.5rem;
+    margin-bottom: 0.1rem;
+    font-size: smaller;
+    color: white;
+    text-align: left;
+}
 
 .cs_c {
     border: 1px solid #666666;

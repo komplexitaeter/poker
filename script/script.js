@@ -270,6 +270,7 @@ function updateDom(myJson, isOnLoad) {
 
     controlsDsp(myJson);
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
+    updateOrderByConfig(myJson.results_order);
 
     if (isOnLoad) {
         document.body.style.display = 'inherit';
@@ -451,6 +452,19 @@ function stopwatchReset(){
     fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=reset');
 }
 
+
+function updateOrderByConfig(resultsOrder) {
+    let dropDown = document.getElementById("cet_order_by");
+    let order = resultsOrder;
+
+    if (resultsOrder.includes('CHOOSE')) {
+        order = 'CHOOSE';
+    }
+
+    if (dropDown.value !== resultsOrder ) {
+        dropDown.value = order;
+    }
+}
 
 
 function loadCardConfig() {

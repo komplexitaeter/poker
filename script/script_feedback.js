@@ -407,6 +407,14 @@ function preSet(e) {
     }
 }
 
+function changeSortOrder(e) {
+    const t = document.getElementById("t").value;
+    const url = './api/update_results_order.php?t='+t+'&results_order='+e.target.value;
+    let httpRequest = new XMLHttpRequest();
+    httpRequest.open("GET", url, false);
+    httpRequest.send();
+}
+
 /**
  * Returns a random number between min (inclusive) and max (exclusive)
  */

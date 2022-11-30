@@ -6,7 +6,6 @@ function initialize_streaming($resource_name) {
     $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
 
     $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
-    validate_team($t) or exit;
 
     $count = 0;
 
@@ -46,7 +45,6 @@ function initialize_pulling($resource_name) {
     $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
 
     $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
-    validate_team($t) or exit;
 
     $data_obj = get_data_obj($resource_name, $t, $id);
 
