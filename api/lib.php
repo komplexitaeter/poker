@@ -184,12 +184,16 @@ function getDao($t, $id) {
         else
             $display_card_key = 'done001';
 
-        $player = (object) array("name"=>$obj->name
+        $player = (object) array(
+         "name"=>$obj->name
         ,"mkey"=>$obj->mkey
         ,"display_card_key"=>$display_card_key);
         $players[] = $player;
 
     }
+
+    if ($all_players_ready and substr_count($results_order, 'SEQUENCE')>0)
+        $players = sort_players_by_sequence($players);
 
 
     return array(  "name"=> $name,
@@ -208,6 +212,23 @@ function getDao($t, $id) {
         "all_players_ready"=>$all_players_ready_s,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready_s,
         "players"=>$players );
+}
+
+function sort_players_by_sequence(array $players)
+{
+    $ret_val = array();
+    $cards = json_decode(file_get_contents('../cards.json'), true)["cards"];
+
+    usort($cards, function($a, $b) {
+        return $a["sort_order"] - $b["sort_order"];
+    });
+
+    foreach ($cards as $card)
+        foreach ($players as $player)
+            if ($card["card_key"] == $player->display_card_key)
+                $ret_val[] = $player;
+
+    return $ret_val;
 }
 
 function name2id($name) {
