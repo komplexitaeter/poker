@@ -257,7 +257,7 @@ function name2id($name) {
     $null_signs = array('x','X','0','o','O');
 
     for ($i=0;$i<strlen($name);$i++) {
-        if (!$signs = $mix[strtolower($name[$i])]) {
+        if (!isset($mix[strtolower($name[$i])]) or !$signs = $mix[strtolower($name[$i])]) {
             $signs = $null_signs;
         }
         $id.=$signs[rand(0,count($signs)-1)];
