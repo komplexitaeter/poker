@@ -185,7 +185,7 @@ function toggleSurvey(forceSurvey){
     else{
         if(gSurvey == "LOUD") {
             surveyDisplayStatus = "closed";
-        }
+        } else return;
     }
 
     switch(surveyDisplayStatus){
@@ -245,7 +245,7 @@ function generateSurveyContents(){
                 let fillBars = document.getElementsByClassName("vote_results_bar_value");
                 setTimeout(function () {
                     fillResultsBars(myJson, needsFilling, wasFilled, fillBars, interval);
-                }, 1000);
+                }, 10);
             }
         });
 }

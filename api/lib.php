@@ -147,11 +147,23 @@ function getDao($t, $id) {
             $sql_i->execute();
         } else {
             $color_mode = $obj->color_mode;
-            if ($obj->survey_id != 0) {
+            if ($obj->survey_id > 0) {
                 if ($obj->voted != 0) $survey = 'VOTED';
                 elseif ($obj->survey_skipped != 0)  $survey = 'SILENT';
                 else $survey = 'LOUD';
-            };
+            } elseif ($obj->survey_id == -1) {
+                require './survey_selector.php';
+                $survey_id = get_survey_id($link, $t, $id);
+                if ($survey_id != null) {
+                    $survey = 'LOUD';
+                    $sql_i = $link->prepare("UPDATE pok_user_tbl SET survey_id=? WHERE id=?");
+                    $sql_i->bind_param('is', $survey_id, $id);
+                } else {
+                    $sql_i = $link->prepare("UPDATE pok_user_tbl SET survey_id=null WHERE id=?");
+                    $sql_i->bind_param('s',$id);
+                }
+                $sql_i->execute();
+            }
         }
     }
 
@@ -183,7 +195,7 @@ function getDao($t, $id) {
         "mkey"=>$mkey,
         "id"=>$id,
         "color_mode"=>(String)$color_mode,
-        "survey"=>(String)$survey,
+        "survey"=>$survey,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
         "topic"=>(String)$topic,
@@ -245,7 +257,7 @@ function name2id($name) {
     $null_signs = array('x','X','0','o','O');
 
     for ($i=0;$i<strlen($name);$i++) {
-        if (!$signs = $mix[strtolower($name[$i])]) {
+        if (!isset($mix[strtolower($name[$i])]) or !$signs = $mix[strtolower($name[$i])]) {
             $signs = $null_signs;
         }
         $id.=$signs[rand(0,count($signs)-1)];
