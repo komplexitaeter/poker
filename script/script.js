@@ -231,7 +231,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     let newCard = document.createElement('div');
     newCard.id = player.mkey;
     newCard.classList.add('c', 'sizefit');
-    if (!isOnLoad) newCard.classList.add('c', 'sizefit', 'c_fade-in');
+    if (!isOnLoad && playersCount>1) newCard.classList.add('c', 'sizefit', 'c_fade-in');
     newCard.style.left = getCardPos(player.i, playersCount);
 
     let cardImg = document.createElement('img');
