@@ -186,8 +186,11 @@ function getCardPos(pos, cardsCount) {
     let cardsInCol =  Math.min(Math.floor(gScreenWidth / cardsWidth), cardsCount);
     let posInCol = ( (pos) % cardsInCol );
     let row = Math.floor((pos) / cardsInCol);
-    /*todo: calculate margin based on card in the curren col for desktio */
     let cardsInCurrentCol = cardsInCol;
+    let rows = Math.floor((cardsCount-1) / cardsInCol ) + 1;
+    if (row + 1 >= rows) {
+        cardsInCurrentCol = cardsCount - ((row)*cardsInCol);
+    }
     let margin = Math.round( ( gScreenWidth - (cardsInCurrentCol * cardsWidth))/2 );
     if (gDisplayType === "xs" || gDisplayType === "sm") {
         margin = Math.round( ( gScreenWidth - (cardsInCol * cardsWidth))/2 );

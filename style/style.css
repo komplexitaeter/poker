@@ -345,7 +345,7 @@ div#cbox {
     margin: 4px;
     border-radius: 15px;
     background: #151515;
-    transition: left 2s, top 1s;
+    transition: left 2s, top 2s;
 }
 
     .c_fade-in {
