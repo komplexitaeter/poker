@@ -75,8 +75,8 @@ function controlsDsp(e) {
     }
 }
 
-function deletePlayer(mkey) {
-    fetch('./api/delete.php?mkey=' + mkey + '&t=' + document.getElementById("t").value).then();
+function deletePlayer(e) {
+    fetch('./api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + document.getElementById("t").value).then();
 }
 
 function updateSelectedC(currKey) {
@@ -175,6 +175,87 @@ function updateOrderByButtons(results_order, all_players_ready) {
     }
 }
 
+function removeCards(cardsDiv, players) {
+    Array.from(cardsDiv.children).forEach(card => {
+        if (players.find(player => player.mkey == card.id) === undefined) card.remove();
+    });
+}
+
+function updateCards(cardsDiv, players) {
+    Array.from(cardsDiv.children).forEach(card => {
+        let player = players.find(p => p.mkey == card.id);
+
+
+        const srcStr = 'src/c_' + player.display_card_key + '.png';
+        const oldSrc = Array.from(card.getElementsByClassName('card_image'))[0].src;
+        if (!oldSrc.includes(srcStr)) {
+            Array.from(card.getElementsByClassName('card_image'))[0].src = srcStr;
+            removeStyleClass(card, 'cardValueChanged');
+            if (!oldSrc.includes('c_done') && !oldSrc.includes('c_prgrss') &&
+                !srcStr.includes('c_done') && !srcStr.includes('c_prgrss'))
+            {
+                setTimeout(function () {
+                    addStyleClass(card, 'cardValueChanged');
+                }, 10);
+            }
+        }
+
+        if (Array.from(card.getElementsByClassName('card_player_name'))[0].textContent !== player.name) {
+            Array.from(card.getElementsByClassName('card_player_name'))[0].textContent = player.name;
+        }
+
+    });
+}
+
+function createCardDiv(player) {
+    let newCard = document.createElement('div');
+    newCard.id = player.mkey;
+    newCard.classList.add('c', 'sizefit');
+
+    let cardImg = document.createElement('img');
+    cardImg.classList.add('background', 'sizefit', 'switchable', 'card_image');
+    cardImg.src = 'src/c_' + player.display_card_key + '.png';
+    newCard.appendChild(cardImg);
+
+    let cardSpan = document.createElement('span');
+    cardSpan.classList.add('sizefit', 'card_player_name');
+    cardSpan.innerText = player.name;
+    newCard.appendChild(cardSpan);
+
+    let cardDeleteImg = document.createElement('img');
+    cardDeleteImg.classList.add('delete', 'sizefit');
+    cardDeleteImg.src = "./src/delete.png";
+    cardDeleteImg.alt = "Delete";
+    cardDeleteImg.onclick = deletePlayer;
+    newCard.appendChild(cardDeleteImg);
+
+    return newCard;
+}
+
+function addCards(cardsDiv, players) {
+    let cardsHaveBeenAdded = false;
+
+    players.forEach(player => {
+        if (Array.from(cardsDiv.children).find(card => card.id == player.mkey) === undefined) {
+                cardsDiv.appendChild(createCardDiv(player));
+                cardsHaveBeenAdded = true;
+        };
+    });
+
+    return cardsHaveBeenAdded;
+}
+
+function updatePlayersCards(players) {
+    let cardsHaveBeenAdded = false;
+    let cardsDiv = document.getElementById("cbox");
+
+    removeCards(cardsDiv, players);
+    updateCards(cardsDiv, players);
+    cardsHaveBeenAdded = addCards(cardsDiv, players);
+
+    return cardsHaveBeenAdded;
+}
+
 function updateDom(myJson, isOnLoad) {
     localStorage.setItem('all_players_ready', myJson.all_players_ready);
 
@@ -239,40 +320,11 @@ function updateDom(myJson, isOnLoad) {
 
     setCSet(myJson.cardset_flags);
 
-    e = document.getElementById("cbox");
 
-    let needsUpdate = false;
-
-    if (e.childElementCount === myJson.players.length) {
-        for (let i = 0; i < e.childElementCount; i++) {
-            if (e.children[i].children[0].getAttribute('src') !== 'src/c_' + myJson.players[i].display_card_key + '.png') needsUpdate = true;
-            if (e.children[i].children[1].innerHTML !== myJson.players[i].name) needsUpdate = true;
-            if (e.children[i].children[2].getAttribute('onclick') !== 'deletePlayer(' + myJson.players[i].mkey + ')') needsUpdate = true;
-        }
-    } else needsUpdate = true;
-
-
-    if (needsUpdate) {
-        let htmlStr = '';
-        let currentColorClass;
-        if (gColorMode === "dark") {
-            currentColorClass = "dark"
-        } else {
-            currentColorClass = "light"
-        }
-
-        myJson.players.forEach(player => {
-            htmlStr = htmlStr
-                + '<div class="c sizefit">'
-                + '<img class="background sizefit switchable '+currentColorClass+'" src = "src/c_' + player.display_card_key + '.png" alt = "' + player.name + '" >'
-                + '<span class="sizefit">' + player.name + '</span>'
-                + '<img onclick="deletePlayer(' + player.mkey + ')" class="delete sizefit" src="./src/delete.png" alt="Delete">'
-                + '</div>';
-        });
-
-        e.innerHTML = htmlStr;
+    if (updatePlayersCards(myJson.players)) {
+        /* returns true when new cards have been added */
         adaptToDevice();
-
+        setColor();
     }
 
 
