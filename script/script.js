@@ -1,5 +1,6 @@
 let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
+let gScreenWidth = window.innerWidth;
 let gDisplayType = null;
 let gTopic = null;
 let gCardsConfig = null;
@@ -20,14 +21,14 @@ String.prototype.hashCode = function(){
 }
 
 function getBrowserWidth(){
-
-    if(window.innerWidth < 768){
+    gScreenWidth = window.innerWidth;
+    if(gScreenWidth < 768){
         // Extra Small Device
         gDisplayType = "xs";
-    } else if(window.innerWidth < 991){
+    } else if(gScreenWidth < 991){
         // Small Device
         gDisplayType = "sm";
-    } else if(window.innerWidth < 1199){
+    } else if(gScreenWidth < 1199){
         // Medium Device
         gDisplayType = "md";
     } else {
@@ -150,12 +151,12 @@ function updateDao(isOnLoad) {
         });
 }
 
-function updateOrderByButtons(results_order, all_players_ready) {
+function updateOrderByButtons(results_order, allPlayersReady) {
     let orderByNameBtn = document.getElementById("order_by_name_btn");
     let orderBySequenceBtn = document.getElementById("order_by_sequence_btn");
 
     if (results_order.includes('CHOOSE')) {
-        if (all_players_ready === 'true') {
+        if (allPlayersReady) {
             if (results_order.includes('SEQUENCE')) {
                 orderByNameBtn.disabled = false;
                 orderBySequenceBtn.disabled = true;
@@ -173,6 +174,19 @@ function updateOrderByButtons(results_order, all_players_ready) {
         addStyleClass(orderByNameBtn, "display_none");
         addStyleClass(orderBySequenceBtn, "display_none");
     }
+}
+
+function getCardPos(pos, cardsCount) {
+    let cardsWidth = 110;
+    let cardsInCol = cardsCount; /*toDo*/
+    if (gDisplayType === "xs" || gDisplayType === "sm") {
+        cardsWidth = Math.round(gScreenWidth * 0.32);
+        console.log(cardsWidth);
+    }
+
+    let margin = Math.round( ( gScreenWidth - (cardsInCol * cardsWidth))/2 );
+    let leftPos = margin + pos * cardsWidth;
+    return leftPos + 'px';
 }
 
 function removeCards(cardsDiv, players) {
@@ -204,13 +218,21 @@ function updateCards(cardsDiv, players) {
             Array.from(card.getElementsByClassName('card_player_name'))[0].textContent = player.name;
         }
 
+        const newPos = getCardPos(player.i, players.length);
+
+        if (card.style.left !== newPos) {
+            card.style.left = newPos;
+        }
+
     });
 }
 
-function createCardDiv(player) {
+function createCardDiv(player, playersCount, isOnLoad) {
     let newCard = document.createElement('div');
     newCard.id = player.mkey;
     newCard.classList.add('c', 'sizefit');
+    if (!isOnLoad) newCard.classList.add('c', 'sizefit', 'c_fade-in');
+    newCard.style.left = getCardPos(player.i, playersCount);
 
     let cardImg = document.createElement('img');
     cardImg.classList.add('background', 'sizefit', 'switchable', 'card_image');
@@ -232,12 +254,12 @@ function createCardDiv(player) {
     return newCard;
 }
 
-function addCards(cardsDiv, players) {
+function addCards(cardsDiv, players, isOnLoad) {
     let cardsHaveBeenAdded = false;
 
     players.forEach(player => {
         if (Array.from(cardsDiv.children).find(card => card.id == player.mkey) === undefined) {
-                cardsDiv.appendChild(createCardDiv(player));
+                cardsDiv.appendChild(createCardDiv(player, players.length, isOnLoad));
                 cardsHaveBeenAdded = true;
         };
     });
@@ -245,13 +267,13 @@ function addCards(cardsDiv, players) {
     return cardsHaveBeenAdded;
 }
 
-function updatePlayersCards(players) {
+function updatePlayersCards(players, isOnLoad) {
     let cardsHaveBeenAdded = false;
     let cardsDiv = document.getElementById("cbox");
 
     removeCards(cardsDiv, players);
     updateCards(cardsDiv, players);
-    cardsHaveBeenAdded = addCards(cardsDiv, players);
+    cardsHaveBeenAdded = addCards(cardsDiv, players, isOnLoad);
 
     return cardsHaveBeenAdded;
 }
@@ -321,7 +343,7 @@ function updateDom(myJson, isOnLoad) {
     setCSet(myJson.cardset_flags);
 
 
-    if (updatePlayersCards(myJson.players)) {
+    if (updatePlayersCards(myJson.players, isOnLoad)) {
         /* returns true when new cards have been added */
         adaptToDevice();
         setColor();
@@ -346,7 +368,7 @@ function updateDom(myJson, isOnLoad) {
 
 
     controlsDsp(myJson);
-    updateOrderByButtons(myJson.results_order, myJson.all_players_ready);
+    updateOrderByButtons(myJson.results_order, myJson.all_players_ready=='true' && myJson.players.length>0);
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
     updateOrderByConfig(myJson.results_order);
 
@@ -465,13 +487,11 @@ function adaptToDevice(){
         Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
             e.classList.add("mobile");
             e.classList.remove("desktop");
-            //measureEvent("LOAD_MOBILE");
         });
     } else {
         Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
             e.classList.add("desktop");
             e.classList.remove("mobile");
-            //measureEvent("LOAD_DESKTOP");
         });
     }
 }

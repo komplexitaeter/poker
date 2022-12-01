@@ -187,7 +187,8 @@ function getDao($t, $id) {
         $player = (object) array(
          "name"=>$obj->name
         ,"mkey"=>$obj->mkey
-        ,"display_card_key"=>$display_card_key);
+        ,"display_card_key"=>$display_card_key
+        ,"i"=>(int)null);
         $players[] = $player;
 
     }
@@ -195,6 +196,7 @@ function getDao($t, $id) {
     if ($all_players_ready and substr_count($results_order, 'SEQUENCE')>0)
         $players = sort_players_by_sequence($players);
 
+    for ($i=0;$i<count($players);$i++) $players[$i]->i= $i;
 
     return array(  "name"=> $name,
         "mkey"=>$mkey,
