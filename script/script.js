@@ -178,27 +178,44 @@ function updateOrderByButtons(results_order, allPlayersReady) {
 
 function getCardPos(pos, cardsCount) {
     let cardsWidth = 110;
-    let cardsInCol = cardsCount; /*toDo*/
+    let topOffset = 150;
     if (gDisplayType === "xs" || gDisplayType === "sm") {
         cardsWidth = Math.round(gScreenWidth * 0.32);
-        console.log(cardsWidth);
     }
-
-    let margin = Math.round( ( gScreenWidth - (cardsInCol * cardsWidth))/2 );
-    let leftPos = margin + pos * cardsWidth;
-    return leftPos + 'px';
+    let cardsHeight = Math.round(cardsWidth * 1.48);
+    let cardsInCol =  Math.min(Math.floor(gScreenWidth / cardsWidth), cardsCount);
+    let posInCol = ( (pos) % cardsInCol );
+    let row = Math.floor((pos) / cardsInCol);
+    /*todo: calculate margin based on card in the curren col for desktio */
+    let cardsInCurrentCol = cardsInCol;
+    let margin = Math.round( ( gScreenWidth - (cardsInCurrentCol * cardsWidth))/2 );
+    if (gDisplayType === "xs" || gDisplayType === "sm") {
+        margin = Math.round( ( gScreenWidth - (cardsInCol * cardsWidth))/2 );
+    }
+    let leftPos = margin + posInCol * cardsWidth;
+    let topPos = topOffset + row * cardsHeight;
+    //console.log('pos='+pos+' cardsInCol='+cardsInCol+' posInCol='+posInCol+' row='+row);
+    return {
+        left: leftPos + 'px',
+        top: topPos + 'px'};
 }
 
 function removeCards(cardsDiv, players) {
     Array.from(cardsDiv.children).forEach(card => {
-        if (players.find(player => player.mkey == card.id) === undefined) card.remove();
+        if (players.find(player => player.mkey == card.id) === undefined) {
+            card.remove();
+        }
     });
 }
 
 function updateCards(cardsDiv, players) {
     Array.from(cardsDiv.children).forEach(card => {
-        let player = players.find(p => p.mkey == card.id);
 
+        setTimeout(function () {
+            removeStyleClass(card, "c_fade-in");
+        }, 1800);
+
+        let player = players.find(p => p.mkey == card.id);
 
         const srcStr = 'src/c_' + player.display_card_key + '.png';
         const oldSrc = Array.from(card.getElementsByClassName('card_image'))[0].src;
@@ -219,11 +236,12 @@ function updateCards(cardsDiv, players) {
         }
 
         const newPos = getCardPos(player.i, players.length);
-
-        if (card.style.left !== newPos) {
-            card.style.left = newPos;
+        if (card.style.left !== newPos.left) {
+            card.style.left = newPos.left;
         }
-
+        if (card.style.top !== newPos.top) {
+            card.style.top = newPos.top;
+        }
     });
 }
 
@@ -232,7 +250,9 @@ function createCardDiv(player, playersCount, isOnLoad) {
     newCard.id = player.mkey;
     newCard.classList.add('c', 'sizefit');
     if (!isOnLoad && playersCount>1) newCard.classList.add('c', 'sizefit', 'c_fade-in');
-    newCard.style.left = getCardPos(player.i, playersCount);
+    const cardPos = getCardPos(player.i, playersCount);
+    newCard.style.left = cardPos.left;
+    newCard.style.top = cardPos.top;
 
     let cardImg = document.createElement('img');
     cardImg.classList.add('background', 'sizefit', 'switchable', 'card_image');
