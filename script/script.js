@@ -8,6 +8,7 @@ let gCardsPresets = null;
 let gOnLoadFocus = null;
 let gSurvey = null;
 let gUpdateDom = 0;
+let gResultOder = 'NAME';
 
 
 String.prototype.hashCode = function(){
@@ -173,6 +174,7 @@ function updateOrderByButtons(results_order, allPlayersReady) {
     } else {
         addStyleClass(orderByDiv, "display_none");
     }
+    gResultOder = results_order;
 }
 
 function getCardPos(pos, cardsCount) {
@@ -665,15 +667,16 @@ function loadCardConfig() {
     });
 }
 
-function orderBy(opt) {
+function toggleOrderBy(opt) {
     const t = document.getElementById("t").value;
     let url = './api/update_results_order.php?t='+t+'&results_order=';
-    if (opt === 'sequence') {
-        url += 'CHOOSE:SEQUENCE';
-    } else {
+    if (gResultOder === 'CHOOSE:SEQUENCE') {
         url += 'CHOOSE:NAME';
+        fetch(url).then();
+    } else if (gResultOder === 'CHOOSE:NAME') {
+        url += 'CHOOSE:SEQUENCE';
+        fetch(url).then();
     }
-    fetch(url).then();
 }
 
 // Load JSON text from server hosted file and return JSON parsed object
