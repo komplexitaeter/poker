@@ -72,9 +72,9 @@
 
         <div id="cbox" tabindex="2" class="sizefit switchable"></div>
 
-        <div>
-            <button id="order_by_name_btn" onclick="orderBy('name')">Order by players name</button>
-            <button id="order_by_sequence_btn" onclick="orderBy('sequence')">Order by card sequence</button>
+        <div class="toggle_container">
+            <button id="order_by_name_btn" class="toggle_button" onclick="orderBy('name')">Name</button>
+            <button id="order_by_sequence_btn" class="toggle_button" onclick="orderBy('sequence')">Value</Se></button>
         </div>
 
         <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
