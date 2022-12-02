@@ -155,6 +155,7 @@ function updateDao(isOnLoad) {
 function updateOrderByButtons(results_order, allPlayersReady) {
     let orderByNameBtn = document.getElementById("order_by_name_btn");
     let orderBySequenceBtn = document.getElementById("order_by_sequence_btn");
+    let orderByDiv = document.getElementById("order_by_div");
 
     if (results_order.includes('CHOOSE')) {
         if (allPlayersReady) {
@@ -165,15 +166,12 @@ function updateOrderByButtons(results_order, allPlayersReady) {
                 orderByNameBtn.disabled = true;
                 orderBySequenceBtn.disabled = false;
             }
-            removeStyleClass(orderByNameBtn, "display_none");
-            removeStyleClass(orderBySequenceBtn, "display_none");
+            removeStyleClass(orderByDiv, "display_none");
         } else {
-            addStyleClass(orderByNameBtn, "display_none");
-            addStyleClass(orderBySequenceBtn, "display_none");
+            addStyleClass(orderByDiv, "display_none");
         }
     } else {
-        addStyleClass(orderByNameBtn, "display_none");
-        addStyleClass(orderBySequenceBtn, "display_none");
+        addStyleClass(orderByDiv, "display_none");
     }
 }
 
