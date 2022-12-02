@@ -178,7 +178,7 @@ function updateOrderByButtons(results_order, allPlayersReady) {
 
 function getCardPos(pos, cardsCount) {
     let cardsWidth = 110;
-    let topOffset = 150;
+    let topOffset = 0;
     if (gDisplayType === "xs" || gDisplayType === "sm") {
         cardsWidth = Math.round(gScreenWidth * 0.32);
     }
