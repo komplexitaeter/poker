@@ -1,6 +1,6 @@
 let sid = localStorage.getItem('SID');
 let gColorMode = "dark";
-let gScreenWidth = window.innerWidth;
+let gScreenWidth = null;
 let gDisplayType = null;
 let gTopic = null;
 let gCardsConfig = null;
@@ -21,7 +21,7 @@ String.prototype.hashCode = function(){
 }
 
 function getBrowserWidth(){
-    gScreenWidth = window.innerWidth;
+    gScreenWidth = document.body.clientWidth;
     if(gScreenWidth < 768){
         // Extra Small Device
         gDisplayType = "xs";
@@ -178,14 +178,13 @@ function updateOrderByButtons(results_order, allPlayersReady) {
 
 function getCardPos(pos, cardsCount) {
     let cardsWidth = 110;
-    let topOffset = 0;
     if (gDisplayType === "xs" || gDisplayType === "sm") {
         cardsWidth = Math.round(gScreenWidth * 0.32);
     }
     let cardsHeight = Math.round(cardsWidth * 1.48);
     let cardsInCol =  Math.min(Math.floor(gScreenWidth / cardsWidth), cardsCount);
-    let posInCol = ( (pos) % cardsInCol );
-    let row = Math.floor((pos) / cardsInCol);
+    let posInCol = ( pos % cardsInCol );
+    let row = Math.floor(pos / cardsInCol);
     let cardsInCurrentCol = cardsInCol;
     let rows = Math.floor((cardsCount-1) / cardsInCol ) + 1;
     if (row + 1 >= rows) {
@@ -196,11 +195,14 @@ function getCardPos(pos, cardsCount) {
         margin = Math.round( ( gScreenWidth - (cardsInCol * cardsWidth))/2 );
     }
     let leftPos = margin + posInCol * cardsWidth;
-    let topPos = topOffset + row * cardsHeight;
+    let topPos = row * cardsHeight;
+    let totalYDim = rows * cardsHeight;
     //console.log('pos='+pos+' cardsInCol='+cardsInCol+' posInCol='+posInCol+' row='+row);
     return {
         left: leftPos + 'px',
-        top: topPos + 'px'};
+        top: topPos + 'px',
+        totalYDim: totalYDim + 'px'};
+
 }
 
 function removeCards(cardsDiv, players) {
@@ -214,9 +216,11 @@ function removeCards(cardsDiv, players) {
 function updateCards(cardsDiv, players) {
     Array.from(cardsDiv.children).forEach(card => {
 
-        setTimeout(function () {
-            removeStyleClass(card, "c_fade-in");
-        }, 1800);
+        if (card.classList.contains('c_fade-in')) {
+            setTimeout(function () {
+                removeStyleClass(card, 'c_fade-in');
+            }, 1800);
+        }
 
         let player = players.find(p => p.mkey == card.id);
 
@@ -297,6 +301,11 @@ function updatePlayersCards(players, isOnLoad) {
     removeCards(cardsDiv, players);
     updateCards(cardsDiv, players);
     cardsHaveBeenAdded = addCards(cardsDiv, players, isOnLoad);
+
+    let newCardsDivHeight = getCardPos(players.length, players.length).totalYDim;
+    if (cardsDiv.style.height !== newCardsDivHeight) {
+        cardsDiv.style.height = newCardsDivHeight;
+    }
 
     return cardsHaveBeenAdded;
 }
@@ -379,10 +388,14 @@ function updateDom(myJson, isOnLoad) {
 
     if (myJson.one_ore_more_player_ready === 'true') {
         toggleStyleClass(newroundbtn, "display_unset", "display_none");
+        let newButtonText;
         if (myJson.all_players_ready === 'true') {
-            document.getElementById('newroundbtn').value = 'New Round';
+            newButtonText = 'New Round';
         } else {
-            document.getElementById('newroundbtn').value = 'Cancel Round';
+            newButtonText = 'Cancel Round';
+        }
+        if (document.getElementById('newroundbtn').value !== newButtonText) {
+            document.getElementById('newroundbtn').value = newButtonText
         }
     }
     else {
@@ -402,6 +415,8 @@ function updateDom(myJson, isOnLoad) {
             gOnLoadFocus.focus();
             gOnLoadFocus = null;
         }
+
+        adaptToDevice();
     }
 
 

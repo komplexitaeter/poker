@@ -101,7 +101,7 @@ a {
     #newroundbtn.desktop{
         font-size: medium;
         padding: 5pt;
-        margin-top: 60px;
+        margin-top: 20px;
         width: 200px;
         border-radius: 15pt;
     }
@@ -335,6 +335,8 @@ div#cbox {
     flex-wrap: wrap;
     display: inline-flex;
     justify-content: center;
+    position: relative;
+    transition: height 1s;
 }
 
 .c {
@@ -409,7 +411,7 @@ div#cbox {
     }
 
         .c .delete.desktop:hover {
-            content: url(../src/delete_red.png);
+            content: url('../src/delete_red.png');
             border-color: #df3636;
         }
 
