@@ -7,6 +7,7 @@ let gCardsConfig = null;
 let gCardsPresets = null;
 let gOnLoadFocus = null;
 let gSurvey = null;
+let gUpdateDom = 0;
 
 
 String.prototype.hashCode = function(){
@@ -214,6 +215,7 @@ function removeCards(cardsDiv, players) {
 }
 
 function updateCards(cardsDiv, players) {
+
     Array.from(cardsDiv.children).forEach(card => {
 
         if (card.classList.contains('c_fade-in')) {
@@ -256,7 +258,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     let newCard = document.createElement('div');
     newCard.id = player.mkey;
     newCard.classList.add('c', 'sizefit');
-    if (!isOnLoad && playersCount>1) newCard.classList.add('c', 'sizefit', 'c_fade-in');
+    if (!isOnLoad && playersCount>1) newCard.classList.add('c_fade-in');
     const cardPos = getCardPos(player.i, playersCount);
     newCard.style.left = cardPos.left;
     newCard.style.top = cardPos.top;
@@ -311,6 +313,8 @@ function updatePlayersCards(players, isOnLoad) {
 }
 
 function updateDom(myJson, isOnLoad) {
+    gUpdateDom++;
+
     localStorage.setItem('all_players_ready', myJson.all_players_ready);
 
     let e = document.getElementById('nameinput');
@@ -374,11 +378,15 @@ function updateDom(myJson, isOnLoad) {
 
     setCSet(myJson.cardset_flags);
 
-
-    if (updatePlayersCards(myJson.players, isOnLoad)) {
-        /* returns true when new cards have been added */
-        adaptToDevice();
-        setColor();
+    if (!isOnLoad) {
+        console.log(gUpdateDom);
+        let isStillOnLoad = isOnLoad;
+        if (gUpdateDom<=2) isStillOnLoad = true;
+        if (updatePlayersCards(myJson.players, isStillOnLoad)) {
+            /* returns true when new cards have been added */
+            adaptToDevice();
+            setColor();
+        }
     }
 
 
