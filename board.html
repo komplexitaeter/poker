@@ -11,79 +11,80 @@
 <div class="container" onclick="void(0);">
     <div class="up-container sizefit">
 
-    <div class="topnav_title switchable sizefit">
-        <div id="team_name" class="sizefit" onclick="copyLink()"></div>
-        <div id="copy_link_btn" class="topnav_clink sizefit" onclick="copyLink()">Copy Link</div>
-    </div>
-
-    <div id="mobile-menu" class="mobile-menu switchable sizefit" data-state="closed">
-        <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit"/></a>
-        <img src="src/mmenu.png" class="open_menu" alt="Menu" onclick="toggleMobileMenu('open')"/>
-        <!--<img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />-->
-        <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" /></a>
-        <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit switchable" alt="Color mode" />
-        <img onclick="toggle_box('topic');" src="src/topic.png" id="topic_btn" class="topnav topnav_btn sizefit switchable" alt="Topic" />
-        <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.png" id="stopwatch_btn" class="topnav topnav_btn sizefit switchable" alt="Stopwatch" />
-        <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" />
-        <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" />
-        <img src="src/cta_design.png" id="cta_design" class="topnav sizefit" alt="we love feedback!" />
-        <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
-        <div id="topic_box" class="topnav sizefit">
-            <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav sizefit" onkeydown="topicChanged()"></textarea>
-            <input id="topic_reset" class="box_sbmt_button topnav sizefit" type="button" onclick="reset_topic()" value="Undo"/>
-            <input id="topic_save" class="box_sbmt_button topnav sizefit" type="button" onclick="save_topic()" value="Save"/>
-        </div>
-        <div id="feedback_box" class="topnav sizefit">
-            <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
-            <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
-            <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
-            <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
-            <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
-            <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
-Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav sizefit"></textarea>
-            <input class="box_sbmt_button topnav sizefit" type="button" onclick="feedback_submit();" value="Send Feedback"/>
-        </div>
-        <div id="cset_box" class="topnav sizefit">
-            <label for="cet_pre" class="topnav">Define your deck of cards</label>
-            <select id="cet_pre" onchange="preSet(event);" class="topnav sizefit">
-                <option value="0" selected>Select a preset ...</option>
-            </select>
-
-            <div id="cards_thumbs" class="topnav sizefit"></div>
-
-            <label for="cet_order_by" class="topnav">Choose how to arrange revealed cards</label>
-            <select id="cet_order_by" onchange="changeSortOrder(event)" class="topnav sizefit">
-                <option value="NAME" selected>Always order by players name (default)</option>
-                <option value="SEQUENCE">Always order by card sequence</option>
-                <option value="CHOOSE">Define the sort order in-game</option>
-            </select>
+        <div class="topnav_title switchable sizefit">
+            <div id="team_name" class="sizefit" onclick="copyLink()"></div>
+            <div id="copy_link_btn" class="topnav_clink sizefit" onclick="copyLink()">Copy Link</div>
         </div>
 
-    </div>
+        <div id="mobile-menu" class="mobile-menu switchable sizefit" data-state="closed">
+            <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit"/></a>
+            <img src="src/mmenu.png" class="open_menu" alt="Menu" onclick="toggleMobileMenu('open')"/>
+            <!--<img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />-->
+            <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" /></a>
+            <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit switchable" alt="Color mode" />
+            <img onclick="toggle_box('topic');" src="src/topic.png" id="topic_btn" class="topnav topnav_btn sizefit switchable" alt="Topic" />
+            <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.png" id="stopwatch_btn" class="topnav topnav_btn sizefit switchable" alt="Stopwatch" />
+            <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" />
+            <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" />
+            <img src="src/cta_design.png" id="cta_design" class="topnav sizefit" alt="we love feedback!" />
+            <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
+            <div id="topic_box" class="topnav sizefit">
+                <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav sizefit" onkeydown="topicChanged()"></textarea>
+                <input id="topic_reset" class="box_sbmt_button topnav sizefit" type="button" onclick="reset_topic()" value="Undo"/>
+                <input id="topic_save" class="box_sbmt_button topnav sizefit" type="button" onclick="save_topic()" value="Save"/>
+            </div>
+            <div id="feedback_box" class="topnav sizefit">
+                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
+                <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
+    Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav sizefit"></textarea>
+                <input class="box_sbmt_button topnav sizefit" type="button" onclick="feedback_submit();" value="Send Feedback"/>
+            </div>
+            <div id="cset_box" class="topnav sizefit">
+                <label for="cet_pre" class="topnav">Define your deck of cards</label>
+                <select id="cet_pre" onchange="preSet(event);" class="topnav sizefit">
+                    <option value="0" selected>Select a preset ...</option>
+                </select>
+
+                <div id="cards_thumbs" class="topnav sizefit"></div>
+
+                <label for="cet_order_by" class="topnav">Choose how to arrange revealed cards</label>
+                <select id="cet_order_by" onchange="changeSortOrder(event)" class="topnav sizefit">
+                    <option value="NAME" selected>Always order by players name (default)</option>
+                    <option value="SEQUENCE">Always order by card sequence</option>
+                    <option value="CHOOSE">Define the sort order in-game</option>
+                </select>
+            </div>
+
+        </div>
 
 
 
 
 
 
-    <label for="nameinput"></label><input id="nameinput" class="switchable sizefit" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
+        <label for="nameinput"></label><input id="nameinput" class="switchable sizefit" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
 
-    <div id="topic" class="sizefit" data-hash="0"></div>
+        <div id="topic" class="sizefit" data-hash="0"></div>
 
-    <div id="cbox" tabindex="2" class="sizefit switchable"></div>
+        <div id="cbox" tabindex="2" class="sizefit switchable"></div>
 
-    <div>
-        <button id="order_by_name_btn" onclick="orderBy('name')">Order by players name</button>
-        <button id="order_by_sequence_btn" onclick="orderBy('sequence')">Order by card sequence</button>
-    </div>
+        <div>
+            <button id="order_by_name_btn" onclick="orderBy('name')">Order by players name</button>
+            <button id="order_by_sequence_btn" onclick="orderBy('sequence')">Order by card sequence</button>
+        </div>
+
         <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
-    <div id="stopwatch" class="stopwatch_control">
-        <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()"/>
-        <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()"/>
-        <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00" class="switchable sizefit"/>
-        <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()"/>
-    </div>
 
+        <div id="stopwatch" class="stopwatch_control">
+            <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()"/>
+            <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()"/>
+            <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00" class="switchable sizefit"/>
+            <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()"/>
+        </div>
     </div>
 
     <div class="down-container sizefit" id="down-container">
