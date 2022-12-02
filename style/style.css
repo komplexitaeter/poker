@@ -234,6 +234,10 @@ a {
     display:none;
 }
 
+.display_flex{
+    display: flex;
+}
+
 .visible{
     visibility: visible;
 }
@@ -1384,30 +1388,50 @@ table tr:first-child{
 
 .toggle_container {
     height: 1.5rem;
-    border: 1px solid white;
     border-radius: 1.1rem;
-    width: fit-content;
+    width: 6rem;
     margin: auto;
+    padding: 0.1rem;
+    background: #151515;
+    flex-wrap: nowrap;
+    position: relative;
+    cursor: pointer;
+    font-size: x-small;
+    color:white;
+}
+
+.toggle_container .btn{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 1.2rem;
+    border-radius: 1.1rem;
     padding: 0.2rem;
-    background: #151515;
+    width: 3rem;
 }
-.toggle_button {
-    height: 100%;
-    margin: 0;
+
+#order_by_name_btn{
+    text-align: center;
+}
+
+#order_by_sequence_btn{
+    text-align: center;
+}
+
+#order_by_switch{
+    width: 45%;
+    height: 1.45rem;
+    position: absolute;
+    background-color: rgba(85, 85, 85, 0.44);
+    color: black;
     border-radius: 0.8rem;
-    width: 8rem;
-    outline: none;
-    font-size: small;
+    transition: all 0.3s ease;
 }
 
-.toggle_button:enabled {
-    background: #151515;
-    border: none;
-    color: #666666;
+#order_by_switch.by_name{
+    left:3%;
 }
 
-.toggle_button:enabled {
-    background: #151515;
-    border: none;
-    color: #666666;
+#order_by_switch.by_value{
+    left:51%;
 }

@@ -154,26 +154,25 @@ function updateDao(isOnLoad) {
 }
 
 function updateOrderByButtons(results_order, allPlayersReady) {
-    let orderByNameBtn = document.getElementById("order_by_name_btn");
-    let orderBySequenceBtn = document.getElementById("order_by_sequence_btn");
+    let order_by_switch = document.getElementById("order_by_switch");
     let orderByDiv = document.getElementById("order_by_div");
 
-    if (results_order.includes('CHOOSE')) {
-        if (allPlayersReady) {
-            if (results_order.includes('SEQUENCE')) {
-                orderByNameBtn.disabled = false;
-                orderBySequenceBtn.disabled = true;
+        if (results_order.includes('CHOOSE')) {
+            if (allPlayersReady) {
+                if (results_order.includes('SEQUENCE')) {
+                    toggleStyleClass(order_by_switch, "by_value","by_name");
+                } else {
+                    toggleStyleClass(order_by_switch, "by_name","by_value");
+                }
+                toggleStyleClass(orderByDiv, "display_flex","display_none");
             } else {
-                orderByNameBtn.disabled = true;
-                orderBySequenceBtn.disabled = false;
+                toggleStyleClass(orderByDiv, "display_none","display_flex");
             }
-            removeStyleClass(orderByDiv, "display_none");
         } else {
-            addStyleClass(orderByDiv, "display_none");
+            toggleStyleClass(orderByDiv, "display_none","display_flex");
         }
-    } else {
-        addStyleClass(orderByDiv, "display_none");
-    }
+
+
     gResultOder = results_order;
 }
 
@@ -379,7 +378,6 @@ function updateDom(myJson, isOnLoad) {
     setCSet(myJson.cardset_flags);
 
     if (!isOnLoad) {
-        console.log(gUpdateDom);
         let isStillOnLoad = isOnLoad;
         if (gUpdateDom<=2) isStillOnLoad = true;
         if (updatePlayersCards(myJson.players, isStillOnLoad)) {

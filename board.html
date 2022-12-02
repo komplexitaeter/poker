@@ -72,10 +72,12 @@
 
         <div id="cbox" tabindex="2" class="sizefit switchable"></div>
 
-        <div id="order_by_div" class="toggle_container">
-            <button id="order_by_name_btn" class="toggle_button" onclick="toggleOrderBy()">Name</button>
-            <button id="order_by_sequence_btn" class="toggle_button" onclick="toggleOrderBy()">Value</button>
+        <div id="order_by_div" class="toggle_container" onclick="toggleOrderBy()">
+            <div id="order_by_name_btn" class="btn"><span>Name</span></div>
+            <div id="order_by_sequence_btn" class="btn"><span>Value</span></div>
+            <div id="order_by_switch" class="by_name"></div>
         </div>
+
 
         <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
 
