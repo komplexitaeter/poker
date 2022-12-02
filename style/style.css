@@ -1421,7 +1421,8 @@ table tr:first-child{
 #order_by_switch{
     width: 45%;
     height: 1.45rem;
-    padding-left: 0.2rem;
+    padding-left: 0.4rem;
+    padding-top: 0.1rem;
     position: absolute;
     background-color: rgba(85, 85, 85, 0.44);
     color: #a4a2a2;
@@ -1433,9 +1434,9 @@ table tr:first-child{
 }
 
 #order_by_switch.by_name{
-    left:3%;
+    left:1%;
 }
 
 #order_by_switch.by_value{
-    left:51%;
+    left:49%;
 }
