@@ -225,6 +225,8 @@ function updateCards(cardsDiv, players) {
 
         let player = players.find(p => p.mkey == card.id);
 
+        const newPos = getCardPos(player.i, players.length);
+
         const srcStr = 'src/c_' + player.display_card_key + '.png';
         const oldSrc = Array.from(card.getElementsByClassName('card_image'))[0].src;
         if (!oldSrc.includes(srcStr)) {
@@ -233,9 +235,14 @@ function updateCards(cardsDiv, players) {
             if (!oldSrc.includes('c_done') && !oldSrc.includes('c_prgrss') &&
                 !srcStr.includes('c_done') && !srcStr.includes('c_prgrss'))
             {
+                let animationDelay = 10;
+                if (players.length > 1 && (
+                    card.style.left !== newPos.left ||
+                    card.style.top !== newPos.top
+                )) animationDelay = 900;
                 setTimeout(function () {
                     addStyleClass(card, 'cardValueChanged');
-                }, 10);
+                }, animationDelay);
             }
         }
 
@@ -243,7 +250,6 @@ function updateCards(cardsDiv, players) {
             Array.from(card.getElementsByClassName('card_player_name'))[0].textContent = player.name;
         }
 
-        const newPos = getCardPos(player.i, players.length);
         if (card.style.left !== newPos.left) {
             card.style.left = newPos.left;
         }
