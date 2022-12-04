@@ -18,7 +18,12 @@ body {
     -o-user-select: none;
     user-select: none;
     -webkit-user-drag: none;
+}
+
+.body-fade-in {
+    -webkit-transition: opacity 1s ease-in;
     transition: opacity 1s ease-in;
+    -webkit-transition-delay: 0.3s;
     transition-delay: 0.3s;
 }
 

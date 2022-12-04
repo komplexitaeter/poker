@@ -459,7 +459,7 @@ function loadBoard() {
 
 function loadInit() {
     initDisplayHandling();
-    document.body.style.display = "unset";
+    document.body.style.opacity = "1";
     document.getElementById("teaminput").focus();
     measureEvent("INIT_ON_LOAD");
 }
