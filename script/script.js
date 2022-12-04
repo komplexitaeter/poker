@@ -7,7 +7,6 @@ let gCardsConfig = null;
 let gCardsPresets = null;
 let gOnLoadFocus = null;
 let gSurvey = null;
-let gUpdateDom = 0;
 let gResultOder = 'NAME';
 
 
@@ -318,7 +317,6 @@ function updatePlayersCards(players, isOnLoad) {
 }
 
 function updateDom(myJson, isOnLoad) {
-    gUpdateDom++;
 
     localStorage.setItem('all_players_ready', myJson.all_players_ready);
 
@@ -384,9 +382,7 @@ function updateDom(myJson, isOnLoad) {
     setCSet(myJson.cardset_flags);
 
     if (!isOnLoad) {
-        let isStillOnLoad = isOnLoad;
-        if (gUpdateDom<=2) isStillOnLoad = true;
-        if (updatePlayersCards(myJson.players, isStillOnLoad)) {
+        if (updatePlayersCards(myJson.players, isOnLoad)) {
             /* returns true when new cards have been added */
             adaptToDevice();
             setColor();
@@ -396,12 +392,36 @@ function updateDom(myJson, isOnLoad) {
 
     updateSelectedC(myJson.selected_card_key);
 
-    let newroundbtn = document.getElementById('newroundbtn');
+    updateNewRoundBtn(myJson.one_ore_more_player_ready, myJson.all_players_ready);
 
-    if (myJson.one_ore_more_player_ready === 'true') {
-        toggleStyleClass(newroundbtn, "display_unset", "display_none");
+
+    controlsDsp(myJson);
+    updateOrderByButtons(myJson.results_order, myJson.all_players_ready=='true' && myJson.players.length>0);
+    updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
+    updateOrderByConfig(myJson.results_order);
+
+    if (isOnLoad) {
+        document.body.style.opacity = '1';
+
+        if (gOnLoadFocus) {
+            gOnLoadFocus.focus();
+            gOnLoadFocus = null;
+        }
+
+        adaptToDevice();
+        updateDao(false);
+    }
+
+
+}
+
+function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
+    let newRoundBtn = document.getElementById('newroundbtn');
+
+    if (oneOreMorePlayerReady === 'true') {
+        toggleStyleClass(newRoundBtn, "display_unset", "display_none");
         let newButtonText;
-        if (myJson.all_players_ready === 'true') {
+        if (allPlayersReady === 'true') {
             newButtonText = 'New Round';
         } else {
             newButtonText = 'Cancel Round';
@@ -411,32 +431,13 @@ function updateDom(myJson, isOnLoad) {
         }
     }
     else {
-        toggleStyleClass(newroundbtn, "display_none", "display_unset");
+        toggleStyleClass(newRoundBtn, "display_none", "display_unset");
     }
-
-
-    controlsDsp(myJson);
-    updateOrderByButtons(myJson.results_order, myJson.all_players_ready=='true' && myJson.players.length>0);
-    updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
-    updateOrderByConfig(myJson.results_order);
-
-    if (isOnLoad) {
-        document.body.style.display = 'inherit';
-
-        if (gOnLoadFocus) {
-            gOnLoadFocus.focus();
-            gOnLoadFocus = null;
-        }
-
-        adaptToDevice();
-    }
-
-
 }
 
 
-function handleNewData() {
-    updateDao(false);
+function handleNewData(myJson, gFetchCount, gLastExecutionTime) {
+    updateDom(myJson, false);
 }
 
 function loadBoard() {

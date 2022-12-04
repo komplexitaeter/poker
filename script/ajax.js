@@ -1,5 +1,5 @@
 const gPreferStreaming = false;
-const gPullInterval = 500;
+const gPullInterval = 400;
 const gPauseWhenInvisible = false;
 
 let gLastExecutionTime="";
@@ -18,7 +18,9 @@ function initializeConnection(baseUrl, params, func) {
         let url = getUrl(baseUrl, params, useStreaming);
         initializeStreaming(url, func);
     } else {
-        initializePulling(baseUrl, params, func);
+        setTimeout(function () {
+            initializePulling(baseUrl, params, func);
+        }, gPullInterval);
     }
 }
 
