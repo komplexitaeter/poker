@@ -1402,7 +1402,7 @@ table tr:first-child{
 }
 
 .toggle_container {
-    height: 1.5rem;
+    height: 1.55rem;
     border-radius: 1.1rem;
     width: 8rem;
     margin: auto;
@@ -1449,7 +1449,7 @@ table tr:first-child{
 }
 
 #order_by_switch.by_name{
-    left:1%;
+    left:1.5%;
 }
 
 #order_by_switch.by_value{
