@@ -3,19 +3,16 @@ html {
 }
 
 body {
-    margin: 0px;
+    margin: 0;
     outline: none;
-    padding: 0px;
+    padding: 0;
     background: black;
     text-align: center;
     overflow-y: scroll;
     min-height: 100%;
     opacity: 0;
-    font-family: Arial;
+    font-family: Arial, serif;
     -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -o-user-select: none;
     user-select: none;
     -webkit-user-drag: none;
 }
@@ -29,9 +26,6 @@ body {
 
 img {
     -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -o-user-select: none;
     user-select: none;
     -webkit-user-drag: none;
 }
@@ -84,10 +78,7 @@ img {
     }
 
 #topic {
-    margin-top: 1.5em;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 0;
+    margin: 1.5em auto 0;
     border-radius: 0.5em;
     color: #fc91f5;
     height: fit-content;
@@ -712,7 +703,7 @@ div#cbox {
 }
 
 .survey-closed {
-    padding: 0rem 1rem 0rem 1rem;
+    padding: 0 1rem 0 1rem;
     height:0;
     transition: height 1s ease-out 0s, padding 0.2s ease-out 0.8s;
 }
@@ -745,7 +736,7 @@ div#cbox {
 .vote_option {
     cursor: pointer;
     display: flex;
-    padding: 0.3rem 0rem 0.3rem 1rem;
+    padding: 0.3rem 0 0.3rem 1rem;
     color: white;
     border: 1px solid white;
     border-radius: 1rem;
@@ -793,7 +784,7 @@ div#cbox {
 .vote_results_bar_value {
     /*animation: load 3s normal forwards;*/
     border-radius: 1rem;
-    padding: 0.3rem 0rem 0.3rem 1rem;
+    padding: 0.3rem 0 0.3rem 1rem;
     background: rgba(0, 0, 0, 0.67);
     height: auto;
     width: 0;
@@ -1093,20 +1084,14 @@ div#cbox {
 .feedback_star {
     display: none;
     width: 20px;
-    padding-left: 0px;
-    padding-right: 0px;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding: 5px 0;
     cursor: pointer;
     transition: all 0.4s ease-out;
 }
 
     .feedback_star.mobile {
         width: 7%;
-        padding-left: 0px;
-        padding-right: 0px;
-        padding-top: 2%;
-        padding-bottom: 2%;
+        padding: 2% 0;
         transition: all 0.4s ease-out;
     }
 
@@ -1300,10 +1285,10 @@ div#cbox {
     text-align: center;
     overflow-y: auto;
     position: absolute;
-    left: 0px;
+    left: 0;
     top: 125px;
-    bottom: 0px;
-    right: 0px;
+    bottom: 0;
+    right: 0;
 }
 
 .teamul {
