@@ -1,5 +1,5 @@
 const gPreferStreaming = false;
-const gPullInterval = 400;
+const gPullInterval = 500;
 const gPauseWhenInvisible = false;
 
 let gLastExecutionTime="";
