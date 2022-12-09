@@ -53,7 +53,7 @@ function validate_team($t, $link) {
     return $is_valid;
 }
 
-function getDao($t, $id) {
+function getDaoOLD($t, $id) {
     $all_players_ready = true;
     $one_ore_more_player_ready = false;
     $name = '';
@@ -68,10 +68,12 @@ function getDao($t, $id) {
     $survey = 'NO';
     $topic = null;
     $results_order = 'NAME';
+    $players=array();
+
 
     $link = db_init();
 
-    validate_team($t, $link) or exit;
+    validate_team($t, $link) or die();
 
     /* set last callback of current player */
     $sql = "UPDATE pok_players_tbl 
@@ -168,13 +170,8 @@ function getDao($t, $id) {
         }
     }
 
-
     $link->close();
 
-    if ($all_players_ready) $all_players_ready_s = 'true'; else $all_players_ready_s = 'false';
-    if ($one_ore_more_player_ready) $one_ore_more_player_ready_s = 'true'; else $one_ore_more_player_ready_s = 'false';
-
-    $players=array();
     foreach($objs as $obj) {
 
         if ($all_players_ready)
@@ -211,8 +208,8 @@ function getDao($t, $id) {
         "timer_visibility"=>(Int)$timer_visibility,
         "results_order"=>$results_order,
         "selected_card_key"=>$card_key,
-        "all_players_ready"=>$all_players_ready_s,
-        "one_ore_more_player_ready"=>$one_ore_more_player_ready_s,
+        "all_players_ready"=>$all_players_ready,
+        "one_ore_more_player_ready"=>$one_ore_more_player_ready,
         "players"=>$players );
 }
 
@@ -312,4 +309,163 @@ function get_team_id($name, $link) {
     }
 
     return $id;
+}
+
+
+function getDao($t, $id) {
+    $all_players_ready = true;
+    $one_ore_more_player_ready = false;
+    $name = '';
+    $mkey = '';
+    $timer_time = null;
+    $timer_status = null;
+    $timer_visibility = 0;
+    $card_key = '';
+    $cardset_flags = null;
+    $team_name = null;
+    $color_mode = 'dark';
+    $survey = 'NO';
+    $topic = null;
+    $results_order = 'NAME';
+    $players=array();
+
+
+    $link = db_init();
+
+    /* set last callback of current player */
+    $sql = "UPDATE pok_players_tbl 
+               SET last_callback_time = current_timestamp 
+             WHERE id='$id'
+               AND team_id='$t'";
+    $link->query($sql);
+
+    $sql = "SELECT t.cardset_flags
+                  ,t.name
+                  ,if(not isnull(t.timer_start_time) and isnull(t.timer_pause_time)
+                      ,'RUNNING'
+                      ,'PAUSED') timer_status
+                  ,timestampdiff(SECOND
+                                ,ifnull(t.timer_start_time, current_timestamp)
+                                ,ifnull(t.timer_pause_time, current_timestamp)) timer_time
+                  ,t.timer_visibility
+                  ,t.topic
+                  ,t.results_order
+            FROM pok_teams_tbl as t
+             WHERE t.id = '$t'";
+    if ($result = $link->query($sql)) {
+        $obj = $result->fetch_object();
+        $cardset_flags = $obj->cardset_flags;
+        $team_name = $obj->name;
+        $timer_status = $obj->timer_status;
+        $timer_time = $obj->timer_time;
+        $timer_visibility = $obj->timer_visibility;
+        $topic = $obj->topic;
+        $results_order = $obj->results_order;
+    }
+
+    $sql = "SELECT p.* 
+              FROM pok_players_tbl p
+             WHERE p.team_id = '$t' 
+             ORDER BY p.name";
+    $objs = array();
+    if ($result = $link->query($sql)) {
+        while(  $obj = $result->fetch_object()) {
+
+            if ($obj->id == $id) {
+                $name=$obj->name;
+                $mkey=$obj->mkey;
+                $card_key=$obj->card_key;
+            }
+
+            if (is_null($obj->card_key)) $all_players_ready = false;
+            else $one_ore_more_player_ready = true;
+
+            $objs[] = $obj;
+        }
+    }
+
+
+    $sql = $link->prepare("SELECT count(1) as user_exists
+                                     ,max(u.color_mode) as color_mode
+                                     ,max(u.survey_id) as survey_id
+                                     ,max(u.survey_skipped) as survey_skipped
+                                    ,max((select count(1) 
+                                            from pok_survey_votes_tbl v 
+                                           where v.user_id = u.id 
+                                             and v.survey_id = u.survey_id) ) voted
+                                FROM pok_user_tbl u WHERE u.id=?");
+    $sql->bind_param('s', $id);
+    $sql->execute();
+    $result = $sql->get_result();
+    if ($obj = $result->fetch_object()) {
+        if ($obj->user_exists == 0) {
+            require './survey_selector.php';
+            $survey_id = get_survey_id($link, $t, $id);
+            if ($survey_id != null) $survey = 'LOUD';
+            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id,survey_id) values(?,?)");
+            $sql_i->bind_param('si', $id, $survey_id);
+            $sql_i->execute();
+        } else {
+            $color_mode = $obj->color_mode;
+            if ($obj->survey_id > 0) {
+                if ($obj->voted != 0) $survey = 'VOTED';
+                elseif ($obj->survey_skipped != 0)  $survey = 'SILENT';
+                else $survey = 'LOUD';
+            } elseif ($obj->survey_id == -1) {
+                require './survey_selector.php';
+                $survey_id = get_survey_id($link, $t, $id);
+                if ($survey_id != null) {
+                    $survey = 'LOUD';
+                    $sql_i = $link->prepare("UPDATE pok_user_tbl SET survey_id=? WHERE id=?");
+                    $sql_i->bind_param('is', $survey_id, $id);
+                } else {
+                    $sql_i = $link->prepare("UPDATE pok_user_tbl SET survey_id=null WHERE id=?");
+                    $sql_i->bind_param('s',$id);
+                }
+                $sql_i->execute();
+            }
+        }
+    }
+
+    $link->close();
+
+    foreach($objs as $obj) {
+
+        if ($all_players_ready)
+            $display_card_key = $obj->card_key;
+        else if (is_null($obj->card_key))
+            $display_card_key = 'prgrss1';
+        else
+            $display_card_key = 'done001';
+
+        $player = (object) array(
+            "name"=>$obj->name
+        ,"mkey"=>$obj->mkey
+        ,"display_card_key"=>$display_card_key
+        ,"i"=>(int)null);
+        $players[] = $player;
+
+    }
+
+    if ($all_players_ready and substr_count($results_order, 'SEQUENCE')>0)
+        $players = sort_players_by_sequence($players);
+
+    for ($i=0;$i<count($players);$i++) $players[$i]->i= $i;
+
+    return array(  "name"=> $name,
+        "mkey"=>$mkey,
+        "id"=>$id,
+        "color_mode"=>(String)$color_mode,
+        "survey"=>$survey,
+        "team_name"=>$team_name,
+        "cardset_flags"=>$cardset_flags,
+        "topic"=>(String)$topic,
+        "timer_status"=>$timer_status,
+        "timer_time"=>(Int)$timer_time,
+        "timer_visibility"=>(Int)$timer_visibility,
+        "results_order"=>$results_order,
+        "selected_card_key"=>$card_key,
+        "all_players_ready"=>$all_players_ready,
+        "one_ore_more_player_ready"=>$one_ore_more_player_ready,
+        "players"=>$players );
 }

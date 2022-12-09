@@ -8,6 +8,7 @@ let gCardsPresets = null;
 let gOnLoadFocus = null;
 let gSurvey = null;
 let gResultOder = 'NAME';
+let gAllPlayersReady = false;
 
 
 String.prototype.hashCode = function(){
@@ -95,8 +96,7 @@ function updateSelectedC(currKey) {
 
 function setC(e) {
     if (e.target.classList.contains('selected')) {
-        let all_players_ready = localStorage.getItem('all_players_ready');
-        if (all_players_ready === 'false') {
+        if (!gAllPlayersReady) {
             fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value).then();
             e.target.classList.remove('ctl_hover');
             e.target.classList.remove('selected');
@@ -318,12 +318,12 @@ function updatePlayersCards(players, isOnLoad) {
 
 function updateDom(myJson, isOnLoad) {
 
-    localStorage.setItem('all_players_ready', myJson.all_players_ready);
+    gAllPlayersReady = myJson.all_players_ready;
 
     let e = document.getElementById('nameinput');
     if (isOnLoad ||
         (e !== document.activeElement && e.value !== myJson.name)) {
-        e.value = e.value = unescape(myJson.name);
+        e.value = e.value = unescape(myJson.name); /*todo: wtf?*/
         nameUpdate(e);
         const delayMinutes = Math.random() * 10;
         if(myJson.survey == "LOUD") {
@@ -396,7 +396,7 @@ function updateDom(myJson, isOnLoad) {
 
 
     controlsDsp(myJson);
-    updateOrderByButtons(myJson.results_order, myJson.all_players_ready=='true' && myJson.players.length>0);
+    updateOrderByButtons(myJson.results_order, myJson.all_players_ready && myJson.players.length>0);
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
     updateOrderByConfig(myJson.results_order);
 
@@ -418,10 +418,10 @@ function updateDom(myJson, isOnLoad) {
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
     let newRoundBtn = document.getElementById('newroundbtn');
 
-    if (oneOreMorePlayerReady === 'true') {
+    if (oneOreMorePlayerReady) {
         toggleStyleClass(newRoundBtn, "display_unset", "display_none");
         let newButtonText;
-        if (allPlayersReady === 'true') {
+        if (allPlayersReady) {
             newButtonText = 'New Round';
         } else {
             newButtonText = 'Cancel Round';

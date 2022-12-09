@@ -2,13 +2,12 @@
 $start = microtime(true);
 require './config.php';
 require './api/lib.php';
-for ($i=0;$i<1000;$i++) {
-    $link = db_init();
-    $sql = $link->prepare(" select count(1) cnt from pok_teams_tbl");
-    $sql->execute();
-    $result = $sql->get_result();
-    $obj = $result->fetch_object();
-    $link->close();
+$id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
+$t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
+for ($i=0;$i<10000;$i++) {
+    $dao = getDaoOLD($t, $id);
+    $json = json_encode($dao, JSON_UNESCAPED_UNICODE);
+    if ($i==0) echo $json;
 }
 $end = (microtime(true) - $start);
-echo "elapsed time: $end";
+echo "<br/><br/>elapsed time: ".number_format(round($end,3),3,',','') ;
