@@ -12,7 +12,6 @@ $data_obj = getDao($t, $id);
 /* todo: should return 0 if nothing changed
 
     first step: add add a player.type [0=Observer;1=Player]
-AB
 
 */
 echo json_encode($data_obj, JSON_UNESCAPED_UNICODE);
