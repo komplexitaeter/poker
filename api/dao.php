@@ -9,4 +9,5 @@ $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 
 $data_obj = getDao($t, $id);
 
+/* todo: should return 0 if nothing changed */
 echo json_encode($data_obj, JSON_UNESCAPED_UNICODE);
