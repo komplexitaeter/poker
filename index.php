@@ -1,4 +1,8 @@
 <?php
+//$url = 'https://poker.komplexitaeter.de';
+//$statusCode = 303;
+//header('Location: ' . $url, true, $statusCode);
+//die();
 require './config.php';
 require './api/lib.php';
 
