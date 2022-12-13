@@ -5,7 +5,7 @@
     <title>Agile Poker Cards Online - Statistics</title>
     <link rel="stylesheet" href="style/style.css" media="screen" />
 </head>
-<body onload="document.body.style.display = 'unset';">
+<body onload="document.body.style.opacity = '1';">
 
     <table>
         <tr class="table_header">
