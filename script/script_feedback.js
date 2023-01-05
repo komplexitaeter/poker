@@ -201,7 +201,9 @@ function toggleSurvey(forceSurvey){
             toggleStyleClass(survey, 'survey-closed', 'survey-open');
             toggleStyleClass(surveyArrow, 'up', 'down');
             survey.setAttribute('data-state', "closed");
-            fetch(url);
+            fetch(url).then(()=>{
+                setTimeout(()=>{updateDao(false)}, 100);
+            });
             break;
 
     }
@@ -345,6 +347,7 @@ function save_topic(){
         "topic=" + topic
     );
 
+    pushDomChange();
     toggle_topic_box();
 
     measureEvent("TOPIC_SAVED");
@@ -372,7 +375,8 @@ function toggleCSet(e) {
 }
 
 function updateCardset(cardSetDec) {
-    fetch('./api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + document.getElementById("t").value).then();
+    let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + document.getElementById("t").value;
+    fetch(url).then(()=>{pushDomChange();});
 }
 
 function preSet(e) {
@@ -413,6 +417,7 @@ function changeSortOrder(e) {
     let httpRequest = new XMLHttpRequest();
     httpRequest.open("GET", url, false);
     httpRequest.send();
+    pushDomChange();
 }
 
 /**

@@ -1,4 +1,5 @@
 let sid = localStorage.getItem('SID');
+let gConn = null;
 let gColorMode = "dark";
 let gScreenWidth = null;
 let gDisplayType = null;
@@ -47,12 +48,14 @@ if (sid === null) {
 }
 
 function nameChanged(e) {
-    fetch('./api/name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + document.getElementById("t").value).then();
-    document.getElementById('cbox').focus();
+    let url = './api/name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + document.getElementById("t").value;
+    fetch(url).then(()=>{pushDomChange();});
+    setTimeout( ()=>{document.getElementById('cbox').focus()}, 100);
 }
 
 function newRound() {
-    fetch('./api/newround.php?t=' + document.getElementById("t").value).then();
+    let url = './api/newround.php?t=' + document.getElementById("t").value;
+    fetch(url).then(()=>{pushDomChange();});
     toggleMobileMenu("closed");
 }
 
@@ -79,7 +82,8 @@ function controlsDsp(e) {
 }
 
 function deletePlayer(e) {
-    fetch('./api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + document.getElementById("t").value).then();
+    let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + document.getElementById("t").value;
+    fetch(url).then(()=>{pushDomChange();});
 }
 
 function updateSelectedC(currKey) {
@@ -95,15 +99,18 @@ function updateSelectedC(currKey) {
 }
 
 function setC(e) {
+    let url = null;
     if (e.target.classList.contains('selected')) {
         if (!gAllPlayersReady) {
-            fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value).then();
+            url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value;
             e.target.classList.remove('ctl_hover');
             e.target.classList.remove('selected');
         }
     }
     else
-        fetch('./api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + document.getElementById("t").value).then();
+        url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + document.getElementById("t").value;
+
+    if (url !== null) fetch(url).then(()=>{pushDomChange();});
 }
 
 function setCHover(e) {
@@ -436,25 +443,27 @@ function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
     }
 }
 
+function initializeWSConnection(teamId) {
+    gConn = new WebSocket('ws://'+window.location.hostname+':8443');
+    gConn.onmessage = function(e){
+        if (e.data.includes('pull')) updateDao(false);
+    };
+    gConn.onerror = function(e){
+        setTimeout(function () {
+            initializeWSConnection(document.getElementById("t").value);
+        }, 1000);    };
+    gConn.onopen = () => gConn.send('subscribe: '+teamId);
+}
 
-function handleNewData(myJson, gFetchCount, gLastExecutionTime) {
-    updateDom(myJson, false);
+function pushDomChange() {
+    gConn.send('push');
 }
 
 function loadBoard() {
     loadCardConfig();
-
-    let baseUrl = 'api/dao';
-    let params = {
-        "id": localStorage.getItem('SID'),
-        "t": document.getElementById("t").value,
-    }
-
     updateDao(true);
-
-    initializeConnection(baseUrl, params, handleNewData);
+    initializeWSConnection(document.getElementById("t").value);
     initDisplayHandling();
-
     measureEvent("BOARD_ON_LOAD");
 }
 
@@ -586,20 +595,24 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
 }
 
 function switchStopwatchVisiblity(){
-    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=toggle_visibility');
+    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=toggle_visibility';
+    fetch(url).then(()=>{pushDomChange();});
     measureEvent("TOGGLE_TIMER");
 }
 
 function stopwatchStart(){
-    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=start');
+    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=start';
+    fetch(url).then(()=>{pushDomChange();});
 }
 
 function stopwatchPause(){
-    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=pause');
+    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=pause';
+    fetch(url).then(()=>{pushDomChange();});
 }
 
 function stopwatchReset(){
-    fetch('./api/timer.php?t=' + document.getElementById("t").value + '&action=reset');
+    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=reset';
+    fetch(url).then(()=>{pushDomChange();});
 }
 
 
@@ -678,10 +691,10 @@ function toggleOrderBy(opt) {
     let url = './api/update_results_order.php?t='+t+'&results_order=';
     if (gResultOder === 'CHOOSE:SEQUENCE') {
         url += 'CHOOSE:NAME';
-        fetch(url).then();
+        fetch(url).then(()=>{pushDomChange();});
     } else if (gResultOder === 'CHOOSE:NAME') {
         url += 'CHOOSE:SEQUENCE';
-        fetch(url).then();
+        fetch(url).then(()=>{pushDomChange();});
     }
 }
 

@@ -953,6 +953,7 @@ div#cbox {
 
 .stopwatch_control{
     margin-top:1rem;
+    cursor: pointer;
 }
 
 .stopwatch_control>img{
