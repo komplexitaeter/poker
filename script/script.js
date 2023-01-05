@@ -10,6 +10,8 @@ let gOnLoadFocus = null;
 let gSurvey = null;
 let gResultOder = 'NAME';
 let gAllPlayersReady = false;
+let gLastJson = null;
+
 
 
 String.prototype.hashCode = function(){
@@ -154,6 +156,7 @@ function updateDao(isOnLoad) {
         })
         .then((myJson) => {
 
+            gLastJson = myJson;
             updateDom(myJson, isOnLoad)
 
         });
@@ -452,7 +455,10 @@ function initializeWSConnection(teamId) {
         setTimeout(function () {
             initializeWSConnection(document.getElementById("t").value);
         }, 1000);    };
-    gConn.onopen = () => gConn.send('subscribe: '+teamId);
+    gConn.onopen = () => {
+        gConn.send('subscribe: '+teamId);
+        updateDao(false);
+    }
 }
 
 function pushDomChange() {
@@ -541,8 +547,6 @@ function copyLink() {
 }
 
 function adaptToDevice(){
-    /*TODO: find out why this line registers twice in log when switching viewport size*/
-
     let size = getBrowserWidth();
     if (size === "xs" || size === "sm") {
         Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
@@ -742,9 +746,14 @@ function toggleStyleClass(element, addClassName, removeClassName) {
     addStyleClass(element, addClassName);
 }
 
+function handleResize() {
+    adaptToDevice();
+    updatePlayersCards(gLastJson.players, false);
+}
+
 function initDisplayHandling() {
     adaptToDevice();
-    window.addEventListener('resize', adaptToDevice);
+    window.addEventListener('resize', handleResize);
 }
 
 /*** ******** ****/
