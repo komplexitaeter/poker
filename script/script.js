@@ -447,7 +447,7 @@ function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
 }
 
 function initializeWSConnection(teamId) {
-    gConn = new WebSocket('wss://'+window.location.hostname+'/');
+    gConn = new WebSocket('wss://'+window.location.hostname+'/poker-msg');
     gConn.onmessage = function(e){
         if (e.data.includes('pull')) updateDao(false);
     };
