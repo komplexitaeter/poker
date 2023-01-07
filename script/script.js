@@ -11,6 +11,9 @@ let gSurvey = null;
 let gResultOder = 'NAME';
 let gAllPlayersReady = false;
 let gLastJson = null;
+let gTimerTime = null;
+let gTimerBaseTime = new Date();
+let gTimerInterval = null;
 
 
 
@@ -447,7 +450,10 @@ function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
 }
 
 function initializeWSConnection(teamId) {
-    gConn = new WebSocket('wss://'+window.location.hostname+'/poker-msg');
+    let wsProtocol = 'wss://';
+    if (window.location.protocol.includes('http:')) wsProtocol = 'ws://';
+
+    gConn = new WebSocket(wsProtocol+window.location.host+'/poker-msg');
     gConn.onmessage = function(e){
         if (e.data.includes('pull')) updateDao(false);
     };
@@ -563,7 +569,12 @@ function adaptToDevice(){
 
 function updateStopwatch(timer_status, timer_time, timer_visibility){
 
-    timer_time = new Date(timer_time * 1000).toISOString().substr(11, 8);
+    /* Save last timer value from Json response according to the base date (now),
+     * so the correct clock value can be calculated by the client, without
+     * relying on frequent server responses.
+     * */
+    gTimerTime = timer_time;
+    gTimerBaseTime = new Date();
 
     switch(timer_status){
         case "PAUSED":
@@ -580,6 +591,8 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
         break;
     }
 
+    timer_time = new Date(timer_time * 1000).toISOString().substr(11, 8);
+
     if(document.getElementById("stopwatch_timer").value != timer_time){
         document.getElementById("stopwatch_timer").value = timer_time;
     }
@@ -595,6 +608,31 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
 
         default:
         break;
+    }
+
+    /* Initiate r clear the Interval function, based on the timer status
+     */
+    if (timer_status === "RUNNING" && timer_visibility === 1) {
+        if (gTimerInterval === null) gTimerInterval = setInterval(updateStopwatchInterval, 500);
+    } else {
+        if (gTimerInterval !== null) {
+            clearInterval(gTimerInterval);
+            gTimerInterval = null;
+        }
+    }
+}
+
+function updateStopwatchInterval() {
+    /* Add the number of seconds elapsed since the last update of the timer time
+     * to this value und update the DOM accordingly (just to create the illusion
+     * of time).
+     * */
+    let timer_time = gTimerTime + Math.round((new Date() - gTimerBaseTime)/1000);
+
+    timer_time = new Date(timer_time * 1000).toISOString().substr(11, 8);
+
+    if(document.getElementById("stopwatch_timer").value != timer_time){
+        document.getElementById("stopwatch_timer").value = timer_time;
     }
 }
 
