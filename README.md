@@ -8,7 +8,7 @@ mysql-server, phpmyadmin (e.g.).
 To install this project, loosely notice this steps:
 
 1. Get sources from GIT, e.g.: git clone -b master https://github.com/komplexitaeter/poker /home/poker/public_html
-2. Create database (e.g. pok_db) and User (e.g. pok_usr) and Grand CRUD operations on this database to user
+2. Create database (e.g. pok_db) and User (e.g. pok_usr) and grant CRUD operations on this database to user
 3. Import database schema from db_schema_pok.sql (e.g. use phpmyadmin or mysql-cli)
 4. Edit config.php (how and where to connect to your database)
 5. Follow up on GIT komplexitaeter/poker-msg/README.md instructions to "really" have this "connected-only-feeling"
