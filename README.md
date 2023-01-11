@@ -2,7 +2,7 @@
 An Agile Estimations Poker Tool for those teams, only connected online.
 
 This is a LAMP stack based web-application (replace L with OS of your choice, of course). It is required, to have, more
-or less, the following packages and/or services up and running: https(apache2 or nginx e.g.), php (php-fpm e.g,), php-json, php-mysql,
+or less, the following packages and/or services up and running: httpd(apache2 or nginx e.g.), php (php-fpm e.g,), php-json, php-mysql,
 mysql-server, phpmyadmin (e.g.).
 
 To install this project, loosely notice this steps:
