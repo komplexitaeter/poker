@@ -523,6 +523,21 @@ div#cbox {
     border-color: #84cbff;
 }
 
+#show_qr_code {
+    position: absolute;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: 5.3rem;
+    background-image: url("../src/open_qr_code_icon.png");
+    background-size: 100%;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+#show_qr_code:hover {
+    background-image: url("../src/open_qr_code_icon_hover.png");
+}
+
 .mobile-menu {
 
 }
@@ -1447,4 +1462,18 @@ table tr:first-child{
 
 #order_by_switch.by_value{
     left:49%;
+}
+
+#overlay_qr_code {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    opacity: 90%;
+    z-index: 99999999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }

@@ -474,6 +474,7 @@ function pushDomChange() {
 function loadBoard() {
     loadCardConfig();
     updateDao(true);
+    generateQRCode(window.location.href);
     initializeWSConnection(document.getElementById("t").value);
     initDisplayHandling();
     measureEvent("BOARD_ON_LOAD");
@@ -552,7 +553,41 @@ function copyLink() {
 
 }
 
-function adaptToDevice(){
+function generateQRCode(url) {
+
+    const qrCode = new QRCodeStyling({
+        width: 300,
+        height: 300,
+        type: "svg",
+        data: url,
+        dotsOptions: {
+            color: "white",
+            type: "extra-rounded"
+        },
+        image: "src/logo_qr_code.png",
+        cornersSquareOptions: {
+            type: "extra-rounded"
+        },
+        backgroundOptions: {
+            color: "black",
+        },
+        qrOptions: {typeNumber: "0", mode: "Byte", errorCorrectionLevel: "Q"}
+
+    });
+
+    qrCode.append(document.getElementById("canvas_qr_code"));
+}
+
+function showQRCode(showIt) {
+    let overlay = document.getElementById("overlay_qr_code");
+    if (showIt) {
+        toggleStyleClass(overlay, "visible", "hidden");
+    } else {
+        toggleStyleClass(overlay, "hidden", "visible");
+    }
+}
+
+function adaptToDevice() {
     let size = getBrowserWidth();
     if (size === "xs" || size === "sm") {
         Array.from(document.getElementsByClassName("sizefit")).forEach(e => {

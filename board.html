@@ -13,6 +13,7 @@
 
         <div class="topnav_title switchable sizefit">
             <div id="team_name" class="sizefit" onclick="copyLink()"></div>
+            <div id="show_qr_code" class="sizefit" onclick="showQRCode(true)"></div>
             <div id="copy_link_btn" class="topnav_clink sizefit" onclick="copyLink()">Copy Link</div>
         </div>
 
@@ -106,9 +107,13 @@
     <!-- todo: use param in js -->
     <input type="hidden" id="t" value="<?php echo($t); ?>" />
 
+    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <script src="https://cdn.jsdelivr.net/remarkable/1.7.1/remarkable.min.js"></script>
     <script src="script/script_feedback.js" type="text/javascript" defer></script>
     <script src="script/script.js" type="text/javascript" defer></script>
+</div>
+<div id="overlay_qr_code" class="hidden" onclick="showQRCode(false)">
+    <did id="canvas_qr_code"></did>
 </div>
 </body>
 </html>
