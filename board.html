@@ -21,13 +21,25 @@
             <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit"/></a>
             <img src="src/mmenu.png" class="open_menu" alt="Menu" onclick="toggleMobileMenu('open')"/>
             <!--<img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />-->
-            <a href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" /></a>
             <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit switchable" alt="Color mode" />
-            <img onclick="toggle_box('topic');" src="src/topic.png" id="topic_btn" class="topnav topnav_btn sizefit switchable" alt="Topic" />
-            <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.png" id="stopwatch_btn" class="topnav topnav_btn sizefit switchable" alt="Stopwatch" />
-            <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" />
-            <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" />
-            <img src="src/cta_design.png" id="cta_design" class="topnav sizefit" alt="we love feedback!" />
+
+            <a id="home_a" href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" onmousemove="hideTeaser()" /></a>
+            <img src="src/cta_home.png" id="cta_home" class="cta_design topnav sizefit" alt="Create another board" />
+
+            <img onclick="toggle_box('topic');" src="src/topic.png" id="topic_btn" class="topnav topnav_btn sizefit switchable" alt="Topic" onmousemove="hideTeaser()" />
+            <img src="src/cta_topic.png" id="cta_topic" class="cta_design topnav sizefit" alt="Set a topic" />
+
+            <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" onmousemove="hideTeaser()" />
+            <img src="src/cta_cset.png" id="cta_cset" class="cta_design topnav sizefit" alt="Board Setup" />
+
+            <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.png" id="stopwatch_btn" class="topnav topnav_btn sizefit switchable" alt="Stopwatch" onmousemove="hideTeaser()" />
+            <img src="src/cta_stopwatch.png" id="cta_stopwatch" class="cta_design topnav sizefit" alt="A Stopwatch" />
+
+            <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" onmousemove="hideTeaser()" />
+            <img src="src/cta_feedback.png" id="cta_feedback" class="cta_design topnav sizefit" alt="We love feedback!" />
+
+            <img src="src/cta_teaser.png" id="cta_teaser" class="topnav sizefit" alt="Tease for a fnew feature" />
+
             <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
             <div id="topic_box" class="topnav sizefit">
                 <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav sizefit" onkeydown="topicChanged()"></textarea>

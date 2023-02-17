@@ -587,6 +587,10 @@ function showQRCode(showIt) {
     }
 }
 
+function hideTeaser() {
+    addStyleClass(document.getElementById("cta_teaser"), "hidden");
+}
+
 function adaptToDevice() {
     let size = getBrowserWidth();
     if (size === "xs" || size === "sm") {
