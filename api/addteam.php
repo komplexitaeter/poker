@@ -30,8 +30,8 @@ foreach ($cards_conf["cards"] as $card) {
 }
 
 
-$sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name)
-                                VALUES(?,?,?)");
+$sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order)
+                                VALUES(?,?,?,'SEQUENCE')");
 $sql->bind_param('sss', $id, $cardset_flags, $t);
 
 if ($sql->execute()) {
