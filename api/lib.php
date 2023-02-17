@@ -163,6 +163,7 @@ function getDao($t, $id) {
     $cardset_flags = null;
     $team_name = null;
     $color_mode = 'dark';
+    $hide_teaser = 0;
     $survey = 'NO';
     $topic = null;
     $results_order = 'NAME';
@@ -232,6 +233,7 @@ function getDao($t, $id) {
                                             from pok_survey_votes_tbl v 
                                            where v.user_id = u.id 
                                              and v.survey_id = u.survey_id) ) voted
+                                    ,max(hide_teaser) hide_teaser
                                 FROM pok_user_tbl u WHERE u.id=?");
     $sql->bind_param('s', $id);
     $sql->execute();
@@ -245,6 +247,7 @@ function getDao($t, $id) {
             $sql_i->execute();
         } else {
             $color_mode = $obj->color_mode;
+            $hide_teaser = $obj->hide_teaser;
             if ($obj->survey_id > 0) {
                 if ($obj->voted != 0) $survey = 'VOTED';
                 elseif ($obj->survey_skipped != 0)  $survey = 'SILENT';
@@ -293,6 +296,7 @@ function getDao($t, $id) {
         "mkey"=>$mkey,
         "id"=>$id,
         "color_mode"=>(String)$color_mode,
+        "hide_teaser"=>(Int)$hide_teaser,
         "survey"=>$survey,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,

@@ -6,6 +6,8 @@ $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	)
 $color_mode = filter_input(INPUT_GET, "color_mode", FILTER_SANITIZE_FULL_SPECIAL_CHARS	);
 $survey_skipped = filter_input(INPUT_GET, "survey_skipped", FILTER_SANITIZE_NUMBER_INT );
 $survey_vote =  filter_input(INPUT_GET, "survey_vote", FILTER_SANITIZE_NUMBER_INT );
+$hide_teaser = filter_input(INPUT_GET, "hide_teaser", FILTER_SANITIZE_NUMBER_INT );
+
 
 $link = db_init();
 
@@ -44,6 +46,14 @@ if ($survey_vote != null and $survey_vote >= 0) {
             $sql->execute();
         }
     }
+}
+
+if ($hide_teaser != null and $hide_teaser >= 0 and $hide_teaser <= 1) {
+    $sql = $link->prepare("UPDATE pok_user_tbl
+                                     SET hide_teaser=?
+                                   WHERE id=?");
+    $sql->bind_param('is', $hide_teaser,$id);
+    $sql->execute();
 }
 
 $link->close();

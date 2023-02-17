@@ -378,6 +378,10 @@ function updateDom(myJson, isOnLoad) {
 
     if (isOnLoad) {
 
+        if (myJson.hide_teaser === 1) {
+            hideTeaser(false);
+        }
+
         if (myJson.color_mode && myJson.color_mode.length > 0) {
             gColorMode = myJson.color_mode;
         }
@@ -587,8 +591,11 @@ function showQRCode(showIt) {
     }
 }
 
-function hideTeaser() {
+function hideTeaser(updateUser=true) {
     addStyleClass(document.getElementById("cta_teaser"), "hidden");
+    if (updateUser) {
+        fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&hide_teaser=1').then();
+    }
 }
 
 function adaptToDevice() {
