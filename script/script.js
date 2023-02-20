@@ -583,10 +583,14 @@ function generateQRCode(url) {
 }
 
 function showQRCode(showIt) {
-    let overlay = document.getElementById("overlay_qr_code");
+    let overlay = document.getElementById("overlay");
+    let overlay_qr = document.getElementById("overlay_qr_code");
     if (showIt) {
         toggleStyleClass(overlay, "visible", "hidden");
+        toggleStyleClass(overlay_qr, "visible", "hidden");
+
     } else {
+        toggleStyleClass(overlay_qr, "hidden", "visible");
         toggleStyleClass(overlay, "hidden", "visible");
     }
 }
