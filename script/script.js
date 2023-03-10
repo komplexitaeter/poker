@@ -462,6 +462,8 @@ function initializeWSConnection(teamId) {
         if (e.data.includes('pull')) updateDao(false);
     };
     gConn.onerror = function(e){
+        gConn.close();
+        gConn = null;
         setTimeout(function () {
             initializeWSConnection(document.getElementById("t").value);
         }, 1000);    };
