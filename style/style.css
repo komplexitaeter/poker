@@ -54,6 +54,14 @@ img {
         margin-top: 1rem;
     }
 
+#linkedin {
+    position: absolute;
+    left: 137px;
+    top: 12px;
+    width: 120px;
+    outline: none;
+}
+
 #nameinput {
     background: black;
     border: 1px solid white;
