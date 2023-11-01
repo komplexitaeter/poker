@@ -871,7 +871,7 @@ div#cbox {
     }
 
     #linkedin_a:hover + #cta_linkedin {
-        opacity: 1;
+        opacity: 0;
     }
 
     #home_a:hover + #cta_home {
