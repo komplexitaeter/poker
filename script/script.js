@@ -414,6 +414,8 @@ function updateDom(myJson, isOnLoad) {
 
     updateNewRoundBtn(myJson.one_ore_more_player_ready, myJson.all_players_ready);
 
+    showCardUsage(myJson.players, myJson.all_players_ready);
+
 
     controlsDsp(myJson);
     updateOrderByButtons(myJson.results_order, myJson.all_players_ready && myJson.players.length>0);
@@ -846,6 +848,51 @@ function handleResize() {
 function initDisplayHandling() {
     adaptToDevice();
     window.addEventListener('resize', handleResize);
+}
+
+function calculateCardStats(players) {
+    let cardStats = {};
+
+    players.forEach(player => {
+        let cardKey = player.display_card_key;
+
+        if (cardStats[cardKey]) {
+            cardStats[cardKey].usageCount++;
+        } else {
+            cardStats[cardKey] = { usageCount: 1, usagePercentage: 0 };
+        }
+    });
+
+    let totalUsage = players.length;
+
+    Object.keys(cardStats).forEach(cardKey => {
+        cardStats[cardKey].usagePercentage = (cardStats[cardKey].usageCount / totalUsage);
+    });
+
+    return cardStats;
+}
+
+function showCardUsage(players, allPlayersReady) {
+    let cardStats = calculateCardStats(players);
+
+    const images = document.querySelectorAll('#ctl img');
+
+    images.forEach(img => {
+        const cardStat = cardStats[img.id];
+
+        if (cardStat) {
+            const usagePercentage = cardStat.usagePercentage || 0;
+            const boxShadowSize = Math.round(70 * usagePercentage);
+
+            if (cardStat.usageCount >0 && allPlayersReady) {
+                img.style.boxShadow = `0 -${boxShadowSize}px 0 0 #131313`;
+            } else {
+                img.style.boxShadow = '0 0px 0 0 #131313';
+            }
+        } else {
+            img.style.boxShadow = '0 0px 0 0 #131313';
+        }
+    });
 }
 
 /*** ******** ****/

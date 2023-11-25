@@ -284,8 +284,8 @@ a {
     }
 
     .controls img {
-        border-top-left-radius: 8px;
-        border-top-right-radius: 8px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
     }
 
     .controls img.mobile{
@@ -297,14 +297,15 @@ a {
 
     .controls img.desktop{
         width: 45px;
+        box-shadow: 0 0 0 0 #181818;
+        transition: box-shadow 0.8s ease-in-out;
     }
 
 
         .controls .ctl_hover.desktop {
-            width: 45px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
             cursor: pointer;
+            padding-bottom: 10px;
+            border-bottom: 1px solid transparent;
         }
 
         .controls .ctl_hover.mobile{
@@ -312,10 +313,7 @@ a {
         }
 
         .controls .ctl_hover.desktop:hover {
-            width: 75px;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-            margin-bottom: -7px;
+            border-bottom: 1px solid white;
         }
 
         .controls .ctl_hover.mobile:hover {
@@ -330,10 +328,7 @@ a {
         }
 
     .controls .selected.desktop {
-        width: 75px;
-        border-top-left-radius: 12px;
-        border-top-right-radius: 12px;
-        margin-bottom: -7px; 
+        border-bottom: 1px solid white;
     }
 
     .controls .selected.mobile {
