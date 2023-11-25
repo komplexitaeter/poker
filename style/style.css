@@ -298,14 +298,14 @@ a {
     .controls img.desktop{
         width: 45px;
         box-shadow: 0 0 0 0 #181818;
+        border-bottom: 1px solid transparent;
         transition: box-shadow 0.8s ease-in-out;
+        padding-bottom: 10px;
     }
 
 
         .controls .ctl_hover.desktop {
             cursor: pointer;
-            padding-bottom: 10px;
-            border-bottom: 1px solid transparent;
         }
 
         .controls .ctl_hover.mobile{
