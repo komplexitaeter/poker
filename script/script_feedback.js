@@ -441,8 +441,8 @@ function updateTeamName() {
     teamInput.value = teamInput.value.trim();
     document.getElementById('cet_change_name').disabled = true;
 
-    let url = './api/update_team.php?name=' + document.getElementById("cet_team_name").value
-                                    + '&t=' +teamInput.value;
+    let url = './api/update_team.php?name=' + teamInput.value
+                                    + '&t=' + document.getElementById("t").value;
     fetch(url).then(()=>{pushDomChange();});
 }
 
