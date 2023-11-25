@@ -376,6 +376,11 @@ function updateDom(myJson, isOnLoad) {
 
     }
 
+    if (document.getElementById("team_name").innerText != myJson.team_name) {
+        document.title += " " + myJson.team_name;
+        document.getElementById("team_name").innerText = myJson.team_name;
+    }
+
     if (isOnLoad) {
 
         if (myJson.hide_teaser === 1) {
@@ -391,9 +396,6 @@ function updateDom(myJson, isOnLoad) {
         }
 
         setColor();
-
-        document.title += " " + myJson.team_name;
-        document.getElementById("team_name").innerHTML = myJson.team_name;
 
     }
 
