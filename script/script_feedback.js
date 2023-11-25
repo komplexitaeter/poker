@@ -439,6 +439,7 @@ function onChangeTeamNameInput() {
 function updateTeamName() {
     let teamInput =  document.getElementById("cet_team_name");
     teamInput.value = teamInput.value.trim();
+    teamInput.disabled = true;
 
     let url = './api/update_team.php?name=' + document.getElementById("cet_team_name").value
                                     + '&t=' +teamInput.value;
