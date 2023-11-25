@@ -377,7 +377,7 @@ function updateDom(myJson, isOnLoad) {
     }
 
     if (document.getElementById("team_name").innerText != myJson.team_name) {
-        document.title += " " + myJson.team_name;
+        document.title = "Agile Estimations Online - " + myJson.team_name;
         document.getElementById("team_name").innerText = myJson.team_name;
     }
 
