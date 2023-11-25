@@ -78,12 +78,29 @@ function nameUpdate(e) {
 
 function controlsDsp(e) {
     let ctl = document.getElementById("ctl");
+
+    toggleStyleClass(ctl, "visible", "hidden");
+
     if (e.name !== null && e.name !== '') {
-        toggleStyleClass(ctl, "visible", "hidden");
+        ctl.classList.remove('ctl_as_guest');
     }
     else {
-        toggleStyleClass(ctl, "hidden", "visible");
+        ctl.classList.add('ctl_as_guest');
     }
+
+
+    const images = document.querySelectorAll('#ctl img');
+
+    images.forEach(img => {
+        if (e.name !== null && e.name !== '') {
+            img.classList.add("ctl_hover");
+            img.addEventListener("click", setC);
+        }
+        else {
+            img.classList.remove("ctl_hover");
+            img.removeEventListener("click", setC);
+        }
+    });
 }
 
 function deletePlayer(e) {
@@ -108,7 +125,6 @@ function setC(e) {
     if (e.target.classList.contains('selected')) {
         if (!gAllPlayersReady) {
             url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value;
-            e.target.classList.remove('ctl_hover');
             e.target.classList.remove('selected');
         }
     }
@@ -116,10 +132,6 @@ function setC(e) {
         url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + document.getElementById("t").value;
 
     if (url !== null) fetch(url).then(()=>{pushDomChange();});
-}
-
-function setCHover(e) {
-    e.target.classList.add('ctl_hover');
 }
 
 function toggleC(cardId, flag) {
@@ -753,11 +765,10 @@ function loadCardConfig() {
         cardElement.id = card.card_key;
         cardElement.src = "src/c_" + card.card_key + ".png";
         cardElement.classList.add("ctl");
-        cardElement.classList.add("ctl_hover");
+        //cardElement.classList.add("ctl_hover");
         cardElement.classList.add("sizefit");
         cardElement.alt = card.description;
-        cardElement.addEventListener("click", setC);
-        cardElement.addEventListener("mouseleave", setCHover);
+        //cardElement.addEventListener("click", setC);
         ctl.appendChild(cardElement);
 
         let thumbElement = document.createElement("img");

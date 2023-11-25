@@ -301,6 +301,7 @@ a {
         border-bottom: 1px solid transparent;
         transition: box-shadow 0.8s ease-in-out;
         padding-bottom: 10px;
+        cursor: not-allowed;
     }
 
 
@@ -338,6 +339,10 @@ a {
     .controls .ctl {
         margin-left: 2px;
         margin-right: 2px;
+    }
+
+    .ctl_as_guest {
+        filter:  grayscale(100%);
     }
 
     .controls .ctl.mobile{
