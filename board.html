@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width">
@@ -22,7 +22,7 @@
             <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit"/></a>
 
             <a id="linkedin_a" href="https://www.linkedin.com/company/komplexitäter/posts/?feedView=images&viewAsMember=true" target="_blank"><img id="linkedin" src="src/follow_us.png" class="sizefit" alt="Follow us on LinkedIn" onmousemove="hideTeaser()" /></a>
-            <img src="src/cta_linkedin.png" id="cta_linkedin" class="cta_design topnav sizefit" alt="Support us by following on LinkedIn" />
+            <img src="src/follow_us.png" id="cta_linkedin" class="cta_design topnav sizefit" alt="Support us by following on LinkedIn" />
 
             <img src="src/mmenu.png" class="open_menu" alt="Menu" onclick="toggleMobileMenu('open')"/>
             <!--<img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />-->
@@ -62,6 +62,10 @@
                 <input class="box_sbmt_button topnav sizefit" type="button" onclick="feedback_submit();" value="Send Feedback"/>
             </div>
             <div id="cset_box" class="topnav sizefit">
+                <label for="cet_team_name" class="topnav">Change team name</label>
+                <input class="topnav sizefit" id="cet_team_name" size="15" maxlength="40" type="text" value="Komplexitaeter" oninput="onChangeTeamNameInput()"/>
+                <input id="cet_change_name" class="box_sbmt_button topnav sizefit" type="button" onclick="updateTeamName()" value="Ok" />
+
                 <label for="cet_pre" class="topnav">Define your deck of cards</label>
                 <select id="cet_pre" onchange="preSet(event);" class="topnav sizefit">
                     <option value="0" selected>Select a preset ...</option>

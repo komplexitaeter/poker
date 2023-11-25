@@ -1258,8 +1258,8 @@ div#cbox {
 }
 
 .box_sbmt_button:disabled {
-    border-color: #999999;
-    color: #999999;
+    border-color: #3f3d3d;
+    color: #3f3d3d;
     cursor: not-allowed;
 }
 
@@ -1285,6 +1285,18 @@ div#cbox {
         overflow: scroll;
     }
 
+
+#cet_team_name {
+    background: #2d2d2d;
+    border: 1px solid #999999;
+    color: white;
+
+    font-size: smaller;
+    margin-bottom: 0.5rem;
+    padding: 4px 15px;
+    border-radius: 12px;
+    width: 65%;
+}
 
 #cet_pre {
     background: #202020;

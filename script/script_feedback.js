@@ -61,6 +61,11 @@ function toggle_box(boxName) {
     if (boxName === 'cset') {
         let e = document.getElementById('cset_box');
         if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
+
+            document.getElementById('cet_team_name').value
+                    = document.getElementById('team_name').innerText;
+            document.getElementById('cet_change_name').disabled = true;
+
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(true);
@@ -420,6 +425,23 @@ function changeSortOrder(e) {
     pushDomChange();
 }
 
+function onChangeTeamNameInput() {
+    if (document.getElementById('cet_team_name').value
+             == document.getElementById('team_name').innerText
+        || document.getElementById('cet_team_name').value.length == 0
+         ) {
+        document.getElementById('cet_change_name').disabled = true;
+    } else {
+        document.getElementById('cet_change_name').disabled = false;
+    }
+}
+
+function updateTeamName() {
+    let url = './api/update_team.php?name=' + document.getElementById("cet_team_name").value
+                                    + '&t=' + document.getElementById("t").value;
+    fetch(url).then(()=>{pushDomChange();});
+}
+
 /**
  * Returns a random number between min (inclusive) and max (exclusive)
  */
@@ -437,3 +459,5 @@ function feedback_bling() {
 
 document.addEventListener('click', toggleTopnav);
 setTimeout(function () { feedback_bling() }, getRandom(60 * 1000, 4 * 60 * 1000));
+
+
