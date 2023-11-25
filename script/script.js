@@ -893,7 +893,7 @@ function showCardUsage(players, allPlayersReady) {
 
         if (cardStat) {
             const usagePercentage = cardStat.usagePercentage || 0;
-            const boxShadowSize = Math.round(70 * usagePercentage);
+            const boxShadowSize = Math.round(50 * usagePercentage);
 
             if (cardStat.usageCount >0 && allPlayersReady) {
                 img.style.boxShadow = `0 -${boxShadowSize}px 0 0 #131313`;
