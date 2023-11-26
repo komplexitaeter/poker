@@ -89,7 +89,7 @@ function controlsDsp(e) {
     }
 
 
-    const images = document.querySelectorAll('#ctl img');
+    const images = document.querySelectorAll('#ctl img.on');
 
     images.forEach(img => {
         if (e.name !== null && e.name !== '') {
@@ -426,7 +426,7 @@ function updateDom(myJson, isOnLoad) {
 
     updateNewRoundBtn(myJson.one_ore_more_player_ready, myJson.all_players_ready);
 
-    showCardUsage(myJson.players, myJson.all_players_ready);
+    showCardUsage(myJson.players, myJson.all_players_ready, myJson.show_avg);
 
 
     controlsDsp(myJson);
@@ -765,10 +765,8 @@ function loadCardConfig() {
         cardElement.id = card.card_key;
         cardElement.src = "src/c_" + card.card_key + ".png";
         cardElement.classList.add("ctl");
-        //cardElement.classList.add("ctl_hover");
         cardElement.classList.add("sizefit");
         cardElement.alt = card.description;
-        //cardElement.addEventListener("click", setC);
         ctl.appendChild(cardElement);
 
         let thumbElement = document.createElement("img");
@@ -793,6 +791,10 @@ function loadCardConfig() {
         option.textContent = preSet.description;
         cetPre.appendChild(option);
     });
+}
+
+function getCardConfig(cardKey) {
+    return gCardsConfig.find(card => card.card_key === cardKey);
 }
 
 function toggleOrderBy(opt) {
@@ -854,6 +856,7 @@ function toggleStyleClass(element, addClassName, removeClassName) {
 function handleResize() {
     adaptToDevice();
     updatePlayersCards(gLastJson.players, false);
+    showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
 }
 
 function initDisplayHandling() {
@@ -883,10 +886,97 @@ function calculateCardStats(players) {
     return cardStats;
 }
 
-function showCardUsage(players, allPlayersReady) {
+function calculateIndicatorLefPosition(cardStats) {
+
+    let hasResult = false;
+    let resultCnt = 0;
+    let resultSum = 0;
+
+    let returnPos = null;
+
+    Object.keys(cardStats).forEach(cardKey => {
+        let cardConfig = getCardConfig(cardKey);
+
+        if (cardConfig && cardConfig.numeric_value != null) {
+            hasResult = true;
+            resultCnt += cardStats[cardKey].usageCount;
+            resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
+        } else if (cardConfig && cardConfig.description == "infinity") {
+            console.log('the infinity problem is here');
+            let e = document.getElementById(cardKey);
+            let curPos = e.getBoundingClientRect().left;
+            returnPos = curPos + 15;
+        }
+    });
+
+    if (returnPos != null) return returnPos;
+
+    if (hasResult) {
+        let avgResult = resultSum / resultCnt;
+        console.log(avgResult);
+
+        const images = document.querySelectorAll('#ctl img.on');
+        let lastVal = null;
+        let lastPos = null;
+
+        for (let img of images) {
+            let curVal = getCardConfig(img.id).numeric_value;
+
+            if (curVal > avgResult) {
+                console.log("avg Result "+avgResult+" is between "+lastVal+" and "+curVal);
+                let e = document.getElementById(img.id);
+                let curPos = e.getBoundingClientRect().left;
+
+                let range = curVal - lastVal;
+                console.log(range);
+                console.log(avgResult - lastVal);
+                let relativePosition = (avgResult - lastVal) / range;
+                console.log(relativePosition);
+
+                let newPosition = lastPos + relativePosition * (curPos - lastPos);
+                return Math.round(newPosition) + 15;
+            }
+
+            if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
+                console.log("eHit");
+                let e = document.getElementById(img.id);
+                let curPos = e.getBoundingClientRect().left;
+                return curPos + 15; // Verlässt die Schleife und gibt den Wert zurück
+            }
+
+
+            lastVal = curVal;
+            let e = document.getElementById(img.id);
+            let curPos = e.getBoundingClientRect().left;
+            lastPos = curPos;
+
+        }
+    }
+
+    return null;
+}
+
+function updateAvgIndicator(cardStats, showStats) {
+    let index = document.getElementById("index");
+    if (showStats) {
+        let indicatorLeftPos = calculateIndicatorLefPosition(cardStats);
+        if (indicatorLeftPos != null) {
+            index.style.left = indicatorLeftPos + "px";
+            if (index.classList.contains("hidden")) {
+                toggleStyleClass(index, "visible", "hidden")
+            }
+        } else {
+            toggleStyleClass(index, "hidden", "visible");
+        }
+    } else {
+        toggleStyleClass(index, "hidden", "visible");
+    }
+}
+
+function showCardUsage(players, allPlayersReady, showAvg) {
     let cardStats = calculateCardStats(players);
 
-    const images = document.querySelectorAll('#ctl img');
+    const images = document.querySelectorAll('#ctl img.on');
 
     images.forEach(img => {
         const cardStat = cardStats[img.id];
@@ -909,8 +999,14 @@ function showCardUsage(players, allPlayersReady) {
 
     if (allPlayersReady && players.length>0) {
         ctl.classList.add("show_card_stats");
+        if (showAvg == 1) {
+            updateAvgIndicator(cardStats, true);
+        } else {
+            updateAvgIndicator(cardStats,false);
+        }
     } else {
         ctl.classList.remove("show_card_stats");
+        updateAvgIndicator(cardStats,false);
     }
 }
 

@@ -167,6 +167,7 @@ function getDao($t, $id) {
     $survey = 'NO';
     $topic = null;
     $results_order = 'NAME';
+    $show_avg = 0;
     $players=array();
 
 
@@ -190,6 +191,7 @@ function getDao($t, $id) {
                   ,t.timer_visibility
                   ,t.topic
                   ,t.results_order
+                  ,t.show_avg
             FROM pok_teams_tbl as t
              WHERE t.id = '$t'";
     if ($result = $link->query($sql)) {
@@ -201,6 +203,7 @@ function getDao($t, $id) {
         $timer_visibility = $obj->timer_visibility;
         $topic = $obj->topic;
         $results_order = $obj->results_order;
+        $show_avg = $obj->show_avg;
     }
 
     $sql = "SELECT p.* 
@@ -305,6 +308,7 @@ function getDao($t, $id) {
         "timer_time"=>(Int)$timer_time,
         "timer_visibility"=>(Int)$timer_visibility,
         "results_order"=>$results_order,
+        "show_avg"=>$show_avg,
         "selected_card_key"=>$card_key,
         "all_players_ready"=>$all_players_ready,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready,

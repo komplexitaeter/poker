@@ -1379,6 +1379,10 @@ div#cbox {
     top:100%;
 }
 
+#cet_dark_side {
+    width: 90%;
+}
+
 .topnav label {
     display: block;
     margin-top: 1rem;
@@ -1627,4 +1631,12 @@ table tr:first-child{
     padding: 20px;
     background-color: black;
     opacity: 100%;
+}
+
+#index {
+    position: absolute;
+    left: 557px;
+    bottom: 77px;
+    width: 15px;
+    transition: left 0.8s ease-in-out;
 }

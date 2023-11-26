@@ -134,7 +134,7 @@
     "card_key": "green01",
     "sort_order": 1600,
     "description": "green traffic light",
-    "numeric_value": null,
+    "numeric_value": 1000,
     "flow_control": false
   },
   {
@@ -142,7 +142,7 @@
     "card_key": "yellow1",
     "sort_order": 1700,
     "description": "yellow traffic light",
-    "numeric_value": null,
+    "numeric_value": 2000,
     "flow_control": false
   },
   {
@@ -150,7 +150,7 @@
     "card_key": "red0001",
     "sort_order": 1800,
     "description": "red traffic light",
-    "numeric_value": null,
+    "numeric_value": 3000,
     "flow_control": false
   },
   {
@@ -214,7 +214,7 @@
     "card_key": "xxs0001",
     "sort_order": 2500,
     "description": "XXS",
-    "numeric_value": null,
+    "numeric_value": 10000,
     "flow_control": false
   },
   {
@@ -222,7 +222,7 @@
     "card_key": "xs00001",
     "sort_order": 2600,
     "description": "XS",
-    "numeric_value": null,
+    "numeric_value": 11000,
     "flow_control": false
   },
   {
@@ -230,7 +230,7 @@
     "card_key": "s000001",
     "sort_order": 2700,
     "description": "S",
-    "numeric_value": null,
+    "numeric_value": 12000,
     "flow_control": false
   },
   {
@@ -238,7 +238,7 @@
     "card_key": "m000001",
     "sort_order": 2800,
     "description": "M",
-    "numeric_value": null,
+    "numeric_value": 13000,
     "flow_control": false
   },
   {
@@ -246,7 +246,7 @@
     "card_key": "l000001",
     "sort_order": 2900,
     "description": "L",
-    "numeric_value": null,
+    "numeric_value": 14000,
     "flow_control": false
   },
   {
@@ -254,7 +254,7 @@
     "card_key": "xl00001",
     "sort_order": 3000,
     "description": "XL",
-    "numeric_value": null,
+    "numeric_value": 15000,
     "flow_control": false
   },
   {
@@ -262,7 +262,7 @@
     "card_key": "xxl0001",
     "sort_order": 3100,
     "description": "XL",
-    "numeric_value": null,
+    "numeric_value": 16000,
     "flow_control": false
   },
   {
@@ -270,7 +270,7 @@
     "card_key": "0star01",
     "sort_order": 3200,
     "description": "zero star",
-    "numeric_value": 0,
+    "numeric_value": 20000,
     "flow_control": false
   },
   {
@@ -278,7 +278,7 @@
     "card_key": "1star01",
     "sort_order": 3300,
     "description": "one star",
-    "numeric_value": 1,
+    "numeric_value": 21000,
     "flow_control": false
   },
   {
@@ -286,7 +286,7 @@
     "card_key": "2stars1",
     "sort_order": 3400,
     "description": "two stars",
-    "numeric_value": 2,
+    "numeric_value": 22000,
     "flow_control": false
   },
   {
@@ -294,7 +294,7 @@
     "card_key": "3stars1",
     "sort_order": 3500,
     "description": "three stars",
-    "numeric_value": 3,
+    "numeric_value": 23000,
     "flow_control": false
   },
   {
@@ -302,7 +302,7 @@
     "card_key": "4stars1",
     "sort_order": 3600,
     "description": "four stars",
-    "numeric_value": 4,
+    "numeric_value": 24000,
     "flow_control": false
   },
   {
@@ -310,7 +310,7 @@
     "card_key": "5stars1",
     "sort_order": 3700,
     "description": "five stars",
-    "numeric_value": 5,
+    "numeric_value": 25000,
     "flow_control": false
   }
   ]

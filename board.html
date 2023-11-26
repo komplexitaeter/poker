@@ -79,6 +79,9 @@
                     <option value="NAME" selected>Always order by players name</option>
                     <option value="CHOOSE">Define the sort order in-game</option>
                 </select>
+
+                <label for="cet_dark_side" class="topnav">Join the dark side</label>
+                <input id="cet_dark_side" class="box_sbmt_button topnav sizefit" type="button" onclick="pushJediBtn()" data-state="0" />
             </div>
 
         </div>
@@ -133,6 +136,7 @@
     <script src="script/script_feedback.js" type="text/javascript" defer></script>
     <script src="script/script.js" type="text/javascript" defer></script>
 </div>
+<img id="index" src="src/index.png" />
 <div id="overlay" class="hidden switchable"></div>
 <div id="overlay_qr_code" class="hidden" onclick="showQRCode(false)">
     <did id="canvas_qr_code"></did>

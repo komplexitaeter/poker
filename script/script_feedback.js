@@ -66,6 +66,8 @@ function toggle_box(boxName) {
                     = document.getElementById('team_name').innerText;
             document.getElementById('cet_change_name').disabled = true;
 
+            updateJediBtn();
+
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(true);
@@ -96,6 +98,38 @@ function toggle_box(boxName) {
         }
     }
 
+}
+
+function updateJediBtn() {
+    let jediBtn = document.getElementById("cet_dark_side");
+    if (gLastJson.show_avg == 1) {
+        jediBtn.value = "Hide average indicator";
+        jediBtn.setAttribute("data-state", "2");
+    } else {
+        jediBtn.value = "Am Jedi Master, I know what I do!";
+        jediBtn.setAttribute("data-state", "0");
+    }
+}
+
+function pushJediBtn() {
+    let jediBtn = document.getElementById("cet_dark_side");
+    let state = jediBtn.getAttribute("data-state");
+    if (state == 0) {
+        jediBtn.value = "Show average indicator (experimental)";
+        jediBtn.setAttribute("data-state", "1");
+    }
+    if (state == 1) {
+        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + document.getElementById("t").value;
+        fetch(url).then(()=>{pushDomChange();});
+        jediBtn.value = "Hide average indicator";
+        jediBtn.setAttribute("data-state", "2");
+    }
+    if (state == 2) {
+        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + document.getElementById("t").value;
+        fetch(url).then(()=>{pushDomChange();});
+        jediBtn.value = "Am Jedi Master, I know what I do!";
+        jediBtn.setAttribute("data-state", "0");
+    }
 }
 
 function toggle_feedback_box(setOn) {
