@@ -233,7 +233,7 @@ function getDao($t, $id) {
                                             from pok_survey_votes_tbl v 
                                            where v.user_id = u.id 
                                              and v.survey_id = u.survey_id) ) voted
-                                    ,max(hide_teaser) hide_teaser
+                                    ,max(hide_teaser) as hide_teaser
                                 FROM pok_user_tbl u WHERE u.id=?");
     $sql->bind_param('s', $id);
     $sql->execute();
@@ -331,7 +331,7 @@ function get_survey_id($link, $team_id, $user_id) {
     $result = $sql->get_result();
     if ($obj = $result->fetch_object()) {
         //if ($obj->approx_team_age >= 30) $survey_id = 1;
-        //$survey_id = 1;
+        if ($obj->approx_team_age < 0) $survey_id = 1;
     }
     return $survey_id;
 }
