@@ -15,5 +15,4 @@ $sql = $link->prepare( "update pok_teams_tbl t
 $sql->bind_param('is', $show_avg, $t);
 $sql->execute();
 
-$link->query($sql);
 $link->close();

@@ -14,6 +14,7 @@ let gLastJson = null;
 let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
+let gLastShowAvg = null;
 
 
 
@@ -434,6 +435,8 @@ function updateDom(myJson, isOnLoad) {
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
     updateOrderByConfig(myJson.results_order);
 
+    activateJediMode(myJson.show_avg);
+
     if (isOnLoad) {
         document.body.style.opacity = '1';
 
@@ -447,6 +450,18 @@ function updateDom(myJson, isOnLoad) {
     }
 
 
+}
+
+function activateJediMode(showAvg) {
+    if (showAvg == 1 && gLastShowAvg != null && gLastShowAvg == 0) {
+        let body = document.body;
+        body.classList.add('flash-red');
+
+        body.addEventListener('animationend', () => {
+            body.classList.remove('flash-red');
+        }, { once: true });
+    }
+    gLastShowAvg = showAvg;
 }
 
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
@@ -902,7 +917,7 @@ function calculateIndicatorLefPosition(cardStats) {
             resultCnt += cardStats[cardKey].usageCount;
             resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
         } else if (cardConfig && cardConfig.description == "infinity") {
-            console.log('the infinity problem is here');
+            console.log('the infinity problem was here');
             let e = document.getElementById(cardKey);
             let curPos = e.getBoundingClientRect().left;
             returnPos = curPos + 15;
@@ -913,7 +928,7 @@ function calculateIndicatorLefPosition(cardStats) {
 
     if (hasResult) {
         let avgResult = resultSum / resultCnt;
-        console.log(avgResult);
+        console.log("The forbidden number is (avg result): "+ avgResult);
 
         const images = document.querySelectorAll('#ctl img.on');
         let lastVal = null;
@@ -923,22 +938,17 @@ function calculateIndicatorLefPosition(cardStats) {
             let curVal = getCardConfig(img.id).numeric_value;
 
             if (curVal > avgResult) {
-                console.log("avg Result "+avgResult+" is between "+lastVal+" and "+curVal);
                 let e = document.getElementById(img.id);
                 let curPos = e.getBoundingClientRect().left;
 
                 let range = curVal - lastVal;
-                console.log(range);
-                console.log(avgResult - lastVal);
                 let relativePosition = (avgResult - lastVal) / range;
-                console.log(relativePosition);
 
                 let newPosition = lastPos + relativePosition * (curPos - lastPos);
                 return Math.round(newPosition) + 15;
             }
 
             if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
-                console.log("eHit");
                 let e = document.getElementById(img.id);
                 let curPos = e.getBoundingClientRect().left;
                 return curPos + 15; // Verlässt die Schleife und gibt den Wert zurück

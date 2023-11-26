@@ -115,20 +115,18 @@ function pushJediBtn() {
     let jediBtn = document.getElementById("cet_dark_side");
     let state = jediBtn.getAttribute("data-state");
     if (state == 0) {
-        jediBtn.value = "Show average indicator (experimental)";
+        jediBtn.value = "Confirm, to show avg results (experimental)";
         jediBtn.setAttribute("data-state", "1");
     }
     if (state == 1) {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + document.getElementById("t").value;
         fetch(url).then(()=>{pushDomChange();});
-        jediBtn.value = "Hide average indicator";
-        jediBtn.setAttribute("data-state", "2");
+        toggle_box('cset');
     }
     if (state == 2) {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + document.getElementById("t").value;
         fetch(url).then(()=>{pushDomChange();});
-        jediBtn.value = "Am Jedi Master, I know what I do!";
-        jediBtn.setAttribute("data-state", "0");
+        toggle_box('cset');
     }
 }
 

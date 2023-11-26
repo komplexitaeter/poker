@@ -1640,3 +1640,17 @@ table tr:first-child{
     width: 15px;
     transition: left 0.8s ease-in-out;
 }
+
+#index.mobile {
+    display: none;
+}
+
+@keyframes flashRed {
+    0% { background-color: black; }
+    50% { background-color: #340000; }
+    100% { background-color: black; }
+}
+
+.flash-red {
+    animation: flashRed 1.5s ease-in-out;
+}
