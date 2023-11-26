@@ -893,17 +893,25 @@ function showCardUsage(players, allPlayersReady) {
 
         if (cardStat) {
             const usagePercentage = cardStat.usagePercentage || 0;
-            const boxShadowSize = Math.round(50 * usagePercentage);
+            const boxShadowSize = Math.round(75 * usagePercentage);
 
             if (cardStat.usageCount >0 && allPlayersReady) {
-                img.style.boxShadow = `0 -${boxShadowSize}px 0 0 #131313`;
+                img.style.boxShadow = `0 -${boxShadowSize}px 0 0 #262424`;
             } else {
-                img.style.boxShadow = '0 0px 0 0 #131313';
+                img.style.boxShadow = '0 0px 0 0 #262424';
             }
         } else {
-            img.style.boxShadow = '0 0px 0 0 #131313';
+            img.style.boxShadow = '0 0px 0 0 #262424    ';
         }
     });
+
+    let ctl = document.getElementById("ctl");
+
+    if (allPlayersReady && players.length>0) {
+        ctl.classList.add("show_card_stats");
+    } else {
+        ctl.classList.remove("show_card_stats");
+    }
 }
 
 /*** ******** ****/

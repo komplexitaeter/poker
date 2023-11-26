@@ -152,6 +152,8 @@ a {
         background-size: 18pt;
         background-repeat: no-repeat;
         background-position: center right;
+        box-shadow: 0 0 8px 2px rgba(132, 203, 255, 0.6); /* Hinzugefügter Schatten */
+
     }
 
     #nameinput:hover {
@@ -181,6 +183,15 @@ a {
     outline: none;
 }
 
+#teaminput:hover {
+    outline: none;
+    border-color: #84cbff;
+    text-align: left;
+    background-size: 18pt;
+    background-repeat: no-repeat;
+    background-position: center right;
+}
+
 #teaminput:focus {
     outline: none;
     border-color: #84cbff;
@@ -188,6 +199,7 @@ a {
     background-size: 18pt;
     background-repeat: no-repeat;
     background-position: center right;
+    box-shadow: 0 0 8px 2px rgba(132, 203, 255, 0.6); /* Hinzugefügter Schatten */
 }
 
 
@@ -240,8 +252,11 @@ a {
 
 
 .controls {
-    position: absolute;
-    width: 100%;
+    width: auto;
+    position: absolute; /* or 'static' if the parent container handles positioning */
+    bottom: 0; /* Adjust or remove based on your layout */
+    margin: 0 auto; /* Only necessary if not using flex on the parent */
+    transition: height 0.8s ease-in-out;
 }
 
 .display_unset{
@@ -268,11 +283,10 @@ a {
 }
 
     .controls.mobile{
-        /* bottom: 0%; */
-        /* background-color: black; */
-        /* position: sticky; */
-        position: -webkit-sticky;
-        /* margin-top: 10%; */
+        position:absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
         display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
@@ -280,8 +294,27 @@ a {
     }
 
     .controls.desktop{
-        bottom: 10px;
+        background: black;
+        border-top: 2px solid #262424;
+        width: auto;
+        position: absolute;
+        bottom: 0;
+        margin: 0 auto;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-left: 40px;
+        padding-right: 40px;
+        padding-bottom: 5px;
+        border-top-left-radius: 45px;
+        border-top-right-radius: 45px;
+        height: 90px;
     }
+
+    .show_card_stats.desktop {
+        height: 165px;
+    }
+
 
     .controls img {
         border-top-left-radius: 5px;
@@ -574,11 +607,12 @@ div#cbox {
     }
 
 .down-container{
-    padding-bottom: 2%;
     bottom: 0;
     position: fixed;
-    height: 10vh;
     width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
 }
 
 .mobile-menu.desktop {
