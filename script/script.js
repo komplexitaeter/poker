@@ -495,22 +495,29 @@ function initializeWSConnection(teamId) {
     gConn.onmessage = function(e){
         if (e.data.includes('pull')) updateDao(false);
     };
-    gConn.onerror = function(e){
-        gConn.close();
-        gConn = null;
-        setTimeout(function () {
-            initializeWSConnection(document.getElementById("t").value);
-        }, 1000);    };
-    gConn.onclose = function(e ) {
-        gConn = null;
-        setTimeout(function () {
-            initializeWSConnection(document.getElementById("t").value);
-        }, 1000);
-    };
+
     gConn.onopen = () => {
         gConn.send('subscribe: '+teamId);
         updateDao(false);
     }
+
+    setTimeout(function () {
+        heartbeatWSConnection();
+    }, 10000);
+}
+
+function heartbeatWSConnection() {
+
+    console.log("heartbeatWSConnection");
+
+    if (gConn && gConn.readyState !== WebSocket.OPEN) {
+        initializeWSConnection(document.getElementById("t").value);
+    } else {
+        setTimeout(function () {
+            heartbeatWSConnection();
+        }, 3000);
+    }
+
 }
 
 function pushDomChange() {
