@@ -488,6 +488,12 @@ function initializeWSConnection(teamId) {
 
     console.log("initializeWSConnection");
 
+    // Überprüfen, ob eine bestehende Verbindung existiert und offen ist
+    if (gConn && (gConn.readyState === WebSocket.OPEN || gConn.readyState === WebSocket.CONNECTING)) {
+        // Bestehende Verbindung schließen
+        gConn.close();
+    }
+
     let wsProtocol = 'wss://';
     if (window.location.protocol.includes('http:')) wsProtocol = 'ws://';
 
