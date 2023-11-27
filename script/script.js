@@ -486,6 +486,8 @@ function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
 
 function initializeWSConnection(teamId) {
 
+    console.log("initializeWSConnection");
+
     let wsProtocol = 'wss://';
     if (window.location.protocol.includes('http:')) wsProtocol = 'ws://';
 
