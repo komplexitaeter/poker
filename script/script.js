@@ -514,7 +514,7 @@ function initializeWSConnection(teamId) {
 
 function heartbeatWSConnection() {
 
-    console.log("heartbeatWSConnection");
+    //console.log("heartbeatWSConnection");
 
     if (gConn && gConn.readyState !== WebSocket.OPEN) {
         initializeWSConnection(document.getElementById("t").value);
@@ -942,7 +942,6 @@ function calculateIndicatorLefPosition(cardStats) {
             resultCnt += cardStats[cardKey].usageCount;
             resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
         } else if (cardConfig && cardConfig.description == "infinity") {
-            console.log('the infinity problem was here');
             let e = document.getElementById(cardKey);
             let curPos = e.getBoundingClientRect().left;
             returnPos = curPos + 15;
@@ -953,7 +952,7 @@ function calculateIndicatorLefPosition(cardStats) {
 
     if (hasResult) {
         let avgResult = resultSum / resultCnt;
-        console.log("The forbidden number is (avg result): "+ avgResult);
+        //console.log("The forbidden number is (avg result): "+ avgResult);
 
         const images = document.querySelectorAll('#ctl img.on');
         let lastVal = null;
