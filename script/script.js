@@ -934,7 +934,10 @@ function calculateIndicatorLefPosition(cardStats) {
     Object.keys(cardStats).forEach(cardKey => {
         let cardConfig = getCardConfig(cardKey);
 
-        if (cardConfig && cardConfig.numeric_value != null) {
+
+
+        if (cardConfig && cardConfig.numeric_value != null
+            && document.getElementById(cardKey).classList.contains('on')) {
             hasResult = true;
             resultCnt += cardStats[cardKey].usageCount;
             resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
