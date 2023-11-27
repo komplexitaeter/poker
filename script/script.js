@@ -521,7 +521,6 @@ function heartbeatWSConnection() {
 }
 
 function pushDomChange() {
-    console.log("gConn.readyState: "+gConn.readyState);
     gConn.send('push');
 }
 
