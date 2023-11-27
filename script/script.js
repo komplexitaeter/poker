@@ -486,11 +486,6 @@ function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
 
 function initializeWSConnection(teamId) {
 
-    if (gConn != null) {
-        gConn.close();
-        gConn = null;
-    }
-
     let wsProtocol = 'wss://';
     if (window.location.protocol.includes('http:')) wsProtocol = 'ws://';
 
@@ -499,10 +494,13 @@ function initializeWSConnection(teamId) {
         if (e.data.includes('pull')) updateDao(false);
     };
     gConn.onerror = function(e){
+        gConn.close();
+        gConn = null;
         setTimeout(function () {
             initializeWSConnection(document.getElementById("t").value);
         }, 1000);    };
     gConn.onclose = function(e ) {
+        gConn = null;
         setTimeout(function () {
             initializeWSConnection(document.getElementById("t").value);
         }, 1000);
