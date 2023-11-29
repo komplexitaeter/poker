@@ -1383,6 +1383,17 @@ div#cbox {
     width: 90%;
 }
 
+.locked {
+    background-image: url('../src/lock.png'); /* Fügt das Schloss-Symbol hinzu */
+    background-repeat: no-repeat;
+    background-position: 15px center; /* Position des Symbols */
+    background-size: 14px;
+}
+
+.locked:hover {
+    background-image: url('../src/lock_hover.png'); /* Fügt das Schloss-Symbol hinzu */
+}
+
 .topnav label {
     display: block;
     margin-top: 1rem;
