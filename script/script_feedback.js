@@ -250,6 +250,7 @@ function toggleSurvey(forceSurvey){
 }
 
 function generateSurveyContents(){
+
     let url = './api/get_survey.php?id=' + localStorage.getItem('SID');
     let htmlStr = '';
     fetch(url)
@@ -257,6 +258,7 @@ function generateSurveyContents(){
             return response.json();
         })
         .then((myJson) => {
+
             htmlStr += '<div id="survey_intro">' + myJson.survey_intro+ '</div>';
 
             if(gSurvey == "LOUD" || gSurvey == "SILENT") {
@@ -268,8 +270,8 @@ function generateSurveyContents(){
             }
             if (gSurvey == "VOTED") {
                 htmlStr += '<div id="vote_results">';
-                myJson.vote_options.forEach(vote_option => {
 
+                myJson.vote_options.forEach(vote_option => {
                     htmlStr += '<div class="vote_results_bar">' +
                         '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '"style="width:0%;background:transparent;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
 
@@ -395,7 +397,7 @@ function save_topic(){
 
 
 function setCharAt(str, index, chr) {
-    return str.substr(0, index) + chr + str.substr(index + 1);
+    return str.slice(0, index) + chr + str.slice(index + 1);
 }
 
 function toggleCSet(e) {
@@ -419,12 +421,13 @@ function updateCardset(cardSetDec) {
     fetch(url).then(()=>{pushDomChange();});
 }
 
-function preSet(e) {
+function preSet() {
+    let preSetElement = document.getElementById("cet_pre");
 
-    if  (e.target.value !== "0") {
+    if  (preSetElement.value !== "0") {
 
         let str = "";
-        let indexList = gCardsPresets.find(preSet => preSet.id == e.target.value).index_list;
+        let indexList = gCardsPresets.find(preSet => preSet.id == preSetElement.value).index_list;
         let cardsConfig = gCardsConfig;
         cardsConfig.sort((a,b) => a.index - b.index);
 
@@ -447,7 +450,7 @@ function preSet(e) {
         });
 
         updateCardset(str);
-        e.target.value = "0";
+        preSetElement.value = "0";
     }
 }
 

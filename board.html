@@ -6,44 +6,50 @@
     <meta name="viewport" content="initial-scale=1.0">
     <title>Agile Estimations Online -</title>
     <link rel="stylesheet" href="style/style.css" media="screen" />
+
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
+    <script defer src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/remarkable/1.7.1/remarkable.min.js"></script>
+    <script defer src="script/script_feedback.js" type="text/javascript"></script>
+    <script defer src="script/script.js" type="text/javascript"></script>
+
 </head>
 <body onload="loadBoard()" class="body-fade-in" ondblclick="updateDao(false)">
 <div class="container" onclick="void(0);">
     <div class="up-container sizefit">
 
-        <div class="topnav_title switchable sizefit">
+        <div class="topnav_title sizefit">
             <div id="team_name" class="sizefit" onclick="copyLink()"></div>
-            <div id="show_qr_code" class="sizefit" onclick="showQRCode(true)"></div>
+            <div id="show_qr_code" class="sizefit switchable" onclick="showQRCode(true)"></div>
             <div id="copy_link_btn" class="topnav_clink sizefit" onclick="copyLink()">Copy Link</div>
         </div>
 
-        <div id="mobile-menu" class="mobile-menu switchable sizefit" data-state="closed">
-            <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit"/></a>
+        <div id="mobile-menu" class="mobile-menu sizefit" data-state="closed">
+            <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit switchable"/></a>
 
             <a id="linkedin_a" href="https://www.linkedin.com/company/komplexitäter/posts/?feedView=images&viewAsMember=true" target="_blank"><img id="linkedin" src="src/follow_us.png" class="sizefit" alt="Follow us on LinkedIn" onmousemove="hideTeaser()" /></a>
-            <img src="src/follow_us.png" id="cta_linkedin" class="cta_design topnav sizefit" alt="Support us by following on LinkedIn" />
+            <img src="src/follow_us.png" id="cta_linkedin" class="cta_design topnav sizefit switchable" alt="Support us by following on LinkedIn" />
 
             <img src="src/mmenu.png" class="open_menu" alt="Menu" onclick="toggleMobileMenu('open')"/>
-            <!--<img onclick="toggle_box('info');" src="src/info_news.png" id="info_btn" class="topnav topnav_btn sizefit switchable" alt="Info" />-->
-            <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit switchable" alt="Color mode" />
 
-            <a id="home_a" href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit switchable" alt="Home" onmousemove="hideTeaser()" /></a>
-            <img src="src/cta_home.png" id="cta_home" class="cta_design topnav sizefit" alt="Create another board" />
+            <img onclick="switchColorMode()" src="src/toggle_dark.png" id="cmode_btn" class="topnav topnav_btn sizefit" alt="Color mode" />
 
-            <img onclick="toggle_box('topic');" src="src/topic.png" id="topic_btn" class="topnav topnav_btn sizefit switchable" alt="Topic" onmousemove="hideTeaser()" />
-            <img src="src/cta_topic.png" id="cta_topic" class="cta_design topnav sizefit" alt="Set a topic" />
+            <a id="home_a" href="./"><img src="src/home.png" id="home_btn" class="topnav_btn sizefit" alt="Home" onmousemove="hideTeaser()" /></a>
+            <img src="src/cta_home.png" id="cta_home" class="cta_design topnav sizefit switchable" alt="Create another board" />
 
-            <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit switchable" alt="Setup" onmousemove="hideTeaser()" />
-            <img src="src/cta_cset.png" id="cta_cset" class="cta_design topnav sizefit" alt="Board Setup" />
+            <img onclick="toggle_box('topic');" src="src/topic.png" id="topic_btn" class="topnav topnav_btn sizefit" alt="Topic" onmousemove="hideTeaser()" />
+            <img src="src/cta_topic.png" id="cta_topic" class="cta_design topnav sizefit switchable" alt="Set a topic" />
 
-            <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.png" id="stopwatch_btn" class="topnav topnav_btn sizefit switchable" alt="Stopwatch" onmousemove="hideTeaser()" />
-            <img src="src/cta_stopwatch.png" id="cta_stopwatch" class="cta_design topnav sizefit" alt="A Stopwatch" />
+            <img onclick="toggle_box('cset');" src="src/cset.png" id="cset_btn" class="topnav topnav_btn sizefit" alt="Setup" onmousemove="hideTeaser()" />
+            <img src="src/cta_cset.png" id="cta_cset" class="cta_design topnav sizefit switchable" alt="Board Setup" />
 
-            <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit switchable" alt="Feedback" onmousemove="hideTeaser()" />
-            <img src="src/cta_feedback.png" id="cta_feedback" class="cta_design topnav sizefit" alt="We love feedback!" />
+            <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.png" id="stopwatch_btn" class="topnav topnav_btn sizefit" alt="Stopwatch" onmousemove="hideTeaser()" />
+            <img src="src/cta_stopwatch.png" id="cta_stopwatch" class="cta_design topnav sizefit switchable" alt="A Stopwatch" />
 
-            <img src="src/cta_teaser.png" id="cta_teaser" class="topnav sizefit" alt="Teaser for a new feature" />
+            <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn sizefit" alt="Feedback" onmousemove="hideTeaser()" />
+            <img src="src/cta_feedback.png" id="cta_feedback" class="cta_design topnav sizefit switchable" alt="We love feedback!" />
+
+            <img src="src/cta_teaser.png" id="cta_teaser" class="topnav sizefit switchable" alt="Teaser for a new feature" />
 
             <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
             <div id="topic_box" class="topnav sizefit">
@@ -67,7 +73,7 @@
                 <input id="cet_change_name" class="box_sbmt_button topnav sizefit" type="button" onclick="updateTeamName()" value="Ok" />
 
                 <label for="cet_pre" class="topnav">Define your deck of cards</label>
-                <select id="cet_pre" onchange="preSet(event);" class="topnav sizefit">
+                <select id="cet_pre" onchange="preSet();" class="topnav sizefit">
                     <option value="0" selected>Select a preset ...</option>
                 </select>
 
@@ -91,26 +97,27 @@
 
 
 
-        <label for="nameinput"></label><input id="nameinput" class="switchable sizefit" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
+        <label for="nameinput"></label><input id="nameinput" class="sizefit" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
 
-        <div id="topic" class="sizefit" data-hash="0"></div>
+        <div id="topic" class="sizefit display_none" data-hash="0"></div>
 
-        <div id="cbox" tabindex="2" class="sizefit switchable"></div>
+        <div id="cbox" tabindex="2" class="sizefit"></div>
 
-        <div id="order_by_div" class="toggle_container switchable" onclick="toggleOrderBy()">
+        <div id="order_by_div" class="toggle_container" onclick="toggleOrderBy()">
             <div id="order_by_name_btn" class="btn"><span>Name</span></div>
             <div id="order_by_sequence_btn" class="btn"><span>Value</span></div>
             <div id="order_by_switch" class="by_name"><span>&#x21C5;</span></div>
         </div>
 
 
-        <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="switchable sizefit" data-state="closed" />
+        <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="sizefit" data-state="closed" />
 
         <div id="stopwatch" class="stopwatch_control">
-            <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()"/>
-            <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()"/>
-            <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00" class="switchable sizefit"/>
-            <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()"/>
+            <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
+            <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()" alt="pause"/>
+            <label for="stopwatch_timer"></label>
+            <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00" class="sizefit"/>
+            <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()" alt="reset"/>
         </div>
     </div>
 
@@ -119,7 +126,7 @@
         <div class="controls sizefit" id="ctl">
         </div>
 
-        <footer class="survey-container switchable sizefit" id="survey-container">
+        <footer class="survey-container sizefit" id="survey-container">
             <button id="survey-button" onclick="toggleSurvey()">Survey<i id="survey-arrow" class="arrow up"></i></button>
             <div id="survey-content" class="survey-closed" data-state="closed">
 
@@ -131,15 +138,11 @@
     <!-- todo: use param in js -->
     <input type="hidden" id="t" value="<?php echo($t); ?>" />
 
-    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-    <script src="https://cdn.jsdelivr.net/remarkable/1.7.1/remarkable.min.js"></script>
-    <script src="script/script_feedback.js" type="text/javascript" defer></script>
-    <script src="script/script.js" type="text/javascript" defer></script>
 </div>
-<img id="index" class="sizefit" src="src/index.png" title="average result" />
-<div id="overlay" class="hidden switchable"></div>
+<img id="index" class="sizefit" src="src/index.png" title="average result" alt="average result" />
+<div id="overlay" class="hidden"></div>
 <div id="overlay_qr_code" class="hidden" onclick="showQRCode(false)">
-    <did id="canvas_qr_code"></did>
+    <div id="canvas_qr_code"></div>
 </div>
 </body>
 </html>

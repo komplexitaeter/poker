@@ -1,3 +1,5 @@
+/* global QRCodeStyling */
+
 let sid = localStorage.getItem('SID');
 let gConn = null;
 let gColorMode = "dark";
@@ -18,13 +20,13 @@ let gLastShowAvg = null;
 
 
 
-String.prototype.hashCode = function(){
+String.prototype.hashCode = function() {
     let hash = 0;
-    if (this.length == 0) return hash;
-    for (i = 0; i < this.length; i++) {
-        char = this.charCodeAt(i);
-        hash = ((hash<<5)-hash)+char;
-        hash = hash & hash; // Convert to 32bit integer
+    if (this.length === 0) return hash;
+    for (let i = 0; i < this.length; i++) {
+        let char = this.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
     }
     return hash;
 }
@@ -49,7 +51,7 @@ function getBrowserWidth(){
 }
 
 if (sid === null) {
-    let uid = (Date.now().toString(36) + Math.random().toString(36).substr(2, 8)).toUpperCase();
+    let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
     localStorage.setItem('SID', uid);
 }
 
@@ -294,7 +296,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     newCard.style.top = cardPos.top;
 
     let cardImg = document.createElement('img');
-    cardImg.classList.add('background', 'sizefit', 'switchable', 'card_image');
+    cardImg.classList.add('background', 'sizefit', 'card_image');
     cardImg.src = 'src/c_' + player.display_card_key + '.png';
     newCard.appendChild(cardImg);
 
@@ -360,13 +362,15 @@ function updateDom(myJson, isOnLoad) {
         }
     }
 
+    gSurvey = myJson.survey;
+
     let topic = document.getElementById('topic');
-    let topicHash = myJson.topic.hashCode();
+    let topicHash = myJson.topic.hashCode().toString();
+
     if (topic.getAttribute("data-hash") !== topicHash) {
 
         topic.setAttribute("data-hash", topicHash);
         gTopic = myJson.topic;
-        gSurvey = myJson.survey;
 
         let markDown = new Remarkable({
             html: false, // Enable HTML tags in source
@@ -540,6 +544,10 @@ function loadBoard() {
 }
 
 function loadInit() {
+    document.getElementById('teamForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        addTeam();
+    });
     initDisplayHandling();
     document.body.style.opacity = "1";
     document.getElementById("teaminput").focus();
@@ -555,26 +563,23 @@ function measureEvent(eventCode) {
 
 
 function setColor() {
-
     let toggleImg = document.getElementById("cmode_btn");
-    Array.from(document.getElementsByClassName("switchable")).forEach(element => {
-        if (gColorMode === "dark") {
-            element.classList.add("dark");
-            element.classList.remove("light");
-            toggleImg.src = "./src/toggle_light.png";
-        } else {
-            element.classList.add("light");
-            element.classList.remove("dark");
-            toggleImg.src = "./src/toggle_dark.png";
-        }
-    });
 
     if (gColorMode === "dark") {
-        document.body.style.backgroundColor = "black";
+        toggleImg.src = "./src/toggle_light.png";
+        document.body.classList.remove('light-theme');
     } else {
-    document.body.style.backgroundColor = "white";
+        toggleImg.src = "./src/toggle_dark.png";
+        document.body.classList.add('light-theme');
     }
 
+    Array.from(document.getElementsByClassName("switchable")).forEach(element => {
+        if (gColorMode === "dark") {
+            element.classList.remove("light");
+        } else {
+            element.classList.add("light");
+        }
+    });
 }
 
 function switchColorMode(){
@@ -596,21 +601,17 @@ function toggleMobileMenu(target_state){
 }
 
 function copyLink() {
-    let dummy = document.createElement('input'),
-        text = window.location.href;
-    document.body.appendChild(dummy);
-    dummy.value = text;
-    dummy.select();
-    document.execCommand('copy');
-    document.body.removeChild(dummy);
-    setTimeout(function () {
-        document.getElementById("copy_link_btn").classList.remove("react");
-    }, 10);
-    setTimeout(function () {
-        document.getElementById("copy_link_btn").classList.add("react");
-    }, 75);
-
+    let text = window.location.href;
+    navigator.clipboard.writeText(text).then(function() {
+        let copyButton = document.getElementById("copy_link_btn");
+        copyButton.classList.remove("react");
+        setTimeout(function() {
+            copyButton.classList.add("react");
+        }, 75);
+    });
 }
+
+
 
 function generateQRCode(url) {
 
@@ -620,7 +621,7 @@ function generateQRCode(url) {
         type: "svg",
         data: url,
         dotsOptions: {
-            color: "white",
+            color: "var(--text-color)",
             type: "extra-rounded"
         },
         image: "src/logo_qr_code.png",
@@ -628,7 +629,7 @@ function generateQRCode(url) {
             type: "extra-rounded"
         },
         backgroundOptions: {
-            color: "black",
+            color: "var(--background-color)",
         },
         qrOptions: {typeNumber: "0", mode: "Byte", errorCorrectionLevel: "Q"}
 
@@ -814,7 +815,6 @@ function loadCardConfig() {
         thumbElement.classList.add("topnav");
         thumbElement.classList.add("cs_c");
         thumbElement.classList.add("sizefit");
-        thumbElement.classList.add("switchable");
         thumbElement.alt = card.description;
         thumbElement.addEventListener("click", toggleCSet);
         cardsThumbs.appendChild(thumbElement);
@@ -824,7 +824,7 @@ function loadCardConfig() {
 
     gCardsPresets.forEach(preSet => {
         let option = document.createElement("option");
-        option.value = preSet.id;
+        option.value = preSet.id.toString();
         option.textContent = preSet.description;
         cetPre.appendChild(option);
     });
@@ -1020,12 +1020,12 @@ function showCardUsage(players, allPlayersReady, showAvg) {
             const boxShadowSize = Math.round(75 * usagePercentage);
 
             if (cardStat.usageCount >0 && allPlayersReady) {
-                img.style.boxShadow = `0 -${boxShadowSize}px 0 0 #262424`;
+                img.style.boxShadow = `0 -${boxShadowSize}px 0 0 var(--secondary-border-color)`;
             } else {
-                img.style.boxShadow = '0 0px 0 0 #262424';
+                img.style.boxShadow = '0 0px 0 0 var(--secondary-border-color)';
             }
         } else {
-            img.style.boxShadow = '0 0px 0 0 #262424    ';
+            img.style.boxShadow = '0 0px 0 0 var(--secondary-border-color)';
         }
     });
 

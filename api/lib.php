@@ -335,7 +335,7 @@ function get_survey_id($link, $team_id, $user_id) {
     $result = $sql->get_result();
     if ($obj = $result->fetch_object()) {
         //if ($obj->approx_team_age >= 30) $survey_id = 1;
-        if ($obj->approx_team_age < 0) $survey_id = 1;
+        if ($obj->approx_team_age >= 0) $survey_id = 1;
     }
     return $survey_id;
 }

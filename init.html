@@ -10,12 +10,12 @@
 </head>
 <body onload="loadInit()">
 
-    <a href="https://komplexitaeter.de" target="_blank"><img src="src/brand.png" id="brand" class=""/></a>
+    <a href="https://komplexitaeter.de" target="_blank"><img src="src/brand.png" id="brand" class="" alt="Komplexitäter.de"/></a>
 
     <a id="linkedin_a" href="https://www.linkedin.com/company/komplexitäter/posts/?feedView=images&viewAsMember=true" target="_blank"><img id="linkedin" src="src/follow_us.png" class="sizefit" alt="Follow us on LinkedIn" onmousemove="hideTeaser()" /></a>
     <img src="src/follow_us.png" id="cta_linkedin" class="cta_design topnav sizefit" alt="Support us by following on LinkedIn" />
 
-    <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn" />
+    <img onclick="toggle_box('feedback');" src="src/feedback.png" id="feedback_btn" class="topnav topnav_btn" alt="Feedback" />
 
 
     <div id="feedback_box" class="topnav">
@@ -28,8 +28,9 @@
         <input class="box_sbmt_button topnav desktop" type="button" onclick="feedback_submit();" value="Send Feedback"/>
     </div>
 
-    <form onsubmit="event.preventDefault(); addTeam();">
-        <input id="teaminput" class="" type="text"  size="15" maxlength="40" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
+    <form id="teamForm">
+        <label for="teaminput">
+        </label><input id="teaminput" class="" type="text" size="15" maxlength="40" placeholder=" What's your team's name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="0" />
         <input id="teambtn" class="" type="submit" value="Create Team Board" tabindex="1" />
     </form>
 
