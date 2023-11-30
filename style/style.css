@@ -976,11 +976,20 @@ div#cbox {
         left: 135px;
     }
 
+
+
     #cmode_btn{
-        right: 158px;
         margin-top: 1px;
         height: 17px;
         width:auto;
+    }
+
+    .cmode_btn_init {
+        right: 50px;
+    }
+
+    .cmode_btn_board {
+        right: 158px;
     }
 
         #cmode_btn:hover{
@@ -1080,7 +1089,7 @@ div#cbox {
     position: absolute;
     left: 135px;
     top: 40px;
-    border: 1px solid white;
+    border: 1px solid var(--primary-border-color);
     width: 270px;
     height: 310px;
     border-radius: 15px;
