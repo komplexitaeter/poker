@@ -1,5 +1,6 @@
 /* global QRCodeStyling */
 
+let t;
 let sid = localStorage.getItem('SID');
 let gConn = null;
 let gColorMode = "dark";
@@ -56,13 +57,13 @@ if (sid === null) {
 }
 
 function nameChanged(e) {
-    let url = './api/name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + document.getElementById("t").value;
+    let url = './api/name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + t;
     fetch(url).then(()=>{pushDomChange();});
     setTimeout( ()=>{document.getElementById('cbox').focus()}, 100);
 }
 
 function newRound() {
-    let url = './api/newround.php?t=' + document.getElementById("t").value;
+    let url = './api/newround.php?t=' + t;
     fetch(url).then(()=>{pushDomChange();});
     toggleMobileMenu("closed");
 }
@@ -107,7 +108,7 @@ function controlsDsp(e) {
 }
 
 function deletePlayer(e) {
-    let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + document.getElementById("t").value;
+    let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + t;
     fetch(url).then(()=>{pushDomChange();});
 }
 
@@ -127,12 +128,12 @@ function setC(e) {
     let url = null;
     if (e.target.classList.contains('selected')) {
         if (!gAllPlayersReady) {
-            url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + document.getElementById("t").value;
+            url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + t;
             e.target.classList.remove('selected');
         }
     }
     else
-        url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + document.getElementById("t").value;
+        url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + t;
 
     if (url !== null) fetch(url).then(()=>{pushDomChange();});
 }
@@ -166,7 +167,7 @@ function setCSet(cSet) {
 }
 
 function updateDao(isOnLoad) {
-    const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + document.getElementById("t").value;
+    const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
 
     fetch(url)
         .then((response) => {
@@ -521,7 +522,7 @@ function heartbeatWSConnection() {
     //console.log("heartbeatWSConnection");
 
     if (gConn && gConn.readyState !== WebSocket.OPEN) {
-        initializeWSConnection(document.getElementById("t").value);
+        initializeWSConnection(t);
     } else {
         setTimeout(function () {
             heartbeatWSConnection();
@@ -535,19 +536,27 @@ function pushDomChange() {
 }
 
 function loadBoard() {
+    const urlParams = new URLSearchParams(window.location.search);
+    t = urlParams.get("t");
+
     loadCardConfig();
     updateDao(true);
     generateQRCode(window.location.href);
-    initializeWSConnection(document.getElementById("t").value);
+    initializeWSConnection(t);
     initDisplayHandling();
     measureEvent("BOARD_ON_LOAD");
 }
 
 function loadInit() {
+    let url = './api/get_user.php?id=' + localStorage.getItem('SID');
+    gColorMode = loadJSON(url).color_mode;
+    setColor();
+
     document.getElementById('teamForm').addEventListener('submit', function(event) {
         event.preventDefault();
         addTeam();
     });
+
     initDisplayHandling();
     document.body.style.opacity = "1";
     document.getElementById("teaminput").focus();
@@ -743,23 +752,23 @@ function updateStopwatchInterval() {
 }
 
 function switchStopwatchVisiblity(){
-    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=toggle_visibility';
+    let url = './api/timer.php?t=' +t + '&action=toggle_visibility';
     fetch(url).then(()=>{pushDomChange();});
     measureEvent("TOGGLE_TIMER");
 }
 
 function stopwatchStart(){
-    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=start';
+    let url = './api/timer.php?t=' + t + '&action=start';
     fetch(url).then(()=>{pushDomChange();});
 }
 
 function stopwatchPause(){
-    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=pause';
+    let url = './api/timer.php?t=' + t + '&action=pause';
     fetch(url).then(()=>{pushDomChange();});
 }
 
 function stopwatchReset(){
-    let url = './api/timer.php?t=' + document.getElementById("t").value + '&action=reset';
+    let url = './api/timer.php?t=' + t + '&action=reset';
     fetch(url).then(()=>{pushDomChange();});
 }
 
@@ -835,7 +844,6 @@ function getCardConfig(cardKey) {
 }
 
 function toggleOrderBy(opt) {
-    const t = document.getElementById("t").value;
     let url = './api/update_results_order.php?t='+t+'&results_order=';
     if (gResultOder === 'CHOOSE:SEQUENCE') {
         url += 'CHOOSE:NAME';

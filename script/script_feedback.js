@@ -122,12 +122,12 @@ function pushJediBtn() {
         jediBtn.classList.remove("locked");
     }
     if (state == 1) {
-        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + document.getElementById("t").value;
+        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + t;
         fetch(url).then(()=>{pushDomChange();});
         toggle_box('cset');
     }
     if (state == 2) {
-        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + document.getElementById("t").value;
+        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + t;
         fetch(url).then(()=>{pushDomChange();});
         toggle_box('cset');
     }
@@ -377,7 +377,6 @@ function reset_topic(){
 function save_topic(){
     gTopicChangePending = false;
 
-    let t = document.getElementById("t").value;
     let topic = document.getElementById('topic_txt').value;
 
     const url = './api/update_topic.php?t='+t;
@@ -417,7 +416,7 @@ function toggleCSet(e) {
 }
 
 function updateCardset(cardSetDec) {
-    let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + document.getElementById("t").value;
+    let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + t;
     fetch(url).then(()=>{pushDomChange();});
 }
 
@@ -455,7 +454,6 @@ function preSet() {
 }
 
 function changeSortOrder(e) {
-    const t = document.getElementById("t").value;
     const url = './api/update_results_order.php?t='+t+'&results_order='+e.target.value;
     let httpRequest = new XMLHttpRequest();
     httpRequest.open("GET", url, false);
@@ -479,8 +477,7 @@ function updateTeamName() {
     teamInput.value = teamInput.value.trim();
     document.getElementById('cet_change_name').disabled = true;
 
-    let url = './api/update_team.php?name=' + teamInput.value
-                                    + '&t=' + document.getElementById("t").value;
+    let url = './api/update_team.php?name=' + teamInput.value + '&t=' + t;
     fetch(url).then(()=>{pushDomChange();});
 }
 
