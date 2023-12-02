@@ -102,7 +102,7 @@ function toggle_box(boxName) {
 
 function updateJediBtn() {
     let jediBtn = document.getElementById("cet_dark_side");
-    if (gLastJson.show_avg == 1) {
+    if (gLastJson.show_avg === 1) {
         jediBtn.value = "Hide average indicator";
         jediBtn.setAttribute("data-state", "2");
         jediBtn.classList.remove("locked");
@@ -116,17 +116,17 @@ function updateJediBtn() {
 function pushJediBtn() {
     let jediBtn = document.getElementById("cet_dark_side");
     let state = jediBtn.getAttribute("data-state");
-    if (state == 0) {
+    if (state === "0") {
         jediBtn.value = "Confirm, to show avg results (experimental)";
         jediBtn.setAttribute("data-state", "1");
         jediBtn.classList.remove("locked");
     }
-    if (state == 1) {
+    if (state === "1") {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + t;
         fetch(url).then(()=>{pushDomChange();});
         toggle_box('cset');
     }
-    if (state == 2) {
+    if (state === "2") {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + t;
         fetch(url).then(()=>{pushDomChange();});
         toggle_box('cset');
@@ -223,7 +223,7 @@ function toggleSurvey(forceSurvey){
         surveyDisplayStatus = survey.getAttribute('data-state');
     }
     else{
-        if(gSurvey == "LOUD") {
+        if(gSurvey === "LOUD") {
             surveyDisplayStatus = "closed";
         } else return;
     }
@@ -261,19 +261,19 @@ function generateSurveyContents(){
 
             htmlStr += '<div id="survey_intro">' + myJson.survey_intro+ '</div>';
 
-            if(gSurvey == "LOUD" || gSurvey == "SILENT") {
+            if(gSurvey === "LOUD" || gSurvey === "SILENT") {
                 htmlStr += '<div id="vote_options">';
                 myJson.vote_options.forEach(vote_option => {
                     htmlStr += '<button id="vote_option_' + vote_option.id + '" value="' + vote_option.id + '" class="vote_option" onclick="vote('+vote_option.id+')">' + vote_option.text + '</button>';
                 });
                 htmlStr += '</div>';
             }
-            if (gSurvey == "VOTED") {
+            if (gSurvey === "VOTED") {
                 htmlStr += '<div id="vote_results">';
 
                 myJson.vote_options.forEach(vote_option => {
                     htmlStr += '<div class="vote_results_bar">' +
-                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '"style="width:0%;background:transparent;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
+                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '" style="width:0;background:transparent;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
 
                 });
                 htmlStr += '</div>';
@@ -282,7 +282,7 @@ function generateSurveyContents(){
             htmlStr+= '<div id="vote_count">'+myJson.votes_count+' votes</div>';
             document.getElementById("survey-content").innerHTML = htmlStr;
 
-            if(gSurvey == "VOTED") {
+            if(gSurvey === "VOTED") {
                 let interval = 25;
                 let needsFilling = true;
                 let wasFilled = false;
@@ -302,15 +302,16 @@ function fillResultsBars(myJson, needsFilling, wasFilled, fillBars, interval){
             fillBars[vote_option.id - 1].style.width = currentWidth + 1 + '%';
             wasFilled = true;
         }
-        if(wasFilled == true){needsFilling = true;}
-        else{needsFilling = false;}
-        if(currentWidth == 0){
+
+        needsFilling = wasFilled === true;
+
+        if(currentWidth === 0){
             fillBars[vote_option.id - 1].style.background = "transparent";
         }
         else{fillBars[vote_option.id - 1].style.background = "";}
     });
 
-    if(needsFilling == true) {
+    if(needsFilling === true) {
         setTimeout(function() {
             fillResultsBars(myJson, needsFilling, false, fillBars, interval);
         }, interval);
@@ -319,7 +320,7 @@ function fillResultsBars(myJson, needsFilling, wasFilled, fillBars, interval){
 
 function vote(option_id){
     let url = './api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_vote='+option_id;
-    fetch(url).then( response => {
+    fetch(url).then( () => {
         gSurvey = "VOTED";
         generateSurveyContents();
     });
@@ -426,7 +427,7 @@ function preSet() {
     if  (preSetElement.value !== "0") {
 
         let str = "";
-        let indexList = gCardsPresets.find(preSet => preSet.id == preSetElement.value).index_list;
+        let indexList = gCardsPresets.find(preSet => preSet.id === preSetElement.value).index_list;
         let cardsConfig = gCardsConfig;
         cardsConfig.sort((a,b) => a.index - b.index);
 
@@ -462,14 +463,9 @@ function changeSortOrder(e) {
 }
 
 function onChangeTeamNameInput() {
-    if (document.getElementById('cet_team_name').value
-             == document.getElementById('team_name').innerText
-        || document.getElementById('cet_team_name').value.length == 0
-         ) {
-        document.getElementById('cet_change_name').disabled = true;
-    } else {
-        document.getElementById('cet_change_name').disabled = false;
-    }
+    document.getElementById('cet_change_name').disabled = document.getElementById('cet_team_name').value
+        === document.getElementById('team_name').innerText
+        || document.getElementById('cet_team_name').value.length === 0;
 }
 
 function updateTeamName() {

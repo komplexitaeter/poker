@@ -45,3 +45,17 @@ interface myCardSetup {
     presets: Preset[];
     cards: Card[];
 }
+
+interface Survey {
+    survey_id: number;
+    votes_count: number;
+    survey_intro: string;
+    vote_options: VoteOption[];
+}
+
+interface VoteOption {
+    id: number;
+    text: string;
+    total_count: number;
+    votes_percentage: number;
+}

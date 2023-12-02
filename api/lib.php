@@ -203,7 +203,7 @@ function getDao($t, $id) {
         $timer_visibility = $obj->timer_visibility;
         $topic = $obj->topic;
         $results_order = $obj->results_order;
-        $show_avg = $obj->show_avg;
+        $show_avg = (int)$obj->show_avg;
     }
 
     $sql = "SELECT p.* 

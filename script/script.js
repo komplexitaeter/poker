@@ -1,4 +1,5 @@
 /* global QRCodeStyling */
+/* global Remarkable */
 
 let t;
 let sid = localStorage.getItem('SID');
@@ -235,7 +236,7 @@ function getCardPos(pos, cardsCount) {
 
 function removeCards(cardsDiv, players) {
     Array.from(cardsDiv.children).forEach(card => {
-        if (players.find(player => player.mkey == card.id) === undefined) {
+        if (players.find(player => player.mkey === card.id) === undefined) {
             card.remove();
         }
     });
@@ -251,7 +252,7 @@ function updateCards(cardsDiv, players) {
             }, 1800);
         }
 
-        let player = players.find(p => p.mkey == card.id);
+        let player = players.find(p => p.mkey === card.id);
 
         const newPos = getCardPos(player.i, players.length);
 
@@ -320,17 +321,17 @@ function addCards(cardsDiv, players, isOnLoad) {
     let cardsHaveBeenAdded = false;
 
     players.forEach(player => {
-        if (Array.from(cardsDiv.children).find(card => card.id == player.mkey) === undefined) {
+        if (Array.from(cardsDiv.children).find(card => card.id === player.mkey) === undefined) {
                 cardsDiv.appendChild(createCardDiv(player, players.length, isOnLoad));
                 cardsHaveBeenAdded = true;
-        };
+        }
     });
 
     return cardsHaveBeenAdded;
 }
 
 function updatePlayersCards(players, isOnLoad) {
-    let cardsHaveBeenAdded = false;
+    let cardsHaveBeenAdded ;
     let cardsDiv = document.getElementById("cbox");
 
     removeCards(cardsDiv, players);
@@ -353,10 +354,10 @@ function updateDom(myJson, isOnLoad) {
     let e = document.getElementById('nameinput');
     if (isOnLoad ||
         (e !== document.activeElement && e.value !== myJson.name)) {
-        e.value = e.value = unescape(myJson.name); /*todo: wtf?*/
+        e.value = myJson.name;
         nameUpdate(e);
         const delayMinutes = Math.random() * 10;
-        if(myJson.survey == "LOUD") {
+        if(myJson.survey === "LOUD") {
             setTimeout(function () {
                 toggleSurvey(true);
             }, Math.round(1000 * 60 * delayMinutes));
@@ -386,7 +387,7 @@ function updateDom(myJson, isOnLoad) {
         });
         topic.innerHTML = markDown.render(myJson.topic);
 
-        if (topicHash == 0) {
+        if (topicHash === "0") {
             topic.classList.add("display_none");
         } else {
             topic.classList.remove("display_none");
@@ -394,7 +395,7 @@ function updateDom(myJson, isOnLoad) {
 
     }
 
-    if (document.getElementById("team_name").innerText != myJson.team_name) {
+    if (document.getElementById("team_name").innerText !== myJson.team_name) {
         document.title = "Agile Estimations Online - " + myJson.team_name;
         document.getElementById("team_name").innerText = myJson.team_name;
     }
@@ -409,7 +410,7 @@ function updateDom(myJson, isOnLoad) {
             gColorMode = myJson.color_mode;
         }
 
-        if(gSurvey != "NO"){
+        if(gSurvey !== "NO"){
             document.getElementById("survey-container").style.visibility="visible";
         }
 
@@ -458,7 +459,7 @@ function updateDom(myJson, isOnLoad) {
 }
 
 function activateJediMode(showAvg) {
-    if (showAvg == 1 && gLastShowAvg != null && gLastShowAvg == 0) {
+    if (showAvg === 1 && gLastShowAvg !== null && gLastShowAvg === 0) {
         let body = document.body;
         body.classList.add('flash-red');
 
@@ -706,9 +707,9 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
         break;
     }
 
-    timer_time = new Date(timer_time * 1000).toISOString().substr(11, 8);
+    timer_time = new Date(timer_time * 1000).toISOString().slice(11, 19);
 
-    if(document.getElementById("stopwatch_timer").value != timer_time){
+    if(document.getElementById("stopwatch_timer").value !== timer_time){
         document.getElementById("stopwatch_timer").value = timer_time;
     }
 
@@ -744,9 +745,10 @@ function updateStopwatchInterval() {
      * */
     let timer_time = gTimerTime + Math.round((new Date() - gTimerBaseTime)/1000);
 
-    timer_time = new Date(timer_time * 1000).toISOString().substr(11, 8);
+    timer_time = new Date(timer_time * 1000).toISOString().slice(11, 19);
 
-    if(document.getElementById("stopwatch_timer").value != timer_time){
+
+    if(document.getElementById("stopwatch_timer").value !== timer_time){
         document.getElementById("stopwatch_timer").value = timer_time;
     }
 }
@@ -843,7 +845,7 @@ function getCardConfig(cardKey) {
     return gCardsConfig.find(card => card.card_key === cardKey);
 }
 
-function toggleOrderBy(opt) {
+function toggleOrderBy() {
     let url = './api/update_results_order.php?t='+t+'&results_order=';
     if (gResultOder === 'CHOOSE:SEQUENCE') {
         url += 'CHOOSE:NAME';
@@ -873,7 +875,7 @@ function loadTextFileAjaxSync(filePath, mimeType)
         }
     }
     xmlHttp.send();
-    if (xmlHttp.status==200 && xmlHttp.readyState == 4 )
+    if (xmlHttp.status === 200 && xmlHttp.readyState === 4 )
     {
         return xmlHttp.responseText;
     }
@@ -932,26 +934,23 @@ function calculateCardStats(players) {
 }
 
 function calculateIndicatorLefPosition(cardStats) {
-
     let hasResult = false;
     let resultCnt = 0;
     let resultSum = 0;
-
     let returnPos = null;
+    let curPos;
 
     Object.keys(cardStats).forEach(cardKey => {
         let cardConfig = getCardConfig(cardKey);
-
-
 
         if (cardConfig && cardConfig.numeric_value != null
             && document.getElementById(cardKey).classList.contains('on')) {
             hasResult = true;
             resultCnt += cardStats[cardKey].usageCount;
             resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
-        } else if (cardConfig && cardConfig.description == "infinity") {
+        } else if (cardConfig && cardConfig.description === "infinity") {
             let e = document.getElementById(cardKey);
-            let curPos = e.getBoundingClientRect().left;
+            curPos = e.getBoundingClientRect().left;
             returnPos = curPos + 15;
         }
     });
@@ -960,7 +959,6 @@ function calculateIndicatorLefPosition(cardStats) {
 
     if (hasResult) {
         let avgResult = resultSum / resultCnt;
-        //console.log("The forbidden number is (avg result): "+ avgResult);
 
         const images = document.querySelectorAll('#ctl img.on');
         let lastVal = null;
@@ -971,32 +969,30 @@ function calculateIndicatorLefPosition(cardStats) {
 
             if (curVal > avgResult) {
                 let e = document.getElementById(img.id);
-                let curPos = e.getBoundingClientRect().left;
+                curPos = e.getBoundingClientRect().left;
 
                 let range = curVal - lastVal;
                 let relativePosition = (avgResult - lastVal) / range;
-
                 let newPosition = lastPos + relativePosition * (curPos - lastPos);
                 return Math.round(newPosition) + 15;
             }
 
             if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
                 let e = document.getElementById(img.id);
-                let curPos = e.getBoundingClientRect().left;
-                return curPos + 15; // Verlässt die Schleife und gibt den Wert zurück
+                curPos = e.getBoundingClientRect().left;
+                return curPos + 15;
             }
-
 
             lastVal = curVal;
             let e = document.getElementById(img.id);
-            let curPos = e.getBoundingClientRect().left;
+            curPos = e.getBoundingClientRect().left;
             lastPos = curPos;
-
         }
     }
 
     return null;
 }
+
 
 function updateAvgIndicator(cardStats, showStats) {
     let index = document.getElementById("index");
@@ -1041,7 +1037,7 @@ function showCardUsage(players, allPlayersReady, showAvg) {
 
     if (allPlayersReady && players.length>0) {
         ctl.classList.add("show_card_stats");
-        if (showAvg == 1) {
+        if (showAvg === 1) {
             updateAvgIndicator(cardStats, true);
         } else {
             updateAvgIndicator(cardStats,false);
@@ -1051,5 +1047,3 @@ function showCardUsage(players, allPlayersReady, showAvg) {
         updateAvgIndicator(cardStats,false);
     }
 }
-
-/*** ******** ****/
