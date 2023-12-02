@@ -80,7 +80,7 @@
                 <div id="cards_thumbs" class="topnav sizefit"></div>
 
                 <label for="cet_order_by" class="topnav">Choose how to arrange revealed cards</label>
-                <select id="cet_order_by" onchange="changeSortOrder(event)" class="topnav sizefit">
+                <select id="cet_order_by" onchange="changeSortOrder()" class="topnav sizefit">
                     <option value="SEQUENCE">Always order by card sequence (default)</option>
                     <option value="NAME" selected>Always order by players name</option>
                     <option value="CHOOSE">Define the sort order in-game</option>
@@ -91,10 +91,6 @@
             </div>
 
         </div>
-
-
-
-
 
 
         <label for="nameinput"></label><input id="nameinput" class="sizefit" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />

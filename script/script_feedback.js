@@ -454,8 +454,9 @@ function preSet() {
     }
 }
 
-function changeSortOrder(e) {
-    const url = './api/update_results_order.php?t='+t+'&results_order='+e.target.value;
+function changeSortOrder() {
+    let e = document.getElementById("cet_order_by");
+    const url = './api/update_results_order.php?t='+t+'&results_order='+e.value;
     let httpRequest = new XMLHttpRequest();
     httpRequest.open("GET", url, false);
     httpRequest.send();

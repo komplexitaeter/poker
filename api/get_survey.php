@@ -52,7 +52,7 @@ if ($id != null) {
         while ($obj = $result->fetch_object()) {
 
             if ($votes_count != null and $votes_count > 0) {
-                $votes_percentage = round($obj->votes_count * 100 / $votes_count, 0);
+                $votes_percentage = round($obj->votes_count * 100 / $votes_count);
             }
 
             $vote_option = (object)array("id" => (int)$obj->vote_option_id
