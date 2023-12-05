@@ -40,7 +40,7 @@ function getBrowserWidth(){
         gDisplayType = "xs";
     } else if(gScreenWidth < 991){
         // Small Device
-        gDisplayType = "sm";
+        gDisplayType = "m";
     } else if(gScreenWidth < 1199){
         // Medium Device
         gDisplayType = "md";
@@ -207,9 +207,6 @@ function updateOrderByButtons(results_order, allPlayersReady) {
 
 function getCardPos(pos, cardsCount) {
     let cardsWidth = 110;
-    if (gDisplayType === "xs" || gDisplayType === "sm") {
-        cardsWidth = Math.round(gScreenWidth * 0.32);
-    }
     let cardsHeight = Math.round(cardsWidth * 1.48);
     let cardsInCol =  Math.min(Math.floor(gScreenWidth / cardsWidth), cardsCount);
     let posInCol = ( pos % cardsInCol );

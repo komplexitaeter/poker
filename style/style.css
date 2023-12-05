@@ -87,10 +87,10 @@ img {
 
     .mobile-menu.mobile[data-state=open] #brand.mobile{
         height: auto;
-        top: 6rem;
+        top: 0;
         width: 8rem;
         display: unset;
-        margin-top: 1rem;
+        margin-top: 10px;
     }
 
 #linkedin {
@@ -99,6 +99,10 @@ img {
     top: 13px;
     height: 20px;
     outline: none;
+}
+
+#linkedin.mobile {
+    display: none;
 }
 
 #nameinput {
@@ -112,9 +116,9 @@ img {
     #nameinput.mobile {
         width: 65%;
         margin-top: 5%;
-        line-height: 1rem;
+        line-height: 1.7rem;
         padding: 0.1rem;
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
 
     #nameinput.desktop {
@@ -173,8 +177,8 @@ a {
 
     #newroundbtn.mobile[data-state=open]{
         z-index: 5;
-        top: 3vh;
-        left:20vw;
+        top: 15px;
+        left: 40%;
         position: absolute;
         padding: 0.2rem 0.8rem;
     }
@@ -456,7 +460,7 @@ div#cbox {
     }
 
     .c.mobile {
-        width:30%;
+        width: 100px;
     }
 
 
@@ -521,7 +525,7 @@ div#cbox {
     }
 
     .c span.mobile{
-        font-size: 1rem;
+        font-size: 0.8rem;
     }
 
     .c span.desktop{
@@ -692,10 +696,10 @@ div#cbox {
     .mobile-menu.mobile[data-state=open] .close-menu{
         display: block;
         position: absolute;
-        right: 1rem;
-        top: 1rem;
-        height: 7%;
-        width: 7%;
+        right: 20px;
+        top: 10px;
+        height: 30px;
+        width: 30px;
         background-image: url("../src/cross_black.png");
         background-size: 100%;
         background-repeat: no-repeat;
@@ -711,7 +715,7 @@ div#cbox {
         height: 99%;
         min-height: 95%;
         right: 2.5%;
-        top: 0.3rem;
+        top: 5px;
         background-color: var(--survey-sec-background);
         z-index: 1;
         border-radius: 2rem;
@@ -722,36 +726,36 @@ div#cbox {
         display: unset;
         width:10%;
         height: auto;
-        top:10%;
+        top:52px;
     }
 
     .mobile-menu.mobile #info_btn{
         left:5%;
     }
     .mobile-menu.mobile #cmode_btn{
-        right:15%;
+        left: 5%;
+        top: 56px;
         width:13%;
         height:auto;
-        top: 18%;
     }
     .mobile-menu.mobile #home_btn{
-        left:18%;
-    }
-
-    .mobile-menu.mobile #stopwatch_btn{
-        left:57%;
-    }
-
-    .mobile-menu.mobile #cset_btn{
-        left:44%;
+        left:23%;
     }
 
     .mobile-menu.mobile #topic_btn{
-        left:31%;
+        left:37%;
+    }
+
+    .mobile-menu.mobile #cset_btn{
+        left:51%;
+    }
+
+    .mobile-menu.mobile #stopwatch_btn{
+        left:65%;
     }
 
     .mobile-menu.mobile #feedback_btn{
-        left:70%;
+        left:79%;
     }
 
 .survey-container {
@@ -1069,6 +1073,10 @@ div#cbox {
         top: 36px;
         width: 130px;
         position: absolute;
+    }
+
+    #cta_teaser.mobile {
+        display: none;
     }
 
     .cta_design.mobile{
