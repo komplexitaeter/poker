@@ -443,6 +443,9 @@ div#cbox {
     margin: 4px;
     border-radius: 15px;
     background: var(--secondary-background-color);
+}
+
+.c_move {
     transition: left 1s, top 1s;
 }
 
@@ -1330,7 +1333,7 @@ div#cbox {
     right: 67px;
     top: 40px;
     border: 1px solid var(--primary-border-color);
-    width: 340px;
+    width: 420px;
     padding-bottom: 1rem;
     height: auto;
     border-radius: 15px;
@@ -1356,7 +1359,7 @@ div#cbox {
     margin-bottom: 0.5rem;
     padding: 4px 15px;
     border-radius: 12px;
-    width: 65%;
+    width: 70%;
 }
 
 #cet_pre {
@@ -1403,6 +1406,29 @@ div#cbox {
 }
 
 #cet_order_by.mobile option{
+    font-size: medium;
+    top:100%;
+}
+
+#cet_anonymous {
+    background: var(--light-background);
+    border: 1px solid var(--light-border-color);
+    color: var(--text-color);
+}
+
+#cet_anonymous.desktop {
+    font-size: smaller;
+    border-radius: 12px;
+    width: 90%;
+}
+
+#cet_anonymous.mobile {
+    font-size: 1rem;
+    border-radius: 1rem;
+    width: 90%;
+}
+
+#cet_anonymous.mobile option{
     font-size: medium;
     top:100%;
 }

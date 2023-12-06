@@ -36,8 +36,23 @@ else if ($is_in_db) {
     $sql->bind_param('sss', $name,$id, $t);
 }
 else {
-    $sql = $link->prepare( 'INSERT INTO pok_players_tbl (id, team_id, name) VALUES (?, ?, ?)');
-    $sql->bind_param('sss', $id, $t, $name);
+
+    $sql = $link->prepare('SELECT if (count(1) = sum(if(p.card_key is not null,1,0)), 1, 0) all_players_ready
+                                  FROM pok_players_tbl p
+                                 WHERE p.team_id = ?;');
+    $sql->bind_param('s',$t);
+    $sql->execute();
+
+    $result = $sql->get_result();
+    $obj = $result->fetch_object();
+
+    if ($obj->all_players_ready == 0) {
+        $sql = $link->prepare( 'INSERT INTO pok_players_tbl (id, team_id, name) VALUES (?, ?, ?)');
+        $sql->bind_param('sss', $id, $t, $name);
+    } else {
+        $sql = $link->prepare( "INSERT INTO pok_players_tbl (id, team_id, name, card_key) VALUES (?, ?, ?, 'break01')");
+        $sql->bind_param('sss', $id, $t, $name);
+    }
 }
 
 $sql->execute();

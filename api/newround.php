@@ -24,6 +24,12 @@ $sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, ty
 $sql->bind_param('s', $t);
 $sql->execute();
 
+$sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.anonymous_mode = t.anonymous_request_toggle
+                                   where t.id=?");
+$sql->bind_param('s', $t);
+$sql->execute();
+
 $sql = $link->prepare( "update pok_players_tbl p
                                      set card_key = null
                                    where p.team_id=?");

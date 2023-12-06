@@ -169,6 +169,8 @@ function getDao($t, $id) {
     $results_order = 'NAME';
     $show_avg = 0;
     $players=array();
+    $anonymous_mode = 0;
+    $anonymous_request_toggle = 0;
 
 
     $link = db_init();
@@ -192,6 +194,8 @@ function getDao($t, $id) {
                   ,t.topic
                   ,t.results_order
                   ,t.show_avg
+                  ,t.anonymous_mode
+                  ,t.anonymous_request_toggle
             FROM pok_teams_tbl as t
              WHERE t.id = '$t'";
     if ($result = $link->query($sql)) {
@@ -204,6 +208,8 @@ function getDao($t, $id) {
         $topic = $obj->topic;
         $results_order = $obj->results_order;
         $show_avg = (int)$obj->show_avg;
+        $anonymous_mode = (int)$obj->anonymous_mode;
+        $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
     }
 
     $sql = "SELECT p.* 
@@ -277,7 +283,11 @@ function getDao($t, $id) {
         if ($all_players_ready)
             $display_card_key = $obj->card_key;
         else if (is_null($obj->card_key))
-            $display_card_key = 'prgrss1';
+            if ($anonymous_mode == 1) {
+                $display_card_key = 'prgrss2';
+            } else {
+                $display_card_key = 'prgrss1';
+            }
         else
             $display_card_key = 'done001';
 
@@ -290,11 +300,13 @@ function getDao($t, $id) {
 
     }
 
-    if ($all_players_ready and substr_count($results_order, 'SEQUENCE')>0)
+    if ($all_players_ready and (substr_count($results_order, 'SEQUENCE')>0 or $anonymous_mode == 1 ))
         $players = sort_players_by_sequence($players);
 
-    for ($i=0;$i<count($players);$i++) $players[$i]->i= $i;
-
+    for ($i=0;$i<count($players);$i++) {
+        $players[$i]->i= $i;
+        if ($anonymous_mode == 1 && $all_players_ready) $players[$i]->name =  '******';
+    }
     return array(  "name"=> $name,
         "mkey"=>$mkey,
         "id"=>$id,
@@ -309,6 +321,8 @@ function getDao($t, $id) {
         "timer_visibility"=>(Int)$timer_visibility,
         "results_order"=>$results_order,
         "show_avg"=>$show_avg,
+        "anonymous_mode"=>$anonymous_mode,
+        "anonymous_request_toggle"=>$anonymous_request_toggle,
         "selected_card_key"=>$card_key,
         "all_players_ready"=>$all_players_ready,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready,

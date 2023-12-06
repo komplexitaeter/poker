@@ -182,11 +182,11 @@ function updateDao(isOnLoad) {
         });
 }
 
-function updateOrderByButtons(results_order, allPlayersReady) {
+function updateOrderByButtons(results_order, allPlayersReady, anonymousMode) {
     let order_by_switch = document.getElementById("order_by_switch");
     let orderByDiv = document.getElementById("order_by_div");
 
-        if (results_order.includes('CHOOSE')) {
+        if (results_order.includes('CHOOSE') && !anonymousMode) {
             if (allPlayersReady) {
                 if (results_order.includes('SEQUENCE')) {
                     toggleStyleClass(order_by_switch, "by_value","by_name");
@@ -418,11 +418,26 @@ function updateDom(myJson, isOnLoad) {
     setCSet(myJson.cardset_flags);
 
     if (!isOnLoad) {
+
+        const elements = document.querySelectorAll('.c');
+        elements.forEach(e => {
+            if (myJson.anonymous_mode === 1) {
+                removeStyleClass(e, 'c_move');
+            }
+        });
+
         if (updatePlayersCards(myJson.players, isOnLoad)) {
             /* returns true when new cards have been added */
             adaptToDevice();
             setColor();
         }
+
+        elements.forEach(e => {
+            if (!(myJson.anonymous_mode === 1)) {
+                addStyleClass(e, 'c_move');
+            }
+        });
+
     }
 
 
@@ -434,9 +449,12 @@ function updateDom(myJson, isOnLoad) {
 
 
     controlsDsp(myJson);
-    updateOrderByButtons(myJson.results_order, myJson.all_players_ready && myJson.players.length>0);
+    updateOrderByButtons(myJson.results_order
+                        , myJson.all_players_ready && myJson.players.length>0
+                        , myJson.anonymous_mode);
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
     updateOrderByConfig(myJson.results_order);
+    updateAnonymityConfig(myJson.anonymous_request_toggle);
 
     activateJediMode(myJson.show_avg);
 
@@ -659,10 +677,13 @@ function showQRCode(showIt) {
 }
 
 function hideTeaser(updateUser=true) {
-    addStyleClass(document.getElementById("cta_teaser"), "hidden");
-    if (updateUser) {
+    let e = document.getElementById("cta_teaser");
+
+    if (updateUser && !e.classList.contains("hidden")) {
         fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&hide_teaser=1').then();
     }
+
+    addStyleClass(e, "hidden");
 }
 
 function adaptToDevice() {
@@ -782,6 +803,14 @@ function updateOrderByConfig(resultsOrder) {
 
     if (dropDown.value !== resultsOrder ) {
         dropDown.value = order;
+    }
+}
+
+function updateAnonymityConfig(anonymousRequestToggle) {
+    let dropDown = document.getElementById("cet_anonymous");
+
+    if (dropDown.value !== anonymousRequestToggle ) {
+        dropDown.value = anonymousRequestToggle;
     }
 }
 

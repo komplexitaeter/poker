@@ -23,6 +23,8 @@ export interface myJsonType {
     selected_card_key: string;
     all_players_ready: boolean;
     one_ore_more_player_ready: boolean;
+    anonymous_mode: boolean;
+    anonymous_request_toggle: boolean;
     players: Player[];
 }
 

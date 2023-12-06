@@ -27,7 +27,7 @@
         <div id="mobile-menu" class="mobile-menu sizefit" data-state="closed">
             <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit switchable"/></a>
 
-            <a id="linkedin_a" href="https://www.linkedin.com/company/komplexitäter/posts/?feedView=images&viewAsMember=true" target="_blank"><img id="linkedin" src="src/follow_us.png" class="sizefit" alt="Follow us on LinkedIn" onmousemove="hideTeaser()" /></a>
+            <a id="linkedin_a" href="https://www.linkedin.com/company/komplexitäter/posts/?feedView=images&viewAsMember=true" target="_blank"><img id="linkedin" src="src/follow_us.png" class="sizefit" alt="Follow us on LinkedIn" /></a>
             <img src="src/follow_us.png" id="cta_linkedin" class="cta_design topnav sizefit switchable" alt="Support us by following on LinkedIn" />
 
             <img src="src/mmenu.png" class="open_menu switchable" alt="Menu" onclick="toggleMobileMenu('open')"/>
@@ -84,6 +84,12 @@
                     <option value="SEQUENCE">Always order by card sequence (default)</option>
                     <option value="NAME" selected>Always order by players name</option>
                     <option value="CHOOSE">Define the sort order in-game</option>
+                </select>
+
+                <label for="cet_anonymous" class="topnav">Set players transparency (only effects new rounds)</label>
+                <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav sizefit">
+                    <option value="0">Show names on results (default)</option>
+                    <option value="1" selected>Hide names on results (anonymous)</option>
                 </select>
 
                 <label for="cet_dark_side" class="topnav">Join the dark side</label>

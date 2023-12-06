@@ -463,6 +463,15 @@ function changeSortOrder() {
     pushDomChange();
 }
 
+function changeAnonymity() {
+    let e = document.getElementById("cet_anonymous");
+    const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+e.value;
+    let httpRequest = new XMLHttpRequest();
+    httpRequest.open("GET", url, false);
+    httpRequest.send();
+    pushDomChange();
+}
+
 function onChangeTeamNameInput() {
     document.getElementById('cet_change_name').disabled = document.getElementById('cet_team_name').value
         === document.getElementById('team_name').innerText
