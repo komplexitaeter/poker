@@ -427,7 +427,7 @@ function preSet() {
     if  (preSetElement.value !== "0") {
 
         let str = "";
-        let indexList = gCardsPresets.find(preSet => preSet.id === preSetElement.value).index_list;
+        let indexList = gCardsPresets.find(preSet => preSet.id.toString() === preSetElement.value).index_list;
         let cardsConfig = gCardsConfig;
         cardsConfig.sort((a,b) => a.index - b.index);
 

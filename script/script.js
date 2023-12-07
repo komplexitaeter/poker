@@ -344,6 +344,7 @@ function updatePlayersCards(players, isOnLoad) {
 }
 
 function updateDom(myJson, isOnLoad) {
+
     if (myJson === 0) return;
 
     gAllPlayersReady = myJson.all_players_ready;
