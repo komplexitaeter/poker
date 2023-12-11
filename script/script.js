@@ -463,8 +463,11 @@ function updateDom(myJson, isOnLoad) {
         document.body.style.opacity = '1';
 
         if (gOnLoadFocus) {
-            gOnLoadFocus.focus();
-            gOnLoadFocus = null;
+
+            setTimeout(function() {
+                gOnLoadFocus.focus();
+                gOnLoadFocus = null;
+            }, 100); // Verzögerung von 100 Millisekunden
         }
 
         adaptToDevice();
