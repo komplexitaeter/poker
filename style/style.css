@@ -367,7 +367,7 @@ a {
     }
 
     .controls img.mobile{
-        width:13%;
+        width: 55px;
         height: auto;
         align-self: center;
         float: right;
