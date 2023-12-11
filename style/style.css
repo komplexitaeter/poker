@@ -598,8 +598,9 @@ div#cbox {
 }
 
     .topnav_clink.mobile {
-        top: 0;
-        font-size: 8pt;
+        top: -4px;
+        font-size: 10pt;
+        left: 5px;
     }
 
     .topnav_clink.desktop {
@@ -628,6 +629,11 @@ div#cbox {
     background-repeat: no-repeat;
     cursor: pointer;
 }
+
+#show_qr_code.mobile {
+    visibility: hidden;
+}
+
 
 #show_qr_code:hover {
     background-image: url("../src/open_qr_code_icon_hover.png");
