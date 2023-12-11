@@ -139,7 +139,7 @@ function toggle_feedback_box(setOn) {
     if (setOn) {
         e.style.display = 'block';
         document.getElementById('feedback_btn').classList.add('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/feedback_on.png'
+        document.getElementById('feedback_btn').src = 'src/feedback_on.svg'
         document.getElementById('feedback_txt').focus();
         feedback_star_blink();
     }
@@ -151,7 +151,7 @@ function toggle_feedback_box(setOn) {
         document.getElementById('fb_star_4').classList.remove('blink');
         document.getElementById('fb_star_5').classList.remove('blink');
         document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/feedback.png';
+        document.getElementById('feedback_btn').src = 'src/feedback.svg';
     }
 }
 
@@ -170,13 +170,13 @@ function toggle_topic_box(setOn) {
 
         e.style.display = 'block';
         document.getElementById('topic_btn').classList.add('topnav_btn_on');
-        document.getElementById('topic_btn').src = 'src/topic_on.png'
+        document.getElementById('topic_btn').src = 'src/topic_on.svg'
         document.getElementById('topic_txt').select();
     }
     else {
         e.style.display = 'none';
         document.getElementById('topic_btn').classList.remove('topnav_btn_on');
-        document.getElementById('topic_btn').src = 'src/topic.png';
+        document.getElementById('topic_btn').src = 'src/topic.svg';
     }
 }
 
@@ -186,12 +186,12 @@ function toggle_cardset_box(setOn) {
         if (setOn) {
             e.style.display = 'block';
             document.getElementById('cset_btn').classList.add('topnav_btn_on');
-            document.getElementById('cset_btn').src = 'src/cset_on.png';
+            document.getElementById('cset_btn').src = 'src/cset_on.svg';
         }
         else {
             e.style.display = 'none';
             document.getElementById('cset_btn').classList.remove('topnav_btn_on');
-            document.getElementById('cset_btn').src = 'src/cset.png';
+            document.getElementById('cset_btn').src = 'src/cset.svg';
         }
     }
 }
