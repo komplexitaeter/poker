@@ -572,7 +572,7 @@ div#cbox {
 }
     .topnav_title.mobile {
         top:20px;
-        font-size: 1.2rem;
+        font-size: 12pt;
     }
 
     .topnav_title.desktop {
@@ -599,7 +599,7 @@ div#cbox {
 
     .topnav_clink.mobile {
         top: -4px;
-        font-size: 10pt;
+        font-size: 8pt;
         left: 5px;
     }
 
