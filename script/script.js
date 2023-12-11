@@ -35,7 +35,7 @@ String.prototype.hashCode = function() {
 
 function getBrowserWidth(){
     gScreenWidth = document.body.clientWidth;
-    if(gScreenWidth < 768){
+    if(gScreenWidth < 800){
         // Extra Small Device
         gDisplayType = "xs";
     } else if(gScreenWidth < 991){
