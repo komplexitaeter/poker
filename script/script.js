@@ -592,10 +592,10 @@ function setColor() {
     let toggleImg = document.getElementById("cmode_btn");
 
     if (gColorMode === "dark") {
-        toggleImg.src = "./src/toggle_light.png";
+        toggleImg.src = "./src/toggle_light.svg";
         document.body.classList.remove('light-theme');
     } else {
-        toggleImg.src = "./src/toggle_dark.png";
+        toggleImg.src = "./src/toggle_dark.svg";
         document.body.classList.add('light-theme');
     }
 
