@@ -98,21 +98,21 @@ $link = db_init();
 
 $result = $link->query($sql);
 while(  $obj = $result->fetch_object()) {
-    echo("\t\t<tr>\n");
-    echo("\t\t\t<td>$obj->day</td>\n");
-    echo("\t\t\t<td>$obj->team_registrations_cnt</td>\n");
-    echo("\t\t\t<td>$obj->new_round_cnt</td>\n");
-    echo("\t\t\t<td>$obj->new_round_players_avg</td>\n");
-    echo("\t\t\t<td>$obj->board_on_load ($obj->board_on_load_mobile)</td>\n");
-    echo("\t\t\t<td>$obj->open_info_box</td>\n");
-    echo("\t\t\t<td>$obj->link_simulation_infos</td>\n");
-    echo("\t\t\t<td>$obj->link_simulation_login</td>\n");
-    echo("\t\t\t<td>$obj->open_feedback_box</td>\n");
-    echo("\t\t\t<td>$obj->open_setup_box</td>\n");
-    echo("\t\t\t<td>$obj->use_color_switch</td>\n");
-    echo("\t\t\t<td>$obj->toggle_timer</td>\n");
-    echo("\t\t\t<td>$obj->topic_saved</td>\n");
-    echo("\t\t</tr>\n\n");
+    echo("<tr>\n");
+    echo("<td>$obj->day</td>\n");
+    echo("<td>$obj->team_registrations_cnt</td>\n");
+    echo("<td>$obj->new_round_cnt</td>\n");
+    echo("<td>$obj->new_round_players_avg</td>\n");
+    echo("<td>$obj->board_on_load ($obj->board_on_load_mobile)</td>\n");
+    echo("<td>$obj->open_info_box</td>\n");
+    echo("<td>$obj->link_simulation_infos</td>\n");
+    echo("<td>$obj->link_simulation_login</td>\n");
+    echo("<td>$obj->open_feedback_box</td>\n");
+    echo("<td>$obj->open_setup_box</td>\n");
+    echo("<td>$obj->use_color_switch</td>\n");
+    echo("<td>$obj->toggle_timer</td>\n");
+    echo("<td>$obj->topic_saved</td>\n");
+    echo("</tr>\n\n");
 }
 echo("</table>\n\n");
 
@@ -124,7 +124,7 @@ order by datum desc";
 
 $result = $link->query($sql);
 while(  $obj = $result->fetch_object()) {
-    echo('\t\t<div class="feedback">');
+    echo('<div class="feedback">');
     echo("<h1>$obj->datum</h1>");
     echo("<h1>");
     for ($i=0;$i<5;$i++) {
