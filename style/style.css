@@ -1348,7 +1348,7 @@ div#cbox {
     right: 50px;
     top: 45px;
     border: 1px solid var(--primary-border-color);
-    width: 420px;
+    width: 428px;
     padding-bottom: 1rem;
     height: auto;
     border-radius: 15px;
@@ -1489,8 +1489,7 @@ div#cbox {
     }
 
     .cs_c.desktop {
-        width: 33px;
-        height: 49px;
+        width: 27px;
         border-radius: 5px;
     }
     .cs_c.desktop:hover {
