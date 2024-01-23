@@ -354,6 +354,22 @@
       "description": "55",
       "numeric_value": 55,
       "flow_control": false
+    },
+    {
+      "index": 43,
+      "card_key": "qstmrk1",
+      "sort_order": 99010,
+      "description": "have a question",
+      "numeric_value": null,
+      "flow_control": true
+    },
+    {
+      "index": 44,
+      "card_key": "xclam01",
+      "sort_order": 99020,
+      "description": "need to talk",
+      "numeric_value": null,
+      "flow_control": true
     }
   ]
 }
