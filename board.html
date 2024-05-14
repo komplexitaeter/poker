@@ -25,10 +25,7 @@
         </div>
 
         <div id="mobile-menu" class="mobile-menu sizefit" data-state="closed">
-            <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_nobg.png" alt="Komplexitäter" class="sizefit switchable"/></a>
-
-            <a id="linkedin_a" href="https://www.linkedin.com/company/komplexitäter/posts/?feedView=images&viewAsMember=true" target="_blank"><img id="linkedin" src="src/follow_us.png" class="sizefit" alt="Follow us on LinkedIn" /></a>
-            <img src="src/follow_us.png" id="cta_linkedin" class="cta_design topnav sizefit switchable" alt="Support us by following on LinkedIn" />
+            <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter" class="sizefit"/></a>
 
             <img src="src/mmenu.png" class="open_menu switchable" alt="Menu" onclick="toggleMobileMenu('open')"/>
 
@@ -98,12 +95,9 @@
 
         </div>
 
-
-        <label for="nameinput"></label><input id="nameinput" class="sizefit" onchange="nameChanged(this)" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
-
         <div id="topic" class="sizefit display_none" data-hash="0"></div>
 
-        <div id="cbox" tabindex="2" class="sizefit"></div>
+        <div id="cbox" class="sizefit"></div>
 
         <div id="order_by_div" class="toggle_container" onclick="toggleOrderBy()">
             <div id="order_by_name_btn" class="btn"><span>Name</span></div>
@@ -112,7 +106,7 @@
         </div>
 
 
-        <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" tabindex="3" class="sizefit" data-state="closed" />
+        <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" class="sizefit" data-state="closed" />
 
         <div id="stopwatch" class="stopwatch_control">
             <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
@@ -139,9 +133,22 @@
 
 </div>
 <img id="index" class="sizefit" src="src/index.png" title="average result" alt="average result" />
-<div id="overlay" class="hidden"></div>
-<div id="overlay_qr_code" class="hidden" onclick="showQRCode(false)">
+
+<div id="overlay_qr" class="overlay hidden"></div>
+<div id="overlay_qr_code" class="overlay hidden" onclick="showQRCode(false)">
     <div id="canvas_qr_code"></div>
 </div>
+
+<div id="overlay_name_input" class="overlay hidden">
+    <label for="nameinput"></label><input id="nameinput" class="sizefit" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
+    <div id="removed_msg" class="sizefit">
+        <h1>You were temporarily kicked out of the game</h1>
+        <span>This usually happens when you have been off for a while and someone removes you from the table. What do you want to do now?</span>
+    </div>
+    <input id="become_player_btn" class="become_user_btn sizefit" type="button" value="Participate as a Player" tabindex="2" disabled />
+    <input id="become_observer_btn" class="become_user_btn sizefit" type="button" value="Become Observer" tabindex="3" disabled />
+</div>
+
+
 </body>
 </html>

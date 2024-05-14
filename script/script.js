@@ -10,7 +10,6 @@ let gDisplayType = null;
 let gTopic = null;
 let gCardsConfig = null;
 let gCardsPresets = null;
-let gOnLoadFocus = null;
 let gSurvey = null;
 let gResultOder = 'NAME';
 let gAllPlayersReady = false;
@@ -57,36 +56,60 @@ if (sid === null) {
     localStorage.setItem('SID', uid);
 }
 
-function nameChanged(e) {
-    let url = './api/name.php?id=' + localStorage.getItem('SID') + '&name=' + e.value + '&t=' + t;
-    fetch(url).then(()=>{pushDomChange();});
-    setTimeout( ()=>{document.getElementById('cbox').focus()}, 100);
-}
-
 function newRound() {
     let url = './api/newround.php?t=' + t;
     fetch(url).then(()=>{pushDomChange();});
     toggleMobileMenu("closed");
 }
 
-function nameUpdate(e) {
+function playerTypeUpdate(playerType, name) {
     let ctl = document.getElementById("ctl");
-    if (e.value === null || e.value === "") {
+    let overlayNameInput = document.getElementById("overlay_name_input");
+
+    if (playerType === 'PLAYER' || playerType === 'OBSERVER') {
         toggleStyleClass(ctl, "hidden", "visible");
-        gOnLoadFocus = e;
+        toggleStyleClass(overlayNameInput, "hidden", "visible");
     }
     else {
+        let nameinput = document.getElementById("nameinput");
+        let removedMsg = document.getElementById("removed_msg");
+
+        updateBecomeUserButtons(nameinput);
+
+        if (playerType === 'REMOVED') {
+            toggleStyleClass(nameinput, 'display_none', 'display_unset');
+            toggleStyleClass(removedMsg, 'display_unset', 'display_none');
+        } else {
+            toggleStyleClass(nameinput, 'display_unset', 'display_none');
+            toggleStyleClass(removedMsg, 'display_none', 'display_unset');
+        }
         toggleStyleClass(ctl, "visible", "hidden");
-        gOnLoadFocus = document.getElementById('cbox');
+
+        if (overlayNameInput.classList.contains("hidden")) {
+            toggleStyleClass(overlayNameInput, "visible", "hidden");
+
+            nameinput.value = name;
+            updateBecomeUserButtons(nameinput);
+
+            if (playerType === 'REMOVED') {
+                setTimeout(function () {
+                    document.getElementById('become_player_btn').focus();
+                }, 100);
+            } else {
+                setTimeout(function () {
+                    document.getElementById('nameinput').focus();
+                }, 100);
+            }
+        }
     }
 }
 
-function controlsDsp(e) {
+function controlsDsp(playerType) {
     let ctl = document.getElementById("ctl");
 
     toggleStyleClass(ctl, "visible", "hidden");
 
-    if (e.name !== null && e.name !== '') {
+    if (playerType === "PLAYER") {
         ctl.classList.remove('ctl_as_guest');
     }
     else {
@@ -97,7 +120,7 @@ function controlsDsp(e) {
     const images = document.querySelectorAll('#ctl img.on');
 
     images.forEach(img => {
-        if (e.name !== null && e.name !== '') {
+        if (playerType === "PLAYER") {
             img.classList.add("ctl_hover");
             img.addEventListener("click", setC);
         }
@@ -348,24 +371,12 @@ function updateDom(myJson, isOnLoad) {
     if (myJson === 0) return;
 
     gAllPlayersReady = myJson.all_players_ready;
-
-    let e = document.getElementById('nameinput');
-    if (isOnLoad ||
-        (e !== document.activeElement && e.value !== myJson.name)) {
-        e.value = myJson.name;
-        nameUpdate(e);
-        const delayMinutes = Math.random() * 10;
-        if(myJson.survey === "LOUD") {
-            setTimeout(function () {
-                toggleSurvey(true);
-            }, Math.round(1000 * 60 * delayMinutes));
-        }
-    }
-
     gSurvey = myJson.survey;
 
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
+
+    playerTypeUpdate(myJson.player_type, myJson.name);
 
     if (topic.getAttribute("data-hash") !== topicHash) {
 
@@ -449,7 +460,7 @@ function updateDom(myJson, isOnLoad) {
     showCardUsage(myJson.players, myJson.all_players_ready, myJson.show_avg);
 
 
-    controlsDsp(myJson);
+    controlsDsp(myJson.player_type);
     updateOrderByButtons(myJson.results_order
                         , myJson.all_players_ready && myJson.players.length>0
                         , myJson.anonymous_mode);
@@ -460,16 +471,15 @@ function updateDom(myJson, isOnLoad) {
     activateJediMode(myJson.show_avg);
 
     if (isOnLoad) {
-        document.body.style.opacity = '1';
 
-        if (gOnLoadFocus) {
-
-            setTimeout(function() {
-                gOnLoadFocus.focus();
-                gOnLoadFocus = null;
-            }, 100); // Verzögerung von 100 Millisekunden
+        const delayMinutes = Math.random() * 10;
+        if(myJson.survey === "LOUD") {
+            setTimeout(function () {
+                toggleSurvey(true);
+            }, Math.round(1000 * 60 * delayMinutes));
         }
 
+        document.body.style.opacity = '1';
         adaptToDevice();
         updateDao(false);
     }
@@ -565,6 +575,83 @@ function loadBoard() {
     initializeWSConnection(t);
     initDisplayHandling();
     measureEvent("BOARD_ON_LOAD");
+
+    document.getElementById('nameinput').addEventListener('input', function(event) {
+        updateBecomeUserButtons(event.target);
+    });
+
+    let becomePlayerBtn = document.getElementById("become_player_btn");
+    becomePlayerBtn.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            becomePlayer();
+        }
+    });
+    becomePlayerBtn.addEventListener('click', becomePlayer);
+
+    let becomeObserverBtn = document.getElementById("become_observer_btn");
+    becomeObserverBtn.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            becomeObserver();
+        }
+    });
+    becomeObserverBtn.addEventListener('click', becomeObserver);
+
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+           keyUpDown(event);
+        }
+    });
+}
+
+function keyUpDown(event) {
+    if (document.getElementById("overlay_name_input").classList.contains('visible')) {
+        if (event.key === 'ArrowDown') {
+            if (document.getElementById('become_player_btn') === document.activeElement) {
+                document.getElementById('become_observer_btn').focus();
+            }
+            if (document.getElementById('nameinput') === document.activeElement) {
+                document.getElementById('become_player_btn').focus();
+            }
+            event.preventDefault();
+        } else if (event.key === 'ArrowUp') {
+            if (document.getElementById('become_player_btn') === document.activeElement) {
+                document.getElementById('nameinput').focus();
+            }
+            if (document.getElementById('become_observer_btn') === document.activeElement) {
+                document.getElementById('become_player_btn').focus();
+            }
+            event.preventDefault();
+        }
+    }
+}
+
+function updateBecomeUserButtons(nameInput) {
+    if ( nameInput.value.length === 0) {
+        document.getElementById("become_player_btn").disabled = true;
+        document.getElementById("become_observer_btn").disabled = true;
+    } else {
+        document.getElementById("become_player_btn").disabled = false;
+        document.getElementById("become_observer_btn").disabled = false;
+    }
+}
+
+function becomePlayer() {
+    becomeUser('player');
+}
+
+function becomeObserver() {
+    becomeUser('observer');
+}
+
+function becomeUser(type) {
+    let name = document.getElementById("nameinput").value;
+    if (name.length > 0) {
+        let url = './api/name.php?id=' + localStorage.getItem('SID') + '&type=' + type + '&name=' + name + '&t=' + t;
+        fetch(url).then(() => {
+            pushDomChange();
+        });
+    }
 }
 
 function loadInit() {
@@ -593,12 +680,16 @@ function measureEvent(eventCode) {
 
 function setColor() {
     let toggleImg = document.getElementById("cmode_btn");
+    let brandImg = document.getElementById("brand");
+
 
     if (gColorMode === "dark") {
         toggleImg.src = "./src/toggle_light.svg";
+        brandImg.src = "./src/brand_dark.svg";
         document.body.classList.remove('light-theme');
     } else {
         toggleImg.src = "./src/toggle_dark.svg";
+        brandImg.src = "./src/brand_light.svg";
         document.body.classList.add('light-theme');
     }
 
@@ -668,7 +759,7 @@ function generateQRCode(url) {
 }
 
 function showQRCode(showIt) {
-    let overlay = document.getElementById("overlay");
+    let overlay = document.getElementById("overlay_qr");
     let overlay_qr = document.getElementById("overlay_qr_code");
     if (showIt) {
         toggleStyleClass(overlay, "visible", "hidden");

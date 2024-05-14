@@ -13,7 +13,7 @@ if (strlen($mkey)>0) {
     $link = db_init();
     validate_team($t, $link) or exit;
 
-    $sql = "DELETE FROM pok_players_tbl WHERE team_id='".$t."' and mkey = ".$mkey;
+    $sql = "UPDATE pok_players_tbl SET player_type = 'REMOVED' WHERE team_id='".$t."' and mkey = ".$mkey;
 
     $link->query($sql);
     $link->close();

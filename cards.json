@@ -370,6 +370,14 @@
       "description": "need to talk",
       "numeric_value": null,
       "flow_control": true
+    },
+    {
+      "index": 45,
+      "card_key": "veto",
+      "sort_order": 99030,
+      "description": "veto",
+      "numeric_value": null,
+      "flow_control": true
     }
   ]
 }

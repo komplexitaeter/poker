@@ -160,6 +160,7 @@ function getDao($t, $id) {
     $timer_status = null;
     $timer_visibility = 0;
     $card_key = '';
+    $player_type = null;
     $cardset_flags = null;
     $team_name = null;
     $color_mode = 'dark';
@@ -224,12 +225,15 @@ function getDao($t, $id) {
                 $name=$obj->name;
                 $mkey=$obj->mkey;
                 $card_key=$obj->card_key;
+                $player_type = $obj->player_type;
             }
 
-            if (is_null($obj->card_key)) $all_players_ready = false;
-            else $one_ore_more_player_ready = true;
+            if ($obj->player_type === 'PLAYER') {
+                if (is_null($obj->card_key)) $all_players_ready = false;
+                else $one_ore_more_player_ready = true;
 
-            $objs[] = $obj;
+                $objs[] = $obj;
+            }
         }
     }
 
@@ -324,6 +328,7 @@ function getDao($t, $id) {
         "anonymous_mode"=>$anonymous_mode,
         "anonymous_request_toggle"=>$anonymous_request_toggle,
         "selected_card_key"=>$card_key,
+        "player_type"=>$player_type,
         "all_players_ready"=>$all_players_ready,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready,
         "players"=>$players );
@@ -352,4 +357,41 @@ function get_survey_id($link, $team_id, $user_id) {
         if ($obj->approx_team_age < -110) $survey_id = 1;
     }
     return $survey_id;
+}
+
+function add_team($link, $t) {
+    $id_val = '';
+
+    if (strlen($t) <= 0) {
+        $t = 'Team';
+    }
+
+    $id = get_team_id($t, $link);
+
+    /* determine default preset from cards.json config file */
+    $cards_conf = json_decode(file_get_contents('../cards.json'), true);
+    $cardset_flags = str_pad("", count($cards_conf["cards"]), "0");
+
+    /* rule1: load default preset (the first preset in the config file) and set the flags accordingly */
+    foreach ($cards_conf["presets"][0]["index_list"] as $index ) {
+        $cardset_flags = substr_replace($cardset_flags, "1", $index, 1);
+    }
+
+    /* rule2: by default, all flow_control relevant cards should be set as active */
+    foreach ($cards_conf["cards"] as $card) {
+        if ($card["flow_control"]) {
+            $cardset_flags = substr_replace($cardset_flags, "1", $card["index"], 1);
+        }
+    }
+
+
+    $sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order)
+                                VALUES(?,?,?,'SEQUENCE')");
+    $sql->bind_param('sss', $id, $cardset_flags, $t);
+
+    if ($sql->execute()) {
+        $id_val = $id;
+    }
+
+    return $id_val;
 }

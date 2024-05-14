@@ -23,7 +23,8 @@ if ($anonymous_request_toggle != null and $anonymous_request_toggle >= 0 and $an
                                             (select count(1)
                                               from pok_players_tbl p2
                                              where p2.team_id = t.id
-                                               and card_key is not null) = 0
+                                               and card_key is not null
+                                               and p2.player_type = 'PLAYER') = 0
                                             ,t.anonymous_request_toggle, t.anonymous_mode
                                         )
                                    where t.id=?");

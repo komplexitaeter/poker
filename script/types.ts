@@ -2,6 +2,7 @@ export interface Player {
     name: string;
     mkey: string;
     display_card_key: string;
+    player_type: string;
     i: number;
 }
 
