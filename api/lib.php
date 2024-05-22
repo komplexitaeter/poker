@@ -172,6 +172,8 @@ function getDao($t, $id) {
     $players=array();
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
+    $needs_celebration = true;
+    $players_count = 0;
 
 
     $link = db_init();
@@ -219,6 +221,9 @@ function getDao($t, $id) {
              ORDER BY p.name";
     $objs = array();
     if ($result = $link->query($sql)) {
+
+        $previous_card = null;
+
         while(  $obj = $result->fetch_object()) {
 
             if ($obj->id == $id) {
@@ -229,12 +234,21 @@ function getDao($t, $id) {
             }
 
             if ($obj->player_type === 'PLAYER') {
+                $players_count++;
+
                 if (is_null($obj->card_key)) $all_players_ready = false;
                 else $one_ore_more_player_ready = true;
+
+
+                if ($players_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;
+                $previous_card = $obj->card_key;
+
 
                 $objs[] = $obj;
             }
         }
+
+        if ($players_count<2) $needs_celebration = false;
     }
 
 
@@ -331,6 +345,8 @@ function getDao($t, $id) {
         "player_type"=>$player_type,
         "all_players_ready"=>$all_players_ready,
         "one_ore_more_player_ready"=>$one_ore_more_player_ready,
+        "needs_celebration"=>$needs_celebration,
+        "players_count"=>$players_count,
         "players"=>$players );
 }
 

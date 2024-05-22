@@ -450,6 +450,9 @@ function updateDom(myJson, isOnLoad) {
             }
         });
 
+        if (myJson.needs_celebration) {
+            showConfetty(myJson.players_count);
+        }
     }
 
 
@@ -1167,4 +1170,14 @@ function showCardUsage(players, allPlayersReady, showAvg) {
         ctl.classList.remove("show_card_stats");
         updateAvgIndicator(cardStats,false);
     }
+}
+
+function showConfetty(playersCount) {
+    const jsConfetti = new JSConfetti();
+    jsConfetti.addConfetti({
+        confettiColors: [
+            '#b91267', '#207dbd', '#e5d522'
+        ],
+        confettiNumber: Math.pow( playersCount, 3)
+    });
 }

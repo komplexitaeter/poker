@@ -26,6 +26,8 @@ export interface myJsonType {
     one_ore_more_player_ready: boolean;
     anonymous_mode: boolean;
     anonymous_request_toggle: boolean;
+    needs_celebration: boolean;
+    players_count: number;
     players: Player[];
 }
 
