@@ -370,6 +370,11 @@ function updateDom(myJson, isOnLoad) {
 
     if (myJson === 0) return;
 
+    if (!gAllPlayersReady
+        && myJson.all_players_ready
+        && myJson.needs_celebration
+        && !isOnLoad) showConfetty(myJson.players_count);
+
     gAllPlayersReady = myJson.all_players_ready;
     gSurvey = myJson.survey;
 
@@ -449,10 +454,6 @@ function updateDom(myJson, isOnLoad) {
                 addStyleClass(e, 'c_move');
             }
         });
-
-        if (myJson.needs_celebration) {
-            showConfetty(myJson.players_count);
-        }
     }
 
 
