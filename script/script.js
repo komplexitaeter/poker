@@ -20,7 +20,11 @@ let gTimerInterval = null;
 let gLastShowAvg = null;
 let gUserName = null;
 
-
+if (sid === null) {
+    let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
+    localStorage.setItem('SID', uid);
+    sid = uid;
+}
 
 String.prototype.hashCode = function() {
     let hash = 0;
@@ -50,11 +54,6 @@ function getBrowserWidth(){
     }
 
     return gDisplayType;
-}
-
-if (sid === null) {
-    let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
-    localStorage.setItem('SID', uid);
 }
 
 function newRound() {
