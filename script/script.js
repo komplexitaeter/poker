@@ -18,6 +18,7 @@ let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
 let gLastShowAvg = null;
+let gUserName = null;
 
 
 
@@ -377,6 +378,13 @@ function updateDom(myJson, isOnLoad) {
 
     gAllPlayersReady = myJson.all_players_ready;
     gSurvey = myJson.survey;
+    gUserName = myJson.name;
+
+    if (myJson.player_type === "PLAYER") {
+        document.getElementById('cet_toggle_user_type').value = "Become Observer";
+    } else {
+        document.getElementById('cet_toggle_user_type').value = "Participate as a Player";
+    }
 
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
@@ -473,6 +481,7 @@ function updateDom(myJson, isOnLoad) {
     updateAnonymityConfig(myJson.anonymous_request_toggle);
 
     activateJediMode(myJson.show_avg);
+    updateJediBtn();
 
     if (isOnLoad) {
 
@@ -582,6 +591,31 @@ function loadBoard() {
 
     document.getElementById('nameinput').addEventListener('input', function(event) {
         updateBecomeUserButtons(event.target);
+    });
+
+    document.getElementById('nameinput').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            document.getElementById('become_player_btn').focus();
+        }
+    });
+
+    document.getElementById('cet_team_name').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (!document.getElementById('cet_change_name').disabled ) {
+                updateTeamName();
+            }
+        }
+    });
+
+    document.getElementById('cet_usr_name').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (!document.getElementById('cet_change_user').disabled ) {
+                updateUserName();
+            }
+        }
     });
 
     let becomePlayerBtn = document.getElementById("become_player_btn");

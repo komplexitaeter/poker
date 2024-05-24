@@ -27,14 +27,14 @@
         </div>
 
         <div id="mobile-menu" class="mobile-menu sizefit" data-state="closed">
-            <a href="https://komplexitaeter.de" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter" class="sizefit"/></a>
+            <a href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter" class="sizefit"/></a>
 
             <img src="src/mmenu.png" class="open_menu switchable" alt="Menu" onclick="toggleMobileMenu('open')"/>
 
             <img onclick="switchColorMode()" src="src/toggle_dark.svg" id="cmode_btn" class="cmode_btn_board topnav topnav_btn sizefit" alt="Color mode" />
 
-            <a id="home_a" href="./"><img src="src/home.svg" id="home_btn" class="topnav_btn sizefit" alt="Home" onmousemove="hideTeaser()" /></a>
-            <img src="src/cta_home.png" id="cta_home" class="cta_design topnav sizefit switchable" alt="Create another board" />
+            <img onclick="toggle_box('user_settings');" src="src/user_settings_off.svg" id="user_settings_btn" class="topnav_btn sizefit" alt="User settings" onmousemove="hideTeaser()" />
+            <img src="src/cta_user_settings.png" id="cta_user_settings" class="cta_design topnav sizefit switchable" alt="Se tup your user profile" />
 
             <img onclick="toggle_box('topic');" src="src/topic.svg" id="topic_btn" class="topnav topnav_btn sizefit" alt="Topic" onmousemove="hideTeaser()" />
             <img src="src/cta_topic.png" id="cta_topic" class="cta_design topnav sizefit switchable" alt="Set a topic" />
@@ -68,7 +68,7 @@
             </div>
             <div id="cset_box" class="topnav sizefit">
                 <label for="cet_team_name" class="topnav">Change team name</label>
-                <input class="topnav sizefit" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
+                <input class="topnav sizefit setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
                 <input id="cet_change_name" class="box_sbmt_button topnav sizefit" type="button" onclick="updateTeamName()" value="Ok" />
 
                 <label for="cet_pre" class="topnav">Define your deck of cards</label>
@@ -91,9 +91,19 @@
                     <option value="1" selected>Hide names on results (anonymous)</option>
                 </select>
 
-                <label for="cet_dark_side" class="topnav">Join the dark side</label>
+                <label for="cet_dark_side" class="topnav">Calculate average value</label>
                 <input id="cet_dark_side" class="box_sbmt_button topnav sizefit" type="button" onclick="pushJediBtn()" data-state="0" />
             </div>
+
+            <div id="user_settings_box" class="topnav sizefit">
+                <label for="cet_usr_name" class="topnav">Change your name</label>
+                <input class="topnav sizefit setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
+                <input id="cet_change_user" class="box_sbmt_button topnav sizefit" type="button" onclick="updateUserName()" value="Ok" />
+
+                <label for="cet_toggle_user_type" class="topnav">Switch your role</label>
+                <input id="cet_toggle_user_type" class="box_sbmt_button topnav sizefit" type="button" onclick="toggleUserType()" />
+            </div>
+
 
         </div>
 

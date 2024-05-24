@@ -31,8 +31,7 @@ function toggle_box(boxName) {
             toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(false);
-            /*window.open("https://padlet.com/komplexitaeter/poker_feedback", '_blank');
-            window.open("https://twitter.com/AgileEstimation", '_blank');*/
+            toggle_user_settings_box(false);
             measureEvent("OPEN_FEEDBACK_BOX");
         }
         else {
@@ -40,6 +39,7 @@ function toggle_box(boxName) {
             toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(false);
+            toggle_user_settings_box(false);
         }
     }
     if (boxName === 'topic') {
@@ -49,6 +49,7 @@ function toggle_box(boxName) {
             toggle_topic_box(true);
             toggle_cardset_box(false);
             toggle_info_box(false);
+            toggle_user_settings_box(false);
             measureEvent("OPEN_TOPIC_BOX");
         }
         else {
@@ -56,6 +57,7 @@ function toggle_box(boxName) {
             toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(false);
+            toggle_user_settings_box(false);
         }
     }
     if (boxName === 'cset') {
@@ -66,12 +68,11 @@ function toggle_box(boxName) {
                     = document.getElementById('team_name').innerText;
             document.getElementById('cet_change_name').disabled = true;
 
-            updateJediBtn();
-
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(true);
             toggle_info_box(false);
+            toggle_user_settings_box(false);
             measureEvent("OPEN_SETUP_BOX");
         }
         else {
@@ -79,6 +80,7 @@ function toggle_box(boxName) {
             toggle_topic_box(false);
             toggle_cardset_box(false)
             toggle_info_box(false);
+            toggle_user_settings_box(false);
         }
     }
     if (boxName === 'info') {
@@ -88,6 +90,7 @@ function toggle_box(boxName) {
             toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(true);
+            toggle_user_settings_box(false);
             measureEvent("OPEN_INFO_BOX");
         }
         else {
@@ -95,6 +98,29 @@ function toggle_box(boxName) {
             toggle_topic_box(false);
             toggle_cardset_box(false);
             toggle_info_box(false);
+            toggle_user_settings_box(false);
+        }
+    }
+    if (boxName === 'user_settings') {
+        let e = document.getElementById('user_settings_box');
+        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
+
+            document.getElementById('cet_usr_name').value = gUserName;
+            document.getElementById('cet_change_user').disabled = true;
+
+            toggle_feedback_box(false);
+            toggle_topic_box(false);
+            toggle_cardset_box(false);
+            toggle_info_box(false);
+            toggle_user_settings_box(true);
+            measureEvent("OPEN_USER_SETTINGS_BOX");
+        }
+        else {
+            toggle_feedback_box(false);
+            toggle_topic_box(false);
+            toggle_cardset_box(false);
+            toggle_info_box(false);
+            toggle_user_settings_box(false);
         }
     }
 
@@ -104,10 +130,10 @@ function updateJediBtn() {
     let jediBtn = document.getElementById("cet_dark_side");
     if (gLastJson.show_avg === 1) {
         jediBtn.value = "Hide average indicator";
-        jediBtn.setAttribute("data-state", "2");
+        jediBtn.setAttribute("data-state", "1");
         jediBtn.classList.remove("locked");
     } else {
-        jediBtn.value = "Am Jedi Master, I know what I do!";
+        jediBtn.value = "Show average (join the dark side)";
         jediBtn.setAttribute("data-state", "0");
         jediBtn.classList.add("locked");
     }
@@ -117,19 +143,12 @@ function pushJediBtn() {
     let jediBtn = document.getElementById("cet_dark_side");
     let state = jediBtn.getAttribute("data-state");
     if (state === "0") {
-        jediBtn.value = "Confirm, to show avg results (experimental)";
-        jediBtn.setAttribute("data-state", "1");
-        jediBtn.classList.remove("locked");
-    }
-    if (state === "1") {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + t;
         fetch(url).then(()=>{pushDomChange();});
-        toggle_box('cset');
     }
-    if (state === "2") {
+    if (state === "1") {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + t;
         fetch(url).then(()=>{pushDomChange();});
-        toggle_box('cset');
     }
 }
 
@@ -209,6 +228,24 @@ function toggle_info_box(setOn) {
                 e.style.display = 'none';
                 document.getElementById('info_btn').classList.remove('topnav_btn_on');
                 document.getElementById('info_btn').src = 'src/info.png';
+            }
+        }
+    }
+}
+
+function toggle_user_settings_box(setOn) {
+    let e = document.getElementById('user_settings_box');
+    if (e !== null) {
+        if (setOn) {
+            e.style.display = 'block';
+            document.getElementById('user_settings_btn').classList.add('topnav_btn_on');
+            document.getElementById('user_settings_btn').src = 'src/user_settings_on.svg';
+        }
+        else {
+            if (document.getElementById('user_settings_btn').classList.contains("topnav_btn_on")) {
+                e.style.display = 'none';
+                document.getElementById('user_settings_btn').classList.remove('topnav_btn_on');
+                document.getElementById('user_settings_btn').src = 'src/user_settings_off.svg';
             }
         }
     }
@@ -478,12 +515,35 @@ function onChangeTeamNameInput() {
         || document.getElementById('cet_team_name').value.length === 0;
 }
 
+function onChangeUserNameInput() {
+    document.getElementById('cet_change_user').disabled = document.getElementById('cet_usr_name').value
+        === gUserName
+        || document.getElementById('cet_usr_name').value.length === 0;
+}
+
 function updateTeamName() {
     let teamInput =  document.getElementById("cet_team_name");
     teamInput.value = teamInput.value.trim();
     document.getElementById('cet_change_name').disabled = true;
 
     let url = './api/update_team.php?name=' + teamInput.value + '&t=' + t;
+    fetch(url).then(()=>{pushDomChange();});
+}
+
+function updateUserName() {
+    let userInput =  document.getElementById("cet_usr_name");
+    userInput.value = userInput.value.trim();
+    document.getElementById('cet_change_user').disabled = true;
+
+    let url = './api/name.php?name=' + userInput.value + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
+    fetch(url).then(()=>{pushDomChange();});
+}
+
+function toggleUserType() {
+    let playerType = 'PLAYER';
+    if (gLastJson.player_type === 'PLAYER') playerType = 'OBSERVER';
+
+    let url = './api/name.php?name=' + gUserName + '&t=' + t +'&id='+sid + '&type=' + playerType;
     fetch(url).then(()=>{pushDomChange();});
 }
 

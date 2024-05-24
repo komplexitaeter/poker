@@ -709,7 +709,7 @@ div#cbox {
         width:13%;
         height:auto;
     }
-    .mobile-menu.mobile #home_btn{
+    .mobile-menu.mobile #user_settings_btn{
         left:23%;
     }
 
@@ -921,7 +921,7 @@ div#cbox {
         opacity: 0;
     }
 
-    #home_a:hover + #cta_home {
+    #user_settings_btn:hover + #cta_user_settings {
         opacity: 1;
     }
 
@@ -972,7 +972,7 @@ div#cbox {
             transform: scale(1);
         }
 
-    #home_btn {
+    #user_settings_btn {
         right: 154px;
     }
 
@@ -1004,10 +1004,10 @@ div#cbox {
         position: absolute;
     }
 
-    #cta_home {
-        right :50px;
-        top: 38px;
-        width: 165px;
+    #cta_user_settings {
+        right :91px;
+        top: 39px;
+        width: 85px;
         position: absolute;
     }
 
@@ -1322,8 +1322,33 @@ div#cbox {
         overflow: scroll;
     }
 
+#user_settings_box {
+    position: absolute;
+    right: 60px;
+    top: 45px;
+    border: 1px solid var(--primary-border-color);
+    width: 400px;
+    padding-bottom: 1rem;
+    height: auto;
+    border-radius: 15px;
+    background: var(--light-background);
+    display: none;
+    z-index: 999999;
+}
 
-#cet_team_name {
+    #user_settings_box.mobile {
+        top: 16%;
+        width: 95%;
+        height: 80%;
+        right: 2.5%;
+        overflow: scroll;
+    }
+
+#cet_toggle_user_type {
+    width: 90%;
+}
+
+.setup_input_field {
     background: var(--survey-background);
     border: 1px solid var(--light-border-color);
     color: var(--text-color);
