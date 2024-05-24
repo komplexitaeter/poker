@@ -6,7 +6,7 @@ function toggleTopnav(e) {
         toggle_topic_box(false);
         toggle_cardset_box(false);
         toggle_info_box(false);
-        toggle_user_settings_box(false);
+        //toggle_user_settings_box(false);
     }
 }
 
