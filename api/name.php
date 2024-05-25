@@ -37,9 +37,12 @@ if ($result = $sql->get_result()) {
 
 if ($is_in_db) {
     if (strlen($name) == 0) {
-        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED' WHERE id = ? and team_id = ?");
+        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED', card_key='break01' WHERE id = ? and team_id = ?");
         $sql->bind_param('ss', $id, $t);
-    } else {
+    } else if ($type == 'OBSERVER') {
+        $sql = $link->prepare("UPDATE pok_players_tbl set name = ?, player_type = ?, card_key='break01' WHERE id = ? and team_id = ?");
+        $sql->bind_param('ssss', $name, $type, $id, $t);
+    }  else {
         $sql = $link->prepare("UPDATE pok_players_tbl set name = ?, player_type = ? WHERE id = ? and team_id = ?");
         $sql->bind_param('ssss', $name, $type, $id, $t);
     }
