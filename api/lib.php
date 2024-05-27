@@ -389,7 +389,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
     /* determine preset from cards.json config file */
     $cards_conf = json_decode(file_get_contents(dirname(__DIR__).'/cards.json'), true);
     $cardset_flags = str_pad("", count($cards_conf["cards"]), "0");
-error_log($preset_mapping);
+
     if ($preset_mapping !==  null) {
         $i = 0;
         foreach ($cards_conf["presets"] as $preset ) {
