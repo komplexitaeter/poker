@@ -37,11 +37,25 @@ if ($result = $sql->get_result()) {
 
 if ($is_in_db) {
     if (strlen($name) == 0) {
-        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED', card_key='break01' WHERE id = ? and team_id = ?");
+        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED' WHERE id = ? and team_id = ?");
         $sql->bind_param('ss', $id, $t);
-    } else if ($type == 'OBSERVER') {
-        $sql = $link->prepare("UPDATE pok_players_tbl set name = ?, player_type = ?, card_key='break01' WHERE id = ? and team_id = ?");
-        $sql->bind_param('ssss', $name, $type, $id, $t);
+    } else if ($type == 'PLAYER') {
+        $sql = $link->prepare("SELECT if (count(1) = sum(if(p.card_key is not null,1,0)), 1, 0) all_players_ready
+                                  FROM pok_players_tbl p
+                                 WHERE p.team_id = ?
+                                   AND p.player_type = 'PLAYER';");
+        $sql->bind_param('s',$t);
+        $sql->execute();
+
+        $result = $sql->get_result();
+        $obj = $result->fetch_object();
+
+        $sql = $link->prepare("UPDATE pok_players_tbl ppt 
+                                        set ppt.name = ?,
+                                            ppt.player_type = ?, 
+                                            ppt.card_key = if(?=1,'break01',card_key)
+                                      WHERE ppt.id = ? and ppt.team_id = ?");
+        $sql->bind_param('ssiss', $name, $type,$obj->all_players_ready, $id, $t);
     }  else {
         $sql = $link->prepare("UPDATE pok_players_tbl set name = ?, player_type = ? WHERE id = ? and team_id = ?");
         $sql->bind_param('ssss', $name, $type, $id, $t);

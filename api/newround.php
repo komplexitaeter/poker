@@ -8,10 +8,9 @@ $link = db_init();
 validate_team($t, $link) or exit;
 
 $sql = $link->prepare( "delete from pok_players_tbl
-                                   where id=?
-                                    and player_type = 'OBSERVER'
-                                    and last_callback_time < TIMESTAMPADD(DAY, -1, CURRENT_TIMESTAMP);
-");
+                                   where team_id=?
+                                    and last_callback_time < TIMESTAMPADD(MONTH, -2, CURRENT_TIMESTAMP);
+                                ");
 $sql->bind_param('s', $t);
 $sql->execute();
 
@@ -46,7 +45,9 @@ if ($obj != null && $obj->last_id != 0) {
     $sql = $link->prepare( "insert into pok_roundstat_details_tbl
                                     select ? roundstat_id, t.id as player_id, t.team_id, t.name, t.card_key, t.player_type
                                     from pok_players_tbl t
-                                    where t.team_id = ?");
+                                    where t.team_id = ?
+                                      and t.last_callback_time > TIMESTAMPADD(DAY, -1, CURRENT_TIMESTAMP);
+                                    ");
     $sql->bind_param('is', $obj->last_id, $t);
     $sql->execute();
 }
