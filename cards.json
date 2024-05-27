@@ -1,14 +1,14 @@
 {"presets": [
-  {"id": 1, "description": "Fibonacci", "index_list": [0,1,2,3,4,6,9,10,11,12,13,14]},
-  {"id": 2, "description": "Fibonacci Short", "index_list": [0,2,3,4,6,9,10,11,12]},
-  {"id": 9, "description": "The TRUE™ Fibonacci Sequence", "index_list": [0,2,3,4,6,9,10,40,41,42]},
-  {"id": 3, "description": "Traffic Lights", "index_list": [15,16,17]},
-  {"id": 4, "description": "Delegation Poker", "index_list": [2,3,4,5,6,7,8]},
-  {"id": 5, "description": "JUDGE Decision", "index_list": [0,2,3,4,5,6,7,45]},
-  {"id": 6, "description": "Emotions (Team Assessment)", "index_list": [18,19,20,21,22,23]},
-  {"id": 7, "description": "T-Shirt Sizes", "index_list": [25,26,27,28,29,30,31]},
-  {"id": 8, "description": "0 to 5 Stars", "index_list": [32,33,34,35,36,37]},
-  {"id":10, "description": "Numbers 0 to 10", "index_list": [0,2,3,4,5,6,7,8,9,38,39]}
+  {"id": 1, "description": "Fibonacci", "index_list": [0,1,2,3,4,6,9,10,11,12,13,14], "mapping": "Fibonacci"},
+  {"id": 2, "description": "Fibonacci Short", "index_list": [0,2,3,4,6,9,10,11,12], "mapping": "Fibonacci Short"},
+  {"id": 9, "description": "The TRUE™ Fibonacci Sequence", "index_list": [0,2,3,4,6,9,10,40,41,42], "mapping": "True-Fibonacci"},
+  {"id": 3, "description": "Traffic Lights", "index_list": [15,16,17], "mapping": "Traffic"},
+  {"id": 4, "description": "Delegation Poker", "index_list": [2,3,4,5,6,7,8], "mapping": "Delegation Poker"},
+  {"id": 5, "description": "JUDGE Decision", "index_list": [0,2,3,4,5,6,7,45], "mapping": "Judge"},
+  {"id": 6, "description": "Emotions (Team Assessment)", "index_list": [18,19,20,21,22,23], "mapping": "Emoticons"},
+  {"id": 7, "description": "T-Shirt Sizes", "index_list": [25,26,27,28,29,30,31], "mapping": "T-shirt"},
+  {"id": 8, "description": "0 to 5 Stars", "index_list": [32,33,34,35,36,37], "mapping": "Stars"},
+  {"id":10, "description": "Numbers 0 to 10", "index_list": [0,2,3,4,5,6,7,8,9,38,39], "mapping": "0-10"}
 ],
   "cards": [
   {

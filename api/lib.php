@@ -375,8 +375,10 @@ function get_survey_id($link, $team_id, $user_id) {
     return $survey_id;
 }
 
-function add_team($link, $t) {
+function add_team($link, $t, $topic=null, $preset_mapping=null): string
+{
     $id_val = '';
+    $preset_index = 0;
 
     if (strlen($t) <= 0) {
         $t = 'Team';
@@ -384,16 +386,23 @@ function add_team($link, $t) {
 
     $id = get_team_id($t, $link);
 
-    /* determine default preset from cards.json config file */
-    $cards_conf = json_decode(file_get_contents('../cards.json'), true);
+    /* determine preset from cards.json config file */
+    $cards_conf = json_decode(file_get_contents(dirname(__DIR__).'/cards.json'), true);
     $cardset_flags = str_pad("", count($cards_conf["cards"]), "0");
+error_log($preset_mapping);
+    if ($preset_mapping !==  null) {
+        $i = 0;
+        foreach ($cards_conf["presets"] as $preset ) {
+            if ($preset["mapping"] == $preset_mapping) $preset_index = $i;
+            $i++;
+        }
+    }
 
-    /* rule1: load default preset (the first preset in the config file) and set the flags accordingly */
-    foreach ($cards_conf["presets"][0]["index_list"] as $index ) {
+    foreach ($cards_conf["presets"][$preset_index]["index_list"] as $index ) {
         $cardset_flags = substr_replace($cardset_flags, "1", $index, 1);
     }
 
-    /* rule2: by default, all flow_control relevant cards should be set as active */
+    /* by default, all flow_control relevant cards should be set as active */
     foreach ($cards_conf["cards"] as $card) {
         if ($card["flow_control"]) {
             $cardset_flags = substr_replace($cardset_flags, "1", $card["index"], 1);
@@ -401,9 +410,9 @@ function add_team($link, $t) {
     }
 
 
-    $sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order)
-                                VALUES(?,?,?,'SEQUENCE')");
-    $sql->bind_param('sss', $id, $cardset_flags, $t);
+    $sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order, topic)
+                                VALUES(?,?,?,'SEQUENCE',?)");
+    $sql->bind_param('ssss', $id, $cardset_flags, $t, $topic);
 
     if ($sql->execute()) {
         $id_val = $id;
