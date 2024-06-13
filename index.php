@@ -10,7 +10,7 @@ $t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
 $tool = substr( filter_input(INPUT_GET, "tool", FILTER_SANITIZE_STRING	) ,0,50);
 $team = substr( filter_input(INPUT_GET, "team", FILTER_SANITIZE_STRING	) ,0,80);
 $text = substr( filter_input(INPUT_GET, "text", FILTER_SANITIZE_STRING	) ,0,300);
-$preset = substr( filter_input(INPUT_GET, "preset", FILTER_SANITIZE_STRING	) ,0,300);
+$preset = substr( filter_input(INPUT_GET, "preset", FILTER_SANITIZE_STRING	) ,0,80);
 
 $link = db_init();
 if (validate_team($t, $link)) include('board.html');

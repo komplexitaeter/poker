@@ -172,6 +172,7 @@ function getDao($t, $id) {
     $players=array();
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
+    $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
 
@@ -199,6 +200,7 @@ function getDao($t, $id) {
                   ,t.show_avg
                   ,t.anonymous_mode
                   ,t.anonymous_request_toggle
+                  ,t.needs_setup
             FROM pok_teams_tbl as t
              WHERE t.id = '$t'";
     if ($result = $link->query($sql)) {
@@ -213,6 +215,7 @@ function getDao($t, $id) {
         $show_avg = (int)$obj->show_avg;
         $anonymous_mode = (int)$obj->anonymous_mode;
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
+        $needs_setup = (bool)$obj->needs_setup;
     }
 
     $sql = "SELECT p.* 
@@ -341,6 +344,7 @@ function getDao($t, $id) {
         "show_avg"=>$show_avg,
         "anonymous_mode"=>$anonymous_mode,
         "anonymous_request_toggle"=>$anonymous_request_toggle,
+        "needs_setup"=>$needs_setup,
         "selected_card_key"=>$card_key,
         "player_type"=>$player_type,
         "all_players_ready"=>$all_players_ready,
@@ -379,6 +383,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
 {
     $id_val = '';
     $preset_index = 0;
+    $needs_setup = 0;
 
     if (strlen($t) <= 0) {
         $t = 'Team';
@@ -390,16 +395,24 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
     $cards_conf = json_decode(file_get_contents(dirname(__DIR__).'/cards.json'), true);
     $cardset_flags = str_pad("", count($cards_conf["cards"]), "0");
 
-    if ($preset_mapping !==  null) {
-        $i = 0;
-        foreach ($cards_conf["presets"] as $preset ) {
-            if ($preset["mapping"] == $preset_mapping) $preset_index = $i;
-            $i++;
-        }
-    }
+    if ($preset_mapping === 'custom') {
 
-    foreach ($cards_conf["presets"][$preset_index]["index_list"] as $index ) {
-        $cardset_flags = substr_replace($cardset_flags, "1", $index, 1);
+        $needs_setup = 1;
+
+    } else {
+
+        if ($preset_mapping !== null) {
+            $i = 0;
+            foreach ($cards_conf["presets"] as $preset) {
+                if ($preset["mapping"] == $preset_mapping) $preset_index = $i;
+                $i++;
+            }
+        }
+
+        foreach ($cards_conf["presets"][$preset_index]["index_list"] as $index) {
+            $cardset_flags = substr_replace($cardset_flags, "1", $index, 1);
+        }
+
     }
 
     /* by default, all flow_control relevant cards should be set as active */
@@ -410,9 +423,9 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
     }
 
 
-    $sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order, topic)
-                                VALUES(?,?,?,'SEQUENCE',?)");
-    $sql->bind_param('ssss', $id, $cardset_flags, $t, $topic);
+    $sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order, topic, needs_setup)
+                                VALUES(?,?,?,'SEQUENCE',?,?)");
+    $sql->bind_param('ssssi', $id, $cardset_flags, $t, $topic, $needs_setup);
 
     if ($sql->execute()) {
         $id_val = $id;

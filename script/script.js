@@ -493,6 +493,9 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
         adaptToDevice();
+
+        if (myJson.needs_setup) toggle_box('cset');
+
         updateDao(false);
     }
 
