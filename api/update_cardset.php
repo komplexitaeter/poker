@@ -15,4 +15,4 @@ $sql->bind_param('ss',$cardset_flags, $t);
 $sql->execute();
 
 $link->query($sql);
-$link->close();
+$link->close();d
