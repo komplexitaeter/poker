@@ -14,5 +14,4 @@ $sql = $link->prepare("UPDATE pok_teams_tbl SET cardset_flags = ?, needs_setup=0
 $sql->bind_param('ss',$cardset_flags, $t);
 $sql->execute();
 
-$link->query($sql);
-$link->close();d
+$link->close();
