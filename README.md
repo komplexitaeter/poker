@@ -14,4 +14,4 @@ To install this project, loosely notice this steps:
 5. Follow up on GIT komplexitaeter/poker-msg/README.md instructions to "really" have this "connected-only-feeling"
 
 Tired of following all this steps? There is a pretty good chance to find a reasonable operational instance of this
-project at https://poker.komplexitaeter.de to have fun immediately.
+project at https://app.komplexitaeter.de to have fun immediately.
