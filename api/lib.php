@@ -176,6 +176,7 @@ function getDao($t, $id) {
     $needs_celebration = true;
     $players_count = 0;
 
+    if ($id === null || strlen($id) < 10) die();
 
     $link = db_init();
 

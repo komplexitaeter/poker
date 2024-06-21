@@ -1734,7 +1734,7 @@ table tr:first-child{
     }
 
 
-.become_user_btn {
+.overlay_action_btn {
     background: var(--background-color);
     border: 1px solid var(--primary-border-color);
     color: var(--text-color);
@@ -1744,14 +1744,14 @@ table tr:first-child{
     margin-bottom: 0.5rem;
 }
 
-    .become_user_btn.desktop{
+    .overlay_action_btn.desktop{
         font-size: medium;
         padding: 5pt;
         width: 200px;
         border-radius: 15pt;
     }
 
-    .become_user_btn.mobile{
+    .overlay_action_btn.mobile{
         font-size: 1rem;
         border-radius: 1rem;
         width: 65%;
@@ -1759,18 +1759,18 @@ table tr:first-child{
         margin-bottom: 1rem;
     }
 
-    .become_user_btn:hover {
+    .overlay_action_btn:hover {
         border-color: var(--bluish);
         color: var(--bluish);
     }
 
-    .become_user_btn:focus {
+    .overlay_action_btn:focus {
         outline: none;
         border-color: var(--bluish);
         box-shadow: 0 0 8px 2px rgba(132, 203, 255, 0.6); /* Hinzugefügter Schatten */
     }
 
-    .become_user_btn:disabled {
+    .overlay_action_btn:disabled {
         color: var(--box-disabled);
         border-color: var(--box-disabled);
         box-shadow: none; /* Kein Schatten */
@@ -1788,6 +1788,33 @@ table tr:first-child{
 
 #removed_msg.mobile {
     width: 65%;
+}
+
+
+.privacy_link {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-size: 10pt;
+    margin-top: 30px;
+    color: var(--box-disabled);
+    cursor: default;
+
+}
+
+.privacy_link a {
+    text-decoration: none;
+    margin: 5px;
+    color: var(--box-disabled);
+}
+
+.privacy_link a:hover {
+    color: var(--text-color);
+}
+
+.privacy_link span {
+    margin: 0 2px; /* Same margin as links for even spacing */
 }
 
 #index {
@@ -1812,3 +1839,25 @@ table tr:first-child{
     animation: flashRed 1.5s ease-in-out;
 }
 
+#overlay_delete_user {
+    z-index: 99999999;
+    justify-content: flex-start;
+    align-items: center;
+    background-color: var(--background-color);
+    opacity: 95%;
+    display: flex;
+    flex-direction: column; /* Richtet die Kinder vertikal aus */
+}
+
+#delete_user_msg {
+    margin-bottom: 2rem;
+    margin-top: 2rem;
+}
+
+#delete_user_msg.desktop {
+    width: 450px;
+}
+
+#delete_user_msg.mobile {
+    width: 65%;
+}

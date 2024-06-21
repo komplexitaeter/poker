@@ -65,10 +65,12 @@ function newRound() {
 function playerTypeUpdate(playerType, name) {
     let ctl = document.getElementById("ctl");
     let overlayNameInput = document.getElementById("overlay_name_input");
+    let privacyLink = document.getElementById("overlay_privacy_link");
 
     if (playerType === 'PLAYER' || playerType === 'OBSERVER') {
         toggleStyleClass(ctl, "hidden", "visible");
         toggleStyleClass(overlayNameInput, "hidden", "visible");
+        toggleStyleClass(privacyLink, 'hidden', 'visible');
     }
     else {
         let nameinput = document.getElementById("nameinput");
@@ -79,9 +81,12 @@ function playerTypeUpdate(playerType, name) {
         if (playerType === 'REMOVED') {
             toggleStyleClass(nameinput, 'display_none', 'display_unset');
             toggleStyleClass(removedMsg, 'display_unset', 'display_none');
+            toggleStyleClass(privacyLink, 'hidden', 'visible');
+
         } else {
             toggleStyleClass(nameinput, 'display_unset', 'display_none');
             toggleStyleClass(removedMsg, 'display_none', 'display_unset');
+            toggleStyleClass(privacyLink, 'visible', 'hidden');
         }
         toggleStyleClass(ctl, "visible", "hidden");
 
@@ -1216,5 +1221,21 @@ function showConfetty(playersCount) {
             '#b91267', '#207dbd', '#e5d522'
         ],
         confettiNumber: Math.pow( playersCount, 3)
+    });
+}
+
+function showDeleteUserOverlay(openIt=true) {
+    let overlayDiv= document.getElementById('overlay_delete_user');
+    if (openIt) removeStyleClass(overlayDiv, 'hidden')
+    else addStyleClass(overlayDiv, 'hidden');
+}
+
+function deleteUser() {
+    let url = './api/delete_user.php?id=' + sid;
+    fetch(url).then(()=>{
+        localStorage.clear();
+        sid = '-1';
+        pushDomChange();
+        document.location = 'about:blank';
     });
 }

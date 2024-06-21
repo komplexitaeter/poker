@@ -102,9 +102,12 @@
 
                 <label for="cet_toggle_user_type" class="topnav">Switch your role</label>
                 <input id="cet_toggle_user_type" class="box_sbmt_button topnav sizefit" type="button" onclick="toggleUserType()" />
+
+                <div id="user_settings_privacy_link" class="privacy_link">
+                    <a href="https://komplexitaeter.de/datenschutz" target="_blank">Privacy Policy</a> | <a href="https://komplexitaeter.de/impressum" target="_blank">Imprint</a> | <a onclick="showDeleteUserOverlay()">Delete User</a>
+                </div>
             </div>
-
-
+´
         </div>
 
         <div id="topic" class="sizefit display_none" data-hash="0"></div>
@@ -157,10 +160,25 @@
         <h1>You were temporarily kicked out of the game</h1>
         <span>This usually happens when you have been off for a while and someone removes you from the table. What do you want to do now?</span>
     </div>
-    <input id="become_player_btn" class="become_user_btn sizefit topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
-    <input id="become_observer_btn" class="become_user_btn sizefit topnav" type="button" value="Become Observer" tabindex="3" disabled />
+    <input id="become_player_btn" class="overlay_action_btn sizefit topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
+    <input id="become_observer_btn" class="overlay_action_btn sizefit topnav" type="button" value="Become Observer" tabindex="3" disabled />
+
+    <div id="overlay_privacy_link" class="privacy_link">
+        <a href="https://komplexitaeter.de/datenschutz" target="_blank">Privacy</a>
+        <span>|</span>
+        <a href="https://komplexitaeter.de/impressum" target="_blank">Imprint</a>
+    </div>
+
 </div>
 
+<div id="overlay_delete_user" class="overlay hidden topnav">
+    <div id="delete_user_msg" class="sizefit">
+        <h1>Delete your user data?</h1>
+        <span>Your privacy is key. By proceeding, all your user data, personal settings, voting results, and feedback will be permanently and irrevocably deleted.</span>
+    </div>
+    <input class="overlay_action_btn sizefit topnav" type="button" value="Cancel" onclick="showDeleteUserOverlay(false)" />
+    <input class="overlay_action_btn sizefit topnav" type="button" value="Delete User" onclick="deleteUser()" />
+</div>
 
 </body>
 </html>
