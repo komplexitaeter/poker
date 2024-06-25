@@ -14,6 +14,7 @@ let gSurvey = null;
 let gResultOder = 'NAME';
 let gAllPlayersReady = false;
 let gLastJson = null;
+let gJsonBefore = null;
 let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
@@ -206,6 +207,7 @@ function updateDao(isOnLoad) {
 
             gLastJson = myJson;
             updateDom(myJson, isOnLoad)
+            gJsonBefore = myJson;
 
         });
 }
@@ -421,8 +423,12 @@ function updateDom(myJson, isOnLoad) {
 
     }
 
-    if (document.getElementById("team_name").innerText !== myJson.team_name) {
-        document.title = "Agile Estimations Online - " + myJson.team_name;
+    if (document.getElementById("team_name").innerText !== myJson.team_name
+        || myJson.players_count !== gJsonBefore.players_count
+        || myJson.ready_players_count !== gJsonBefore.ready_players_count
+    ) {
+        document.title = "Agile Estimations: " + myJson.team_name
+            + " [" + myJson.ready_players_count + "/" + myJson.players_count +"]";
         document.getElementById("team_name").innerText = myJson.team_name;
     }
 

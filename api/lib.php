@@ -175,6 +175,7 @@ function getDao($t, $id) {
     $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
+    $ready_players_count = 0;
 
     if ($id === null || strlen($id) < 10) die();
 
@@ -241,7 +242,10 @@ function getDao($t, $id) {
                 $players_count++;
 
                 if (is_null($obj->card_key)) $all_players_ready = false;
-                else $one_ore_more_player_ready = true;
+                else {
+                    $one_ore_more_player_ready = true;
+                    $ready_players_count++;
+                }
 
 
                 if ($players_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;
@@ -352,6 +356,7 @@ function getDao($t, $id) {
         "one_ore_more_player_ready"=>$one_ore_more_player_ready,
         "needs_celebration"=>$needs_celebration,
         "players_count"=>$players_count,
+        "ready_players_count"=>$ready_players_count,
         "players"=>$players );
 }
 

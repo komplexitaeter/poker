@@ -1693,7 +1693,7 @@ table tr:first-child{
     justify-content: flex-start;
     align-items: center;
     background-color: var(--background-color);
-    opacity: 97%;
+    opacity: 96%;
     display: flex;
     flex-direction: column; /* Richtet die Kinder vertikal aus */
 }
@@ -1844,7 +1844,7 @@ table tr:first-child{
     justify-content: flex-start;
     align-items: center;
     background-color: var(--background-color);
-    opacity: 97%;
+    opacity: 96%;
     display: flex;
     flex-direction: column; /* Richtet die Kinder vertikal aus */
 }

@@ -29,6 +29,7 @@ export interface myJsonType {
     needs_setup: boolean;
     needs_celebration: boolean;
     players_count: number;
+    ready_players_count: number;
     players: Player[];
 }
 
