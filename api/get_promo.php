@@ -2,8 +2,6 @@
 require '../config.php';
 require './lib.php';
 
-error_log('hier');
-
 $player_id = filter_input(INPUT_GET, "player_id", FILTER_SANITIZE_STRING);
 $team_id = filter_input(INPUT_GET, "team_id", FILTER_SANITIZE_STRING);
 $display_type = filter_input(INPUT_GET, "display_type", FILTER_SANITIZE_STRING);
