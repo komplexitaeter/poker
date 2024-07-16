@@ -211,7 +211,7 @@ function updateDao(isOnLoad) {
             gJsonBefore = myJson;
 
             if (isOnLoad) {
-                getPromo(myJson.player_type).then();
+                getPromo(myJson.player_type);
             }
 
         });
@@ -700,7 +700,7 @@ function becomePlayer() {
 
 function becomeObserver() {
     becomeUser('observer');
-    getPromo('observer').then();
+    getPromo('observer');
 }
 
 function becomeUser(type) {
@@ -1260,26 +1260,21 @@ function getBrowserLanguage() {
 }
 
 
-async function getPromo(playerType) {
+function getPromo(playerType) {
     if (getBrowserLanguage().startsWith('de') && playerType.toUpperCase() === 'OBSERVER' && !gPromoInitiated) {
-        try {
-            let response = await fetch('api/get_promo.php?player_id='+sid+'&team_id='+t+'&display_type='+gDisplayType);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            let promoData = await response.json();
-            initPromo(
-                promoData.promo_id,
-                promoData.playout_delay_sec,
-                promoData.promo_headline,
-                promoData.promo_img_url,
-                promoData.promo_link_url,
-                promoData.promo_cta
-            );
-            gPromoInitiated = true;
-        } catch (error) {
-            console.error('Error fetching promo:', error);
-        }
+        fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + gDisplayType)
+            .then(response => response.json())
+            .then(promoData => {
+                initPromo(
+                    promoData.promo_id,
+                    promoData.playout_delay_sec,
+                    promoData.promo_headline,
+                    promoData.promo_img_url,
+                    promoData.promo_link_url,
+                    promoData.promo_cta
+                );
+                gPromoInitiated = true;
+            });
     }
 }
 
