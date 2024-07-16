@@ -8,8 +8,6 @@ $id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	)
 $name = substr( filter_input(INPUT_GET, "name", FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES	) ,0,15);
 $type = substr( filter_input(INPUT_GET, "type", FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES	) ,0,10);
 
-
-
 print('id: '.$id.' ');
 print('name: '.$name);
 
@@ -31,7 +29,7 @@ $sql->execute();
 
 if ($result = $sql->get_result()) {
     $obj = $result->fetch_object();
-    if ($obj->cnt==1) $is_in_db=true;
+    if ($obj->cnt >= 1) $is_in_db=true;
     $result->close();
 }
 

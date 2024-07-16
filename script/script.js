@@ -20,6 +20,7 @@ let gTimerBaseTime = new Date();
 let gTimerInterval = null;
 let gLastShowAvg = null;
 let gUserName = null;
+let gPromoInitiated = false;
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
@@ -209,7 +210,9 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
             gJsonBefore = myJson;
 
-            if (isOnLoad) getPromo(myJson.player_type).then();
+            if (isOnLoad) {
+                getPromo(myJson.player_type).then();
+            }
 
         });
 }
@@ -636,6 +639,7 @@ function loadBoard() {
     let becomePlayerBtn = document.getElementById("become_player_btn");
     becomePlayerBtn.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
+            event.preventDefault();
             becomePlayer();
         }
     });
@@ -644,6 +648,7 @@ function loadBoard() {
     let becomeObserverBtn = document.getElementById("become_observer_btn");
     becomeObserverBtn.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
+            event.preventDefault();
             becomeObserver();
         }
     });
@@ -695,6 +700,7 @@ function becomePlayer() {
 
 function becomeObserver() {
     becomeUser('observer');
+    getPromo('observer').then();
 }
 
 function becomeUser(type) {
@@ -1255,7 +1261,7 @@ function getBrowserLanguage() {
 
 
 async function getPromo(playerType) {
-    if (getBrowserLanguage().startsWith('de') && playerType === 'OBSERVER') {
+    if (getBrowserLanguage().startsWith('de') && playerType.toUpperCase() === 'OBSERVER' && !gPromoInitiated) {
         try {
             let response = await fetch('api/get_promo.php?player_id='+sid+'&team_id='+t+'&display_type='+gDisplayType);
             if (!response.ok) {
@@ -1270,6 +1276,7 @@ async function getPromo(playerType) {
                 promoData.promo_link_url,
                 promoData.promo_cta
             );
+            gPromoInitiated = true;
         } catch (error) {
             console.error('Error fetching promo:', error);
         }
