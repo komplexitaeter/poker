@@ -1861,3 +1861,79 @@ table tr:first-child{
 #delete_user_msg.mobile {
     width: 65%;
 }
+
+
+
+
+
+
+
+.promo-tab {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    background-color: var(--survey-background);
+    color: var(--text-color);
+    border-top-right-radius: 10px;
+    z-index: 1000;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    transition: height 0.3s ease-in-out, bottom 0.8s ease-in-out;
+    height: 40px;
+    overflow: hidden;
+    width: auto;
+    white-space: nowrap;
+}
+
+#promo-tab.mobile {
+    display: none;
+}
+
+#promo-question {
+    padding: 10px;
+}
+
+.promo-question {
+    padding: 10px 40px 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.promo-content {
+    padding-top: 20px;
+}
+
+.promo-image {
+    height: auto;
+    max-height: 170px;
+    object-fit: contain;
+    cursor: pointer;
+    border-radius: 15px;
+}
+
+.promo-link {
+    display: block;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    color: var(--bluish);
+    text-decoration: none;
+}
+
+.promo-close {
+    position: absolute;
+    top: 7px;
+    right: 5px;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 12pt;
+}
+
+.promo-tab.promo-expanded {
+    height: 280px;
+}
+
+.promo-tab.promo-hidden {
+    bottom: -40px;
+}
+

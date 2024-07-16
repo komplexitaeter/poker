@@ -209,6 +209,8 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
             gJsonBefore = myJson;
 
+            if (isOnLoad) getPromo(myJson.player_type).then();
+
         });
 }
 
@@ -1243,5 +1245,82 @@ function deleteUser() {
         sid = '-1';
         pushDomChange();
         document.location = 'about:blank';
+    });
+}
+
+
+function getBrowserLanguage() {
+    return (navigator.languages && navigator.languages[0]) || navigator.language || navigator.userLanguage;
+}
+
+
+async function getPromo(playerType) {
+    if (getBrowserLanguage().startsWith('de') && playerType === 'OBSERVER') {
+        try {
+            let response = await fetch('api/get_promo.php?player_id='+sid+'&team_id='+t+'&display_type='+gDisplayType);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            let promoData = await response.json();
+            initPromo(
+                promoData.promo_id,
+                promoData.playout_delay_sec,
+                promoData.promo_headline,
+                promoData.promo_img_url,
+                promoData.promo_link_url,
+                promoData.promo_cta
+            );
+        } catch (error) {
+            console.error('Error fetching promo:', error);
+        }
+    }
+}
+
+
+function initPromo(promoId, playoutDelaySec, promoHeadline, promoImgUrl, promoLinkUrl, promoCTA) {
+    const url = "api/update_promo.php?id="+promoId+"&action=";
+
+    const promoTab = document.getElementById('promo-tab');
+    const promoQuestionSpan = document.getElementById('promo-question');
+    const promoClose = promoTab.querySelector('.promo-close');
+    const promoImage = promoTab.querySelector('.promo-image');
+    const promoLink = promoTab.querySelector('.promo-link');
+
+    promoQuestionSpan.textContent = promoHeadline;
+    promoImage.src = promoImgUrl;
+    promoLink.textContent = promoCTA;
+
+
+    setTimeout(function () {
+        promoTab.classList.remove('promo-hidden');
+        fetch(url+"played_out").then();
+    }, playoutDelaySec * 1000);
+
+    promoQuestionSpan.addEventListener('mouseover', function () {
+        promoTab.classList.add('promo-expanded');
+        fetch(url+"expanded").then();
+    });
+
+    promoTab.addEventListener('mouseleave', function () {
+        promoTab.classList.remove('promo-expanded');
+    });
+
+    promoClose.addEventListener('click', function (e) {
+        e.stopPropagation();
+        promoTab.style.display = 'none';
+        fetch(url+"hided").then();
+    });
+
+    promoImage.addEventListener('click', function (e) {
+        e.stopPropagation();
+        promoTab.style.display = 'none';
+        window.open(promoLinkUrl, '_blank');
+        fetch(url+"converted_img").then();
+    });
+    promoLink.addEventListener('click', function (e) {
+        e.stopPropagation();
+        promoTab.style.display = 'none';
+        window.open(promoLinkUrl, '_blank');
+        fetch(url+"converted_a").then();
     });
 }
