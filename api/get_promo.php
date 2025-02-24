@@ -14,12 +14,6 @@ $promotions = [
         'promo_cta' => 'Mehr erfahren?'
     ],
     [
-        'promo_headline' => 'Remote Zusammenarbeit mal anders?',
-        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/pox_pop_free-1536x1536.png',
-        'promo_link_url' => 'https://www.komplexitaeter.de/material/idea-craft-box/',
-        'promo_cta' => 'Mehr erfahren?'
-    ],
-    [
         'promo_headline' => 'Teamentscheidungen endlich effektiv?',
         'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/judge_konsententscheidung.png.webp',
         'promo_link_url' => 'https://www.komplexitaeter.de/methode/konsent-entscheidung-mit-judge/',
@@ -31,17 +25,11 @@ $promotions = [
         'promo_link_url' => 'https://www.komplexitaeter.de/methode/team-foundation-builder/',
         'promo_cta' => 'Mehr erfahren?'
     ],
-    [
-        'promo_headline' => 'Wie gut funktioniert ihr als Team?',
-        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/team_as_a_car-2.png.webp',
-        'promo_link_url' => 'https://www.komplexitaeter.de/methode/team-as-a-car/',
-        'promo_cta' => 'Mehr erfahren?'
-    ],
     // Fügen Sie hier weitere Promotion-Einträge hinzu, falls gewünscht
 ];
 
 $random_promotion = $promotions[array_rand($promotions)];
-$playout_delay_sec = rand(2, 15) * 60;
+$playout_delay_sec = rand(2, 60);
 
 $link = db_init();
 
