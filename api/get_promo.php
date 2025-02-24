@@ -26,7 +26,7 @@ $promotions = [
         'promo_cta' => 'Mehr erfahren?'
     ],
     [
-        'promo_headline' => 'Traut ihr euch als Team, was neues zu probieren?',
+        'promo_headline' => 'Traut ihr euch als Team, was Neues zu probieren?',
         'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/details3fs.png',
         'promo_link_url' => 'https://www.komplexitaeter.de/material/idea-craft-box/',
         'promo_cta' => 'Mehr erfahren?'
