@@ -700,7 +700,6 @@ function becomePlayer() {
 
 function becomeObserver() {
     becomeUser('observer');
-    getPromo('observer');
 }
 
 function becomeUser(type) {
