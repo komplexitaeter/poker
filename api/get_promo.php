@@ -35,7 +35,7 @@ $promotions = [
 ];
 
 $random_promotion = $promotions[array_rand($promotions)];
-$playout_delay_sec = rand(2, 6);
+$playout_delay_sec = rand(60, 520);
 
 $link = db_init();
 
