@@ -211,7 +211,7 @@ function updateDao(isOnLoad) {
             gJsonBefore = myJson;
 
             if (isOnLoad) {
-                getPromo(myJson.player_type);
+                getPromo();
             }
 
         });
@@ -1260,8 +1260,8 @@ function getBrowserLanguage() {
 }
 
 
-function getPromo(playerType) {
-    if (getBrowserLanguage().startsWith('de') && playerType.toUpperCase() !== 'N/A' && !gPromoInitiated) {
+function getPromo() {
+    if (getBrowserLanguage().startsWith('de') && !gPromoInitiated) {
         fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + gDisplayType)
             .then(response => response.json())
             .then(promoData => {
