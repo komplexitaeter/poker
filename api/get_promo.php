@@ -25,6 +25,12 @@ $promotions = [
         'promo_link_url' => 'https://www.komplexitaeter.de/methode/team-foundation-builder/',
         'promo_cta' => 'Mehr erfahren?'
     ],
+    [
+        'promo_headline' => 'Traut ihr euch als Team, was neues zu probieren?',
+        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/details3fs.png',
+        'promo_link_url' => 'https://www.komplexitaeter.de/material/idea-craft-box/',
+        'promo_cta' => 'Mehr erfahren?'
+    ],
     // Fügen Sie hier weitere Promotion-Einträge hinzu, falls gewünscht
 ];
 
