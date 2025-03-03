@@ -211,7 +211,7 @@ function updateDao(isOnLoad) {
             gJsonBefore = myJson;
 
             if (isOnLoad) {
-                getPromo();
+                //getPromo();
             }
 
         });
