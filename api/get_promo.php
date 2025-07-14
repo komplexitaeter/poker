@@ -8,34 +8,16 @@ $display_type = filter_input(INPUT_GET, "display_type", FILTER_SANITIZE_STRING);
 
 $promotions = [
     [
-        'promo_headline' => 'Inspiration für eure nächste Retro gesucht?',
-        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/continious_retro.png.webp',
-        'promo_link_url' => 'https://www.komplexitaeter.de/methode/powerful-continuous-retro/',
-        'promo_cta' => 'Mehr erfahren?'
-    ],
-    [
-        'promo_headline' => 'Teamentscheidungen endlich effektiv?',
-        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/judge_konsententscheidung.png.webp',
-        'promo_link_url' => 'https://www.komplexitaeter.de/methode/konsent-entscheidung-mit-judge/',
-        'promo_cta' => 'Mehr erfahren?'
-    ],
-    [
-        'promo_headline' => 'Wie gut kennt sich dein Team wirklich?',
-        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/team_foundation.png.webp',
-        'promo_link_url' => 'https://www.komplexitaeter.de/methode/team-foundation-builder/',
-        'promo_cta' => 'Mehr erfahren?'
-    ],
-    [
-        'promo_headline' => 'Traut ihr euch als Team, was Neues zu probieren?',
-        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/details3fs.png',
-        'promo_link_url' => 'https://www.komplexitaeter.de/material/idea-craft-box/',
-        'promo_cta' => 'Mehr erfahren?'
+        'promo_headline' => 'Wanna play the agile game?',
+        'promo_img_url' => 'https://www.komplexitaeter.de/wp-content/uploads/the-agile-game.webp',
+        'promo_link_url' => 'https://the-agile-game.komplexitaeter.de',
+        'promo_cta' => 'Play "THE AGILE GAME"!'
     ],
     // Fügen Sie hier weitere Promotion-Einträge hinzu, falls gewünscht
 ];
 
 $random_promotion = $promotions[array_rand($promotions)];
-$playout_delay_sec = rand(60, 520);
+$playout_delay_sec = rand(30, 300);
 
 $link = db_init();
 
