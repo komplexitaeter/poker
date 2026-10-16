@@ -1,0 +1,87 @@
+# Backlog
+
+Gemeinsames Backlog für Wartung und Weiterentwicklung. Ablauf siehe `CLAUDE.md`, Abschnitt „Zusammenarbeit“.
+
+Status: `neu` → `refined` (gemeinsam verstanden, bereit für einen Sprint) → `im Sprint` → `erledigt`.
+Reihenfolge = grobe Priorität, wird im Refinement angepasst.
+
+## Aktueller Sprint
+
+_Noch kein Sprint geplant._
+
+## Backlog
+
+| ID | Thema | Status |
+|---|---|---|
+| B-01 | SQL-Injection in `api/` beheben | neu |
+| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
+| B-03 | PHP-8.1-Deprecations und kleine Bugs | neu |
+| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | neu |
+| B-05 | E2E-Tests für weitere Funktionen | neu |
+| B-06 | Testfälle gemeinsam reverse-engineeren | neu |
+| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | neu |
+| B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
+| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | neu |
+| B-10 | `poker-msg` modernisieren und absichern | neu |
+| B-11 | Schreibende API-Aufrufe per POST statt GET | neu |
+| B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
+| B-13 | MySQL-Zugriff von außen einschränken | neu |
+| B-14 | `script/script.js` in Module aufteilen | neu |
+
+### B-01 SQL-Injection in `api/` beheben
+Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
+`api/delete.php`, `api/feedback.php`, weitere Stellen in `api/lib.php`. Umstellen auf Prepared Statements.
+Offene Fragen: alle Stellen einzeln oder `lib.php` gleich mit einer kleinen Query-Hilfsfunktion?
+
+### B-02 `stats.php` absichern
+Feedback-Texte werden ungefiltert ausgegeben (XSS), die Seite ist ohne Login erreichbar.
+Offene Fragen: Zugriffsschutz per nginx (Basic Auth/IP) oder in PHP? Wird `stats.php` neben Grafana überhaupt noch gebraucht?
+
+### B-03 PHP-8.1-Deprecations und kleine Bugs
+`FILTER_SANITIZE_STRING` an 13 Stellen ersetzen; `strlen($tool>0)` in `index.php`.
+Offene Fragen: Welche PHP-Version läuft auf beiden Servern, ist ein Update auf 8.3 geplant?
+
+### B-04 Lokale Testumgebung und erste E2E-Tests mit CI
+App lokal startbar machen (PHP-Server, MySQL mit `db_schema_pok.sql`, `poker-msg`), Playwright-Test mit mehreren
+Browsern: Team anlegen, beitreten, Karten legen, aufdecken, neue Runde. GitHub Actions führt die Tests bei jedem Push aus.
+Dazu den Agenten `e2e-tester` anlegen.
+
+### B-05 E2E-Tests für weitere Funktionen
+Kartenkonfiguration, Timer, Thema, Anonym-Modus, Ergebnis-Sortierung, Durchschnitt, Spieler entfernen, Feedback.
+Voraussetzung: B-04.
+
+### B-06 Testfälle gemeinsam reverse-engineeren
+Gemeinsam aus dem bestehenden Verhalten fachliche Testfälle ableiten und dokumentieren. Nicht im ersten Sprint.
+
+### B-07 Repo-Hygiene
+`.gitignore` anlegen, `config.php` durch `config.example.php` ersetzen (echte Config bleibt nur auf den Servern),
+README auf aktuellen Stand bringen.
+Offene Fragen: Wie ist `config.php` auf den Servern heute vor `git pull` geschützt?
+
+### B-08 MySQL-Statistik-Job ins Repo aufnehmen
+Die `_stats`-Tabellen werden von einem MySQL-Event befüllt, das nicht im Repo liegt.
+Definition exportieren (`SHOW CREATE EVENT`) und versionieren.
+
+### B-09 Wachstum von `pok_analytics_events_tbl` begrenzen
+Tabelle wächst unbegrenzt. Aufbewahrungsdauer festlegen, alte Daten löschen oder verdichten.
+Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle heute?
+
+### B-10 `poker-msg` modernisieren und absichern
+Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
+oder Nachrichtengröße. Läuft nicht als root, Abhängigkeiten aktualisieren oder Alternative prüfen.
+
+### B-11 Schreibende API-Aufrufe per POST statt GET
+Zustandsändernde Endpunkte werden per GET aufgerufen (Prefetching, Logs mit Parametern, kein CSRF-Schutz).
+Voraussetzung: B-04, damit Frontend und API gemeinsam umgestellt und getestet werden.
+
+### B-12 Zeichensätze vereinheitlichen
+Tabellen mischen `latin1`, `utf8mb3`, `utf8mb4`. Umstellung auf `utf8mb4` inkl. Verbindung (`set_charset`).
+Größere DB-Änderung, braucht ein Wartungsfenster.
+
+### B-13 MySQL-Zugriff von außen einschränken
+Port 33060 schließen, Port 3306 per Firewall nur für die Grafana-Instanz öffnen, `grafana_usr` auf deren IP
+beschränken und auf Leserechte prüfen.
+
+### B-14 `script/script.js` in Module aufteilen
+1.300 Zeilen mit globalen Variablen. Schrittweise in ES-Module zerlegen, ohne Build-Schritt.
+Voraussetzung: B-04/B-05.

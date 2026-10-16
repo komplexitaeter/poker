@@ -4,7 +4,7 @@ Planning-Poker-Webanwendung für verteilte Teams. Live: https://poker.komplexita
 (bzw. https://app.komplexitaeter.de). Lizenz: GPL-3.0.
 
 > Grundsatz: **pragmatisch bleiben.** Kleines Team (drei Personen), kleine App. Lieber einfache, verständliche
-> Lösungen als „richtige“ Architektur. Abschnitte mit **(offen)** sind noch nicht abgestimmt.
+> Lösungen als „richtige“ Architektur.
 
 ## Systemüberblick
 
@@ -50,7 +50,7 @@ Fachliche Tabellen: `pok_teams_tbl`, `pok_players_tbl`, `pok_user_tbl`, `pok_rou
 `pok_roundstat_details_tbl`, `pok_promotions_tbl`, `pok_feedback_tbl`, `pok_survey*_tbl`, `pok_analytics_events_tbl`.
 
 Statistik-Tabellen für Grafana (Endung `_stats`, `_stats_tbl`): `pok_active_user_stats`, `pok_active_use_stats_tbl`,
-`pok_daily_teams_stats`. Sie werden nicht vom App-Code befüllt. Woher sie kommen: **(offen)**. Werden sie geändert
+`pok_daily_teams_stats`. Sie werden von einem MySQL-Event-Job befüllt, nicht vom App-Code (Definition noch nicht im Repo, siehe B-08). Werden sie geändert
 und Grafana hakt, wird das Dashboard angepasst – kein Grund, Schemaänderungen zu blockieren.
 
 `pok_analytics_events_tbl` wächst unbegrenzt. Abfragen darauf immer über einen Zeitbereich auf `creation_date`
@@ -93,15 +93,43 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 - Kein `.gitignore`; `config.php` liegt im Repo.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
 
-## Arbeitsweise
+## Zusammenarbeit
 
-- Pragmatisch: kleine, einzeln deploybare Schritte; Verhalten der Live-App bleibt gleich, solange nichts anderes
-  vereinbart ist.
-- Stack bleibt vorerst (PHP ohne Framework, Vanilla JS, MySQL). Weiterentwicklung später möglich.
-- Git-Ablauf: entwickelt wird auf `release`; nach erfolgreichem manuellem Test auf dem Release-Server wird
-  `release` nach `master` gemergt. Branches/PRs für Claude-Änderungen: **(offen)**
-- `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf.
-- Sprache: Kommunikation Deutsch; Code, Kommentare und Commit-Messages: **(offen)**
+**Sprache:** Mit dem Team wird Deutsch gesprochen; `BACKLOG.md` und `CLAUDE.md` sind auf Deutsch.
+Die Anwendung selbst bleibt Englisch: Code, Kommentare, Commit-Messages, Oberfläche.
+
+**Grundhaltung:** pragmatisch. Kleine, einzeln deploybare Schritte; Verhalten der Live-App bleibt gleich, solange
+nichts anderes vereinbart ist. Stack bleibt vorerst (PHP ohne Framework, Vanilla JS, MySQL).
+
+**Ablauf in Mini-Sprints:**
+
+1. **Backlog** – Themen stehen in `BACKLOG.md` (ID, Status, kurze Beschreibung, offene Fragen). Claude darf neue
+   Einträge vorschlagen und anlegen, aber nicht eigenmächtig priorisieren.
+2. **Refinement** – gemeinsam, bis ein Eintrag verstanden ist: Ziel, Umfang, Akzeptanzkriterien, offene Fragen geklärt.
+   Danach Status `refined`.
+3. **Sprint-Auswahl** – gemeinsam entscheiden, welche `refined`-Einträge in die nächste Iteration kommen.
+4. **Planning** – für jeden Eintrag einen konkreten Umsetzungsplan abstimmen, bevor Code geschrieben wird.
+5. **Umsetzung** – nur was im Sprint geplant ist. Fällt unterwegs etwas Neues auf, kommt es als Eintrag ins Backlog
+   statt in den laufenden Sprint.
+6. **Abschluss** – manueller Test auf dem Release-Server, dann Merge `release` → `master` und Deploy auf Live.
+   Status in `BACKLOG.md` aktualisieren.
+
+Ausnahme: akute Produktionsprobleme (wie die blockierende Query in `stats.php`) werden sofort behoben und
+nachträglich im Backlog vermerkt.
+
+**Git:**
+
+- Basis ist `release`. `master` wird nur durch Merge von `release` verändert, nie direkt.
+- Jeder Backlog-Eintrag bekommt einen kurzlebigen Feature-Branch von `release`
+  (`feature/B-01-sql-injection`) und einen PR nach `release`, der im Team reviewt und gemergt wird.
+- Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
+- `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
+
+**Agenten** (`.claude/agents/`):
+
+- `security-reviewer` – prüft Änderungen vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung und
+  zustandsändernde GET-Aufrufe.
+- `e2e-tester` – kommt mit B-04.
 
 ## Konventionen im Code
 
