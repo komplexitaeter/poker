@@ -7,7 +7,9 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-Sprint 1: B-04, B-07
+_Kein laufender Sprint._
+
+Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
 ## Backlog
 
@@ -16,10 +18,10 @@ Sprint 1: B-04, B-07
 | B-01 | SQL-Injection in `api/` beheben | neu |
 | B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | neu |
-| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | im Sprint |
+| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
-| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | im Sprint |
+| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | neu |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
@@ -124,6 +126,9 @@ Voraussetzung: B-04/B-05.
 qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Versionen festnageln und
 `integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
 (`loadBoard()` bricht ohne `QRCodeStyling` ab).
+**Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannter Schwachstelle; 1.7.2 behebt sie (Dependabot-PRs #3/#4
+heben nur die Testkopie an). Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
+`specs/helpers.ts`) gemeinsam anheben.
 
 ### B-16 Fremddateien und phpMyAdmin in den Webroots absichern
 Auf dem Staging-Server lagen neben dem Repo `info.php` (phpinfo), `config.php.live` und ein Symlink
