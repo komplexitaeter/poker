@@ -1,2 +1,5 @@
 # server-specific, see config.example.php
 config.php
+
+# agent worktrees (Ben, Fred – isolierte Arbeitskopien, siehe CLAUDE.md)
+.claude/worktrees/
