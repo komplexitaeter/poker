@@ -13,7 +13,7 @@ Die Anwendung besteht aus zwei Repositories:
 | Repo | Zweck | Laufzeit |
 |---|---|---|
 | `komplexitaeter/poker` (dieses) | Web-App: HTML/CSS/JS-Frontend, PHP-API, MySQL-Schema | nginx + PHP 8.1-FPM |
-| `komplexitaeter/poker-msg` | WebSocket-Benachrichtigungsserver (Ratchet, `cboden/ratchet ^0.4`) | PHP-CLI unter supervisor, `127.0.0.1:8443` |
+| `komplexitaeter/poker-msg` | WebSocket-Benachrichtigungsserver (Ratchet, `cboden/ratchet ^0.4`) | PHP-CLI unter supervisor, `127.0.0.1:8443`, Event-Loop über PHP-Erweiterung `ev` |
 
 Datenfluss bei einer Änderung am Board:
 
@@ -61,7 +61,9 @@ Lokale Test-DB: `db_schema_pok.sql` lässt sich direkt in eine leere MySQL-8.0-D
 
 ## Betrieb
 
-Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
+Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP-FPM, MySQL 8.0). PHP-Umstellung 8.1 → 8.4 (B-22) läuft:
+Staging ist auf 8.4, Live noch auf 8.1. Auf dem Staging-Server laufen weitere Seiten mit eigenen PHP-Versionen –
+Änderungen nur an der Poker-Config bzw. `php8.4`-spezifisch vornehmen.
 
 | Server | Branch | Zweck |
 |---|---|---|
@@ -73,6 +75,11 @@ Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
   `config.php` ist nicht im Repo und wird von `git pull` nicht angefasst. Es gibt keine Build- oder Migrationsschritte;
   Schemaänderungen werden von Hand eingespielt.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
+- `poker-msg` (supervisor, `/etc/supervisor/conf.d/poker-msg.conf`): explizit `/usr/bin/php8.4`, `ulimit -n 20000`,
+  Info-Log `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`. Braucht die Erweiterung `ev` (sonst
+  ReactPHP-`stream_select`-Schleife mit Grenze bei 1.024 Verbindungen, siehe B-19); kein Paket im PPA, Build per
+  `sudo pecl -d php_suffix=8.4 install ev`, aktiviert nur für CLI (`phpenmod -v 8.4 -s cli ev`). Prüfen:
+  `React\EventLoop\Factory::create()` muss `ExtEvLoop` liefern.
 - MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
   Nicht ohne Rücksprache auf 127.0.0.1 umstellen.
 
