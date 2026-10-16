@@ -7,7 +7,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 2:** B-19 (vorgezogen als Produktionsproblem), B-24, B-03, B-18
+**Sprint 2:** B-19 + B-22 (vorgezogen als Produktionsproblem), B-24, B-03, B-18
 
 Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
@@ -36,8 +36,9 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
 | B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | neu |
+| B-22 | PHP-Upgrade auf 8.4 | erledigt |
+| B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
-| B-22 | PHP-Upgrade (8.3 oder 8.4) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -197,6 +198,10 @@ von `active_users` messbar wird.
 **Akzeptanzkriterien:** `React\EventLoop\Factory::create()` liefert `ExtEvLoop`; nach einem Werktag keine neuen
 `FD_SETSIZE`-Warnungen; Spitzenwert `active_users` aus dem Log bekannt.
 
+**Stand 2026-10-16:** auf Staging und Live umgesetzt (zusammen mit B-22), `ExtEvLoop` bestätigt. Offen: Prüfung
+nach der nächsten Werktags-Spitze (Montag nach 10 Uhr) – `FD_SETSIZE`-Zähler im neuen Fehler-Log und Spitzenwert
+`active_users`.
+
 ### B-20 PHP-FPM und MySQL robuster konfigurieren
 - PHP-FPM: `pm.max_children = 5` wurde am 14.10. (Vorfall `stats.php`) erreicht. Bei 3,8 GB RAM moderat anheben,
   `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker), `slowlog` aktivieren.
@@ -209,12 +214,36 @@ Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der 
 `Duplicate entry … for key 'pok_user_tbl.PRIMARY'` (PHP Fatal Error, HTTP 500). In den E2E-Logs reproduziert,
 live bestätigt: 1× in 11 Stunden (einzige PHP-Meldung im nginx-Error-Log). Lösung z. B. `INSERT IGNORE`/`ON DUPLICATE KEY UPDATE`.
 
-### B-22 PHP-Upgrade (8.3 oder 8.4)
+### B-22 PHP-Upgrade auf 8.4
+**Entscheidung 2026-10-16:** Web-App (PHP-FPM) und `poker-msg` auf Staging und Live gemeinsam auf PHP 8.4 aus dem
+ondrej-PPA, zusammen mit B-19 (`php8.4-ev` als Paket statt `pecl`). Vorher laufen die E2E-Tests in CI gegen 8.1 und 8.4;
+nach der Umstellung auf Live nur noch gegen 8.4.
+
+**Staging umgestellt (2026-10-16):** `ev` 1.2.3 per `pecl -d php_suffix=8.4` gebaut (im PPA gibt es kein
+`php8.4-ev`), nur für CLI aktiviert; `poker-msg` läuft per supervisor mit `/usr/bin/php8.4`, `ulimit -n 20000`,
+Info-Log 50 MB × 5; nginx der Poker-Staging-Seite auf `php8.4-fpm.sock`. Funktionstest ok, keine Fehler im
+`poker-msg`-Log.
+
+**Live umgestellt (2026-10-16, ca. 12:40 UTC):** ondrej-PPA eingerichtet, PHP 8.4 + `php8.4-xml` (für `pecl`)
+installiert, `ev` gebaut und für CLI aktiviert, `poker-msg` auf `php8.4`, Info-Log 50 MB × 5; PHP-8.4-FPM mit den
+angepassten Werten der 8.1-Config (`memory_limit`, `post_max_size`, `upload_max_filesize`); nginx auf
+`php8.4-fpm.sock`. Funktionstest ok, keine neuen PHP-Fehler, `poker-msg`-Fehler-Log leer, nach wenigen Minuten
+451 Verbindungen. CI testet nur noch gegen 8.4.
+
 Live läuft auf PHP 8.1 aus Ubuntu 22.04 (Sicherheitsupdates durch Canonical bis April 2027). Staging hat zusätzlich
 8.2 und 8.4 installiert; dort ist `/usr/bin/php` (CLI, also `poker-msg`) bereits 8.4.
 Offene Fragen: ondrej-PPA mit 8.4 oder Ubuntu 24.04 mit 8.3? Zeitpunkt? Vorher B-03 (Altlasten im Code) und
 `poker-msg` unter der neuen Version testen (Ratchet 0.4, Deprecations). CI zusätzlich mit der Zielversion laufen lassen.
 Erweiterung `ev` (B-19) für die neue Version mit installieren.
+
+### B-23 Server aufräumen nach PHP-8.4-Umstellung
+- Live und Staging: einmal neu starten (am Wochenende), da bei der Installation Systembibliotheken aktualisiert
+  wurden und viele Dienste noch mit den alten laufen (`needrestart`).
+- Paketquelle `ondrej/nginx` entfernen (PPA eingestellt, `apt update` meldet `403 Forbidden`).
+- PHP 8.1 (und auf Live die Build-Pakete `php8.1-dev` usw.) deinstallieren, wenn 8.4 eine Weile stabil läuft;
+  vorher prüfen, dass nichts anderes mehr `php8.1` nutzt (auf Staging laufen weitere Seiten mit 8.1!).
+- Große Upload-Grenzen (`post_max_size`/`upload_max_filesize` 100M, nginx `client_max_body_size 100M`) prüfen –
+  die App lädt keine Dateien hoch.
 
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
@@ -232,3 +261,8 @@ Der Client verbindet nach einer serverseitigen Trennung innerhalb von 3 s neu un
 neuer E2E-Test: nach Leerlauf über mehrere Ping-Runden kommen Updates ohne Neuverbindung an.
 
 **Akzeptanzkriterium:** nachts fällt `active_users` auf nahezu 0, statt linear zu steigen.
+
+**Stand 2026-10-16:** auf Staging und Live umgesetzt (`poker-msg` aus `release`/`master` mit Keepalive, nginx
+`proxy_read_timeout 120s` auf beiden Servern). Staging-`poker-msg` dabei von einem lokalen Branch mit dem verworfenen
+Yjs-Versuch („shared area“, lokal gesichert als `backup/shared-area`) auf `release` umgestellt und auf HTTPS-Remote.
+Offen: Kontrolle `active_users` über Nacht.
