@@ -3,6 +3,9 @@
 Planning-Poker-Webanwendung für verteilte Teams. Live: https://poker.komplexitaeter.de
 (bzw. https://app.komplexitaeter.de). Lizenz: GPL-3.0.
 
+> **Sprache: Antworte im Chat immer auf Deutsch** – auch bei langen technischen Antworten, Statusmeldungen und
+> Zusammenfassungen. Englisch nur für Code, Kommentare, Commit-Messages und Oberflächentexte der App.
+
 > Grundsatz: **pragmatisch bleiben.** Kleines Team (drei Personen), kleine App. Lieber einfache, verständliche
 > Lösungen als „richtige“ Architektur.
 
