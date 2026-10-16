@@ -84,3 +84,16 @@ test('changing the deck of cards applies to all players', async ({ browser }) =>
     await expect(page.locator('#ctl img#three01')).toHaveClass(/\boff\b/);
   }
 });
+
+test('idle boards stay connected and keep receiving updates (heartbeat)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Idle Team');
+  let reconnects = 0;
+  bob.on('console', msg => { if (msg.text() === 'initializeWSConnection') reconnects++; });
+
+  // poker-msg pings every 2 s in the tests (POKER_MSG_KEEPALIVE) and closes connections that do not answer
+  await bob.waitForTimeout(7_000);
+  await pickCard(alice, 'three01');
+
+  await expectTableCard(bob, 'Alice', 'done001');
+  expect(reconnects).toBe(0);
+});
