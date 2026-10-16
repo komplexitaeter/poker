@@ -7,9 +7,13 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 2:** B-19 + B-22 (vorgezogen als Produktionsproblem), B-24, B-03, B-18, B-25
+_Kein laufender Sprint._ Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
+(`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
-Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
+Abgeschlossen:
+- **Sprint 2** (2026-10-16): B-18, B-19 + B-22, B-24, B-03, B-25 – live auf Staging und Produktion; Daten-Update
+  für B-03 auf Live ausgeführt (26 Teamnamen, 11 Themen, 90 Rundenthemen).
+- **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
 ## Backlog
 
