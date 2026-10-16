@@ -162,9 +162,9 @@ qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Ve
 `integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
 (`loadBoard()` bricht ohne `QRCodeStyling` ab).
 **Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannten Schwachstellen (u. a. XSS über präparierte Link-Schemata
-in Markdown-Links, CVE-2017-16006 – auslösbar über ein Thema, z. B. per Einstiegslink `/?tool=x&text=…`);
-Ziel mindestens 1.7.4. Bisher geplant war 1.7.2, das nur einen Teil behebt (Dependabot-PRs #3/#4
-heben nur die Testkopie an). Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
+in Markdown-Links laut Security-Review, auslösbar über ein Thema, z. B. per Einstiegslink `/?tool=x&text=…`).
+Im Refinement klären, welche Version welche Lücke behebt (Dependabot schlug 1.7.2 vor, der Review nennt 1.7.4
+oder neuer); Dependabot-PRs #3/#4 hoben nur die Testkopie an. Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
 `specs/helpers.ts`) gemeinsam anheben.
 
 ### B-16 Fremddateien und phpMyAdmin in den Webroots absichern
