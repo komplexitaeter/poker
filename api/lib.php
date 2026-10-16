@@ -19,7 +19,15 @@ function db_init() {
  * frontend, json_encode in the API) - never insert them into HTML or SQL directly.
  */
 function get_text_param(string $name, int $max_length): string {
-    return substr(trim((string)filter_input(INPUT_GET, $name)), 0, $max_length);
+    return cut_text(trim((string)filter_input(INPUT_GET, $name)), $max_length);
+}
+
+/*
+ * Cuts a UTF-8 string after $max_length characters (not bytes, so umlauts are never split
+ * and the limit matches the varchar length). Invalid UTF-8 results in ''. Works without mbstring.
+ */
+function cut_text(string $value, int $max_length): string {
+    return preg_match('/^.{0,' . $max_length . '}/us', $value, $match) ? $match[0] : '';
 }
 
 function set_header($content_type) {

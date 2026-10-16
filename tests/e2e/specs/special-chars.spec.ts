@@ -55,3 +55,31 @@ test('topic from the entry link is shown as entered', async ({ browser }) => {
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+test('player name with umlauts up to the length limit can join', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Umlaut Team');
+  const playerName = 'Jörg Müller-Ätz'; // 15 characters (the field limit), more than 15 bytes
+  await joinAsPlayer(page, url, playerName);
+
+  await expect(tableCard(page, playerName)).toBeVisible();
+});
+
+test('topic saved in the topic box keeps special characters', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Topic Team');
+  await joinAsPlayer(alice, url, 'Alice');
+  const bob = await newPlayer(browser);
+  await joinAsPlayer(bob, url, 'Bob');
+  const topic = `A & B + 100% "<b>not bold</b>"`;
+
+  await alice.locator('#topic_btn').click();
+  // typing (not fill) triggers the keydown handler that enables the save button
+  await alice.locator('#topic_txt').pressSequentially(topic);
+  await alice.locator('#topic_save').click();
+
+  for (const page of [alice, bob]) {
+    await expect(page.locator('#topic')).toHaveText(topic);
+    await expect(page.locator('#topic b')).toHaveCount(0);
+  }
+});

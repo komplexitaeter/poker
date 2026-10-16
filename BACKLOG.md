@@ -43,6 +43,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
 `api/delete.php`, `api/feedback.php`, `api/setc.php`, `getDao()` und weitere Stellen in `api/lib.php`. Umstellen auf Prepared Statements.
+Außerdem: `api/timer.php` und `api/get_promo.php` prüfen die Team-ID nicht mit `validate_team()`.
 Offene Fragen: alle Stellen einzeln oder `lib.php` gleich mit einer kleinen Query-Hilfsfunktion?
 
 ### B-02 `stats.php` absichern
@@ -69,6 +70,9 @@ Teamname `Bob's Team` wird live als `Bob&#39;s Team` angezeigt, `Sprint 1 < 2` w
 - CI schlägt fehl, wenn ein Testlauf `Deprecated` ins PHP-Log schreibt.
 - Im Planning ergänzt: Frontend kodiert Namen in URLs nicht (`&`/`#` schneiden Namen ab) → `encodeURIComponent`;
   `name.php` gibt den Namen als HTML zurück (Debug-Ausgabe, nach Umstellung reflektiertes XSS) → entfernen.
+- Aus dem Security-Review ergänzt: Thema speichern (`save_topic`) kodiert ebenfalls nicht → `encodeURIComponent`;
+  Längenbegrenzung schnitt nach Bytes und zerteilte Umlaute an der Grenze (Spielername mit 15 Zeichen → HTTP 500,
+  Beitritt unmöglich) → Kürzen nach Zeichen (`cut_text()`, ohne `mbstring`, das live für 8.4 nicht installiert ist).
 
 **Akzeptanzkriterien:**
 - E2E-Test: Team- und Spielernamen mit `'`, `"`, `<`, `&` und `<b>…</b>` werden exakt so angezeigt, wie eingegeben,
@@ -157,7 +161,9 @@ Voraussetzung: B-04/B-05.
 qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Versionen festnageln und
 `integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
 (`loadBoard()` bricht ohne `QRCodeStyling` ab).
-**Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannter Schwachstelle; 1.7.2 behebt sie (Dependabot-PRs #3/#4
+**Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannten Schwachstellen (u. a. XSS über präparierte Link-Schemata
+in Markdown-Links, CVE-2017-16006 – auslösbar über ein Thema, z. B. per Einstiegslink `/?tool=x&text=…`);
+Ziel mindestens 1.7.4. Bisher geplant war 1.7.2, das nur einen Teil behebt (Dependabot-PRs #3/#4
 heben nur die Testkopie an). Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
 `specs/helpers.ts`) gemeinsam anheben.
 

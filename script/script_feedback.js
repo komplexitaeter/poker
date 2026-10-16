@@ -424,7 +424,7 @@ function save_topic(){
     httpRequest.open("POST", url, true);
     httpRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
     httpRequest.send(
-        "topic=" + topic
+        "topic=" + encodeURIComponent(topic)
     );
 
     pushDomChange();
