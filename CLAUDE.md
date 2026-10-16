@@ -87,6 +87,8 @@ der Poker-Config bzw. `php8.4`-spezifisch vornehmen.
   ReactPHP-`stream_select`-Schleife mit Grenze bei 1.024 Verbindungen, siehe B-19); kein Paket im PPA, Build per
   `sudo pecl -d php_suffix=8.4 install ev`, aktiviert nur für CLI (`phpenmod -v 8.4 -s cli ev`). Prüfen:
   `React\EventLoop\Factory::create()` muss `ExtEvLoop` liefern.
+- `poker-msg` pingt alle Verbindungen alle 30 s (WebSocket-Ping, `POKER_MSG_KEEPALIVE`) und schließt Verbindungen
+  ohne Antwort (B-24). nginx `location /poker-msg`: `proxy_read_timeout 120s` auf beiden Servern.
 - MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
   Nicht ohne Rücksprache auf 127.0.0.1 umstellen.
 
