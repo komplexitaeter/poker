@@ -7,7 +7,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-_Noch kein Sprint geplant._
+Sprint 1: B-04
 
 ## Backlog
 
@@ -16,7 +16,7 @@ _Noch kein Sprint geplant._
 | B-01 | SQL-Injection in `api/` beheben | neu |
 | B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | neu |
-| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | refined |
+| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | im Sprint |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
 | B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | neu |
@@ -27,10 +27,11 @@ _Noch kein Sprint geplant._
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
+| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
-`api/delete.php`, `api/feedback.php`, weitere Stellen in `api/lib.php`. Umstellen auf Prepared Statements.
+`api/delete.php`, `api/feedback.php`, `api/setc.php`, `getDao()` und weitere Stellen in `api/lib.php`. Umstellen auf Prepared Statements.
 Offene Fragen: alle Stellen einzeln oder `lib.php` gleich mit einer kleinen Query-Hilfsfunktion?
 
 ### B-02 `stats.php` absichern
@@ -103,3 +104,9 @@ beschränken und auf Leserechte prüfen.
 ### B-14 `script/script.js` in Module aufteilen
 1.300 Zeilen mit globalen Variablen. Schrittweise in ES-Module zerlegen, ohne Build-Schritt.
 Voraussetzung: B-04/B-05.
+
+### B-15 CDN-Abhängigkeiten festnageln oder selbst ausliefern
+`board.html` lädt `js-confetti@latest` von jsDelivr – jede neue Version geht ungeprüft live. Auch remarkable,
+qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Versionen festnageln und
+`integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
+(`loadBoard()` bricht ohne `QRCodeStyling` ab).

@@ -1,0 +1,77 @@
+name: E2E tests
+
+on:
+  push:
+    branches: [release]
+  pull_request:
+    branches: [release, master]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      E2E_DIR: ${{ github.workspace }}/../poker-e2e
+      # MySQL comes preinstalled on the runner with root/root
+      MYSQL_ADMIN: mysql -uroot -proot
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.1 (as in production)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mysqli
+          tools: composer
+          coverage: none
+
+      - name: Make sure php-fpm 8.1 is available
+        run: |
+          test -x /usr/sbin/php-fpm8.1 || sudo apt-get install -y -q php8.1-fpm php8.1-mysql
+          echo "PHP_FPM=/usr/sbin/php-fpm8.1" >> "$GITHUB_ENV"
+
+      - name: Start MySQL
+        run: sudo systemctl start mysql.service
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install test dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('tests/e2e/package-lock.json') }}
+
+      - name: Install Chromium
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Start app (nginx, php-fpm, MySQL schema, poker-msg)
+        run: tests/e2e/setup.sh start
+
+      - name: Run tests
+        working-directory: tests/e2e
+        run: npx playwright test
+
+      - name: Upload report and logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            tests/e2e/playwright-report/
+            tests/e2e/test-results/
+            ${{ env.E2E_DIR }}/logs/
+          retention-days: 14

@@ -38,7 +38,7 @@ Datenfluss bei einer Änderung am Board:
 - `src/` – Bilder; `src/xcf/` – GIMP-Quelldateien der Karten.
 - `config.php` – DB-Zugangsdaten (im Repo nur Platzhalter).
 
-Es gibt keinen Build-Schritt, kein Composer/npm im Haupt-Repo, keine Tests, kein CI.
+Es gibt keinen Build-Schritt für die App. npm wird nur für die Tests in `tests/e2e/` verwendet.
 
 ## Datenbank
 
@@ -88,10 +88,28 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 - `FILTER_SANITIZE_STRING` (seit PHP 8.1 deprecated) an mehreren Stellen.
 - Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
 - `stats.php` öffentlich erreichbar.
-- Keine Tests, kein Linting, kein CI.
+- Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
 - Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
 - Kein `.gitignore`; `config.php` liegt im Repo.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
+
+## Tests
+
+End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
+jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.1 wie in Produktion.
+
+Lokal:
+
+```bash
+E2E_DIR=/tmp/poker-e2e tests/e2e/setup.sh start   # nginx :8080, php-fpm, DB pok_e2e, poker-msg (release)
+cd tests/e2e && npm ci && npx playwright test
+tests/e2e/setup.sh stop
+```
+
+`setup.sh` kopiert die App mit einer eigenen `config.php` nach `$E2E_DIR/www`; nach Änderungen an der App erneut
+`start` aufrufen. Abgedeckt sind: Team anlegen, Beitreten mehrerer Spieler, Karte legen, Aufdecken, neue Runde,
+Kartenset wechseln. CDN-Skripte liefern die Tests aus npm-Paketen gleicher Version aus; Analytics wird blockiert.
+Details zum Schreiben von Tests: `.claude/agents/e2e-tester.md`.
 
 ## Zusammenarbeit
 
@@ -129,7 +147,7 @@ nachträglich im Backlog vermerkt.
 
 - `security-reviewer` – prüft Änderungen vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung und
   zustandsändernde GET-Aufrufe.
-- `e2e-tester` – kommt mit B-04.
+- `e2e-tester` – startet die App lokal und führt die E2E-Tests aus oder erweitert sie.
 
 ## Konventionen im Code
 
