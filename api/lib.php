@@ -294,7 +294,10 @@ function getDao($t, $id) {
         if ($obj->user_exists == 0) {
             $survey_id = get_survey_id($link, $t, $id);
             if ($survey_id != null) $survey = 'LOUD';
-            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id,survey_id) values(?,?)");
+            // Idempotent insert: two parallel DAO calls for a fresh SID (loadBoard + WebSocket onopen)
+            // both see user_exists == 0 and try to insert the same PRIMARY key. ON DUPLICATE KEY UPDATE id=id
+            // lets the first request win and keeps its row unchanged, instead of a duplicate-key fatal (B-21).
+            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id,survey_id) values(?,?) ON DUPLICATE KEY UPDATE id=id");
             $sql_i->bind_param('si', $id, $survey_id);
             $sql_i->execute();
         } else {
