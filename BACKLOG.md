@@ -16,7 +16,7 @@ _Noch kein Sprint geplant._
 | B-01 | SQL-Injection in `api/` beheben | neu |
 | B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | neu |
-| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | neu |
+| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | refined |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
 | B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | neu |
@@ -42,9 +42,27 @@ Offene Fragen: Zugriffsschutz per nginx (Basic Auth/IP) oder in PHP? Wird `stats
 Offene Fragen: Welche PHP-Version läuft auf beiden Servern, ist ein Update auf 8.3 geplant?
 
 ### B-04 Lokale Testumgebung und erste E2E-Tests mit CI
-App lokal startbar machen (PHP-Server, MySQL mit `db_schema_pok.sql`, `poker-msg`), Playwright-Test mit mehreren
-Browsern: Team anlegen, beitreten, Karten legen, aufdecken, neue Runde. GitHub Actions führt die Tests bei jedem Push aus.
-Dazu den Agenten `e2e-tester` anlegen.
+**Ziel:** Ein Befehl startet die komplette App lokal (nginx, PHP-FPM, MySQL, `poker-msg`) und führt Playwright-Tests
+aus; GitHub Actions macht dasselbe bei jedem PR und Push auf `release`.
+
+**Umfang:**
+- Setup-Skript für Ubuntu (genutzt von CI und Claude); nginx mit `/poker-msg`-Weiterleitung wie in Produktion,
+  leere DB aus `db_schema_pok.sql`, `poker-msg` aus dessen `release`-Branch. Kein Docker (vorerst).
+- Playwright (Chromium) in `tests/e2e/`.
+- Testfälle: Team anlegen; zwei Spieler treten bei und sehen sich; Karte legen und beim anderen sichtbar; alle
+  gewählt → Ergebnis; neue Runde setzt zurück; Kartenset wechseln, beide sehen das neue Set.
+- GitHub-Actions-Workflow mit PHP 8.1 (wie Produktion).
+- Agent `e2e-tester` und Anleitung in `CLAUDE.md`.
+- nginx-Regel für die Server, damit Test-, Doku- und Konfigurationsdateien nicht öffentlich abrufbar sind
+  (spielt der Betreiber ein).
+
+**Akzeptanzkriterien:**
+- Tests laufen in CI grün gegen `release`.
+- Ein absichtlich eingebauter Fehler lässt einen Test fehlschlagen.
+- Keine Änderung am App-Code.
+
+**Entscheidungen:** Ubuntu-Skript statt Docker, weil künftig Claude entwickelt; CI-Laufzeit von einigen Minuten ist
+akzeptiert, soll aber durch Caching möglichst kurz bleiben.
 
 ### B-05 E2E-Tests für weitere Funktionen
 Kartenkonfiguration, Timer, Thema, Anonym-Modus, Ergebnis-Sortierung, Durchschnitt, Spieler entfernen, Feedback.
