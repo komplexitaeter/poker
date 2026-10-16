@@ -21,8 +21,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 8.1 = production today, 8.4 = target of B-22
-        php: ['8.1', '8.4']
+        # same version as staging and production (B-22)
+        php: ['8.4']
     timeout-minutes: 15
     env:
       # MySQL comes preinstalled on the runner with root/root

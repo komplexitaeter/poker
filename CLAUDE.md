@@ -12,7 +12,7 @@ Die Anwendung besteht aus zwei Repositories:
 
 | Repo | Zweck | Laufzeit |
 |---|---|---|
-| `komplexitaeter/poker` (dieses) | Web-App: HTML/CSS/JS-Frontend, PHP-API, MySQL-Schema | nginx + PHP 8.1-FPM |
+| `komplexitaeter/poker` (dieses) | Web-App: HTML/CSS/JS-Frontend, PHP-API, MySQL-Schema | nginx + PHP 8.4-FPM |
 | `komplexitaeter/poker-msg` | WebSocket-Benachrichtigungsserver (Ratchet, `cboden/ratchet ^0.4`) | PHP-CLI unter supervisor, `127.0.0.1:8443`, Event-Loop über PHP-Erweiterung `ev` |
 
 Datenfluss bei einer Änderung am Board:
@@ -61,9 +61,16 @@ Lokale Test-DB: `db_schema_pok.sql` lässt sich direkt in eine leere MySQL-8.0-D
 
 ## Betrieb
 
-Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP-FPM, MySQL 8.0). PHP-Umstellung 8.1 → 8.4 (B-22) läuft:
-Staging ist auf 8.4, Live noch auf 8.1. Auf dem Staging-Server laufen weitere Seiten mit eigenen PHP-Versionen –
-Änderungen nur an der Poker-Config bzw. `php8.4`-spezifisch vornehmen.
+Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.4 aus dem ondrej-PPA, MySQL 8.0). Web-App über
+`php8.4-fpm.sock`, `poker-msg` über `/usr/bin/php8.4` (seit 2026-10-16, B-22). PHP 8.1 ist noch installiert, wird
+aber nicht mehr genutzt. Auf dem Staging-Server laufen weitere Seiten mit eigenen PHP-Versionen – Änderungen nur an
+der Poker-Config bzw. `php8.4`-spezifisch vornehmen.
+
+- PHP-8.4-FPM-`php.ini` (Live): `memory_limit = 256M`, `post_max_size = 100M`, `upload_max_filesize = 100M`
+  (übernommen aus der früheren 8.1-Config).
+- nginx (Live, `nginx.conf`): `worker_rlimit_nofile 65535`, `worker_connections 16384` bei 2 Workern → reicht für
+  rund 16.000 gleichzeitige WebSocket-Verbindungen. Staging angeglichen.
+- Zielwert `poker-msg`: 5.000 gleichzeitige Verbindungen (B-19).
 
 | Server | Branch | Zweck |
 |---|---|---|
@@ -104,7 +111,7 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 ## Tests
 
 End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
-jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.1 wie in Produktion.
+jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.4 wie in Produktion.
 
 Lokal:
 
