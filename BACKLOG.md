@@ -7,7 +7,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 2:** B-03, B-18
+**Sprint 2:** B-19 (vorgezogen als Produktionsproblem), B-03, B-18
 
 Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
@@ -33,7 +33,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
 | B-18 | Server-Logs von Live sichten | erledigt |
-| B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | neu |
+| B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
 | B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | neu |
 
@@ -129,6 +129,7 @@ Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle he
 ### B-10 `poker-msg` modernisieren und absichern
 Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
 oder Nachrichtengröße. Läuft nicht als root, Abhängigkeiten aktualisieren oder Alternative prüfen.
+Heartbeat ergänzen: verwaiste Verbindungen (vergessene Tabs, Laptop im Ruhezustand) nach z. B. 2 Minuten schließen.
 
 ### B-11 Schreibende API-Aufrufe per POST statt GET
 Zustandsändernde Endpunkte werden per GET aufgerufen (Prefetching, Logs mit Parametern, kein CSRF-Schutz).
@@ -179,7 +180,20 @@ der Fatal Error aus B-21. Sonst nur Scanner-404s, harmlose TLS-Fehler, DNS-Warnu
 ReactPHP nutzt mangels Erweiterung die `stream_select`-Schleife, die nur Dateideskriptoren < 1024 verarbeiten kann;
 Verbindungen darüber werden nicht mehr bedient (Boards aktualisieren sich dann nicht). Lösung ohne Code-Änderung:
 PHP-Erweiterung `ev` oder `event` für das CLI-PHP installieren – ReactPHP wählt sie automatisch – und `poker-msg`
-neu starten. Prüfen: Spitzenwert `active_users` im Info-Log, danach keine Warnungen mehr. Passt zu B-10.
+neu starten. Passt zu B-10.
+
+**Nachweis (lokaler Lasttest, 2026-10-16):** 1.100 WebSocket-Clients gegen `poker-msg` ohne Erweiterung → nur 1.000
+Verbindungen, nach einem `push` erhält **kein** Client ein `pull` (auch die ersten 1.000 nicht), ~330.000 Warnungen
+in Sekunden (Leerlauf-Schleife). Live: 449 Verbindungen um 10:30 Uhr, Spitze 8–9 Uhr mit 5–7× mehr Verkehr.
+
+**Zielwert:** 5.000 gleichzeitige Verbindungen (≈ 3–5× der geschätzten heutigen Spitze von 1.000–1.500).
+
+**Umfang:** `pecl install ev`, nur für CLI aktivieren, `poker-msg` neu starten (erst Staging, dann Live);
+supervisor-Info-Log auf `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`, damit die echte Spitze
+von `active_users` messbar wird.
+
+**Akzeptanzkriterien:** `React\EventLoop\Factory::create()` liefert `ExtEvLoop`; nach einem Werktag keine neuen
+`FD_SETSIZE`-Warnungen; Spitzenwert `active_users` aus dem Log bekannt.
 
 ### B-20 PHP-FPM und MySQL robuster konfigurieren
 - PHP-FPM: `pm.max_children = 5` wurde am 14.10. (Vorfall `stats.php`) erreicht. Bei 3,8 GB RAM moderat anheben,
