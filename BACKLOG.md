@@ -17,7 +17,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 |---|---|---|
 | B-01 | SQL-Injection in `api/` beheben | neu |
 | B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
-| B-03 | PHP-8.1-Deprecations und kleine Bugs | im Sprint |
+| B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
@@ -39,7 +39,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-22 | PHP-Upgrade auf 8.4 | erledigt |
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
-| B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | im Sprint |
+| B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -290,3 +290,4 @@ ersten Antwort wie bisher `opacity: 1`. E2E-Test: ohne Stylesheet und mit langsa
 unsichtbar, danach wird es sichtbar (Gegenprobe ohne Fix schlägt fehl).
 
 **Akzeptanzkriterium:** In Safari mit Option-Cmd-R auf Staging kein Aufblitzen mehr (manuell, Safari ist in CI nicht verfügbar).
+**Erledigt 2026-10-16:** auf Staging in Safari bestätigt, Release nach `master`.
