@@ -423,11 +423,12 @@ function save_topic(){
 
     httpRequest.open("POST", url, true);
     httpRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    // notify the other boards only once the topic is saved, otherwise they reload the old one
+    httpRequest.onload = () => pushDomChange();
     httpRequest.send(
         "topic=" + encodeURIComponent(topic)
     );
 
-    pushDomChange();
     toggle_topic_box();
 
     measureEvent("TOPIC_SAVED");

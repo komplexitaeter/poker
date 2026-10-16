@@ -73,6 +73,8 @@ Teamname `Bob's Team` wird live als `Bob&#39;s Team` angezeigt, `Sprint 1 < 2` w
 - Aus dem Security-Review ergänzt: Thema speichern (`save_topic`) kodiert ebenfalls nicht → `encodeURIComponent`;
   Längenbegrenzung schnitt nach Bytes und zerteilte Umlaute an der Grenze (Spielername mit 15 Zeichen → HTTP 500,
   Beitritt unmöglich) → Kürzen nach Zeichen (`cut_text()`, ohne `mbstring`, das live für 8.4 nicht installiert ist).
+- In CI gefunden: `save_topic()` meldete die Änderung per WebSocket, bevor der Server das Thema gespeichert hatte;
+  bei langsamem Server luden die Boards das alte Thema → Benachrichtigung erst nach der Antwort (`onload`).
 
 **Akzeptanzkriterien:**
 - E2E-Test: Team- und Spielernamen mit `'`, `"`, `<`, `&` und `<b>…</b>` werden exakt so angezeigt, wie eingegeben,
