@@ -17,7 +17,8 @@
 
 
 </head>
-<body onload="loadBoard()" class="body-fade-in" ondblclick="updateDao(false)">
+<!-- hidden inline (not only in style.css) so nothing shows before the stylesheet and the first server response arrive -->
+<body onload="loadBoard()" class="body-fade-in" style="opacity: 0" ondblclick="updateDao(false)">
 <div class="container" onclick="void(0);">
     <div class="up-container sizefit">
 

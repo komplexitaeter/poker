@@ -7,7 +7,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 2:** B-19 + B-22 (vorgezogen als Produktionsproblem), B-24, B-03, B-18
+**Sprint 2:** B-19 + B-22 (vorgezogen als Produktionsproblem), B-24, B-03, B-18, B-25
 
 Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
@@ -39,6 +39,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-22 | PHP-Upgrade auf 8.4 | erledigt |
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
+| B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | im Sprint |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -276,3 +277,16 @@ neuer E2E-Test: nach Leerlauf über mehrere Ping-Runden kommen Updates ohne Neuv
 `proxy_read_timeout 120s` auf beiden Servern). Staging-`poker-msg` dabei von einem lokalen Branch mit dem verworfenen
 Yjs-Versuch („shared area“, lokal gesichert als `backup/shared-area`) auf `release` umgestellt und auf HTTPS-Remote.
 Offen: Kontrolle `active_users` über Nacht.
+
+### B-25 Board blitzt beim Laden kurz mit allen Elementen auf
+Beim Laden des Boards sind teilweise kurz alle Elemente im Standardzustand sichtbar (z. B. der Timer), bevor die
+erste Server-Antwort sie richtig einstellt – auch vor dem Namens-Overlay. Gut reproduzierbar in Safari mit
+Option-Cmd-R (Neuladen ohne Cache). Ursache (vermutet): Das Ausblenden bis zur ersten Antwort stand nur in
+`style/style.css` (`body { opacity: 0 }`); malt der Browser das HTML, bevor das Stylesheet geladen ist, fehlt es.
+In Chrome nicht reproduzierbar (blockiert das Rendern bis zum Stylesheet).
+
+**Fix:** `style="opacity: 0"` direkt am `<body>` von `board.html` und `init.html`; das JavaScript setzt nach der
+ersten Antwort wie bisher `opacity: 1`. E2E-Test: ohne Stylesheet und mit langsamer erster Antwort bleibt das Board
+unsichtbar, danach wird es sichtbar (Gegenprobe ohne Fix schlägt fehl).
+
+**Akzeptanzkriterium:** In Safari mit Option-Cmd-R auf Staging kein Aufblitzen mehr (manuell, Safari ist in CI nicht verfügbar).
