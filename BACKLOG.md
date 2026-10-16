@@ -7,7 +7,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-_Kein laufender Sprint._
+**Sprint 2:** B-03, B-18
 
 Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
@@ -17,7 +17,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 |---|---|---|
 | B-01 | SQL-Injection in `api/` beheben | neu |
 | B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
-| B-03 | PHP-8.1-Deprecations und kleine Bugs | neu |
+| B-03 | PHP-8.1-Deprecations und kleine Bugs | refined |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
@@ -32,6 +32,10 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | neu |
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
+| B-18 | Server-Logs von Live sichten | im Sprint |
+| B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | neu |
+| B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
+| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -42,9 +46,30 @@ Offene Fragen: alle Stellen einzeln oder `lib.php` gleich mit einer kleinen Quer
 Feedback-Texte werden ungefiltert ausgegeben (XSS), die Seite ist ohne Login erreichbar.
 Offene Fragen: Zugriffsschutz per nginx (Basic Auth/IP) oder in PHP? Wird `stats.php` neben Grafana überhaupt noch gebraucht?
 
-### B-03 PHP-8.1-Deprecations und kleine Bugs
-`FILTER_SANITIZE_STRING` an 13 Stellen ersetzen; `strlen($tool>0)` in `index.php`.
-Offene Fragen: Welche PHP-Version läuft auf beiden Servern, ist ein Update auf 8.3 geplant?
+### B-03 PHP-8.1-Deprecations und Eingabe-Filter richtig machen
+**Hintergrund:** `FILTER_SANITIZE_STRING` (13 Stellen, deprecated seit PHP 8.1) „bereinigt“ Eingaben vor dem
+Speichern: entfernt alles, was wie ein Tag aussieht, und kodiert `'`/`"` als `&#39;`/`&#34;`. Das Frontend escaped
+bei der Ausgabe aber bereits korrekt (`textContent`/`innerText`, remarkable ohne HTML). Folge sind verfälschte Daten:
+Teamname `Bob's Team` wird live als `Bob&#39;s Team` angezeigt, `Sprint 1 < 2` wird zu `Sprint 1 `,
+`Max < Moritz` zu `Max `. Für SQL spielte der Filter keine Rolle (alle betroffenen Werte gehen über Prepared Statements).
+
+**Ziel:** Rohdaten speichern, bei der Ausgabe escapen (wie das Frontend es schon tut). Keine Deprecations mehr.
+
+**Umfang:**
+- Freitexte (Team-, Spielername, Team/Thema aus dem Einstiegslink in `index.php`): unverändert speichern, nur `trim()`
+  und Längenbegrenzung.
+- Steuerparameter (`tool`, `preset`, `action`, `type`, `display_type`, IDs in `get_promo.php`): gegen erlaubte Werte
+  bzw. Format prüfen.
+- `null`-Fälle (`substr(null)` in `index.php`, `strtolower(null)` in `add_team()`).
+- Einmaliges SQL: `&#39;`/`&#34;` in bestehenden Teamnamen zurückwandeln (Anzahl vorher zählen).
+- Alle Ausgabestellen prüfen (bisher bekannt: `innerHTML` für Thema – sicher; Umfrage-Texte aus der DB; `stats.php` → B-02).
+- CI schlägt fehl, wenn ein Testlauf `Deprecated` ins PHP-Log schreibt.
+
+**Akzeptanzkriterien:**
+- E2E-Test: Team- und Spielernamen mit `'`, `"`, `<`, `&` und `<b>…</b>` werden exakt so angezeigt, wie eingegeben,
+  und nicht als HTML interpretiert.
+- Ein kompletter Testlauf erzeugt keine Deprecation; kein `FILTER_SANITIZE_STRING` mehr im Code.
+- Bestehende Teams mit `&#39;`/`&#34;` im Namen werden nach dem Daten-Update korrekt angezeigt.
 
 ### B-04 Lokale Testumgebung und erste E2E-Tests mit CI
 **Ziel:** Ein Befehl startet die komplette App lokal (nginx, PHP-FPM, MySQL, `poker-msg`) und führt Playwright-Tests
@@ -141,3 +166,27 @@ Ersatz für phpMyAdmin: ein DB-Client auf dem eigenen Rechner (z. B. DBeaver, Ta
 sich per SSH-Tunnel mit MySQL auf dem Server. Kurze Anleitung für das Team, ggf. eigener MySQL-User mit passenden
 Rechten statt root.
 Offene Fragen: Wer braucht Zugriff, auf welche Server? Passt das zu B-13 (MySQL nur für Grafana öffnen)?
+
+### B-18 Server-Logs von Live sichten
+Zusammenfassung der aktuellen Logs per Skript (nur lesend, ohne IPs/Team-IDs), gemeinsam ausgewertet.
+Erste Sichtung 2026-10-16 – Ergebnisse als B-19, B-20, B-21; Ergänzungen zu B-13. Offen: Wohin schreibt PHP auf
+Live seine Fehler (im nginx-Error-Log tauchen keine PHP-Meldungen auf)?
+
+### B-19 `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze
+`poker-msg_error.log` enthält tausende `stream_select(): You MUST recompile PHP with a larger value of FD_SETSIZE`.
+ReactPHP nutzt mangels Erweiterung die `stream_select`-Schleife, die nur Dateideskriptoren < 1024 verarbeiten kann;
+Verbindungen darüber werden nicht mehr bedient (Boards aktualisieren sich dann nicht). Lösung ohne Code-Änderung:
+PHP-Erweiterung `ev` oder `event` für das CLI-PHP installieren – ReactPHP wählt sie automatisch – und `poker-msg`
+neu starten. Prüfen: Spitzenwert `active_users` im Info-Log, danach keine Warnungen mehr. Passt zu B-10.
+
+### B-20 PHP-FPM und MySQL robuster konfigurieren
+- PHP-FPM: `pm.max_children = 5` wurde am 14.10. (Vorfall `stats.php`) erreicht. Bei 3,8 GB RAM moderat anheben,
+  `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker), `slowlog` aktivieren.
+- MySQL: `slow_query_log` ist aus, trotzdem 9 Slow Queries (> 10 s) seit dem letzten Neustart – Log aktivieren
+  und auswerten. `skip-name-resolve` gegen die DNS-Warnungen durch Verbindungsversuche von außen
+  (234 abgebrochene Verbindungen in 2 Tagen, siehe B-13).
+
+### B-21 Race Condition beim Anlegen neuer Nutzer in `getDao()`
+Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
+`Duplicate entry … for key 'pok_user_tbl.PRIMARY'` (PHP Fatal Error, HTTP 500). In den E2E-Logs reproduziert,
+live 1× 500 auf `/api/dao.php` in 11 Stunden. Lösung z. B. `INSERT IGNORE`/`ON DUPLICATE KEY UPDATE`.
