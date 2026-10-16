@@ -1,0 +1,14 @@
+{
+  "name": "poker-e2e",
+  "private": true,
+  "description": "End-to-end tests for the poker app, see CLAUDE.md",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "js-confetti": "0.13.1",
+    "qr-code-styling": "1.5.0",
+    "remarkable": "1.7.1"
+  }
+}

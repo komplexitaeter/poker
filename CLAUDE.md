@@ -36,9 +36,10 @@ Datenfluss bei einer Änderung am Board:
 - `stats.php` – interne Nutzungsstatistik (keine Authentifizierung).
 - `db_schema_pok.sql` – Basisschema; `db_schema_pok_inc.sql` – inkrementelle Änderungen seit dem letzten Merge.
 - `src/` – Bilder; `src/xcf/` – GIMP-Quelldateien der Karten.
-- `config.php` – DB-Zugangsdaten (im Repo nur Platzhalter).
+- `config.example.php` – Vorlage für `config.php` (DB-Zugangsdaten). `config.php` selbst ist per `.gitignore`
+  ausgeschlossen und existiert nur auf den Servern bzw. lokal.
 
-Es gibt keinen Build-Schritt, kein Composer/npm im Haupt-Repo, keine Tests, kein CI.
+Es gibt keinen Build-Schritt für die App. npm wird nur für die Tests in `tests/e2e/` verwendet.
 
 ## Datenbank
 
@@ -68,7 +69,8 @@ Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
 | Live-Server | `master` | Produktion |
 
 - Code auf dem Live-Server: `/home/ubuntu/poker/public_html/`.
-- Deployment: manuell per `git pull` auf dem jeweiligen Server. Es gibt keine Build- oder Migrationsschritte;
+- Deployment: manuell per `git pull --ff-only` auf dem jeweiligen Server (`git config pull.ff only` auf beiden Servern).
+  `config.php` ist nicht im Repo und wird von `git pull` nicht angefasst. Es gibt keine Build- oder Migrationsschritte;
   Schemaänderungen werden von Hand eingespielt.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
@@ -88,10 +90,27 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 - `FILTER_SANITIZE_STRING` (seit PHP 8.1 deprecated) an mehreren Stellen.
 - Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
 - `stats.php` öffentlich erreichbar.
-- Keine Tests, kein Linting, kein CI.
+- Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
 - Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
-- Kein `.gitignore`; `config.php` liegt im Repo.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
+
+## Tests
+
+End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
+jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.1 wie in Produktion.
+
+Lokal:
+
+```bash
+E2E_DIR=/tmp/poker-e2e tests/e2e/setup.sh start   # nginx :8080, php-fpm, DB pok_e2e, poker-msg (release)
+cd tests/e2e && npm ci && npx playwright test
+tests/e2e/setup.sh stop
+```
+
+`setup.sh` kopiert die App mit einer eigenen `config.php` nach `$E2E_DIR/www`; nach Änderungen an der App erneut
+`start` aufrufen. Abgedeckt sind: Team anlegen, Beitreten mehrerer Spieler, Karte legen, Aufdecken, neue Runde,
+Kartenset wechseln. CDN-Skripte liefern die Tests aus npm-Paketen gleicher Version aus; Analytics wird blockiert.
+Details zum Schreiben von Tests: `.claude/agents/e2e-tester.md`.
 
 ## Zusammenarbeit
 
@@ -129,7 +148,7 @@ nachträglich im Backlog vermerkt.
 
 - `security-reviewer` – prüft Änderungen vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung und
   zustandsändernde GET-Aufrufe.
-- `e2e-tester` – kommt mit B-04.
+- `e2e-tester` – startet die App lokal und führt die E2E-Tests aus oder erweitert sie.
 
 ## Konventionen im Code
 
