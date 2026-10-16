@@ -83,3 +83,22 @@ test('topic saved in the topic box keeps special characters', async ({ browser }
     await expect(page.locator('#topic b')).toHaveCount(0);
   }
 });
+
+test('topic markdown still renders links, bold text and line breaks', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Markdown Team');
+  await joinAsPlayer(page, url, 'Alice');
+  const link = 'https://example.com/story?id=42&tab=a+b';
+
+  await page.locator('#topic_btn').click();
+  await page.locator('#topic_txt').pressSequentially(`**Story 42**: [Ticket](${link})`);
+  await page.locator('#topic_txt').press('Shift+Enter');
+  await page.locator('#topic_txt').pressSequentially(`see ${link}`);
+  await page.locator('#topic_save').click();
+
+  const topic = page.locator('#topic');
+  await expect(topic.locator('strong')).toHaveText('Story 42');
+  await expect(topic.locator('a', { hasText: 'Ticket' })).toHaveAttribute('href', link);
+  await expect(topic.locator('a', { hasText: link })).toHaveAttribute('href', link);  // linkify
+  await expect(topic.locator('br')).toHaveCount(1);                                   // breaks
+});
