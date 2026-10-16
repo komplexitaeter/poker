@@ -28,7 +28,8 @@ Sprint 1: B-04
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
 | B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | neu |
-| B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | neu |
+| B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
+| B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -114,7 +115,12 @@ qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Ve
 
 ### B-16 Fremddateien und phpMyAdmin in den Webroots absichern
 Auf dem Staging-Server lagen neben dem Repo `info.php` (phpinfo), `config.php.live` und ein Symlink
-`db -> /usr/share/phpmyadmin` im Webroot; phpMyAdmin ist damit öffentlich erreichbar und wird genutzt.
-`info.php` und `config.php.live` sind entfernt (2026-10-16). Offen:
-- phpMyAdmin per nginx Basic Auth (`location ^~ /db/` mit `auth_basic`) oder nur per SSH-Tunnel erreichbar machen.
-- Live-Server auf dieselben Fremddateien prüfen (`git status`, Symlinks im Webroot).
+`db -> /usr/share/phpmyadmin` im Webroot; phpMyAdmin war damit öffentlich erreichbar.
+**Erledigt 2026-10-16:** `info.php` und `config.php.live` entfernt, Symlink `db` auf allen Servern gelöscht
+(phpMyAdmin bleibt installiert, ist aber nicht mehr über das Web erreichbar). Ersatz siehe B-17.
+
+### B-17 DB-Zugriff per Client über SSH-Tunnel einrichten
+Ersatz für phpMyAdmin: ein DB-Client auf dem eigenen Rechner (z. B. DBeaver, TablePlus, Sequel Ace) verbindet
+sich per SSH-Tunnel mit MySQL auf dem Server. Kurze Anleitung für das Team, ggf. eigener MySQL-User mit passenden
+Rechten statt root.
+Offene Fragen: Wer braucht Zugriff, auf welche Server? Passt das zu B-13 (MySQL nur für Grafana öffnen)?
