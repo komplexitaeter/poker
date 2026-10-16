@@ -49,21 +49,16 @@ function set_header($content_type) {
 
 function validate_team($t, $link) {
 
-    $sql = "SELECT count(1) cnt FROM pok_teams_tbl WHERE id = '".$t."'";
+    $is_valid = false;
 
-    if ($result = $link->query($sql)) {
+    $sql = $link->prepare("SELECT count(1) cnt FROM pok_teams_tbl WHERE id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+
+    if ($result = $sql->get_result()) {
         $obj = $result->fetch_object();
-
-        if ($obj->cnt==1) {
-            $is_valid = true;
-        }
-        else {
-            $is_valid = false;
-        }
+        $is_valid = ($obj->cnt == 1);
         $result->close();
-    }
-    else {
-        $is_valid = false;
     }
 
     return $is_valid;
@@ -199,13 +194,14 @@ function getDao($t, $id) {
     $link = db_init();
 
     /* set last callback of current player */
-    $sql = "UPDATE pok_players_tbl 
-               SET last_callback_time = current_timestamp 
-             WHERE id='$id'
-               AND team_id='$t'";
-    $link->query($sql);
+    $sql = $link->prepare("UPDATE pok_players_tbl
+               SET last_callback_time = current_timestamp
+             WHERE id = ?
+               AND team_id = ?");
+    $sql->bind_param('ss', $id, $t);
+    $sql->execute();
 
-    $sql = "SELECT t.cardset_flags
+    $sql = $link->prepare("SELECT t.cardset_flags
                   ,t.name
                   ,if(not isnull(t.timer_start_time) and isnull(t.timer_pause_time)
                       ,'RUNNING'
@@ -221,9 +217,10 @@ function getDao($t, $id) {
                   ,t.anonymous_request_toggle
                   ,t.needs_setup
             FROM pok_teams_tbl as t
-             WHERE t.id = '$t'";
-    if ($result = $link->query($sql)) {
-        $obj = $result->fetch_object();
+             WHERE t.id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    if (($result = $sql->get_result()) && ($obj = $result->fetch_object())) {
         $cardset_flags = $obj->cardset_flags;
         $team_name = $obj->name;
         $timer_status = $obj->timer_status;
@@ -237,12 +234,14 @@ function getDao($t, $id) {
         $needs_setup = (bool)$obj->needs_setup;
     }
 
-    $sql = "SELECT p.* 
+    $sql = $link->prepare("SELECT p.*
               FROM pok_players_tbl p
-             WHERE p.team_id = '$t' 
-             ORDER BY p.name";
+             WHERE p.team_id = ?
+             ORDER BY p.name");
+    $sql->bind_param('s', $t);
+    $sql->execute();
     $objs = array();
-    if ($result = $link->query($sql)) {
+    if ($result = $sql->get_result()) {
 
         $previous_card = null;
 

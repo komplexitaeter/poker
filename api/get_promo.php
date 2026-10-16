@@ -21,8 +21,12 @@ $playout_delay_sec = rand(30, 300);
 
 $link = db_init();
 
+// This endpoint inserts without a team_id filter in the WHERE clause, so a bound
+// WHERE cannot limit the effect to a valid team: check the team id explicitly.
+validate_team($team_id, $link) or exit;
+
 $sql = $link->prepare("
-    INSERT INTO pok_promotions_tbl 
+    INSERT INTO pok_promotions_tbl
     (player_id, team_id, display_type, playout_delay_sec, promo_headline, promo_link_url, promo_img_url, promo_cta) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ");
