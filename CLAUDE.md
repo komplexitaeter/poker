@@ -157,16 +157,29 @@ nachträglich im Backlog vermerkt.
 **Git:**
 
 - Basis ist `release`. `master` wird nur durch Merge von `release` verändert, nie direkt.
-- Jeder Backlog-Eintrag bekommt einen kurzlebigen Feature-Branch von `release`
-  (`feature/B-01-sql-injection`) und einen PR nach `release`, der im Team reviewt und gemergt wird.
+- Jeder Backlog-Eintrag bekommt einen kurzlebigen Feature-Branch von `release` (`feature/B-01-sql-injection`).
+- **Merge nach `release` macht Kai selbst**, nachdem ein anderer Agent als der Autor reviewt hat, CI grün ist und die
+  Änderung lokal getestet wurde. Ist `release` grün, legt Kai den PR `release` → `master` an; **diesen gibt das Team
+  (Andreas) manuell frei und mergt ihn.**
+- Mehrere zusammengehörige Feature-Branches darf Kai zu einem Sammel-PR nach `release` zusammenführen.
 - Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
 - `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
 
-**Agenten** (`.claude/agents/`):
+**Rollen und Agenten** (`.claude/agents/`):
 
-- `security-reviewer` – prüft Änderungen vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung und
-  zustandsändernde GET-Aufrufe.
-- `e2e-tester` – startet die App lokal und führt die E2E-Tests aus oder erweitert sie.
+Die **Hauptsitzung „Kai"** spricht mit dem Team, koordiniert die Agenten, reviewt deren Branches, mergt nach
+`release` und legt den PR nach `master` an. Implementierungs-Agenten arbeiten je in einem eigenen Git-Worktree und
+geben einen Branch zurück; sie mergen nie selbst.
+
+| Agent (`.claude/agents/`) | Name | Zuständig für |
+|---|---|---|
+| (Hauptsitzung) | **Kai (KO)** | Kommunikation, Koordination, Review, Merges nach `release`, `master`-PR |
+| `backend` | **Ben (BE)** | PHP, SQL, API (`api/`, `stats.php`, Schema) |
+| `frontend` | **Fred (FE)** | HTML, JS, CSS, ausgelieferte Assets |
+| `security-reviewer` | **Sina (SEC)** | prüft vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung, GET-Schreibzugriffe |
+| `e2e-tester` | **Tessa (E2E)** | startet die App lokal, führt E2E-Tests aus oder erweitert sie |
+
+Regel: Reviewt wird immer von einem anderen Agenten als dem Autor.
 
 ## Konventionen im Code
 
