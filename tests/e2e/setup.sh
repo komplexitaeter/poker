@@ -28,6 +28,18 @@ DB_PWD=pok_e2e
 
 log() { echo "[e2e-setup] $*"; }
 
+# values end up in generated nginx/php-fpm configs
+[[ "$E2E_DIR" =~ ^[A-Za-z0-9/._-]+$ ]] || { log "invalid E2E_DIR: $E2E_DIR"; exit 2; }
+[[ "$E2E_PORT" =~ ^[0-9]+$ ]] || { log "invalid E2E_PORT: $E2E_PORT"; exit 2; }
+
+# refuse a working directory created by someone else (e.g. in /tmp)
+check_owner() {
+    if [[ -e "$E2E_DIR" && ! -O "$E2E_DIR" ]]; then
+        log "$E2E_DIR belongs to another user" >&2
+        exit 1
+    fi
+}
+
 stop_pid() {
     local pidfile="$1"
     if [[ -f "$pidfile" ]]; then
@@ -37,6 +49,7 @@ stop_pid() {
 }
 
 stop() {
+    check_owner
     stop_pid "$E2E_DIR/nginx.pid"
     stop_pid "$E2E_DIR/php-fpm.pid"
     stop_pid "$E2E_DIR/poker-msg.pid"
@@ -44,9 +57,10 @@ stop() {
 }
 
 wait_for() {
-    local what="$1" cmd="$2"
+    local what="$1"
+    shift
     for _ in $(seq 1 50); do
-        if eval "$cmd" >/dev/null 2>&1; then return 0; fi
+        if "$@" >/dev/null 2>&1; then return 0; fi
         sleep 0.2
     done
     log "$what did not come up, see logs in $E2E_DIR"
@@ -55,6 +69,8 @@ wait_for() {
 
 start() {
     stop >/dev/null
+    mkdir -p -m 700 "$E2E_DIR"
+    check_owner
     mkdir -p "$E2E_DIR"/{www,tmp,logs}
 
     # --- app copy with test config (the repo's config.php stays untouched)
@@ -94,7 +110,7 @@ EOF
     fi
     nohup php "$msg_dir/bin/msg-server.php" > "$E2E_DIR/logs/poker-msg.log" 2>&1 &
     echo $! > "$E2E_DIR/poker-msg.pid"
-    wait_for "poker-msg" "(exec 3<>/dev/tcp/127.0.0.1/8443)"
+    wait_for "poker-msg" bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443'
     log "poker-msg running on 127.0.0.1:8443"
 
     # --- php-fpm
@@ -111,7 +127,8 @@ daemonize = yes
 [poker]
 $run_as
 listen = $E2E_DIR/php-fpm.sock
-listen.mode = 0666
+; nginx and php-fpm run as the same user
+listen.mode = 0600
 pm = static
 pm.max_children = 8
 catch_workers_output = yes
@@ -123,7 +140,7 @@ EOF
     local fpm_args=(-y "$E2E_DIR/php-fpm.conf")
     [[ $(id -u) -eq 0 ]] && fpm_args+=(-R)
     "$fpm" "${fpm_args[@]}"
-    wait_for "php-fpm" "test -S $E2E_DIR/php-fpm.sock"
+    wait_for "php-fpm" test -S "$E2E_DIR/php-fpm.sock"
     log "php-fpm running ($fpm)"
 
     # --- nginx (same routing as production, see poker-msg README)
@@ -167,7 +184,7 @@ http {
 }
 EOF
     nginx -e "$E2E_DIR/logs/nginx-error.log" -c "$E2E_DIR/nginx.conf"
-    wait_for "nginx" "curl -sf -o /dev/null http://127.0.0.1:$E2E_PORT/init.html"
+    wait_for "nginx" curl -sf -o /dev/null "http://127.0.0.1:$E2E_PORT/init.html"
     log "app running on http://127.0.0.1:$E2E_PORT/"
 }
 
