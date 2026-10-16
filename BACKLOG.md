@@ -36,6 +36,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
 | B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | neu |
+| B-22 | PHP-Upgrade (8.3 oder 8.4) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -206,3 +207,10 @@ von `active_users` messbar wird.
 Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
 `Duplicate entry … for key 'pok_user_tbl.PRIMARY'` (PHP Fatal Error, HTTP 500). In den E2E-Logs reproduziert,
 live bestätigt: 1× in 11 Stunden (einzige PHP-Meldung im nginx-Error-Log). Lösung z. B. `INSERT IGNORE`/`ON DUPLICATE KEY UPDATE`.
+
+### B-22 PHP-Upgrade (8.3 oder 8.4)
+Live läuft auf PHP 8.1 aus Ubuntu 22.04 (Sicherheitsupdates durch Canonical bis April 2027). Staging hat zusätzlich
+8.2 und 8.4 installiert; dort ist `/usr/bin/php` (CLI, also `poker-msg`) bereits 8.4.
+Offene Fragen: ondrej-PPA mit 8.4 oder Ubuntu 24.04 mit 8.3? Zeitpunkt? Vorher B-03 (Altlasten im Code) und
+`poker-msg` unter der neuen Version testen (Ratchet 0.4, Deprecations). CI zusätzlich mit der Zielversion laufen lassen.
+Erweiterung `ev` (B-19) für die neue Version mit installieren.
