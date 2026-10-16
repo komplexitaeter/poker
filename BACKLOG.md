@@ -28,6 +28,7 @@ Sprint 1: B-04
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
 | B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | neu |
+| B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -110,3 +111,10 @@ Voraussetzung: B-04/B-05.
 qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Versionen festnageln und
 `integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
 (`loadBoard()` bricht ohne `QRCodeStyling` ab).
+
+### B-16 Fremddateien und phpMyAdmin in den Webroots absichern
+Auf dem Staging-Server lagen neben dem Repo `info.php` (phpinfo), `config.php.live` und ein Symlink
+`db -> /usr/share/phpmyadmin` im Webroot; phpMyAdmin ist damit öffentlich erreichbar und wird genutzt.
+`info.php` und `config.php.live` sind entfernt (2026-10-16). Offen:
+- phpMyAdmin per nginx Basic Auth (`location ^~ /db/` mit `auth_basic`) oder nur per SSH-Tunnel erreichbar machen.
+- Live-Server auf dieselben Fremddateien prüfen (`git status`, Symlinks im Webroot).
