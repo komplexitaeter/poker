@@ -32,7 +32,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | neu |
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
-| B-18 | Server-Logs von Live sichten | im Sprint |
+| B-18 | Server-Logs von Live sichten | erledigt |
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | neu |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
 | B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | neu |
@@ -169,8 +169,10 @@ Offene Fragen: Wer braucht Zugriff, auf welche Server? Passt das zu B-13 (MySQL 
 
 ### B-18 Server-Logs von Live sichten
 Zusammenfassung der aktuellen Logs per Skript (nur lesend, ohne IPs/Team-IDs), gemeinsam ausgewertet.
-Erste Sichtung 2026-10-16 – Ergebnisse als B-19, B-20, B-21; Ergänzungen zu B-13. Offen: Wohin schreibt PHP auf
-Live seine Fehler (im nginx-Error-Log tauchen keine PHP-Meldungen auf)?
+**Erledigt 2026-10-16.** Ergebnisse als B-19, B-20, B-21; Ergänzungen zu B-13. PHP-Fehler landen live im
+nginx-Error-Log (`FastCGI sent in stderr`); Deprecations werden live nicht geloggt (`php.ini`:
+`E_ALL & ~E_DEPRECATED`, die Live-`config.php` setzt kein `error_reporting`). Einzige PHP-Meldung im aktuellen Log:
+der Fatal Error aus B-21. Sonst nur Scanner-404s, harmlose TLS-Fehler, DNS-Warnungen von MySQL.
 
 ### B-19 `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze
 `poker-msg_error.log` enthält tausende `stream_select(): You MUST recompile PHP with a larger value of FD_SETSIZE`.
@@ -189,4 +191,4 @@ neu starten. Prüfen: Spitzenwert `active_users` im Info-Log, danach keine Warnu
 ### B-21 Race Condition beim Anlegen neuer Nutzer in `getDao()`
 Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
 `Duplicate entry … for key 'pok_user_tbl.PRIMARY'` (PHP Fatal Error, HTTP 500). In den E2E-Logs reproduziert,
-live 1× 500 auf `/api/dao.php` in 11 Stunden. Lösung z. B. `INSERT IGNORE`/`ON DUPLICATE KEY UPDATE`.
+live bestätigt: 1× in 11 Stunden (einzige PHP-Meldung im nginx-Error-Log). Lösung z. B. `INSERT IGNORE`/`ON DUPLICATE KEY UPDATE`.
