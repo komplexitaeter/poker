@@ -16,7 +16,13 @@ concurrency:
 
 jobs:
   e2e:
+    name: e2e (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # 8.1 = production today, 8.4 = target of B-22
+        php: ['8.1', '8.4']
     timeout-minutes: 15
     env:
       # MySQL comes preinstalled on the runner with root/root
@@ -27,18 +33,18 @@ jobs:
       - name: Set working directory for the app copy
         run: echo "E2E_DIR=$RUNNER_TEMP/poker-e2e" >> "$GITHUB_ENV"
 
-      - name: Set up PHP 8.1 (as in production)
+      - name: Set up PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: ${{ matrix.php }}
           extensions: mysqli
           tools: composer
           coverage: none
 
-      - name: Make sure php-fpm 8.1 is available
+      - name: Make sure php-fpm ${{ matrix.php }} is available
         run: |
-          test -x /usr/sbin/php-fpm8.1 || sudo apt-get install -y -q php8.1-fpm php8.1-mysql
-          echo "PHP_FPM=/usr/sbin/php-fpm8.1" >> "$GITHUB_ENV"
+          test -x /usr/sbin/php-fpm${{ matrix.php }} || sudo apt-get install -y -q php${{ matrix.php }}-fpm php${{ matrix.php }}-mysql
+          echo "PHP_FPM=/usr/sbin/php-fpm${{ matrix.php }}" >> "$GITHUB_ENV"
 
       - name: Start MySQL
         run: sudo systemctl start mysql.service
@@ -70,11 +76,19 @@ jobs:
         working-directory: tests/e2e
         run: npx playwright test
 
+      - name: PHP messages during the test run
+        if: always()
+        run: |
+          for f in "$E2E_DIR"/logs/php-error.log "$E2E_DIR"/logs/poker-msg.log; do
+            echo "== $f"
+            sed -E 's/^\[[^]]*\] //' "$f" 2>/dev/null | grep -E 'PHP (Deprecated|Warning|Notice|Fatal)' | sort | uniq -c | sort -rn | head -40 || true
+          done
+
       - name: Upload report and logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-report
+          name: e2e-report-php${{ matrix.php }}
           path: |
             tests/e2e/playwright-report/
             tests/e2e/test-results/
