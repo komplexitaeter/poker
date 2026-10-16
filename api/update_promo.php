@@ -3,9 +3,9 @@ require '../config.php';
 require './lib.php';
 
 $id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
-$action = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_STRING);
+$action = get_text_param('action', 30);
 
-if (is_null($id) || is_null($action)) {
+if (is_null($id) || $action === '') {
     http_response_code(400);
     exit('Invalid request');
 }

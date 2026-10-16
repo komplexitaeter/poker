@@ -17,7 +17,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 |---|---|---|
 | B-01 | SQL-Injection in `api/` beheben | neu |
 | B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
-| B-03 | PHP-8.1-Deprecations und kleine Bugs | refined |
+| B-03 | PHP-8.1-Deprecations und kleine Bugs | im Sprint |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
@@ -43,6 +43,7 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
 `api/delete.php`, `api/feedback.php`, `api/setc.php`, `getDao()` und weitere Stellen in `api/lib.php`. Umstellen auf Prepared Statements.
+Außerdem: `api/timer.php` und `api/get_promo.php` prüfen die Team-ID nicht mit `validate_team()`.
 Offene Fragen: alle Stellen einzeln oder `lib.php` gleich mit einer kleinen Query-Hilfsfunktion?
 
 ### B-02 `stats.php` absichern
@@ -67,6 +68,13 @@ Teamname `Bob's Team` wird live als `Bob&#39;s Team` angezeigt, `Sprint 1 < 2` w
 - Einmaliges SQL: `&#39;`/`&#34;` in bestehenden Teamnamen zurückwandeln (Anzahl vorher zählen).
 - Alle Ausgabestellen prüfen (bisher bekannt: `innerHTML` für Thema – sicher; Umfrage-Texte aus der DB; `stats.php` → B-02).
 - CI schlägt fehl, wenn ein Testlauf `Deprecated` ins PHP-Log schreibt.
+- Im Planning ergänzt: Frontend kodiert Namen in URLs nicht (`&`/`#` schneiden Namen ab) → `encodeURIComponent`;
+  `name.php` gibt den Namen als HTML zurück (Debug-Ausgabe, nach Umstellung reflektiertes XSS) → entfernen.
+- Aus dem Security-Review ergänzt: Thema speichern (`save_topic`) kodiert ebenfalls nicht → `encodeURIComponent`;
+  Längenbegrenzung schnitt nach Bytes und zerteilte Umlaute an der Grenze (Spielername mit 15 Zeichen → HTTP 500,
+  Beitritt unmöglich) → Kürzen nach Zeichen (`cut_text()`, ohne `mbstring`, das live für 8.4 nicht installiert ist).
+- In CI gefunden: `save_topic()` meldete die Änderung per WebSocket, bevor der Server das Thema gespeichert hatte;
+  bei langsamem Server luden die Boards das alte Thema → Benachrichtigung erst nach der Antwort (`onload`).
 
 **Akzeptanzkriterien:**
 - E2E-Test: Team- und Spielernamen mit `'`, `"`, `<`, `&` und `<b>…</b>` werden exakt so angezeigt, wie eingegeben,
@@ -155,8 +163,10 @@ Voraussetzung: B-04/B-05.
 qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Versionen festnageln und
 `integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
 (`loadBoard()` bricht ohne `QRCodeStyling` ab).
-**Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannter Schwachstelle; 1.7.2 behebt sie (Dependabot-PRs #3/#4
-heben nur die Testkopie an). Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
+**Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannten Schwachstellen (u. a. XSS über präparierte Link-Schemata
+in Markdown-Links laut Security-Review, auslösbar über ein Thema, z. B. per Einstiegslink `/?tool=x&text=…`).
+Im Refinement klären, welche Version welche Lücke behebt (Dependabot schlug 1.7.2 vor, der Review nennt 1.7.4
+oder neuer); Dependabot-PRs #3/#4 hoben nur die Testkopie an. Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
 `specs/helpers.ts`) gemeinsam anheben.
 
 ### B-16 Fremddateien und phpMyAdmin in den Webroots absichern

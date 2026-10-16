@@ -2,9 +2,9 @@
 require '../config.php';
 require './lib.php';
 
-$t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
+$t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
-$results_order = substr( filter_input(INPUT_GET, "results_order", FILTER_SANITIZE_URL) ,0,50);
+$results_order = substr(filter_input(INPUT_GET, "results_order", FILTER_SANITIZE_URL) ?? '', 0,50);
 
 
 $link = db_init();
