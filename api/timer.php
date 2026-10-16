@@ -2,8 +2,8 @@
 require '../config.php';
 require './lib.php';
 
-$t = substr( filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ,0,80);
-$action = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_STRING);
+$t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
+$action = get_text_param('action', 30);
 
 $link = db_init();
 

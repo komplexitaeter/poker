@@ -13,6 +13,23 @@ function db_init() {
     return $link;
 }
 
+/*
+ * Reads a GET parameter as plain text: unchanged apart from trimming and the length limit,
+ * '' if missing. Values are stored as entered and escaped on output (textContent in the
+ * frontend, json_encode in the API) - never insert them into HTML or SQL directly.
+ */
+function get_text_param(string $name, int $max_length): string {
+    return cut_text(trim((string)filter_input(INPUT_GET, $name)), $max_length);
+}
+
+/*
+ * Cuts a UTF-8 string after $max_length characters (not bytes, so umlauts are never split
+ * and the limit matches the varchar length). Invalid UTF-8 results in ''. Works without mbstring.
+ */
+function cut_text(string $value, int $max_length): string {
+    return preg_match('/^.{0,' . $max_length . '}/us', $value, $match) ? $match[0] : '';
+}
+
 function set_header($content_type) {
     if ($content_type=='json') {
         header('Content-Type: application/json; charset=utf-8');
@@ -401,7 +418,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
     $cards_conf = json_decode(file_get_contents(dirname(__DIR__).'/cards.json'), true);
     $cardset_flags = str_pad("", count($cards_conf["cards"]), "0");
 
-    if (strtolower($preset_mapping) === 'custom') {
+    if (strtolower($preset_mapping ?? '') === 'custom') {
 
         $needs_setup = 1;
 

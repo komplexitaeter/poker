@@ -14,6 +14,7 @@
 #   PHP_FPM          php-fpm binary                                     (default: first php-fpm* found)
 #   POKER_MSG_DIR    existing poker-msg checkout                        (default: clone into E2E_DIR)
 #   POKER_MSG_REF    branch to clone if POKER_MSG_DIR is not set        (default: release)
+#   POKER_MSG_KEEPALIVE  ping interval of poker-msg in seconds          (default: 2, production: 30)
 
 set -euo pipefail
 
@@ -22,6 +23,8 @@ E2E_DIR="${E2E_DIR:-/tmp/poker-e2e}"
 E2E_PORT="${E2E_PORT:-8080}"
 MYSQL_ADMIN="${MYSQL_ADMIN:-mysql -uroot}"
 POKER_MSG_REF="${POKER_MSG_REF:-release}"
+# short ping interval, so the tests cover several heartbeat rounds
+POKER_MSG_KEEPALIVE="${POKER_MSG_KEEPALIVE:-2}"
 DB_NAME=pok_e2e
 DB_USER=pok_e2e
 DB_PWD=pok_e2e
@@ -73,6 +76,7 @@ start() {
     mkdir -p -m 700 "$E2E_DIR"
     check_owner
     mkdir -p "$E2E_DIR"/{www,tmp,logs}
+    rm -f "$E2E_DIR"/logs/*.log   # logs of this run only
 
     # --- app copy with test config (the repo's config.php stays untouched)
     rsync -a --delete --exclude .git --exclude tests --exclude node_modules --exclude .github \
@@ -112,7 +116,7 @@ EOF
     if [[ ! -d "$msg_dir/vendor" ]]; then
         composer install -q --no-interaction --working-dir="$msg_dir"
     fi
-    nohup php "$msg_dir/bin/msg-server.php" > "$E2E_DIR/logs/poker-msg.log" 2>&1 &
+    POKER_MSG_KEEPALIVE="$POKER_MSG_KEEPALIVE" nohup php "$msg_dir/bin/msg-server.php" > "$E2E_DIR/logs/poker-msg.log" 2>&1 &
     echo $! > "$E2E_DIR/poker-msg.pid"
     wait_for "poker-msg" bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443'
     log "poker-msg running on 127.0.0.1:8443"

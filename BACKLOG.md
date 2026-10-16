@@ -7,7 +7,9 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-Sprint 1: B-04, B-07
+**Sprint 2:** B-19 + B-22 (vorgezogen als Produktionsproblem), B-24, B-03, B-18, B-25
+
+Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
 ## Backlog
 
@@ -15,11 +17,11 @@ Sprint 1: B-04, B-07
 |---|---|---|
 | B-01 | SQL-Injection in `api/` beheben | neu |
 | B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
-| B-03 | PHP-8.1-Deprecations und kleine Bugs | neu |
-| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | im Sprint |
+| B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
+| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
-| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | im Sprint |
+| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | neu |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
@@ -30,19 +32,56 @@ Sprint 1: B-04, B-07
 | B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | neu |
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
+| B-18 | Server-Logs von Live sichten | erledigt |
+| B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
+| B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
+| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | neu |
+| B-22 | PHP-Upgrade auf 8.4 | erledigt |
+| B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
+| B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
+| B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
 `api/delete.php`, `api/feedback.php`, `api/setc.php`, `getDao()` und weitere Stellen in `api/lib.php`. Umstellen auf Prepared Statements.
+Außerdem: `api/timer.php` und `api/get_promo.php` prüfen die Team-ID nicht mit `validate_team()`.
 Offene Fragen: alle Stellen einzeln oder `lib.php` gleich mit einer kleinen Query-Hilfsfunktion?
 
 ### B-02 `stats.php` absichern
 Feedback-Texte werden ungefiltert ausgegeben (XSS), die Seite ist ohne Login erreichbar.
 Offene Fragen: Zugriffsschutz per nginx (Basic Auth/IP) oder in PHP? Wird `stats.php` neben Grafana überhaupt noch gebraucht?
 
-### B-03 PHP-8.1-Deprecations und kleine Bugs
-`FILTER_SANITIZE_STRING` an 13 Stellen ersetzen; `strlen($tool>0)` in `index.php`.
-Offene Fragen: Welche PHP-Version läuft auf beiden Servern, ist ein Update auf 8.3 geplant?
+### B-03 PHP-8.1-Deprecations und Eingabe-Filter richtig machen
+**Hintergrund:** `FILTER_SANITIZE_STRING` (13 Stellen, deprecated seit PHP 8.1) „bereinigt“ Eingaben vor dem
+Speichern: entfernt alles, was wie ein Tag aussieht, und kodiert `'`/`"` als `&#39;`/`&#34;`. Das Frontend escaped
+bei der Ausgabe aber bereits korrekt (`textContent`/`innerText`, remarkable ohne HTML). Folge sind verfälschte Daten:
+Teamname `Bob's Team` wird live als `Bob&#39;s Team` angezeigt, `Sprint 1 < 2` wird zu `Sprint 1 `,
+`Max < Moritz` zu `Max `. Für SQL spielte der Filter keine Rolle (alle betroffenen Werte gehen über Prepared Statements).
+
+**Ziel:** Rohdaten speichern, bei der Ausgabe escapen (wie das Frontend es schon tut). Keine Deprecations mehr.
+
+**Umfang:**
+- Freitexte (Team-, Spielername, Team/Thema aus dem Einstiegslink in `index.php`): unverändert speichern, nur `trim()`
+  und Längenbegrenzung.
+- Steuerparameter (`tool`, `preset`, `action`, `type`, `display_type`, IDs in `get_promo.php`): gegen erlaubte Werte
+  bzw. Format prüfen.
+- `null`-Fälle (`substr(null)` in `index.php`, `strtolower(null)` in `add_team()`).
+- Einmaliges SQL: `&#39;`/`&#34;` in bestehenden Teamnamen zurückwandeln (Anzahl vorher zählen).
+- Alle Ausgabestellen prüfen (bisher bekannt: `innerHTML` für Thema – sicher; Umfrage-Texte aus der DB; `stats.php` → B-02).
+- CI schlägt fehl, wenn ein Testlauf `Deprecated` ins PHP-Log schreibt.
+- Im Planning ergänzt: Frontend kodiert Namen in URLs nicht (`&`/`#` schneiden Namen ab) → `encodeURIComponent`;
+  `name.php` gibt den Namen als HTML zurück (Debug-Ausgabe, nach Umstellung reflektiertes XSS) → entfernen.
+- Aus dem Security-Review ergänzt: Thema speichern (`save_topic`) kodiert ebenfalls nicht → `encodeURIComponent`;
+  Längenbegrenzung schnitt nach Bytes und zerteilte Umlaute an der Grenze (Spielername mit 15 Zeichen → HTTP 500,
+  Beitritt unmöglich) → Kürzen nach Zeichen (`cut_text()`, ohne `mbstring`, das live für 8.4 nicht installiert ist).
+- In CI gefunden: `save_topic()` meldete die Änderung per WebSocket, bevor der Server das Thema gespeichert hatte;
+  bei langsamem Server luden die Boards das alte Thema → Benachrichtigung erst nach der Antwort (`onload`).
+
+**Akzeptanzkriterien:**
+- E2E-Test: Team- und Spielernamen mit `'`, `"`, `<`, `&` und `<b>…</b>` werden exakt so angezeigt, wie eingegeben,
+  und nicht als HTML interpretiert.
+- Ein kompletter Testlauf erzeugt keine Deprecation; kein `FILTER_SANITIZE_STRING` mehr im Code.
+- Bestehende Teams mit `&#39;`/`&#34;` im Namen werden nach dem Daten-Update korrekt angezeigt.
 
 ### B-04 Lokale Testumgebung und erste E2E-Tests mit CI
 **Ziel:** Ein Befehl startet die komplette App lokal (nginx, PHP-FPM, MySQL, `poker-msg`) und führt Playwright-Tests
@@ -102,6 +141,7 @@ Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle he
 ### B-10 `poker-msg` modernisieren und absichern
 Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
 oder Nachrichtengröße. Läuft nicht als root, Abhängigkeiten aktualisieren oder Alternative prüfen.
+Heartbeat ergänzen: verwaiste Verbindungen (vergessene Tabs, Laptop im Ruhezustand) nach z. B. 2 Minuten schließen.
 
 ### B-11 Schreibende API-Aufrufe per POST statt GET
 Zustandsändernde Endpunkte werden per GET aufgerufen (Prefetching, Logs mit Parametern, kein CSRF-Schutz).
@@ -124,6 +164,11 @@ Voraussetzung: B-04/B-05.
 qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Versionen festnageln und
 `integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
 (`loadBoard()` bricht ohne `QRCodeStyling` ab).
+**Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannten Schwachstellen (u. a. XSS über präparierte Link-Schemata
+in Markdown-Links laut Security-Review, auslösbar über ein Thema, z. B. per Einstiegslink `/?tool=x&text=…`).
+Im Refinement klären, welche Version welche Lücke behebt (Dependabot schlug 1.7.2 vor, der Review nennt 1.7.4
+oder neuer); Dependabot-PRs #3/#4 hoben nur die Testkopie an. Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
+`specs/helpers.ts`) gemeinsam anheben.
 
 ### B-16 Fremddateien und phpMyAdmin in den Webroots absichern
 Auf dem Staging-Server lagen neben dem Repo `info.php` (phpinfo), `config.php.live` und ein Symlink
@@ -136,3 +181,113 @@ Ersatz für phpMyAdmin: ein DB-Client auf dem eigenen Rechner (z. B. DBeaver, Ta
 sich per SSH-Tunnel mit MySQL auf dem Server. Kurze Anleitung für das Team, ggf. eigener MySQL-User mit passenden
 Rechten statt root.
 Offene Fragen: Wer braucht Zugriff, auf welche Server? Passt das zu B-13 (MySQL nur für Grafana öffnen)?
+
+### B-18 Server-Logs von Live sichten
+Zusammenfassung der aktuellen Logs per Skript (nur lesend, ohne IPs/Team-IDs), gemeinsam ausgewertet.
+**Erledigt 2026-10-16.** Ergebnisse als B-19, B-20, B-21; Ergänzungen zu B-13. PHP-Fehler landen live im
+nginx-Error-Log (`FastCGI sent in stderr`); Deprecations werden live nicht geloggt (`php.ini`:
+`E_ALL & ~E_DEPRECATED`, die Live-`config.php` setzt kein `error_reporting`). Einzige PHP-Meldung im aktuellen Log:
+der Fatal Error aus B-21. Sonst nur Scanner-404s, harmlose TLS-Fehler, DNS-Warnungen von MySQL.
+
+### B-19 `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze
+`poker-msg_error.log` enthält tausende `stream_select(): You MUST recompile PHP with a larger value of FD_SETSIZE`.
+ReactPHP nutzt mangels Erweiterung die `stream_select`-Schleife, die nur Dateideskriptoren < 1024 verarbeiten kann;
+Verbindungen darüber werden nicht mehr bedient (Boards aktualisieren sich dann nicht). Lösung ohne Code-Änderung:
+PHP-Erweiterung `ev` oder `event` für das CLI-PHP installieren – ReactPHP wählt sie automatisch – und `poker-msg`
+neu starten. Passt zu B-10.
+
+**Nachweis (lokaler Lasttest, 2026-10-16):** 1.100 WebSocket-Clients gegen `poker-msg` ohne Erweiterung → nur 1.000
+Verbindungen, nach einem `push` erhält **kein** Client ein `pull` (auch die ersten 1.000 nicht), ~330.000 Warnungen
+in Sekunden (Leerlauf-Schleife). Live: 449 Verbindungen um 10:30 Uhr, Spitze 8–9 Uhr mit 5–7× mehr Verkehr.
+
+**Zielwert:** 5.000 gleichzeitige Verbindungen (≈ 3–5× der geschätzten heutigen Spitze von 1.000–1.500).
+
+**Umfang:** `pecl install ev`, nur für CLI aktivieren, `poker-msg` neu starten (erst Staging, dann Live);
+supervisor-Info-Log auf `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`, damit die echte Spitze
+von `active_users` messbar wird.
+
+**Akzeptanzkriterien:** `React\EventLoop\Factory::create()` liefert `ExtEvLoop`; nach einem Werktag keine neuen
+`FD_SETSIZE`-Warnungen; Spitzenwert `active_users` aus dem Log bekannt.
+
+**Stand 2026-10-16:** auf Staging und Live umgesetzt (zusammen mit B-22), `ExtEvLoop` bestätigt. Offen: Prüfung
+nach der nächsten Werktags-Spitze (Montag nach 10 Uhr) – `FD_SETSIZE`-Zähler im neuen Fehler-Log und Spitzenwert
+`active_users`.
+
+### B-20 PHP-FPM und MySQL robuster konfigurieren
+- PHP-FPM: `pm.max_children = 5` wurde am 14.10. (Vorfall `stats.php`) erreicht. Bei 3,8 GB RAM moderat anheben,
+  `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker), `slowlog` aktivieren.
+- MySQL: `slow_query_log` ist aus, trotzdem 9 Slow Queries (> 10 s) seit dem letzten Neustart – Log aktivieren
+  und auswerten. `skip-name-resolve` gegen die DNS-Warnungen durch Verbindungsversuche von außen
+  (234 abgebrochene Verbindungen in 2 Tagen, siehe B-13).
+
+### B-21 Race Condition beim Anlegen neuer Nutzer in `getDao()`
+Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
+`Duplicate entry … for key 'pok_user_tbl.PRIMARY'` (PHP Fatal Error, HTTP 500). In den E2E-Logs reproduziert,
+live bestätigt: 1× in 11 Stunden (einzige PHP-Meldung im nginx-Error-Log). Lösung z. B. `INSERT IGNORE`/`ON DUPLICATE KEY UPDATE`.
+
+### B-22 PHP-Upgrade auf 8.4
+**Entscheidung 2026-10-16:** Web-App (PHP-FPM) und `poker-msg` auf Staging und Live gemeinsam auf PHP 8.4 aus dem
+ondrej-PPA, zusammen mit B-19 (`php8.4-ev` als Paket statt `pecl`). Vorher laufen die E2E-Tests in CI gegen 8.1 und 8.4;
+nach der Umstellung auf Live nur noch gegen 8.4.
+
+**Staging umgestellt (2026-10-16):** `ev` 1.2.3 per `pecl -d php_suffix=8.4` gebaut (im PPA gibt es kein
+`php8.4-ev`), nur für CLI aktiviert; `poker-msg` läuft per supervisor mit `/usr/bin/php8.4`, `ulimit -n 20000`,
+Info-Log 50 MB × 5; nginx der Poker-Staging-Seite auf `php8.4-fpm.sock`. Funktionstest ok, keine Fehler im
+`poker-msg`-Log.
+
+**Live umgestellt (2026-10-16, ca. 12:40 UTC):** ondrej-PPA eingerichtet, PHP 8.4 + `php8.4-xml` (für `pecl`)
+installiert, `ev` gebaut und für CLI aktiviert, `poker-msg` auf `php8.4`, Info-Log 50 MB × 5; PHP-8.4-FPM mit den
+angepassten Werten der 8.1-Config (`memory_limit`, `post_max_size`, `upload_max_filesize`); nginx auf
+`php8.4-fpm.sock`. Funktionstest ok, keine neuen PHP-Fehler, `poker-msg`-Fehler-Log leer, nach wenigen Minuten
+451 Verbindungen. CI testet nur noch gegen 8.4.
+
+Live läuft auf PHP 8.1 aus Ubuntu 22.04 (Sicherheitsupdates durch Canonical bis April 2027). Staging hat zusätzlich
+8.2 und 8.4 installiert; dort ist `/usr/bin/php` (CLI, also `poker-msg`) bereits 8.4.
+Offene Fragen: ondrej-PPA mit 8.4 oder Ubuntu 24.04 mit 8.3? Zeitpunkt? Vorher B-03 (Altlasten im Code) und
+`poker-msg` unter der neuen Version testen (Ratchet 0.4, Deprecations). CI zusätzlich mit der Zielversion laufen lassen.
+Erweiterung `ev` (B-19) für die neue Version mit installieren.
+
+### B-23 Server aufräumen nach PHP-8.4-Umstellung
+- Live und Staging: einmal neu starten (am Wochenende), da bei der Installation Systembibliotheken aktualisiert
+  wurden und viele Dienste noch mit den alten laufen (`needrestart`).
+- Paketquelle `ondrej/nginx` entfernen (PPA eingestellt, `apt update` meldet `403 Forbidden`).
+- PHP 8.1 (und auf Live die Build-Pakete `php8.1-dev` usw.) deinstallieren, wenn 8.4 eine Weile stabil läuft;
+  vorher prüfen, dass nichts anderes mehr `php8.1` nutzt (auf Staging laufen weitere Seiten mit 8.1!).
+- Große Upload-Grenzen (`post_max_size`/`upload_max_filesize` 100M, nginx `client_max_body_size 100M`) prüfen –
+  die App lädt keine Dateien hoch.
+
+### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
+**Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
+Minuten eine neue Verbindung, die alte bleibt offen. Wahrscheinliche Ursache: ein offener Tab hinter einer
+Firewall/einem Proxy, der ruhige Verbindungen nach 1–2 Minuten kappt. Der Browser verbindet neu (Client prüft alle
+3 s), nginx und `poker-msg` merken vom Abbruch nichts und halten die alte Verbindung (`proxy_read_timeout 86400`)
+bis zu 24 Stunden.
+
+**Lösung:** Ratchets eingebauter Keepalive (`WsServer::enableKeepAlive`): `poker-msg` sendet alle 30 s einen
+WebSocket-Ping, Browser antworten automatisch; wer den vorherigen Ping nicht beantwortet hat, wird geschlossen.
+Intervall per `POKER_MSG_KEEPALIVE` (Tests: 2 s). Zusätzlich nginx `proxy_read_timeout` für `/poker-msg` auf 120 s.
+Der Client verbindet nach einer serverseitigen Trennung innerhalb von 3 s neu und lädt den Board-Stand nach.
+
+**Nachweis:** lokal eingefrorener Client wird nach 1–2 Intervallen getrennt, aktiver Client bleibt verbunden;
+neuer E2E-Test: nach Leerlauf über mehrere Ping-Runden kommen Updates ohne Neuverbindung an.
+
+**Akzeptanzkriterium:** nachts fällt `active_users` auf nahezu 0, statt linear zu steigen.
+
+**Stand 2026-10-16:** auf Staging und Live umgesetzt (`poker-msg` aus `release`/`master` mit Keepalive, nginx
+`proxy_read_timeout 120s` auf beiden Servern). Staging-`poker-msg` dabei von einem lokalen Branch mit dem verworfenen
+Yjs-Versuch („shared area“, lokal gesichert als `backup/shared-area`) auf `release` umgestellt und auf HTTPS-Remote.
+Offen: Kontrolle `active_users` über Nacht.
+
+### B-25 Board blitzt beim Laden kurz mit allen Elementen auf
+Beim Laden des Boards sind teilweise kurz alle Elemente im Standardzustand sichtbar (z. B. der Timer), bevor die
+erste Server-Antwort sie richtig einstellt – auch vor dem Namens-Overlay. Gut reproduzierbar in Safari mit
+Option-Cmd-R (Neuladen ohne Cache). Ursache (vermutet): Das Ausblenden bis zur ersten Antwort stand nur in
+`style/style.css` (`body { opacity: 0 }`); malt der Browser das HTML, bevor das Stylesheet geladen ist, fehlt es.
+In Chrome nicht reproduzierbar (blockiert das Rendern bis zum Stylesheet).
+
+**Fix:** `style="opacity: 0"` direkt am `<body>` von `board.html` und `init.html`; das JavaScript setzt nach der
+ersten Antwort wie bisher `opacity: 1`. E2E-Test: ohne Stylesheet und mit langsamer erster Antwort bleibt das Board
+unsichtbar, danach wird es sichtbar (Gegenprobe ohne Fix schlägt fehl).
+
+**Akzeptanzkriterium:** In Safari mit Option-Cmd-R auf Staging kein Aufblitzen mehr (manuell, Safari ist in CI nicht verfügbar).
+**Erledigt 2026-10-16:** auf Staging in Safari bestätigt, Release nach `master`.

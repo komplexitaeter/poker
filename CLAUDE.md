@@ -3,6 +3,9 @@
 Planning-Poker-Webanwendung für verteilte Teams. Live: https://poker.komplexitaeter.de
 (bzw. https://app.komplexitaeter.de). Lizenz: GPL-3.0.
 
+> **Sprache: Antworte im Chat immer auf Deutsch** – auch bei langen technischen Antworten, Statusmeldungen und
+> Zusammenfassungen. Englisch nur für Code, Kommentare, Commit-Messages und Oberflächentexte der App.
+
 > Grundsatz: **pragmatisch bleiben.** Kleines Team (drei Personen), kleine App. Lieber einfache, verständliche
 > Lösungen als „richtige“ Architektur.
 
@@ -12,8 +15,8 @@ Die Anwendung besteht aus zwei Repositories:
 
 | Repo | Zweck | Laufzeit |
 |---|---|---|
-| `komplexitaeter/poker` (dieses) | Web-App: HTML/CSS/JS-Frontend, PHP-API, MySQL-Schema | nginx + PHP 8.1-FPM |
-| `komplexitaeter/poker-msg` | WebSocket-Benachrichtigungsserver (Ratchet, `cboden/ratchet ^0.4`) | PHP-CLI unter supervisor, `127.0.0.1:8443` |
+| `komplexitaeter/poker` (dieses) | Web-App: HTML/CSS/JS-Frontend, PHP-API, MySQL-Schema | nginx + PHP 8.4-FPM |
+| `komplexitaeter/poker-msg` | WebSocket-Benachrichtigungsserver (Ratchet, `cboden/ratchet ^0.4`) | PHP-CLI unter supervisor, `127.0.0.1:8443`, Event-Loop über PHP-Erweiterung `ev` |
 
 Datenfluss bei einer Änderung am Board:
 
@@ -61,7 +64,16 @@ Lokale Test-DB: `db_schema_pok.sql` lässt sich direkt in eine leere MySQL-8.0-D
 
 ## Betrieb
 
-Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
+Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.4 aus dem ondrej-PPA, MySQL 8.0). Web-App über
+`php8.4-fpm.sock`, `poker-msg` über `/usr/bin/php8.4` (seit 2026-10-16, B-22). PHP 8.1 ist noch installiert, wird
+aber nicht mehr genutzt. Auf dem Staging-Server laufen weitere Seiten mit eigenen PHP-Versionen – Änderungen nur an
+der Poker-Config bzw. `php8.4`-spezifisch vornehmen.
+
+- PHP-8.4-FPM-`php.ini` (Live): `memory_limit = 256M`, `post_max_size = 100M`, `upload_max_filesize = 100M`
+  (übernommen aus der früheren 8.1-Config).
+- nginx (Live, `nginx.conf`): `worker_rlimit_nofile 65535`, `worker_connections 16384` bei 2 Workern → reicht für
+  rund 16.000 gleichzeitige WebSocket-Verbindungen. Staging angeglichen.
+- Zielwert `poker-msg`: 5.000 gleichzeitige Verbindungen (B-19).
 
 | Server | Branch | Zweck |
 |---|---|---|
@@ -73,6 +85,13 @@ Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
   `config.php` ist nicht im Repo und wird von `git pull` nicht angefasst. Es gibt keine Build- oder Migrationsschritte;
   Schemaänderungen werden von Hand eingespielt.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
+- `poker-msg` (supervisor, `/etc/supervisor/conf.d/poker-msg.conf`): explizit `/usr/bin/php8.4`, `ulimit -n 20000`,
+  Info-Log `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`. Braucht die Erweiterung `ev` (sonst
+  ReactPHP-`stream_select`-Schleife mit Grenze bei 1.024 Verbindungen, siehe B-19); kein Paket im PPA, Build per
+  `sudo pecl -d php_suffix=8.4 install ev`, aktiviert nur für CLI (`phpenmod -v 8.4 -s cli ev`). Prüfen:
+  `React\EventLoop\Factory::create()` muss `ExtEvLoop` liefern.
+- `poker-msg` pingt alle Verbindungen alle 30 s (WebSocket-Ping, `POKER_MSG_KEEPALIVE`) und schließt Verbindungen
+  ohne Antwort (B-24). nginx `location /poker-msg`: `proxy_read_timeout 120s` auf beiden Servern.
 - MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
   Nicht ohne Rücksprache auf 127.0.0.1 umstellen.
 
@@ -87,7 +106,6 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 
 - SQL teils per String-Konkatenation (z. B. `validate_team()` in `api/lib.php`, `api/delete.php`, `api/feedback.php`),
   teils mit Prepared Statements. Neuer Code nur mit Prepared Statements.
-- `FILTER_SANITIZE_STRING` (seit PHP 8.1 deprecated) an mehreren Stellen.
 - Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
 - `stats.php` öffentlich erreichbar.
 - Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
@@ -97,7 +115,7 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 ## Tests
 
 End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
-jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.1 wie in Produktion.
+jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.4 wie in Produktion.
 
 Lokal:
 
@@ -153,6 +171,12 @@ nachträglich im Backlog vermerkt.
 ## Konventionen im Code
 
 - Tabellen `pok_<name>_tbl`, SQL in Kleinbuchstaben.
-- API-Skripte: `require '../config.php'; require './lib.php';`, Parameter über `filter_input` mit Längenbegrenzung,
-  Team-ID immer mit `validate_team()` prüfen.
+- API-Skripte: `require '../config.php'; require './lib.php';`, Team-ID immer mit `validate_team()` prüfen.
+- Eingaben **unverändert speichern, bei der Ausgabe escapen**: Freitext (Namen, Themen) über `get_text_param()` aus
+  `api/lib.php` lesen (nur `trim` + Längenbegrenzung), nie „vorab bereinigen“. Ausgabe im Frontend nur per
+  `textContent`/`innerText` (bzw. remarkable ohne HTML), in der API per `json_encode`. Kein Echo von Eingaben in
+  HTML-Antworten. In SQL nur über Prepared Statements.
+- Freitext in URLs im Frontend immer mit `encodeURIComponent()`.
+- Nach Änderungen an JS-Dateien die Versionsnummer im Script-Tag (`?v=…`) in `board.html`/`init.html` erhöhen.
+- CI schlägt fehl, wenn ein Testlauf `PHP Deprecated` oder `PHP Warning` ins PHP-Log schreibt.
 - Frontend ohne Framework und ohne Build; neue Dateien direkt in `board.html`/`init.html` einbinden.

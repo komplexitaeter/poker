@@ -84,3 +84,30 @@ test('changing the deck of cards applies to all players', async ({ browser }) =>
     await expect(page.locator('#ctl img#three01')).toHaveClass(/\boff\b/);
   }
 });
+
+test('idle boards stay connected and keep receiving updates (heartbeat)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Idle Team');
+  let reconnects = 0;
+  bob.on('console', msg => { if (msg.text() === 'initializeWSConnection') reconnects++; });
+
+  // poker-msg pings every 2 s in the tests (POKER_MSG_KEEPALIVE) and closes connections that do not answer
+  await bob.waitForTimeout(7_000);
+  await pickCard(alice, 'three01');
+
+  await expectTableCard(bob, 'Alice', 'done001');
+  expect(reconnects).toBe(0);
+});
+
+test('board stays hidden until the first server response, even without the stylesheet', async ({ browser }) => {
+  const creator = await newPlayer(browser);
+  const url = await createTeam(creator, 'Hidden Team');
+  const page = await newPlayer(browser);
+  // simulate a stylesheet that is not loaded yet (e.g. reload without cache) and a slow first response
+  await page.route('**/style/style.css*', route => route.abort());
+  await page.route('**/api/dao.php*', async route => { await new Promise(r => setTimeout(r, 1500)); await route.continue(); });
+
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  expect(await page.evaluate(() => getComputedStyle(document.body).opacity)).toBe('0');
+
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).opacity)).toBe('1');
+});

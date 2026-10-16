@@ -2,9 +2,9 @@
 require '../config.php';
 require './lib.php';
 
-$player_id = filter_input(INPUT_GET, "player_id", FILTER_SANITIZE_STRING);
-$team_id = filter_input(INPUT_GET, "team_id", FILTER_SANITIZE_STRING);
-$display_type = filter_input(INPUT_GET, "display_type", FILTER_SANITIZE_STRING);
+$player_id = get_text_param("player_id", 16);
+$team_id = get_text_param("team_id", 80);
+$display_type = get_text_param("display_type", 100);
 
 $promotions = [
     [
