@@ -4,7 +4,7 @@ Planning-Poker-Webanwendung für verteilte Teams. Live: https://poker.komplexita
 (bzw. https://app.komplexitaeter.de). Lizenz: GPL-3.0.
 
 > Grundsatz: **pragmatisch bleiben.** Kleines Team (drei Personen), kleine App. Lieber einfache, verständliche
-> Lösungen als „richtige“ Architektur. Abschnitte mit **(offen)** sind noch nicht abgestimmt.
+> Lösungen als „richtige“ Architektur.
 
 ## Systemüberblick
 
@@ -36,9 +36,10 @@ Datenfluss bei einer Änderung am Board:
 - `stats.php` – interne Nutzungsstatistik (keine Authentifizierung).
 - `db_schema_pok.sql` – Basisschema; `db_schema_pok_inc.sql` – inkrementelle Änderungen seit dem letzten Merge.
 - `src/` – Bilder; `src/xcf/` – GIMP-Quelldateien der Karten.
-- `config.php` – DB-Zugangsdaten (im Repo nur Platzhalter).
+- `config.example.php` – Vorlage für `config.php` (DB-Zugangsdaten). `config.php` selbst ist per `.gitignore`
+  ausgeschlossen und existiert nur auf den Servern bzw. lokal.
 
-Es gibt keinen Build-Schritt, kein Composer/npm im Haupt-Repo, keine Tests, kein CI.
+Es gibt keinen Build-Schritt für die App. npm wird nur für die Tests in `tests/e2e/` verwendet.
 
 ## Datenbank
 
@@ -50,7 +51,7 @@ Fachliche Tabellen: `pok_teams_tbl`, `pok_players_tbl`, `pok_user_tbl`, `pok_rou
 `pok_roundstat_details_tbl`, `pok_promotions_tbl`, `pok_feedback_tbl`, `pok_survey*_tbl`, `pok_analytics_events_tbl`.
 
 Statistik-Tabellen für Grafana (Endung `_stats`, `_stats_tbl`): `pok_active_user_stats`, `pok_active_use_stats_tbl`,
-`pok_daily_teams_stats`. Sie werden nicht vom App-Code befüllt. Woher sie kommen: **(offen)**. Werden sie geändert
+`pok_daily_teams_stats`. Sie werden von einem MySQL-Event-Job befüllt, nicht vom App-Code (Definition noch nicht im Repo, siehe B-08). Werden sie geändert
 und Grafana hakt, wird das Dashboard angepasst – kein Grund, Schemaänderungen zu blockieren.
 
 `pok_analytics_events_tbl` wächst unbegrenzt. Abfragen darauf immer über einen Zeitbereich auf `creation_date`
@@ -68,7 +69,8 @@ Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
 | Live-Server | `master` | Produktion |
 
 - Code auf dem Live-Server: `/home/ubuntu/poker/public_html/`.
-- Deployment: manuell per `git pull` auf dem jeweiligen Server. Es gibt keine Build- oder Migrationsschritte;
+- Deployment: manuell per `git pull --ff-only` auf dem jeweiligen Server (`git config pull.ff only` auf beiden Servern).
+  `config.php` ist nicht im Repo und wird von `git pull` nicht angefasst. Es gibt keine Build- oder Migrationsschritte;
   Schemaänderungen werden von Hand eingespielt.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
@@ -88,20 +90,65 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 - `FILTER_SANITIZE_STRING` (seit PHP 8.1 deprecated) an mehreren Stellen.
 - Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
 - `stats.php` öffentlich erreichbar.
-- Keine Tests, kein Linting, kein CI.
+- Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
 - Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
-- Kein `.gitignore`; `config.php` liegt im Repo.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
 
-## Arbeitsweise
+## Tests
 
-- Pragmatisch: kleine, einzeln deploybare Schritte; Verhalten der Live-App bleibt gleich, solange nichts anderes
-  vereinbart ist.
-- Stack bleibt vorerst (PHP ohne Framework, Vanilla JS, MySQL). Weiterentwicklung später möglich.
-- Git-Ablauf: entwickelt wird auf `release`; nach erfolgreichem manuellem Test auf dem Release-Server wird
-  `release` nach `master` gemergt. Branches/PRs für Claude-Änderungen: **(offen)**
-- `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf.
-- Sprache: Kommunikation Deutsch; Code, Kommentare und Commit-Messages: **(offen)**
+End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
+jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.1 wie in Produktion.
+
+Lokal:
+
+```bash
+E2E_DIR=/tmp/poker-e2e tests/e2e/setup.sh start   # nginx :8080, php-fpm, DB pok_e2e, poker-msg (release)
+cd tests/e2e && npm ci && npx playwright test
+tests/e2e/setup.sh stop
+```
+
+`setup.sh` kopiert die App mit einer eigenen `config.php` nach `$E2E_DIR/www`; nach Änderungen an der App erneut
+`start` aufrufen. Abgedeckt sind: Team anlegen, Beitreten mehrerer Spieler, Karte legen, Aufdecken, neue Runde,
+Kartenset wechseln. CDN-Skripte liefern die Tests aus npm-Paketen gleicher Version aus; Analytics wird blockiert.
+Details zum Schreiben von Tests: `.claude/agents/e2e-tester.md`.
+
+## Zusammenarbeit
+
+**Sprache:** Mit dem Team wird Deutsch gesprochen; `BACKLOG.md` und `CLAUDE.md` sind auf Deutsch.
+Die Anwendung selbst bleibt Englisch: Code, Kommentare, Commit-Messages, Oberfläche.
+
+**Grundhaltung:** pragmatisch. Kleine, einzeln deploybare Schritte; Verhalten der Live-App bleibt gleich, solange
+nichts anderes vereinbart ist. Stack bleibt vorerst (PHP ohne Framework, Vanilla JS, MySQL).
+
+**Ablauf in Mini-Sprints:**
+
+1. **Backlog** – Themen stehen in `BACKLOG.md` (ID, Status, kurze Beschreibung, offene Fragen). Claude darf neue
+   Einträge vorschlagen und anlegen, aber nicht eigenmächtig priorisieren.
+2. **Refinement** – gemeinsam, bis ein Eintrag verstanden ist: Ziel, Umfang, Akzeptanzkriterien, offene Fragen geklärt.
+   Danach Status `refined`.
+3. **Sprint-Auswahl** – gemeinsam entscheiden, welche `refined`-Einträge in die nächste Iteration kommen.
+4. **Planning** – für jeden Eintrag einen konkreten Umsetzungsplan abstimmen, bevor Code geschrieben wird.
+5. **Umsetzung** – nur was im Sprint geplant ist. Fällt unterwegs etwas Neues auf, kommt es als Eintrag ins Backlog
+   statt in den laufenden Sprint.
+6. **Abschluss** – manueller Test auf dem Release-Server, dann Merge `release` → `master` und Deploy auf Live.
+   Status in `BACKLOG.md` aktualisieren.
+
+Ausnahme: akute Produktionsprobleme (wie die blockierende Query in `stats.php`) werden sofort behoben und
+nachträglich im Backlog vermerkt.
+
+**Git:**
+
+- Basis ist `release`. `master` wird nur durch Merge von `release` verändert, nie direkt.
+- Jeder Backlog-Eintrag bekommt einen kurzlebigen Feature-Branch von `release`
+  (`feature/B-01-sql-injection`) und einen PR nach `release`, der im Team reviewt und gemergt wird.
+- Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
+- `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
+
+**Agenten** (`.claude/agents/`):
+
+- `security-reviewer` – prüft Änderungen vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung und
+  zustandsändernde GET-Aufrufe.
+- `e2e-tester` – startet die App lokal und führt die E2E-Tests aus oder erweitert sie.
 
 ## Konventionen im Code
 
