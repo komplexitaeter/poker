@@ -19,11 +19,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      E2E_DIR: ${{ runner.temp }}/poker-e2e
       # MySQL comes preinstalled on the runner with root/root
       MYSQL_ADMIN: mysql -uroot -proot
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set working directory for the app copy
+        run: echo "E2E_DIR=$RUNNER_TEMP/poker-e2e" >> "$GITHUB_ENV"
 
       - name: Set up PHP 8.1 (as in production)
         uses: shivammathur/setup-php@v2
