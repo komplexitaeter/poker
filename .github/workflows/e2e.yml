@@ -84,6 +84,14 @@ jobs:
             sed -E 's/^\[[^]]*\] //' "$f" 2>/dev/null | grep -E 'PHP (Deprecated|Warning|Notice|Fatal)' | sort | uniq -c | sort -rn | head -40 || true
           done
 
+      - name: No PHP deprecations or warnings in the app
+        run: |
+          log="$E2E_DIR/logs/php-error.log"   # only created if PHP logged anything
+          if [ -f "$log" ] && grep -E 'PHP (Deprecated|Warning)' "$log"; then
+            echo "::error::PHP deprecations or warnings during the test run, see above"
+            exit 1
+          fi
+
       - name: Upload report and logs
         if: failure()
         uses: actions/upload-artifact@v4

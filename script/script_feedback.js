@@ -527,7 +527,7 @@ function updateTeamName() {
     teamInput.value = teamInput.value.trim();
     document.getElementById('cet_change_name').disabled = true;
 
-    let url = './api/update_team.php?name=' + teamInput.value + '&t=' + t;
+    let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + t;
     fetch(url).then(()=>{pushDomChange();});
 }
 
@@ -536,7 +536,7 @@ function updateUserName() {
     userInput.value = userInput.value.trim();
     document.getElementById('cet_change_user').disabled = true;
 
-    let url = './api/name.php?name=' + userInput.value + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
+    let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
     fetch(url).then(()=>{pushDomChange();});
 }
 
@@ -544,7 +544,7 @@ function toggleUserType() {
     let playerType = 'PLAYER';
     if (gLastJson.player_type === 'PLAYER') playerType = 'OBSERVER';
 
-    let url = './api/name.php?name=' + gUserName + '&t=' + t +'&id='+sid + '&type=' + playerType;
+    let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
     fetch(url).then(()=>{pushDomChange();});
 }
 

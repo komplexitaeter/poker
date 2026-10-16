@@ -76,6 +76,7 @@ start() {
     mkdir -p -m 700 "$E2E_DIR"
     check_owner
     mkdir -p "$E2E_DIR"/{www,tmp,logs}
+    rm -f "$E2E_DIR"/logs/*.log   # logs of this run only
 
     # --- app copy with test config (the repo's config.php stays untouched)
     rsync -a --delete --exclude .git --exclude tests --exclude node_modules --exclude .github \

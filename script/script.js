@@ -705,7 +705,7 @@ function becomeObserver() {
 function becomeUser(type) {
     let name = document.getElementById("nameinput").value;
     if (name.length > 0) {
-        let url = './api/name.php?id=' + localStorage.getItem('SID') + '&type=' + type + '&name=' + name + '&t=' + t;
+        let url = './api/name.php?id=' + localStorage.getItem('SID') + '&type=' + type + '&name=' + encodeURIComponent(name) + '&t=' + t;
         fetch(url).then(() => {
             pushDomChange();
         });

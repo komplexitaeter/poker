@@ -13,6 +13,15 @@ function db_init() {
     return $link;
 }
 
+/*
+ * Reads a GET parameter as plain text: unchanged apart from trimming and the length limit,
+ * '' if missing. Values are stored as entered and escaped on output (textContent in the
+ * frontend, json_encode in the API) - never insert them into HTML or SQL directly.
+ */
+function get_text_param(string $name, int $max_length): string {
+    return substr(trim((string)filter_input(INPUT_GET, $name)), 0, $max_length);
+}
+
 function set_header($content_type) {
     if ($content_type=='json') {
         header('Content-Type: application/json; charset=utf-8');
@@ -401,7 +410,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
     $cards_conf = json_decode(file_get_contents(dirname(__DIR__).'/cards.json'), true);
     $cardset_flags = str_pad("", count($cards_conf["cards"]), "0");
 
-    if (strtolower($preset_mapping) === 'custom') {
+    if (strtolower($preset_mapping ?? '') === 'custom') {
 
         $needs_setup = 1;
 

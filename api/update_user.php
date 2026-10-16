@@ -2,7 +2,7 @@
 require '../config.php';
 require './lib.php';
 
-$id = substr( filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ,0,16);
+$id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
 $color_mode = filter_input(INPUT_GET, "color_mode", FILTER_SANITIZE_FULL_SPECIAL_CHARS	);
 $survey_skipped = filter_input(INPUT_GET, "survey_skipped", FILTER_SANITIZE_NUMBER_INT );
 $survey_vote =  filter_input(INPUT_GET, "survey_vote", FILTER_SANITIZE_NUMBER_INT );

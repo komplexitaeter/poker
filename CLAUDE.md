@@ -106,7 +106,6 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 
 - SQL teils per String-Konkatenation (z. B. `validate_team()` in `api/lib.php`, `api/delete.php`, `api/feedback.php`),
   teils mit Prepared Statements. Neuer Code nur mit Prepared Statements.
-- `FILTER_SANITIZE_STRING` (seit PHP 8.1 deprecated) an mehreren Stellen.
 - Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
 - `stats.php` öffentlich erreichbar.
 - Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
@@ -172,6 +171,12 @@ nachträglich im Backlog vermerkt.
 ## Konventionen im Code
 
 - Tabellen `pok_<name>_tbl`, SQL in Kleinbuchstaben.
-- API-Skripte: `require '../config.php'; require './lib.php';`, Parameter über `filter_input` mit Längenbegrenzung,
-  Team-ID immer mit `validate_team()` prüfen.
+- API-Skripte: `require '../config.php'; require './lib.php';`, Team-ID immer mit `validate_team()` prüfen.
+- Eingaben **unverändert speichern, bei der Ausgabe escapen**: Freitext (Namen, Themen) über `get_text_param()` aus
+  `api/lib.php` lesen (nur `trim` + Längenbegrenzung), nie „vorab bereinigen“. Ausgabe im Frontend nur per
+  `textContent`/`innerText` (bzw. remarkable ohne HTML), in der API per `json_encode`. Kein Echo von Eingaben in
+  HTML-Antworten. In SQL nur über Prepared Statements.
+- Freitext in URLs im Frontend immer mit `encodeURIComponent()`.
+- Nach Änderungen an JS-Dateien die Versionsnummer im Script-Tag (`?v=…`) in `board.html`/`init.html` erhöhen.
+- CI schlägt fehl, wenn ein Testlauf `PHP Deprecated` oder `PHP Warning` ins PHP-Log schreibt.
 - Frontend ohne Framework und ohne Build; neue Dateien direkt in `board.html`/`init.html` einbinden.
