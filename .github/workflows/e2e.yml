@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      E2E_DIR: ${{ github.workspace }}/../poker-e2e
+      E2E_DIR: ${{ runner.temp }}/poker-e2e
       # MySQL comes preinstalled on the runner with root/root
       MYSQL_ADMIN: mysql -uroot -proot
     steps:

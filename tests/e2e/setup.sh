@@ -63,7 +63,8 @@ wait_for() {
         if "$@" >/dev/null 2>&1; then return 0; fi
         sleep 0.2
     done
-    log "$what did not come up, see logs in $E2E_DIR"
+    log "$what did not come up, logs in $E2E_DIR/logs:"
+    tail -n 30 "$E2E_DIR"/logs/*.log >&2 || true
     exit 1
 }
 
@@ -82,7 +83,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 'off');
 ini_set('log_errors', 'on');
 
-const _MYSQL_HOST = 'localhost';
+// TCP instead of the socket, whose path differs between PHP builds
+const _MYSQL_HOST = '127.0.0.1';
 const _MYSQL_USER = '$DB_USER';
 const _MYSQL_PWD = '$DB_PWD';
 const _MYSQL_DB = '$DB_NAME';
@@ -95,7 +97,9 @@ EOF
 DROP DATABASE IF EXISTS $DB_NAME;
 CREATE DATABASE $DB_NAME;
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PWD';
+CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PWD';
 GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'localhost';
+GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'127.0.0.1';
 EOF
     $MYSQL_ADMIN "$DB_NAME" < "$REPO_DIR/db_schema_pok.sql"
     log "database $DB_NAME created from db_schema_pok.sql"
@@ -185,6 +189,8 @@ http {
 EOF
     nginx -e "$E2E_DIR/logs/nginx-error.log" -c "$E2E_DIR/nginx.conf"
     wait_for "nginx" curl -sf -o /dev/null "http://127.0.0.1:$E2E_PORT/init.html"
+    # start page is rendered by index.php, so this checks PHP and the DB connection as well
+    wait_for "app (index.php)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/' | grep -q teaminput"
     log "app running on http://127.0.0.1:$E2E_PORT/"
 }
 
