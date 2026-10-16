@@ -3,7 +3,8 @@
 Planning-Poker-Webanwendung für verteilte Teams. Live: https://poker.komplexitaeter.de
 (bzw. https://app.komplexitaeter.de). Lizenz: GPL-3.0.
 
-> Entwurf vom 2026-10-16. Abschnitte mit **(offen)** sind noch nicht abgestimmt.
+> Grundsatz: **pragmatisch bleiben.** Kleines Team (drei Personen), kleine App. Lieber einfache, verständliche
+> Lösungen als „richtige“ Architektur. Abschnitte mit **(offen)** sind noch nicht abgestimmt.
 
 ## Systemüberblick
 
@@ -41,27 +42,43 @@ Es gibt keinen Build-Schritt, kein Composer/npm im Haupt-Repo, keine Tests, kein
 
 ## Datenbank
 
-MySQL 8.0, Datenbank `pok_db`, App-User `pok_usr`. Tabellen: `pok_teams_tbl`, `pok_players_tbl`, `pok_user_tbl`,
-`pok_roundstats_tbl`, `pok_roundstat_details_tbl`, `pok_analytics_events_tbl`, `pok_feedback_tbl`,
-`pok_promotions_tbl`, `pok_survey_tbl`, `pok_survey_votes_tbl`, `pok_survey_vote_options_tbl`.
+MySQL 8.0, Datenbank `pok_db`, App-User `pok_usr`. `db_schema_pok.sql` entspricht dem Live-Schema (Stand 2026-10-16,
+Export ohne Daten). Schemaänderungen kommen zuerst in `db_schema_pok_inc.sql` und werden bei größeren Releases in
+`db_schema_pok.sql` übernommen.
 
-**Achtung:** Die Schema-Dateien sind nicht vollständig. Der Code nutzt u. a. `pok_roundstat_details_tbl`,
-`pok_promotions_tbl` und die Spalten `player_type`, `show_avg`, `anonymous_mode`, die in keiner Schema-Datei stehen.
-Maßgeblich ist bis auf Weiteres die Produktions-DB. Schemaänderungen kommen immer zusätzlich in `db_schema_pok_inc.sql`.
+Fachliche Tabellen: `pok_teams_tbl`, `pok_players_tbl`, `pok_user_tbl`, `pok_roundstats_tbl`,
+`pok_roundstat_details_tbl`, `pok_promotions_tbl`, `pok_feedback_tbl`, `pok_survey*_tbl`, `pok_analytics_events_tbl`.
+
+Statistik-Tabellen für Grafana (Endung `_stats`, `_stats_tbl`): `pok_active_user_stats`, `pok_active_use_stats_tbl`,
+`pok_daily_teams_stats`. Sie werden nicht vom App-Code befüllt. Woher sie kommen: **(offen)**. Werden sie geändert
+und Grafana hakt, wird das Dashboard angepasst – kein Grund, Schemaänderungen zu blockieren.
 
 `pok_analytics_events_tbl` wächst unbegrenzt. Abfragen darauf immer über einen Zeitbereich auf `creation_date`
 (indexfähig, keine Funktion auf der Spalte) und mit `/*+ MAX_EXECUTION_TIME(...) */` bei Auswertungen.
 
-## Betrieb (Produktion)
+Lokale Test-DB: `db_schema_pok.sql` lässt sich direkt in eine leere MySQL-8.0-Datenbank importieren.
 
-- VPS Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0.
-- Code: `/home/ubuntu/poker/public_html/`.
+## Betrieb
+
+Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
+
+| Server | Branch | Zweck |
+|---|---|---|
+| Release-Server | `release` | manueller Test vor dem Livegang |
+| Live-Server | `master` | Produktion |
+
+- Code auf dem Live-Server: `/home/ubuntu/poker/public_html/`.
+- Deployment: manuell per `git pull` auf dem jeweiligen Server. Es gibt keine Build- oder Migrationsschritte;
+  Schemaänderungen werden von Hand eingespielt.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
   Nicht ohne Rücksprache auf 127.0.0.1 umstellen.
-- Deployment: **(offen)**
 
-Claude hat keinen Zugriff auf den Server. Änderungen an Server, Config oder Produktions-DB bereitet Claude als
+Last (Stand Oktober 2026): an Werktagen 100–125 aktive Teams mit im Schnitt 5,5–6 Teilnehmern. Spitzen etwa
+1.000 aktive Clients pro Tag und etwa 100–120 gleichzeitig aktive Clients pro Minute; am Wochenende fast nichts.
+Deployments und Schemaänderungen daher bevorzugt abends oder am Wochenende.
+
+Claude hat keinen Zugriff auf die Server. Änderungen an Servern, Config oder Datenbanken bereitet Claude als
 Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer kurz Bescheid geben.
 
 ## Bekannte technische Schulden
@@ -72,14 +89,19 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 - Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
 - `stats.php` öffentlich erreichbar.
 - Keine Tests, kein Linting, kein CI.
+- Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
 - Kein `.gitignore`; `config.php` liegt im Repo.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
 
-## Arbeitsweise **(offen)**
+## Arbeitsweise
 
+- Pragmatisch: kleine, einzeln deploybare Schritte; Verhalten der Live-App bleibt gleich, solange nichts anderes
+  vereinbart ist.
+- Stack bleibt vorerst (PHP ohne Framework, Vanilla JS, MySQL). Weiterentwicklung später möglich.
+- Git-Ablauf: entwickelt wird auf `release`; nach erfolgreichem manuellem Test auf dem Release-Server wird
+  `release` nach `master` gemergt. Branches/PRs für Claude-Änderungen: **(offen)**
+- `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf.
 - Sprache: Kommunikation Deutsch; Code, Kommentare und Commit-Messages: **(offen)**
-- Branches/PRs: **(offen)**
-- Kleine, einzeln deploybare Schritte; Verhalten der Live-App bleibt gleich, solange nichts anderes vereinbart ist.
 
 ## Konventionen im Code
 
