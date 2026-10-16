@@ -7,7 +7,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-Sprint 1: B-04
+Sprint 1: B-04, B-07
 
 ## Backlog
 
@@ -19,7 +19,7 @@ Sprint 1: B-04
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | im Sprint |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
-| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | neu |
+| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | im Sprint |
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | neu |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
@@ -76,8 +76,20 @@ Gemeinsam aus dem bestehenden Verhalten fachliche Testfälle ableiten und dokume
 
 ### B-07 Repo-Hygiene
 `.gitignore` anlegen, `config.php` durch `config.example.php` ersetzen (echte Config bleibt nur auf den Servern),
-README auf aktuellen Stand bringen.
-Offene Fragen: Wie ist `config.php` auf den Servern heute vor `git pull` geschützt?
+Installationsschritt im README anpassen. Umgesetzt zusammen mit B-04.
+
+Einmaliger Deploy-Ablauf pro Server (getestet für beide Ausgangszustände: Staging mit geänderter `config.php`,
+Live mit bereits gestagtem `git rm --cached config.php`):
+
+```bash
+cp config.php ~/config.php.bak
+git reset -q --hard
+git pull --ff-only
+cp ~/config.php.bak config.php
+git status   # sauber
+```
+
+Nicht enthalten (später, eigener Eintrag bei Bedarf): README insgesamt überarbeiten.
 
 ### B-08 MySQL-Statistik-Job ins Repo aufnehmen
 Die `_stats`-Tabellen werden von einem MySQL-Event befüllt, das nicht im Repo liegt.

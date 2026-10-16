@@ -36,7 +36,8 @@ Datenfluss bei einer Änderung am Board:
 - `stats.php` – interne Nutzungsstatistik (keine Authentifizierung).
 - `db_schema_pok.sql` – Basisschema; `db_schema_pok_inc.sql` – inkrementelle Änderungen seit dem letzten Merge.
 - `src/` – Bilder; `src/xcf/` – GIMP-Quelldateien der Karten.
-- `config.php` – DB-Zugangsdaten (im Repo nur Platzhalter).
+- `config.example.php` – Vorlage für `config.php` (DB-Zugangsdaten). `config.php` selbst ist per `.gitignore`
+  ausgeschlossen und existiert nur auf den Servern bzw. lokal.
 
 Es gibt keinen Build-Schritt für die App. npm wird nur für die Tests in `tests/e2e/` verwendet.
 
@@ -68,7 +69,8 @@ Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx, PHP 8.1-FPM, MySQL 8.0):
 | Live-Server | `master` | Produktion |
 
 - Code auf dem Live-Server: `/home/ubuntu/poker/public_html/`.
-- Deployment: manuell per `git pull` auf dem jeweiligen Server. Es gibt keine Build- oder Migrationsschritte;
+- Deployment: manuell per `git pull --ff-only` auf dem jeweiligen Server (`git config pull.ff only` auf beiden Servern).
+  `config.php` ist nicht im Repo und wird von `git pull` nicht angefasst. Es gibt keine Build- oder Migrationsschritte;
   Schemaänderungen werden von Hand eingespielt.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
@@ -90,7 +92,6 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 - `stats.php` öffentlich erreichbar.
 - Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
 - Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
-- Kein `.gitignore`; `config.php` liegt im Repo.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
 
 ## Tests
