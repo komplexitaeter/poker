@@ -15,8 +15,8 @@ Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-
 Abgeschlossen:
 - **Sprint 3** (2026-10-20): B-21, B-15, B-01, B-02 – nach `master` gemergt. Beim Staging-Test eine B-01-Regression
   gefunden und behoben (`mkey` kam durch die Prepared-Statement-Umstellung als Zahl statt String → Karten-Animation
-  und -Größe kaputt; E2E-Regressionstest ergänzt). Offener manueller Server-Schritt für B-02: nginx Basic Auth für
-  `stats.php` auf beiden Servern (siehe `docs/stats-basic-auth.md`).
+  und -Größe kaputt; E2E-Regressionstest ergänzt). Live inkl. nginx Basic Auth für `stats.php`
+  (Andreas, 2026-10-20); Details in `docs/stats-basic-auth.md`.
 - **Sprint 2** (2026-10-16): B-18, B-19 + B-22, B-24, B-03, B-25 – live auf Staging und Produktion; Daten-Update
   für B-03 auf Live ausgeführt (26 Teamnamen, 11 Themen, 90 Rundenthemen).
 - **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
@@ -26,7 +26,7 @@ Abgeschlossen:
 | ID | Thema | Status |
 |---|---|---|
 | B-01 | SQL-Injection in `api/` beheben | erledigt |
-| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | erledigt (Basic Auth: Server-Schritt) |
+| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | erledigt |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
@@ -51,6 +51,7 @@ Abgeschlossen:
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
 | B-26 | `toggle_topic_box`: `Cannot read properties of null` | neu |
+| B-27 | `apple-touch-icon` fürs Board/Startseite | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -225,11 +226,17 @@ nach der nächsten Werktags-Spitze (Montag nach 10 Uhr) – `FD_SETSIZE`-Zähler
 `active_users`.
 
 ### B-20 PHP-FPM und MySQL robuster konfigurieren
-- PHP-FPM: `pm.max_children = 5` wurde am 14.10. (Vorfall `stats.php`) erreicht. Bei 3,8 GB RAM moderat anheben,
-  `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker), `slowlog` aktivieren.
-- MySQL: `slow_query_log` ist aus, trotzdem 9 Slow Queries (> 10 s) seit dem letzten Neustart – Log aktivieren
-  und auswerten. `skip-name-resolve` gegen die DNS-Warnungen durch Verbindungsversuche von außen
-  (234 abgebrochene Verbindungen in 2 Tagen, siehe B-13).
+- PHP-FPM: `pm.max_children = 5` – am 14.10. (Vorfall `stats.php`) einmal erreicht; für den **8.4-Pool bestätigt**
+  (Stand 2026-10-20). Im Normalbetrieb ausreichend: in der Werktags-Spitze (2026-10-20, 33.767 Req/h um 08:00)
+  **keine** „max_children reached"-Warnung im 8.4-FPM-Log und keine 502/504. Für das Wachstumsziel dennoch knapp –
+  bei ~2,5 GB freiem RAM und realem Worker-Verbrauch deutlich unter `memory_limit` (256 MB) moderat anheben
+  (grob `max_children` 15–25, `start_servers`/`min`/`max_spare_servers` entsprechend). Zusätzlich
+  `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker) und `slowlog` aktivieren.
+- MySQL: `slow_query_log` ist aus (Stand 2026-10-20: 2 Slow Queries > 10 s seit dem letzten Neustart, früher 9) –
+  Log aktivieren und auswerten. `skip-name-resolve` gegen die DNS-Warnungen durch Verbindungsversuche von außen
+  (421 abgebrochene Verbindungen seit dem letzten Neustart, siehe B-13). **Achtung:** `skip-name-resolve` bricht
+  hostbasierte Grants – das externe Grafana (`grafana_usr`) vorher prüfen, sonst nur IP-/`%`-Grants nutzen.
+- Monitoring: `log-summary.sh` liest seit 2026-10-20 PHP 8.4 (vorher 8.1) und zeigt damit die echten 8.4-Pool-Werte.
 
 ### B-21 Race Condition beim Anlegen neuer Nutzer in `getDao()`
 Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
@@ -311,3 +318,11 @@ Bestandsbug). In der Browser-Konsole:
 bestimmten Zuständen (noch) nicht im DOM ist. Offene Fragen: unter welchen Bedingungen genau (welcher Button/Zustand),
 und ob der Fehler sichtbare Folgen hat oder nur Konsolen-Rauschen ist. Fix vermutlich ein Null-Check vor dem
 `.style`-Zugriff.
+
+### B-27 `apple-touch-icon` fürs Board/Startseite
+iOS fragt beim „Zum Home-Bildschirm" `apple-touch-icon.png` und `apple-touch-icon-precomposed.png` im Webroot an;
+beide fehlen → je ~18 404/Tag im nginx-Error-Log (Stand 2026-10-20). Poker wird viel mobil genutzt, daher doppelt
+sinnvoll: ein ordentliches Home-Screen-Icon ablegen (z. B. aus dem vorhandenen Logo in `src/`) und optional per
+`<link rel="apple-touch-icon">` in `board.html`/`init.html` referenzieren. Beseitigt das Log-Rauschen und liefert
+ein sauberes Icon auf dem Homescreen. Klein; kein Backend. Offene Frage: eine Größe (180×180 reicht meist) oder
+mehrere, und ob zusätzlich ein normales `favicon`/`manifest` gepflegt werden soll.
