@@ -6,6 +6,7 @@ $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 $action = get_text_param('action', 30);
 
 $link = db_init();
+validate_team($t, $link) or exit;
 
 if ($action=='start') {
     $sql = $link->prepare( "SELECT if(isnull(timer_pause_time), 0
