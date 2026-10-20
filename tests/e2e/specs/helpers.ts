@@ -1,28 +1,16 @@
 import { Browser, Page, Locator, expect } from '@playwright/test';
-import path from 'node:path';
-
-const modules = path.join(__dirname, '..', 'node_modules');
 
 /**
- * Third-party scripts the pages load from CDNs, served from the same versions installed via npm,
- * so the tests don't depend on CDN availability or an outgoing proxy.
+ * Every third-party library the board needs (remarkable, qr-code-styling, js-confetti) is now
+ * self-hosted under src/vendor/ and served same-origin by the test nginx, exactly as in production
+ * (B-15). The tests therefore block all external hosts and keep only 127.0.0.1/localhost reachable.
+ * This also covers production analytics (plausible.io), which must stay blocked.
  */
-const cdnFiles: Record<string, string> = {
-  'https://cdn.jsdelivr.net/remarkable/1.7.1/remarkable.min.js': 'remarkable/dist/remarkable.min.js',
-  'https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js': 'qr-code-styling/lib/qr-code-styling.js',
-  // production loads js-confetti@latest
-  'https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js': 'js-confetti/dist/js-confetti.browser.js',
-};
-
-/** Opens a new browser context, i.e. a separate player with its own localStorage session. */
 export async function newPlayer(browser: Browser): Promise<Page> {
   const context = await browser.newContext();
-  await context.route(/^https:\/\//, route => {
-    const file = cdnFiles[route.request().url()];
-    if (file) return route.fulfill({ path: path.join(modules, file), contentType: 'text/javascript' });
-    // icons only
-    if (route.request().url().includes('font-awesome')) return route.fulfill({ body: '', contentType: 'text/css' });
-    // everything else, in particular the production analytics (plausible.io), stays blocked
+  await context.route(/^https?:\/\//, route => {
+    const host = new URL(route.request().url()).hostname;
+    if (host === '127.0.0.1' || host === 'localhost') return route.continue();
     return route.abort();
   });
   return context.newPage();

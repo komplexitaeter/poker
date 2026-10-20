@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=device-width">
     <meta name="viewport" content="initial-scale=1.0">
     <title>Agile Estimations</title>
-    <link rel="stylesheet" href="style/style.css?v=1.4" media="screen" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-
+    <link rel="stylesheet" href="style/style.css?v=1.5" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
-    <script defer src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/remarkable/1.7.1/remarkable.min.js"></script>
+    <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
+    <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.6" type="text/javascript"></script>
     <script defer src="script/script.js?v=1.7" type="text/javascript"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/js-confetti@latest/dist/js-confetti.browser.js"></script>
+    <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
 </head>
@@ -185,7 +183,7 @@
 <div id="promo-tab" class="promo-tab promo-hidden sizefit">
     <div class="promo-question">
         <span id="promo-question"></span>
-        <button class="promo-close"><i class="fas fa-times-circle"></i></button>
+        <button class="promo-close" aria-label="Close"><svg class="promo-close-icon" viewBox="0 0 512 512" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8zm121.6 313.1c4.7 4.7 4.7 12.3 0 17L338 377.6c-4.7 4.7-12.3 4.7-17 0L256 312l-65.1 65.6c-4.7 4.7-12.3 4.7-17 0L134.4 338c-4.7-4.7-4.7-12.3 0-17l65.6-65-65.6-65.1c-4.7-4.7-4.7-12.3 0-17l39.5-39.6c4.7-4.7 12.3-4.7 17 0l65 65.7 65.1-65.6c4.7-4.7 12.3-4.7 17 0l39.6 39.5c4.7 4.7 4.7 12.3 0 17L312 256l65.6 65.1z"/></svg></button>
     </div>
     <div class="promo-content">
         <img src="" alt="Promo Image" class="promo-image">

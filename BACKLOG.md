@@ -7,16 +7,22 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 2:** B-19 + B-22 (vorgezogen als Produktionsproblem), B-24, B-03, B-18, B-25
+**Sprint 3:** B-21, B-15, B-01, B-02 (Agenten: Ben, Fred; Kai koordiniert).
 
-Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
+Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
+(`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
+
+Abgeschlossen:
+- **Sprint 2** (2026-10-16): B-18, B-19 + B-22, B-24, B-03, B-25 – live auf Staging und Produktion; Daten-Update
+  für B-03 auf Live ausgeführt (26 Teamnamen, 11 Themen, 90 Rundenthemen).
+- **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
 
 ## Backlog
 
 | ID | Thema | Status |
 |---|---|---|
-| B-01 | SQL-Injection in `api/` beheben | neu |
-| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | neu |
+| B-01 | SQL-Injection in `api/` beheben | auf `release` |
+| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | auf `release` |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
@@ -29,17 +35,18 @@ Abgeschlossen: **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Pr
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
-| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | neu |
+| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | auf `release` |
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
 | B-18 | Server-Logs von Live sichten | erledigt |
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
-| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | neu |
+| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | auf `release` |
 | B-22 | PHP-Upgrade auf 8.4 | erledigt |
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
+| B-26 | `toggle_topic_box`: `Cannot read properties of null` | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -291,3 +298,12 @@ unsichtbar, danach wird es sichtbar (Gegenprobe ohne Fix schlägt fehl).
 
 **Akzeptanzkriterium:** In Safari mit Option-Cmd-R auf Staging kein Aufblitzen mehr (manuell, Safari ist in CI nicht verfügbar).
 **Erledigt 2026-10-16:** auf Staging in Safari bestätigt, Release nach `master`.
+
+### B-26 `toggle_topic_box`: `Cannot read properties of null`
+Beim Staging-Test zu Sprint 3 gefunden, tritt aber **auch auf Live/`master`** auf (kein Sprint-3-Regressionsfehler, eigener
+Bestandsbug). In der Browser-Konsole:
+`TypeError: Cannot read properties of null (reading 'style') at toggle_topic_box (script/script_feedback.js:197) at toggleTopnav (script/script_feedback.js:6)`.
+`script_feedback.js` ist seit Längerem unverändert. Vermutlich greift `toggle_topic_box()` auf ein Element zu, das in
+bestimmten Zuständen (noch) nicht im DOM ist. Offene Fragen: unter welchen Bedingungen genau (welcher Button/Zustand),
+und ob der Fehler sichtbare Folgen hat oder nur Konsolen-Rauschen ist. Fix vermutlich ein Null-Check vor dem
+`.style`-Zugriff.

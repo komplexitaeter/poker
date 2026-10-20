@@ -8,13 +8,16 @@ $id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) 
 $cardkey = substr(filter_input(INPUT_GET, "cardkey", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,7);
 
 
-if (strlen($cardkey)>0)
-    $sql = "UPDATE pok_players_tbl SET card_key = '".$cardkey."' WHERE id = '".$id."' and team_id ='".$t."'";
-else
-    $sql = "UPDATE pok_players_tbl SET card_key = null WHERE id = '".$id."' and team_id ='".$t."'";
-
 $link = db_init();
 validate_team($t, $link) or exit;
 
-$link->query($sql);
+if (strlen($cardkey)>0) {
+    $sql = $link->prepare("UPDATE pok_players_tbl SET card_key = ? WHERE id = ? and team_id = ?");
+    $sql->bind_param('sss', $cardkey, $id, $t);
+} else {
+    $sql = $link->prepare("UPDATE pok_players_tbl SET card_key = null WHERE id = ? and team_id = ?");
+    $sql->bind_param('ss', $id, $t);
+}
+
+$sql->execute();
 $link->close();

@@ -1,6 +1,6 @@
 ---
 name: e2e-tester
-description: Runs the poker app locally (nginx, php-fpm, MySQL, poker-msg) and executes or extends the Playwright end-to-end tests in tests/e2e. Use after changes to the app, to reproduce a bug in the browser, or to add tests for a backlog item.
+description: Tessa (E2E) – runs the poker app locally (nginx, php-fpm, MySQL, poker-msg) and executes or extends the Playwright end-to-end tests in tests/e2e. Use after changes to the app, to reproduce a bug in the browser, or to add tests for a backlog item.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
