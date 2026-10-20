@@ -21,8 +21,8 @@ Abgeschlossen:
 
 | ID | Thema | Status |
 |---|---|---|
-| B-01 | SQL-Injection in `api/` beheben | im Sprint |
-| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | im Sprint |
+| B-01 | SQL-Injection in `api/` beheben | auf `release` |
+| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | auf `release` |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
@@ -35,13 +35,13 @@ Abgeschlossen:
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
-| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | im Sprint |
+| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | auf `release` |
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
 | B-18 | Server-Logs von Live sichten | erledigt |
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
-| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | im Sprint |
+| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | auf `release` |
 | B-22 | PHP-Upgrade auf 8.4 | erledigt |
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
