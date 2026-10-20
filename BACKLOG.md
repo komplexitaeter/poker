@@ -46,6 +46,7 @@ Abgeschlossen:
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
+| B-26 | `toggle_topic_box`: `Cannot read properties of null` | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -297,3 +298,12 @@ unsichtbar, danach wird es sichtbar (Gegenprobe ohne Fix schlägt fehl).
 
 **Akzeptanzkriterium:** In Safari mit Option-Cmd-R auf Staging kein Aufblitzen mehr (manuell, Safari ist in CI nicht verfügbar).
 **Erledigt 2026-10-16:** auf Staging in Safari bestätigt, Release nach `master`.
+
+### B-26 `toggle_topic_box`: `Cannot read properties of null`
+Beim Staging-Test zu Sprint 3 gefunden, tritt aber **auch auf Live/`master`** auf (kein Sprint-3-Regressionsfehler, eigener
+Bestandsbug). In der Browser-Konsole:
+`TypeError: Cannot read properties of null (reading 'style') at toggle_topic_box (script/script_feedback.js:197) at toggleTopnav (script/script_feedback.js:6)`.
+`script_feedback.js` ist seit Längerem unverändert. Vermutlich greift `toggle_topic_box()` auf ein Element zu, das in
+bestimmten Zuständen (noch) nicht im DOM ist. Offene Fragen: unter welchen Bedingungen genau (welcher Button/Zustand),
+und ob der Fehler sichtbare Folgen hat oder nur Konsolen-Rauschen ist. Fix vermutlich ein Null-Check vor dem
+`.style`-Zugriff.
