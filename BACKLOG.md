@@ -7,12 +7,16 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 3:** B-21, B-15, B-01, B-02 (Agenten: Ben, Fred; Kai koordiniert).
+Kein aktiver Sprint – nächstes Planning offen (Kandidaten u. a. B-20, B-23, B-26).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
 Abgeschlossen:
+- **Sprint 3** (2026-10-20): B-21, B-15, B-01, B-02 – nach `master` gemergt. Beim Staging-Test eine B-01-Regression
+  gefunden und behoben (`mkey` kam durch die Prepared-Statement-Umstellung als Zahl statt String → Karten-Animation
+  und -Größe kaputt; E2E-Regressionstest ergänzt). Offener manueller Server-Schritt für B-02: nginx Basic Auth für
+  `stats.php` auf beiden Servern (siehe `docs/stats-basic-auth.md`).
 - **Sprint 2** (2026-10-16): B-18, B-19 + B-22, B-24, B-03, B-25 – live auf Staging und Produktion; Daten-Update
   für B-03 auf Live ausgeführt (26 Teamnamen, 11 Themen, 90 Rundenthemen).
 - **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
@@ -21,8 +25,8 @@ Abgeschlossen:
 
 | ID | Thema | Status |
 |---|---|---|
-| B-01 | SQL-Injection in `api/` beheben | auf `release` |
-| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | auf `release` |
+| B-01 | SQL-Injection in `api/` beheben | erledigt |
+| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | erledigt (Basic Auth: Server-Schritt) |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
@@ -35,13 +39,13 @@ Abgeschlossen:
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
-| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | auf `release` |
+| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | erledigt |
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
 | B-18 | Server-Logs von Live sichten | erledigt |
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
-| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | auf `release` |
+| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | erledigt |
 | B-22 | PHP-Upgrade auf 8.4 | erledigt |
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
