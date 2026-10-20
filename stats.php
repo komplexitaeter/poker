@@ -82,22 +82,27 @@ order by d.day desc
 
 $link = db_init();
 
+// Always escape DB values on output (project convention: store raw, escape on output).
+function h($value) {
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
 $result = $link->query($sql);
 while(  $obj = $result->fetch_object()) {
     echo("<tr>\n");
-    echo("<td>$obj->day</td>\n");
-    echo("<td>$obj->team_registrations_cnt</td>\n");
-    echo("<td>$obj->new_round_cnt</td>\n");
-    echo("<td>$obj->new_round_players_avg</td>\n");
-    echo("<td>$obj->board_on_load ($obj->board_on_load_mobile)</td>\n");
-    echo("<td>$obj->open_info_box</td>\n");
-    echo("<td>$obj->link_simulation_infos</td>\n");
-    echo("<td>$obj->link_simulation_login</td>\n");
-    echo("<td>$obj->open_feedback_box</td>\n");
-    echo("<td>$obj->open_setup_box</td>\n");
-    echo("<td>$obj->use_color_switch</td>\n");
-    echo("<td>$obj->toggle_timer</td>\n");
-    echo("<td>$obj->topic_saved</td>\n");
+    echo("<td>" . h($obj->day) . "</td>\n");
+    echo("<td>" . h($obj->team_registrations_cnt) . "</td>\n");
+    echo("<td>" . h($obj->new_round_cnt) . "</td>\n");
+    echo("<td>" . h($obj->new_round_players_avg) . "</td>\n");
+    echo("<td>" . h($obj->board_on_load) . " (" . h($obj->board_on_load_mobile) . ")</td>\n");
+    echo("<td>" . h($obj->open_info_box) . "</td>\n");
+    echo("<td>" . h($obj->link_simulation_infos) . "</td>\n");
+    echo("<td>" . h($obj->link_simulation_login) . "</td>\n");
+    echo("<td>" . h($obj->open_feedback_box) . "</td>\n");
+    echo("<td>" . h($obj->open_setup_box) . "</td>\n");
+    echo("<td>" . h($obj->use_color_switch) . "</td>\n");
+    echo("<td>" . h($obj->toggle_timer) . "</td>\n");
+    echo("<td>" . h($obj->topic_saved) . "</td>\n");
     echo("</tr>\n\n");
 }
 echo("</table>\n\n");
@@ -111,14 +116,14 @@ order by datum desc";
 $result = $link->query($sql);
 while(  $obj = $result->fetch_object()) {
     echo('<div class="feedback">');
-    echo("<h1>$obj->datum</h1>");
+    echo("<h1>" . h($obj->datum) . "</h1>");
     echo("<h1>");
     for ($i=0;$i<5;$i++) {
         if ($obj->fb_stars>$i) echo("*");
         else echo("_");
     }
     echo("</h1>");
-    echo("<div>\"$obj->fb_text\"</div>");
+    echo("<div>\"" . h($obj->fb_text) . "\"</div>");
     echo("</div>\n");
 }
 
