@@ -81,5 +81,6 @@ Das Passwort wird interaktiv abgefragt. Danach Config testen und neu laden
 
 - Die echte `poker-stats.htpasswd` wird **nie committet** und liegt nur auf den
   Servern.
-- Im Repo liegt nur `docs/poker-stats.htpasswd.example` als reines Formatbeispiel
-  mit Platzhalter-Hash (kein echtes Passwort).
+- Im Repo liegt nur `poker-stats.htpasswd.example` (im Root, analog zu
+  `config.example.php`) als reines Formatbeispiel mit Platzhalter-Hash (kein
+  echtes Passwort).
