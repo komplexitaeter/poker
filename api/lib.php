@@ -249,7 +249,8 @@ function getDao($t, $id) {
 
             if ($obj->id == $id) {
                 $name=$obj->name;
-                $mkey=$obj->mkey;
+                // mkey must stay a string in the JSON: the frontend compares it with the DOM card id via ===
+                $mkey=(string)$obj->mkey;
                 $card_key=$obj->card_key;
                 $player_type = $obj->player_type;
             }
@@ -338,7 +339,8 @@ function getDao($t, $id) {
 
         $player = (object) array(
             "name"=>$obj->name
-        ,"mkey"=>$obj->mkey
+        // mkey must stay a string in the JSON: the frontend compares it with the DOM card id via ===
+        ,"mkey"=>(string)$obj->mkey
         ,"display_card_key"=>$display_card_key
         ,"i"=>(int)null);
         $players[] = $player;
