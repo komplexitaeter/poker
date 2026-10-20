@@ -13,9 +13,9 @@ if (strlen($mkey)>0) {
     $link = db_init();
     validate_team($t, $link) or exit;
 
-    $sql = "UPDATE pok_players_tbl SET player_type = 'REMOVED' WHERE team_id='".$t."' and mkey = ".$mkey;
-
-    $link->query($sql);
+    $sql = $link->prepare("UPDATE pok_players_tbl SET player_type = 'REMOVED' WHERE team_id = ? and mkey = ?");
+    $sql->bind_param('si', $t, $mkey);
+    $sql->execute();
     $link->close();
 
 }
