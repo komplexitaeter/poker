@@ -1,5 +1,9 @@
 # server-specific, see config.example.php
 config.php
 
+# real htpasswd for stats.php basic auth; lives only on the servers,
+# see poker-stats.htpasswd.example (the .example stays tracked)
+poker-stats.htpasswd
+
 # agent worktrees (Ben, Fred – isolierte Arbeitskopien, siehe CLAUDE.md)
 .claude/worktrees/
