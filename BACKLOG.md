@@ -9,7 +9,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 Kein aktiver Sprint – nächstes Planning offen (Kandidaten u. a. B-20, B-23, B-26).
 
-Akut (außerhalb des Sprints): B-28 PHP2Shell patchen (2026-10-21).
+Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
@@ -54,7 +54,7 @@ Abgeschlossen:
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
 | B-26 | `toggle_topic_box`: `Cannot read properties of null` | neu |
 | B-27 | `apple-touch-icon` fürs Board/Startseite | neu |
-| B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | akut |
+| B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 
@@ -403,6 +403,12 @@ Seit der Konsolidierung am selben Tag (B-23) auf beiden Servern nur noch 8.4 –
 
 **Akzeptanzkriterium:** PHP 8.4.27 (oder neuer) auf allen drei Servern, `php8.4-fpm` und `poker-msg` neu
 gestartet, Check ohne Befund (✓).
+
+**Erledigt 2026-10-21 (Andreas):** PHP 8.4.27 auf Live, Staging und dem dritten Server eingespielt (Launchpad hatte
+die Pakete stundenlang auf „Pending publication“), supervisor/`poker-msg` dabei über die needrestart-Abfrage mit
+neu gestartet, alle drei Server anschließend neu gebootet. Notbremse (`99-php2shell.ini`) bleibt vorerst liegen,
+schadet nicht. Nicht umgesetzt (bewusst): nginx-Sperre für POST bei Poker, `memory_limit = -1`; automatische
+PHP-Updates aus dem PPA (vorerst nicht gewünscht).
 
 ### B-29 WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten
 Betrifft nicht die Poker-App, läuft aber auf dem Staging-Server. `www.komplexitaeter.de` ist die WordPress-Seite aus
