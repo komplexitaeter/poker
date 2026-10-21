@@ -65,11 +65,12 @@ Lokale Test-DB: `db_schema_pok.sql` lässt sich direkt in eine leere MySQL-8.0-D
 ## Betrieb
 
 Zwei Server, gleicher Aufbau (Ubuntu 22.04, nginx 1.18 aus dem Ubuntu-Repo, PHP 8.4 aus dem ondrej-PPA, MySQL 8.0).
-Web-App über `php8.4-fpm.sock`, `poker-msg` über `/usr/bin/php8.4` (seit 2026-10-16, B-22). Auf beiden Servern laufen
-weitere Seiten mit eigenen PHP-Versionen: Live `teamcar` und `feedbck` auf PHP 8.1 (Ubuntu-Paket), Staging u. a.
-`www.komplexitaeter.de` (WordPress), `flowgame`, `kaffeeklatsch` (Stand 2026-10-21, siehe B-23). Änderungen nur an
-der Poker-Config bzw. `php8.4`-spezifisch vornehmen; vor dem Abschalten einer PHP-Version per
-`grep -Rn fastcgi_pass /etc/nginx/sites-enabled/` prüfen, wer sie nutzt. Der nginx-PPA `ondrej/nginx` ist seit
+Web-App über `php8.4-fpm.sock`, `poker-msg` über `/usr/bin/php8.4` (seit 2026-10-16, B-22). Seit 2026-10-21 ist
+PHP 8.4 die einzige PHP-Version auf beiden Servern (B-23). Weitere Seiten laufen in eigenen 8.4-Pools
+(`/etc/php/8.4/fpm/pool.d/`): Live `teamcar`, `feedback`; Staging `www.komplexitaeter.de` (WordPress), `flowgame`,
+`kaffeeklatsch`. Änderungen am Pool `www` bzw. an der globalen 8.4-Config betreffen alle Seiten – vorher per
+`grep -Rn 'fastcgi_pass\|server unix' /etc/nginx/sites-enabled/` prüfen, wer was nutzt. Composer: offizielle Version
+unter `/usr/local/bin/composer` (für `poker-msg`, `vendor/` ist nicht im Repo). Der nginx-PPA `ondrej/nginx` ist seit
 April 2026 eingestellt – nicht mehr verwenden.
 
 - PHP-8.4-FPM-`php.ini` (Live): `memory_limit = 256M`, `post_max_size = 100M`, `upload_max_filesize = 100M`

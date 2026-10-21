@@ -298,7 +298,13 @@ Erweiterung `ev` (B-19) für die neue Version mit installieren.
   `komplexitaeter-www.conf` (WordPress) in `/etc/php/8.4/fpm/pool.d/`, `php8.4-imagick` installiert, nginx umgestellt;
   PHP 8.0–8.3 entfernt (purge), Reste alter Kernel entfernt, `apt` ohne offene Updates. Alle Seiten antworten mit 200.
   Upstream `flowgame_prototype` ebenfalls auf `php8.4-fpm.sock`; keine Verweise auf 8.0–8.3 mehr in nginx.
-  Offen: Live (`teamcar`, `feedbck` auf 8.1) bei Gelegenheit ebenfalls auf 8.4.
+- **Live umgestellt (2026-10-21, Andreas):** `teamcar` und `feedback` in eigenen 8.4-Pools (`teamcar.conf`,
+  `feedback.conf`), Erweiterungen `bz2 curl gd intl mbstring zip` für 8.4 nachinstalliert, Syntaxcheck mit `php8.4 -l`
+  ohne Befund. PHP 8.1, `libapache2-mod-php8.1`, `apache2-bin`/`-utils` und **phpMyAdmin** entfernt (purge, war seit
+  B-16 nicht mehr erreichbar). Ubuntus `composer` 2.2 (lief unter 8.4 nicht mehr) samt `php-symfony-*` usw. ersetzt
+  durch offizielles Composer 2.10 in `/usr/local/bin/composer`; `composer install --dry-run` in `poker-msg` ok.
+  Hinweis: Symlink `sites-enabled/feedbck…` zeigt auf `sites-available/feedback…`. `apt` ohne offene Updates.
+  **Damit läuft auf beiden Servern nur noch PHP 8.4.** Offen aus diesem Eintrag: Upload-Grenzen (s. o.).
 
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
@@ -360,6 +366,7 @@ Lücken im PHP-Kern, Codeausführung aus der Ferne ohne Anmeldung, CVSS 9.2, all
 `session.upload_progress`, ausgelöst durch `multipart/form-data`-POST.
 
 Betroffen: Live 8.4 (Poker, ondrej-PPA) und 8.1 (`teamcar`, `feedbck`, Ubuntu); Staging 8.2/8.3/8.4.
+Seit der Konsolidierung am selben Tag (B-23) auf beiden Servern nur noch 8.4 – ein Patch, ein Dienst.
 - Übergangsweise auf beiden Servern `session.upload_progress.enabled = Off` in
   `/etc/php/<v>/fpm/conf.d/99-php2shell.ini` (Poker nutzt weder POST noch Sessions noch Uploads).
 - 8.4.27 im ondrej-PPA am 21.10. hochgeladen, Pakete wurden noch gebaut (Launchpad zeitweise 503).
