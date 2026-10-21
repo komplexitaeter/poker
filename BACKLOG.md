@@ -9,6 +9,8 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 Kein aktiver Sprint – nächstes Planning offen (Kandidaten u. a. B-20, B-23, B-26).
 
+Akut (außerhalb des Sprints): B-28 PHP2Shell patchen (2026-10-21).
+
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
@@ -52,6 +54,9 @@ Abgeschlossen:
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
 | B-26 | `toggle_topic_box`: `Cannot read properties of null` | neu |
 | B-27 | `apple-touch-icon` fürs Board/Startseite | neu |
+| B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | akut |
+| B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
+| B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -274,6 +279,22 @@ Erweiterung `ev` (B-19) für die neue Version mit installieren.
 - Große Upload-Grenzen (`post_max_size`/`upload_max_filesize` 100M, nginx `client_max_body_size 100M`) prüfen –
   die App lädt keine Dateien hoch.
 
+**Stand 2026-10-21 (Staging, Andreas):**
+- Platte war zu 98 % voll: rund 8 GB UpdraftPlus-Backups der WordPress-Seite seit 2024 gelöscht → 64 % (siehe B-29).
+- `ondrej/nginx`-PPA entfernt (eingestellt seit April 2026). nginx von 1.28 (PPA) auf 1.18 aus dem Ubuntu-Repo
+  zurückgesetzt, wie auf Live; dafür in `flowgame.komplexitaeter.de` `http2 on;` → `listen 443 ssl http2;`.
+  Sicherungen: `/root/nginx-backup-2026-10-21`, `/root/flowgame.komplexitaeter.de.bak`. Alle Updates, Reboot erledigt.
+- Live nutzt den nginx-PPA nicht (nginx 1.18 aus Ubuntu) – dort nichts zu tun.
+- **Korrektur:** PHP 8.1 auf **Live wird noch genutzt** (`teamcar`, `feedbck`) – dort nicht deinstallieren.
+  Pin-Datei `/etc/apt/preferences.d/php8.1-from-ubuntu` vorgeschlagen, damit 8.1 nicht aus dem PPA kommt;
+  `php8.1-mysql` per `apt-mark manual` vor `autoremove` schützen.
+- Staging auf nur noch PHP 8.4 konsolidieren (Bestandsaufnahme gemacht):
+  - 8.0 (nur CLI), 8.1 (FPM, ungenutzt, abgeschaltet): sofort deinstallierbar.
+  - `flowgame` (3 Pools), `kaffeeklatsch`: Pools von 8.3 nach `/etc/php/8.4/fpm/pool.d/` verschieben (Sockets bleiben).
+  - `www.komplexitaeter.de` (WordPress, 8.2): eigener 8.4-Pool `komplexitaeter-www` mit den Werten aus 8.2-`www.conf`
+    (100M Upload, `max_input_vars 3000`, 300 s), `php8.4-imagick` nachinstallieren, vorher WP-Version/Plugins prüfen.
+  - Danach 8.2/8.3 deinstallieren, wenn alles ein paar Tage stabil läuft.
+
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
 Minuten eine neue Verbindung, die alte bleibt offen. Wahrscheinliche Ursache: ein offener Tab hinter einer
@@ -326,3 +347,48 @@ sinnvoll: ein ordentliches Home-Screen-Icon ablegen (z. B. aus dem vorhandenen L
 `<link rel="apple-touch-icon">` in `board.html`/`init.html` referenzieren. Beseitigt das Log-Rauschen und liefert
 ein sauberes Icon auf dem Homescreen. Klein; kein Backend. Offene Frage: eine Größe (180×180 reicht meist) oder
 mehrere, und ob zusätzlich ein normales `favicon`/`manifest` gepflegt werden soll.
+
+### B-28 PHP2Shell (CVE-2026-109618/-109619) patchen
+**Akut, nachträglich vermerkt (2026-10-21).** BSI-Hinweis BITS-H 2026-297981-1032 (Kritikalität 3/Orange): zwei
+Lücken im PHP-Kern, Codeausführung aus der Ferne ohne Anmeldung, CVSS 9.2, alle PHP-Versionen. Patch von PHP am
+21.10. 14:00 UTC; Details vorab durchgesickert, erste Angriffe gemeldet. Laut Leaks (unbestätigt) Use-after-free bei
+`session.upload_progress`, ausgelöst durch `multipart/form-data`-POST.
+
+Betroffen: Live 8.4 (Poker, ondrej-PPA) und 8.1 (`teamcar`, `feedbck`, Ubuntu); Staging 8.2/8.3/8.4.
+- Übergangsweise auf beiden Servern `session.upload_progress.enabled = Off` in
+  `/etc/php/<v>/fpm/conf.d/99-php2shell.ini` (Poker nutzt weder POST noch Sessions noch Uploads).
+- 8.4.27 im ondrej-PPA am 21.10. hochgeladen, Pakete wurden noch gebaut (Launchpad zeitweise 503).
+- Nach dem Einspielen: `php8.4-fpm` (Live zusätzlich `php8.1-fpm`) neu starten, `supervisorctl restart poker-msg`.
+- PHP 8.1 von Ubuntu kommt über `unattended-upgrades` automatisch; Stand auf
+  https://ubuntu.com/security/CVE-2026-109618 („jammy / php8.1“).
+- Danach Kompromittierungs-Check: neue `.php`-Dateien seit 20.10., Prozesse/Crontab von `www-data`,
+  ausgehende Verbindungen.
+
+**Akzeptanzkriterium:** alle laufenden PHP-Versionen auf beiden Servern in gepatchter Version, `poker-msg` neu
+gestartet, Check ohne Befund.
+
+### B-29 WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten
+Betrifft nicht die Poker-App, läuft aber auf dem Staging-Server. `www.komplexitaeter.de` ist die WordPress-Seite aus
+`/home/ubuntu/neu.komplexitaeter.de/neu/`. UpdraftPlus legt täglich DB-Backups in `wp-content/updraft/` ab und
+löscht keine alten (bis 2026-10-21 rund 8 GB). Das Verzeichnis war **öffentlich abrufbar** (`.htaccess` wirkt unter
+nginx nicht); seit 2026-10-21 gesperrt (`location ^~ /wp-content/updraft/ { deny all; }`, `403`).
+
+Ob Backups abgerufen wurden, lässt sich nicht feststellen: `.gz`/`.zip` sind per `access_log off` vom Logging
+ausgenommen, Logs reichen nur 14 Tage zurück. Dateinamen enthalten eine zufällige ID, keine Verzeichnisliste →
+Abruf unwahrscheinlich, aber nicht ausgeschlossen.
+
+Offen:
+- Passwörter aller WP-Konten mit Admin-/Redakteursrechten ändern, Salts in `wp-config.php` neu erzeugen.
+- In Plugin-Einstellungen gespeicherte Zugangsdaten (SMTP, API-Schlüssel, Backup-Ziele) rotieren.
+- Vorfall kurz dokumentieren; klären, ob die Seite personenbezogene Daten speichert (DSGVO).
+- UpdraftPlus: Aufbewahrung begrenzen (z. B. 14 DB-Backups), Backups extern speichern.
+- nginx-Logs länger aufbewahren (z. B. 30 Tage); `access_log off` für `.gz`/`.zip` überdenken.
+- WordPress auf PHP 8.4 umstellen (siehe B-23).
+
+### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
+Die reguläre Unterstützung für Ubuntu 22.04 endet im April 2027 (danach nur noch ESM über Ubuntu Pro). Beide Server
+auf 24.04 heben, zuerst Staging, vorher Snapshot beim Hoster; Live danach an einem Wochenende.
+Zu beachten: ondrej-PHP-PPA wird beim Upgrade abgeschaltet und muss für `noble` neu eingerichtet werden (sonst fehlt
+PHP 8.4); `ev` für `poker-msg` neu bauen (B-19); nginx wird 1.24; weitere Seiten auf beiden Servern mittesten.
+Offene Fragen: Zeitpunkt; ob Ondřej für Ubuntu langfristig beim PPA bleibt oder auf `packages.sury.org` umzieht;
+vorher Staging auf eine PHP-Version konsolidieren (B-23).
