@@ -305,6 +305,11 @@ Erweiterung `ev` (B-19) für die neue Version mit installieren.
   durch offizielles Composer 2.10 in `/usr/local/bin/composer`; `composer install --dry-run` in `poker-msg` ok.
   Hinweis: Symlink `sites-enabled/feedbck…` zeigt auf `sites-available/feedback…`. `apt` ohne offene Updates.
   **Damit läuft auf beiden Servern nur noch PHP 8.4.** Offen aus diesem Eintrag: Upload-Grenzen (s. o.).
+- **Dritter Server `vps-b9348783` (2026-10-21, Andreas):** Nebenprojekte, gehört nicht zu Poker (`the-agile-game`,
+  `daily-habit-tracker`, `kfs` mit PHP; `andreas`, `francois`, `fraxicle` statisch). War rund ein Jahr ohne Updates,
+  weil der eingestellte `ondrej/nginx`-PPA `apt update` blockierte. PPA entfernt, alle Updates eingespielt, nginx
+  1.28 → 1.18 (Ubuntu; `http2 on;` in `andreas`, `francois`, `fraxicle` → `listen … http2`), PHP 8.2 → 8.4
+  (Standard-Pool, `php8.4-mbstring`/`-mysql`/`-sqlite3`), PHP 8.2/8.3 entfernt, Neustart.
 
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
@@ -376,8 +381,16 @@ Seit der Konsolidierung am selben Tag (B-23) auf beiden Servern nur noch 8.4 –
 - Danach Kompromittierungs-Check: neue `.php`-Dateien seit 20.10., Prozesse/Crontab von `www-data`,
   ausgehende Verbindungen.
 
-**Akzeptanzkriterium:** alle laufenden PHP-Versionen auf beiden Servern in gepatchter Version, `poker-msg` neu
-gestartet, Check ohne Befund.
+**Stand 2026-10-21 abends:**
+- Alle drei Server (Live, Staging, dritter Server `vps-b9348783` mit Nebenprojekten) laufen nur noch auf PHP 8.4
+  (B-23), Notbremse auf allen gesetzt. Live-8.1 (`teamcar`, `feedbck`) damit erledigt.
+- 8.4.27 auf Launchpad gebaut, Binärpakete aber noch „Pending publication“ – noch nicht installierbar.
+- Kompromittierungs-Check auf allen drei Servern **ohne Befund**: neue `.php`-Dateien nur aus dem Sprint-3-Deploy
+  (20.10.), WordPress-Sprachupdate, AIOS-Firewall-Settings (`__halt_compiler`) und leere WP-Optimize-Cachedateien;
+  keine fremden Prozesse, keine Crontab für `www-data`, keine unerwarteten Verbindungen.
+
+**Akzeptanzkriterium:** PHP 8.4.27 (oder neuer) auf allen drei Servern, `php8.4-fpm` und `poker-msg` neu
+gestartet, Check ohne Befund (✓).
 
 ### B-29 WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten
 Betrifft nicht die Poker-App, läuft aber auf dem Staging-Server. `www.komplexitaeter.de` ist die WordPress-Seite aus
