@@ -294,6 +294,11 @@ Erweiterung `ev` (B-19) für die neue Version mit installieren.
   - `www.komplexitaeter.de` (WordPress, 8.2): eigener 8.4-Pool `komplexitaeter-www` mit den Werten aus 8.2-`www.conf`
     (100M Upload, `max_input_vars 3000`, 300 s), `php8.4-imagick` nachinstallieren, vorher WP-Version/Plugins prüfen.
   - Danach 8.2/8.3 deinstallieren, wenn alles ein paar Tage stabil läuft.
+- **Umgesetzt (2026-10-21, Andreas):** Staging läuft nur noch auf PHP 8.4. Pools `flowgame.conf`, `kaffeeklatsch.conf`,
+  `komplexitaeter-www.conf` (WordPress) in `/etc/php/8.4/fpm/pool.d/`, `php8.4-imagick` installiert, nginx umgestellt;
+  PHP 8.0–8.3 entfernt (purge), Reste alter Kernel entfernt, `apt` ohne offene Updates. Alle Seiten antworten mit 200.
+  Upstream `flowgame_prototype` zeigte noch auf `php8.3-fpm.sock` → auf `php8.4-fpm.sock` umstellen bzw. prüfen.
+  Offen: Live (`teamcar`, `feedbck` auf 8.1) bei Gelegenheit ebenfalls auf 8.4.
 
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
