@@ -313,8 +313,9 @@ Erweiterung `ev` (B-19) für die neue Version mit installieren.
   **Panne:** `php8.4-fpm` war beim Umstellen nicht installiert → PHP-Teile von `the-agile-game`,
   `daily-habit-tracker`, `kfs` lieferten ca. 16:45–17:31 UTC einen 502 (Startseiten statisch, daher fiel es beim
   `curl`-Test nicht auf). Lehre: nach Umstellung einen PHP-Endpunkt testen, nicht nur `/`.
-- Offen dort: `fraxicle` bekommt Scanner-Anfragen auf `/_adminer/adminer.php.*` → prüfen, ob Adminer im Webroot
-  liegt, und ggf. entfernen (wie phpMyAdmin in B-16).
+- `fraxicle`: Scanner-Anfragen auf `/_adminer/adminer.php.*` – geprüft, kein Adminer und keine `.php`-Dateien im
+  Webroot, nur blindes Scannen. PHP nach der Panne geprüft: `kfs` läuft, `the-agile-game` (statisch, PHP nur für
+  `api/game_state_logger.php`) antwortet wieder (400 statt 502).
 
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
