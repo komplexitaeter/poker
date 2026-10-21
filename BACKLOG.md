@@ -310,6 +310,11 @@ Erweiterung `ev` (B-19) für die neue Version mit installieren.
   weil der eingestellte `ondrej/nginx`-PPA `apt update` blockierte. PPA entfernt, alle Updates eingespielt, nginx
   1.28 → 1.18 (Ubuntu; `http2 on;` in `andreas`, `francois`, `fraxicle` → `listen … http2`), PHP 8.2 → 8.4
   (Standard-Pool, `php8.4-mbstring`/`-mysql`/`-sqlite3`), PHP 8.2/8.3 entfernt, Neustart.
+  **Panne:** `php8.4-fpm` war beim Umstellen nicht installiert → PHP-Teile von `the-agile-game`,
+  `daily-habit-tracker`, `kfs` lieferten ca. 16:45–17:31 UTC einen 502 (Startseiten statisch, daher fiel es beim
+  `curl`-Test nicht auf). Lehre: nach Umstellung einen PHP-Endpunkt testen, nicht nur `/`.
+- Offen dort: `fraxicle` bekommt Scanner-Anfragen auf `/_adminer/adminer.php.*` → prüfen, ob Adminer im Webroot
+  liegt, und ggf. entfernen (wie phpMyAdmin in B-16).
 
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
@@ -383,7 +388,13 @@ Seit der Konsolidierung am selben Tag (B-23) auf beiden Servern nur noch 8.4 –
 
 **Stand 2026-10-21 abends:**
 - Alle drei Server (Live, Staging, dritter Server `vps-b9348783` mit Nebenprojekten) laufen nur noch auf PHP 8.4
-  (B-23), Notbremse auf allen gesetzt. Live-8.1 (`teamcar`, `feedbck`) damit erledigt.
+  (B-23). Live-8.1 (`teamcar`, `feedbck`) damit erledigt.
+- Notbremse `session.upload_progress.enabled = Off` (offizielle Empfehlung von PHP, zusammen mit **Neustart aller
+  Worker** – `restart`, nicht `reload`) erst gegen 17:30 UTC auf allen drei Servern gesetzt; vorher fehlte sie auf
+  Live und Staging. Laut PHP schließt sie nur einen Angriffsweg – nur das Update schützt vollständig.
+- Laut PHP-Advisory: CVE-2026-109618 = Speicherkorruption bei Out-of-Memory mitten im Request; CVE-2026-109619 =
+  Use-after-free durch Zustand, der zwischen Requests im selben Worker hängen bleibt. Fix in 8.5.12, 8.4.27,
+  8.3.36, 8.2.35; 8.1 und älter offiziell ohne Fix. Teils als aktiv ausgenutzt gemeldet.
 - 8.4.27 auf Launchpad gebaut, Binärpakete aber noch „Pending publication“ – noch nicht installierbar.
 - Kompromittierungs-Check auf allen drei Servern **ohne Befund**: neue `.php`-Dateien nur aus dem Sprint-3-Deploy
   (20.10.), WordPress-Sprachupdate, AIOS-Firewall-Settings (`__halt_compiler`) und leere WP-Optimize-Cachedateien;
