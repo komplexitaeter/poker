@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+set_header('json');
 
 $player_id = get_text_param("player_id", 16);
 $team_id = get_text_param("team_id", 80);
@@ -23,7 +24,7 @@ $link = db_init();
 
 // This endpoint inserts without a team_id filter in the WHERE clause, so a bound
 // WHERE cannot limit the effect to a valid team: check the team id explicitly.
-validate_team($team_id, $link) or exit;
+require_team($team_id, $link);
 
 $sql = $link->prepare("
     INSERT INTO pok_promotions_tbl

@@ -6,7 +6,7 @@ $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 $topic = cut_text((string)filter_input(INPUT_POST, "topic"), 2000);
 
 $link = db_init();
-validate_team($t, $link) or exit;
+require_team($t, $link);
 
 $sql = $link->prepare( "update pok_teams_tbl t
                                      set t.topic=?

@@ -5,7 +5,7 @@ require './lib.php';
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
 $link = db_init();
-validate_team($t, $link) or exit;
+require_team($t, $link);
 
 $sql = $link->prepare( "delete from pok_players_tbl
                                    where team_id=?

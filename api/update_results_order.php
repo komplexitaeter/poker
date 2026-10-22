@@ -8,7 +8,7 @@ $results_order = substr(filter_input(INPUT_GET, "results_order", FILTER_SANITIZE
 
 
 $link = db_init();
-validate_team($t, $link) or exit;
+require_team($t, $link);
 
 if ($results_order != null and in_array($results_order, ['NAME', 'SEQUENCE', 'CHOOSE', 'CHOOSE:NAME', 'CHOOSE:SEQUENCE'])) {
     if ($results_order == 'CHOOSE') {

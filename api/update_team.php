@@ -7,7 +7,7 @@ $name = get_text_param("name", 30);
 $anonymous_request_toggle = filter_input(INPUT_GET, "anonymous_request_toggle", FILTER_SANITIZE_NUMBER_INT );
 
 $link = db_init();
-validate_team($t, $link) or exit;
+require_team($t, $link);
 if (strlen($name)>0) {
     $sql = $link->prepare( "update pok_teams_tbl t
                                      set t.name=?
