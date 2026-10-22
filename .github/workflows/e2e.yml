@@ -67,7 +67,11 @@ jobs:
 
       - name: Install Chromium
         working-directory: tests/e2e
-        run: npx playwright install --with-deps chromium
+        # No --with-deps: the ubuntu-24.04 runner already ships the shared
+        # libraries Chromium needs, so --with-deps only triggered a slow
+        # apt-get on every run (not covered by the browser cache above, up to
+        # ~12 min on a slow mirror). The browser binary itself is cached (B-32).
+        run: npx playwright install chromium
 
       - name: Start app (nginx, php-fpm, MySQL schema, poker-msg)
         run: tests/e2e/setup.sh start
