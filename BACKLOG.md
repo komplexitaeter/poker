@@ -92,7 +92,7 @@ Abgeschlossen:
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
-| B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | im Planning |
+| B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | im Sprint |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -683,6 +683,37 @@ umstellen; Sortier-Glide per **FLIP** erhalten; beim Resize kein Glide (B-39 ble
 Karten-*Größe* kommt vorerst weiter über die bestehenden `.mobile`/`.desktop`-Klassen (`adaptToDevice`) – nur die
 Positionierung wird getauscht, nicht das Sizing; Menüs/Overlays/restliches Responsive später. Delia (CSS) + Fred
 (JS/FLIP), ein Branch. Ablauf: kurzes gemeinsames Planning zuerst, dann Umsetzung.
+
+**Planning-Ergebnis (2026-10-22, freigegeben von Andreas nach Mockup-Vergleich):**
+- **Präzisierung „Wobbeln" (Andreas):** gemeint ist nur, dass die **Links-rechts-Abstände benachbarter Karten** beim
+  Resize nicht konstant bleiben. Im Mockup (heutige Logik nachgebaut) bleiben sie konstant, auf Staging nicht → die
+  Ursache steckt in der echten App, nicht in der Anordnung. Sie ist unbekannt, verschwindet aber sehr wahrscheinlich mit
+  der JS-Positionierung.
+- **Gewählt: Variante B** – Anordnung bleibt wie heute (jede Reihe zentriert), aber reines CSS-Flex statt
+  `position:absolute` + `getCardPos`, Sortier-Glide per FLIP (Web Animations API).
+- **CSS (Delia, `style/style.css`):** `div#cbox` → `display:flex`, `flex-wrap:wrap`, `justify-content:center`,
+  `align-content:flex-start`, `gap:15px 10px`; `transition:height` raus (Höhe springt, Entscheidung auf Staging; Gleiten
+  wäre per FLIP-Höhe nachrüstbar). `.c`: `position:absolute`/`left`/`margin` raus, **`position:relative`** rein (Delete-
+  Button und Name sind absolut positioniert). `.c_move` und `#cbox.no-anim .c` entfallen. Hinweis: `#cbox` hat
+  `sizefit` und bekommt `.mobile`/`.desktop`.
+- **JS (Fred, `script/script.js`):** `getCardPos` und alle `left/top`-/`cbox.style.height`-Schreibzugriffe entfernen.
+  DOM-Reihenfolge = Anzeige-Reihenfolge: nur falsch stehende Karten per `appendChild` verschieben (sonst starten
+  Wackel-/Fade-in-Animationen neu). FLIP: First (inkl. laufendem Transform) → laufende `flip`-Animationen abbrechen →
+  DOM ändern → Last → `animate()` mit `id:'flip'`, 1 s, `ease`; nur Karten mit First-Position. `cardValueChanged`
+  über das FLIP-Delta auslösen (Verzögerung 1 s bei Bewegung) und per `animationend` wieder entfernen. Anonym-Modus:
+  kein FLIP. `handleResize`: nur `adaptToDevice` + `showCardUsage`, laufende `flip`-Animationen beenden.
+  `prefers-reduced-motion`: kein FLIP.
+- **Schmale Bildschirme (< 800 px):** heute beginnt die letzte Reihe links im Raster, mit B wird sie zentriert
+  (bewusst, wie Desktop; auf Staging prüfen).
+- **E2E (Fred):** zuerst neuer Test „Abstand benachbarter Karten bleibt beim Resize konstant" (Breiten-Sweep, ±1 px) –
+  muss auf dem **heutigen** Stand fehlschlagen (belegt, dass er Andreas' Wobbeln erfasst), nach dem Umbau grün.
+  `resize-no-anim.spec.ts` auf FLIP umstellen (kein laufendes `flip` nach Resize). Neu: Umsortieren löst `flip` aus;
+  Anonym-Modus löst keins aus. `card-reuse.spec.ts` bleibt (Kommentar anpassen).
+- **Ablauf:** Delia legt `feature/B-41-flex-layout` von `release` an und committet das CSS → Fred: Test zuerst, dann JS,
+  E2E, `?v=`-Bumps (`style.css`, `script.js` in `board.html`/`init.html`) → Review durch Kai → Andreas auf Staging.
+- **AK:** Abstände benachbarter Karten beim Resize konstant (E2E); Umsortieren gleitet, auch über Reihen hinweg; kein
+  Gleiten beim Resize; Anonym-Modus ohne Gleiten; kein `getCardPos`/`position:absolute` mehr im Kartenbereich; alle
+  E2E grün.
 
 **Ursprüngliches Wobble-Finding (bleibt als Begründung):**
 Nach B-39 (Karten springen beim Resize sofort statt zu gleiten) fiel auf: Beim langsamen Ziehen der Fensterbreite
