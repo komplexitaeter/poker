@@ -7,11 +7,7 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 4** (ab 2026-10-22): zwei Analyse-Spikes, Umsetzung optional, wenn sich im Sprint zeigt, dass es sinnvoll ist.
-- **B-31 (Spike):** API-Bestandsaufnahme / HTTP-Semantik. Ergebnis: priorisierte Liste kleiner Verbesserungen
-  (u. a. B-11 GET→POST im Kontext). Kein REST-Redesign.
-- **B-09 (Analyse-Spike):** Wofür wird `pok_analytics_events_tbl` wirklich gebraucht (stats.php, Grafana) und
-  lässt sich das Schreiben der Events grundsätzlich reduzieren? Abhängigkeit: Grafana-Abfragen von Andreas.
+Kein aktiver Sprint – nächstes Planning offen (Kandidaten u. a. B-11 GET→POST, B-20 FPM/MySQL, B-26, B-27).
 
 Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
 
@@ -19,6 +15,9 @@ Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
 Abgeschlossen:
+- **Sprint 4** (2026-10-22): zwei Analyse-Spikes. B-31 (API-Review) → M1–M3 umgesetzt (letzte SQL-Konkatenation raus,
+  JSON-Header, 403 statt leerem 200 bei ungültigem Team), live. B-09 (Analytics) → Ergebnis „so lassen" (Tabelle nur
+  94 MB). B-11 (GET→POST = M4) bewusst herausgehalten, eigener Sprint.
 - **Sprint 3** (2026-10-20): B-21, B-15, B-01, B-02 – nach `master` gemergt. Beim Staging-Test eine B-01-Regression
   gefunden und behoben (`mkey` kam durch die Prepared-Statement-Umstellung als Zahl statt String → Karten-Animation
   und -Größe kaputt; E2E-Regressionstest ergänzt). Live inkl. nginx Basic Auth für `stats.php`
@@ -61,7 +60,7 @@ Abgeschlossen:
 | B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
-| B-31 | API-Review / HTTP-Semantik (Spike) | im Sprint |
+| B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 offen) |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
