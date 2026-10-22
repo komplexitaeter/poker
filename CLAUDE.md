@@ -179,9 +179,15 @@ geben einen Branch zurück; sie mergen nie selbst.
 |---|---|---|
 | (Hauptsitzung) | **Kai (KO)** | Kommunikation, Koordination, Review, Merges nach `release`, `master`-PR |
 | `backend` | **Ben (BE)** | PHP, SQL, API (`api/`, `stats.php`, Schema) |
-| `frontend` | **Fred (FE)** | HTML, JS, CSS, ausgelieferte Assets |
+| `frontend` | **Fred (FE)** | JS/App-Logik, API-Anbindung, ausgelieferte Assets (`src/vendor/`); HTML-/JS-Umsetzung, soweit nicht gestalterisch |
+| `design` | **Delia (DES)** | Look & Feel, Design-System/Tokens, CSS (`style/style.css`), visuelle HTML-Struktur, Responsive/Mobile, Barrierefreiheit – gestaltet **und** setzt selbst um |
 | `security-reviewer` | **Sina (SEC)** | prüft vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung, GET-Schreibzugriffe |
 | `e2e-tester` | **Tessa (E2E)** | startet die App lokal, führt E2E-Tests aus oder erweitert sie |
+
+Abgrenzung **Delia ↔ Fred**: Delia besitzt die visuelle Ebene (Look & Feel, CSS, Design-relevantes Markup,
+Responsive). Fred besitzt JS-Verhalten und API-Anbindung. Braucht eine Gestaltung neues JS-Verhalten (z. B. ein
+Overlay öffnen), beschreibt Delia es und stimmt sich mit Fred ab; berührt etwas Datenmodell/`cards.json`/API, kommt
+Ben dazu. Bei gemeinsamer Arbeit an `style.css`/`board.html` kurz abstimmen (Merge-Konflikte vermeiden).
 
 Regel: Reviewt wird immer von einem anderen Agenten als dem Autor.
 
