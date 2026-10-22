@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
@@ -32,7 +33,7 @@ if ($result = $sql->get_result()) {
 
 if ($is_in_db) {
     if (strlen($name) == 0) {
-        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED' WHERE id = ? and team_id = ?");
+        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED', card_key = null WHERE id = ? and team_id = ?");
         $sql->bind_param('ss', $id, $t);
     } else if ($type == 'PLAYER') {
         $sql = $link->prepare("SELECT if (count(1) = sum(if(p.card_key is not null,1,0)), 1, 0) all_players_ready
@@ -48,7 +49,7 @@ if ($is_in_db) {
         $sql = $link->prepare("UPDATE pok_players_tbl ppt 
                                         set ppt.name = ?,
                                             ppt.player_type = ?, 
-                                            ppt.card_key = if(?=1,'break01',card_key)
+                                            ppt.card_key = if(? = 1 and card_key is null, 'break01', card_key)
                                       WHERE ppt.id = ? and ppt.team_id = ?");
         $sql->bind_param('ssiss', $name, $type,$obj->all_players_ready, $id, $t);
     }  else {

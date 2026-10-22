@@ -76,6 +76,19 @@ function require_team($t, $link) {
     }
 }
 
+/*
+ * Rejects any request that is not a POST with HTTP 405 (empty body). Writing endpoints
+ * call this right after the requires so that state changes can no longer be triggered by a
+ * plain GET (B-11). Parameters stay in the URL query, so the endpoints keep reading them via
+ * INPUT_GET / $_GET; only the HTTP method is constrained.
+ */
+function require_post() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        exit;
+    }
+}
+
 function sort_players_by_sequence(array $players)
 {
     $ret_val = array();

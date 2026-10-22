@@ -145,58 +145,60 @@ function pushJediBtn() {
     let state = jediBtn.getAttribute("data-state");
     if (state === "0") {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + t;
-        fetch(url).then(()=>{pushDomChange();});
+        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
     }
     if (state === "1") {
         let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + t;
-        fetch(url).then(()=>{pushDomChange();});
+        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
     }
 }
 
 function toggle_feedback_box(setOn) {
     let e = document.getElementById('feedback_box');
-
-    if (setOn) {
-        e.style.display = 'block';
-        document.getElementById('feedback_btn').classList.add('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/feedback_on.svg'
-        document.getElementById('feedback_txt').focus();
-        feedback_star_blink();
-    }
-    else {
-        e.style.display = 'none';
-        document.getElementById('fb_star_1').classList.remove('blink');
-        document.getElementById('fb_star_2').classList.remove('blink');
-        document.getElementById('fb_star_3').classList.remove('blink');
-        document.getElementById('fb_star_4').classList.remove('blink');
-        document.getElementById('fb_star_5').classList.remove('blink');
-        document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/feedback.svg';
+    if (e !== null) {
+        if (setOn) {
+            e.style.display = 'block';
+            document.getElementById('feedback_btn').classList.add('topnav_btn_on');
+            document.getElementById('feedback_btn').src = 'src/feedback_on.svg'
+            document.getElementById('feedback_txt').focus();
+            feedback_star_blink();
+        }
+        else {
+            e.style.display = 'none';
+            document.getElementById('fb_star_1').classList.remove('blink');
+            document.getElementById('fb_star_2').classList.remove('blink');
+            document.getElementById('fb_star_3').classList.remove('blink');
+            document.getElementById('fb_star_4').classList.remove('blink');
+            document.getElementById('fb_star_5').classList.remove('blink');
+            document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
+            document.getElementById('feedback_btn').src = 'src/feedback.svg';
+        }
     }
 }
 
 function toggle_topic_box(setOn) {
     let e = document.getElementById('topic_box');
+    if (e !== null) {
+        if (setOn) {
+            if (gTopicChangePending) {
+                document.getElementById("topic_reset").disabled = false;
+                document.getElementById("topic_save").disabled = false;
+            } else {
+                document.getElementById("topic_reset").disabled = true;
+                document.getElementById("topic_save").disabled = true;
+                document.getElementById("topic_txt").value = gTopic;
+            }
 
-    if (setOn) {
-        if (gTopicChangePending) {
-            document.getElementById("topic_reset").disabled = false;
-            document.getElementById("topic_save").disabled = false;
-        } else {
-            document.getElementById("topic_reset").disabled = true;
-            document.getElementById("topic_save").disabled = true;
-            document.getElementById("topic_txt").value = gTopic;
+            e.style.display = 'block';
+            document.getElementById('topic_btn').classList.add('topnav_btn_on');
+            document.getElementById('topic_btn').src = 'src/topic_on.svg'
+            document.getElementById('topic_txt').select();
         }
-
-        e.style.display = 'block';
-        document.getElementById('topic_btn').classList.add('topnav_btn_on');
-        document.getElementById('topic_btn').src = 'src/topic_on.svg'
-        document.getElementById('topic_txt').select();
-    }
-    else {
-        e.style.display = 'none';
-        document.getElementById('topic_btn').classList.remove('topnav_btn_on');
-        document.getElementById('topic_btn').src = 'src/topic.svg';
+        else {
+            e.style.display = 'none';
+            document.getElementById('topic_btn').classList.remove('topnav_btn_on');
+            document.getElementById('topic_btn').src = 'src/topic.svg';
+        }
     }
 }
 
@@ -279,7 +281,7 @@ function toggleSurvey(forceSurvey){
             toggleStyleClass(survey, 'survey-closed', 'survey-open');
             toggleStyleClass(surveyArrow, 'up', 'down');
             survey.setAttribute('data-state', "closed");
-            fetch(url).then(()=>{
+            fetch(url, { method: 'POST' }).then(()=>{
                 setTimeout(()=>{updateDao(false)}, 100);
             });
             break;
@@ -358,7 +360,7 @@ function fillResultsBars(myJson, needsFilling, wasFilled, fillBars, interval){
 
 function vote(option_id){
     let url = './api/update_user.php?id=' + localStorage.getItem('SID') + '&survey_vote='+option_id;
-    fetch(url).then( () => {
+    fetch(url, { method: 'POST' }).then( () => {
         gSurvey = "VOTED";
         generateSurveyContents();
     });
@@ -397,7 +399,7 @@ function feedback_submit() {
     fetch('./api/feedback.php?id=' + localStorage.getItem('SID')
         + '&stars=' + fb_star
         + '&text=' + fb_text
-    ).then();
+    , { method: 'POST' }).then();
 }
 
 function topicChanged() {
@@ -457,7 +459,7 @@ function toggleCSet(e) {
 
 function updateCardset(cardSetDec) {
     let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + t;
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function preSet() {
@@ -497,7 +499,7 @@ function changeSortOrder() {
     let e = document.getElementById("cet_order_by");
     const url = './api/update_results_order.php?t='+t+'&results_order='+e.value;
     let httpRequest = new XMLHttpRequest();
-    httpRequest.open("GET", url, false);
+    httpRequest.open("POST", url, false);
     httpRequest.send();
     pushDomChange();
 }
@@ -506,7 +508,7 @@ function changeAnonymity() {
     let e = document.getElementById("cet_anonymous");
     const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+e.value;
     let httpRequest = new XMLHttpRequest();
-    httpRequest.open("GET", url, false);
+    httpRequest.open("POST", url, false);
     httpRequest.send();
     pushDomChange();
 }
@@ -529,7 +531,7 @@ function updateTeamName() {
     document.getElementById('cet_change_name').disabled = true;
 
     let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + t;
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function updateUserName() {
@@ -538,7 +540,7 @@ function updateUserName() {
     document.getElementById('cet_change_user').disabled = true;
 
     let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function toggleUserType() {
@@ -546,7 +548,7 @@ function toggleUserType() {
     if (gLastJson.player_type === 'PLAYER') playerType = 'OBSERVER';
 
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 /**

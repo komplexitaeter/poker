@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require_post();
 
 $id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
 $color_mode = filter_input(INPUT_GET, "color_mode", FILTER_SANITIZE_FULL_SPECIAL_CHARS	);
