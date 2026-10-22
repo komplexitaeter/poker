@@ -155,48 +155,50 @@ function pushJediBtn() {
 
 function toggle_feedback_box(setOn) {
     let e = document.getElementById('feedback_box');
-
-    if (setOn) {
-        e.style.display = 'block';
-        document.getElementById('feedback_btn').classList.add('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/feedback_on.svg'
-        document.getElementById('feedback_txt').focus();
-        feedback_star_blink();
-    }
-    else {
-        e.style.display = 'none';
-        document.getElementById('fb_star_1').classList.remove('blink');
-        document.getElementById('fb_star_2').classList.remove('blink');
-        document.getElementById('fb_star_3').classList.remove('blink');
-        document.getElementById('fb_star_4').classList.remove('blink');
-        document.getElementById('fb_star_5').classList.remove('blink');
-        document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
-        document.getElementById('feedback_btn').src = 'src/feedback.svg';
+    if (e !== null) {
+        if (setOn) {
+            e.style.display = 'block';
+            document.getElementById('feedback_btn').classList.add('topnav_btn_on');
+            document.getElementById('feedback_btn').src = 'src/feedback_on.svg'
+            document.getElementById('feedback_txt').focus();
+            feedback_star_blink();
+        }
+        else {
+            e.style.display = 'none';
+            document.getElementById('fb_star_1').classList.remove('blink');
+            document.getElementById('fb_star_2').classList.remove('blink');
+            document.getElementById('fb_star_3').classList.remove('blink');
+            document.getElementById('fb_star_4').classList.remove('blink');
+            document.getElementById('fb_star_5').classList.remove('blink');
+            document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
+            document.getElementById('feedback_btn').src = 'src/feedback.svg';
+        }
     }
 }
 
 function toggle_topic_box(setOn) {
     let e = document.getElementById('topic_box');
+    if (e !== null) {
+        if (setOn) {
+            if (gTopicChangePending) {
+                document.getElementById("topic_reset").disabled = false;
+                document.getElementById("topic_save").disabled = false;
+            } else {
+                document.getElementById("topic_reset").disabled = true;
+                document.getElementById("topic_save").disabled = true;
+                document.getElementById("topic_txt").value = gTopic;
+            }
 
-    if (setOn) {
-        if (gTopicChangePending) {
-            document.getElementById("topic_reset").disabled = false;
-            document.getElementById("topic_save").disabled = false;
-        } else {
-            document.getElementById("topic_reset").disabled = true;
-            document.getElementById("topic_save").disabled = true;
-            document.getElementById("topic_txt").value = gTopic;
+            e.style.display = 'block';
+            document.getElementById('topic_btn').classList.add('topnav_btn_on');
+            document.getElementById('topic_btn').src = 'src/topic_on.svg'
+            document.getElementById('topic_txt').select();
         }
-
-        e.style.display = 'block';
-        document.getElementById('topic_btn').classList.add('topnav_btn_on');
-        document.getElementById('topic_btn').src = 'src/topic_on.svg'
-        document.getElementById('topic_txt').select();
-    }
-    else {
-        e.style.display = 'none';
-        document.getElementById('topic_btn').classList.remove('topnav_btn_on');
-        document.getElementById('topic_btn').src = 'src/topic.svg';
+        else {
+            e.style.display = 'none';
+            document.getElementById('topic_btn').classList.remove('topnav_btn_on');
+            document.getElementById('topic_btn').src = 'src/topic.svg';
+        }
     }
 }
 
