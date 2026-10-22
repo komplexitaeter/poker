@@ -92,7 +92,7 @@ Abgeschlossen:
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
-| B-41 | Karten „wobbeln" beim Fenster-Resize (Abstände springen) | neu |
+| B-41 | Karten „wobbeln" beim Fenster-Resize (Abstände springen) | analysiert → Lösung in B-40/B-37 |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -671,6 +671,10 @@ Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B
 **struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
 nach B-36, ggf. zusammen mit B-14.
 
+**Querverweis (Delia, 2026-10-22):** Die konkrete Layout-Engine-Umstellung des Kartenbereichs (von JS-`getCardPos`/
+`position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
+sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
+
 ### B-41 Karten „wobbeln" beim Fenster-Resize (Abstände springen)
 Nach B-39 (Karten springen beim Resize sofort statt zu gleiten) fiel auf: Beim langsamen Ziehen der Fensterbreite
 „wobbeln" die Karten – die Abstände werden kleiner, größer, wieder kleiner. **Kein Regressionsbug** von B-39: Die
@@ -693,6 +697,36 @@ die „kein Gleiten beim Resize"-Eigenschaft aus B-39 bleibt.
 **Richtung:** Delia untersucht (Throttle/Debounce des Resize, gleichmäßige Zentrierung ohne Sägezahn, ggf. echtes
 CSS-Layout mit `gap`+`justify-content` statt JS-Pixelmath) und schlägt einen kleinen Fix vor. Die saubere
 Gesamtlösung gehört zu „Kartenlayout verbessern"/Responsive (B-40/B-37).
+
+**Analyse-Ergebnis (Delia, 2026-10-22): kein kleiner sauberer Fix – Lösung in B-40/B-37.** Verifiziert per
+Code-Analyse + numerischer Simulation von `getCardPos` über einen Breiten-Sweep:
+- Das Wobbeln entsteht am **Umbruchpunkt** (alle 110 px Breite): eine Karte bricht in die nächste Zeile, jede Zeile
+  wird unabhängig neu zentriert → Sprung ≈ halbe Slotbreite (~55 px). Innerhalb einer Zeile ist der Abstand konstant,
+  dort gibt es kein Wobbeln; sobald alle Karten in **eine** Zeile passen, driftet der Block nur noch sauber mittig.
+- **Event-Frequenz ist NICHT die Ursache** (Hypothese widerlegt): Throttle/Debounce ändert nichts am Sägezahn, der in
+  der Stufenfunktion steckt. Ein reiner Trailing-Debounce (erst nach Drag-Ende neu positionieren) entfernt zwar das
+  sichtbare Wobbeln, bringt aber Lag **und** horizontales Scrollbar-Flackern beim Schmaler-Ziehen (kein
+  `overflow-x`-Clipping) – nicht besser.
+- Der 110-px-Slot vs. echte 100-px-Karte ergibt nur einen konstanten 2-px-Spalt, **kein** Wobbeln – Angleichen löst
+  nichts.
+- **Das Umbrechen-und-Neuzentrieren ist jedem Wrap-Layout eigen** (auch CSS `flex-wrap` springt an seinen Grenzen).
+  Wegrechnen geht nur, indem man das Layout vom JS-Pixelmath auf **echtes CSS** umstellt.
+
+**Wurzel-Lösung (Vorschlag für B-40/B-37), mit Fred gemeinsam zu schneiden:**
+1. Karten von `position:absolute` + JS-`left/top` (`getCardPos`) auf normalen Flow im bestehenden Flex-Container
+   `#cbox` (`display:inline-flex; flex-wrap:wrap; justify-content:center`) umstellen, `gap` statt JS-Margin,
+   `getCardPos` und die manuelle `#cbox`-Höhe entfallen. Umbruch/Zentrierung macht der Browser kontinuierlich und
+   korrekt; der 110-vs-100-Mismatch verschwindet.
+2. **Sortier-Glide erhalten (harte Vorgabe):** Die 1-s-`left/top`-Transition (`.c_move`) funktioniert ohne
+   Absolut-Positionierung nicht mehr → Ersatz per **FLIP** (First-Last-Invert-Play: vor Reorder Positionen messen,
+   nach Reflow per `transform` an alte Stelle setzen, auf `transform:none` animieren). Das ist der eigentliche
+   Zusatzaufwand und der Grund, warum es nicht in ein kleines B-41 passt.
+3. **Kein Glide beim Resize (B-39) bleibt:** beim Resize einfach keine FLIP-Animation auslösen (analog zum heutigen
+   `.no-anim`). Aufwand/Risiko mittel (FLIP + E2E, Animation flaky-anfällig), aber die einzige Lösung, die das Wobbeln
+   glättet UND den Glide erhält. Berührt JS-Verhalten → Fred mit einbinden; CSS/Tokens/Responsive macht Delia.
+
+Optionaler Mini-Hygiene-Gewinn (kein B-41-Fix, entfernt das Wobbeln NICHT): `requestAnimationFrame`-Coalescing des
+Resize-Handlers (max. ein Reposition pro Frame) – bei der B-40-Umstellung mitnehmen.
 
 ### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
 Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).
