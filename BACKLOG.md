@@ -39,7 +39,7 @@ Abgeschlossen:
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
 | B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
-| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | im Sprint (Analyse) |
+| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
 | B-11 | Schreibende API-Aufrufe per POST statt GET | neu |
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
@@ -177,6 +177,15 @@ Kanten: `LINK_SIMULATION_INFOS`/`LINK_SIMULATION_LOGIN` werden von stats.php ang
 genutzt. **Tendenz (Andreas, 2026-10-22): so lassen** – die Schreib-Reduktion bringt wenig, das reine Wachstum ist
 voraussichtlich klein. Nächster Schritt: Tabellengröße auf dem Server messen (SQL vorbereitet); bei Bedarf später ein
 Retention-/Pruning-Job auf `creation_date`. Grafana-`event_code`s weiterhin offen.
+
+**Größen-Messung (Live, 2026-10-22):** ~1,19 Mio. Zeilen, **94 MB** (76 MB Daten + 18 MB Index), Tracking seit
+2021-03-23 (~5,5 Jahre). Normale Tagesrate ~700–1.400 Events. **Entscheidung (Andreas): so lassen** – das Wachstum
+ist vernachlässigbar, kein Pruning-Job nötig. Falls die Tabelle irgendwann doch stört, genügt ein einfacher
+Lösch-Job auf `creation_date` (> N Jahre). Beobachtung am Rande: Tagesausreißer 2026-10-13 mit 86.580 Events
+(sonst ~1k); `api/measure_event.php` ist unauthentifiziert und kann von Bots vollgespammt werden – bei der
+Tabellengröße folgenlos, passt zum geheime-URL-Modell. Offene Nebenpunkte (kein Teil von B-09, nur notiert): tote
+`stats.php`-Spalten `LINK_SIMULATION_*` (dauerhaft 0) und die nicht-gelesenen `event_code`s könnten bei Gelegenheit
+in `stats.php` aufgeräumt werden.
 
 ### B-10 `poker-msg` modernisieren und absichern
 Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
