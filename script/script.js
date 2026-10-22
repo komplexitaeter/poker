@@ -60,7 +60,7 @@ function getBrowserWidth(){
 
 function newRound() {
     let url = './api/newround.php?t=' + t;
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
     toggleMobileMenu("closed");
 }
 
@@ -140,7 +140,7 @@ function controlsDsp(playerType) {
 
 function deletePlayer(e) {
     let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + t;
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function updateSelectedC(currKey) {
@@ -166,7 +166,7 @@ function setC(e) {
     else
         url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + t;
 
-    if (url !== null) fetch(url).then(()=>{pushDomChange();});
+    if (url !== null) fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function toggleC(cardId, flag) {
@@ -706,7 +706,7 @@ function becomeUser(type) {
     let name = document.getElementById("nameinput").value;
     if (name.length > 0) {
         let url = './api/name.php?id=' + localStorage.getItem('SID') + '&type=' + type + '&name=' + encodeURIComponent(name) + '&t=' + t;
-        fetch(url).then(() => {
+        fetch(url, { method: 'POST' }).then(() => {
             pushDomChange();
         });
     }
@@ -732,7 +732,7 @@ function measureEvent(eventCode) {
     const url = "./api/measure_event.php?id="+sid
             +"&event_code="+eventCode
             +"&display_type="+gDisplayType;
-    fetch(url).then();
+    fetch(url, { method: 'POST' }).then();
 }
 
 
@@ -765,7 +765,7 @@ function switchColorMode(){
     else gColorMode = "dark";
     measureEvent("USE_COLOR_SWITCH");
     setColor();
-    fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&color_mode=' + gColorMode).then();
+    fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&color_mode=' + gColorMode, { method: 'POST' }).then();
 }
 
 
@@ -833,7 +833,7 @@ function hideTeaser(updateUser=true) {
     let e = document.getElementById("cta_teaser");
 
     if (updateUser && !e.classList.contains("hidden")) {
-        fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&hide_teaser=1').then();
+        fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&hide_teaser=1', { method: 'POST' }).then();
     }
 
     addStyleClass(e, "hidden");
@@ -926,23 +926,23 @@ function updateStopwatchInterval() {
 
 function switchStopwatchVisiblity(){
     let url = './api/timer.php?t=' +t + '&action=toggle_visibility';
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
     measureEvent("TOGGLE_TIMER");
 }
 
 function stopwatchStart(){
     let url = './api/timer.php?t=' + t + '&action=start';
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function stopwatchPause(){
     let url = './api/timer.php?t=' + t + '&action=pause';
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function stopwatchReset(){
     let url = './api/timer.php?t=' + t + '&action=reset';
-    fetch(url).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 
@@ -1028,10 +1028,10 @@ function toggleOrderBy() {
     let url = './api/update_results_order.php?t='+t+'&results_order=';
     if (gResultOder === 'CHOOSE:SEQUENCE') {
         url += 'CHOOSE:NAME';
-        fetch(url).then(()=>{pushDomChange();});
+        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
     } else if (gResultOder === 'CHOOSE:NAME') {
         url += 'CHOOSE:SEQUENCE';
-        fetch(url).then(()=>{pushDomChange();});
+        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
     }
 }
 
@@ -1245,7 +1245,7 @@ function showDeleteUserOverlay(openIt=true) {
 
 function deleteUser() {
     let url = './api/delete_user.php?id=' + sid;
-    fetch(url).then(()=>{
+    fetch(url, { method: 'POST' }).then(()=>{
         localStorage.clear();
         sid = '-1';
         pushDomChange();
@@ -1261,7 +1261,7 @@ function getBrowserLanguage() {
 
 function getPromo() {
     if (getBrowserLanguage().startsWith('de') && !gPromoInitiated) {
-        fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + gDisplayType)
+        fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + gDisplayType, { method: 'POST' })
             .then(response => response.json())
             .then(promoData => {
                 initPromo(
@@ -1294,12 +1294,12 @@ function initPromo(promoId, playoutDelaySec, promoHeadline, promoImgUrl, promoLi
 
     setTimeout(function () {
         promoTab.classList.remove('promo-hidden');
-        fetch(url+"played_out").then();
+        fetch(url+"played_out", { method: 'POST' }).then();
     }, playoutDelaySec * 1000);
 
     promoQuestionSpan.addEventListener('mouseover', function () {
         promoTab.classList.add('promo-expanded');
-        fetch(url+"expanded").then();
+        fetch(url+"expanded", { method: 'POST' }).then();
     });
 
     promoTab.addEventListener('mouseleave', function () {
@@ -1309,19 +1309,19 @@ function initPromo(promoId, playoutDelaySec, promoHeadline, promoImgUrl, promoLi
     promoClose.addEventListener('click', function (e) {
         e.stopPropagation();
         promoTab.style.display = 'none';
-        fetch(url+"hided").then();
+        fetch(url+"hided", { method: 'POST' }).then();
     });
 
     promoImage.addEventListener('click', function (e) {
         e.stopPropagation();
         promoTab.style.display = 'none';
         window.open(promoLinkUrl, '_blank');
-        fetch(url+"converted_img").then();
+        fetch(url+"converted_img", { method: 'POST' }).then();
     });
     promoLink.addEventListener('click', function (e) {
         e.stopPropagation();
         promoTab.style.display = 'none';
         window.open(promoLinkUrl, '_blank');
-        fetch(url+"converted_a").then();
+        fetch(url+"converted_a", { method: 'POST' }).then();
     });
 }

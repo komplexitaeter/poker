@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require_post();
 
 $id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
 $event_code = substr(filter_input(INPUT_GET, "event_code", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,300);

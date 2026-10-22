@@ -5,7 +5,7 @@ function addTeam() {
     }
     else {
 
-        fetch('./api/addteam.php?t=' + encodeURIComponent(e.value))
+        fetch('./api/addteam.php?t=' + encodeURIComponent(e.value), { method: 'POST' })
             .then((response) => {
                 return response.json();
             })
