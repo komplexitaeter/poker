@@ -1080,9 +1080,17 @@ function toggleStyleClass(element, addClassName, removeClassName) {
 }
 
 function handleResize() {
+    if (!gLastJson) return;
+    // B-39: reposition cards instantly on resize instead of letting the
+    // c_move transition slide them for 1s. The no-anim class disables the
+    // transition while we set the new left/top, then two rAF ticks remove it
+    // again so real state changes keep animating as before.
+    const cbox = document.getElementById('cbox');
+    cbox.classList.add('no-anim');
     adaptToDevice();
     updatePlayersCards(gLastJson.players, false);
     showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
+    requestAnimationFrame(() => requestAnimationFrame(() => cbox.classList.remove('no-anim')));
 }
 
 function initDisplayHandling() {

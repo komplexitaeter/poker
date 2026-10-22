@@ -415,6 +415,12 @@ div#cbox {
     transition: left 1s, top 1s;
 }
 
+/* B-39: suppress the slide animation while cards are repositioned on resize,
+   so they jump straight to their new spot instead of gliding for 1s. */
+#cbox.no-anim .c {
+    transition: none;
+}
+
     .c_fade-in {
         animation: fade-in 0.9s forwards;
     }
