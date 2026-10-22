@@ -169,6 +169,15 @@ Tabelle wächst unbegrenzt. Aufbewahrungsdauer festlegen, alte Daten löschen od
 
 Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle heute? Welche `event_code`s nutzt Grafana?
 
+**Spike-Ergebnis (2026-10-22):** Einziger Schreiber `api/measure_event.php` (ein GET je Event, fire-and-forget),
+**kein hochfrequentes Event** (kein Resize-/Poll-/Pull-Tracking) – Volumen entsteht nur durch viele Teilnehmer ×
+Sessions, dominiert von `BOARD_ON_LOAD`. Einziger Repo-Leser: `stats.php` (14-Tage-Fenster). Grafana extern. Tote
+Kanten: `LINK_SIMULATION_INFOS`/`LINK_SIMULATION_LOGIN` werden von stats.php angezeigt, aber nirgends erzeugt
+(dauerhaft 0); `INIT_ON_LOAD`/`OPEN_TOPIC_BOX`/`OPEN_USER_SETTINGS_BOX` werden erzeugt, aber von keinem Repo-Leser
+genutzt. **Tendenz (Andreas, 2026-10-22): so lassen** – die Schreib-Reduktion bringt wenig, das reine Wachstum ist
+voraussichtlich klein. Nächster Schritt: Tabellengröße auf dem Server messen (SQL vorbereitet); bei Bedarf später ein
+Retention-/Pruning-Job auf `creation_date`. Grafana-`event_code`s weiterhin offen.
+
 ### B-10 `poker-msg` modernisieren und absichern
 Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
 oder Nachrichtengröße. Läuft nicht als root, Abhängigkeiten aktualisieren oder Alternative prüfen.
@@ -464,3 +473,11 @@ Fehler, Auffälligkeiten. Ergebnis: eine **priorisierte Liste kleiner, einzeln d
 **Kein REST-Redesign** (widerspricht dem pragmatischen Grundsatz; hoher Aufwand/Risiko an der Live-App bei kaum
 Nutzerwert). Umsetzung einzelner Punkte optional im selben Sprint, wenn sie sich als lohnend zeigen; sonst werden sie
 als eigene kleine Backlog-Einträge priorisiert.
+
+**Spike-Ergebnis (2026-10-22):** Team-Check-Abdeckung nach B-01 **vollständig** (alle team-bezogenen Schreib-Endpunkte
+rufen `validate_team()` vor dem Write; Endpunkte ohne VT sind user-/SID-scoped) – keine Sicherheitslücke. Vorbilder im
+Repo: `update_promo.php` (saubere Statuscodes), `update_topic.php` (bereits POST). Maßnahmen: **M1** Fehler-Contract
+(leerer 200 → Statuscodes), **M2** JSON-Header (`addteam.php`, `get_promo.php`), **M3** letzte SQL-Konkatenation in
+`update_user.php`, **M4 = B-11** GET→POST (~30 fetch-Stellen, eigener Sprint), **M5** Umbenennungen/Konsolidierung
+(nur notiert, u. a. `get_promo.php` ist faktisch `create_promo`). **In Umsetzung (Sprint 4):** M2 + M3 + M1-Minimal
+(403 statt leerem 200 bei ungültigem Team) auf `feature/B-31-api-hygiene`. Kein REST-Redesign.
