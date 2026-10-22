@@ -67,6 +67,7 @@ Abgeschlossen:
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
 | B-32 | CI: `playwright install --with-deps` beschleunigen | neu |
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt (release) |
+| B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -560,3 +561,13 @@ Zusätzlich fiel auf: Beim **Verlassen/Entfernen** wird nur `player_type='REMOVE
 unverändert; ein entfernter Spieler hat keine Karte mehr; ein kartenloser Spieler, der in eine fertige Runde
 (wieder) eintritt, bekommt weiterhin `break01`. E2E-Test deckt „Umbenennen behält Karte" ab. Reiner Backend-Fix,
 kein `?v=`-Bump.
+
+### B-34 Synchrone XMLHttpRequest (deprecated) auf async umstellen
+Browser-Konsole meldet „Synchronous XMLHttpRequest on the main thread is deprecated" (Bestandscode, nicht neu).
+Drei synchrone XHR (`open(..., false)`):
+- `script/script.js:1050` `loadTextFileAjaxSync()` (via `loadJSON()`) – lädt eine JSON-Konfig synchron. Der Name sagt's
+  schon; Refactor etwas größer, weil der Aufrufer einen synchronen Rückgabewert erwartet (→ async/await oder die
+  Config anders laden).
+- `script/script_feedback.js:502` (Sortierung ändern) und `:511` (Anonymität umschalten) – trivial auf async
+  `fetch(...).then()` umstellbar.
+Harmlos (nur Konsolen-Warnung; synchroner Request blockiert kurz den Main-Thread). **Niedrige Priorität.**
