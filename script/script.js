@@ -240,30 +240,38 @@ function updateOrderByButtons(results_order, allPlayersReady, anonymousMode) {
     gResultOder = results_order;
 }
 
-function getCardPos(pos, cardsCount) {
-    let cardsWidth = 110;
-    let cardsHeight = Math.round(cardsWidth * 1.48);
-    let cardsInCol =  Math.min(Math.floor(gScreenWidth / cardsWidth), cardsCount);
-    let posInCol = ( pos % cardsInCol );
-    let row = Math.floor(pos / cardsInCol);
-    let cardsInCurrentCol = cardsInCol;
-    let rows = Math.floor((cardsCount-1) / cardsInCol ) + 1;
-    if (row + 1 >= rows) {
-        cardsInCurrentCol = cardsCount - ((row)*cardsInCol);
-    }
-    let margin = Math.round( ( gScreenWidth - (cardsInCurrentCol * cardsWidth))/2 );
-    if (gDisplayType === "xs" || gDisplayType === "sm") {
-        margin = Math.round( ( gScreenWidth - (cardsInCol * cardsWidth))/2 );
-    }
-    let leftPos = margin + posInCol * cardsWidth;
-    let topPos = row * cardsHeight;
-    let totalYDim = rows * cardsHeight;
-    //console.log('pos='+pos+' cardsInCol='+cardsInCol+' posInCol='+posInCol+' row='+row);
-    return {
-        left: leftPos + 'px',
-        top: topPos + 'px',
-        totalYDim: totalYDim + 'px'};
+/* B-41: The cards are laid out by CSS (#cbox is a centered flex-wrap container),
+ * the DOM order is the display order. When the order changes, the cards glide to
+ * their new place via FLIP (First, Last, Invert, Play) with the Web Animations API.
+ * When the number of rows changes, the height of #cbox glides along. Resizing the
+ * window does not animate anything (B-39). */
+const CARD_ANIMATION_MS = 1000;
 
+function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function finishAnimations(element, animationId) {
+    element.getAnimations().forEach(animation => {
+        if (animation.id === animationId) animation.finish();
+    });
+}
+
+function cancelAnimations(element, animationId) {
+    element.getAnimations().forEach(animation => {
+        if (animation.id === animationId) animation.cancel();
+    });
+}
+
+/* Card positions relative to #cbox, including a running FLIP transform. */
+function getCardPositions(cardsDiv) {
+    const boxRect = cardsDiv.getBoundingClientRect();
+    const positions = new Map();
+    Array.from(cardsDiv.children).forEach(card => {
+        const rect = card.getBoundingClientRect();
+        positions.set(card, { left: rect.left - boxRect.left, top: rect.top - boxRect.top });
+    });
+    return positions;
 }
 
 function removeCards(cardsDiv, players) {
@@ -274,7 +282,10 @@ function removeCards(cardsDiv, players) {
     });
 }
 
+/* Updates image and name of the existing cards; returns the cards whose
+ * revealed value changed (they get the shake animation). */
 function updateCards(cardsDiv, players) {
+    const valueChangedCards = [];
 
     Array.from(cardsDiv.children).forEach(card => {
 
@@ -286,61 +297,49 @@ function updateCards(cardsDiv, players) {
 
         let player = players.find(p => p.mkey === card.id);
 
-        const newPos = getCardPos(player.i, players.length);
-
         const srcStr = 'src/c_' + player.display_card_key + '.png';
-        const oldSrc = Array.from(card.getElementsByClassName('card_image'))[0].src;
+        const cardImage = card.getElementsByClassName('card_image')[0];
+        const oldSrc = cardImage.src;
         if (!oldSrc.includes(srcStr)) {
-            Array.from(card.getElementsByClassName('card_image'))[0].src = srcStr;
+            cardImage.src = srcStr;
             removeStyleClass(card, 'cardValueChanged');
             if (!oldSrc.includes('c_done') && !oldSrc.includes('c_prgrss') &&
                 !srcStr.includes('c_done') && !srcStr.includes('c_prgrss'))
             {
-                let animationDelay = 10;
-                if (players.length > 1 && (
-                    card.style.left !== newPos.left ||
-                    card.style.top !== newPos.top
-                )) animationDelay = 900;
-                setTimeout(function () {
-                    addStyleClass(card, 'cardValueChanged');
-                }, animationDelay);
+                valueChangedCards.push(card);
             }
         }
 
-        if (Array.from(card.getElementsByClassName('card_player_name'))[0].textContent !== player.name) {
-            Array.from(card.getElementsByClassName('card_player_name'))[0].textContent = player.name;
-        }
-
-        if (card.style.left !== newPos.left) {
-            card.style.left = newPos.left;
-        }
-        if (card.style.top !== newPos.top) {
-            card.style.top = newPos.top;
+        const nameSpan = card.getElementsByClassName('card_player_name')[0];
+        if (nameSpan.textContent !== player.name) {
+            nameSpan.textContent = player.name;
         }
     });
+
+    return valueChangedCards;
 }
 
 function createCardDiv(player, playersCount, isOnLoad) {
+    // size class right away, so the new card has its final size when the layout is measured
+    const sizeClass = (gDisplayType === "xs" || gDisplayType === "sm") ? 'mobile' : 'desktop';
+
     let newCard = document.createElement('div');
     newCard.id = player.mkey;
-    newCard.classList.add('c', 'sizefit');
+    newCard.classList.add('c', 'sizefit', sizeClass);
     if (!isOnLoad && playersCount>1) newCard.classList.add('c_fade-in');
-    const cardPos = getCardPos(player.i, playersCount);
-    newCard.style.left = cardPos.left;
-    newCard.style.top = cardPos.top;
 
     let cardImg = document.createElement('img');
-    cardImg.classList.add('background', 'sizefit', 'card_image');
+    cardImg.classList.add('background', 'sizefit', sizeClass, 'card_image');
     cardImg.src = 'src/c_' + player.display_card_key + '.png';
     newCard.appendChild(cardImg);
 
     let cardSpan = document.createElement('span');
-    cardSpan.classList.add('sizefit', 'card_player_name');
+    cardSpan.classList.add('sizefit', sizeClass, 'card_player_name');
     cardSpan.innerText = player.name;
     newCard.appendChild(cardSpan);
 
     let cardDeleteImg = document.createElement('img');
-    cardDeleteImg.classList.add('delete', 'sizefit');
+    cardDeleteImg.classList.add('delete', 'sizefit', sizeClass);
     cardDeleteImg.src = "./src/delete.png";
     cardDeleteImg.alt = "Delete";
     cardDeleteImg.onclick = deletePlayer;
@@ -349,30 +348,104 @@ function createCardDiv(player, playersCount, isOnLoad) {
     return newCard;
 }
 
-function addCards(cardsDiv, players, isOnLoad) {
-    let cardsHaveBeenAdded = false;
+/* Brings the cards into display order. Only cards that are out of place are
+ * moved: moving a node restarts its CSS animations (fade-in, shake). The cards
+ * that stay are the longest run already in the right relative order. */
+function arrangeCards(cardsDiv, orderedCards) {
+    const targetIndex = new Map(orderedCards.map((card, i) => [card, i]));
+    const current = Array.from(cardsDiv.children).map(card => targetIndex.get(card));
 
-    players.forEach(player => {
-        if (Array.from(cardsDiv.children).find(card => card.id === player.mkey) === undefined) {
-                cardsDiv.appendChild(createCardDiv(player, players.length, isOnLoad));
-                cardsHaveBeenAdded = true;
+    // longest increasing subsequence of the current target indexes (n is small, O(n^2) is fine)
+    const runLength = current.map(() => 1);
+    const previous = current.map(() => -1);
+    let best = -1;
+    for (let i = 0; i < current.length; i++) {
+        for (let j = 0; j < i; j++) {
+            if (current[j] < current[i] && runLength[j] + 1 > runLength[i]) {
+                runLength[i] = runLength[j] + 1;
+                previous[i] = j;
+            }
         }
-    });
+        if (best < 0 || runLength[i] > runLength[best]) best = i;
+    }
+    const staying = new Set();
+    for (let i = best; i >= 0; i = previous[i]) staying.add(current[i]);
 
-    return cardsHaveBeenAdded;
+    // from the end: insert every other card in front of its successor
+    let next = null;
+    for (let i = orderedCards.length - 1; i >= 0; i--) {
+        const card = orderedCards[i];
+        if (!staying.has(i)) cardsDiv.insertBefore(card, next);
+        next = card;
+    }
 }
 
-function updatePlayersCards(players, isOnLoad) {
-    let cardsHaveBeenAdded ;
+function updatePlayersCards(players, isOnLoad, anonymousMode) {
     let cardsDiv = document.getElementById("cbox");
+    const reducedMotion = prefersReducedMotion();
+    const flip = !anonymousMode && !reducedMotion;
+
+    // First: where the cards are now (mid-glide if a FLIP is running) and the current height
+    const firstPositions = getCardPositions(cardsDiv);
+    const hadCards = cardsDiv.children.length > 0;
+    const firstHeight = parseFloat(getComputedStyle(cardsDiv).height);
+    Array.from(cardsDiv.children).forEach(card => cancelAnimations(card, 'flip'));
+    cancelAnimations(cardsDiv, 'height');
 
     removeCards(cardsDiv, players);
-    updateCards(cardsDiv, players);
-    cardsHaveBeenAdded = addCards(cardsDiv, players, isOnLoad);
+    const valueChangedCards = updateCards(cardsDiv, players);
 
-    let newCardsDivHeight = getCardPos(players.length, players.length).totalYDim;
-    if (cardsDiv.style.height !== newCardsDivHeight) {
-        cardsDiv.style.height = newCardsDivHeight;
+    let cardsHaveBeenAdded = false;
+    const existingCards = new Map(Array.from(cardsDiv.children).map(card => [card.id, card]));
+    const orderedCards = players
+        .slice()
+        .sort((a, b) => a.i - b.i)
+        .map(player => {
+            let card = existingCards.get(player.mkey);
+            if (card === undefined) {
+                card = createCardDiv(player, players.length, isOnLoad);
+                cardsHaveBeenAdded = true;
+            }
+            return card;
+        });
+    arrangeCards(cardsDiv, orderedCards);
+
+    // Last + Invert + Play
+    const lastPositions = getCardPositions(cardsDiv);
+    const movedCards = new Set();
+    if (flip) {
+        firstPositions.forEach((first, card) => {
+            const last = lastPositions.get(card);
+            if (last === undefined) return; // removed
+            const dx = first.left - last.left;
+            const dy = first.top - last.top;
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+            movedCards.add(card);
+            card.animate(
+                [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+                { id: 'flip', duration: CARD_ANIMATION_MS, easing: 'ease' });
+        });
+    }
+
+    // the shake would be hidden by the glide, so it starts when the card has arrived
+    valueChangedCards.forEach(card => {
+        const delay = movedCards.has(card) ? CARD_ANIMATION_MS : 10;
+        setTimeout(() => {
+            addStyleClass(card, 'cardValueChanged');
+            card.addEventListener('animationend', function onShakeEnd(e) {
+                if (e.animationName !== 'shake') return;
+                removeStyleClass(card, 'cardValueChanged');
+                card.removeEventListener('animationend', onShakeEnd);
+            });
+        }, delay);
+    });
+
+    // the height glides when the number of rows changes (not on the first render)
+    const lastHeight = parseFloat(getComputedStyle(cardsDiv).height);
+    if (hadCards && !reducedMotion && Math.abs(firstHeight - lastHeight) >= 1) {
+        cardsDiv.animate(
+            [{ height: firstHeight + 'px' }, { height: lastHeight + 'px' }],
+            { id: 'height', duration: CARD_ANIMATION_MS, easing: 'ease' });
     }
 
     return cardsHaveBeenAdded;
@@ -458,25 +531,11 @@ function updateDom(myJson, isOnLoad) {
     setCSet(myJson.cardset_flags);
 
     if (!isOnLoad) {
-
-        const elements = document.querySelectorAll('.c');
-        elements.forEach(e => {
-            if (myJson.anonymous_mode === 1) {
-                removeStyleClass(e, 'c_move');
-            }
-        });
-
-        if (updatePlayersCards(myJson.players, isOnLoad)) {
+        if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
             /* returns true when new cards have been added */
             adaptToDevice();
             setColor();
         }
-
-        elements.forEach(e => {
-            if (!(myJson.anonymous_mode === 1)) {
-                addStyleClass(e, 'c_move');
-            }
-        });
     }
 
 
@@ -1081,16 +1140,13 @@ function toggleStyleClass(element, addClassName, removeClassName) {
 
 function handleResize() {
     if (!gLastJson) return;
-    // B-39: reposition cards instantly on resize instead of letting the
-    // c_move transition slide them for 1s. The no-anim class disables the
-    // transition while we set the new left/top, then two rAF ticks remove it
-    // again so real state changes keep animating as before.
+    // B-39/B-41: the flex layout reflows by itself; nothing glides on resize.
+    // A running glide or height animation would end at a stale spot, so finish it.
     const cbox = document.getElementById('cbox');
-    cbox.classList.add('no-anim');
+    Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
+    finishAnimations(cbox, 'height');
     adaptToDevice();
-    updatePlayersCards(gLastJson.players, false);
     showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
-    requestAnimationFrame(() => requestAnimationFrame(() => cbox.classList.remove('no-anim')));
 }
 
 function initDisplayHandling() {
