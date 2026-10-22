@@ -44,7 +44,7 @@ Abgeschlossen:
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
-| B-11 | Schreibende API-Aufrufe per POST statt GET | refined |
+| B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt (release) |
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
@@ -64,7 +64,8 @@ Abgeschlossen:
 | B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
-| B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 offen) |
+| B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
+| B-32 | CI: `playwright install --with-deps` beschleunigen | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -528,3 +529,11 @@ Repo: `update_promo.php` (saubere Statuscodes), `update_topic.php` (bereits POST
 `update_user.php`, **M4 = B-11** GET→POST (~30 fetch-Stellen, eigener Sprint), **M5** Umbenennungen/Konsolidierung
 (nur notiert, u. a. `get_promo.php` ist faktisch `create_promo`). **In Umsetzung (Sprint 4):** M2 + M3 + M1-Minimal
 (403 statt leerem 200 bei ungültigem Team) auf `feature/B-31-api-hygiene`. Kein REST-Redesign.
+
+### B-32 CI: `playwright install --with-deps` beschleunigen
+In `.github/workflows/e2e.yml` lädt der Schritt „Install Chromium" per `npx playwright install --with-deps chromium`.
+Der Browser selbst wird über `actions/cache` gecacht (Key an `package-lock.json`), aber `--with-deps` macht zusätzlich
+jedes Mal ein `apt-get` für die OS-Bibliotheken. Normal in Sekunden durch, am 2026-10-22 bei B-11 aber **~12 min**
+(langsamer apt-Mirror auf dem Runner) – knapp unter dem 15-min-Job-Timeout. Idee: `--with-deps` weglassen (die
+`ubuntu-24.04`-Runner bringen die Playwright-Libs i. d. R. mit) oder die Deps separat cachen/robuster machen
+(Retry/Timeout). Klein, reine CI, kein App-Code. Nice-to-have, nicht dringend.
