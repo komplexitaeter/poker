@@ -7,18 +7,23 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 5** (ab 2026-10-22): B-11, B-20, B-26, B-27 (alle refined). Die B-19/B-24-Nachkontrolle läuft nebenher nach
-der nächsten Werktags-Spitze.
-- **B-26 / B-27** – Quick Wins (Frontend): Null-Guard-Bugfix bzw. Favicons/Touch-Icons nach `src/` + explizit verlinkt.
-- **B-20** – Server-Config (Andreas führt aus): FPM-Reserve hoch + Slowlogs.
-- **B-11** – GET→POST, gestaffelt in 2–3 Häppchen.
-
-Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
+**Sprint 6 – „Schlank & performant"** (ab 2026-10-22): Thema Performance/Schlankheit. Startet mit einem
+**Schlank-Spike** (Bestandsaufnahme: Assets, CSS, JS, `dao.php`-Payload) → priorisierte, einzeln deploybare
+Verbesserungen. Vorbereitete Einträge: B-35 (Assets), B-36 (CSS aufräumen), B-37 (Responsive per CSS), B-38
+(`dao.php`-Payload, Spike). Reihenfolge nach Aufwand/Nutzen aus dem Spike; Umsetzung klein und gestaffelt.
+Nebenher: B-19/B-24-Nachkontrolle nach der nächsten Werktags-Spitze; B-20-Nachkontrolle (FPM-grep + `free -m`).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
+Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
+
 Abgeschlossen:
+- **Sprint 5** (2026-10-22): B-11, B-26, B-27 + Bugfix B-33 – nach `master` gemergt und live (PR #21). Alle Writes
+  laufen per POST (405 ohne POST); Null-Guards in den Topnav-Toggles; Favicons/Touch-Icons nach `src/` + explizit
+  verlinkt; Namensänderung behält die Karte, Verlassen räumt die Karte. **B-20** (Server-Config) bleibt offen: MySQL
+  auf beiden Servern umgestellt (DB neugestartet, Smoketest ok), FPM-Werte vorbereitet – Nachkontrolle (FPM-grep,
+  `free -m`, `log-summary.sh`) ausstehend.
 - **Sprint 4** (2026-10-22): zwei Analyse-Spikes. B-31 (API-Review) → M1–M3 umgesetzt (letzte SQL-Konkatenation raus,
   JSON-Header, 403 statt leerem 200 bei ungültigem Team), live. B-09 (Analytics) → Ergebnis „so lassen" (Tabelle nur
   94 MB). B-11 (GET→POST = M4) bewusst herausgehalten, eigener Sprint.
@@ -44,7 +49,7 @@ Abgeschlossen:
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
-| B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt (release) |
+| B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt |
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
@@ -59,15 +64,19 @@ Abgeschlossen:
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
-| B-26 | `toggle_topic_box`: `Cannot read properties of null` | erledigt (release) |
-| B-27 | `apple-touch-icon` fürs Board/Startseite | erledigt (release) |
+| B-26 | `toggle_topic_box`: `Cannot read properties of null` | erledigt |
+| B-27 | `apple-touch-icon` fürs Board/Startseite | erledigt |
 | B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
 | B-32 | CI: `playwright install --with-deps` beschleunigen | neu |
-| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt (release) |
+| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
+| B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
+| B-36 | Totes/redundantes CSS entfernen, `style.css` aufräumen | refined |
+| B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
+| B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -571,3 +580,52 @@ Drei synchrone XHR (`open(..., false)`):
 - `script/script_feedback.js:502` (Sortierung ändern) und `:511` (Anonymität umschalten) – trivial auf async
   `fetch(...).then()` umstellbar.
 Harmlos (nur Konsolen-Warnung; synchroner Request blockiert kurz den Main-Thread). **Niedrige Priorität.**
+
+### B-35 Bilder/Assets verschlanken (SVG, PNG, Icons)
+Thema „schlank" auf der Ausliefer-Seite. `src/` enthält ~97 Bilder; auffällig groß sind `brand_light.svg`/
+`brand_dark.svg` (je ~140 KB) und die Karten-PNGs (~44 KB je Stück). Jedes davon geht ungeprüft über die Leitung.
+
+**Refined (2026-10-22):** Reine Asset-Optimierung, **kein** sichtbarer Unterschied im Ergebnis.
+- SVGs durch `svgo` o. ä. verkleinern (Metadaten, Nachkommastellen, unnötige Gruppen) – oft 50–80 % kleiner.
+- Karten-PNGs verlustfrei optimieren (`oxipng`/`pngquant` nur, wenn optisch identisch); prüfen, ob WebP sinnvoll ist
+  (Browser-Support unkritisch, aber doppelte Pflege → erst messen).
+- Nur tatsächlich ausgelieferte Bilder anfassen; `src/xcf/` (GIMP-Quellen) bleibt unberührt.
+- Prüfen, welche Assets überhaupt noch referenziert werden (tote Bilder = B-36-Nachbarthema).
+
+**AK:** gleiche Darstellung in Light/Dark und auf dem Board; messbar kleinere Dateigrößen (vorher/nachher notieren);
+E2E bleibt grün. Klein, reines Frontend/Assets, kein Code.
+
+### B-36 Totes/redundantes CSS entfernen, `style.css` aufräumen
+`style/style.css` ist ~1.950 Zeilen mit vielen mehrfach/ähnlich definierten Regeln (laut Andreas „drei-/vierfach").
+Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nutzungen bei 30 Definitionen, 23
+`-webkit-`-Präfixe, 0 `@media`, 34 Hex-Farben (25 verschiedene, teils Dubletten der Tokens).
+
+**Refined (2026-10-22):** Aufräumen ohne sichtbare Änderung.
+- Tote Selektoren finden (gegen `board.html`/`init.html` und die im JS gesetzten Klassen) und entfernen.
+- Dubletten/ähnliche Blöcke zusammenführen; wiederkehrende Werte auf die vorhandenen Tokens (`var(--…)`) ziehen,
+  Hex-Dubletten durch Tokens ersetzen.
+- Überflüssige Vendor-Präfixe (`-webkit-`) prüfen – vieles ist heute unnötig (nur lassen, was Safari/iOS real braucht).
+- **Vorsicht:** visuell Pixel-genau gegenprüfen (Board, init, Light/Dark, Overlays). Klassen werden teils dynamisch
+  per JS gesetzt – „im HTML nicht gefunden" heißt nicht automatisch tot. Konservativ vorgehen, im Zweifel behalten.
+
+**AK:** kein sichtbarer Unterschied (Sichtprüfung Board/init, Light/Dark, Topnav-Boxen); messbar kleinere `style.css`;
+`?v=`-Bump für `style.css`; E2E grün. Mittel groß; erst nach dem Schlank-Spike schneiden.
+
+### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
+Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
+`.desktop`, an `window`-Größe gebunden) statt über CSS. `style.css` enthält **0 `@media`-Queries** – die Umschaltung
+passiert im JS. Das ist fragil (kein echtes Reflow bei Rotation/Resize ohne JS-Lauf, mehr Code) und war Teil der
+Karten-Bug-Historie (Karten wurden „riesig" beim Öffnen der DevTools).
+
+**Noch zu refinen:** Umfang hängt vom Schlank-Spike ab (wie tief steckt die Größenlogik im JS?). Idee: Breakpoints
+über `@media`/Container-Queries in CSS, JS-Größenlogik entfernen oder auf das Nötige reduzieren. Größerer Umbau mit
+Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B-36. Niedrige–mittlere Priorität.
+
+### B-38 `dao.php`-Payload und Render-Pfad verschlanken (Spike)
+`api/dao.php` ist der am häufigsten aufgerufene Endpunkt (jeder Client lädt nach jedem `pull` den kompletten
+Team-Zustand neu). Vor einer Optimierung erst **messen/verstehen** (Spike): Wie groß ist die JSON-Antwort typisch?
+Enthält sie Felder, die der Client nicht nutzt? Rendert das Frontend nach jedem `pull` alles neu oder nur Deltas?
+
+**Spike-Ziel:** Bestandsaufnahme `dao.php`-Antwort (Felder, Größe, Häufigkeit) + Frontend-Render-Pfad (`updateDao`
+in `script.js`). Ergebnis: priorisierte Liste (z. B. ungenutzte Felder weglassen, Caching/`ETag`, Delta-Updates) oder
+Entscheidung „so lassen" wie bei B-09. Kein Umbau im Spike. Niedrige Priorität, aber hoher Hebel wegen der Frequenz.
