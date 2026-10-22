@@ -92,6 +92,7 @@ Abgeschlossen:
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt (release) |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
+| B-41 | Karten „wobbeln" beim Fenster-Resize (Abstände springen) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -670,6 +671,29 @@ Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B
 **struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
 nach B-36, ggf. zusammen mit B-14.
 
+### B-41 Karten „wobbeln" beim Fenster-Resize (Abstände springen)
+Nach B-39 (Karten springen beim Resize sofort statt zu gleiten) fiel auf: Beim langsamen Ziehen der Fensterbreite
+„wobbeln" die Karten – die Abstände werden kleiner, größer, wieder kleiner. **Kein Regressionsbug** von B-39: Die
+1-Sekunden-Transition hat diesen Effekt vorher nur weichgezeichnet; B-39 hat ihn sichtbar gemacht. Tritt nur beim
+aktiven Fenster-Ziehen auf, nicht im normalen Spiel/auf fester Größe.
+
+**Ursachenspuren (für die Untersuchung):**
+- `getCardPos()` (script.js:243) rechnet mit fixer Slotbreite **110 px**; Karten pro Zeile = `floor(gScreenWidth/110)`.
+  Das ist eine Stufenfunktion → an jedem Vielfachen von 110 bricht eine Karte in die nächste Zeile um, die Restzeile
+  wird neu zentriert (`margin`) → Sprung. Dazwischen wandert der Zentrier-Rand stetig. Ergebnis: Sägezahn.
+- Zweites Schwellensystem: `adaptToDevice()`/`getBrowserWidth()` schalten `.mobile`/`.desktop` bei 800/991/1199 um.
+  `.c.mobile` ist real **100 px** breit, der JS-Slot aber **110 px** – Slot ≠ tatsächliche Kartenbreite.
+- Andreas' Hypothese: hängt evtl. auch an **wann/wie oft** das `resize`-Event feuert (kein Throttle/Debounce;
+  `handleResize` rendert pro Event alle Karten neu). Prüfen.
+
+**Harte Vorgabe (Andreas):** Die Animation, dass Karten an ihre neue Position **gleiten, wenn sich die Sortierung
+ändert** (z. B. nach Aufdecken/neuer Runde), **muss erhalten bleiben**. Geändert werden darf nur das Resize-Verhalten;
+die „kein Gleiten beim Resize"-Eigenschaft aus B-39 bleibt.
+
+**Richtung:** Delia untersucht (Throttle/Debounce des Resize, gleichmäßige Zentrierung ohne Sägezahn, ggf. echtes
+CSS-Layout mit `gap`+`justify-content` statt JS-Pixelmath) und schlägt einen kleinen Fix vor. Die saubere
+Gesamtlösung gehört zu „Kartenlayout verbessern"/Responsive (B-40/B-37).
+
 ### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
 Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).
 Ziel: Oberfläche modernisieren und mobil deutlich verbessern – **ohne den bestehenden Charme der App zu verlieren**.
@@ -688,6 +712,9 @@ geschnitten):
   der ursprüngliche Wert noch erkennbar bleibt.
 - **Kartenauswahl für Mobile deutlich verbessern.**
 - **Mobile-Darstellung allgemein deutlich verbessern.**
+- **Platz-Konkurrenz auflösen:** Timer, Notiz-/Topic-Zettel, „Neue Runde"-Knopf u. a. konkurrieren mit den Karten um
+  den Platz – das nervt. Layout so umbauen, dass diese Elemente den Kartenbereich nicht verdrängen (z. B. eigene
+  Zonen/Leiste, Overlay, oder Karten-Bereich bekommt verlässlich seinen Raum).
 
 Hinweis: Überschneidet sich mit B-37 (Responsive per CSS) – das Responsive-Fundament ist Teil dieses Themas. Vor
 Umsetzung je Punkt eine REQ-artige Schärfung (Ziel, Umfang, Akzeptanzkriterien) und Schnitt in kleine, einzeln
