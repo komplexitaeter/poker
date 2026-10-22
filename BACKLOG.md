@@ -7,18 +7,36 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 5** (ab 2026-10-22): B-11, B-20, B-26, B-27 (alle refined). Die B-19/B-24-Nachkontrolle läuft nebenher nach
-der nächsten Werktags-Spitze.
-- **B-26 / B-27** – Quick Wins (Frontend): Null-Guard-Bugfix bzw. Favicons/Touch-Icons nach `src/` + explizit verlinkt.
-- **B-20** – Server-Config (Andreas führt aus): FPM-Reserve hoch + Slowlogs.
-- **B-11** – GET→POST, gestaffelt in 2–3 Häppchen.
+**Sprint 6 – „Schlank & performant"** (ab 2026-10-22): Thema Performance/Schlankheit. Startet mit einem
+**Schlank-Spike** (Bestandsaufnahme: Assets, CSS, JS, `dao.php`-Payload) → priorisierte, einzeln deploybare
+Verbesserungen. Vorbereitete Einträge: B-35 (Assets), B-36 (CSS aufräumen), B-37 (Responsive per CSS), B-38
+(`dao.php`-Payload, Spike). Reihenfolge nach Aufwand/Nutzen aus dem Spike; Umsetzung klein und gestaffelt.
+Nebenher: B-19/B-24-Nachkontrolle nach der nächsten Werktags-Spitze; B-20-Nachkontrolle (FPM-grep + `free -m`).
 
-Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
+**Schlank-Spike-Ergebnis (2026-10-22, Details je Eintrag B-35/B-36/B-37/B-38/B-39).** Priorisierung nach
+Aufwand/Nutzen:
+1. **Server-Kompression gzip** (B-35) – **erledigt auf Live + Staging** (2026-10-22): `image/svg+xml` in `gzip_types`
+   ergänzt → Brand-SVGs jetzt gzipped (~180 KB/Board-Load gespart). CSS/JS waren schon komprimiert.
+2. **B-39 Resize: Karten sofort positionieren statt zu animieren** – klein, Frontend-only, spürbare UX-Verbesserung.
+3. **SVG/PNG verlustfrei optimieren** (B-35, `svgo`/`oxipng`) – klein, moderater Gewinn.
+4. **CSS aufräumen** (B-36) – mittel, Pixel-Gegenprüfung nötig (Klassen teils per JS gesetzt).
+5. **Responsive JS→CSS** (B-37) – groß, Regressionsrisiko, später; ggf. mit B-14.
+
+**Bewusst NICHT verfolgt:** tote Bilder löschen (werden nicht geladen → kein Laufzeiteffekt, nur Repo-Kosmetik;
+Andreas: „nicht ran jetzt"). `cards.json`-Doppellesung war ein Messfehler – pro dao-Request nur **1×**, vernachlässigbar.
+`dao.php`-Payload mit 1–2 KB zu klein für Reduktion („so lassen" wie B-09).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
+Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
+
 Abgeschlossen:
+- **Sprint 5** (2026-10-22): B-11, B-26, B-27 + Bugfix B-33 – nach `master` gemergt und live (PR #21). Alle Writes
+  laufen per POST (405 ohne POST); Null-Guards in den Topnav-Toggles; Favicons/Touch-Icons nach `src/` + explizit
+  verlinkt; Namensänderung behält die Karte, Verlassen räumt die Karte. **B-20** (Server-Config) bleibt offen: MySQL
+  auf beiden Servern umgestellt (DB neugestartet, Smoketest ok), FPM-Werte vorbereitet – Nachkontrolle (FPM-grep,
+  `free -m`, `log-summary.sh`) ausstehend.
 - **Sprint 4** (2026-10-22): zwei Analyse-Spikes. B-31 (API-Review) → M1–M3 umgesetzt (letzte SQL-Konkatenation raus,
   JSON-Header, 403 statt leerem 200 bei ungültigem Team), live. B-09 (Analytics) → Ergebnis „so lassen" (Tabelle nur
   94 MB). B-11 (GET→POST = M4) bewusst herausgehalten, eigener Sprint.
@@ -44,7 +62,7 @@ Abgeschlossen:
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
-| B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt (release) |
+| B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt |
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
@@ -59,15 +77,22 @@ Abgeschlossen:
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
-| B-26 | `toggle_topic_box`: `Cannot read properties of null` | erledigt (release) |
-| B-27 | `apple-touch-icon` fürs Board/Startseite | erledigt (release) |
+| B-26 | `toggle_topic_box`: `Cannot read properties of null` | erledigt |
+| B-27 | `apple-touch-icon` fürs Board/Startseite | erledigt |
 | B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
-| B-32 | CI: `playwright install --with-deps` beschleunigen | neu |
-| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt (release) |
+| B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt (release) |
+| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
+| B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
+| B-36 | Totes/redundantes CSS entfernen, `style.css` aufräumen | refined |
+| B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
+| B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
+| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt (release) |
+| B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
+| B-41 | Karten „wobbeln" beim Fenster-Resize (Abstände springen) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -540,6 +565,11 @@ jedes Mal ein `apt-get` für die OS-Bibliotheken. Normal in Sekunden durch, am 2
 `ubuntu-24.04`-Runner bringen die Playwright-Libs i. d. R. mit) oder die Deps separat cachen/robuster machen
 (Retry/Timeout). Klein, reine CI, kein App-Code. Nice-to-have, nicht dringend.
 
+**Erledigt (release, 2026-10-22, PR #24):** `--with-deps` entfernt → `npx playwright install chromium`. Der
+`ubuntu-24.04`-Runner bringt die nötigen Shared Libraries mit; der Browser-Binary bleibt über `actions/cache`
+gecacht. Ergebnis: der e2e-Job lief in **~1 min** (vorher bis ~12 min, knapp am 15-min-Timeout). Vorgezogen, weil der
+langsame apt-Schritt jeden Lauf bremste.
+
 ### B-33 Namensänderung setzt Karte auf `break01`; Verlassen räumt die Karte nicht
 **Beim Staging-Test Sprint 5 gefunden (Andreas), Bestandsbug (auch auf Master).** Benennt sich ein aktiver Spieler um,
 während die Runde „alle fertig" ist, bekommt er plötzlich die Kaffeetasse (`break01`) – das Nachzügler-Verhalten.
@@ -571,3 +601,159 @@ Drei synchrone XHR (`open(..., false)`):
 - `script/script_feedback.js:502` (Sortierung ändern) und `:511` (Anonymität umschalten) – trivial auf async
   `fetch(...).then()` umstellbar.
 Harmlos (nur Konsolen-Warnung; synchroner Request blockiert kurz den Main-Thread). **Niedrige Priorität.**
+
+### B-35 Bilder/Assets verschlanken (SVG, PNG, Icons)
+Thema „schlank" auf der Ausliefer-Seite. `src/` enthält ~97 Bilder; auffällig groß sind `brand_light.svg`/
+`brand_dark.svg` (je ~140 KB) und die Karten-PNGs (~44 KB je Stück). Jedes davon geht ungeprüft über die Leitung.
+
+**Refined (2026-10-22):** Reine Asset-Optimierung, **kein** sichtbarer Unterschied im Ergebnis.
+- SVGs durch `svgo` o. ä. verkleinern (Metadaten, Nachkommastellen, unnötige Gruppen) – oft 50–80 % kleiner.
+- Karten-PNGs verlustfrei optimieren (`oxipng`/`pngquant` nur, wenn optisch identisch); prüfen, ob WebP sinnvoll ist
+  (Browser-Support unkritisch, aber doppelte Pflege → erst messen).
+- Nur tatsächlich ausgelieferte Bilder anfassen; `src/xcf/` (GIMP-Quellen) bleibt unberührt.
+- Prüfen, welche Assets überhaupt noch referenziert werden (tote Bilder = B-36-Nachbarthema).
+
+**AK:** gleiche Darstellung in Light/Dark und auf dem Board; messbar kleinere Dateigrößen (vorher/nachher notieren);
+E2E bleibt grün. Klein, reines Frontend/Assets, kein Code.
+
+**Spike-Funde (2026-10-22):** Ausgeliefert (ohne `src/xcf/`) ~1,75 MB: 82 PNG (1,25 MB), 14 SVG (321 KB),
+3 Vendor-JS (184 KB), 1 favicon.ico (15 KB). Größte Einzelposten: `brand_dark.svg`/`brand_light.svg` (je ~140 KB,
+**bei jedem Board-Load** geladen), `logo_qr_code.png` (64 KB), `apple-touch-icon.png` (49 KB), Sterne-Karten
+(`c_*stars*.png` ~42 KB je). Die Brand-SVGs sind **sauber** (512 `<path>`, kein Base64, keine Editor-Reste, keine
+Überpräzision) → `svgo`-Gewinn vermutlich nur moderat.
+- **Höchster Hebel = Server-Kompression (erledigt auf Live 2026-10-22).** Befund: `gzip on` war aktiv, CSS/JS wurden
+  bereits gzipped, aber `image/svg+xml` fehlte in `gzip_types` (nginx.conf) → die Brand-SVGs (281 KB, bei jedem
+  Board-Load) gingen ungepackt raus. Fix: `image/svg+xml` an `gzip_types` angehängt, `nginx -t` + `reload`.
+  Gegencheck Live: `content-encoding: gzip` auf `brand_dark.svg` bestätigt (~180 KB/Board-Load gespart). brotli nicht
+  einkompiliert – bewusst nicht nachgezogen (gzip reicht für diese Größen). **Staging ebenfalls erledigt**
+  (2026-10-22): dort war die ganze `gzip_types`-Zeile auskommentiert (nginx-Default = nur `text/html`, also CSS/JS/SVG
+  ungepackt); einkommentiert + `image/svg+xml` ergänzt, Gegencheck gzip bestätigt. Rand-Notiz: auf Staging bleiben
+  `gzip_vary`/`gzip_comp_level`/`gzip_buffers`/`gzip_http_version` auskommentiert (nginx-Defaults statt Live-Werte) –
+  funktional egal, optional für volle Parität nachziehbar.
+- **9 wirklich tote Bilder (~130 KB), löschbar** (je einzeln gegengeprüft, 0 Treffer in HTML/CSS/JS/PHP/cards.json):
+  `brand.png`, `brand_nobg.png`, `cta_home.png`, `edit.png`, `follow_us.png`, `home.svg`, `info_news.png`,
+  `star_h.png`, `twitter.png`. **Achtung Gegenbeispiel:** `c_done001.png`/`c_prgrss1.png`/`c_prgrss2.png` wirken „tot",
+  sind aber `display_card_key`-Zustände (script.js:296) → **nicht** löschen. Karten-PNGs (`c_*.png`) werden dynamisch
+  aus `cards.json` gebaut (`'src/c_'+card_key+'.png'`) → nicht tot.
+- Karten-PNGs verlustfrei mit `oxipng`/`pngquant` optimieren, nur wenn optisch identisch.
+
+### B-36 Totes/redundantes CSS entfernen, `style.css` aufräumen
+`style/style.css` ist ~1.950 Zeilen mit vielen mehrfach/ähnlich definierten Regeln (laut Andreas „drei-/vierfach").
+Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nutzungen bei 30 Definitionen, 23
+`-webkit-`-Präfixe, 0 `@media`, 34 Hex-Farben (25 verschiedene, teils Dubletten der Tokens).
+
+**Refined (2026-10-22):** Aufräumen ohne sichtbare Änderung.
+- Tote Selektoren finden (gegen `board.html`/`init.html` und die im JS gesetzten Klassen) und entfernen.
+- Dubletten/ähnliche Blöcke zusammenführen; wiederkehrende Werte auf die vorhandenen Tokens (`var(--…)`) ziehen,
+  Hex-Dubletten durch Tokens ersetzen.
+- Überflüssige Vendor-Präfixe (`-webkit-`) prüfen – vieles ist heute unnötig (nur lassen, was Safari/iOS real braucht).
+- **Vorsicht:** visuell Pixel-genau gegenprüfen (Board, init, Light/Dark, Overlays). Klassen werden teils dynamisch
+  per JS gesetzt – „im HTML nicht gefunden" heißt nicht automatisch tot. Konservativ vorgehen, im Zweifel behalten.
+
+**AK:** kein sichtbarer Unterschied (Sichtprüfung Board/init, Light/Dark, Topnav-Boxen); messbar kleinere `style.css`;
+`?v=`-Bump für `style.css`; E2E grün. Mittel groß; erst nach dem Schlank-Spike schneiden.
+
+### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
+Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
+`.desktop`, an `window`-Größe gebunden) statt über CSS. `style.css` enthält **0 `@media`-Queries** – die Umschaltung
+passiert im JS. Das ist fragil (kein echtes Reflow bei Rotation/Resize ohne JS-Lauf, mehr Code) und war Teil der
+Karten-Bug-Historie (Karten wurden „riesig" beim Öffnen der DevTools).
+
+**Noch zu refinen:** Umfang hängt vom Schlank-Spike ab (wie tief steckt die Größenlogik im JS?). Idee: Breakpoints
+über `@media`/Container-Queries in CSS, JS-Größenlogik entfernen oder auf das Nötige reduzieren. Größerer Umbau mit
+Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B-36. Niedrige–mittlere Priorität.
+
+**Spike-Funde (2026-10-22):** `adaptToDevice()` (script.js:842) setzt per `document.body.clientWidth`
+(`getBrowserWidth`, Schwellen 800/991/1199) die Klassen `.mobile`/`.desktop` an **alle** `.sizefit`-Elemente; 98 der
+311 CSS-Regeln hängen daran, **0 `@media`**. Der `resize`-Handler `handleResize()` (script.js:1082) ruft nicht nur
+`adaptToDevice()`, sondern rendert **bei jedem Resize alle Spielerkarten neu** (`updatePlayersCards` + `showCardUsage`)
+– genau das war die Ursache der „Riesen-Karten beim DevTools-Öffnen". Umbau auf echtes CSS-Responsive = größter
+**struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
+nach B-36, ggf. zusammen mit B-14.
+
+### B-41 Karten „wobbeln" beim Fenster-Resize (Abstände springen)
+Nach B-39 (Karten springen beim Resize sofort statt zu gleiten) fiel auf: Beim langsamen Ziehen der Fensterbreite
+„wobbeln" die Karten – die Abstände werden kleiner, größer, wieder kleiner. **Kein Regressionsbug** von B-39: Die
+1-Sekunden-Transition hat diesen Effekt vorher nur weichgezeichnet; B-39 hat ihn sichtbar gemacht. Tritt nur beim
+aktiven Fenster-Ziehen auf, nicht im normalen Spiel/auf fester Größe.
+
+**Ursachenspuren (für die Untersuchung):**
+- `getCardPos()` (script.js:243) rechnet mit fixer Slotbreite **110 px**; Karten pro Zeile = `floor(gScreenWidth/110)`.
+  Das ist eine Stufenfunktion → an jedem Vielfachen von 110 bricht eine Karte in die nächste Zeile um, die Restzeile
+  wird neu zentriert (`margin`) → Sprung. Dazwischen wandert der Zentrier-Rand stetig. Ergebnis: Sägezahn.
+- Zweites Schwellensystem: `adaptToDevice()`/`getBrowserWidth()` schalten `.mobile`/`.desktop` bei 800/991/1199 um.
+  `.c.mobile` ist real **100 px** breit, der JS-Slot aber **110 px** – Slot ≠ tatsächliche Kartenbreite.
+- Andreas' Hypothese: hängt evtl. auch an **wann/wie oft** das `resize`-Event feuert (kein Throttle/Debounce;
+  `handleResize` rendert pro Event alle Karten neu). Prüfen.
+
+**Harte Vorgabe (Andreas):** Die Animation, dass Karten an ihre neue Position **gleiten, wenn sich die Sortierung
+ändert** (z. B. nach Aufdecken/neuer Runde), **muss erhalten bleiben**. Geändert werden darf nur das Resize-Verhalten;
+die „kein Gleiten beim Resize"-Eigenschaft aus B-39 bleibt.
+
+**Richtung:** Delia untersucht (Throttle/Debounce des Resize, gleichmäßige Zentrierung ohne Sägezahn, ggf. echtes
+CSS-Layout mit `gap`+`justify-content` statt JS-Pixelmath) und schlägt einen kleinen Fix vor. Die saubere
+Gesamtlösung gehört zu „Kartenlayout verbessern"/Responsive (B-40/B-37).
+
+### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
+Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).
+Ziel: Oberfläche modernisieren und mobil deutlich verbessern – **ohne den bestehenden Charme der App zu verlieren**.
+Dafür eine eigene Design-Rolle (siehe `.claude/agents/`), die gestalten **und** technisch umsetzen kann.
+
+Ideen-Sammlung von Andreas (2026-10-22, unsortiert, wird im Refinement geschärft und in einzelne Einträge
+geschnitten):
+- **Menüs als modales Voll-Overlay** (halbtransparent zum Hintergrund, wie „Become Observer/Player"), dadurch auch
+  mobil sinnvoller mit responsiven Elementen aufbaubar.
+- **Menüs userfreundlicher strukturieren und aufräumen.**
+- **Kartenlayout verbessern** – z. B. die Spielernamen besser unter den Karten platzieren.
+- **Karten mit Beschriftungen** ermöglichen (z. B. um echtes Delegation Poker zu spielen).
+- **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
+- **Kartenziffern modernisieren.**
+- **„Karte nach dem Aufdecken geändert"**: als zusätzliche Karte dargestellt, die auf die erste gelegt wird, wobei
+  der ursprüngliche Wert noch erkennbar bleibt.
+- **Kartenauswahl für Mobile deutlich verbessern.**
+- **Mobile-Darstellung allgemein deutlich verbessern.**
+- **Platz-Konkurrenz auflösen:** Timer, Notiz-/Topic-Zettel, „Neue Runde"-Knopf u. a. konkurrieren mit den Karten um
+  den Platz – das nervt. Layout so umbauen, dass diese Elemente den Kartenbereich nicht verdrängen (z. B. eigene
+  Zonen/Leiste, Overlay, oder Karten-Bereich bekommt verlässlich seinen Raum).
+
+Hinweis: Überschneidet sich mit B-37 (Responsive per CSS) – das Responsive-Fundament ist Teil dieses Themas. Vor
+Umsetzung je Punkt eine REQ-artige Schärfung (Ziel, Umfang, Akzeptanzkriterien) und Schnitt in kleine, einzeln
+deploybare Schritte; Verhalten/Datenmodell nur ändern, wo ausdrücklich gewollt (z. B. Karten-Beschriftungen und
+Content/Theming-Trennung berühren Datenmodell/`cards.json` – dann Ben einbinden).
+
+### B-39 Resize: Karten sofort neu positionieren statt zu animieren
+Aus dem Schlank-Spike (2026-10-22) / B-37. Die Kartenpositionen hängen von Bildschirmgröße, Kartengröße, Anzahl und
+Sortierung ab (mehrere Zeilen möglich, muss auch mobil gehen). Bei jedem `resize` berechnet `handleResize()`
+(`script.js:1082`) die Positionen neu und setzt `card.style.left/top`. Auf `.c` liegt aber
+`transition: left 1s, top 1s` (`style.css:415`), sodass die Karten beim Resizen **langsam gleiten** statt sofort zu
+springen – es wirkt, als würden sie kurz verschwinden und wiederkommen. Die Slide-Animation ist für echte
+Zustandsänderungen gedacht (Umsortierung, neue Karte), nicht fürs Resizen.
+
+**Fix (klein, Frontend-only, abgestimmt mit Andreas 2026-10-22):** Beim Resize die Transition kurz abschalten,
+Positionen sofort setzen, danach wieder aktivieren – plus Debounce gegen Ruckeln beim Ziehen. Konkret: `#cbox` eine
+Klasse `.no-anim` geben (`#cbox.no-anim .c { transition: none; }`), in `handleResize()` vor dem Neupositionieren
+setzen und nach zwei `requestAnimationFrame` wieder entfernen. Echte Umsortierungen animieren unverändert weiter.
+
+**AK:** Beim Resizen/Rotieren springen die Karten sofort an die richtige Position (kein 1-s-Gleiten, kein
+„Verschwinden"); eine echte Umsortierung (z. B. neue Runde, Aufdecken) animiert weiterhin wie bisher; Board und
+Mobil geprüft; `?v=`-Bump für `script.js`/`style.css`; E2E grün. Unabhängig vom größeren B-37 (kann davor laufen).
+
+### B-38 `dao.php`-Payload und Render-Pfad verschlanken (Spike)
+`api/dao.php` ist der am häufigsten aufgerufene Endpunkt (jeder Client lädt nach jedem `pull` den kompletten
+Team-Zustand neu). Vor einer Optimierung erst **messen/verstehen** (Spike): Wie groß ist die JSON-Antwort typisch?
+Enthält sie Felder, die der Client nicht nutzt? Rendert das Frontend nach jedem `pull` alles neu oder nur Deltas?
+
+**Spike-Ziel:** Bestandsaufnahme `dao.php`-Antwort (Felder, Größe, Häufigkeit) + Frontend-Render-Pfad (`updateDao`
+in `script.js`). Ergebnis: priorisierte Liste (z. B. ungenutzte Felder weglassen, Caching/`ETag`, Delta-Updates) oder
+Entscheidung „so lassen" wie bei B-09. Kein Umbau im Spike. Niedrige Priorität, aber hoher Hebel wegen der Frequenz.
+
+**Spike-Funde (2026-10-22):** `api/dao.php` ist nur eine Hülle (`echo json_encode($data_obj)`); den Payload baut
+`getDao()` in `api/lib.php`. Antwort: 25 Skalar-Felder (`name`, `topic`, `timer_*`, `all_players_ready`, …) + ein
+`players`-Array (im Schnitt ~5–6 Einträge). Grob **1–2 KB** – **Payload-Reduktion lohnt nicht** (Tendenz „so lassen"
+wie B-09; ungenutzte Felder wegzulassen spart kaum etwas).
+- `cards.json`-Lesung: pro dao-Request **einmal** (über `sort_players_by_sequence`, `api/lib.php:95`); die zweite
+  Lesung (`:447`) steckt in `add_team()` und läuft nur beim Team-Anlegen. Eine kleine Datei einmal lesen + decoden
+  ist vernachlässigbar (OS-Filecache) → **kein Fix nötig** (ursprünglich fälschlich als „zweimal/Request" notiert).
+- **Render-Pfad:** Das Frontend rendert nach jedem `pull` den **kompletten** Zustand neu (`updateDao`), keine Deltas.
+  Delta-Rendering wäre der eigentliche Hebel, aber größerer Umbau – überschneidet sich mit B-14 (JS-Module) und B-37
+  (Resize-Logik). Erst nach denen sinnvoll; hier nur notiert.
