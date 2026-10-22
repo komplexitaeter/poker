@@ -9,7 +9,7 @@ $name = get_text_param("name", 15);
 $type = get_text_param("type", 10);
 
 $link = db_init();
-validate_team($t, $link) or exit;
+require_team($t, $link);
 
 if (strtolower($type) !== "observer") {
     $type = 'PLAYER';

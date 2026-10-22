@@ -64,6 +64,18 @@ function validate_team($t, $link) {
     return $is_valid;
 }
 
+/*
+ * Validates the team id and aborts with HTTP 403 (empty body) when it is invalid.
+ * Use this in team-bound writing endpoints instead of `validate_team(...) or exit;`
+ * so an invalid team id returns a clear 403 rather than an empty 200.
+ */
+function require_team($t, $link) {
+    if (!validate_team($t, $link)) {
+        http_response_code(403);
+        exit;
+    }
+}
+
 function sort_players_by_sequence(array $players)
 {
     $ret_val = array();
