@@ -91,6 +91,7 @@ Abgeschlossen:
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | refined |
+| B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -663,6 +664,30 @@ Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B
 – genau das war die Ursache der „Riesen-Karten beim DevTools-Öffnen". Umbau auf echtes CSS-Responsive = größter
 **struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
 nach B-36, ggf. zusammen mit B-14.
+
+### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
+Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).
+Ziel: Oberfläche modernisieren und mobil deutlich verbessern – **ohne den bestehenden Charme der App zu verlieren**.
+Dafür eine eigene Design-Rolle (siehe `.claude/agents/`), die gestalten **und** technisch umsetzen kann.
+
+Ideen-Sammlung von Andreas (2026-10-22, unsortiert, wird im Refinement geschärft und in einzelne Einträge
+geschnitten):
+- **Menüs als modales Voll-Overlay** (halbtransparent zum Hintergrund, wie „Become Observer/Player"), dadurch auch
+  mobil sinnvoller mit responsiven Elementen aufbaubar.
+- **Menüs userfreundlicher strukturieren und aufräumen.**
+- **Kartenlayout verbessern** – z. B. die Spielernamen besser unter den Karten platzieren.
+- **Karten mit Beschriftungen** ermöglichen (z. B. um echtes Delegation Poker zu spielen).
+- **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
+- **Kartenziffern modernisieren.**
+- **„Karte nach dem Aufdecken geändert"**: als zusätzliche Karte dargestellt, die auf die erste gelegt wird, wobei
+  der ursprüngliche Wert noch erkennbar bleibt.
+- **Kartenauswahl für Mobile deutlich verbessern.**
+- **Mobile-Darstellung allgemein deutlich verbessern.**
+
+Hinweis: Überschneidet sich mit B-37 (Responsive per CSS) – das Responsive-Fundament ist Teil dieses Themas. Vor
+Umsetzung je Punkt eine REQ-artige Schärfung (Ziel, Umfang, Akzeptanzkriterien) und Schnitt in kleine, einzeln
+deploybare Schritte; Verhalten/Datenmodell nur ändern, wo ausdrücklich gewollt (z. B. Karten-Beschriftungen und
+Content/Theming-Trennung berühren Datenmodell/`cards.json` – dann Ben einbinden).
 
 ### B-39 Resize: Karten sofort neu positionieren statt zu animieren
 Aus dem Schlank-Spike (2026-10-22) / B-37. Die Kartenpositionen hängen von Bildschirmgröße, Kartengröße, Anzahl und
