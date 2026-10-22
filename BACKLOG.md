@@ -7,7 +7,11 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-Kein aktiver Sprint – nächstes Planning offen (Kandidaten u. a. B-20, B-23, B-26).
+**Sprint 4** (ab 2026-10-22): zwei Analyse-Spikes, Umsetzung optional, wenn sich im Sprint zeigt, dass es sinnvoll ist.
+- **B-31 (Spike):** API-Bestandsaufnahme / HTTP-Semantik. Ergebnis: priorisierte Liste kleiner Verbesserungen
+  (u. a. B-11 GET→POST im Kontext). Kein REST-Redesign.
+- **B-09 (Analyse-Spike):** Wofür wird `pok_analytics_events_tbl` wirklich gebraucht (stats.php, Grafana) und
+  lässt sich das Schreiben der Events grundsätzlich reduzieren? Abhängigkeit: Grafana-Abfragen von Andreas.
 
 Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
 
@@ -35,7 +39,7 @@ Abgeschlossen:
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
 | B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
-| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | neu |
+| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | im Sprint (Analyse) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
 | B-11 | Schreibende API-Aufrufe per POST statt GET | neu |
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
@@ -57,6 +61,7 @@ Abgeschlossen:
 | B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
+| B-31 | API-Review / HTTP-Semantik (Spike) | im Sprint |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -153,7 +158,16 @@ Definition exportieren (`SHOW CREATE EVENT`) und versionieren.
 
 ### B-09 Wachstum von `pok_analytics_events_tbl` begrenzen
 Tabelle wächst unbegrenzt. Aufbewahrungsdauer festlegen, alte Daten löschen oder verdichten.
-Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle heute?
+
+**Zuerst analysieren (Sprint 4, Analyse-Spike), bevor gelöscht/verdichtet wird:**
+- Wofür werden die Events gebraucht? Vermutlich im Wesentlichen `stats.php` (aggregiert `event_code`-Summen der
+  letzten 14 Tage) und ggf. **Grafana** (externe Instanz, Abfragen noch offen → von Andreas einholen, damit wir
+  keine Events entfernen, die ein Chart braucht).
+- **Schreiblast reduzieren:** Welche Events schreibt das Frontend wie oft? Jeder Event ist ein zusätzlicher Call.
+  Prüfen, welche sich zusammenfassen/weglassen/entprellen lassen (spart Writes *und* Requests).
+- Erst danach die eigentliche Begrenzung: Aufbewahrungsdauer + Lösch-/Verdichtungs-Job.
+
+Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle heute? Welche `event_code`s nutzt Grafana?
 
 ### B-10 `poker-msg` modernisieren und absichern
 Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
@@ -435,3 +449,18 @@ Zu beachten: ondrej-PHP-PPA wird beim Upgrade abgeschaltet und muss für `noble`
 PHP 8.4); `ev` für `poker-msg` neu bauen (B-19); nginx wird 1.24; weitere Seiten auf beiden Servern mittesten.
 Offene Fragen: Zeitpunkt; ob Ondřej für Ubuntu langfristig beim PPA bleibt oder auf `packages.sury.org` umzieht;
 vorher Staging auf eine PHP-Version konsolidieren (B-23).
+
+### B-31 API-Review / HTTP-Semantik (Spike)
+Die API ist RPC-artig (ein Skript pro Aktion in `api/*.php`), Schreibzugriffe laufen über GET, Fehler werden ohne
+sauberen HTTP-Statuscode behandelt (`validate_team(...) or exit;` → leerer 200). B-11 (POST statt GET) ist nur ein
+Symptom davon.
+
+**Spike (Analyse, risikofrei, ändert nichts am Live-Verhalten):** Bestandsaufnahme über alle `api/*.php` (+ `stats.php`):
+je Endpunkt Methode, GET/POST-Parameter, Team-Check (`validate_team`), Response (JSON? leer? Echo?), Statuscode bei
+Fehler, Auffälligkeiten. Ergebnis: eine **priorisierte Liste kleiner, einzeln deploybarer Verbesserungen**, z. B.
+(1) HTTP-Semantik: Schreibzugriffe → POST (= B-11, im Kontext), (2) saubere Statuscodes + `Content-Type` statt leerem
+`exit`, (3) einheitliche Response-Form, (4) Team-Check-Abdeckung bestätigen, (5) ggf. Endpunkte konsolidieren.
+
+**Kein REST-Redesign** (widerspricht dem pragmatischen Grundsatz; hoher Aufwand/Risiko an der Live-App bei kaum
+Nutzerwert). Umsetzung einzelner Punkte optional im selben Sprint, wenn sie sich als lohnend zeigen; sonst werden sie
+als eigene kleine Backlog-Einträge priorisiert.
