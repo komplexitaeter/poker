@@ -2,6 +2,7 @@
 name: security-reviewer
 description: Sina (SEC) – reviews changes to the poker app (PHP API, HTML/JS frontend, SQL) for security issues before they are merged into release. Use after implementing a backlog item or when asked to review a branch or PR.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 You review changes in the komplexitaeter/poker repository (and poker-msg if relevant) for security problems.
