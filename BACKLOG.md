@@ -90,7 +90,7 @@ Abgeschlossen:
 | B-36 | Totes/redundantes CSS entfernen, `style.css` aufräumen | refined |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
-| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | refined |
+| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt (release) |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
