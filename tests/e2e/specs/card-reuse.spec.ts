@@ -4,8 +4,9 @@ import { teamWithTwoPlayers, tableCard, expectTableCard, pickCard } from './help
 // Regression guard for B-01: getDao() must return player.mkey as a string in the JSON.
 // The frontend reuses a table card only when player.mkey === card.id (the DOM id, always a string,
 // see updateCards()/addCards() in script/script.js). If mkey comes back as an int (7 !== "7"),
-// every pull removes and recreates all cards, which drops the slide animation (.c_move) and the
-// desktop/mobile sizing class. We mark the existing DOM cards and prove they survive a re-render.
+// every pull removes and recreates all cards, which breaks the glide on re-sort (FLIP only animates
+// cards that already existed, B-41) and restarts the fade-in. We mark the existing DOM cards and
+// prove they survive a re-render.
 
 test('table cards are reused across a re-render (mkey stays a string)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Reuse Team');
