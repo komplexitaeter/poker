@@ -13,15 +13,18 @@ Verbesserungen. Vorbereitete Einträge: B-35 (Assets), B-36 (CSS aufräumen), B-
 (`dao.php`-Payload, Spike). Reihenfolge nach Aufwand/Nutzen aus dem Spike; Umsetzung klein und gestaffelt.
 Nebenher: B-19/B-24-Nachkontrolle nach der nächsten Werktags-Spitze; B-20-Nachkontrolle (FPM-grep + `free -m`).
 
-**Schlank-Spike-Ergebnis (2026-10-22, Details je Eintrag B-35/B-36/B-37/B-38).** Priorisierung nach Aufwand/Nutzen:
+**Schlank-Spike-Ergebnis (2026-10-22, Details je Eintrag B-35/B-36/B-37/B-38/B-39).** Priorisierung nach
+Aufwand/Nutzen:
 1. **Server-Kompression gzip/brotli** für SVG/CSS/JS prüfen (B-35) – winzig, größter Effekt (~70 % auf Textassets:
-   Brand-SVGs 281 KB, Vendor-JS 184 KB, CSS). Server-Config, Andreas. **Zuerst.**
-2. **9 tote Bilder löschen** (~130 KB, B-35) – trivial, risikoarm.
-3. **`getDao()` liest `cards.json` nur noch 1×** (B-38) – trivialer Backend-Fix auf dem heißesten Endpunkt.
-4. **SVG/PNG verlustfrei optimieren** (B-35, `svgo`/`oxipng`) – klein, moderater Gewinn.
-5. **CSS aufräumen** (B-36) – mittel, Pixel-Gegenprüfung nötig (Klassen teils per JS gesetzt).
-6. **Responsive JS→CSS** (B-37) – groß, Regressionsrisiko, später; ggf. mit B-14. `dao.php`-Payload selbst ist mit
-   1–2 KB zu klein für Reduktion („so lassen" wie B-09).
+   Brand-SVGs 281 KB, Vendor-JS 184 KB, CSS). Server-Config, Andreas. **Zuerst** (Befehle vorbereitet).
+2. **B-39 Resize: Karten sofort positionieren statt zu animieren** – klein, Frontend-only, spürbare UX-Verbesserung.
+3. **SVG/PNG verlustfrei optimieren** (B-35, `svgo`/`oxipng`) – klein, moderater Gewinn.
+4. **CSS aufräumen** (B-36) – mittel, Pixel-Gegenprüfung nötig (Klassen teils per JS gesetzt).
+5. **Responsive JS→CSS** (B-37) – groß, Regressionsrisiko, später; ggf. mit B-14.
+
+**Bewusst NICHT verfolgt:** tote Bilder löschen (werden nicht geladen → kein Laufzeiteffekt, nur Repo-Kosmetik;
+Andreas: „nicht ran jetzt"). `cards.json`-Doppellesung war ein Messfehler – pro dao-Request nur **1×**, vernachlässigbar.
+`dao.php`-Payload mit 1–2 KB zu klein für Reduktion („so lassen" wie B-09).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
@@ -87,6 +90,7 @@ Abgeschlossen:
 | B-36 | Totes/redundantes CSS entfernen, `style.css` aufräumen | refined |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
+| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | refined |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -654,6 +658,23 @@ Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B
 **struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
 nach B-36, ggf. zusammen mit B-14.
 
+### B-39 Resize: Karten sofort neu positionieren statt zu animieren
+Aus dem Schlank-Spike (2026-10-22) / B-37. Die Kartenpositionen hängen von Bildschirmgröße, Kartengröße, Anzahl und
+Sortierung ab (mehrere Zeilen möglich, muss auch mobil gehen). Bei jedem `resize` berechnet `handleResize()`
+(`script.js:1082`) die Positionen neu und setzt `card.style.left/top`. Auf `.c` liegt aber
+`transition: left 1s, top 1s` (`style.css:415`), sodass die Karten beim Resizen **langsam gleiten** statt sofort zu
+springen – es wirkt, als würden sie kurz verschwinden und wiederkommen. Die Slide-Animation ist für echte
+Zustandsänderungen gedacht (Umsortierung, neue Karte), nicht fürs Resizen.
+
+**Fix (klein, Frontend-only, abgestimmt mit Andreas 2026-10-22):** Beim Resize die Transition kurz abschalten,
+Positionen sofort setzen, danach wieder aktivieren – plus Debounce gegen Ruckeln beim Ziehen. Konkret: `#cbox` eine
+Klasse `.no-anim` geben (`#cbox.no-anim .c { transition: none; }`), in `handleResize()` vor dem Neupositionieren
+setzen und nach zwei `requestAnimationFrame` wieder entfernen. Echte Umsortierungen animieren unverändert weiter.
+
+**AK:** Beim Resizen/Rotieren springen die Karten sofort an die richtige Position (kein 1-s-Gleiten, kein
+„Verschwinden"); eine echte Umsortierung (z. B. neue Runde, Aufdecken) animiert weiterhin wie bisher; Board und
+Mobil geprüft; `?v=`-Bump für `script.js`/`style.css`; E2E grün. Unabhängig vom größeren B-37 (kann davor laufen).
+
 ### B-38 `dao.php`-Payload und Render-Pfad verschlanken (Spike)
 `api/dao.php` ist der am häufigsten aufgerufene Endpunkt (jeder Client lädt nach jedem `pull` den kompletten
 Team-Zustand neu). Vor einer Optimierung erst **messen/verstehen** (Spike): Wie groß ist die JSON-Antwort typisch?
@@ -667,9 +688,9 @@ Entscheidung „so lassen" wie bei B-09. Kein Umbau im Spike. Niedrige Prioritä
 `getDao()` in `api/lib.php`. Antwort: 25 Skalar-Felder (`name`, `topic`, `timer_*`, `all_players_ready`, …) + ein
 `players`-Array (im Schnitt ~5–6 Einträge). Grob **1–2 KB** – **Payload-Reduktion lohnt nicht** (Tendenz „so lassen"
 wie B-09; ungenutzte Felder wegzulassen spart kaum etwas).
-- **Ein echter Micro-Fix:** `getDao()` liest `cards.json` **zweimal pro Request** von der Platte und `json_decode`t
-  es zweimal (`api/lib.php:95` und `:447`). Einmal lesen/wiederverwenden spart IO+CPU auf dem **häufigsten** Endpunkt
-  (jeder Client nach jedem `pull`). Klein, reines Backend, deploybar.
+- `cards.json`-Lesung: pro dao-Request **einmal** (über `sort_players_by_sequence`, `api/lib.php:95`); die zweite
+  Lesung (`:447`) steckt in `add_team()` und läuft nur beim Team-Anlegen. Eine kleine Datei einmal lesen + decoden
+  ist vernachlässigbar (OS-Filecache) → **kein Fix nötig** (ursprünglich fälschlich als „zweimal/Request" notiert).
 - **Render-Pfad:** Das Frontend rendert nach jedem `pull` den **kompletten** Zustand neu (`updateDao`), keine Deltas.
   Delta-Rendering wäre der eigentliche Hebel, aber größerer Umbau – überschneidet sich mit B-14 (JS-Module) und B-37
   (Resize-Logik). Erst nach denen sinnvoll; hier nur notiert.
