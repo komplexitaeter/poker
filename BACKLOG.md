@@ -66,6 +66,7 @@ Abgeschlossen:
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
 | B-32 | CI: `playwright install --with-deps` beschleunigen | neu |
+| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | im Sprint |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -537,3 +538,25 @@ jedes Mal ein `apt-get` für die OS-Bibliotheken. Normal in Sekunden durch, am 2
 (langsamer apt-Mirror auf dem Runner) – knapp unter dem 15-min-Job-Timeout. Idee: `--with-deps` weglassen (die
 `ubuntu-24.04`-Runner bringen die Playwright-Libs i. d. R. mit) oder die Deps separat cachen/robuster machen
 (Retry/Timeout). Klein, reine CI, kein App-Code. Nice-to-have, nicht dringend.
+
+### B-33 Namensänderung setzt Karte auf `break01`; Verlassen räumt die Karte nicht
+**Beim Staging-Test Sprint 5 gefunden (Andreas), Bestandsbug (auch auf Master).** Benennt sich ein aktiver Spieler um,
+während die Runde „alle fertig" ist, bekommt er plötzlich die Kaffeetasse (`break01`) – das Nachzügler-Verhalten.
+Ursache: `api/name.php` (Zweig „Spieler existiert & ist PLAYER") setzt im UPDATE
+`ppt.card_key = if(all_players_ready=1,'break01',card_key)`. Diese `break01`-Logik ist für echte Nachzügler gedacht
+(INSERT-Zweig + zurückkehrender entfernter Spieler), greift hier aber auch bei einer reinen Umbenennung/Observer-Toggle
+eines aktiven Spielers.
+
+Zusätzlich fiel auf: Beim **Verlassen/Entfernen** wird nur `player_type='REMOVED'` gesetzt (`name.php` Leername,
+`delete.php`) – `card_key` bleibt stehen (ein „Geist-Vote"). Geleert wird `card_key` sonst nur bei neuer Runde
+(`newround.php`) und beim Zurücknehmen (`setc.php`).
+
+**Fix (kombiniert, mit Andreas abgestimmt):**
+1. Beim Verlassen/Entfernen zusätzlich `card_key = null` setzen (in `name.php`-Leername **und** `delete.php`).
+2. In `name.php` die Umbenennung: `ppt.card_key = if(? = 1 and card_key is null, 'break01', card_key)` – Kaffeetasse
+   nur für kartenlose (Wieder-)Einsteiger, aktive Spieler behalten ihre Karte.
+
+**AK:** Umbenennen eines Spielers mit gelegter Karte (auch in fertiger/ aufgedeckter Runde) lässt die Karte
+unverändert; ein entfernter Spieler hat keine Karte mehr; ein kartenloser Spieler, der in eine fertige Runde
+(wieder) eintritt, bekommt weiterhin `break01`. E2E-Test deckt „Umbenennen behält Karte" ab. Reiner Backend-Fix,
+kein `?v=`-Bump.
