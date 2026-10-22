@@ -23,7 +23,7 @@ Datenfluss bei einer Änderung am Board:
 1. Client ruft per `fetch` einen Endpunkt in `api/*.php` auf (GET-Parameter, auch für schreibende Aktionen).
 2. Danach sendet der Client `push` über den WebSocket (`/poker-msg`, von nginx auf `127.0.0.1:8443` weitergeleitet).
 3. `poker-msg` schickt allen Verbindungen mit derselben Team-Subscription (`subscribe:<team_id>`) ein `pull`.
-4. Die Clients laden daraufhin den Zustand neu (`api/name.php`).
+4. Die Clients laden daraufhin den Zustand neu (`api/dao.php`).
 
 `poker-msg` kennt keine Daten und keine Datenbank; es verteilt nur „pull“-Signale pro Team. Zustand liegt komplett in MySQL.
 
