@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require_post();
 
 set_header('json');
 

@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require_post();
 
 $id = get_text_param("id", 16);
 $stars = (int)filter_input(INPUT_GET, "stars", FILTER_SANITIZE_NUMBER_INT );

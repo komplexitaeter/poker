@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require_post();
 set_header('json');
 
 $player_id = get_text_param("player_id", 16);
