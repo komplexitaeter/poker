@@ -7,7 +7,11 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-Kein aktiver Sprint – nächstes Planning offen (Kandidaten u. a. B-11 GET→POST, B-20 FPM/MySQL, B-26, B-27).
+**Sprint 5** (ab 2026-10-22): B-11, B-20, B-26, B-27 (alle refined). Die B-19/B-24-Nachkontrolle läuft nebenher nach
+der nächsten Werktags-Spitze.
+- **B-26 / B-27** – Quick Wins (Frontend): Null-Guard-Bugfix bzw. Favicons/Touch-Icons nach `src/` + explizit verlinkt.
+- **B-20** – Server-Config (Andreas führt aus): FPM-Reserve hoch + Slowlogs.
+- **B-11** – GET→POST, gestaffelt in 2–3 Häppchen.
 
 Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
 
@@ -40,7 +44,7 @@ Abgeschlossen:
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
-| B-11 | Schreibende API-Aufrufe per POST statt GET | neu |
+| B-11 | Schreibende API-Aufrufe per POST statt GET | refined |
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
@@ -49,14 +53,14 @@ Abgeschlossen:
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
 | B-18 | Server-Logs von Live sichten | erledigt |
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
-| B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
+| B-20 | PHP-FPM und MySQL robuster konfigurieren | refined |
 | B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | erledigt |
 | B-22 | PHP-Upgrade auf 8.4 | erledigt |
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
-| B-26 | `toggle_topic_box`: `Cannot read properties of null` | neu |
-| B-27 | `apple-touch-icon` fürs Board/Startseite | neu |
+| B-26 | `toggle_topic_box`: `Cannot read properties of null` | refined |
+| B-27 | `apple-touch-icon` fürs Board/Startseite | refined |
 | B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
@@ -195,6 +199,15 @@ Heartbeat ergänzen: verwaiste Verbindungen (vergessene Tabs, Laptop im Ruhezust
 Zustandsändernde Endpunkte werden per GET aufgerufen (Prefetching, Logs mit Parametern, kein CSRF-Schutz).
 Voraussetzung: B-04, damit Frontend und API gemeinsam umgestellt und getestet werden.
 
+**Refined (2026-10-22):** Scope aus dem B-31-Spike (= M4). Alle zustandsändernden Endpunkte von GET auf POST, je
+Endpunkt gemeinsam mit seinen Frontend-`fetch`-Aufrufen (`method:'POST'` + `body`), gestaffelt pro Endpunkt (Backend +
+Frontend zusammen deployen, sonst 405). Betroffen (~30 fetch-Stellen): name, setc, newround, delete, timer,
+update_team, update_cardset, update_results_order, update_show_avg, update_user, feedback, measure_event, get_promo,
+update_promo, delete_user, addteam; `update_topic.php` ist bereits POST (Vorbild). Team-ID darf weiter per GET-Query
+kommen (Routing), nur die zustandsändernden Nutzdaten in den Body. Nutzen: kein Prefetch/Logging von Writes – **kein**
+CSRF-Schutz (keine Auth). AK: alle Writes laufen per POST; E2E weiter grün; `?v=`-Bump für geänderte JS. Umsetzung in
+2–3 Häppchen, nicht alles in einem PR.
+
 ### B-12 Zeichensätze vereinheitlichen
 Tabellen mischen `latin1`, `utf8mb3`, `utf8mb4`. Umstellung auf `utf8mb4` inkl. Verbindung (`set_charset`).
 Größere DB-Änderung, braucht ein Wartungsfenster.
@@ -273,6 +286,13 @@ nach der nächsten Werktags-Spitze (Montag nach 10 Uhr) – `FD_SETSIZE`-Zähler
   (421 abgebrochene Verbindungen seit dem letzten Neustart, siehe B-13). **Achtung:** `skip-name-resolve` bricht
   hostbasierte Grants – das externe Grafana (`grafana_usr`) vorher prüfen, sonst nur IP-/`%`-Grants nutzen.
 - Monitoring: `log-summary.sh` liest seit 2026-10-20 PHP 8.4 (vorher 8.1) und zeigt damit die echten 8.4-Pool-Werte.
+
+**Refined (2026-10-22):** Reine Server-Config (Andreas führt aus; Kai bereitet Schnipsel + Befehle vor), nur der
+**poker-Pool**, beide Server. FPM: `pm.max_children = 15`, `start_servers`/`min_spare`/`max_spare` entsprechend,
+`request_terminate_timeout 60s`, `slowlog` + `request_slowlog_timeout 5s`. MySQL: `slow_query_log = ON`,
+`long_query_time = 2`, `slow_query_log_file` prüfen. **`skip-name-resolve` vorerst NICHT** (geringe Priorität, Risiko
+für hostbasierte Grafana-Grants). AK: erhöhte FPM-Werte aktiv auf beiden Servern; Slowlog (FPM + MySQL) läuft; eine
+Nachkontrolle (per `log-summary.sh`) zeigt keine `max_children reached`-Warnung und erfasste Slow Queries.
 
 ### B-21 Race Condition beim Anlegen neuer Nutzer in `getDao()`
 Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
@@ -393,6 +413,14 @@ bestimmten Zuständen (noch) nicht im DOM ist. Offene Fragen: unter welchen Bedi
 und ob der Fehler sichtbare Folgen hat oder nur Konsolen-Rauschen ist. Fix vermutlich ein Null-Check vor dem
 `.style`-Zugriff.
 
+**Refined (2026-10-22):** Ursache gefunden – `toggle_topic_box()` liest `getElementById('topic_box')` und greift
+**ohne Null-Check** auf `.style` zu; `#topic_box` existiert nur in `board.html`, nicht in `init.html`. Der Klickhandler
+`toggleTopnav` (schließt bei Klick außerhalb alle Boxen) ruft `toggle_topic_box(false)` auch dort → `e` null →
+TypeError; die danach aufgerufenen Toggles brechen dann ab. Fix: Null-Guard wie bei `toggle_cardset_box`
+(`if (e !== null)`), **plus kurzer Audit** der übrigen Toggles (feedback/info/user_settings), fehlende Guards ergänzen.
+AK: kein TypeError beim Außen-Klick (init.html + board); alle Boxen schließen korrekt; `?v=`-Bump für
+`script_feedback.js` in board.html **und** init.html; optional E2E (keine Konsolenfehler auf init.html beim Außen-Klick).
+
 ### B-27 `apple-touch-icon` fürs Board/Startseite
 iOS fragt beim „Zum Home-Bildschirm" `apple-touch-icon.png` und `apple-touch-icon-precomposed.png` im Webroot an;
 beide fehlen → je ~18 404/Tag im nginx-Error-Log (Stand 2026-10-20). Poker wird viel mobil genutzt, daher doppelt
@@ -400,6 +428,17 @@ sinnvoll: ein ordentliches Home-Screen-Icon ablegen (z. B. aus dem vorhandenen L
 `<link rel="apple-touch-icon">` in `board.html`/`init.html` referenzieren. Beseitigt das Log-Rauschen und liefert
 ein sauberes Icon auf dem Homescreen. Klein; kein Backend. Offene Frage: eine Größe (180×180 reicht meist) oder
 mehrere, und ob zusätzlich ein normales `favicon`/`manifest` gepflegt werden soll.
+
+**Refined (2026-10-22):** Basis-Logo `https://www.komplexitaeter.de/wp-content/uploads/logo-small.png` (davon ist auch
+das bestehende `favicon.ico` abgeleitet). Vorgabe (Andreas): **alle Favicons & Touch-Icons nach `src/` umziehen und
+explizit im `<head>` verlinken** statt Root-Auto-Discovery. Konkret: `favicon.ico` (liegt aktuell im Repo-Root,
+git-getrackt, wird ohne `<link>` auto-gefunden) nach `src/` verschieben; aus dem Basis-Logo ein quadratisches
+**180×180 `apple-touch-icon.png` mit opakem Hintergrund** (iOS macht Transparenz schwarz) + ein PNG-favicon (z. B.
+32×32) erzeugen (`convert`/ImageMagick ist vorhanden); alles in `src/`. In `board.html` **und** `init.html`
+`<link rel="icon" href="src/favicon.ico">` (bzw. PNG) und `<link rel="apple-touch-icon" href="src/apple-touch-icon.png">`
+ergänzen. AK: echte iOS-Geräte laden das verlinkte Icon (kein `/apple-touch-icon.png`-Probe-404 mehr), favicon weiter
+sichtbar, iOS „Zum Home-Bildschirm" zeigt das Logo. (Hinweis: blinde Bot-Requests auf `/apple-touch-icon.png` im Root
+können als Scanner-Rauschen weiter 404 liefern – bewusst in Kauf genommen.)
 
 ### B-28 PHP2Shell (CVE-2026-109618/-109619) patchen
 **Akut, nachträglich vermerkt (2026-10-21).** BSI-Hinweis BITS-H 2026-297981-1032 (Kritikalität 3/Orange): zwei
