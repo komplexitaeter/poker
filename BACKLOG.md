@@ -59,8 +59,8 @@ Abgeschlossen:
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
-| B-26 | `toggle_topic_box`: `Cannot read properties of null` | refined |
-| B-27 | `apple-touch-icon` fürs Board/Startseite | refined |
+| B-26 | `toggle_topic_box`: `Cannot read properties of null` | erledigt (release) |
+| B-27 | `apple-touch-icon` fürs Board/Startseite | erledigt (release) |
 | B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
