@@ -1,48 +1,50 @@
-import { test, expect } from '@playwright/test';
-import { teamWithTwoPlayers, tableCard } from './helpers';
+import { test, expect, Page } from '@playwright/test';
+import { teamWithTwoPlayers, tableCard, newPlayer, joinAsPlayer } from './helpers';
 
 /**
- * B-39: On resize the player cards must jump straight to their new position
- * instead of gliding there over the 1s `transition: left/top` of `.c_move`.
- * The slide animation is meant for real state changes (reveal, new round,
- * card played) and has to stay intact there.
- *
- * Card positions depend on the viewport width (the horizontal margin is
- * recomputed from body.clientWidth), so changing the width reliably moves the
- * cards. We resize, then well within the 1s transition window check that the
- * card has already reached its new target left (no glide). Without the fix the
- * card would still be interpolating towards the target at that point.
+ * B-39 / B-41: On resize the cards must jump straight to their new position. The glide (FLIP,
+ * Web Animations API with id 'flip') is meant for real changes of the order and must not run
+ * after a resize: a resize starts no glide and ends one that is still running.
  */
-test('cards jump to their new position on resize without a 1s slide (B-39)', async ({ browser }) => {
-  const { alice } = await teamWithTwoPlayers(browser, 'ResizeNoAnim');
+const runningFlips = (page: Page) =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll('#cbox .c'))
+      .flatMap(card => card.getAnimations())
+      .filter(animation => animation.id === 'flip' && animation.playState === 'running').length);
 
-  const card = tableCard(alice, 'Alice');
-  await expect(card).toBeVisible();
-  // Bob joining pushed a refresh, so the slide animation class is active.
-  await expect(card).toHaveClass(/c_move/);
+/** Waits until the browser has rendered the next frame (the resize event has been handled). */
+const nextFrame = (page: Page) =>
+  page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
-  const px = (v: string) => parseFloat(v);
-  const readLeft = () =>
-    card.evaluate((el) => ({
-      computed: getComputedStyle(el as HTMLElement).left, // currently rendered (animated) value
-      target: (el as HTMLElement).style.left,             // target set inline on resize
-    }));
+/** Left edge of a card as rendered vs. its place in the layout (without transforms). */
+const cardLeft = (page: Page, name: string) =>
+  tableCard(page, name).evaluate(card => {
+    const box = document.getElementById('cbox')!.getBoundingClientRect();
+    return { rendered: card.getBoundingClientRect().left - box.left, layout: (card as HTMLElement).offsetLeft };
+  });
 
-  // Settle at the start width and record the current target.
-  const before = await readLeft();
-  expect(Math.abs(px(before.computed) - px(before.target))).toBeLessThan(2);
+test('cards jump to their new position on resize without a glide (B-39, B-41)', async ({ browser }) => {
+  const { alice, url } = await teamWithTwoPlayers(browser, 'ResizeNoAnim');
+  await expect(tableCard(alice, 'Bob')).toBeVisible();
 
-  // Resize: this fires `resize`, recomputes the margin and sets a new target left.
+  // Aaron sorts in front of Alice and Bob: their cards start a 1s glide on Alice's board
+  const aaron = await newPlayer(browser);
+  await joinAsPlayer(aaron, url, 'Aaron');
+  await expect.poll(() => runningFlips(alice)).toBeGreaterThan(0);
+
+  // resize while the glide is running: it ends at once, the cards are at their place
+  const before = await cardLeft(alice, 'Alice');
   await alice.setViewportSize({ width: 1600, height: 900 });
+  await nextFrame(alice);
+  expect(await runningFlips(alice)).toBe(0);
+  const after = await cardLeft(alice, 'Alice');
+  expect(Math.abs(after.layout - before.layout)).toBeGreaterThan(50); // the card really moved
+  expect(Math.abs(after.rendered - after.layout)).toBeLessThan(1);
 
-  // Wait clearly less than the 1s transition. With the fix the card is already
-  // at its new target; with the slide it would still be far away.
-  await alice.waitForTimeout(250);
-
-  const after = await readLeft();
-
-  // The target really moved (otherwise the test would be vacuous).
-  expect(Math.abs(px(after.target) - px(before.target))).toBeGreaterThan(50);
-  // ...and the card is already there: it jumped, it did not glide.
-  expect(Math.abs(px(after.computed) - px(after.target))).toBeLessThan(5);
+  // further resizes start no glide at all
+  for (const width of [1400, 1100, 900, 700]) {
+    await alice.setViewportSize({ width, height: 900 });
+    await nextFrame(alice);
+    expect(await runningFlips(alice)).toBe(0);
+  }
 });
