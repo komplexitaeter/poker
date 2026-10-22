@@ -83,7 +83,7 @@ Abgeschlossen:
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
-| B-32 | CI: `playwright install --with-deps` beschleunigen | neu |
+| B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt (release) |
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
@@ -563,6 +563,11 @@ jedes Mal ein `apt-get` für die OS-Bibliotheken. Normal in Sekunden durch, am 2
 (langsamer apt-Mirror auf dem Runner) – knapp unter dem 15-min-Job-Timeout. Idee: `--with-deps` weglassen (die
 `ubuntu-24.04`-Runner bringen die Playwright-Libs i. d. R. mit) oder die Deps separat cachen/robuster machen
 (Retry/Timeout). Klein, reine CI, kein App-Code. Nice-to-have, nicht dringend.
+
+**Erledigt (release, 2026-10-22, PR #24):** `--with-deps` entfernt → `npx playwright install chromium`. Der
+`ubuntu-24.04`-Runner bringt die nötigen Shared Libraries mit; der Browser-Binary bleibt über `actions/cache`
+gecacht. Ergebnis: der e2e-Job lief in **~1 min** (vorher bis ~12 min, knapp am 15-min-Timeout). Vorgezogen, weil der
+langsame apt-Schritt jeden Lauf bremste.
 
 ### B-33 Namensänderung setzt Karte auf `break01`; Verlassen räumt die Karte nicht
 **Beim Staging-Test Sprint 5 gefunden (Andreas), Bestandsbug (auch auf Master).** Benennt sich ein aktiver Spieler um,
