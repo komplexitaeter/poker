@@ -15,8 +15,9 @@ Nebenher: B-19/B-24-Nachkontrolle nach der nächsten Werktags-Spitze; B-20-Nachk
 
 **Schlank-Spike-Ergebnis (2026-10-22, Details je Eintrag B-35/B-36/B-37/B-38/B-39).** Priorisierung nach
 Aufwand/Nutzen:
-1. **Server-Kompression gzip/brotli** für SVG/CSS/JS prüfen (B-35) – winzig, größter Effekt (~70 % auf Textassets:
-   Brand-SVGs 281 KB, Vendor-JS 184 KB, CSS). Server-Config, Andreas. **Zuerst** (Befehle vorbereitet).
+1. **Server-Kompression gzip** (B-35) – **auf Live erledigt** (2026-10-22): `image/svg+xml` fehlte in `gzip_types`,
+   ergänzt → Brand-SVGs jetzt gzipped (~180 KB/Board-Load gespart). CSS/JS waren schon komprimiert. Offen: Staging
+   angleichen (`gzip_types` dort auskommentiert).
 2. **B-39 Resize: Karten sofort positionieren statt zu animieren** – klein, Frontend-only, spürbare UX-Verbesserung.
 3. **SVG/PNG verlustfrei optimieren** (B-35, `svgo`/`oxipng`) – klein, moderater Gewinn.
 4. **CSS aufräumen** (B-36) – mittel, Pixel-Gegenprüfung nötig (Klassen teils per JS gesetzt).
@@ -614,9 +615,13 @@ E2E bleibt grün. Klein, reines Frontend/Assets, kein Code.
 **bei jedem Board-Load** geladen), `logo_qr_code.png` (64 KB), `apple-touch-icon.png` (49 KB), Sterne-Karten
 (`c_*stars*.png` ~42 KB je). Die Brand-SVGs sind **sauber** (512 `<path>`, kein Base64, keine Editor-Reste, keine
 Überpräzision) → `svgo`-Gewinn vermutlich nur moderat.
-- **Höchster Hebel = Server-Kompression:** Prüfen, ob nginx `gzip`/`brotli` für `image/svg+xml`, `text/css`,
-  `application/javascript` aktiv hat. Textassets komprimieren ~70 % – das schlägt jede Pixel-Optimierung und ist eine
-  Server-Config-Zeile (Andreas, nicht im Repo prüfbar). **Zuerst klären.**
+- **Höchster Hebel = Server-Kompression (erledigt auf Live 2026-10-22).** Befund: `gzip on` war aktiv, CSS/JS wurden
+  bereits gzipped, aber `image/svg+xml` fehlte in `gzip_types` (nginx.conf) → die Brand-SVGs (281 KB, bei jedem
+  Board-Load) gingen ungepackt raus. Fix: `image/svg+xml` an `gzip_types` angehängt, `nginx -t` + `reload`.
+  Gegencheck Live: `content-encoding: gzip` auf `brand_dark.svg` bestätigt (~180 KB/Board-Load gespart). brotli nicht
+  einkompiliert – bewusst nicht nachgezogen (gzip reicht für diese Größen). **Offen: Staging** – dort ist die
+  `gzip_types`-Zeile komplett auskommentiert (Config-Drift, nginx-Default = nur `text/html`); einkommentieren +
+  `image/svg+xml` ergänzen, damit Staging Live spiegelt.
 - **9 wirklich tote Bilder (~130 KB), löschbar** (je einzeln gegengeprüft, 0 Treffer in HTML/CSS/JS/PHP/cards.json):
   `brand.png`, `brand_nobg.png`, `cta_home.png`, `edit.png`, `follow_us.png`, `home.svg`, `info_news.png`,
   `star_h.png`, `twitter.png`. **Achtung Gegenbeispiel:** `c_done001.png`/`c_prgrss1.png`/`c_prgrss2.png` wirken „tot",
