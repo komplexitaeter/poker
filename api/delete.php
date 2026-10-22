@@ -9,7 +9,7 @@ $mkey = filter_input(INPUT_GET, "mkey", FILTER_SANITIZE_NUMBER_INT);
 if (strlen($mkey)>0) {
 
     $link = db_init();
-    validate_team($t, $link) or exit;
+    require_team($t, $link);
 
     $sql = $link->prepare("UPDATE pok_players_tbl SET player_type = 'REMOVED' WHERE team_id = ? and mkey = ?");
     $sql->bind_param('si', $t, $mkey);

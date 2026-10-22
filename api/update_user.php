@@ -19,10 +19,10 @@ if ($color_mode != null and in_array($color_mode, ['dark', 'light'])) {
 
 if ($survey_skipped != null and $survey_skipped >= 0 and $survey_skipped <= 1) {
     $sql = $link->prepare("UPDATE pok_user_tbl
-                                     SET survey_skipped=".$survey_skipped.",
+                                     SET survey_skipped=?,
                                          survey_skipped_date=CURRENT_TIMESTAMP
                                    WHERE id=?");
-    $sql->bind_param('s', $id);
+    $sql->bind_param('is', $survey_skipped, $id);
     $sql->execute();
 }
 

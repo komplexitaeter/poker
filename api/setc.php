@@ -9,7 +9,7 @@ $cardkey = substr(filter_input(INPUT_GET, "cardkey", FILTER_SANITIZE_FULL_SPECIA
 
 
 $link = db_init();
-validate_team($t, $link) or exit;
+require_team($t, $link);
 
 if (strlen($cardkey)>0) {
     $sql = $link->prepare("UPDATE pok_players_tbl SET card_key = ? WHERE id = ? and team_id = ?");

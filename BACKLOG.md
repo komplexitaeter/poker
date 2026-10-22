@@ -7,12 +7,22 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 3:** B-21, B-15, B-01, B-02 (Agenten: Ben, Fred; Kai koordiniert).
+**Sprint 4** (ab 2026-10-22): zwei Analyse-Spikes, Umsetzung optional, wenn sich im Sprint zeigt, dass es sinnvoll ist.
+- **B-31 (Spike):** API-Bestandsaufnahme / HTTP-Semantik. Ergebnis: priorisierte Liste kleiner Verbesserungen
+  (u. a. B-11 GET→POST im Kontext). Kein REST-Redesign.
+- **B-09 (Analyse-Spike):** Wofür wird `pok_analytics_events_tbl` wirklich gebraucht (stats.php, Grafana) und
+  lässt sich das Schreiben der Events grundsätzlich reduzieren? Abhängigkeit: Grafana-Abfragen von Andreas.
+
+Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
 Abgeschlossen:
+- **Sprint 3** (2026-10-20): B-21, B-15, B-01, B-02 – nach `master` gemergt. Beim Staging-Test eine B-01-Regression
+  gefunden und behoben (`mkey` kam durch die Prepared-Statement-Umstellung als Zahl statt String → Karten-Animation
+  und -Größe kaputt; E2E-Regressionstest ergänzt). Live inkl. nginx Basic Auth für `stats.php`
+  (Andreas, 2026-10-20); Details in `docs/stats-basic-auth.md`.
 - **Sprint 2** (2026-10-16): B-18, B-19 + B-22, B-24, B-03, B-25 – live auf Staging und Produktion; Daten-Update
   für B-03 auf Live ausgeführt (26 Teamnamen, 11 Themen, 90 Rundenthemen).
 - **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
@@ -21,32 +31,37 @@ Abgeschlossen:
 
 | ID | Thema | Status |
 |---|---|---|
-| B-01 | SQL-Injection in `api/` beheben | auf `release` |
-| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | auf `release` |
+| B-01 | SQL-Injection in `api/` beheben | erledigt |
+| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | erledigt |
 | B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
 | B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
 | B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
 | B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
-| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | neu |
+| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
 | B-11 | Schreibende API-Aufrufe per POST statt GET | neu |
 | B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
 | B-13 | MySQL-Zugriff von außen einschränken | neu |
 | B-14 | `script/script.js` in Module aufteilen | neu |
-| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | auf `release` |
+| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | erledigt |
 | B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
 | B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
 | B-18 | Server-Logs von Live sichten | erledigt |
 | B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
 | B-20 | PHP-FPM und MySQL robuster konfigurieren | neu |
-| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | auf `release` |
+| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | erledigt |
 | B-22 | PHP-Upgrade auf 8.4 | erledigt |
 | B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
 | B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
 | B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
 | B-26 | `toggle_topic_box`: `Cannot read properties of null` | neu |
+| B-27 | `apple-touch-icon` fürs Board/Startseite | neu |
+| B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
+| B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
+| B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
+| B-31 | API-Review / HTTP-Semantik (Spike) | im Sprint |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -143,7 +158,34 @@ Definition exportieren (`SHOW CREATE EVENT`) und versionieren.
 
 ### B-09 Wachstum von `pok_analytics_events_tbl` begrenzen
 Tabelle wächst unbegrenzt. Aufbewahrungsdauer festlegen, alte Daten löschen oder verdichten.
-Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle heute?
+
+**Zuerst analysieren (Sprint 4, Analyse-Spike), bevor gelöscht/verdichtet wird:**
+- Wofür werden die Events gebraucht? Vermutlich im Wesentlichen `stats.php` (aggregiert `event_code`-Summen der
+  letzten 14 Tage) und ggf. **Grafana** (externe Instanz, Abfragen noch offen → von Andreas einholen, damit wir
+  keine Events entfernen, die ein Chart braucht).
+- **Schreiblast reduzieren:** Welche Events schreibt das Frontend wie oft? Jeder Event ist ein zusätzlicher Call.
+  Prüfen, welche sich zusammenfassen/weglassen/entprellen lassen (spart Writes *und* Requests).
+- Erst danach die eigentliche Begrenzung: Aufbewahrungsdauer + Lösch-/Verdichtungs-Job.
+
+Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle heute? Welche `event_code`s nutzt Grafana?
+
+**Spike-Ergebnis (2026-10-22):** Einziger Schreiber `api/measure_event.php` (ein GET je Event, fire-and-forget),
+**kein hochfrequentes Event** (kein Resize-/Poll-/Pull-Tracking) – Volumen entsteht nur durch viele Teilnehmer ×
+Sessions, dominiert von `BOARD_ON_LOAD`. Einziger Repo-Leser: `stats.php` (14-Tage-Fenster). Grafana extern. Tote
+Kanten: `LINK_SIMULATION_INFOS`/`LINK_SIMULATION_LOGIN` werden von stats.php angezeigt, aber nirgends erzeugt
+(dauerhaft 0); `INIT_ON_LOAD`/`OPEN_TOPIC_BOX`/`OPEN_USER_SETTINGS_BOX` werden erzeugt, aber von keinem Repo-Leser
+genutzt. **Tendenz (Andreas, 2026-10-22): so lassen** – die Schreib-Reduktion bringt wenig, das reine Wachstum ist
+voraussichtlich klein. Nächster Schritt: Tabellengröße auf dem Server messen (SQL vorbereitet); bei Bedarf später ein
+Retention-/Pruning-Job auf `creation_date`. Grafana-`event_code`s weiterhin offen.
+
+**Größen-Messung (Live, 2026-10-22):** ~1,19 Mio. Zeilen, **94 MB** (76 MB Daten + 18 MB Index), Tracking seit
+2021-03-23 (~5,5 Jahre). Normale Tagesrate ~700–1.400 Events. **Entscheidung (Andreas): so lassen** – das Wachstum
+ist vernachlässigbar, kein Pruning-Job nötig. Falls die Tabelle irgendwann doch stört, genügt ein einfacher
+Lösch-Job auf `creation_date` (> N Jahre). Beobachtung am Rande: Tagesausreißer 2026-10-13 mit 86.580 Events
+(sonst ~1k); `api/measure_event.php` ist unauthentifiziert und kann von Bots vollgespammt werden – bei der
+Tabellengröße folgenlos, passt zum geheime-URL-Modell. Offene Nebenpunkte (kein Teil von B-09, nur notiert): tote
+`stats.php`-Spalten `LINK_SIMULATION_*` (dauerhaft 0) und die nicht-gelesenen `event_code`s könnten bei Gelegenheit
+in `stats.php` aufgeräumt werden.
 
 ### B-10 `poker-msg` modernisieren und absichern
 Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
@@ -221,11 +263,17 @@ nach der nächsten Werktags-Spitze (Montag nach 10 Uhr) – `FD_SETSIZE`-Zähler
 `active_users`.
 
 ### B-20 PHP-FPM und MySQL robuster konfigurieren
-- PHP-FPM: `pm.max_children = 5` wurde am 14.10. (Vorfall `stats.php`) erreicht. Bei 3,8 GB RAM moderat anheben,
-  `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker), `slowlog` aktivieren.
-- MySQL: `slow_query_log` ist aus, trotzdem 9 Slow Queries (> 10 s) seit dem letzten Neustart – Log aktivieren
-  und auswerten. `skip-name-resolve` gegen die DNS-Warnungen durch Verbindungsversuche von außen
-  (234 abgebrochene Verbindungen in 2 Tagen, siehe B-13).
+- PHP-FPM: `pm.max_children = 5` – am 14.10. (Vorfall `stats.php`) einmal erreicht; für den **8.4-Pool bestätigt**
+  (Stand 2026-10-20). Im Normalbetrieb ausreichend: in der Werktags-Spitze (2026-10-20, 33.767 Req/h um 08:00)
+  **keine** „max_children reached"-Warnung im 8.4-FPM-Log und keine 502/504. Für das Wachstumsziel dennoch knapp –
+  bei ~2,5 GB freiem RAM und realem Worker-Verbrauch deutlich unter `memory_limit` (256 MB) moderat anheben
+  (grob `max_children` 15–25, `start_servers`/`min`/`max_spare_servers` entsprechend). Zusätzlich
+  `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker) und `slowlog` aktivieren.
+- MySQL: `slow_query_log` ist aus (Stand 2026-10-20: 2 Slow Queries > 10 s seit dem letzten Neustart, früher 9) –
+  Log aktivieren und auswerten. `skip-name-resolve` gegen die DNS-Warnungen durch Verbindungsversuche von außen
+  (421 abgebrochene Verbindungen seit dem letzten Neustart, siehe B-13). **Achtung:** `skip-name-resolve` bricht
+  hostbasierte Grants – das externe Grafana (`grafana_usr`) vorher prüfen, sonst nur IP-/`%`-Grants nutzen.
+- Monitoring: `log-summary.sh` liest seit 2026-10-20 PHP 8.4 (vorher 8.1) und zeigt damit die echten 8.4-Pool-Werte.
 
 ### B-21 Race Condition beim Anlegen neuer Nutzer in `getDao()`
 Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
@@ -262,6 +310,44 @@ Erweiterung `ev` (B-19) für die neue Version mit installieren.
   vorher prüfen, dass nichts anderes mehr `php8.1` nutzt (auf Staging laufen weitere Seiten mit 8.1!).
 - Große Upload-Grenzen (`post_max_size`/`upload_max_filesize` 100M, nginx `client_max_body_size 100M`) prüfen –
   die App lädt keine Dateien hoch.
+
+**Stand 2026-10-21 (Staging, Andreas):**
+- Platte war zu 98 % voll: rund 8 GB UpdraftPlus-Backups der WordPress-Seite seit 2024 gelöscht → 64 % (siehe B-29).
+- `ondrej/nginx`-PPA entfernt (eingestellt seit April 2026). nginx von 1.28 (PPA) auf 1.18 aus dem Ubuntu-Repo
+  zurückgesetzt, wie auf Live; dafür in `flowgame.komplexitaeter.de` `http2 on;` → `listen 443 ssl http2;`.
+  Sicherungen: `/root/nginx-backup-2026-10-21`, `/root/flowgame.komplexitaeter.de.bak`. Alle Updates, Reboot erledigt.
+- Live nutzt den nginx-PPA nicht (nginx 1.18 aus Ubuntu) – dort nichts zu tun.
+- **Korrektur:** PHP 8.1 auf **Live wird noch genutzt** (`teamcar`, `feedbck`) – dort nicht deinstallieren.
+  Pin-Datei `/etc/apt/preferences.d/php8.1-from-ubuntu` vorgeschlagen, damit 8.1 nicht aus dem PPA kommt;
+  `php8.1-mysql` per `apt-mark manual` vor `autoremove` schützen.
+- Staging auf nur noch PHP 8.4 konsolidieren (Bestandsaufnahme gemacht):
+  - 8.0 (nur CLI), 8.1 (FPM, ungenutzt, abgeschaltet): sofort deinstallierbar.
+  - `flowgame` (3 Pools), `kaffeeklatsch`: Pools von 8.3 nach `/etc/php/8.4/fpm/pool.d/` verschieben (Sockets bleiben).
+  - `www.komplexitaeter.de` (WordPress, 8.2): eigener 8.4-Pool `komplexitaeter-www` mit den Werten aus 8.2-`www.conf`
+    (100M Upload, `max_input_vars 3000`, 300 s), `php8.4-imagick` nachinstallieren, vorher WP-Version/Plugins prüfen.
+  - Danach 8.2/8.3 deinstallieren, wenn alles ein paar Tage stabil läuft.
+- **Umgesetzt (2026-10-21, Andreas):** Staging läuft nur noch auf PHP 8.4. Pools `flowgame.conf`, `kaffeeklatsch.conf`,
+  `komplexitaeter-www.conf` (WordPress) in `/etc/php/8.4/fpm/pool.d/`, `php8.4-imagick` installiert, nginx umgestellt;
+  PHP 8.0–8.3 entfernt (purge), Reste alter Kernel entfernt, `apt` ohne offene Updates. Alle Seiten antworten mit 200.
+  Upstream `flowgame_prototype` ebenfalls auf `php8.4-fpm.sock`; keine Verweise auf 8.0–8.3 mehr in nginx.
+- **Live umgestellt (2026-10-21, Andreas):** `teamcar` und `feedback` in eigenen 8.4-Pools (`teamcar.conf`,
+  `feedback.conf`), Erweiterungen `bz2 curl gd intl mbstring zip` für 8.4 nachinstalliert, Syntaxcheck mit `php8.4 -l`
+  ohne Befund. PHP 8.1, `libapache2-mod-php8.1`, `apache2-bin`/`-utils` und **phpMyAdmin** entfernt (purge, war seit
+  B-16 nicht mehr erreichbar). Ubuntus `composer` 2.2 (lief unter 8.4 nicht mehr) samt `php-symfony-*` usw. ersetzt
+  durch offizielles Composer 2.10 in `/usr/local/bin/composer`; `composer install --dry-run` in `poker-msg` ok.
+  Hinweis: Symlink `sites-enabled/feedbck…` zeigt auf `sites-available/feedback…`. `apt` ohne offene Updates.
+  **Damit läuft auf beiden Servern nur noch PHP 8.4.** Offen aus diesem Eintrag: Upload-Grenzen (s. o.).
+- **Dritter Server `vps-b9348783` (2026-10-21, Andreas):** Nebenprojekte, gehört nicht zu Poker (`the-agile-game`,
+  `daily-habit-tracker`, `kfs` mit PHP; `andreas`, `francois`, `fraxicle` statisch). War rund ein Jahr ohne Updates,
+  weil der eingestellte `ondrej/nginx`-PPA `apt update` blockierte. PPA entfernt, alle Updates eingespielt, nginx
+  1.28 → 1.18 (Ubuntu; `http2 on;` in `andreas`, `francois`, `fraxicle` → `listen … http2`), PHP 8.2 → 8.4
+  (Standard-Pool, `php8.4-mbstring`/`-mysql`/`-sqlite3`), PHP 8.2/8.3 entfernt, Neustart.
+  **Panne:** `php8.4-fpm` war beim Umstellen nicht installiert → PHP-Teile von `the-agile-game`,
+  `daily-habit-tracker`, `kfs` lieferten ca. 16:45–17:31 UTC einen 502 (Startseiten statisch, daher fiel es beim
+  `curl`-Test nicht auf). Lehre: nach Umstellung einen PHP-Endpunkt testen, nicht nur `/`.
+- `fraxicle`: Scanner-Anfragen auf `/_adminer/adminer.php.*` – geprüft, kein Adminer und keine `.php`-Dateien im
+  Webroot, nur blindes Scannen. PHP nach der Panne geprüft: `kfs` läuft, `the-agile-game` (statisch, PHP nur für
+  `api/game_state_logger.php`) antwortet wieder (400 statt 502).
 
 ### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
 **Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
@@ -307,3 +393,100 @@ Bestandsbug). In der Browser-Konsole:
 bestimmten Zuständen (noch) nicht im DOM ist. Offene Fragen: unter welchen Bedingungen genau (welcher Button/Zustand),
 und ob der Fehler sichtbare Folgen hat oder nur Konsolen-Rauschen ist. Fix vermutlich ein Null-Check vor dem
 `.style`-Zugriff.
+
+### B-27 `apple-touch-icon` fürs Board/Startseite
+iOS fragt beim „Zum Home-Bildschirm" `apple-touch-icon.png` und `apple-touch-icon-precomposed.png` im Webroot an;
+beide fehlen → je ~18 404/Tag im nginx-Error-Log (Stand 2026-10-20). Poker wird viel mobil genutzt, daher doppelt
+sinnvoll: ein ordentliches Home-Screen-Icon ablegen (z. B. aus dem vorhandenen Logo in `src/`) und optional per
+`<link rel="apple-touch-icon">` in `board.html`/`init.html` referenzieren. Beseitigt das Log-Rauschen und liefert
+ein sauberes Icon auf dem Homescreen. Klein; kein Backend. Offene Frage: eine Größe (180×180 reicht meist) oder
+mehrere, und ob zusätzlich ein normales `favicon`/`manifest` gepflegt werden soll.
+
+### B-28 PHP2Shell (CVE-2026-109618/-109619) patchen
+**Akut, nachträglich vermerkt (2026-10-21).** BSI-Hinweis BITS-H 2026-297981-1032 (Kritikalität 3/Orange): zwei
+Lücken im PHP-Kern, Codeausführung aus der Ferne ohne Anmeldung, CVSS 9.2, alle PHP-Versionen. Patch von PHP am
+21.10. 14:00 UTC; Details vorab durchgesickert, erste Angriffe gemeldet. Laut Leaks (unbestätigt) Use-after-free bei
+`session.upload_progress`, ausgelöst durch `multipart/form-data`-POST.
+
+Betroffen: Live 8.4 (Poker, ondrej-PPA) und 8.1 (`teamcar`, `feedbck`, Ubuntu); Staging 8.2/8.3/8.4.
+Seit der Konsolidierung am selben Tag (B-23) auf beiden Servern nur noch 8.4 – ein Patch, ein Dienst.
+- Übergangsweise auf beiden Servern `session.upload_progress.enabled = Off` in
+  `/etc/php/<v>/fpm/conf.d/99-php2shell.ini` (Poker nutzt weder POST noch Sessions noch Uploads).
+- 8.4.27 im ondrej-PPA am 21.10. hochgeladen, Pakete wurden noch gebaut (Launchpad zeitweise 503).
+- Nach dem Einspielen: `php8.4-fpm` (Live zusätzlich `php8.1-fpm`) neu starten, `supervisorctl restart poker-msg`.
+- PHP 8.1 von Ubuntu kommt über `unattended-upgrades` automatisch; Stand auf
+  https://ubuntu.com/security/CVE-2026-109618 („jammy / php8.1“).
+- Danach Kompromittierungs-Check: neue `.php`-Dateien seit 20.10., Prozesse/Crontab von `www-data`,
+  ausgehende Verbindungen.
+
+**Stand 2026-10-21 abends:**
+- Alle drei Server (Live, Staging, dritter Server `vps-b9348783` mit Nebenprojekten) laufen nur noch auf PHP 8.4
+  (B-23). Live-8.1 (`teamcar`, `feedbck`) damit erledigt.
+- Notbremse `session.upload_progress.enabled = Off` (offizielle Empfehlung von PHP, zusammen mit **Neustart aller
+  Worker** – `restart`, nicht `reload`) erst gegen 17:30 UTC auf allen drei Servern gesetzt; vorher fehlte sie auf
+  Live und Staging. Laut PHP schließt sie nur einen Angriffsweg – nur das Update schützt vollständig.
+- Laut PHP-Advisory: CVE-2026-109618 = Speicherkorruption bei Out-of-Memory mitten im Request; CVE-2026-109619 =
+  Use-after-free durch Zustand, der zwischen Requests im selben Worker hängen bleibt. Fix in 8.5.12, 8.4.27,
+  8.3.36, 8.2.35; 8.1 und älter offiziell ohne Fix. Teils als aktiv ausgenutzt gemeldet.
+- 8.4.27 auf Launchpad gebaut, Binärpakete aber noch „Pending publication“ – noch nicht installierbar.
+- Kompromittierungs-Check auf allen drei Servern **ohne Befund**: neue `.php`-Dateien nur aus dem Sprint-3-Deploy
+  (20.10.), WordPress-Sprachupdate, AIOS-Firewall-Settings (`__halt_compiler`) und leere WP-Optimize-Cachedateien;
+  keine fremden Prozesse, keine Crontab für `www-data`, keine unerwarteten Verbindungen.
+
+**Akzeptanzkriterium:** PHP 8.4.27 (oder neuer) auf allen drei Servern, `php8.4-fpm` und `poker-msg` neu
+gestartet, Check ohne Befund (✓).
+
+**Erledigt 2026-10-21 (Andreas):** PHP 8.4.27 auf Live, Staging und dem dritten Server eingespielt (Launchpad hatte
+die Pakete stundenlang auf „Pending publication“), supervisor/`poker-msg` dabei über die needrestart-Abfrage mit
+neu gestartet, alle drei Server anschließend neu gebootet. Notbremse (`99-php2shell.ini`) bleibt vorerst liegen,
+schadet nicht. Nicht umgesetzt (bewusst): nginx-Sperre für POST bei Poker, `memory_limit = -1`; automatische
+PHP-Updates aus dem PPA (vorerst nicht gewünscht).
+
+### B-29 WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten
+Betrifft nicht die Poker-App, läuft aber auf dem Staging-Server. `www.komplexitaeter.de` ist die WordPress-Seite aus
+`/home/ubuntu/neu.komplexitaeter.de/neu/`. UpdraftPlus legt täglich DB-Backups in `wp-content/updraft/` ab und
+löscht keine alten (bis 2026-10-21 rund 8 GB). Das Verzeichnis war **öffentlich abrufbar** (`.htaccess` wirkt unter
+nginx nicht); seit 2026-10-21 gesperrt (`location ^~ /wp-content/updraft/ { deny all; }`, `403`).
+
+Ob Backups abgerufen wurden, lässt sich nicht feststellen: `.gz`/`.zip` sind per `access_log off` vom Logging
+ausgenommen, Logs reichen nur 14 Tage zurück. Dateinamen enthalten eine zufällige ID, keine Verzeichnisliste →
+Abruf unwahrscheinlich, aber nicht ausgeschlossen.
+
+Offen:
+- Passwörter aller WP-Konten mit Admin-/Redakteursrechten ändern, Salts in `wp-config.php` neu erzeugen.
+- In Plugin-Einstellungen gespeicherte Zugangsdaten (SMTP, API-Schlüssel, Backup-Ziele) rotieren.
+- Vorfall kurz dokumentieren; klären, ob die Seite personenbezogene Daten speichert (DSGVO).
+- UpdraftPlus: Aufbewahrung begrenzen (z. B. 14 DB-Backups), Backups extern speichern.
+- nginx-Logs länger aufbewahren (z. B. 30 Tage); `access_log off` für `.gz`/`.zip` überdenken.
+- WordPress auf PHP 8.4 umstellen (siehe B-23).
+
+### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
+Die reguläre Unterstützung für Ubuntu 22.04 endet im April 2027 (danach nur noch ESM über Ubuntu Pro). Beide Server
+auf 24.04 heben, zuerst Staging, vorher Snapshot beim Hoster; Live danach an einem Wochenende.
+Zu beachten: ondrej-PHP-PPA wird beim Upgrade abgeschaltet und muss für `noble` neu eingerichtet werden (sonst fehlt
+PHP 8.4); `ev` für `poker-msg` neu bauen (B-19); nginx wird 1.24; weitere Seiten auf beiden Servern mittesten.
+Offene Fragen: Zeitpunkt; ob Ondřej für Ubuntu langfristig beim PPA bleibt oder auf `packages.sury.org` umzieht;
+vorher Staging auf eine PHP-Version konsolidieren (B-23).
+
+### B-31 API-Review / HTTP-Semantik (Spike)
+Die API ist RPC-artig (ein Skript pro Aktion in `api/*.php`), Schreibzugriffe laufen über GET, Fehler werden ohne
+sauberen HTTP-Statuscode behandelt (`validate_team(...) or exit;` → leerer 200). B-11 (POST statt GET) ist nur ein
+Symptom davon.
+
+**Spike (Analyse, risikofrei, ändert nichts am Live-Verhalten):** Bestandsaufnahme über alle `api/*.php` (+ `stats.php`):
+je Endpunkt Methode, GET/POST-Parameter, Team-Check (`validate_team`), Response (JSON? leer? Echo?), Statuscode bei
+Fehler, Auffälligkeiten. Ergebnis: eine **priorisierte Liste kleiner, einzeln deploybarer Verbesserungen**, z. B.
+(1) HTTP-Semantik: Schreibzugriffe → POST (= B-11, im Kontext), (2) saubere Statuscodes + `Content-Type` statt leerem
+`exit`, (3) einheitliche Response-Form, (4) Team-Check-Abdeckung bestätigen, (5) ggf. Endpunkte konsolidieren.
+
+**Kein REST-Redesign** (widerspricht dem pragmatischen Grundsatz; hoher Aufwand/Risiko an der Live-App bei kaum
+Nutzerwert). Umsetzung einzelner Punkte optional im selben Sprint, wenn sie sich als lohnend zeigen; sonst werden sie
+als eigene kleine Backlog-Einträge priorisiert.
+
+**Spike-Ergebnis (2026-10-22):** Team-Check-Abdeckung nach B-01 **vollständig** (alle team-bezogenen Schreib-Endpunkte
+rufen `validate_team()` vor dem Write; Endpunkte ohne VT sind user-/SID-scoped) – keine Sicherheitslücke. Vorbilder im
+Repo: `update_promo.php` (saubere Statuscodes), `update_topic.php` (bereits POST). Maßnahmen: **M1** Fehler-Contract
+(leerer 200 → Statuscodes), **M2** JSON-Header (`addteam.php`, `get_promo.php`), **M3** letzte SQL-Konkatenation in
+`update_user.php`, **M4 = B-11** GET→POST (~30 fetch-Stellen, eigener Sprint), **M5** Umbenennungen/Konsolidierung
+(nur notiert, u. a. `get_promo.php` ist faktisch `create_promo`). **In Umsetzung (Sprint 4):** M2 + M3 + M1-Minimal
+(403 statt leerem 200 bei ungültigem Team) auf `feature/B-31-api-hygiene`. Kein REST-Redesign.
