@@ -66,7 +66,7 @@ Abgeschlossen:
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
 | B-32 | CI: `playwright install --with-deps` beschleunigen | neu |
-| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | im Sprint |
+| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt (release) |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
