@@ -13,6 +13,16 @@ Verbesserungen. Vorbereitete Einträge: B-35 (Assets), B-36 (CSS aufräumen), B-
 (`dao.php`-Payload, Spike). Reihenfolge nach Aufwand/Nutzen aus dem Spike; Umsetzung klein und gestaffelt.
 Nebenher: B-19/B-24-Nachkontrolle nach der nächsten Werktags-Spitze; B-20-Nachkontrolle (FPM-grep + `free -m`).
 
+**Schlank-Spike-Ergebnis (2026-10-22, Details je Eintrag B-35/B-36/B-37/B-38).** Priorisierung nach Aufwand/Nutzen:
+1. **Server-Kompression gzip/brotli** für SVG/CSS/JS prüfen (B-35) – winzig, größter Effekt (~70 % auf Textassets:
+   Brand-SVGs 281 KB, Vendor-JS 184 KB, CSS). Server-Config, Andreas. **Zuerst.**
+2. **9 tote Bilder löschen** (~130 KB, B-35) – trivial, risikoarm.
+3. **`getDao()` liest `cards.json` nur noch 1×** (B-38) – trivialer Backend-Fix auf dem heißesten Endpunkt.
+4. **SVG/PNG verlustfrei optimieren** (B-35, `svgo`/`oxipng`) – klein, moderater Gewinn.
+5. **CSS aufräumen** (B-36) – mittel, Pixel-Gegenprüfung nötig (Klassen teils per JS gesetzt).
+6. **Responsive JS→CSS** (B-37) – groß, Regressionsrisiko, später; ggf. mit B-14. `dao.php`-Payload selbst ist mit
+   1–2 KB zu klein für Reduktion („so lassen" wie B-09).
+
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
 
@@ -595,6 +605,21 @@ Thema „schlank" auf der Ausliefer-Seite. `src/` enthält ~97 Bilder; auffälli
 **AK:** gleiche Darstellung in Light/Dark und auf dem Board; messbar kleinere Dateigrößen (vorher/nachher notieren);
 E2E bleibt grün. Klein, reines Frontend/Assets, kein Code.
 
+**Spike-Funde (2026-10-22):** Ausgeliefert (ohne `src/xcf/`) ~1,75 MB: 82 PNG (1,25 MB), 14 SVG (321 KB),
+3 Vendor-JS (184 KB), 1 favicon.ico (15 KB). Größte Einzelposten: `brand_dark.svg`/`brand_light.svg` (je ~140 KB,
+**bei jedem Board-Load** geladen), `logo_qr_code.png` (64 KB), `apple-touch-icon.png` (49 KB), Sterne-Karten
+(`c_*stars*.png` ~42 KB je). Die Brand-SVGs sind **sauber** (512 `<path>`, kein Base64, keine Editor-Reste, keine
+Überpräzision) → `svgo`-Gewinn vermutlich nur moderat.
+- **Höchster Hebel = Server-Kompression:** Prüfen, ob nginx `gzip`/`brotli` für `image/svg+xml`, `text/css`,
+  `application/javascript` aktiv hat. Textassets komprimieren ~70 % – das schlägt jede Pixel-Optimierung und ist eine
+  Server-Config-Zeile (Andreas, nicht im Repo prüfbar). **Zuerst klären.**
+- **9 wirklich tote Bilder (~130 KB), löschbar** (je einzeln gegengeprüft, 0 Treffer in HTML/CSS/JS/PHP/cards.json):
+  `brand.png`, `brand_nobg.png`, `cta_home.png`, `edit.png`, `follow_us.png`, `home.svg`, `info_news.png`,
+  `star_h.png`, `twitter.png`. **Achtung Gegenbeispiel:** `c_done001.png`/`c_prgrss1.png`/`c_prgrss2.png` wirken „tot",
+  sind aber `display_card_key`-Zustände (script.js:296) → **nicht** löschen. Karten-PNGs (`c_*.png`) werden dynamisch
+  aus `cards.json` gebaut (`'src/c_'+card_key+'.png'`) → nicht tot.
+- Karten-PNGs verlustfrei mit `oxipng`/`pngquant` optimieren, nur wenn optisch identisch.
+
 ### B-36 Totes/redundantes CSS entfernen, `style.css` aufräumen
 `style/style.css` ist ~1.950 Zeilen mit vielen mehrfach/ähnlich definierten Regeln (laut Andreas „drei-/vierfach").
 Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nutzungen bei 30 Definitionen, 23
@@ -621,6 +646,14 @@ Karten-Bug-Historie (Karten wurden „riesig" beim Öffnen der DevTools).
 über `@media`/Container-Queries in CSS, JS-Größenlogik entfernen oder auf das Nötige reduzieren. Größerer Umbau mit
 Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B-36. Niedrige–mittlere Priorität.
 
+**Spike-Funde (2026-10-22):** `adaptToDevice()` (script.js:842) setzt per `document.body.clientWidth`
+(`getBrowserWidth`, Schwellen 800/991/1199) die Klassen `.mobile`/`.desktop` an **alle** `.sizefit`-Elemente; 98 der
+311 CSS-Regeln hängen daran, **0 `@media`**. Der `resize`-Handler `handleResize()` (script.js:1082) ruft nicht nur
+`adaptToDevice()`, sondern rendert **bei jedem Resize alle Spielerkarten neu** (`updatePlayersCards` + `showCardUsage`)
+– genau das war die Ursache der „Riesen-Karten beim DevTools-Öffnen". Umbau auf echtes CSS-Responsive = größter
+**struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
+nach B-36, ggf. zusammen mit B-14.
+
 ### B-38 `dao.php`-Payload und Render-Pfad verschlanken (Spike)
 `api/dao.php` ist der am häufigsten aufgerufene Endpunkt (jeder Client lädt nach jedem `pull` den kompletten
 Team-Zustand neu). Vor einer Optimierung erst **messen/verstehen** (Spike): Wie groß ist die JSON-Antwort typisch?
@@ -629,3 +662,14 @@ Enthält sie Felder, die der Client nicht nutzt? Rendert das Frontend nach jedem
 **Spike-Ziel:** Bestandsaufnahme `dao.php`-Antwort (Felder, Größe, Häufigkeit) + Frontend-Render-Pfad (`updateDao`
 in `script.js`). Ergebnis: priorisierte Liste (z. B. ungenutzte Felder weglassen, Caching/`ETag`, Delta-Updates) oder
 Entscheidung „so lassen" wie bei B-09. Kein Umbau im Spike. Niedrige Priorität, aber hoher Hebel wegen der Frequenz.
+
+**Spike-Funde (2026-10-22):** `api/dao.php` ist nur eine Hülle (`echo json_encode($data_obj)`); den Payload baut
+`getDao()` in `api/lib.php`. Antwort: 25 Skalar-Felder (`name`, `topic`, `timer_*`, `all_players_ready`, …) + ein
+`players`-Array (im Schnitt ~5–6 Einträge). Grob **1–2 KB** – **Payload-Reduktion lohnt nicht** (Tendenz „so lassen"
+wie B-09; ungenutzte Felder wegzulassen spart kaum etwas).
+- **Ein echter Micro-Fix:** `getDao()` liest `cards.json` **zweimal pro Request** von der Platte und `json_decode`t
+  es zweimal (`api/lib.php:95` und `:447`). Einmal lesen/wiederverwenden spart IO+CPU auf dem **häufigsten** Endpunkt
+  (jeder Client nach jedem `pull`). Klein, reines Backend, deploybar.
+- **Render-Pfad:** Das Frontend rendert nach jedem `pull` den **kompletten** Zustand neu (`updateDao`), keine Deltas.
+  Delta-Rendering wäre der eigentliche Hebel, aber größerer Umbau – überschneidet sich mit B-14 (JS-Module) und B-37
+  (Resize-Logik). Erst nach denen sinnvoll; hier nur notiert.
