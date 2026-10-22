@@ -83,14 +83,14 @@ Abgeschlossen:
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
-| B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt (release) |
+| B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt |
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
 | B-36 | Totes/redundantes CSS entfernen, `style.css` aufräumen | refined |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
-| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt (release) |
+| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Karten „wobbeln" beim Fenster-Resize (Abstände springen) | neu |
 
