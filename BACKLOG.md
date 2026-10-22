@@ -92,7 +92,7 @@ Abgeschlossen:
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
-| B-41 | Karten „wobbeln" beim Fenster-Resize (Abstände springen) | analysiert → Lösung in B-40/B-37 |
+| B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | im Planning |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -675,7 +675,16 @@ nach B-36, ggf. zusammen mit B-14.
 `position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
 sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
 
-### B-41 Karten „wobbeln" beim Fenster-Resize (Abstände springen)
+### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
+**Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
+von den großen Epics B-40/B-37. Scope **nur Kartenbereich** (`#cbox` + Karten-Rendering): Positionierung von
+JS-`getCardPos`/`position:absolute` auf echtes **CSS-Flex** (`flex-wrap` + `justify-content:center` + `gap`)
+umstellen; Sortier-Glide per **FLIP** erhalten; beim Resize kein Glide (B-39 bleibt). **Draußen (bleibt B-37/B-40):**
+Karten-*Größe* kommt vorerst weiter über die bestehenden `.mobile`/`.desktop`-Klassen (`adaptToDevice`) – nur die
+Positionierung wird getauscht, nicht das Sizing; Menüs/Overlays/restliches Responsive später. Delia (CSS) + Fred
+(JS/FLIP), ein Branch. Ablauf: kurzes gemeinsames Planning zuerst, dann Umsetzung.
+
+**Ursprüngliches Wobble-Finding (bleibt als Begründung):**
 Nach B-39 (Karten springen beim Resize sofort statt zu gleiten) fiel auf: Beim langsamen Ziehen der Fensterbreite
 „wobbeln" die Karten – die Abstände werden kleiner, größer, wieder kleiner. **Kein Regressionsbug** von B-39: Die
 1-Sekunden-Transition hat diesen Effekt vorher nur weichgezeichnet; B-39 hat ihn sichtbar gemacht. Tritt nur beim
