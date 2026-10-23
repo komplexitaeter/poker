@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Agile Poker – board mockup (Sprint 8, B-51)</title>
+<link rel="icon" href="../../src/favicon.ico" sizes="any">
+<link rel="stylesheet" href="mockup.css?v=1">
+</head>
+<body>
+
+<!-- ================= MOCKUP CONTROLS (not part of the app) ================= -->
+<header class="mock-ctl" id="mockCtl">
+    <button class="mock-fold" id="mFold" aria-expanded="true" aria-controls="mockBody">Mockup ▾</button>
+    <div class="mock-body" id="mockBody" role="toolbar" aria-label="Mockup controls">
+        <span class="lg">Theme <span class="grp" id="mTheme">
+            <button data-val="classic">Classic</button><button data-val="console">Console</button>
+        </span></span>
+        <span class="lg"><span class="grp" id="mMode">
+            <button data-val="dark">Dark</button><button data-val="light">Light</button>
+        </span></span>
+        <span class="lg">View <span class="grp" id="mDevice">
+            <button data-val="fluid">Window</button><button data-val="desktop">Desktop 1280×800</button><button data-val="portrait">Phone 375×667</button><button data-val="landscape">Phone 667×375</button>
+        </span></span>
+        <label>Players <input type="range" id="mPlayers" min="1" max="21" value="7"> <output id="mPlayersOut">7</output></label>
+        <span class="lg">Round <span class="grp" id="mState">
+            <button data-val="voting">voting</button><button data-val="revealed">revealed</button>
+        </span></span>
+        <label>Result <select id="mResult">
+            <option value="consensus">consensus</option>
+            <option value="close">close</option>
+            <option value="spread" selected>spread (outliers)</option>
+            <option value="mixed">with ? / ☕</option>
+        </select></label>
+        <label><input type="checkbox" id="mTopics" checked> topic backlog</label>
+        <label><input type="checkbox" id="mLong"> long topic</label>
+    </div>
+    <p class="mock-note" id="mNote"></p>
+</header>
+
+<!-- ================= STAGE / DEVICE ================= -->
+<main class="stage" id="stage" data-device="fluid">
+<div class="device" id="device">
+<div class="app" id="app" data-theme="classic" data-state="revealed" data-timer>
+
+    <svg width="0" height="0" class="sprite" aria-hidden="true">
+        <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v1M14 20h1M18 18h3v3"/></symbol>
+        <symbol id="i-invite" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-7 7-7s7 3 7 7M19 8v6M16 11h6"/></symbol>
+        <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+        <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="7" r="2.5"/><path d="M17 12c3 0 5 2 5 5"/></symbol>
+        <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.5 3.5-7 8-7s8 2.5 8 7"/></symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+        <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+        <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+        <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5"/></symbol>
+        <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+        <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+        <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+        <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></symbol>
+    </svg>
+
+    <!-- ===== header: identity + menu shortcuts ===== -->
+    <header class="head">
+        <a class="brand" href="#" data-noop aria-label="komplexitäter tools"><img class="brand-img" src="../../src/brand_dark.svg" alt="Komplexitäter"><span class="prompt" aria-hidden="true">poker@</span></a>
+        <button class="team-name" data-open="invite" title="Invite people"><span id="teamName">Team Phoenix Payments</span><span class="cursor" aria-hidden="true"></span></button>
+        <button class="icon-btn" data-open="invite" aria-label="Invite people" title="Invite people (link + QR code)"><svg class="i"><use href="#i-qr"/></svg></button>
+        <span class="head-fill"></span>
+        <!-- desktop: shortcuts into the same menu (same order + names as the menu index) -->
+        <nav class="shortcuts" aria-label="Menu shortcuts">
+            <button class="icon-btn" data-open="topics"><svg class="i"><use href="#i-list"/></svg><span class="lbl">Topics</span></button>
+            <button class="icon-btn" data-open="players"><svg class="i"><use href="#i-users"/></svg><span class="lbl">Players</span><span class="badge" data-count></span></button>
+            <button class="icon-btn" data-open="board"><svg class="i"><use href="#i-gear"/></svg><span class="lbl">Board</span></button>
+            <button class="icon-btn" data-open="you"><svg class="i"><use href="#i-user"/></svg><span class="lbl" data-me>You</span></button>
+            <button class="icon-btn" data-open="feedback"><svg class="i"><use href="#i-chat"/></svg><span class="lbl">Feedback</span></button>
+        </nav>
+        <button class="icon-btn mode-btn" data-action="mode" aria-label="Switch light/dark" title="Light / dark"><svg class="i"><use href="#i-moon"/></svg></button>
+        <button class="icon-btn menu-btn" data-open="index" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg><span class="lbl">Menu</span><span class="badge" data-count></span></button>
+    </header>
+
+    <!-- ===== phone: active topic as one line (tap = Topics) ===== -->
+    <button class="topic-strip" data-open="topics" aria-label="Topics">
+        <span class="ts-pos" id="tsPos"></span><span class="ts-txt" id="tsTxt"></span><svg class="i"><use href="#i-down"/></svg>
+    </button>
+
+    <!-- ===== table ===== -->
+    <section class="table" id="table" aria-label="Table"></section>
+
+    <!-- ===== side panel (desktop) / dock (phone): topic queue, round, result ===== -->
+    <aside class="panel" id="panel" aria-label="Round">
+        <section class="queue" aria-labelledby="qHead">
+            <div class="p-head"><h2 id="qHead">Topics</h2><span class="muted" id="qPos"></span>
+                <button class="icon-btn sm" data-open="topics" aria-label="Edit topics" title="Edit topics"><svg class="i"><use href="#i-pen"/></svg></button></div>
+            <article class="topic-note" id="activeTopic"></article>
+            <ol class="q-next" id="qNext"></ol>
+        </section>
+
+        <section class="round" aria-labelledby="rHead">
+            <div class="p-head"><h2 id="rHead">Round <span id="roundNo">2</span></h2><span class="muted" id="rStatus"></span></div>
+            <div class="vote-progress" id="voteProgress"><span class="bar"><i id="progress"></i></span></div>
+            <div class="result" id="result">
+                <div class="verdict" id="verdict"></div>
+                <div class="histo" id="histo" role="img"></div>
+                <p class="outliers" id="outliers"></p>
+            </div>
+            <ol class="rounds" id="roundLog" aria-label="Earlier rounds of this topic"></ol>
+        </section>
+
+        <footer class="actions">
+            <div class="timer" role="group" aria-label="Stopwatch">
+                <button class="icon-btn sm" id="tPlay" aria-label="Start stopwatch"><svg class="i"><use href="#i-play"/></svg></button>
+                <span class="time" id="tTime">01:23</span>
+                <button class="icon-btn sm" id="tReset" aria-label="Reset stopwatch"><svg class="i"><use href="#i-reset"/></svg></button>
+            </div>
+            <div class="btns">
+                <button class="btn" id="btnCancel">Cancel round</button>
+                <button class="btn" id="btnRevote"><svg class="i"><use href="#i-redo"/></svg>Re-vote</button>
+                <button class="btn primary" id="btnNext">Next topic<svg class="i"><use href="#i-next"/></svg></button>
+            </div>
+        </footer>
+    </aside>
+
+    <!-- ===== deck: input only, no stats on it any more ===== -->
+    <section class="deck" aria-label="Your cards">
+        <div class="deck-cards" id="deck"></div>
+        <span class="deck-hint" aria-hidden="true">keys 1–9 pick a card</span>
+    </section>
+    <div class="status-line" id="statusLine" aria-hidden="true"></div>
+
+    <!-- ================= MENU: one component, two containers ================= -->
+    <div class="scrim" id="scrim" hidden></div>
+    <div class="menu" id="menu" role="dialog" aria-labelledby="menuTitle" hidden>
+        <div class="grab" aria-hidden="true"></div>
+        <header class="m-head">
+            <button class="icon-btn" id="mBack" aria-label="Back to menu"><svg class="i"><use href="#i-back"/></svg></button>
+            <h2 id="menuTitle">Menu</h2>
+            <button class="icon-btn" data-close aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button>
+        </header>
+        <div class="m-body">
+
+            <!-- index: same order + names as the desktop shortcuts -->
+            <section data-sec="index" data-title="Menu">
+                <ul class="m-index">
+                    <li><button data-open="invite"><svg class="i"><use href="#i-invite"/></svg><span><b>Invite people</b><small>Link and QR code</small></span></button></li>
+                    <li><button data-open="topics"><svg class="i"><use href="#i-list"/></svg><span><b>Topics</b><small id="ixTopics"></small></span></button></li>
+                    <li><button data-open="players"><svg class="i"><use href="#i-users"/></svg><span><b>Players</b><small id="ixPlayers"></small></span></button></li>
+                    <li><button data-open="board"><svg class="i"><use href="#i-gear"/></svg><span><b>Board</b><small>Deck, results, stopwatch, team name</small></span></button></li>
+                    <li><button data-open="you"><svg class="i"><use href="#i-user"/></svg><span><b>You</b><small id="ixYou"></small></span></button></li>
+                    <li><button data-open="feedback"><svg class="i"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span></button></li>
+                </ul>
+                <div class="links"><a href="#" data-noop>Privacy</a><a href="#" data-noop>Imprint</a></div>
+            </section>
+
+            <section data-sec="invite" data-title="Invite people" hidden>
+                <p class="lab">Everyone with this link can join the board.</p>
+                <div class="row"><input class="field" readonly value="https://poker.komplexitaeter.de/?t=8f3k2q9xpl" aria-label="Board link"><button class="btn primary" data-toast="Link copied"><svg class="i"><use href="#i-copy"/></svg>Copy</button></div>
+                <svg class="qr" id="qr" viewBox="0 0 25 25" role="img" aria-label="QR code of the board link"></svg>
+                <p class="hint center">Scan to join on your phone</p>
+            </section>
+
+            <section data-sec="topics" data-title="Topics" hidden>
+                <div class="seg tabs" role="tablist">
+                    <button role="tab" aria-selected="true" data-tab="backlog">Backlog</button>
+                    <button role="tab" aria-selected="false" data-tab="history">History</button>
+                </div>
+                <div data-tabpanel="backlog">
+                    <ol class="t-list" id="tList"></ol>
+                    <label class="lab" for="tAdd">Add topics – one per line (paste from Jira works)</label>
+                    <textarea class="field" id="tAdd" rows="3" maxlength="1800" placeholder="PAY-150 Refund by invoice"></textarea>
+                    <div class="row end"><button class="btn primary" id="tAddBtn"><svg class="i"><use href="#i-plus"/></svg>Add</button></div>
+                    <p class="hint">The top open topic is estimated. Markdown works in the topic text.</p>
+                </div>
+                <div data-tabpanel="history" hidden>
+                    <p class="hint">Earlier sessions of this board (from the stored round history).</p>
+                    <div id="hist"></div>
+                </div>
+            </section>
+
+            <section data-sec="players" data-title="Players" hidden>
+                <ul class="p-list" id="pList"></ul>
+                <p class="hint">Removed players can rejoin with the board link at any time.</p>
+            </section>
+
+            <section data-sec="board" data-title="Board" hidden>
+                <h3>Deck</h3>
+                <div class="f"><label class="lab" for="presetSel">Preset</label><select class="field" id="presetSel"></select></div>
+                <div class="f"><span class="lab">Cards in the deck – tap to switch off/on</span><div class="thumbs" id="thumbs"></div></div>
+                <h3>Results</h3>
+                <div class="f"><span class="lab">Names on revealed cards</span>
+                    <div class="seg" data-setting="anon"><button data-val="0">Show names</button><button data-val="1">Anonymous</button></div>
+                    <p class="hint">Takes effect with the next round.</p></div>
+                <div class="f"><span class="lab">Arrange revealed cards by</span>
+                    <div class="seg" data-setting="sort"><button data-val="value">Card value</button><button data-val="name">Player name</button></div></div>
+                <div class="f"><span class="lab">Pointer (where the votes lean)</span>
+                    <div class="seg" data-setting="pointer"><button data-val="0">Off</button><button data-val="1">Show</button></div></div>
+                <h3>Stopwatch</h3>
+                <div class="f"><div class="seg" data-setting="timer"><button data-val="0">Hidden</button><button data-val="1">Shown</button></div></div>
+                <h3>Team</h3>
+                <div class="f"><label class="lab" for="teamTxt">Team name</label>
+                    <div class="row"><input class="field" id="teamTxt" maxlength="40"><button class="btn" id="teamSave">Save</button></div></div>
+            </section>
+
+            <section data-sec="you" data-title="You" hidden>
+                <div class="f"><label class="lab" for="youTxt">Your name</label>
+                    <div class="row"><input class="field" id="youTxt" maxlength="40" autocomplete="off"><button class="btn" id="youSave">Save</button></div></div>
+                <div class="f"><span class="lab">Your role</span>
+                    <div class="seg" data-setting="role"><button data-val="player">Player</button><button data-val="observer">Observer</button></div>
+                    <p class="hint">Observers see the table but do not vote.</p></div>
+                <div class="f"><span class="lab">Appearance</span>
+                    <div class="seg" data-setting="mode"><button data-val="light">Light</button><button data-val="dark">Dark</button></div></div>
+                <div class="f"><span class="lab">Style (proposal)</span>
+                    <div class="seg" data-setting="theme"><button data-val="classic">Classic</button><button data-val="console">Console</button></div></div>
+                <div class="links"><a href="#" data-noop>Privacy Policy</a><a href="#" data-noop>Imprint</a><button class="btn sm danger" data-toast="Would open the existing “Delete your user data?” confirmation">Delete my data…</button></div>
+            </section>
+
+            <section data-sec="feedback" data-title="Feedback" hidden>
+                <label class="lab" for="fbTxt">Feedback is your most powerful way to change the world. Tell us what we could improve – leave your email if we may ask back.</label>
+                <textarea class="field" id="fbTxt" rows="6" maxlength="1800"></textarea>
+                <div class="row end"><button class="btn primary" id="fbSend">Send feedback</button></div>
+            </section>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+</div>
+</div>
+</main>
+
+<script src="mockup.js?v=1"></script>
+</body>
+</html>
