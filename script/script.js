@@ -538,7 +538,7 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
 
-        if (myJson.needs_setup) toggle_box('cset');
+        if (myJson.needs_setup) toggle_box('cset', false);
 
         updateDao(false);
     }
@@ -687,6 +687,10 @@ function loadBoard() {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
         }
+        // Escape closes the phone menu, unless it just closed a menu box (script_feedback.js)
+        if (event.key === 'Escape' && !event.defaultPrevented) {
+            toggleMobileMenu('closed');
+        }
     });
 }
 
@@ -775,14 +779,6 @@ function setColor() {
         brandImg.src = "./src/brand_light.svg";
         document.body.classList.add('light-theme');
     }
-
-    Array.from(document.getElementsByClassName("switchable")).forEach(element => {
-        if (gColorMode === "dark") {
-            element.classList.remove("light");
-        } else {
-            element.classList.add("light");
-        }
-    });
 }
 
 function switchColorMode(){
@@ -799,8 +795,17 @@ function toggleMobileMenu(target_state){
     let newroundbtn = document.getElementById("newroundbtn");
     // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
     if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
+        let opener = menu.querySelector('.open_menu');
+        let focusInside = menu.contains(document.activeElement);
         menu.setAttribute('data-state', target_state);
         newroundbtn.setAttribute('data-state', target_state);
+        opener.setAttribute('aria-expanded', target_state === 'open' ? 'true' : 'false');
+        if (target_state === 'open') {
+            menu.querySelector('.topnav-bar .icon-btn').focus();
+        } else if (focusInside) {
+            // the focused button disappears with the panel
+            opener.focus();
+        }
     }
 }
 
@@ -1256,7 +1261,10 @@ function showConfetty(playersCount) {
 
 function showDeleteUserOverlay(openIt=true) {
     let overlayDiv= document.getElementById('overlay_delete_user');
-    if (openIt) removeStyleClass(overlayDiv, 'hidden')
+    if (openIt) {
+        closeTopnavBoxes(); // the "You" box stays open otherwise (its links count as topnav)
+        removeStyleClass(overlayDiv, 'hidden');
+    }
     else addStyleClass(overlayDiv, 'hidden');
 }
 

@@ -1,14 +1,41 @@
 let gTopicChangePending = false;
 
+// topnav boxes (ids: <name>_box): their button, the field focused when the user opens it, analytics event
+const gTopnavBoxes = {
+    feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX'},  // focuses feedback_txt itself
+    topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX'},     // selects topic_txt itself
+    cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'cet_pre'},
+    user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'}
+};
+
+function isTopnavBoxOpen(boxName) {
+    let e = document.getElementById(boxName + '_box');
+    return e !== null && e.style.display === 'block';
+}
+
+function closeTopnavBoxes() {
+    toggle_feedback_box(false);
+    toggle_topic_box(false);
+    toggle_cardset_box(false);
+    toggle_user_settings_box(false);
+}
+
 function toggleTopnav(e) {
     // closest(): the topnav buttons contain an SVG icon, which may be the click target
     if (!(e.target.closest && e.target.closest('.topnav'))) {
-        toggle_feedback_box(false);
-        toggle_topic_box(false);
-        toggle_cardset_box(false);
-        toggle_user_settings_box(false);
+        closeTopnavBoxes();
     }
 }
+
+// Escape closes an open topnav box and puts the focus back on its button
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') return;
+    let openBox = Object.keys(gTopnavBoxes).find(isTopnavBoxOpen);
+    if (openBox === undefined) return;
+    closeTopnavBoxes();
+    document.getElementById(gTopnavBoxes[openBox].btn).focus();
+    event.preventDefault(); // handled: the phone menu stays open (see script.js)
+});
 
 function feedback_star_blink() {
     const offset = 300;
@@ -24,81 +51,30 @@ function feedback_star_blink() {
     setTimeout(function () { document.getElementById('fb_star_5').classList.remove('blink') }, offset + 1200);
 }
 
-function toggle_box(boxName) {
-    if (boxName === 'feedback') {
-        let e = document.getElementById('feedback_box');
-        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-            toggle_feedback_box(true);
-            toggle_topic_box(false);
-            toggle_cardset_box(false);
-            toggle_user_settings_box(false);
-            measureEvent("OPEN_FEEDBACK_BOX");
-        }
-        else {
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(false);
-            toggle_user_settings_box(false);
-        }
-    }
-    if (boxName === 'topic') {
-        let e = document.getElementById('topic_box');
-        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-            toggle_feedback_box(false);
-            toggle_topic_box(true);
-            toggle_cardset_box(false);
-            toggle_user_settings_box(false);
-            measureEvent("OPEN_TOPIC_BOX");
-        }
-        else {
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(false);
-            toggle_user_settings_box(false);
-        }
-    }
+// focusField: false when the board opens a box by itself (e.g. setup on a new board)
+function toggle_box(boxName, focusField = true) {
+    let box = gTopnavBoxes[boxName];
+    let wasOpen = isTopnavBoxOpen(boxName);
+    closeTopnavBoxes();
+    if (wasOpen) return;
+
     if (boxName === 'cset') {
-        let e = document.getElementById('cset_box');
-        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-
-            document.getElementById('cet_team_name').value
-                    = document.getElementById('team_name').innerText;
-            document.getElementById('cet_change_name').disabled = true;
-
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(true);
-            toggle_user_settings_box(false);
-            measureEvent("OPEN_SETUP_BOX");
-        }
-        else {
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(false)
-            toggle_user_settings_box(false);
-        }
+        document.getElementById('cet_team_name').value
+                = document.getElementById('team_name').innerText;
+        document.getElementById('cet_change_name').disabled = true;
+        toggle_cardset_box(true);
     }
     if (boxName === 'user_settings') {
-        let e = document.getElementById('user_settings_box');
-        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-
-            document.getElementById('cet_usr_name').value = gUserName;
-            document.getElementById('cet_change_user').disabled = true;
-
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(false);
-            toggle_user_settings_box(true);
-            measureEvent("OPEN_USER_SETTINGS_BOX");
-        }
-        else {
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(false);
-            toggle_user_settings_box(false);
-        }
+        hideTeaser();
+        document.getElementById('cet_usr_name').value = gUserName;
+        document.getElementById('cet_change_user').disabled = true;
+        toggle_user_settings_box(true);
     }
+    if (boxName === 'feedback') toggle_feedback_box(true);
+    if (boxName === 'topic') toggle_topic_box(true);
 
+    if (focusField && box.focus) document.getElementById(box.focus).focus();
+    measureEvent(box.event);
 }
 
 function updateJediBtn() {

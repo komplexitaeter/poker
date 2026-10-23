@@ -158,8 +158,6 @@ a {
 .visible { visibility: visible; }
 .hidden { visibility: hidden; }
 
-.light { filter: invert(100%); }
-
 /* Inline SVG icon sprite (board.html, init.html): line icons in the current text color */
 .sprite {
     position: absolute;
