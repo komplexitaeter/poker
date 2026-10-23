@@ -4,45 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Agile Poker – board mockup (Sprint 8, B-51)</title>
+<title>Agile Poker – board mockup round 3 (Sprint 8, B-51)</title>
 <link rel="icon" href="../../src/favicon.ico" sizes="any">
-<link rel="stylesheet" href="mockup.css?v=1">
+<link rel="stylesheet" href="mockup.css?v=3">
 </head>
 <body>
-
-<!-- ================= MOCKUP CONTROLS (not part of the app) ================= -->
-<header class="mock-ctl" id="mockCtl">
-    <button class="mock-fold" id="mFold" aria-expanded="true" aria-controls="mockBody">Mockup ▾</button>
-    <div class="mock-body" id="mockBody" role="toolbar" aria-label="Mockup controls">
-        <span class="lg">Theme <span class="grp" id="mTheme">
-            <button data-val="classic">Classic</button><button data-val="console">Console</button>
-        </span></span>
-        <span class="lg"><span class="grp" id="mMode">
-            <button data-val="dark">Dark</button><button data-val="light">Light</button>
-        </span></span>
-        <span class="lg">View <span class="grp" id="mDevice">
-            <button data-val="fluid">Window</button><button data-val="desktop">Desktop 1280×800</button><button data-val="portrait">Phone 375×667</button><button data-val="landscape">Phone 667×375</button>
-        </span></span>
-        <label>Players <input type="range" id="mPlayers" min="1" max="21" value="7"> <output id="mPlayersOut">7</output></label>
-        <span class="lg">Round <span class="grp" id="mState">
-            <button data-val="voting">voting</button><button data-val="revealed">revealed</button>
-        </span></span>
-        <label>Result <select id="mResult">
-            <option value="consensus">consensus</option>
-            <option value="close">close</option>
-            <option value="spread" selected>spread (outliers)</option>
-            <option value="mixed">with ? / ☕</option>
-        </select></label>
-        <label><input type="checkbox" id="mTopics" checked> topic backlog</label>
-        <label><input type="checkbox" id="mLong"> long topic</label>
-    </div>
-    <p class="mock-note" id="mNote"></p>
-</header>
 
 <!-- ================= STAGE / DEVICE ================= -->
 <main class="stage" id="stage" data-device="fluid">
 <div class="device" id="device">
-<div class="app" id="app" data-theme="classic" data-state="revealed" data-timer>
+<div class="app" id="app" data-theme="console" data-state="revealed" data-timer>
 
     <svg width="0" height="0" class="sprite" aria-hidden="true">
         <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v1M14 20h1M18 18h3v3"/></symbol>
@@ -67,25 +38,28 @@
         <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
         <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
         <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+        <symbol id="i-watch" viewBox="0 0 24 24"><circle cx="12" cy="14" r="7"/><path d="M12 14V10M10 3h4M12 3v4M18 7l1.5-1.5"/></symbol>
         <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></symbol>
     </svg>
 
-    <!-- ===== header: identity + menu shortcuts ===== -->
+    <!-- ===== header: identity (logo stays) + menu shortcuts + stopwatch toggle ===== -->
     <header class="head">
-        <a class="brand" href="#" data-noop aria-label="komplexitäter tools"><img class="brand-img" src="../../src/brand_dark.svg" alt="Komplexitäter"><span class="prompt" aria-hidden="true">poker@</span></a>
-        <button class="team-name" data-open="invite" title="Invite people"><span id="teamName">Team Phoenix Payments</span><span class="cursor" aria-hidden="true"></span></button>
-        <button class="icon-btn" data-open="invite" aria-label="Invite people" title="Invite people (link + QR code)"><svg class="i"><use href="#i-qr"/></svg></button>
+        <a class="brand" href="#" data-noop aria-label="komplexitäter tools"><img class="brand-img" src="../../src/brand_dark.svg" alt="Komplexitäter"></a>
+        <button class="team-name" data-open="invite" title="Invite people"><span class="prompt" aria-hidden="true">poker@</span><span class="tn" id="teamName">Team Phoenix Payments</span><span class="cursor" aria-hidden="true"></span></button>
+        <button class="icon-btn qr-btn" data-open="invite" aria-label="Invite people" title="Invite people (link + QR code)"><svg class="i"><use href="#i-qr"/></svg></button>
         <span class="head-fill"></span>
+        <!-- stopwatch: a direct toggle for the whole team (no menu needed), same place on desktop and phone -->
+        <button class="icon-btn sw-btn" id="swBtn" aria-pressed="true" title="Stopwatch for everyone on the board – on/off"><svg class="i"><use href="#i-watch"/></svg><span class="lbl sw-lbl" id="swLbl">Stopwatch</span></button>
         <!-- desktop: shortcuts into the same menu (same order + names as the menu index) -->
         <nav class="shortcuts" aria-label="Menu shortcuts">
-            <button class="icon-btn" data-open="topics"><svg class="i"><use href="#i-list"/></svg><span class="lbl">Topics</span></button>
+            <button class="icon-btn" data-open="topics"><svg class="i"><use href="#i-list"/></svg><span class="lbl" data-topics-lbl>Topic</span></button>
             <button class="icon-btn" data-open="players"><svg class="i"><use href="#i-users"/></svg><span class="lbl">Players</span><span class="badge" data-count></span></button>
             <button class="icon-btn" data-open="board"><svg class="i"><use href="#i-gear"/></svg><span class="lbl">Board</span></button>
             <button class="icon-btn" data-open="you"><svg class="i"><use href="#i-user"/></svg><span class="lbl" data-me>You</span></button>
             <button class="icon-btn" data-open="feedback"><svg class="i"><use href="#i-chat"/></svg><span class="lbl">Feedback</span></button>
         </nav>
         <button class="icon-btn mode-btn" data-action="mode" aria-label="Switch light/dark" title="Light / dark"><svg class="i"><use href="#i-moon"/></svg></button>
-        <button class="icon-btn menu-btn" data-open="index" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg><span class="lbl">Menu</span><span class="badge" data-count></span></button>
+        <button class="icon-btn menu-btn" data-open="index" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg><span class="lbl">Menu</span></button>
     </header>
 
     <!-- ===== phone: active topic as one line (tap = Topics) ===== -->
@@ -99,10 +73,11 @@
     <!-- ===== side panel (desktop) / dock (phone): topic queue, round, result ===== -->
     <aside class="panel" id="panel" aria-label="Round">
         <section class="queue" aria-labelledby="qHead">
-            <div class="p-head"><h2 id="qHead">Topics</h2><span class="muted" id="qPos"></span>
-                <button class="icon-btn sm" data-open="topics" aria-label="Edit topics" title="Edit topics"><svg class="i"><use href="#i-pen"/></svg></button></div>
-            <article class="topic-note" id="activeTopic"></article>
+            <div class="p-head"><h2 id="qHead">Topic</h2><span class="muted" id="qPos"></span>
+                <button class="icon-btn sm" data-open="topics" aria-label="Edit topic" title="Edit topic"><svg class="i"><use href="#i-pen"/></svg></button></div>
+            <button class="topic-note" id="activeTopic" data-open="topics"></button>
             <ol class="q-next" id="qNext"></ol>
+            <button class="add-next" id="addNext" data-open="topics" data-add>+ add next topic</button>
         </section>
 
         <section class="round" aria-labelledby="rHead">
@@ -112,6 +87,7 @@
                 <div class="verdict" id="verdict"></div>
                 <div class="histo" id="histo" role="img"></div>
                 <p class="outliers" id="outliers"></p>
+                <p class="noted" id="noted"></p>
             </div>
             <ol class="rounds" id="roundLog" aria-label="Earlier rounds of this topic"></ol>
         </section>
@@ -122,10 +98,12 @@
                 <span class="time" id="tTime">01:23</span>
                 <button class="icon-btn sm" id="tReset" aria-label="Reset stopwatch"><svg class="i"><use href="#i-reset"/></svg></button>
             </div>
+            <!-- same buttons as today: Cancel Round while voting, New Round after the reveal.
+                 "Next topic" only appears when there is a next topic in the (optional) list. -->
             <div class="btns">
                 <button class="btn" id="btnCancel">Cancel round</button>
-                <button class="btn" id="btnRevote"><svg class="i"><use href="#i-redo"/></svg>Re-vote</button>
-                <button class="btn primary" id="btnNext">Next topic<svg class="i"><use href="#i-next"/></svg></button>
+                <button class="btn primary" id="btnNew">New round</button>
+                <button class="btn" id="btnNext">Next topic<svg class="i"><use href="#i-next"/></svg></button>
             </div>
         </footer>
     </aside>
@@ -152,9 +130,10 @@
             <section data-sec="index" data-title="Menu">
                 <ul class="m-index">
                     <li><button data-open="invite"><svg class="i"><use href="#i-invite"/></svg><span><b>Invite people</b><small>Link and QR code</small></span></button></li>
-                    <li><button data-open="topics"><svg class="i"><use href="#i-list"/></svg><span><b>Topics</b><small id="ixTopics"></small></span></button></li>
+                    <li><button class="sw-row" id="swRow" role="switch" aria-checked="true"><svg class="i"><use href="#i-watch"/></svg><span><b>Stopwatch</b><small>For everyone on the board</small></span><span class="switch" aria-hidden="true"></span></button></li>
+                    <li><button data-open="topics"><svg class="i"><use href="#i-list"/></svg><span><b data-topics-lbl>Topic</b><small id="ixTopics"></small></span></button></li>
                     <li><button data-open="players"><svg class="i"><use href="#i-users"/></svg><span><b>Players</b><small id="ixPlayers"></small></span></button></li>
-                    <li><button data-open="board"><svg class="i"><use href="#i-gear"/></svg><span><b>Board</b><small>Deck, results, stopwatch, team name</small></span></button></li>
+                    <li><button data-open="board"><svg class="i"><use href="#i-gear"/></svg><span><b>Board</b><small id="ixBoard">Deck, results, team name</small></span></button></li>
                     <li><button data-open="you"><svg class="i"><use href="#i-user"/></svg><span><b>You</b><small id="ixYou"></small></span></button></li>
                     <li><button data-open="feedback"><svg class="i"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span></button></li>
                 </ul>
@@ -168,17 +147,27 @@
                 <p class="hint center">Scan to join on your phone</p>
             </section>
 
-            <section data-sec="topics" data-title="Topics" hidden>
+            <section data-sec="topics" data-title="Topic" hidden>
                 <div class="seg tabs" role="tablist">
-                    <button role="tab" aria-selected="true" data-tab="backlog">Backlog</button>
+                    <button role="tab" aria-selected="true" data-tab="now">Topic</button>
                     <button role="tab" aria-selected="false" data-tab="history">History</button>
                 </div>
-                <div data-tabpanel="backlog">
+                <div data-tabpanel="now">
+                    <!-- default (like today): one free topic, no list -->
+                    <div id="tSingle">
+                        <label class="lab" for="tTxt">What are you estimating? (optional – Markdown works)</label>
+                        <textarea class="field" id="tTxt" rows="4" maxlength="1800" placeholder="e.g. PAY-142 Pay by invoice"></textarea>
+                        <div class="row end"><button class="btn primary" id="tSave">Save</button></div>
+                    </div>
+                    <!-- optional: a list of topics (appears once a next topic is added) -->
                     <ol class="t-list" id="tList"></ol>
-                    <label class="lab" for="tAdd">Add topics – one per line (paste from Jira works)</label>
-                    <textarea class="field" id="tAdd" rows="3" maxlength="1800" placeholder="PAY-150 Refund by invoice"></textarea>
-                    <div class="row end"><button class="btn primary" id="tAddBtn"><svg class="i"><use href="#i-plus"/></svg>Add</button></div>
-                    <p class="hint">The top open topic is estimated. Markdown works in the topic text.</p>
+                    <button class="add-next big" id="tAddOpen">+ add next topic</button>
+                    <div id="tAddBox" hidden>
+                        <label class="lab" for="tAdd">Next topics – one per line (paste from Jira works)</label>
+                        <textarea class="field" id="tAdd" rows="3" maxlength="1800" placeholder="PAY-150 Refund by invoice"></textarea>
+                        <div class="row end"><button class="btn primary" id="tAddBtn"><svg class="i"><use href="#i-plus"/></svg>Add</button></div>
+                        <p class="hint" id="tAddHint">With a list, “Next topic” appears after the reveal. “New round” works as before.</p>
+                    </div>
                 </div>
                 <div data-tabpanel="history" hidden>
                     <p class="hint">Earlier sessions of this board (from the stored round history).</p>
@@ -192,22 +181,36 @@
             </section>
 
             <section data-sec="board" data-title="Board" hidden>
-                <h3>Deck</h3>
-                <div class="f"><label class="lab" for="presetSel">Preset</label><select class="field" id="presetSel"></select></div>
-                <div class="f"><span class="lab">Cards in the deck – tap to switch off/on</span><div class="thumbs" id="thumbs"></div></div>
-                <h3>Results</h3>
-                <div class="f"><span class="lab">Names on revealed cards</span>
-                    <div class="seg" data-setting="anon"><button data-val="0">Show names</button><button data-val="1">Anonymous</button></div>
-                    <p class="hint">Takes effect with the next round.</p></div>
-                <div class="f"><span class="lab">Arrange revealed cards by</span>
-                    <div class="seg" data-setting="sort"><button data-val="value">Card value</button><button data-val="name">Player name</button></div></div>
-                <div class="f"><span class="lab">Pointer (where the votes lean)</span>
-                    <div class="seg" data-setting="pointer"><button data-val="0">Off</button><button data-val="1">Show</button></div></div>
-                <h3>Stopwatch</h3>
-                <div class="f"><div class="seg" data-setting="timer"><button data-val="0">Hidden</button><button data-val="1">Shown</button></div></div>
-                <h3>Team</h3>
-                <div class="f"><label class="lab" for="teamTxt">Team name</label>
-                    <div class="row"><input class="field" id="teamTxt" maxlength="40"><button class="btn" id="teamSave">Save</button></div></div>
+                <!-- groups: deck is used most, results sometimes, team name rarely.
+                     Variant A (default): collapsible groups with a one-line summary. Variant B (?settings=tabs): tabs. -->
+                <div class="g-tabs seg" role="tablist" id="gTabs"></div>
+                <details class="grp" data-grp="deck" open>
+                    <summary><b>Deck</b><small id="sumDeck"></small></summary>
+                    <div class="grp-body">
+                        <div class="f"><label class="lab" for="presetSel">Card set</label><select class="field" id="presetSel"></select></div>
+                        <div class="f"><span class="lab">Cards in the set – tap to switch off/on</span><div class="thumbs" id="thumbs"></div></div>
+                    </div>
+                </details>
+                <details class="grp" data-grp="results">
+                    <summary><b>Results</b><small id="sumResults"></small></summary>
+                    <div class="grp-body">
+                        <div class="f"><span class="lab">Names on revealed cards</span>
+                            <div class="seg" data-setting="anon"><button data-val="0">Show names</button><button data-val="1">Anonymous</button></div>
+                            <p class="hint">Takes effect with the next round.</p></div>
+                        <div class="f"><span class="lab">Arrange revealed cards by</span>
+                            <div class="seg" data-setting="sort"><button data-val="value">Card value</button><button data-val="name">Player name</button></div></div>
+                        <div class="f"><span class="lab">Pointer (where the votes lean)</span>
+                            <div class="seg" data-setting="pointer"><button data-val="0">Off</button><button data-val="1">Show</button></div></div>
+                    </div>
+                </details>
+                <details class="grp" data-grp="team">
+                    <summary><b>Team</b><small id="sumTeam"></small></summary>
+                    <div class="grp-body">
+                        <div class="f"><label class="lab" for="teamTxt">Team name</label>
+                            <div class="row"><input class="field" id="teamTxt" maxlength="40"><button class="btn" id="teamSave">Save</button></div></div>
+                    </div>
+                </details>
+                <p class="hint">The stopwatch has its own switch in the header.</p>
             </section>
 
             <section data-sec="you" data-title="You" hidden>
@@ -218,8 +221,6 @@
                     <p class="hint">Observers see the table but do not vote.</p></div>
                 <div class="f"><span class="lab">Appearance</span>
                     <div class="seg" data-setting="mode"><button data-val="light">Light</button><button data-val="dark">Dark</button></div></div>
-                <div class="f"><span class="lab">Style (proposal)</span>
-                    <div class="seg" data-setting="theme"><button data-val="classic">Classic</button><button data-val="console">Console</button></div></div>
                 <div class="links"><a href="#" data-noop>Privacy Policy</a><a href="#" data-noop>Imprint</a><button class="btn sm danger" data-toast="Would open the existing “Delete your user data?” confirmation">Delete my data…</button></div>
             </section>
 
@@ -236,6 +237,20 @@
 </div>
 </main>
 
-<script src="mockup.js?v=1"></script>
+<!-- ================= MOCKUP HANDLE (not part of the app): collapsed by default, key ` toggles ================= -->
+<button class="mock-handle" id="mockHandle" aria-expanded="false" aria-controls="mockPanel" title="Mockup states (key `)">mock</button>
+<div class="mock-panel" id="mockPanel" role="dialog" aria-label="Mockup states" hidden>
+    <div class="mp-row"><span>Round</span><span class="grp" data-m="state"><button data-val="voting">voting</button><button data-val="revealed">revealed</button></span></div>
+    <div class="mp-row"><span>Result</span><span class="grp" data-m="result"><button data-val="consensus">same</button><button data-val="close">close</button><button data-val="spread">spread</button><button data-val="mixed">? / ☕</button></span></div>
+    <div class="mp-row"><span>Deck</span><select id="mpDeck"></select></div>
+    <div class="mp-row"><span>Topic</span><span class="grp" data-m="topics"><button data-val="none">none</button><button data-val="single">one</button><button data-val="backlog">list</button></span></div>
+    <div class="mp-row"><span>Players</span><input type="range" id="mpPlayers" min="1" max="21"><output id="mpPlayersOut"></output></div>
+    <div class="mp-row"><span>Mode</span><span class="grp" data-m="mode"><button data-val="dark">dark</button><button data-val="light">light</button></span></div>
+    <div class="mp-row"><span>View</span><span class="grp" data-m="device"><button data-val="fluid">window</button><button data-val="desktop">1280</button><button data-val="portrait">phone</button><button data-val="landscape">phone ⟲</button></span></div>
+    <div class="mp-row"><span>Settings</span><span class="grp" data-m="settings"><button data-val="groups">groups</button><button data-val="tabs">tabs</button></span></div>
+    <p class="mp-foot"><a href="../">all deep links</a> · <a href="#" id="mpLink">link to this state</a></p>
+</div>
+
+<script src="mockup.js?v=3"></script>
 </body>
 </html>
