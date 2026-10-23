@@ -23,6 +23,12 @@ Delia auf `feature/B-48-console-header` (`2ce55aa`, E2E 40/40 grün, `style.css`
 `script_feedback.js` 1.10), noch nicht gemergt. Nächstes: Fred auf demselben Branch (Escape/Fokus/aria-expanded für
 Burger und Menü-Boxen, Teaser per Fokus, Tastatur-Check), dann Review (anderer Agent), PR nach `release`, Sichtung
 durch Andreas auf Staging, danach Schritt 2.
+**Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
+1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
+   Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
+   Dazu B-55 (Hinweis-Toast + Umfrage). Vor dem Rollout klären: `mockups/` aus `release` nehmen oder mitlaufen lassen.
+2. **Rollout 2 (ca. eine Woche später): neue Funktionen** – B-53 (Ergebnisdarstellung) und B-52 (Topic-Backlog,
+   History), mit Ben und Sina. Beginn erst, wenn Rollout 1 als PR nach `master` liegt.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
@@ -117,6 +123,7 @@ Abgeschlossen:
 | B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
 | B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
 | B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | neu |
+| B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -817,6 +824,16 @@ Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden ei
 Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-55 Rollout 1: Hinweis und Umfrage zur neuen Optik
+Idee Andreas (2026-10-23): Nutzer nach Rollout 1 fragen, ob die Richtung passt. Bestehende Umfrage-Funktion nutzen
+(`pok_survey_tbl`, `pok_survey_vote_options_tbl`, `pok_survey_votes_tbl`, `api/get_survey.php`, `toggleSurvey()`),
+vermutlich nur per DB-Eintrag: „How do you like the new look?“ (z. B. Love it / Fine / Takes getting used to / Prefer
+the old one), Intro verweist für Freitext auf die Feedback-Funktion. Dazu einmaliger Toast beim ersten Besuch nach dem
+Rollout („New look – same game. Menus moved to the right.“, Toast-Mechanismus aus Schritt 2). Umfrage nicht
+gleichzeitig mit dem Toast, eher ab dem zweiten Besuch. Delia: Umfrage-Box im neuen Look (Schritt 3). Ben: SQL für die
+Umfrage, prüfen ob „ab zweitem Besuch“ ohne Code geht. Sina: B-43 (`survey_intro` per `innerHTML`) dabei miterledigen.
+Auswertung nach einigen Tagen per SQL, getrennt nach wiederkehrenden und neuen Teams.
 
 ### B-54 Feedback-Text ohne `encodeURIComponent()`
 Beim B-48-Review gefunden (Fred, 2026-10-23), schon vorher so: `feedback_submit()` in `script/script_feedback.js`
