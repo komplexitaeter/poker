@@ -1,6 +1,6 @@
 /* Throw-away mockup logic (Sprint 8, B-51, round 3). Static: no API calls, no analytics.
    Reads only ../../cards.json and images from ../../src/. All names/topics are rendered via textContent.
-   Deep links: see ../index.html. Mockup states: handle on the left edge or key ` (backtick). */
+   Deep links: see ../index.html. Mockup states: handle on the left edge or key M (also ` / ^). */
 'use strict';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -565,7 +565,7 @@ app.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { if (!$('#mockPanel').hidden) toggleMock(false); else closeMenu(); return; }
     if (e.target.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.code === 'Backquote' || e.key === '`') { e.preventDefault(); toggleMock(); return; } /* ` on US, ^ on German keyboards */
+    if (e.key === 'm' || e.key === 'M' || e.key === 'Dead' || e.key === '^' || e.code === 'Backquote' || e.key === '`') { e.preventDefault(); toggleMock(); return; } /* M, or ` / ^ */
     if (/^[0-9]$/.test(e.key) && S.state === 'voting') {
         const deck = deckCards(), k = e.key === '0' ? 9 : +e.key - 1;
         if (deck[k]) pick(deck[k].card_key);

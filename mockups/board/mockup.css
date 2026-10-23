@@ -15,10 +15,10 @@ body {
 
 /* mockup handle: a thin tab on the left edge (table area is empty there), collapsed by default; key ` / ^ */
 .mock-handle {
-    position: fixed; left: 0; top: 46%; z-index: 100; width: 16px; height: 54px; padding: 0;
-    writing-mode: vertical-rl; transform: rotate(180deg); font: 9px/1 ui-monospace, monospace; letter-spacing: .1em;
+    position: fixed; left: 0; top: 46%; z-index: 100; width: 24px; height: 84px; padding: 0;
+    writing-mode: vertical-rl; transform: rotate(180deg); font: 12px/1 ui-monospace, monospace; letter-spacing: .1em;
     color: #9aa3b5; background: rgba(40, 44, 54, .55); border: 1px solid rgba(255, 255, 255, .12); border-left: 0;
-    border-radius: 6px 0 0 6px; cursor: pointer; opacity: .55;
+    border-radius: 6px 0 0 6px; cursor: pointer; opacity: .85;
 }
 .mock-handle:hover, .mock-handle:focus-visible, .mock-handle[aria-expanded=true] { opacity: 1; color: #fff; }
 body.clean .mock-handle { display: none; }
