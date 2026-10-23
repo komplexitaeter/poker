@@ -10,6 +10,8 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 **Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
 Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Planning läuft: Mockup `mockups/` (Delia) – Andreas hat Variante C (Panel/Dock) und Menüs als Side Panel am
 Desktop gewählt; Runde 2 mit „Console Style“, Ergebnisdarstellung (B-53) und Topic-Liste (B-52).
+**Entscheidung Andreas (2026-10-23): Console Style wird der Look der App, ohne Theme-Umschalter (Light/Dark bleibt).**
+Mockup-Runde 3 läuft.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
