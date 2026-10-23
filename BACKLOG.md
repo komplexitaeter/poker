@@ -764,6 +764,12 @@ abstrakt, sortiert wird nach dem Kartenwert); Hinweis entsprechend „…arrange
 **ganze Auswahlfeld deaktiviert** und zeigt fest „Card value“, egal was gespeichert ist; der gespeicherte Wert bleibt
 und erscheint nach dem Ausschalten des Anonym-Modus automatisch wieder.
 
+**Live (2026-10-23, PR #31):** Daten-Update von Andreas eingespielt: 40 Teams umgestellt (29 `CHOOSE:SEQUENCE`,
+11 `CHOOSE:NAME`; die Analyse zählte nur Runden der letzten 180 Tage, die Tabelle enthält alle Teams seit Beginn).
+Alle auf `SEQUENCE` (wie geplant). Für die 11 `CHOOSE:NAME`-Teams wäre `NAME` genauer gewesen; Auswirkung gering
+(keine Runde in den letzten 180 Tagen), Umstellen im Menü ist ein Klick. Lehre: bei Daten-Updates die betroffenen
+Werte vorher sichern bzw. nach altem Wert unterscheiden.
+
 ### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
 **Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
 von den großen Epics B-40/B-37. Scope **nur Kartenbereich** (`#cbox` + Karten-Rendering): Positionierung von
