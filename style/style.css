@@ -390,12 +390,14 @@ a {
     }
 
 /* B-41: cards flow in a centered flex-wrap layout; no JS positioning.
-   Gaps/padding reproduce the former 110 x 163 px JS grid: cards render
-   102 x 150 px (100 x 148 px image + 1px border), so 8px x 13px between
-   cards, 4px above the first row and 9px below the last one. */
+   Horizontal gaps reproduce the former 110 px JS grid: cards render
+   102 x 150 px (100 x 148 px image + 1px border), so 8px between cards.
+   Vertically the delete icon (.c .delete, bottom:-10px, ~22px high) hangs
+   about 10px below a card, so rows are 20px apart and 22px stay below the
+   last row: the icon keeps ~10-12px of air to the next card / element. */
 div#cbox {
     margin-top: 2em;
-    padding: 4px 0 9px;
+    padding: 4px 0 22px;
     outline: none;
     width: 100%;
     display: flex;
@@ -403,7 +405,7 @@ div#cbox {
     justify-content: center;
     align-content: flex-start;
     align-items: flex-start;
-    gap: 13px 8px;
+    gap: 20px 8px;
     position: relative;
 }
 
