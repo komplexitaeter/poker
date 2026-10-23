@@ -1,7 +1,10 @@
 /* Agile Poker stylesheet – "console" look (Sprint 8, B-48/B-50).
  * One breakpoint: small screens (phones) up to 799.98px, large screens from 800px
  * (mirrored in script/script.js, toggleMobileMenu). Monospace type, flat surfaces,
- * small radii; colors come from the tokens below (dark = default, light = body.light-theme). */
+ * small radii; colors come from the tokens below (dark = default, light = body.light-theme).
+ * Board page grid (B-46): see "Board layout". Two more cases there: phones in portrait
+ * (small screen and not landscape-short) and phones in landscape (max-height: 500px).
+ * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens". */
 
 /* ---------- Tokens ---------- */
 
@@ -21,6 +24,7 @@
     --z-newround: 5;      /* New Round on top of the open phone menu */
     --z-nav: 10;          /* header incl. its menu boxes, above the table */
     --z-promo: 100;
+    --z-toast: 250;       /* short messages (showToast), above the deck and open menus */
     --z-menu: 200;        /* menu boxes (inside the header stacking context) */
     --z-hint: 210;        /* header tooltips, above an open menu box */
     --z-scrim: 300;       /* QR code backdrop */
@@ -38,6 +42,8 @@
     --space-4: 2rem;
     /* minimum size of a header button; larger on touch screens */
     --tap: 36px;
+    /* board: width of the round panel on large screens (B-46) */
+    --panel-w: clamp(240px, 24vw, 340px);
 }
 
 @media (pointer: coarse) {
@@ -130,7 +136,11 @@ body {
     -webkit-user-select: none;
     user-select: none;
     -webkit-user-drag: none;
+    touch-action: manipulation; /* B-47: no double-tap zoom delay (the body reacts to dblclick) */
 }
+
+/* board: the page grid fills the screen, only the table scrolls (B-46) */
+body:has(> .container) { overflow: hidden; }
 
 /* form controls do not inherit the font by default */
 button,
@@ -281,6 +291,10 @@ textarea.field {
     text-align: center; /* the header itself is left-aligned */
     display: none;
     z-index: var(--z-menu);
+    /* the board page does not scroll (B-46): a long box scrolls itself */
+    max-height: calc(100vh - 70px);
+    max-height: calc(100dvh - 70px);
+    overflow-y: auto;
 }
 
 .topnav label {
@@ -315,7 +329,21 @@ textarea.field {
     width: 450px;
 }
 
-.overlay_panel .btn { margin-bottom: var(--space-2); }
+/* one column for the name input and the choices; wide enough for "Participate as a Player"
+ * in the monospace font (23 characters), never wider than the screen */
+.overlay_panel .btn,
+#nameinput {
+    box-sizing: border-box;
+    width: 18rem;
+    max-width: calc(100% - 2 * var(--space-3));
+}
+
+.overlay_panel .btn {
+    min-height: var(--tap);
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    margin-bottom: var(--space-2);
+}
 
 @media (max-width: 799.98px) {
     .btn-box {
@@ -337,7 +365,6 @@ textarea.field {
     .overlay_msg { width: 65%; }
 
     .overlay_panel .btn {
-        width: 65%;
         min-height: 3rem;
         margin-bottom: var(--space-3);
     }
@@ -365,42 +392,213 @@ textarea.field {
 
 .instruction li::marker { color: var(--muted); }
 
-/* ---------- Board layout ---------- */
+/* ---------- Board layout (B-46) ---------- */
 
+/* One grid for the whole screen: header / table + round panel / card deck.
+ * dvh follows the visible height on phones (address bar), vh is the fallback.
+ * Only the table scrolls; the deck and the round actions keep their place.
+ * Safe areas (viewport-fit=cover): left/right here, bottom below the deck. */
 .container {
+    position: relative; /* anchor of the phone menu and its boxes */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--panel-w);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "head  head"
+        "table panel"
+        "deck  deck";
     height: 100vh;
-    position: relative;
+    height: 100dvh;
+    padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
-.up-container {
-    top: 0;
-    position: absolute;
-    height: 89vh;
-    width: 100%;
-    overflow: hidden;
+.container > .head {
+    grid-area: head;
+    padding-top: max(4px, env(safe-area-inset-top));
 }
 
+/* the table: scrolls on its own; #cbox inside stays as high as its cards */
+.table {
+    grid-area: table;
+    min-height: 0;
+    padding: 0 var(--space-2); /* cards keep off the panel; phones: none (3 cards fit at 320px) */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* the deck spans the full width (wide card sets need it until B-49) */
 .down-container {
-    bottom: 0;
-    position: fixed;
-    width: 100%;
+    grid-area: deck;
+    position: relative; /* anchor of the survey */
     display: flex;
     justify-content: center;
     align-items: flex-end;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
-@media (max-width: 799.98px) {
-    .up-container {
-        overflow: visible;
-        overflow-y: scroll;
+/* Round panel (large screens): topic on top (scrolls when long), actions at the bottom */
+.panel {
+    grid-area: panel;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--line);
+    text-align: left;
+}
+
+.panel-topic {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-2) var(--space-3) var(--space-3);
+}
+
+/* "// topic" with an edit button */
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-1);
+}
+
+.panel-head h2 {
+    margin: 0;
+    font-size: var(--fs-s);
+    font-weight: normal;
+    color: var(--muted);
+}
+
+.panel-head h2::before {
+    content: "// ";
+    color: var(--line-strong);
+}
+
+.panel-head .icon-btn { color: var(--muted); }
+.panel-head .icon-btn:hover { color: var(--accent); }
+
+/* no topic yet: an invitation to set one (shown while #topic is hidden) */
+.topic-empty {
+    display: none;
+    width: 100%;
+    min-height: var(--tap);
+    padding: var(--space-2) 12px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-m);
+    background: transparent;
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    text-align: left;
+    cursor: pointer;
+}
+
+.topic-empty:hover,
+.topic-empty:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.topic-empty:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+#topic.display_none ~ .topic-empty { display: block; }
+
+/* the arrow that unfolds the topic is for the phone strip only */
+#topic_toggle { display: none; }
+
+/* round actions: stopwatch above New Round */
+.dock {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-top: 1px solid var(--line);
+}
+
+/* Phones in landscape: little height. The panel stays a narrow column on the right
+ * (more room for the table), with less padding. */
+@media (max-height: 500px) and (orientation: landscape) {
+    .container { --panel-w: clamp(180px, 28vw, 240px); }
+
+    .container > .head { min-height: 44px; }
+
+    .panel-topic { padding: var(--space-1) var(--space-2) var(--space-2); }
+
+    .dock {
+        gap: var(--space-1);
+        padding: var(--space-2);
     }
+}
+
+/* Phones in portrait (small screen, unless it is a short landscape screen, see above):
+ * the panel dissolves into two zones of the grid – the topic as a strip below the header,
+ * the actions as a dock right above the deck (thumb zone, always in view). */
+@media (max-width: 799.98px) and (min-height: 500.02px), (max-width: 799.98px) and (orientation: portrait) {
+    .container {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            "head"
+            "strip"
+            "table"
+            "dock"
+            "deck";
+    }
+
+    .panel { display: contents; }
+
+    .table { padding: 0; }
+
+    .panel-topic {
+        grid-area: strip;
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-1);
+        min-width: 0;
+        overflow: visible;
+        padding: 0 6px 0 10px;
+    }
+
+    /* no topic: no strip (as before) */
+    .panel-head,
+    .topic-empty,
+    #topic.display_none ~ .topic-empty,
+    #topic.display_none ~ #topic_toggle { display: none; }
+
+    #topic_toggle {
+        display: inline-flex;
+        margin-top: 2px;
+        color: var(--muted);
+    }
+
+    #topic_toggle .i { transition: transform 0.2s; }
+    #topic_toggle[aria-expanded=true] .i { transform: rotate(180deg); }
+
+    .dock {
+        grid-area: dock;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-1);
+        padding: var(--space-1) 8px;
+        background: var(--bg-2);
+        border-top: 1px solid var(--line);
+    }
+
+    /* nothing to show yet (stopwatch off, nobody has voted): no empty bar */
+    .dock:has(> #stopwatch.display_none):has(> #newroundbtn.display_none) { display: none; }
 }
 
 /* ---------- Header: logo, prompt with team name, topnav buttons ---------- */
 
 /* One flex row on board and start page. Large screens: the header is the anchor of the menu
  * boxes. Small screens (board): it stays static, so the open burger menu and the boxes are
- * placed in .up-container as before. */
+ * placed in .container. */
 .head {
     position: relative;
     z-index: var(--z-nav);
@@ -442,6 +640,7 @@ textarea.field {
 }
 
 .team-name {
+    position: relative; /* anchor for the hint (else it hangs off the board grid on phones) */
     display: inline-flex;
     align-items: center;
     min-width: 0;
@@ -643,8 +842,9 @@ textarea.field {
 }
 
 @media (max-width: 799.98px) {
-    /* board: static, see above (the start page header keeps its feedback box anchored) */
-    .up-container > .head { position: static; }
+    /* board: static, so the open burger menu and the boxes are placed in .container
+       (the start page header keeps its feedback box anchored) */
+    .container > .head { position: static; }
 
     .head {
         min-height: 52px;
@@ -672,14 +872,13 @@ textarea.field {
         z-index: var(--z-burger);
     }
 
-    /* open: a panel over the board (New Round sits on top of it, see #newroundbtn) */
+    /* open: a panel over the whole board */
     .mobile-menu[data-state=open] {
         position: absolute;
         width: 95%;
-        height: 99%;
-        min-height: 95%;
         right: 2.5%;
         top: 5px;
+        bottom: 5px;
         box-sizing: border-box;
         background-color: var(--bg-4);
         border: 1px solid var(--line-strong);
@@ -726,7 +925,7 @@ textarea.field {
     .team-name .prompt,
     .team-name .prompt-path { display: none; }
 
-    .up-container #brand {
+    .container #brand {
         width: 20px;
         object-fit: cover;
         object-position: left center;
@@ -860,20 +1059,19 @@ textarea.field {
 
 /* ---------- Topic note ---------- */
 
-/* console: a quoted block with a magenta bar; headings and bold text keep the topic color */
+/* console: a quoted block with a magenta bar; headings and bold text keep the topic color.
+ * Large screens: in full length in the round panel (the panel scrolls). */
 #topic {
-    margin: 2em auto 0;
-    padding: 2px 1em 2px 12px;
-    min-width: 50%;
-    max-width: calc(100% - 2em);
-    box-sizing: border-box;
-    width: fit-content;
-    height: fit-content;
+    margin: 0;
+    padding: 2px 0 2px 12px;
     text-align: left;
     overflow-wrap: anywhere;
     color: var(--text);
     border-left: 3px solid var(--topic-color);
 }
+
+#topic > :first-child { margin-top: 0; }
+#topic > :last-child { margin-bottom: 0; }
 
 #topic strong,
 #topic b,
@@ -881,8 +1079,39 @@ textarea.field {
 #topic h2,
 #topic h3 { color: var(--topic-color); }
 
-@media (max-width: 799.98px) {
-    #topic { min-width: 90%; }
+/* Phones in portrait: one line in the strip below the header; the arrow (or a tap) unfolds it */
+@media (max-width: 799.98px) and (min-height: 500.02px), (max-width: 799.98px) and (orientation: portrait) {
+    #topic {
+        flex: 1;
+        min-width: 0;
+        margin-top: var(--space-2);
+        padding: 4px 8px 4px 10px;
+        line-height: 1.5;
+        max-height: 1.5em; /* one line; also cuts off lines after a <br> */
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        background: var(--bg-2);
+        cursor: pointer;
+    }
+
+    /* blocks run inline in the one-line view, so the ellipsis works */
+    .panel-topic[data-expanded=false] #topic :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        font-size: inherit;
+    }
+
+    .panel-topic[data-expanded=false] #topic :is(p, li, h1, h2, h3, h4, h5, h6)::after { content: " "; }
+
+    .panel-topic[data-expanded=true] #topic {
+        max-height: 40vh;
+        max-height: 40dvh;
+        overflow-y: auto;
+        white-space: normal;
+        cursor: auto;
+    }
 }
 
 /* ---------- Cards on the table ---------- */
@@ -894,7 +1123,7 @@ textarea.field {
    about 10px below a card, so rows are 20px apart and 22px stay below the
    last row: the icon keeps ~10-12px of air to the next card / element. */
 div#cbox {
-    margin-top: 2em;
+    margin-top: 2em; /* small screens: see below */
     padding: 4px 0 22px;
     outline: none;
     width: 100%;
@@ -974,7 +1203,10 @@ div#cbox {
 /* Small screens: the card is 100px wide, but its bordered image renders 102px (overflows
    by 2px), so the column gap is 2px larger to keep the same 110px grid as on large screens. */
 @media (max-width: 799.98px) {
-    div#cbox { column-gap: 10px; }
+    div#cbox {
+        margin-top: 1em;
+        column-gap: 10px;
+    }
 
     .c { width: 100px; }
 
@@ -997,52 +1229,66 @@ div#cbox {
     }
 }
 
-/* ---------- New round button, stopwatch ---------- */
+/* ---------- New round button, stopwatch (round panel / dock) ---------- */
 
-#newroundbtn { margin-top: 20px; }
+#newroundbtn {
+    width: 100%;
+    min-height: var(--tap);
+}
+
+/* hidden until someone has voted: keeps its place, so the stopwatch does not jump */
+.dock #newroundbtn.display_none {
+    display: inline-block;
+    visibility: hidden;
+}
 
 .stopwatch_control {
-    margin-top: var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
     cursor: pointer;
 }
 
-.stopwatch_control>img {
+.stopwatch_control.display_none { display: none; }
+
+.stopwatch_control > img {
     width: 30px;
     height: auto;
 }
 
-.stopwatch_control>input {
+.stopwatch_control > img.display_none { display: none; }
+
+.stopwatch_control > label { display: none; }
+
+.stopwatch_control > input {
+    width: 8ch;
+    padding: 0;
     border: none;
     background-color: transparent;
     text-align: center;
     font-family: inherit;
     font-size: var(--fs-xl);
-    vertical-align: super;
+    font-variant-numeric: tabular-nums;
     color: var(--text-color);
 }
 
-@media (max-width: 799.98px) {
+@media (max-width: 799.98px) and (min-height: 500.02px), (max-width: 799.98px) and (orientation: portrait) {
+    /* dock: stopwatch left, New Round right; sized so both fit in one row at 320px */
     #newroundbtn {
         width: auto;
-        margin-top: 0;
-        padding: 0.2rem 0.8rem;
+        margin-left: auto;
+        padding: 0.2rem 0.6rem;
+        font-size: var(--fs-m);
     }
 
-    /* shown in the open burger menu only */
-    #newroundbtn[data-state=open] {
-        z-index: var(--z-newround);
-        top: 15px;
-        left: 40%;
-        position: absolute;
-    }
+    .stopwatch_control > input { font-size: var(--fs-l); }
 }
 
 /* ---------- Card deck (bottom bar) and average indicator ---------- */
 
 .controls {
     width: auto;
-    position: absolute;
-    bottom: 0;
     margin: 0 auto;
     display: flex;
     align-items: flex-end;
@@ -1082,10 +1328,11 @@ div#cbox {
 
 .ctl_as_guest { filter: grayscale(100%); }
 
+/* left: set by script.js from the deck cards (viewport coordinates), so it is fixed */
 #index {
-    position: absolute;
+    position: fixed;
     left: 557px;
-    bottom: 77px;
+    bottom: calc(77px + env(safe-area-inset-bottom));
     width: 15px;
     transition: left 0.8s ease-in-out;
 }
@@ -1093,8 +1340,8 @@ div#cbox {
 /* Small screens: the deck scrolls sideways, the selected card is a raised tab */
 @media (max-width: 799.98px) {
     .controls {
-        left: 0;
-        right: 0;
+        flex: 1 1 auto;
+        min-width: 0;
         height: auto;
         padding: 0;
         flex-wrap: nowrap;
@@ -1267,6 +1514,15 @@ div#cbox {
     cursor: pointer;
 }
 
+/* never wider than the screen: an overflow would widen the layout viewport on phones
+ * and push fixed elements (toast) off the bottom */
+#overlay_qr_code { overflow: hidden; }
+
+/* the QR code is a fixed 300px SVG (+ padding): shrink it on very narrow phones */
+@media (max-width: 380px) {
+    #canvas_qr_code { transform: scale(0.85); }
+}
+
 #canvas_qr_code {
     position: absolute;
     border: 1px solid var(--primary-border-color);
@@ -1275,10 +1531,7 @@ div#cbox {
     background-color: var(--background-color);
 }
 
-#nameinput {
-    width: 200px;
-    margin: 60px 0 var(--space-4);
-}
+#nameinput { margin: 60px 0 var(--space-4); }
 
 .privacy_link {
     display: flex;
@@ -1303,10 +1556,7 @@ div#cbox {
 }
 
 @media (max-width: 799.98px) {
-    #nameinput {
-        width: 65%;
-        margin-top: 50px;
-    }
+    #nameinput { margin-top: 50px; }
 }
 
 /* ---------- Promo tab ---------- */
@@ -1371,11 +1621,99 @@ div#cbox {
 
 .promo-close-icon { display: block; }
 
+/* ---------- Toast (showToast in script.js) ---------- */
+
+/* A short message that pops up from the bottom edge like toast from a toaster, stays a
+ * moment and drops back. It lies over the deck and the dock, so nothing covers it.
+ * No visibility:hidden while down: the live region stays readable for screen readers. */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    z-index: var(--z-toast);
+    box-sizing: border-box;
+    width: max-content;
+    max-width: calc(100vw - 2 * var(--space-3));
+    padding: 10px var(--space-3);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-m);
+    background: var(--bg-3);
+    color: var(--text);
+    font: var(--fs-m) var(--font);
+    box-shadow: 0 8px 24px var(--shadow-color);
+    pointer-events: none;
+    /* down below the bottom edge, out of sight (incl. its shadow) */
+    transform: translate(-50%, calc(100% + var(--space-3) + 32px + env(safe-area-inset-bottom)));
+    transition: transform 0.3s ease-in;
+}
+
+.toast::before {
+    content: "> ";
+    color: var(--muted);
+}
+
+.toast.toast-on {
+    transform: translate(-50%, 0);
+    /* pops up with a little overshoot */
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* reduced motion: fade in and out in place */
+@media (prefers-reduced-motion: reduce) {
+    .toast,
+    .toast.toast-on { transform: translate(-50%, 0); }
+
+    .toast {
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .toast.toast-on {
+        opacity: 1;
+        transition: opacity 0.2s;
+    }
+}
+
+/* ---------- Touch screens (B-47) ---------- */
+
+/* Touch is not the same as narrow: tablets and touch laptops (800px and up) get large
+ * targets too. --tap (44px on touch, see the tokens) already sizes the header buttons. */
+@media (pointer: coarse) {
+    .btn,
+    .btn-box,
+    .team-name { min-height: var(--tap); }
+
+    /* 16px keeps iOS from zooming into the field (small screens did this already) */
+    .field { font-size: var(--fs-l); }
+
+    /* stopwatch icons: 30px image, 44px target */
+    .stopwatch_control > img {
+        box-sizing: content-box;
+        padding: 7px;
+    }
+
+    /* delete icon on a card */
+    .c .delete,
+    .c .delete:hover {
+        width: 28px;
+        height: 28px;
+        bottom: -14px;
+    }
+
+    /* card set thumbnails in the board setup */
+    .cs_c { min-width: 44px; }
+
+    .privacy_link a {
+        display: inline-block;
+        padding: 12px 6px;
+        margin: 0;
+    }
+}
+
 /* ---------- Small screens: hidden on the board ---------- */
 
 @media (max-width: 799.98px) {
     #cta_teaser,
-    #newroundbtn[data-state=closed],
     .survey-container,
     #index,
     #promo-tab { display: none; }
@@ -1419,8 +1757,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* ---------- Animations ---------- */
 
-.react { animation: reaction2 0.8s ease-in-out; }
-
 .flash-red { animation: flashRed 1.5s ease-in-out; }
 
 @keyframes fade-in {
@@ -1435,12 +1771,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     60% { transform: translateY(5px); }
     80% { transform: translateY(-2px); }
     100% { transform: translateY(0); }
-}
-
-@keyframes reaction2 {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.4); }
-    100% { transform: scale(1); }
 }
 
 @keyframes flashRed {

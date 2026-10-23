@@ -5,6 +5,8 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersVia
  * B-36: The layout switches purely by CSS media queries at 800 px (style/style.css,
  * max-width: 799.98px / min-width: 800px). No element carries the former JS classes
  * mobile/desktop/sizefit any more. The analytics display type (xs/m/md/lg) is still sent.
+ * B-46: New Round has its own zone on every screen size (round panel on large screens, dock above
+ * the deck on phones), it is no longer part of the burger menu.
  */
 const SMALL = { width: 375, height: 800 };
 const LARGE = { width: 1280, height: 900 };
@@ -40,7 +42,7 @@ async function expectSmallLayout(page: Page) {
   await expect(burger(page)).toBeVisible();
   await expect(page.locator('#topic_btn')).toBeHidden();
   await expect(page.locator('#cset_btn')).toBeHidden();
-  await expect(page.locator('#newroundbtn')).toBeHidden();
+  await expect(page.locator('#newroundbtn')).toBeVisible(); // B-46: in the dock, not in the menu
   await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(100);
 }
 
@@ -52,25 +54,29 @@ async function expectLargeLayout(page: Page) {
   await expect(page.locator('#ctl')).toHaveCSS('height', '90px');
 }
 
-test('small screen: burger menu holds the topnav and New Round (B-36)', async ({ browser }) => {
+test('small screen: burger menu holds the topnav, New Round stays in the dock (B-36, B-46)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: SMALL });
   const displayTypes = recordDisplayTypes(alice);
   await aliceInOpenRound(alice, 'RespSmall');
 
   await expectSmallLayout(alice);
 
-  // open the menu: the topnav buttons and New Round appear
+  // New Round sits in the dock right above the deck
+  const dock = await alice.locator('#newroundbtn').boundingBox();
+  const deck = await alice.locator('#ctl').boundingBox();
+  expect(dock!.y + dock!.height).toBeLessThanOrEqual(deck!.y + 1);
+
+  // open the menu: the topnav buttons appear
   await burger(alice).click();
   await expect(alice.locator('#mobile-menu')).toHaveAttribute('data-state', 'open');
   await expect(alice.locator('#topic_btn')).toBeVisible();
   await expect(alice.locator('#feedback_btn')).toBeVisible();
-  await expect(alice.locator('#newroundbtn')).toBeVisible();
 
   // close it again
   await closeMenu(alice).click();
   await expect(alice.locator('#mobile-menu')).toHaveAttribute('data-state', 'closed');
   await expect(alice.locator('#topic_btn')).toBeHidden();
-  await expect(alice.locator('#newroundbtn')).toBeHidden();
+  await expect(alice.locator('#newroundbtn')).toBeVisible();
 
   expect(await legacyClassCount(alice)).toBe(0);
   await expect.poll(() => displayTypes.get('INIT_ON_LOAD')).toEqual(['xs']);

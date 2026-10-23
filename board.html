@@ -2,17 +2,17 @@
 <html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Agile Estimations</title>
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.17" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.18" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.11" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.6" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.7" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -31,113 +31,132 @@
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.5 3.5-7 8-7s8 2.5 8 7"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
 </svg>
+<!-- B-46: page grid (style.css, "Board layout"): header / table + round panel / card deck.
+     Large screens: the panel is a column on the right. Phones (portrait): its topic becomes a strip
+     below the header and its actions a dock above the deck. -->
 <div class="container" onclick="void(0);">
-    <div class="up-container">
 
-        <header class="head">
-            <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter tools"/></a>
+    <header class="head">
+        <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter tools"/></a>
 
-            <!-- the team name as a shell prompt; click copies the board link -->
-            <div class="head-title">
-                <button type="button" class="team-name" onclick="copyLink()" data-hint="Click to copy the board link"><span class="prompt" aria-hidden="true">poker@</span><span id="team_name"></span><span class="prompt-path" aria-hidden="true">:~$</span><span class="cursor" aria-hidden="true"></span></button>
-                <button type="button" id="copy_link_btn" class="icon-btn" onclick="copyLink()" aria-label="Copy board link"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy Link</span></button>
-                <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code" data-hint="QR code to join on a phone"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
-            </div>
-
-            <span class="head-fill"></span>
-
-            <!-- stopwatch: a direct on/off switch for everyone on the board (aria-pressed set by script.js) -->
-            <button type="button" id="stopwatch_btn" class="icon-btn sw-btn topnav" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()" onmousemove="hideTeaser()" data-hint="Stopwatch for everyone on the board"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
-
-            <div id="mobile-menu" class="mobile-menu" data-state="closed">
-                <button type="button" class="icon-btn open_menu" aria-label="Menu" aria-expanded="false" onclick="toggleMobileMenu('open')"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
-                <button type="button" class="icon-btn close-menu" aria-label="Close menu" onclick="toggleMobileMenu('closed')"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
-
-                <nav class="topnav-bar" aria-label="Board menu">
-                    <button type="button" id="topic_btn" class="icon-btn topnav" aria-label="Topic" aria-expanded="false" aria-controls="topic_box" onclick="toggle_box('topic');" onmousemove="hideTeaser()" data-hint="Set a topic"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
-                    <button type="button" id="cset_btn" class="icon-btn topnav" aria-label="Board setup" aria-expanded="false" aria-controls="cset_box" onclick="toggle_box('cset');" onmousemove="hideTeaser()" data-hint="Board setup: cards, names, average"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">board</span></button>
-                    <button type="button" id="user_settings_btn" class="icon-btn topnav" aria-label="Your settings" aria-expanded="false" aria-controls="user_settings_box" onclick="toggle_box('user_settings');" onmousemove="hideTeaser()" onfocus="hideTeaser()" data-hint="Your name and role"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span><span id="cta_teaser" class="topnav" aria-hidden="true">set up your user profile</span></button>
-                    <button type="button" id="feedback_btn" class="icon-btn topnav" aria-label="Feedback" aria-expanded="false" aria-controls="feedback_box" onclick="toggle_box('feedback');" onmousemove="hideTeaser()" data-hint="We love feedback!"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
-                    <button type="button" id="cmode_btn" class="icon-btn topnav" aria-label="Switch light and dark mode" onclick="switchColorMode()" data-hint="Light / dark"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="lbl">mode</span></button>
-                </nav>
-
-                <div id="topic_box" class="topnav menu_box">
-                    <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav field" onkeydown="topicChanged()"></textarea>
-                    <input id="topic_reset" class="btn-box topnav" type="button" onclick="reset_topic()" value="Undo"/>
-                    <input id="topic_save" class="btn-box topnav" type="button" onclick="save_topic()" value="Save"/>
-                </div>
-                <div id="feedback_box" class="topnav menu_box">
-                    <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
-                    <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
-                    <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
-                    <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
-                    <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
-                    <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
-    Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav field"></textarea>
-                    <input class="btn-box topnav" type="button" onclick="feedback_submit();" value="Send Feedback"/>
-                </div>
-                <div id="cset_box" class="topnav menu_box">
-                    <label for="cet_team_name" class="topnav">Change team name</label>
-                    <input class="topnav field setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
-                    <input id="cet_change_name" class="btn-box topnav" type="button" onclick="updateTeamName()" value="Ok" />
-
-                    <label for="cet_pre" class="topnav">Define your deck of cards</label>
-                    <select id="cet_pre" onchange="preSet();" class="topnav field">
-                        <option value="0" selected>Select a preset ...</option>
-                    </select>
-
-                    <div id="cards_thumbs" class="topnav"></div>
-
-                    <label for="cet_order_by" class="topnav">Arrange revealed cards by</label>
-                    <select id="cet_order_by" onchange="changeSortOrder()" class="topnav field">
-                        <option value="SEQUENCE" selected>Card value</option>
-                        <option value="NAME">Player name</option>
-                    </select>
-                    <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card value.</div>
-
-                    <label for="cet_anonymous" class="topnav">Set players transparency (only affects new rounds)</label>
-                    <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav field">
-                        <option value="0">Show names on results (default)</option>
-                        <option value="1" selected>Hide names on results (anonymous)</option>
-                    </select>
-
-                    <label for="cet_dark_side" class="topnav">Calculate average value</label>
-                    <input id="cet_dark_side" class="btn-box topnav" type="button" onclick="pushJediBtn()" data-state="0" />
-                </div>
-
-                <div id="user_settings_box" class="topnav menu_box">
-                    <label for="cet_usr_name" class="topnav">Change your name</label>
-                    <input class="topnav field setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
-                    <input id="cet_change_user" class="btn-box topnav" type="button" onclick="updateUserName()" value="Ok" />
-
-                    <label for="cet_toggle_user_type" class="topnav">Switch your role</label>
-                    <input id="cet_toggle_user_type" class="btn-box topnav" type="button" onclick="toggleUserType()" />
-
-                    <div id="user_settings_privacy_link" class="privacy_link">
-                        <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a> | <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a> | <a onclick="showDeleteUserOverlay()">Delete User</a>
-                    </div>
-                </div>
-
-            </div>
-        </header>
-
-        <div id="topic" class="display_none" data-hash="0"></div>
-
-        <div id="cbox"></div>
-
-
-        <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" data-state="closed" />
-
-        <div id="stopwatch" class="stopwatch_control">
-            <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
-            <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()" alt="pause"/>
-            <label for="stopwatch_timer"></label>
-            <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00"/>
-            <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()" alt="reset"/>
+        <!-- the team name as a shell prompt; click copies the board link -->
+        <div class="head-title">
+            <button type="button" class="team-name" onclick="copyLink()" data-hint="Click to copy the board link"><span class="prompt" aria-hidden="true">poker@</span><span id="team_name"></span><span class="prompt-path" aria-hidden="true">:~$</span><span class="cursor" aria-hidden="true"></span></button>
+            <button type="button" id="copy_link_btn" class="icon-btn" onclick="copyLink()" aria-label="Copy board link"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy Link</span></button>
+            <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code" data-hint="QR code to join on a phone"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
         </div>
-    </div>
+
+        <span class="head-fill"></span>
+
+        <!-- stopwatch: a direct on/off switch for everyone on the board (aria-pressed set by script.js) -->
+        <button type="button" id="stopwatch_btn" class="icon-btn sw-btn topnav" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()" onmousemove="hideTeaser()" data-hint="Stopwatch for everyone on the board"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
+
+        <div id="mobile-menu" class="mobile-menu" data-state="closed">
+            <button type="button" class="icon-btn open_menu" aria-label="Menu" aria-expanded="false" onclick="toggleMobileMenu('open')"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
+            <button type="button" class="icon-btn close-menu" aria-label="Close menu" onclick="toggleMobileMenu('closed')"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+
+            <nav class="topnav-bar" aria-label="Board menu">
+                <button type="button" id="topic_btn" class="icon-btn topnav" aria-label="Topic" aria-expanded="false" aria-controls="topic_box" onclick="toggle_box('topic');" onmousemove="hideTeaser()" data-hint="Set a topic"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
+                <button type="button" id="cset_btn" class="icon-btn topnav" aria-label="Board setup" aria-expanded="false" aria-controls="cset_box" onclick="toggle_box('cset');" onmousemove="hideTeaser()" data-hint="Board setup: cards, names, average"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">board</span></button>
+                <button type="button" id="user_settings_btn" class="icon-btn topnav" aria-label="Your settings" aria-expanded="false" aria-controls="user_settings_box" onclick="toggle_box('user_settings');" onmousemove="hideTeaser()" onfocus="hideTeaser()" data-hint="Your name and role"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span><span id="cta_teaser" class="topnav" aria-hidden="true">set up your user profile</span></button>
+                <button type="button" id="feedback_btn" class="icon-btn topnav" aria-label="Feedback" aria-expanded="false" aria-controls="feedback_box" onclick="toggle_box('feedback');" onmousemove="hideTeaser()" data-hint="We love feedback!"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
+                <button type="button" id="cmode_btn" class="icon-btn topnav" aria-label="Switch light and dark mode" onclick="switchColorMode()" data-hint="Light / dark"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="lbl">mode</span></button>
+            </nav>
+
+            <div id="topic_box" class="topnav menu_box">
+                <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav field" onkeydown="topicChanged()"></textarea>
+                <input id="topic_reset" class="btn-box topnav" type="button" onclick="reset_topic()" value="Undo"/>
+                <input id="topic_save" class="btn-box topnav" type="button" onclick="save_topic()" value="Save"/>
+            </div>
+            <div id="feedback_box" class="topnav menu_box">
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
+                <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
+Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav field"></textarea>
+                <input class="btn-box topnav" type="button" onclick="feedback_submit();" value="Send Feedback"/>
+            </div>
+            <div id="cset_box" class="topnav menu_box">
+                <label for="cet_team_name" class="topnav">Change team name</label>
+                <input class="topnav field setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
+                <input id="cet_change_name" class="btn-box topnav" type="button" onclick="updateTeamName()" value="Ok" />
+
+                <label for="cet_pre" class="topnav">Define your deck of cards</label>
+                <select id="cet_pre" onchange="preSet();" class="topnav field">
+                    <option value="0" selected>Select a preset ...</option>
+                </select>
+
+                <div id="cards_thumbs" class="topnav"></div>
+
+                <label for="cet_order_by" class="topnav">Arrange revealed cards by</label>
+                <select id="cet_order_by" onchange="changeSortOrder()" class="topnav field">
+                    <option value="SEQUENCE" selected>Card value</option>
+                    <option value="NAME">Player name</option>
+                </select>
+                <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card value.</div>
+
+                <label for="cet_anonymous" class="topnav">Set players transparency (only affects new rounds)</label>
+                <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav field">
+                    <option value="0">Show names on results (default)</option>
+                    <option value="1" selected>Hide names on results (anonymous)</option>
+                </select>
+
+                <label for="cet_dark_side" class="topnav">Calculate average value</label>
+                <input id="cet_dark_side" class="btn-box topnav" type="button" onclick="pushJediBtn()" data-state="0" />
+            </div>
+
+            <div id="user_settings_box" class="topnav menu_box">
+                <label for="cet_usr_name" class="topnav">Change your name</label>
+                <input class="topnav field setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
+                <input id="cet_change_user" class="btn-box topnav" type="button" onclick="updateUserName()" value="Ok" />
+
+                <label for="cet_toggle_user_type" class="topnav">Switch your role</label>
+                <input id="cet_toggle_user_type" class="btn-box topnav" type="button" onclick="toggleUserType()" />
+
+                <div id="user_settings_privacy_link" class="privacy_link">
+                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a> | <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a> | <a onclick="showDeleteUserOverlay()">Delete User</a>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- round panel: the topic and the round actions (stopwatch, New Round) -->
+    <aside class="panel" aria-label="Round">
+        <section class="panel-topic" data-expanded="false">
+            <div class="panel-head">
+                <h2>topic</h2>
+                <button type="button" class="icon-btn topnav" aria-label="Edit topic" onclick="toggle_box('topic')"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
+            </div>
+            <div id="topic" class="display_none" data-hash="0" onclick="toggleTopic(event)"></div>
+            <!-- phones: the topic shows one line, this button shows all of it -->
+            <button type="button" id="topic_toggle" class="icon-btn" aria-label="Show the whole topic" aria-expanded="false" aria-controls="topic" onclick="toggleTopic(event)"><svg class="i" aria-hidden="true"><use href="#i-down"/></svg></button>
+            <button type="button" class="topic-empty topnav" onclick="toggle_box('topic')">+ set a topic</button>
+        </section>
+
+        <div class="dock">
+            <div id="stopwatch" class="stopwatch_control">
+                <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
+                <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()" alt="pause"/>
+                <label for="stopwatch_timer"></label>
+                <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00"/>
+                <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()" alt="reset"/>
+            </div>
+
+            <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" />
+        </div>
+    </aside>
+
+    <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide) -->
+    <main class="table" id="table">
+        <div id="cbox"></div>
+    </main>
 
     <div class="down-container" id="down-container">
 
@@ -155,6 +174,9 @@
 
 </div>
 <img id="index" src="src/index.png" title="average result" alt="average result" />
+
+<!-- short messages, e.g. "Board link copied" (showToast in script.js) -->
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <div id="overlay_qr" class="overlay hidden"></div>
 <div id="overlay_qr_code" class="overlay hidden" onclick="showQRCode(false)">
