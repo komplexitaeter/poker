@@ -18,6 +18,11 @@ Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nach
 bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
 Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
 parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
+**Stand 2026-10-23 abends (weiter Montag):** Ben `cards.json` (`symbol`, XXL) in `release` (PR #36). Schritt 1 von
+Delia auf `feature/B-48-console-header` (`2ce55aa`, E2E 40/40 grün, `style.css` 1.16, `script.js` 2.5,
+`script_feedback.js` 1.10), noch nicht gemergt. Nächstes: Fred auf demselben Branch (Escape/Fokus/aria-expanded für
+Burger und Menü-Boxen, Teaser per Fokus, Tastatur-Check), dann Review (anderer Agent), PR nach `release`, Sichtung
+durch Andreas auf Staging, danach Schritt 2.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
