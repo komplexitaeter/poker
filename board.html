@@ -8,12 +8,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.8" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.10" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.8" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.0" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.2" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -81,12 +81,12 @@
 
                 <div id="cards_thumbs" class="topnav sizefit"></div>
 
-                <label for="cet_order_by" class="topnav">Choose how to arrange revealed cards</label>
+                <label for="cet_order_by" class="topnav">Arrange revealed cards by</label>
                 <select id="cet_order_by" onchange="changeSortOrder()" class="topnav sizefit">
-                    <option value="SEQUENCE">Always order by card sequence (default)</option>
-                    <option value="NAME" selected>Always order by players name</option>
-                    <option value="CHOOSE">Define the sort order in-game</option>
+                    <option value="SEQUENCE" selected>Card</option>
+                    <option value="NAME">Player name</option>
                 </select>
+                <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card.</div>
 
                 <label for="cet_anonymous" class="topnav">Set players transparency (only effects new rounds)</label>
                 <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav sizefit">
@@ -116,12 +116,6 @@
         <div id="topic" class="sizefit display_none" data-hash="0"></div>
 
         <div id="cbox" class="sizefit"></div>
-
-        <div id="order_by_div" class="toggle_container" onclick="toggleOrderBy()">
-            <div id="order_by_name_btn" class="btn"><span>Name</span></div>
-            <div id="order_by_sequence_btn" class="btn"><span>Value</span></div>
-            <div id="order_by_switch" class="by_name"><span>&#x21C5;</span></div>
-        </div>
 
 
         <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" class="sizefit" data-state="closed" />
