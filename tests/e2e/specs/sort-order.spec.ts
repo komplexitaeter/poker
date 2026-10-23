@@ -22,6 +22,7 @@ test('the menu setting arranges revealed cards by player name or by card, withou
   await expect(select.locator('option')).toHaveText(['Card', 'Player name']);
   await expect(select).toHaveValue('SEQUENCE');
   await expect(alice.locator('#cet_order_by_hint')).toBeHidden();
+  await expect(select).not.toHaveAttribute('aria-describedby');
 
   await select.selectOption({ label: 'Player name' });
   await expect(select).toHaveValue('NAME');
@@ -67,6 +68,7 @@ test('anonymous mode: "Player name" is disabled, a hint is shown and cards are a
   const hint = alice.locator('#cet_order_by_hint');
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('In anonymous mode, revealed cards are always arranged by card.');
+  await expect(select).toHaveAttribute('aria-describedby', 'cet_order_by_hint');
 
   // Alice 8, Bob 3: arranged by card although "Player name" is stored
   await pickCard(alice, 'eight01');
@@ -74,4 +76,28 @@ test('anonymous mode: "Player name" is disabled, a hint is shown and cards are a
   await expect(alice.locator(`#cbox .c[id="${bobId}"] img.card_image`)).toHaveAttribute('src', 'src/c_three01.png');
   await expect(firstCard(alice)).toHaveAttribute('id', bobId);
   await expect(alice.locator('#order_by_div')).toHaveCount(0);
+});
+
+test('choosing "Hide names" in the menu shows the hint and disables "Player name" right away (B-42)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Anon Toggle');
+  await expect(tableCard(alice, 'Bob')).toBeVisible();
+  // a card on the table: anonymous mode itself only starts with the next round
+  await pickCard(bob, 'three01');
+
+  await alice.locator('#cset_btn').click();
+  const select = alice.locator('#cet_order_by');
+  const hint = alice.locator('#cet_order_by_hint');
+  const nameOption = select.locator('option[value="NAME"]');
+  await expect(hint).toBeHidden();
+  await expect(nameOption).toBeEnabled();
+
+  await alice.locator('#cet_anonymous').selectOption('1');
+  await expect(hint).toBeVisible();
+  await expect(nameOption).toBeDisabled();
+  await expect(select).toHaveAttribute('aria-describedby', 'cet_order_by_hint');
+
+  await alice.locator('#cet_anonymous').selectOption('0');
+  await expect(hint).toBeHidden();
+  await expect(nameOption).toBeEnabled();
+  await expect(select).not.toHaveAttribute('aria-describedby');
 });

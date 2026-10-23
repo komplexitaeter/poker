@@ -524,7 +524,8 @@ function updateDom(myJson, isOnLoad) {
 
     controlsDsp(myJson.player_type);
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
-    updateOrderByConfig(myJson.results_order, myJson.anonymous_mode === 1);
+    updateOrderByConfig(myJson.results_order
+                        , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
 
     activateJediMode(myJson.show_avg);
@@ -981,7 +982,10 @@ function stopwatchReset(){
 /* B-42: The sort order is only set in the menu (Card = SEQUENCE, Player name = NAME).
  * Legacy values like 'CHOOSE:SEQUENCE' (before the data update) are shown as Card.
  * In anonymous mode the server always arranges revealed cards by card, so
- * "Player name" is disabled and a hint explains why; a stored NAME stays selected. */
+ * "Player name" is disabled and a hint explains why; a stored NAME stays selected.
+ * This already applies when anonymous mode is requested for the next round, so the
+ * hint shows up as soon as "Hide names" is chosen in the menu.
+ * The hint is only referenced via aria-describedby while it is visible. */
 function updateOrderByConfig(resultsOrder, anonymousMode) {
     let dropDown = document.getElementById("cet_order_by");
     let hint = document.getElementById("cet_order_by_hint");
@@ -994,8 +998,10 @@ function updateOrderByConfig(resultsOrder, anonymousMode) {
     dropDown.querySelector('option[value="NAME"]').disabled = anonymousMode;
     if (anonymousMode) {
         toggleStyleClass(hint, "display_block", "display_none");
+        dropDown.setAttribute("aria-describedby", "cet_order_by_hint");
     } else {
         toggleStyleClass(hint, "display_none", "display_block");
+        dropDown.removeAttribute("aria-describedby");
     }
 }
 
