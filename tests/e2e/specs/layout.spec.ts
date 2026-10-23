@@ -24,8 +24,9 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
     // the page itself does not scroll, the table does
     await expect.poll(() => alice.evaluate(() => document.scrollingElement!.scrollHeight - window.innerHeight))
       .toBeLessThanOrEqual(0);
-    const table = await alice.locator('#table').evaluate(el => el.scrollHeight - el.clientHeight);
-    expect(table).toBeGreaterThan(0);
+    // poll: #cbox grows with its height animation (B-41), so the table overflows only after it ends
+    await expect.poll(() => alice.locator('#table').evaluate(el => el.scrollHeight - el.clientHeight))
+      .toBeGreaterThan(0);
 
     // deck at the bottom edge, New Round visible above it (stuck to the bottom of the table)
     const deck = (await alice.locator('#ctl').boundingBox())!;
