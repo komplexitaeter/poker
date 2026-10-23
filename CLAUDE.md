@@ -37,7 +37,8 @@ Datenfluss bei einer Änderung am Board:
 - `api/*.php` – ein Skript pro Aktion; gemeinsame Funktionen in `api/lib.php` (`db_init()`, `validate_team()`, …).
 - `cards.json` – Kartensets und Sortierung.
 - `stats.php` – interne Nutzungsstatistik (keine Authentifizierung).
-- `db_schema_pok.sql` – Basisschema; `db_schema_pok_inc.sql` – inkrementelle Änderungen seit dem letzten Merge.
+- `db_schema_pok.sql` – Basisschema; `db_schema_pok_inc.sql` – inkrementelle Änderungen seit dem letzten Merge;
+  `db_jobs_pok.sql` – MySQL-Event-Jobs für die Statistik-Tabellen.
 - `src/` – Bilder; `src/xcf/` – GIMP-Quelldateien der Karten.
 - `config.example.php` – Vorlage für `config.php` (DB-Zugangsdaten). `config.php` selbst ist per `.gitignore`
   ausgeschlossen und existiert nur auf den Servern bzw. lokal.
@@ -54,8 +55,15 @@ Fachliche Tabellen: `pok_teams_tbl`, `pok_players_tbl`, `pok_user_tbl`, `pok_rou
 `pok_roundstat_details_tbl`, `pok_promotions_tbl`, `pok_feedback_tbl`, `pok_survey*_tbl`, `pok_analytics_events_tbl`.
 
 Statistik-Tabellen für Grafana (Endung `_stats`, `_stats_tbl`): `pok_active_user_stats`, `pok_active_use_stats_tbl`,
-`pok_daily_teams_stats`. Sie werden von einem MySQL-Event-Job befüllt, nicht vom App-Code (Definition noch nicht im Repo, siehe B-08). Werden sie geändert
+`pok_daily_teams_stats`. Sie werden von einem MySQL-Event-Job befüllt, nicht vom App-Code (Definition in `db_jobs_pok.sql`, B-08; Team-Typ: `RECURRING` bei mehr als 2 aktiven Spielern am Tag, sonst `EXPLORING`). Werden sie geändert
 und Grafana hakt, wird das Dashboard angepasst – kein Grund, Schemaänderungen zu blockieren.
+
+**Neue vs. wiederkehrende Teams:** Ein Team kann seinen Link (Team-ID) dauerhaft wiederverwenden, manche Teams
+erzeugen sich aber für jede Session einen neuen (oft mit ähnlichem, nicht garantiert gleichem Namen). Die Team-ID
+allein sagt also nicht, ob ein Team wiederkommt. Beste Annäherung: über gleiche User-IDs frühere Teams finden
+(`pok_players_tbl.id` bzw. `pok_roundstat_details_tbl.player_id` ist die User-ID und über Teams hinweg gleich;
+siehe `related_teams_cnt` in `db_jobs_pok.sql`). Unscharf, weil z. B. Scrum Master oder Berater mehrere Teams
+begleiten. Auswertungen zu „wird das regelmäßig genutzt?" daher zusätzlich je User-ID statt nur je Team-ID betrachten.
 
 `pok_analytics_events_tbl` wächst unbegrenzt. Abfragen darauf immer über einen Zeitbereich auf `creation_date`
 (indexfähig, keine Funktion auf der Spalte) und mit `/*+ MAX_EXECUTION_TIME(...) */` bei Auswertungen.

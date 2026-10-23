@@ -59,7 +59,7 @@ Abgeschlossen:
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
 | B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
-| B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
+| B-08 | MySQL-Statistik-Job ins Repo aufnehmen | erledigt |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
 | B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt |
@@ -83,16 +83,17 @@ Abgeschlossen:
 | B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
 | B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
 | B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
-| B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt (release) |
+| B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt |
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
 | B-36 | Totes/redundantes CSS entfernen, `style.css` aufräumen | refined |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
-| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt (release) |
+| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
-| B-41 | Karten „wobbeln" beim Fenster-Resize (Abstände springen) | neu |
+| B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt (release) |
+| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | refined |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -186,6 +187,15 @@ Nicht enthalten (später, eigener Eintrag bei Bedarf): README insgesamt überarb
 ### B-08 MySQL-Statistik-Job ins Repo aufnehmen
 Die `_stats`-Tabellen werden von einem MySQL-Event befüllt, das nicht im Repo liegt.
 Definition exportieren (`SHOW CREATE EVENT`) und versionieren.
+
+**Erledigt (2026-10-23):** Export von Live (`mysqldump --events --routines --triggers`, keine Routinen/Trigger vorhanden)
+liegt als `db_jobs_pok.sql` im Repo. Drei Events, `event_scheduler = ON`:
+- `pok_active_users_evt` (minütlich) → `pok_active_user_stats`: aktive Spieler je Zeitfenster.
+- `pok_daily_team_stats_evt` (täglich 23:55) → `pok_daily_teams_stats`: je Team mit Aktivität in 24 h; **`RECURRING`, wenn
+  mehr als 2 Spieler aktiv waren, sonst `EXPLORING`**. Teams mit höchstens 2 aktiven Spielern werden nur am ersten Tag
+  (`team_age < 1`) erfasst.
+- `pok_active_use_evt` → `pok_active_use_stats_tbl`: **deaktiviert, lief nie** – Tabelle bleibt leer (Kandidat zum
+  Aufräumen, nicht dringend).
 
 ### B-09 Wachstum von `pok_analytics_events_tbl` begrenzen
 Tabelle wächst unbegrenzt. Aufbewahrungsdauer festlegen, alte Daten löschen oder verdichten.
@@ -671,7 +681,113 @@ Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B
 **struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
 nach B-36, ggf. zusammen mit B-14.
 
-### B-41 Karten „wobbeln" beim Fenster-Resize (Abstände springen)
+**Querverweis (Delia, 2026-10-22):** Die konkrete Layout-Engine-Umstellung des Kartenbereichs (von JS-`getCardPos`/
+`position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
+sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
+
+### B-42 Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“
+Andreas möchte die Konfiguration userfreundlicher machen. Erster Kandidat: die Option „Define the sort order in-game“
+(`results_order = 'CHOOSE:…'`, zeigt nach dem Aufdecken die Name/Value-Leiste unter den Karten).
+
+**Analyse (Live, letzte 180 Tage, Stand 2026-10-23; Runden aus `pok_roundstats_tbl`, Team-Typ aus
+`pok_daily_teams_stats`, Personen aus `pok_roundstat_details_tbl`):**
+- ~40.300 Runden: nach Kartenwert (`SEQUENCE`) 85,2 %, nach Name (`NAME`) 14,2 %, im Spiel wählen (`CHOOSE`) **0,6 %**
+  (232 Runden).
+- `CHOOSE`: 5 Teams (alle recurring), 3 davon an ≥ 3 Tagen; monatlich stabil 1–4 Teams, 0,4–0,7 % der Runden.
+  Je Person: 35 Personen, 23 an ≥ 3 Tagen – von 5.102 regelmäßigen Nutzern (≥ 3 Tage) ≈ 0,5 %; jede nur in einem Team.
+- **Kein einziges Team hat im Spiel auf „Name“ umgeschaltet**: keine Runde mit `CHOOSE:NAME`, nur `CHOOSE:SEQUENCE`.
+  Faktisch sortieren diese Teams immer nach Kartenwert. (Einschränkung: Umschalten innerhalb einer Runde mit
+  Zurückstellen vor der nächsten Runde ist in den Daten nicht sichtbar; ein Analytics-Event dafür gibt es nicht.)
+- Die Wahl Name vs. Kartenwert wird dagegen genutzt: 78 recurring Teams spielen bewusst nach Name.
+
+**Optionen (noch nicht entschieden):**
+1. `CHOOSE` streichen: Auswahl nur noch Name / Kartenwert; die 5 Teams einmalig auf `SEQUENCE` umstellen (für sie
+   ändert sich nur, dass die Leiste wegfällt). Klein (Ben: API/Validierung + DB-Update, Fred: Board-Logik).
+2. Umschalter Name/Wert für alle direkt aufs Board, Eintrag im Menü entfällt – Gestaltungsfrage für B-40 (Delia),
+   mehr Platzbedarf unter den Karten.
+
+**Refined (2026-10-23, Andreas, nach UX-Einschätzung von Delia): Option 1.**
+- Begründung (Andreas, Delia): Die Sortierung ist eine Rahmenbedingung, die man einmal festlegt, keine Spielhandlung.
+  Auf dem Board stehen nur Dinge, die man jede Runde tut; die Leiste nimmt Platz und Aufmerksamkeit genau dort, wo nach
+  dem Aufdecken alle hinschauen, und wird nie bedient. Ob nach Karte oder Name sortiert wird, hängt vom Spielkontext ab
+  (Schätzen → Karte; z. B. Emotionskarten als Stimmungsumfrage → Name, Reihenfolge bleibt stabil).
+- **Kein automatischer Standard je Kartenset** (wäre „versteckte Magie“, z. B. für Teams, die bewusst „nach Name“
+  gewählt haben). Stattdessen steht die Einstellung direkt unter der Kartenset-Auswahl, damit man beides zusammen sieht.
+  Später denkbar (eigener Eintrag, nur wenn Daten es tragen): beim Kartenset-Wechsel einmal vorschlagen statt umstellen.
+
+**Zuschnitt:**
+- „Define the sort order in-game“ (`CHOOSE`) entfällt, ebenso die Name/Value-Leiste nach dem Aufdecken.
+- Einstellung im Menü, **direkt unter der Kartenset-Auswahl**: Beschriftung „Arrange revealed cards by“, zwei Optionen
+  **„Card“** (`SEQUENCE`, Standard) und **„Player name“** (`NAME`). Für B-42 reicht das bestehende `<select>`; ein
+  Segment-Schalter fürs ganze Menü kommt mit B-40.
+- **Anonym-Modus:** Dort wird nach dem Aufdecken immer nach Karte sortiert (`api/lib.php`, Zeile ~375), „Player name“
+  greift also nicht. Die Option „Player name“ im Anonym-Modus ausgrauen bzw. mit kurzem Hinweis versehen (Text Delia),
+  damit die Einstellung nicht kaputt wirkt.
+- Bestehende Teams: `CHOOSE:*` → `SEQUENCE` (die 5 Teams sehen dieselbe Reihenfolge wie bisher, nur ohne Leiste).
+  `NAME`-Teams unverändert. Rundenhistorie (`pok_roundstats_tbl`) bleibt unangetastet.
+
+**Umsetzungsplan:**
+- **Ben (BE):** `api/update_results_order.php` nimmt nur noch `NAME` und `SEQUENCE` an (Rest → 400), `CHOOSE`-Logik
+  raus. `getDao()` liefert gespeicherte `CHOOSE:*` bis zum Daten-Update robust als `SEQUENCE` aus. SQL für den
+  Betreiber (in `db_schema_pok_inc.sql` dokumentieren, Andreas spielt es nach dem Deploy ein):
+  `update pok_teams_tbl set results_order = 'SEQUENCE' where results_order like 'CHOOSE%';` (vorher Anzahl zählen).
+  Spaltenkommentar von `results_order` auf `[NAME|SEQUENCE]` anpassen.
+- **Fred (FE):** Leiste `#order_by_div` samt `updateOrderByButtons`/`toggleOrderBy` und `CHOOSE`-Zweige in
+  `script.js` entfernen; Menü-Logik (`updateOrderByConfig`, `changeSortOrder`) auf zwei Werte; Anonym-Hinweis
+  (Ausgrauen/Hinweis abhängig von `anonymous_mode`) anbinden. `?v=`-Bumps.
+- **Delia (DES):** Beschriftung, Reihenfolge im Menü (unter Kartenset), Hinweistext und Optik des ausgegrauten
+  Zustands; CSS der Leiste entfernen.
+- **E2E:** Einstellung „Player name“ sortiert nach Name, „Card“ nach Karte; keine Leiste mehr nach dem Aufdecken;
+  Anonym-Modus zeigt den Hinweis und sortiert nach Karte; API lehnt `CHOOSE` ab.
+
+**AK:** Menü zeigt unter dem Kartenset „Arrange revealed cards by“ mit „Card“ / „Player name“, Standard „Card“; nach
+dem Aufdecken keine Name/Value-Leiste mehr; Umstellen im Menü sortiert die aufgedeckten Karten sofort um (Gleiten wie
+bei B-41); im Anonym-Modus ist „Player name“ ausgegraut bzw. erklärt; API nimmt nur `NAME`/`SEQUENCE`; nach dem
+Daten-Update keine `CHOOSE`-Werte mehr in `pok_teams_tbl`; E2E grün.
+
+### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
+**Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
+von den großen Epics B-40/B-37. Scope **nur Kartenbereich** (`#cbox` + Karten-Rendering): Positionierung von
+JS-`getCardPos`/`position:absolute` auf echtes **CSS-Flex** (`flex-wrap` + `justify-content:center` + `gap`)
+umstellen; Sortier-Glide per **FLIP** erhalten; beim Resize kein Glide (B-39 bleibt). **Draußen (bleibt B-37/B-40):**
+Karten-*Größe* kommt vorerst weiter über die bestehenden `.mobile`/`.desktop`-Klassen (`adaptToDevice`) – nur die
+Positionierung wird getauscht, nicht das Sizing; Menüs/Overlays/restliches Responsive später. Delia (CSS) + Fred
+(JS/FLIP), ein Branch. Ablauf: kurzes gemeinsames Planning zuerst, dann Umsetzung.
+
+**Planning-Ergebnis (2026-10-22, freigegeben von Andreas nach Mockup-Vergleich):**
+- **Präzisierung „Wobbeln" (Andreas):** gemeint ist nur, dass die **Links-rechts-Abstände benachbarter Karten** beim
+  Resize nicht konstant bleiben. Im Mockup (heutige Logik nachgebaut) bleiben sie konstant, auf Staging nicht → die
+  Ursache steckt in der echten App, nicht in der Anordnung. Sie ist unbekannt, verschwindet aber sehr wahrscheinlich mit
+  der JS-Positionierung.
+- **Gewählt: Variante B** – Anordnung bleibt wie heute (jede Reihe zentriert), aber reines CSS-Flex statt
+  `position:absolute` + `getCardPos`, Sortier-Glide per FLIP (Web Animations API).
+- **CSS (Delia, `style/style.css`):** `div#cbox` → `display:flex`, `flex-wrap:wrap`, `justify-content:center`,
+  `align-content:flex-start`, `gap:15px 10px`; `transition:height` raus (die Höhe animiert künftig JS, siehe unten).
+  `.c`: `position:absolute`/`left`/`margin` raus, **`position:relative`** rein (Delete-
+  Button und Name sind absolut positioniert). `.c_move` und `#cbox.no-anim .c` entfallen. Hinweis: `#cbox` hat
+  `sizefit` und bekommt `.mobile`/`.desktop`.
+- **JS (Fred, `script/script.js`):** `getCardPos` und alle `left/top`-/`cbox.style.height`-Schreibzugriffe entfernen.
+  DOM-Reihenfolge = Anzeige-Reihenfolge: nur falsch stehende Karten per `appendChild` verschieben (sonst starten
+  Wackel-/Fade-in-Animationen neu). FLIP: First (inkl. laufendem Transform) → laufende `flip`-Animationen abbrechen →
+  DOM ändern → Last → `animate()` mit `id:'flip'`, 1 s, `ease`; nur Karten mit First-Position. `cardValueChanged`
+  über das FLIP-Delta auslösen (Verzögerung 1 s bei Bewegung) und per `animationend` wieder entfernen. Anonym-Modus:
+  kein FLIP. `handleResize`: nur `adaptToDevice` + `showCardUsage`, laufende `flip`-Animationen beenden.
+  `prefers-reduced-motion`: kein FLIP. **Höhe springt nicht (Andreas):** Ändert sich durch neue Daten die Zahl der
+  Reihen, gleitet die `#cbox`-Höhe in 1 s mit (Höhe vor/nach der DOM-Änderung messen, `animate()` mit `id:'height'`,
+  wie Mockup mit „Höhe gleitet"). Beim Resize keine Höhenanimation.
+- **Schmale Bildschirme (< 800 px):** heute beginnt die letzte Reihe links im Raster, mit B wird sie zentriert
+  (bewusst, wie Desktop; auf Staging prüfen).
+- **E2E (Fred):** zuerst neuer Test „Abstand benachbarter Karten bleibt beim Resize konstant" (Breiten-Sweep, ±1 px) –
+  muss auf dem **heutigen** Stand fehlschlagen (belegt, dass er Andreas' Wobbeln erfasst), nach dem Umbau grün.
+  `resize-no-anim.spec.ts` auf FLIP umstellen (kein laufendes `flip` nach Resize). Neu: Umsortieren löst `flip` aus;
+  Anonym-Modus löst keins aus. `card-reuse.spec.ts` bleibt (Kommentar anpassen).
+- **Ablauf:** Delia legt `feature/B-41-flex-layout` von `release` an und committet das CSS → Fred: Test zuerst, dann JS,
+  E2E, `?v=`-Bumps (`style.css`, `script.js` in `board.html`/`init.html`) → Review durch Kai → Andreas auf Staging.
+- **AK:** Abstände benachbarter Karten beim Resize konstant (E2E); Umsortieren gleitet, auch über Reihen hinweg;
+  Höhe gleitet bei Reihenwechsel durch neue Daten (springt nicht); kein Gleiten beim Resize; Anonym-Modus ohne Gleiten; kein `getCardPos`/`position:absolute` mehr im Kartenbereich; alle
+  E2E grün.
+
+**Ursprüngliches Wobble-Finding (bleibt als Begründung):**
 Nach B-39 (Karten springen beim Resize sofort statt zu gleiten) fiel auf: Beim langsamen Ziehen der Fensterbreite
 „wobbeln" die Karten – die Abstände werden kleiner, größer, wieder kleiner. **Kein Regressionsbug** von B-39: Die
 1-Sekunden-Transition hat diesen Effekt vorher nur weichgezeichnet; B-39 hat ihn sichtbar gemacht. Tritt nur beim
@@ -693,6 +809,36 @@ die „kein Gleiten beim Resize"-Eigenschaft aus B-39 bleibt.
 **Richtung:** Delia untersucht (Throttle/Debounce des Resize, gleichmäßige Zentrierung ohne Sägezahn, ggf. echtes
 CSS-Layout mit `gap`+`justify-content` statt JS-Pixelmath) und schlägt einen kleinen Fix vor. Die saubere
 Gesamtlösung gehört zu „Kartenlayout verbessern"/Responsive (B-40/B-37).
+
+**Analyse-Ergebnis (Delia, 2026-10-22): kein kleiner sauberer Fix – Lösung in B-40/B-37.** Verifiziert per
+Code-Analyse + numerischer Simulation von `getCardPos` über einen Breiten-Sweep:
+- Das Wobbeln entsteht am **Umbruchpunkt** (alle 110 px Breite): eine Karte bricht in die nächste Zeile, jede Zeile
+  wird unabhängig neu zentriert → Sprung ≈ halbe Slotbreite (~55 px). Innerhalb einer Zeile ist der Abstand konstant,
+  dort gibt es kein Wobbeln; sobald alle Karten in **eine** Zeile passen, driftet der Block nur noch sauber mittig.
+- **Event-Frequenz ist NICHT die Ursache** (Hypothese widerlegt): Throttle/Debounce ändert nichts am Sägezahn, der in
+  der Stufenfunktion steckt. Ein reiner Trailing-Debounce (erst nach Drag-Ende neu positionieren) entfernt zwar das
+  sichtbare Wobbeln, bringt aber Lag **und** horizontales Scrollbar-Flackern beim Schmaler-Ziehen (kein
+  `overflow-x`-Clipping) – nicht besser.
+- Der 110-px-Slot vs. echte 100-px-Karte ergibt nur einen konstanten 2-px-Spalt, **kein** Wobbeln – Angleichen löst
+  nichts.
+- **Das Umbrechen-und-Neuzentrieren ist jedem Wrap-Layout eigen** (auch CSS `flex-wrap` springt an seinen Grenzen).
+  Wegrechnen geht nur, indem man das Layout vom JS-Pixelmath auf **echtes CSS** umstellt.
+
+**Wurzel-Lösung (Vorschlag für B-40/B-37), mit Fred gemeinsam zu schneiden:**
+1. Karten von `position:absolute` + JS-`left/top` (`getCardPos`) auf normalen Flow im bestehenden Flex-Container
+   `#cbox` (`display:inline-flex; flex-wrap:wrap; justify-content:center`) umstellen, `gap` statt JS-Margin,
+   `getCardPos` und die manuelle `#cbox`-Höhe entfallen. Umbruch/Zentrierung macht der Browser kontinuierlich und
+   korrekt; der 110-vs-100-Mismatch verschwindet.
+2. **Sortier-Glide erhalten (harte Vorgabe):** Die 1-s-`left/top`-Transition (`.c_move`) funktioniert ohne
+   Absolut-Positionierung nicht mehr → Ersatz per **FLIP** (First-Last-Invert-Play: vor Reorder Positionen messen,
+   nach Reflow per `transform` an alte Stelle setzen, auf `transform:none` animieren). Das ist der eigentliche
+   Zusatzaufwand und der Grund, warum es nicht in ein kleines B-41 passt.
+3. **Kein Glide beim Resize (B-39) bleibt:** beim Resize einfach keine FLIP-Animation auslösen (analog zum heutigen
+   `.no-anim`). Aufwand/Risiko mittel (FLIP + E2E, Animation flaky-anfällig), aber die einzige Lösung, die das Wobbeln
+   glättet UND den Glide erhält. Berührt JS-Verhalten → Fred mit einbinden; CSS/Tokens/Responsive macht Delia.
+
+Optionaler Mini-Hygiene-Gewinn (kein B-41-Fix, entfernt das Wobbeln NICHT): `requestAnimationFrame`-Coalescing des
+Resize-Handlers (max. ein Reposition pro Frame) – bei der B-40-Umstellung mitnehmen.
 
 ### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
 Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).

@@ -389,36 +389,39 @@ a {
     .controls .ctl.desktop{
     }
 
+/* B-41: cards flow in a centered flex-wrap layout; no JS positioning.
+   Horizontal gaps reproduce the former 110 px JS grid: cards render
+   102 x 150 px (100 x 148 px image + 1px border), so 8px between cards.
+   Vertically the delete icon (.c .delete, bottom:-10px, ~22px high) hangs
+   about 10px below a card, so rows are 20px apart and 22px stay below the
+   last row: the icon keeps ~10-12px of air to the next card / element. */
 div#cbox {
     margin-top: 2em;
+    padding: 4px 0 22px;
     outline: none;
     width: 100%;
-    height: fit-content;
+    display: flex;
     flex-wrap: wrap;
-    display: inline-flex;
     justify-content: center;
+    align-content: flex-start;
+    align-items: flex-start;
+    gap: 20px 8px;
     position: relative;
-    transition: height 1s;
+}
+
+/* .c.mobile is 100px wide but its bordered image renders 102px (overflows
+   by 2px), so the column gap is 2px larger to keep the same visible gap. */
+div#cbox.mobile {
+    column-gap: 10px;
 }
 
 .c {
-    position: absolute;
-    left: 0;
+    /* relative: anchor for the absolutely positioned name and delete button */
+    position: relative;
     text-align: left;
     display: inline-block;
-    margin: 4px;
     border-radius: 15px;
     background: var(--secondary-background-color);
-}
-
-.c_move {
-    transition: left 1s, top 1s;
-}
-
-/* B-39: suppress the slide animation while cards are repositioned on resize,
-   so they jump straight to their new spot instead of gliding for 1s. */
-#cbox.no-anim .c {
-    transition: none;
 }
 
     .c_fade-in {
