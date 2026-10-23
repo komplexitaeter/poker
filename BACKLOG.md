@@ -671,6 +671,9 @@ Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nut
 - **Kein Screenshot-Vergleichstest:** Andreas nimmt auf Staging per Sichtprüfung ab. Delia liefert zur Übergabe
   Vorher-nachher-Bilder der geänderten Ansichten (einmalig, nicht als dauerhafter Test).
 - Nach B-42, damit die wegfallende Sortier-Leiste nicht mit aufgeräumt wird. Planning folgt nach B-42.
+- Beim B-42-Review gefunden (Delia, 2026-10-23), mit erledigen: Menü-Label „Set players transparency (only **effects**
+  new rounds)“ → „affects“; bei 320 px Breite überlappt das Schloss-Icon den Text von „Show average“, und „Hide names on
+  results (anonymous)“ wird abgeschnitten.
 
 ### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
 Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
