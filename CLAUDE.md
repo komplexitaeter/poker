@@ -58,6 +58,13 @@ Statistik-Tabellen für Grafana (Endung `_stats`, `_stats_tbl`): `pok_active_use
 `pok_daily_teams_stats`. Sie werden von einem MySQL-Event-Job befüllt, nicht vom App-Code (Definition in `db_jobs_pok.sql`, B-08; Team-Typ: `RECURRING` bei mehr als 2 aktiven Spielern am Tag, sonst `EXPLORING`). Werden sie geändert
 und Grafana hakt, wird das Dashboard angepasst – kein Grund, Schemaänderungen zu blockieren.
 
+**Neue vs. wiederkehrende Teams:** Ein Team kann seinen Link (Team-ID) dauerhaft wiederverwenden, manche Teams
+erzeugen sich aber für jede Session einen neuen (oft mit ähnlichem, nicht garantiert gleichem Namen). Die Team-ID
+allein sagt also nicht, ob ein Team wiederkommt. Beste Annäherung: über gleiche User-IDs frühere Teams finden
+(`pok_players_tbl.id` bzw. `pok_roundstat_details_tbl.player_id` ist die User-ID und über Teams hinweg gleich;
+siehe `related_teams_cnt` in `db_jobs_pok.sql`). Unscharf, weil z. B. Scrum Master oder Berater mehrere Teams
+begleiten. Auswertungen zu „wird das regelmäßig genutzt?" daher zusätzlich je User-ID statt nur je Team-ID betrachten.
+
 `pok_analytics_events_tbl` wächst unbegrenzt. Abfragen darauf immer über einen Zeitbereich auf `creation_date`
 (indexfähig, keine Funktion auf der Spalte) und mit `/*+ MAX_EXECUTION_TIME(...) */` bei Auswertungen.
 

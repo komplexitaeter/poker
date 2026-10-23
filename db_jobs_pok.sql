@@ -35,6 +35,9 @@ WHERE last_callback_time > timestampadd(SECOND, -900, CURRENT_TIMESTAMP);;
 -- Daily at 23:55: one row per team that had an active player within the last 24h.
 -- team_type: RECURRING if more than 2 players were active that day, else EXPLORING.
 -- Note: a team with at most 2 active players is only recorded on its first day (team_age < 1).
+-- related_teams_cnt: number of other teams that share a user id with this team. Some teams reuse their link,
+-- others create a new team (link) for every session; shared user ids are the best available hint that
+-- such teams belong together (imprecise: e.g. Scrum Masters or coaches join several teams).
 DROP EVENT IF EXISTS `pok_daily_team_stats_evt`;;
 CREATE DEFINER=`pok_admin`@`localhost` EVENT `pok_daily_team_stats_evt`
 ON SCHEDULE EVERY 1 DAY STARTS '2023-01-17 23:55:32'
