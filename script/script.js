@@ -765,16 +765,13 @@ function measureEvent(eventCode) {
 
 
 function setColor() {
-    let toggleImg = document.getElementById("cmode_btn");
+    // the color mode button (#cmode_btn) shows moon/sun via CSS (body.light-theme)
     let brandImg = document.getElementById("brand");
 
-
     if (gColorMode === "dark") {
-        toggleImg.src = "./src/toggle_light.svg";
         brandImg.src = "./src/brand_dark.svg";
         document.body.classList.remove('light-theme');
     } else {
-        toggleImg.src = "./src/toggle_dark.svg";
         brandImg.src = "./src/brand_light.svg";
         document.body.classList.add('light-theme');
     }
@@ -901,10 +898,12 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
     switch(timer_visibility){
         case 0:
             addStyleClass(document.getElementById("stopwatch"),"display_none");
+            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "false");
         break;
 
         case 1:
             removeStyleClass(document.getElementById("stopwatch"),"display_none");
+            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "true");
         break;
 
         default:

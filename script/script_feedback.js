@@ -1,7 +1,8 @@
 let gTopicChangePending = false;
 
 function toggleTopnav(e) {
-    if (!e.target.classList.contains('topnav')) {
+    // closest(): the topnav buttons contain an SVG icon, which may be the click target
+    if (!(e.target.closest && e.target.closest('.topnav'))) {
         toggle_feedback_box(false);
         toggle_topic_box(false);
         toggle_cardset_box(false);
@@ -132,7 +133,7 @@ function toggle_feedback_box(setOn) {
         if (setOn) {
             e.style.display = 'block';
             document.getElementById('feedback_btn').classList.add('topnav_btn_on');
-            document.getElementById('feedback_btn').src = 'src/feedback_on.svg'
+            document.getElementById('feedback_btn').setAttribute('aria-expanded', 'true');
             document.getElementById('feedback_txt').focus();
             feedback_star_blink();
         }
@@ -144,7 +145,7 @@ function toggle_feedback_box(setOn) {
             document.getElementById('fb_star_4').classList.remove('blink');
             document.getElementById('fb_star_5').classList.remove('blink');
             document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
-            document.getElementById('feedback_btn').src = 'src/feedback.svg';
+            document.getElementById('feedback_btn').setAttribute('aria-expanded', 'false');
         }
     }
 }
@@ -164,13 +165,13 @@ function toggle_topic_box(setOn) {
 
             e.style.display = 'block';
             document.getElementById('topic_btn').classList.add('topnav_btn_on');
-            document.getElementById('topic_btn').src = 'src/topic_on.svg'
+            document.getElementById('topic_btn').setAttribute('aria-expanded', 'true');
             document.getElementById('topic_txt').select();
         }
         else {
             e.style.display = 'none';
             document.getElementById('topic_btn').classList.remove('topnav_btn_on');
-            document.getElementById('topic_btn').src = 'src/topic.svg';
+            document.getElementById('topic_btn').setAttribute('aria-expanded', 'false');
         }
     }
 }
@@ -181,12 +182,12 @@ function toggle_cardset_box(setOn) {
         if (setOn) {
             e.style.display = 'block';
             document.getElementById('cset_btn').classList.add('topnav_btn_on');
-            document.getElementById('cset_btn').src = 'src/cset_on.svg';
+            document.getElementById('cset_btn').setAttribute('aria-expanded', 'true');
         }
         else {
             e.style.display = 'none';
             document.getElementById('cset_btn').classList.remove('topnav_btn_on');
-            document.getElementById('cset_btn').src = 'src/cset.svg';
+            document.getElementById('cset_btn').setAttribute('aria-expanded', 'false');
         }
     }
 }
@@ -197,13 +198,13 @@ function toggle_user_settings_box(setOn) {
         if (setOn) {
             e.style.display = 'block';
             document.getElementById('user_settings_btn').classList.add('topnav_btn_on');
-            document.getElementById('user_settings_btn').src = 'src/user_settings_on.svg';
+            document.getElementById('user_settings_btn').setAttribute('aria-expanded', 'true');
         }
         else {
             if (document.getElementById('user_settings_btn').classList.contains("topnav_btn_on")) {
                 e.style.display = 'none';
                 document.getElementById('user_settings_btn').classList.remove('topnav_btn_on');
-                document.getElementById('user_settings_btn').src = 'src/user_settings_off.svg';
+                document.getElementById('user_settings_btn').setAttribute('aria-expanded', 'false');
             }
         }
     }
