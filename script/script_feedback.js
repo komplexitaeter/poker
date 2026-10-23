@@ -1,189 +1,206 @@
 let gTopicChangePending = false;
 
-// topnav boxes (ids: <name>_box): their button, the field focused when the user opens it, analytics event
-const gTopnavBoxes = {
-    feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX'},  // focuses feedback_txt itself
-    topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX'},     // selects topic_txt itself
+/* B-51: the menu (#menu, a <dialog>, board.html and init.html). One section (section.menu_sec[data-sec])
+ * is visible at a time. Large screens: a non-modal side panel (show()), it stays put and a click on the
+ * table does not close it. Phones (breakpoint as in style.css): a modal bottom sheet (showModal()) that
+ * starts at the index (#menu_btn) and has a back button. Openers carry data-open="<section>", the close
+ * button data-close (one delegated click listener below).
+ * Per section: the header button (aria-expanded), the field focused when the user opens it, analytics. */
+const gMenuSections = {
+    index:         {btn: 'menu_btn'},
+    invite:        {btn: 'invite_btn',        event: 'OPEN_INVITE_BOX',        focus: 'copy_link_btn'},
+    topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX',         focus: 'topic_txt'},
     cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'cet_pre'},
-    user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'}
+    user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'},
+    feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'feedback_txt'}
 };
+const gPhoneQuery = window.matchMedia('(max-width: 799.98px)');
+let gMenuOpener = null; // gets the focus back when the menu closes
 
-function isTopnavBoxOpen(boxName) {
-    let e = document.getElementById(boxName + '_box');
-    return e !== null && e.style.display === 'block';
+function getMenu() {
+    return document.getElementById('menu');
 }
 
-function closeTopnavBoxes() {
-    toggle_feedback_box(false);
-    toggle_topic_box(false);
-    toggle_cardset_box(false);
-    toggle_user_settings_box(false);
+/* the section shown in the open menu, or null when it is closed */
+function openMenuSection() {
+    let menu = getMenu();
+    if (menu === null || !menu.open) return null;
+    let sec = menu.querySelector('section.menu_sec:not([hidden])');
+    return sec === null ? null : sec.getAttribute('data-sec');
 }
 
-function toggleTopnav(e) {
-    // closest(): the topnav buttons contain an SVG icon, which may be the click target
-    if (!(e.target.closest && e.target.closest('.topnav'))) {
-        closeTopnavBoxes();
-    }
-}
-
-// Escape closes an open topnav box and puts the focus back on its button
-document.addEventListener('keydown', function (event) {
-    if (event.key !== 'Escape') return;
-    let openBox = Object.keys(gTopnavBoxes).find(isTopnavBoxOpen);
-    if (openBox === undefined) return;
-    closeTopnavBoxes();
-    document.getElementById(gTopnavBoxes[openBox].btn).focus();
-    event.preventDefault(); // handled: the phone menu stays open (see script.js)
-});
-
-function feedback_star_blink() {
-    const offset = 300;
-    setTimeout(function () { document.getElementById('fb_star_1').classList.add('blink') }, offset);
-    setTimeout(function () { document.getElementById('fb_star_1').classList.remove('blink') }, offset + 400);
-    setTimeout(function () { document.getElementById('fb_star_2').classList.add('blink') }, offset + 200);
-    setTimeout(function () { document.getElementById('fb_star_2').classList.remove('blink') }, offset + 600);
-    setTimeout(function () { document.getElementById('fb_star_3').classList.add('blink') }, offset + 400);
-    setTimeout(function () { document.getElementById('fb_star_3').classList.remove('blink') }, offset + 800);
-    setTimeout(function () { document.getElementById('fb_star_4').classList.add('blink') }, offset + 600);
-    setTimeout(function () { document.getElementById('fb_star_4').classList.remove('blink') }, offset + 1000);
-    setTimeout(function () { document.getElementById('fb_star_5').classList.add('blink') }, offset + 800);
-    setTimeout(function () { document.getElementById('fb_star_5').classList.remove('blink') }, offset + 1200);
-}
-
-// focusField: false when the board opens a box by itself (e.g. setup on a new board)
-function toggle_box(boxName, focusField = true) {
-    let box = gTopnavBoxes[boxName];
-    let wasOpen = isTopnavBoxOpen(boxName);
-    closeTopnavBoxes();
-    if (wasOpen) return;
-
-    if (boxName === 'cset') {
-        document.getElementById('cet_team_name').value
-                = document.getElementById('team_name').innerText;
+/* fills the fields of a section with the current values when it is opened */
+function prepareMenuSection(sec) {
+    if (sec === 'cset') {
+        document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
-        toggle_cardset_box(true);
     }
-    if (boxName === 'user_settings') {
+    if (sec === 'user_settings') {
         hideTeaser();
         document.getElementById('cet_usr_name').value = gUserName;
         document.getElementById('cet_change_user').disabled = true;
-        toggle_user_settings_box(true);
     }
-    if (boxName === 'feedback') toggle_feedback_box(true);
-    if (boxName === 'topic') toggle_topic_box(true);
-
-    if (focusField && box.focus) document.getElementById(box.focus).focus();
-    measureEvent(box.event);
-}
-
-function updateJediBtn() {
-    let jediBtn = document.getElementById("cet_dark_side");
-    if (gLastJson.show_avg === 1) {
-        jediBtn.value = "Hide average indicator";
-        jediBtn.setAttribute("data-state", "1");
-        jediBtn.classList.remove("locked");
-    } else {
-        jediBtn.value = "Show average (join the dark side)";
-        jediBtn.setAttribute("data-state", "0");
-        jediBtn.classList.add("locked");
+    if (sec === 'topic') {
+        document.getElementById('topic_reset').disabled = !gTopicChangePending;
+        document.getElementById('topic_save').disabled = !gTopicChangePending;
+        if (!gTopicChangePending) document.getElementById('topic_txt').value = gTopic;
+    }
+    if (sec === 'invite') {
+        document.getElementById('invite_link').value = window.location.href;
     }
 }
 
-function pushJediBtn() {
-    let jediBtn = document.getElementById("cet_dark_side");
-    let state = jediBtn.getAttribute("data-state");
-    if (state === "0") {
-        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + t;
-        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    }
-    if (state === "1") {
-        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + t;
-        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    }
+/* aria-expanded of the openers outside the menu: the header button of the open section, the menu
+ * button (phones) while the menu is open */
+function updateMenuExpanded() {
+    let sec = openMenuSection();
+    document.querySelectorAll('[data-open][aria-expanded]').forEach(btn => {
+        if (btn.closest('#menu') !== null) return;
+        let expanded = sec !== null && (btn.id === 'menu_btn' || btn.getAttribute('data-open') === sec);
+        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
 }
 
-function toggle_feedback_box(setOn) {
-    let e = document.getElementById('feedback_box');
-    if (e !== null) {
-        if (setOn) {
-            e.style.display = 'block';
-            document.getElementById('feedback_btn').classList.add('topnav_btn_on');
-            document.getElementById('feedback_btn').setAttribute('aria-expanded', 'true');
-            document.getElementById('feedback_txt').focus();
-            feedback_star_blink();
+/* sec: index, invite, topic, cset, user_settings, feedback; opener: the element that gets the focus
+ * back on close (null: none). focusField: false when the board opens the menu by itself. */
+function openMenu(sec, opener = null, focusField = true) {
+    let menu = getMenu();
+    if (menu === null) return;
+    let section = menu.querySelector('section.menu_sec[data-sec="' + sec + '"]');
+    if (section === null) return;
+    let previousSec = openMenuSection();
+    let previousFocus = document.activeElement;
+
+    collapseInviteQR();
+    prepareMenuSection(sec);
+    menu.querySelectorAll('section.menu_sec').forEach(s => { s.hidden = s !== section; });
+    document.getElementById('menu_title').textContent = section.getAttribute('data-title');
+
+    if (!menu.open) {
+        gMenuOpener = opener;
+        if (gPhoneQuery.matches) menu.showModal(); else menu.show();
+    } else if (opener !== null && !menu.contains(opener)) {
+        gMenuOpener = opener; // another header button while the panel is open
+    }
+    updateMenuExpanded();
+
+    if (focusField) {
+        let field = gMenuSections[sec].focus;
+        if (field) {
+            if (sec === 'topic') document.getElementById(field).select();
+            else document.getElementById(field).focus();
+        } else if (sec === 'index') {
+            // back from a section: the focus on its entry, otherwise on the first entry
+            let entry = previousSec !== null && menu.querySelector('#menu_index [data-open="' + previousSec + '"]');
+            (entry || menu.querySelector('#menu_index [data-open]')).focus();
         }
-        else {
-            e.style.display = 'none';
-            document.getElementById('fb_star_1').classList.remove('blink');
-            document.getElementById('fb_star_2').classList.remove('blink');
-            document.getElementById('fb_star_3').classList.remove('blink');
-            document.getElementById('fb_star_4').classList.remove('blink');
-            document.getElementById('fb_star_5').classList.remove('blink');
-            document.getElementById('feedback_btn').classList.remove('topnav_btn_on');
-            document.getElementById('feedback_btn').setAttribute('aria-expanded', 'false');
-        }
+    } else if (previousFocus !== null && previousFocus !== document.body && !menu.contains(previousFocus)) {
+        previousFocus.focus({preventScroll: true}); // show() moves the focus into the dialog
+    } else if (menu.contains(document.activeElement)) {
+        document.activeElement.blur();
     }
+
+    if (gMenuSections[sec].event) measureEvent(gMenuSections[sec].event);
 }
 
-function toggle_topic_box(setOn) {
-    let e = document.getElementById('topic_box');
-    if (e !== null) {
-        if (setOn) {
-            if (gTopicChangePending) {
-                document.getElementById("topic_reset").disabled = false;
-                document.getElementById("topic_save").disabled = false;
+/* restoreFocus: false when something else takes the focus (overlay) or the opener is gone */
+function closeMenu(restoreFocus = true) {
+    let menu = getMenu();
+    if (menu === null || !menu.open) return;
+    collapseInviteQR();
+    let toast = document.getElementById('toast');
+    if (toast !== null && menu.contains(toast)) document.body.appendChild(toast);
+    menu.close();
+    updateMenuExpanded();
+    if (restoreFocus && gMenuOpener !== null && gMenuOpener.isConnected) gMenuOpener.focus();
+    gMenuOpener = null;
+}
+
+/* Invite: a tap on the QR code shows it large (style.css, .qr-box[aria-expanded=true]) */
+function toggleInviteQR() {
+    let qr = document.getElementById('invite_qr');
+    qr.setAttribute('aria-expanded', qr.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+}
+
+function collapseInviteQR() {
+    let qr = document.getElementById('invite_qr');
+    if (qr !== null && qr.getAttribute('aria-expanded') === 'true') {
+        qr.setAttribute('aria-expanded', 'false');
+        return true;
+    }
+    return false;
+}
+
+function initMenu() {
+    let menu = getMenu();
+    if (menu === null) return;
+
+    document.addEventListener('click', function (event) {
+        let target = event.target;
+        if (!(target instanceof Element)) return;
+
+        let closer = target.closest('[data-close]');
+        if (closer !== null && menu.contains(closer)) {
+            closeMenu();
+            return;
+        }
+
+        let opener = target.closest('[data-open]');
+        if (opener !== null) {
+            let sec = opener.getAttribute('data-open');
+            // a header button of the open section closes the menu
+            if (!menu.contains(opener) && opener.hasAttribute('aria-expanded') && openMenuSection() !== null
+                && (opener.id === 'menu_btn' || openMenuSection() === sec)) {
+                closeMenu();
             } else {
-                document.getElementById("topic_reset").disabled = true;
-                document.getElementById("topic_save").disabled = true;
-                document.getElementById("topic_txt").value = gTopic;
+                openMenu(sec, opener);
             }
+            return;
+        }
 
-            e.style.display = 'block';
-            document.getElementById('topic_btn').classList.add('topnav_btn_on');
-            document.getElementById('topic_btn').setAttribute('aria-expanded', 'true');
-            document.getElementById('topic_txt').select();
-        }
-        else {
-            e.style.display = 'none';
-            document.getElementById('topic_btn').classList.remove('topnav_btn_on');
-            document.getElementById('topic_btn').setAttribute('aria-expanded', 'false');
-        }
-    }
-}
-
-function toggle_cardset_box(setOn) {
-    let e = document.getElementById('cset_box');
-    if (e !== null) {
-        if (setOn) {
-            e.style.display = 'block';
-            document.getElementById('cset_btn').classList.add('topnav_btn_on');
-            document.getElementById('cset_btn').setAttribute('aria-expanded', 'true');
-        }
-        else {
-            e.style.display = 'none';
-            document.getElementById('cset_btn').classList.remove('topnav_btn_on');
-            document.getElementById('cset_btn').setAttribute('aria-expanded', 'false');
-        }
-    }
-}
-
-function toggle_user_settings_box(setOn) {
-    let e = document.getElementById('user_settings_box');
-    if (e !== null) {
-        if (setOn) {
-            e.style.display = 'block';
-            document.getElementById('user_settings_btn').classList.add('topnav_btn_on');
-            document.getElementById('user_settings_btn').setAttribute('aria-expanded', 'true');
-        }
-        else {
-            if (document.getElementById('user_settings_btn').classList.contains("topnav_btn_on")) {
-                e.style.display = 'none';
-                document.getElementById('user_settings_btn').classList.remove('topnav_btn_on');
-                document.getElementById('user_settings_btn').setAttribute('aria-expanded', 'false');
+        // phones: a tap on the backdrop (the dialog itself, outside its box) closes the sheet
+        if (target === menu && menu.matches(':modal')) {
+            let r = menu.getBoundingClientRect();
+            if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) {
+                closeMenu();
             }
         }
-    }
+    });
+
+    // board settings: the groups are exclusive (details name=), one always stays open
+    menu.addEventListener('click', function (event) {
+        let summary = event.target.closest('details.grp > summary');
+        if (summary !== null && summary.parentElement.open) event.preventDefault();
+    });
+
+    let qr = document.getElementById('invite_qr');
+    if (qr !== null) qr.addEventListener('click', toggleInviteQR);
+
+    // Escape (modal: the cancel event; non-modal: keydown): a large QR code first, then the menu
+    menu.addEventListener('cancel', function (event) {
+        event.preventDefault();
+        if (!collapseInviteQR()) closeMenu();
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || menu.matches(':modal')) return;
+        event.preventDefault();
+        if (!collapseInviteQR()) closeMenu();
+    });
+
+    // the panel and the sheet are different containers: switching the breakpoint closes the menu
+    gPhoneQuery.addEventListener('change', function () { closeMenu(false); });
+}
+
+document.addEventListener('DOMContentLoaded', initMenu);
+
+// B-51: "Average pointer" Hide/Show (radio group); the lock on "Show" is CSS
+function updateJediBtn() {
+    checkRadio('cet_dark_side', gLastJson.show_avg === 1 ? '1' : '0');
+}
+
+function pushJediBtn(showAvg) {
+    let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + t;
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function toggleSurvey(forceSurvey){
@@ -299,38 +316,15 @@ function vote(option_id){
 
 }
 
-function feedback_rate(val, db) {
-    const s0 = 'src/star_off.png';
-    const s1 = 'src/star_on.png';
-    if (val>0 && document.getElementById('fb_star_' + val).src.includes(s1) && (val === 5 || document.getElementById('fb_star_' + (val+1)).src.includes(s0) )) val--;
-    if (val >= 1) document.getElementById('fb_star_1').src = s1; else document.getElementById('fb_star_1').src = s0;
-    if (val >= 2) document.getElementById('fb_star_2').src = s1; else document.getElementById('fb_star_2').src = s0; 
-    if (val >= 3) document.getElementById('fb_star_3').src = s1; else document.getElementById('fb_star_3').src = s0; 
-    if (val >= 4) document.getElementById('fb_star_4').src = s1; else document.getElementById('fb_star_4').src = s0; 
-    if (val >= 5) document.getElementById('fb_star_5').src = s1; else document.getElementById('fb_star_5').src = s0;
-    if (db) {
-
-    }
-    document.getElementById('feedback_txt').focus();
-}
-
 function feedback_submit() {
-    const s1 = 'src/star_on.png';
     let fb_text = document.getElementById('feedback_txt').value;
-    let fb_star = 0;
-    for (let i = 1; i <= 5; i++) {
-        if (document.getElementById('fb_star_' + i).src.includes(s1)) {
-            fb_star = i;
-        }
-        else break;
-    }
-    toggle_feedback_box();
-    feedback_rate(0, false);
+    closeMenu();
     document.getElementById('feedback_txt').value = '';
 
+    // B-54: free text in URLs always encoded; stars are no longer asked for (0)
     fetch('./api/feedback.php?id=' + localStorage.getItem('SID')
-        + '&stars=' + fb_star
-        + '&text=' + fb_text
+        + '&stars=0'
+        + '&text=' + encodeURIComponent(fb_text)
     , { method: 'POST' }).then();
 }
 
@@ -363,7 +357,7 @@ function save_topic(){
         "topic=" + encodeURIComponent(topic)
     );
 
-    toggle_topic_box();
+    closeMenu();
 
     measureEvent("TOPIC_SAVED");
 }
@@ -375,7 +369,7 @@ function setCharAt(str, index, chr) {
 
 function toggleCSet(e) {
     let str = localStorage.getItem('cSet');
-    let cardIdx = gCardsConfig.find(card => card.card_key === e.target.getAttribute("data-card_key")).index;
+    let cardIdx = gCardsConfig.find(card => card.card_key === e.currentTarget.getAttribute("data-card_key")).index;
 
     if (str.charAt(cardIdx) === '1') {
         str = setCharAt(str, cardIdx, '0');
@@ -427,18 +421,18 @@ function preSet() {
     }
 }
 
-function changeSortOrder() {
-    let e = document.getElementById("cet_order_by");
-    const url = './api/update_results_order.php?t='+t+'&results_order='+e.value;
+// B-51: called by the radio group with SEQUENCE or NAME
+function changeSortOrder(resultsOrder) {
+    const url = './api/update_results_order.php?t='+t+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
     let httpRequest = new XMLHttpRequest();
     httpRequest.open("POST", url, false);
     httpRequest.send();
     pushDomChange();
 }
 
-function changeAnonymity() {
-    let e = document.getElementById("cet_anonymous");
-    const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+e.value;
+// B-51: called by the radio group with 0 (show names) or 1 (anonymous)
+function changeAnonymity(anonymous) {
+    const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
     let httpRequest = new XMLHttpRequest();
     httpRequest.open("POST", url, false);
     httpRequest.send();
@@ -475,9 +469,9 @@ function updateUserName() {
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
-function toggleUserType() {
-    let playerType = 'PLAYER';
-    if (gLastJson.player_type === 'PLAYER') playerType = 'OBSERVER';
+// B-51: called by the radio group with PLAYER or OBSERVER
+function toggleUserType(playerType) {
+    if (playerType !== 'OBSERVER') playerType = 'PLAYER';
 
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
@@ -498,7 +492,6 @@ function feedback_bling() {
     setTimeout(function () { feedback_bling() }, getRandom(2 * 60 * 1000, 8 * 60 * 1000));
 }
 
-document.addEventListener('click', toggleTopnav);
 setTimeout(function () { feedback_bling() }, getRandom(60 * 1000, 4 * 60 * 1000));
 
 

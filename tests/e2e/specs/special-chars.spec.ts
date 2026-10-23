@@ -21,6 +21,7 @@ test('renamed team keeps special characters', async ({ browser }) => {
   const newName = `It's "C" & <i>D</i> #2`;
 
   await page.locator('#cset_btn').click();
+  await page.locator('#cset_box details[data-grp="team"] > summary').click(); // B-51: group "Team"
   await page.locator('#cet_team_name').fill(newName);
   await page.locator('#cet_change_name').click();
 
