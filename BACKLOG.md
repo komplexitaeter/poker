@@ -88,6 +88,7 @@ Abgeschlossen:
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
 | B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | erledigt |
+| B-43 | `survey_intro` per `innerHTML` prüfen (Sina) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -677,6 +678,23 @@ Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nut
   Außerdem (Delia): Beim Sortier-Hinweis steht auf Desktop das letzte Wort „value.“ allein in der zweiten Zeile
   (z. B. `text-wrap: pretty`).
 
+**Planning (Delia, 2026-10-23, freigegeben von Andreas):** 3 PRs mit je einer kurzen Abnahme auf Staging.
+- **PR 1 Aufräumen** (Delia): tote Regeln (u. a. LinkedIn, alte Info-Box, `marquee`/`reaction1`, `#teamlink`/
+  `#teamlist`, leere Blöcke), `-webkit-` auf die 4 nötigen Zeilen, letzte feste Farben als Tokens, Tippfehler
+  „affects“, `text-wrap: pretty` beim Sortier-Hinweis. Bleibt: Tabellen-Regeln (`stats.php` nutzt `style.css`).
+- **PR 2 Responsive per CSS** (Delia CSS/Markup, Fred JS/Tests): ein Breakpoint bei 800 px per `@media` statt
+  `.mobile`/`.desktop`/`sizefit`; Regeln an derselben Stelle umschreiben (Spezifität). JS: `adaptToDevice()` und
+  `sizeClass` raus, `toggleMobileMenu` per `matchMedia`. **`getBrowserWidth()`/`gDisplayType` bleibt für Analytics**
+  (`display_type` in `pok_analytics_events_tbl`, Grafana). Startseite mobil: Logo, Farbschalter und Feedback zeigen
+  (heute fehlt der Farbschalter). Löschen-Icon: auf Touch-Geräten (`hover: none`) immer sichtbar, sonst bei Hover –
+  gleiches Prinzip wie heute, nur nach Gerät statt nach Breite. Neue `responsive.spec.ts` (Burger-Menü, Umschalten
+  ohne Neuladen, `display_type` xs/lg, keine `mobile`/`desktop`/`sizefit`-Klassen mehr).
+- **PR 3 Vereinheitlichen** (Delia): gemeinsame Basis für Buttons, Felder, Menü-Boxen, Overlays (Radius-/Abstands-
+  Tokens); Fixes bei 320 px (Schloss-Icon). Button-Form orientiert sich an den Menü-Grafiken (abgerundet, wie die
+  Topnav-Icons). Lange Menütexte bei 320 px bleiben vorerst (Menüs kommen mit B-40).
+- Bleibt draußen (B-40): Menüs als Overlay, Segment-Schalter, Kartengestaltung, Kartenauswahl mobil, Platz-
+  Konkurrenz, Tastaturbedienung von Burger/Schließen, grundsätzlich bessere Lösung zum Löschen von Spielern.
+
 ### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
 Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
 `.desktop`, an `window`-Größe gebunden) statt über CSS. `style.css` enthält **0 `@media`-Queries** – die Umschaltung
@@ -698,6 +716,12 @@ nach B-36, ggf. zusammen mit B-14.
 **Querverweis (Delia, 2026-10-22):** Die konkrete Layout-Engine-Umstellung des Kartenbereichs (von JS-`getCardPos`/
 `position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
 sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
+
+### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
+Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
+Umfragen (`survey_intro`, aus der API) per `innerHTML` in die Seite. Der Inhalt ist Admin-Content aus der DB, keine
+Nutzereingabe. Sina soll einordnen, ob das bleiben kann (gewollte Formatierung) oder auf `textContent`/remarkable
+ohne HTML umgestellt werden sollte. Nicht dringend.
 
 ### B-42 Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“
 Andreas möchte die Konfiguration userfreundlicher machen. Erster Kandidat: die Option „Define the sort order in-game“
