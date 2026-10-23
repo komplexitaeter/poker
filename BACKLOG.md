@@ -7,6 +7,9 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
+**Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
+Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Refinement/Planning folgt.
+
 **Sprint 7 – „Konfiguration & CSS aufräumen"** (ab 2026-10-23):
 1. **B-42** Sortier-Option vereinfachen – zuerst, damit B-36 die wegfallende Sortier-Leiste nicht mit aufräumt.
 2. **B-36** CSS vereinfachen, inklusive `.mobile`/`.desktop` (B-37 geht darin auf) – danach, Planning folgt.
@@ -91,6 +94,12 @@ Abgeschlossen:
 | B-43 | `survey_intro` per `innerHTML` prüfen (Sina) | neu |
 | B-44 | Startseite Light-Mode: Logo ohne Schriftzug | neu |
 | B-45 | Toten Stern-Bewertungscode im Feedback entfernen | neu |
+| B-46 | Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste, `dvh`) | neu |
+| B-47 | Touch von der Breite trennen, Touch-Ziele ≥ 44 px | neu |
+| B-48 | Topnav aus echten Buttons, Hinweise als Text | neu |
+| B-49 | Fluide Kartengrößen | neu |
+| B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | neu |
+| B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -736,6 +745,62 @@ Die Bewertungssterne im Feedback sind seit jeher per CSS ausgeblendet (`display:
 `script/script_feedback.js` (u. a. `fb_star_*`, `.blink`) ist damit toter Code. Bei Gelegenheit entfernen (Fred),
 oder bewusst entscheiden, die Sterne wieder einzuführen.
 
+### B-46 bis B-51: Fundament für B-40 (aus Delias Einschätzung, 2026-10-23)
+Nach B-36 hat Delia CSS, Bildschirmgrößen und Touch bewertet: CSS gelb-grün (gut gegliedert, kein `!important`), aber
+**nicht State of the Art** bei Touch und Seitengerüst, Bedienbarkeit rot (Bilder mit `onclick` statt Buttons). Kein
+Big-Bang auf Mobile-first – Desktop-first mit einem Breakpoint bleibt –, aber das Fundament vor der Umgestaltung (B-40)
+verbessern, damit neue Menüs und Karten nicht auf dem starren Gerüst landen. Andreas (2026-10-23): alle sechs Punkte im
+nächsten Sprint angehen. Reihenfolge laut Delia: B-46 → B-47 → B-48 → B-49, B-50 nebenher; B-51 neu dazu (Andreas).
+Bewusst „gut genug“, nicht anfassen: ein Breakpoint und Desktop-first, Durchschnittszeiger per JS,
+`getBrowserWidth()` für Analytics, Invert-Filter für Icons, `opacity: 0` am `body` gegen Flackern.
+
+### B-46 Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste)
+Heute: `.container` `100vh`, `.up-container` `89vh`, Kartenleiste `position: fixed` (feste 89/11-Aufteilung). Am Handy
+ist `vh` wegen der Adressleiste unzuverlässig, im Querformat bleibt kaum Höhe; das ist die technische Wurzel der
+„Platz-Konkurrenz“ (Timer, Topic, „New Round“ vs. Karten, B-40). Ziel: CSS-Grid mit `100dvh`, Kartenbereich scrollt
+allein, Topic/Timer/New Round bekommen feste Zonen, Querformat mitbedacht, Safe-Area optional. Aufwand M (Delia).
+Sichtprüfung auf echten Handys (iOS Safari) hoch und quer.
+
+### B-47 Touch von der Breite trennen, Touch-Ziele ≥ 44 px
+Heute wird „schmal“ mit „Touch“ gleichgesetzt: iPad/Touch-Laptop (≥ 800 px) bekommen Desktop-Größen (Icons 32 px,
+Lösch-Icon 20 px, Thumbnails 27 px), Hinweise nur per Hover, iOS zoomt in Felder (16-px-Regel nur unter 800 px).
+Ziel: `@media (pointer: coarse)` bzw. `(any-pointer: coarse)` für größere Ziele (≥ 44 px) und 16-px-Felder,
+Touch-Alternative zu Hover-only-Elementen, `touch-action: manipulation` (der `body` reagiert auf `ondblclick`).
+Aufwand S (Delia).
+
+### B-48 Topnav aus echten Buttons, Hinweise als Text
+Heute: Topnav-Icons sind `<img onclick>` mit festen `right: …px`-Positionen (bzw. `%` im Burger-Menü), Hinweisblasen
+sind Text in PNGs (`cta_*.png`, nur per Hover, nicht themebar). Ziel: Flex-Leiste mit echten `<button>`-Elementen,
+Hinweise als Text/Tooltips, per Tastatur bedienbar (Fokus, Screenreader). Aufwand M (Delia Markup/CSS, Fred
+Öffnen/Schließen und Fokus). Passt zu B-51.
+
+### B-49 Fluide Kartengrößen
+Heute: Karten fest 100×148 px, Kartenleiste 45/55 px. Ziel: Größe über eine Variable (`--card-w: clamp(…)` +
+`aspect-ratio`) für Tischkarten und Kartenleiste – am kleinen Handy passen mehr Karten nebeneinander, auf großen
+Bildschirmen dürfen sie wachsen. Seit B-41 (Flex-Layout) einfach umsetzbar. Achtung: E2E-Test zum Kartenabstand
+(B-41) prüft feste Abstände → mit anpassen. Aufwand S–M (Delia + Fred; Ben, falls Kartenbilder betroffen). Vor
+„Kartenlayout“ und „Kartenauswahl mobil“ aus B-40.
+
+### B-50 Kleinpaket Qualität
+- `prefers-reduced-motion` auch für CSS-Animationen (Wackeln, Aufblitzen, Einblenden, Konfetti), heute nur fürs
+  Karten-Gleiten in JS.
+- `user-select: none` nur noch gezielt (Karten, Kartenleiste) statt auf dem ganzen `body` – Topic-Text kopierbar.
+- Kontraste anheben: Datenschutz-Links und deaktivierte Elemente (`--box-disabled` in Dark ca. 1,6:1).
+- Tokens für z-Index und Schriftgrößen; Token-Namen nach Bedeutung statt Einsatzort, einheitliche Schreibweise.
+- Erster Besuch: Farbmodus aus `prefers-color-scheme` (eigener Schalter bleibt).
+- Kleinkram: `font-family: Arial, serif` → `sans-serif`, Alt-Text „Se tup“, leere `<label>`s.
+Aufwand S (Delia), kann nebenher laufen.
+
+### B-51 Menüs neu denken: Overlays und sinnvolle Struktur
+Aus B-40 herausgelöst (Andreas, 2026-10-23): die Menüdialoge als modales Voll-Overlay (halbtransparent zum
+Hintergrund, wie „Become Observer/Player“), damit auch mobil sinnvoll mit responsiven Elementen; dabei die Menüs
+**grundsätzlich überdenken** – welche Einstellungen es gibt, wie sie gruppiert und benannt sind, was in welches Menü
+gehört (vgl. B-42: Sortierung in die Konfiguration, nicht ins Spiel). Delias Idee zur Spieler-Liste („Players“ statt
+Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden einheitlich machen (heute drei
+Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
+Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
+dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
 Umfragen (`survey_intro`, aus der API) per `innerHTML` in die Seite. Der Inhalt ist Admin-Content aus der DB, keine
@@ -922,8 +987,8 @@ Dafür eine eigene Design-Rolle (siehe `.claude/agents/`), die gestalten **und**
 Ideen-Sammlung von Andreas (2026-10-22, unsortiert, wird im Refinement geschärft und in einzelne Einträge
 geschnitten):
 - **Menüs als modales Voll-Overlay** (halbtransparent zum Hintergrund, wie „Become Observer/Player"), dadurch auch
-  mobil sinnvoller mit responsiven Elementen aufbaubar.
-- **Menüs userfreundlicher strukturieren und aufräumen.**
+  mobil sinnvoller mit responsiven Elementen aufbaubar. → jetzt **B-51**.
+- **Menüs userfreundlicher strukturieren und aufräumen.** → jetzt **B-51**.
 - **Kartenlayout verbessern** – z. B. die Spielernamen besser unter den Karten platzieren.
 - **Karten mit Beschriftungen** ermöglichen (z. B. um echtes Delegation Poker zu spielen).
 - **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
