@@ -81,7 +81,7 @@ Abgeschlossen:
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
-| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | refined |
+| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt (release) |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | in B-36 aufgegangen |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
@@ -696,6 +696,13 @@ Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nut
   Topnav-Icons). Lange Menütexte bei 320 px bleiben vorerst (Menüs kommen mit B-40).
 - Bleibt draußen (B-40): Menüs als Overlay, Segment-Schalter, Kartengestaltung, Kartenauswahl mobil, Platz-
   Konkurrenz, Tastaturbedienung von Burger/Schließen, grundsätzlich bessere Lösung zum Löschen von Spielern.
+
+**Umgesetzt (2026-10-23, PR #32, #33, #34; auf Staging abgenommen von Andreas):** `style.css` 1.918 → 1.219 Zeilen
+(−36 %). PR 1 tote Regeln/Präfixe/Farb-Tokens; PR 2 ein Breakpoint bei 800 px per `@media`, `.mobile`/`.desktop`/
+`sizefit` und `adaptToDevice()` entfernt (Analytics-`display_type` bleibt über `getBrowserWidth()`), Löschen-Icon auf
+Touch-Geräten immer sichtbar, Startseite mobil mit Farbschalter, neue `responsive.spec.ts`; PR 3 gemeinsame Basis
+(`.btn`, `.btn-box`, `.field`, `.menu_box`, `.overlay_panel`, Radius-/Abstands-Tokens), einheitlicher Fokusring,
+Felder mobil 16 px, Fixes bei 320 px. Nachgetragen: `script_feedback.js?v=1.9`.
 
 ### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
 Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
