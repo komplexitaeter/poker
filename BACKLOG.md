@@ -8,17 +8,17 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 ## Aktueller Sprint
 
 **Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
-Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Refinement/Planning folgt.
-
-**Sprint 7 – „Konfiguration & CSS aufräumen"** (ab 2026-10-23):
-1. **B-42** Sortier-Option vereinfachen – zuerst, damit B-36 die wegfallende Sortier-Leiste nicht mit aufräumt.
-2. **B-36** CSS vereinfachen, inklusive `.mobile`/`.desktop` (B-37 geht darin auf) – danach, Planning folgt.
+Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Planning läuft (Delia, Fred).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
 (FPM-grep + `free -m`).
 
 Abgeschlossen:
+- **Sprint 7 – „Konfiguration & CSS aufräumen"** (2026-10-23, live mit PR #35):
+  - B-42: Sortier-Option „im Spiel wählen“ gestrichen, nur noch Kartenwert/Name; im Anonym-Modus fest „Card value“.
+  - B-36 (mit B-37): `style.css` um gut ein Drittel kleiner, Responsive per CSS (ein Breakpoint, 800 px) statt
+    `.mobile`/`.desktop` per JS, gemeinsame Klassen und Tokens. Danach Delias Einschätzung → B-46 bis B-51.
 - **Sprint 6 – „Schlank & performant"** (2026-10-22/23, live mit PR #25 und #28):
   - Schlank-Spike (Assets, CSS, JS, `dao.php`) mit priorisierten Ergebnissen in B-35 bis B-38. Bewusst nicht verfolgt:
     tote Bilder löschen (kein Laufzeiteffekt), `dao.php`-Payload (1–2 KB, zu klein für Reduktion).
@@ -84,7 +84,7 @@ Abgeschlossen:
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
-| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt (release) |
+| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | in B-36 aufgegangen |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
