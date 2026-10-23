@@ -18,11 +18,11 @@ Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nach
 bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
 Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
 parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
-**Stand 2026-10-23 abends (weiter Montag):** Ben `cards.json` (`symbol`, XXL) in `release` (PR #36). Schritt 1 von
-Delia auf `feature/B-48-console-header` (`2ce55aa`, E2E 40/40 grün, `style.css` 1.16, `script.js` 2.5,
-`script_feedback.js` 1.10), noch nicht gemergt. Nächstes: Fred auf demselben Branch (Escape/Fokus/aria-expanded für
-Burger und Menü-Boxen, Teaser per Fokus, Tastatur-Check), dann Review (anderer Agent), PR nach `release`, Sichtung
-durch Andreas auf Staging, danach Schritt 2.
+**Stand 2026-10-23 abends (weiter Montag):** In `release`: `cards.json` (`symbol`, XXL, PR #36), Schritt 1
+Console-Look + Header + Tastatur (PR #37), Schritt 2 Seitengerüst Panel/Dock, Touch, Toast (PR #38; `style.css` 1.18,
+`script.js` 2.7, `script_feedback.js` 1.11). Offen: Andreas sichtet Schritt 2 auf echten Geräten (iPhone hoch/quer,
+SE-Dock, iPad, QR-Code am kleinen Handy). Nächstes: Schritt 3 (Menüs als Side Panel/Bottom-Sheet, Board settings
+als Gruppen, Umfrage-Box, „Delete User“ als Button), dann ggf. Schritt 4 (B-49), B-54, B-55, Rollout 1.
 **Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
 1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
    Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
