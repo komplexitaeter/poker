@@ -7,7 +7,7 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.14" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.15" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -53,57 +53,57 @@
             <img src="src/cta_teaser.png" id="cta_teaser" class="topnav switchable" alt="Teaser for a new feature" />
 
             <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
-            <div id="topic_box" class="topnav">
-                <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav" onkeydown="topicChanged()"></textarea>
-                <input id="topic_reset" class="box_sbmt_button topnav" type="button" onclick="reset_topic()" value="Undo"/>
-                <input id="topic_save" class="box_sbmt_button topnav" type="button" onclick="save_topic()" value="Save"/>
+            <div id="topic_box" class="topnav menu_box">
+                <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav field" onkeydown="topicChanged()"></textarea>
+                <input id="topic_reset" class="btn-box topnav" type="button" onclick="reset_topic()" value="Undo"/>
+                <input id="topic_save" class="btn-box topnav" type="button" onclick="save_topic()" value="Save"/>
             </div>
-            <div id="feedback_box" class="topnav">
+            <div id="feedback_box" class="topnav menu_box">
                 <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
                 <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
                 <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
                 <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
                 <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
                 <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
-    Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav"></textarea>
-                <input class="box_sbmt_button topnav" type="button" onclick="feedback_submit();" value="Send Feedback"/>
+    Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav field"></textarea>
+                <input class="btn-box topnav" type="button" onclick="feedback_submit();" value="Send Feedback"/>
             </div>
-            <div id="cset_box" class="topnav">
+            <div id="cset_box" class="topnav menu_box">
                 <label for="cet_team_name" class="topnav">Change team name</label>
-                <input class="topnav setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
-                <input id="cet_change_name" class="box_sbmt_button topnav" type="button" onclick="updateTeamName()" value="Ok" />
+                <input class="topnav field setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
+                <input id="cet_change_name" class="btn-box topnav" type="button" onclick="updateTeamName()" value="Ok" />
 
                 <label for="cet_pre" class="topnav">Define your deck of cards</label>
-                <select id="cet_pre" onchange="preSet();" class="topnav">
+                <select id="cet_pre" onchange="preSet();" class="topnav field">
                     <option value="0" selected>Select a preset ...</option>
                 </select>
 
                 <div id="cards_thumbs" class="topnav"></div>
 
                 <label for="cet_order_by" class="topnav">Arrange revealed cards by</label>
-                <select id="cet_order_by" onchange="changeSortOrder()" class="topnav">
+                <select id="cet_order_by" onchange="changeSortOrder()" class="topnav field">
                     <option value="SEQUENCE" selected>Card value</option>
                     <option value="NAME">Player name</option>
                 </select>
                 <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card value.</div>
 
                 <label for="cet_anonymous" class="topnav">Set players transparency (only affects new rounds)</label>
-                <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav">
+                <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav field">
                     <option value="0">Show names on results (default)</option>
                     <option value="1" selected>Hide names on results (anonymous)</option>
                 </select>
 
                 <label for="cet_dark_side" class="topnav">Calculate average value</label>
-                <input id="cet_dark_side" class="box_sbmt_button topnav" type="button" onclick="pushJediBtn()" data-state="0" />
+                <input id="cet_dark_side" class="btn-box topnav" type="button" onclick="pushJediBtn()" data-state="0" />
             </div>
 
-            <div id="user_settings_box" class="topnav">
+            <div id="user_settings_box" class="topnav menu_box">
                 <label for="cet_usr_name" class="topnav">Change your name</label>
-                <input class="topnav setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
-                <input id="cet_change_user" class="box_sbmt_button topnav" type="button" onclick="updateUserName()" value="Ok" />
+                <input class="topnav field setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
+                <input id="cet_change_user" class="btn-box topnav" type="button" onclick="updateUserName()" value="Ok" />
 
                 <label for="cet_toggle_user_type" class="topnav">Switch your role</label>
-                <input id="cet_toggle_user_type" class="box_sbmt_button topnav" type="button" onclick="toggleUserType()" />
+                <input id="cet_toggle_user_type" class="btn-box topnav" type="button" onclick="toggleUserType()" />
 
                 <div id="user_settings_privacy_link" class="privacy_link">
                     <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a> | <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a> | <a onclick="showDeleteUserOverlay()">Delete User</a>
@@ -117,7 +117,7 @@
         <div id="cbox"></div>
 
 
-        <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" data-state="closed" />
+        <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" data-state="closed" />
 
         <div id="stopwatch" class="stopwatch_control">
             <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
@@ -150,14 +150,14 @@
     <div id="canvas_qr_code"></div>
 </div>
 
-<div id="overlay_name_input" class="overlay hidden topnav">
+<div id="overlay_name_input" class="overlay overlay_panel hidden topnav">
     <label for="nameinput"></label><input id="nameinput" class="topnav" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
-    <div id="removed_msg">
+    <div id="removed_msg" class="overlay_msg">
         <h1>You were temporarily kicked out of the game</h1>
         <span>This usually happens when you have been off for a while and someone removes you from the table. What do you want to do now?</span>
     </div>
-    <input id="become_player_btn" class="overlay_action_btn topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
-    <input id="become_observer_btn" class="overlay_action_btn topnav" type="button" value="Become Observer" tabindex="3" disabled />
+    <input id="become_player_btn" class="btn topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
+    <input id="become_observer_btn" class="btn topnav" type="button" value="Become Observer" tabindex="3" disabled />
 
     <div id="overlay_privacy_link" class="privacy_link">
         <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy</a>
@@ -167,13 +167,13 @@
 
 </div>
 
-<div id="overlay_delete_user" class="overlay hidden topnav">
-    <div id="delete_user_msg">
+<div id="overlay_delete_user" class="overlay overlay_panel hidden topnav">
+    <div id="delete_user_msg" class="overlay_msg">
         <h1>Delete your user data?</h1>
         <span>Your privacy is key. By proceeding, all your user data, personal settings, voting results, and feedback will be permanently and irrevocably deleted.</span>
     </div>
-    <input class="overlay_action_btn topnav" type="button" value="Cancel" onclick="showDeleteUserOverlay(false)" />
-    <input class="overlay_action_btn topnav" type="button" value="Delete User" onclick="deleteUser()" />
+    <input class="btn topnav" type="button" value="Cancel" onclick="showDeleteUserOverlay(false)" />
+    <input class="btn topnav" type="button" value="Delete User" onclick="deleteUser()" />
 </div>
 
 <div id="promo-tab" class="promo-tab promo-hidden">
