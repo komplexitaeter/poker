@@ -24,6 +24,7 @@
     "card_key": "1pnt501",
     "sort_order": 200,
     "description": "0.5",
+    "symbol": "½",
     "numeric_value": 0.5,
     "flow_control": false
   },
@@ -128,6 +129,7 @@
     "card_key": "infin01",
     "sort_order": 1500,
     "description": "infinity",
+    "symbol": "∞",
     "numeric_value": null,
     "flow_control": false
   },
@@ -136,6 +138,7 @@
     "card_key": "green01",
     "sort_order": 1600,
     "description": "green traffic light",
+    "symbol": "🟢",
     "numeric_value": 1000,
     "flow_control": false
   },
@@ -144,6 +147,7 @@
     "card_key": "yellow1",
     "sort_order": 1700,
     "description": "yellow traffic light",
+    "symbol": "🟡",
     "numeric_value": 2000,
     "flow_control": false
   },
@@ -152,6 +156,7 @@
     "card_key": "red0001",
     "sort_order": 1800,
     "description": "red traffic light",
+    "symbol": "🔴",
     "numeric_value": 3000,
     "flow_control": false
   },
@@ -160,6 +165,7 @@
     "card_key": "satis01",
     "sort_order": 1900,
     "description": "satisfied",
+    "symbol": "🙂",
     "numeric_value": null,
     "flow_control": false
   },
@@ -168,6 +174,7 @@
     "card_key": "annoy01",
     "sort_order": 2000,
     "description": "annoyed",
+    "symbol": "😒",
     "numeric_value": null,
     "flow_control": false
   },
@@ -176,6 +183,7 @@
     "card_key": "sad0001",
     "sort_order": 2100,
     "description": "sad",
+    "symbol": "😢",
     "numeric_value": null,
     "flow_control": false
   },
@@ -184,6 +192,7 @@
     "card_key": "unint01",
     "sort_order": 2200,
     "description": "uninterested",
+    "symbol": "😐",
     "numeric_value": null,
     "flow_control": false
   },
@@ -192,6 +201,7 @@
     "card_key": "angry01",
     "sort_order": 2300,
     "description": "angry",
+    "symbol": "😡",
     "numeric_value": null,
     "flow_control": false
   },
@@ -200,6 +210,7 @@
     "card_key": "enthu01",
     "sort_order": 2400,
     "description": "enthusiastic",
+    "symbol": "🤩",
     "numeric_value": null,
     "flow_control": false
   },
@@ -208,6 +219,7 @@
     "card_key": "break01",
     "sort_order": 99000,
     "description": "need a break",
+    "symbol": "☕",
     "numeric_value": null,
     "flow_control": true
   },
@@ -216,6 +228,7 @@
     "card_key": "xxs0001",
     "sort_order": 2500,
     "description": "XXS",
+    "symbol": "XXS",
     "numeric_value": 10000,
     "flow_control": false
   },
@@ -224,6 +237,7 @@
     "card_key": "xs00001",
     "sort_order": 2600,
     "description": "XS",
+    "symbol": "XS",
     "numeric_value": 11000,
     "flow_control": false
   },
@@ -232,6 +246,7 @@
     "card_key": "s000001",
     "sort_order": 2700,
     "description": "S",
+    "symbol": "S",
     "numeric_value": 12000,
     "flow_control": false
   },
@@ -240,6 +255,7 @@
     "card_key": "m000001",
     "sort_order": 2800,
     "description": "M",
+    "symbol": "M",
     "numeric_value": 13000,
     "flow_control": false
   },
@@ -248,6 +264,7 @@
     "card_key": "l000001",
     "sort_order": 2900,
     "description": "L",
+    "symbol": "L",
     "numeric_value": 14000,
     "flow_control": false
   },
@@ -256,6 +273,7 @@
     "card_key": "xl00001",
     "sort_order": 3000,
     "description": "XL",
+    "symbol": "XL",
     "numeric_value": 15000,
     "flow_control": false
   },
@@ -263,7 +281,8 @@
     "index": 31,
     "card_key": "xxl0001",
     "sort_order": 3100,
-    "description": "XL",
+    "description": "XXL",
+    "symbol": "XXL",
     "numeric_value": 16000,
     "flow_control": false
   },
@@ -272,6 +291,7 @@
     "card_key": "0star01",
     "sort_order": 3200,
     "description": "zero star",
+    "symbol": "0★",
     "numeric_value": 20000,
     "flow_control": false
   },
@@ -280,6 +300,7 @@
     "card_key": "1star01",
     "sort_order": 3300,
     "description": "one star",
+    "symbol": "1★",
     "numeric_value": 21000,
     "flow_control": false
   },
@@ -288,6 +309,7 @@
     "card_key": "2stars1",
     "sort_order": 3400,
     "description": "two stars",
+    "symbol": "2★",
     "numeric_value": 22000,
     "flow_control": false
   },
@@ -296,6 +318,7 @@
     "card_key": "3stars1",
     "sort_order": 3500,
     "description": "three stars",
+    "symbol": "3★",
     "numeric_value": 23000,
     "flow_control": false
   },
@@ -304,6 +327,7 @@
     "card_key": "4stars1",
     "sort_order": 3600,
     "description": "four stars",
+    "symbol": "4★",
     "numeric_value": 24000,
     "flow_control": false
   },
@@ -312,6 +336,7 @@
     "card_key": "5stars1",
     "sort_order": 3700,
     "description": "five stars",
+    "symbol": "5★",
     "numeric_value": 25000,
     "flow_control": false
   },
@@ -360,6 +385,7 @@
       "card_key": "qstmrk1",
       "sort_order": 99010,
       "description": "have a question",
+      "symbol": "?",
       "numeric_value": null,
       "flow_control": true
     },
@@ -368,6 +394,7 @@
       "card_key": "xclam01",
       "sort_order": 99020,
       "description": "need to talk",
+      "symbol": "!",
       "numeric_value": null,
       "flow_control": true
     },
@@ -376,6 +403,7 @@
       "card_key": "veto",
       "sort_order": 98990,
       "description": "veto",
+      "symbol": "✋",
       "numeric_value": null,
       "flow_control": false
     }

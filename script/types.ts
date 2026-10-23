@@ -44,6 +44,7 @@ interface Card {
     card_key: string;
     sort_order: number;
     description: string;
+    symbol?: string; // short label for non-numeric cards (B-53)
     numeric_value: number | null;
     flow_control: boolean;
 }
