@@ -1399,6 +1399,17 @@ div#cbox.mobile {
     color: var(--text-color);
 }
 
+/* B-42: locked in anonymous mode. Unlike a disabled button the select still shows
+ * information ("Card value"), so the text stays readable in the muted label color;
+ * the dashed border marks it as locked. */
+#cet_order_by:disabled {
+    border-style: dashed;
+    border-color: var(--switch-color);
+    color: var(--switch-color);
+    opacity: 1;
+    cursor: not-allowed;
+}
+
 #cet_order_by.desktop {
     font-size: smaller;
     border-radius: 12px;
