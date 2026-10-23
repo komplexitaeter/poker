@@ -93,6 +93,7 @@ Abgeschlossen:
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt (release) |
+| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -683,6 +684,30 @@ nach B-36, ggf. zusammen mit B-14.
 **Querverweis (Delia, 2026-10-22):** Die konkrete Layout-Engine-Umstellung des Kartenbereichs (von JS-`getCardPos`/
 `position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
 sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
+
+### B-42 Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“
+Andreas möchte die Konfiguration userfreundlicher machen. Erster Kandidat: die Option „Define the sort order in-game“
+(`results_order = 'CHOOSE:…'`, zeigt nach dem Aufdecken die Name/Value-Leiste unter den Karten).
+
+**Analyse (Live, letzte 180 Tage, Stand 2026-10-23; Runden aus `pok_roundstats_tbl`, Team-Typ aus
+`pok_daily_teams_stats`, Personen aus `pok_roundstat_details_tbl`):**
+- ~40.300 Runden: nach Kartenwert (`SEQUENCE`) 85,2 %, nach Name (`NAME`) 14,2 %, im Spiel wählen (`CHOOSE`) **0,6 %**
+  (232 Runden).
+- `CHOOSE`: 5 Teams (alle recurring), 3 davon an ≥ 3 Tagen; monatlich stabil 1–4 Teams, 0,4–0,7 % der Runden.
+  Je Person: 35 Personen, 23 an ≥ 3 Tagen – von 5.102 regelmäßigen Nutzern (≥ 3 Tage) ≈ 0,5 %; jede nur in einem Team.
+- **Kein einziges Team hat im Spiel auf „Name“ umgeschaltet**: keine Runde mit `CHOOSE:NAME`, nur `CHOOSE:SEQUENCE`.
+  Faktisch sortieren diese Teams immer nach Kartenwert. (Einschränkung: Umschalten innerhalb einer Runde mit
+  Zurückstellen vor der nächsten Runde ist in den Daten nicht sichtbar; ein Analytics-Event dafür gibt es nicht.)
+- Die Wahl Name vs. Kartenwert wird dagegen genutzt: 78 recurring Teams spielen bewusst nach Name.
+
+**Optionen (noch nicht entschieden):**
+1. `CHOOSE` streichen: Auswahl nur noch Name / Kartenwert; die 5 Teams einmalig auf `SEQUENCE` umstellen (für sie
+   ändert sich nur, dass die Leiste wegfällt). Klein (Ben: API/Validierung + DB-Update, Fred: Board-Logik).
+2. Umschalter Name/Wert für alle direkt aufs Board, Eintrag im Menü entfällt – Gestaltungsfrage für B-40 (Delia),
+   mehr Platzbedarf unter den Karten.
+
+Offene Fragen: Welche Option? Weitere Konfigurationspunkte gleich mit analysieren (z. B. Anonym-Modus, Durchschnitt,
+Timer)?
 
 ### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
 **Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
