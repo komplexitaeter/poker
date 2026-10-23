@@ -18,11 +18,13 @@ Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nach
 bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
 Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
 parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
-**Stand 2026-10-23 abends (weiter Montag):** In `release`: `cards.json` (`symbol`, XXL, PR #36), Schritt 1
-Console-Look + Header + Tastatur (PR #37), Schritt 2 Seitengerüst Panel/Dock, Touch, Toast (PR #38; `style.css` 1.18,
-`script.js` 2.7, `script_feedback.js` 1.11). Offen: Andreas sichtet Schritt 2 auf echten Geräten (iPhone hoch/quer,
-SE-Dock, iPad, QR-Code am kleinen Handy). Nächstes: Schritt 3 (Menüs als Side Panel/Bottom-Sheet, Board settings
-als Gruppen, Umfrage-Box, „Delete User“ als Button), dann ggf. Schritt 4 (B-49), B-54, B-55, Rollout 1.
+**Stand 2026-10-23 spätabends (weiter Montag):** In `release`: `cards.json` `symbol`/XXL (#36), Schritt 1 Console-Look
++ Header (#37), Schritt 2 Gerüst/Touch/Toast (#38), Schritt 2b Topic-Leiste oben, New Round/Stoppuhr unter den Karten,
+keine Header-Hinweise, Stoppuhr-Toast (#39), Schritt 3 Menüs als Side Panel/Bottom-Sheet mit neuer Struktur inkl. B-54
+(#40; `style.css` 1.21, `script.js` 2.10, `script_feedback.js` 1.13). Offen: Andreas sichtet 2b und 3 auf echten
+Geräten (iPhone Sheet/Backdrop/Tastatur, iPad, QR). Delia: kurz Freds Änderung an der Konsolen-Deko (`content: "…" / ""`
+für Screenreader) abnicken. Nächstes für Rollout 1: B-55 (Hinweis-Toast + Umfrage, Ben-SQL, Sina B-43), Entscheidung
+`mockups/`, optional Schritt 4 (B-49), dann PR `release` → `master`.
 **Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
 1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
    Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
@@ -122,7 +124,7 @@ Abgeschlossen:
 | B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | neu |
 | B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
 | B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
-| B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | neu |
+| B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | erledigt (release) |
 | B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
