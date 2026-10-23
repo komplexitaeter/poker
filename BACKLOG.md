@@ -11,7 +11,13 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Planning läuft: Mockup `mockups/` (Delia) – Andreas hat Variante C (Panel/Dock) und Menüs als Side Panel am
 Desktop gewählt; Runde 2 mit „Console Style“, Ergebnisdarstellung (B-53) und Topic-Liste (B-52).
 **Entscheidung Andreas (2026-10-23): Console Style wird der Look der App, ohne Theme-Umschalter (Light/Dark bleibt).**
-Mockup-Runde 3 läuft.
+Mockup-Runde 3 abgenommen (Andreas, 2026-10-23), Entscheidungen: Board settings als Gruppen; gemerkter Wert wird
+gespeichert (UI noch offen, mit B-52/B-53); Emojis sparsam (Emotions, Ampel, ☕, ✋); „New round“ bleibt Hauptbutton;
+Delegation-Poker-Namen später. Desktop: Menüpunkt öffnet direkt das Side Panel, nur Schließen, kein „<“ zur
+Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nachschärfen. Karten-Gleiten (FLIP, B-41)
+bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
+Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
+parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
