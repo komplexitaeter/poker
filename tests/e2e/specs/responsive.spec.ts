@@ -5,8 +5,8 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersVia
  * B-36: The layout switches purely by CSS media queries at 800 px (style/style.css,
  * max-width: 799.98px / min-width: 800px). No element carries the former JS classes
  * mobile/desktop/sizefit any more. The analytics display type (xs/m/md/lg) is still sent.
- * B-46: New Round has its own zone on every screen size (round panel on large screens, dock above
- * the deck on phones), it is no longer part of the burger menu.
+ * B-46: New Round is no longer part of the burger menu: below the cards on large screens, in a
+ * dock above the deck on phones.
  */
 const SMALL = { width: 375, height: 800 };
 const LARGE = { width: 1280, height: 900 };
