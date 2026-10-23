@@ -792,13 +792,11 @@ function switchColorMode(){
 
 function toggleMobileMenu(target_state){
     let menu = document.getElementById("mobile-menu");
-    let newroundbtn = document.getElementById("newroundbtn");
     // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
     if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
         let opener = menu.querySelector('.open_menu');
         let focusInside = menu.contains(document.activeElement);
         menu.setAttribute('data-state', target_state);
-        newroundbtn.setAttribute('data-state', target_state);
         opener.setAttribute('aria-expanded', target_state === 'open' ? 'true' : 'false');
         if (target_state === 'open') {
             menu.querySelector('.topnav-bar .icon-btn').focus();
@@ -809,15 +807,35 @@ function toggleMobileMenu(target_state){
     }
 }
 
+/* B-46: on phones the topic strip shows one line; the arrow button (or a tap on the topic)
+ * shows all of it. Elsewhere the button is hidden by CSS and the topic is shown in full. */
+function toggleTopic(event) {
+    let button = document.getElementById('topic_toggle');
+    if (getComputedStyle(button).display === 'none') return;
+    if (event.target.closest('a')) return; // links in the topic just open
+    let expanded = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    button.closest('.panel-topic').setAttribute('data-expanded', expanded ? 'true' : 'false');
+}
+
 function copyLink() {
     let text = window.location.href;
     navigator.clipboard.writeText(text).then(function() {
-        let copyButton = document.getElementById("copy_link_btn");
-        copyButton.classList.remove("react");
-        setTimeout(function() {
-            copyButton.classList.add("react");
-        }, 75);
+        showToast('Board link copied');
     });
+}
+
+/* Short message that pops up from the bottom edge for a moment (style.css, .toast).
+ * Plain text only (textContent). Calling it again replaces the text and restarts the timer. */
+let gToastTimer = null;
+function showToast(text) {
+    let toast = document.getElementById('toast');
+    toast.textContent = text;
+    toast.classList.add('toast-on');
+    clearTimeout(gToastTimer);
+    gToastTimer = setTimeout(function () {
+        toast.classList.remove('toast-on');
+    }, 2200);
 }
 
 
