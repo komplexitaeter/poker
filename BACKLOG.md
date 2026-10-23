@@ -87,7 +87,7 @@ Abgeschlossen:
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
-| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | erledigt (release) |
+| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | im Sprint (Nachfix) |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -756,6 +756,11 @@ Andreas möchte die Konfiguration userfreundlicher machen. Erster Kandidat: die 
 dem Aufdecken keine Name/Value-Leiste mehr; Umstellen im Menü sortiert die aufgedeckten Karten sofort um (Gleiten wie
 bei B-41); im Anonym-Modus ist „Player name“ ausgegraut bzw. erklärt; API nimmt nur `NAME`/`SEQUENCE`; nach dem
 Daten-Update keine `CHOOSE`-Werte mehr in `pok_teams_tbl`; E2E grün.
+
+**Nachfix nach Staging-Test (Andreas, 2026-10-23):** Option heißt **„Card value“** statt „Card“ (Karte ist zu
+abstrakt, sortiert wird nach dem Kartenwert); Hinweis entsprechend „…arranged by card value.“ Im Anonym-Modus ist das
+**ganze Auswahlfeld deaktiviert** und zeigt fest „Card value“, egal was gespeichert ist; der gespeicherte Wert bleibt
+und erscheint nach dem Ausschalten des Anonym-Modus automatisch wieder.
 
 ### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
 **Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
