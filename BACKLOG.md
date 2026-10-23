@@ -7,6 +7,9 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
+**Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
+Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Refinement/Planning folgt.
+
 **Sprint 7 – „Konfiguration & CSS aufräumen"** (ab 2026-10-23):
 1. **B-42** Sortier-Option vereinfachen – zuerst, damit B-36 die wegfallende Sortier-Leiste nicht mit aufräumt.
 2. **B-36** CSS vereinfachen, inklusive `.mobile`/`.desktop` (B-37 geht darin auf) – danach, Planning folgt.
@@ -81,13 +84,22 @@ Abgeschlossen:
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
-| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | refined |
+| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt (release) |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | in B-36 aufgegangen |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
-| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | erledigt (release) |
+| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | erledigt |
+| B-43 | `survey_intro` per `innerHTML` prüfen (Sina) | neu |
+| B-44 | Startseite Light-Mode: Logo ohne Schriftzug | neu |
+| B-45 | Toten Stern-Bewertungscode im Feedback entfernen | neu |
+| B-46 | Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste, `dvh`) | neu |
+| B-47 | Touch von der Breite trennen, Touch-Ziele ≥ 44 px | neu |
+| B-48 | Topnav aus echten Buttons, Hinweise als Text | neu |
+| B-49 | Fluide Kartengrößen | neu |
+| B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | neu |
+| B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -677,6 +689,30 @@ Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nut
   Außerdem (Delia): Beim Sortier-Hinweis steht auf Desktop das letzte Wort „value.“ allein in der zweiten Zeile
   (z. B. `text-wrap: pretty`).
 
+**Planning (Delia, 2026-10-23, freigegeben von Andreas):** 3 PRs mit je einer kurzen Abnahme auf Staging.
+- **PR 1 Aufräumen** (Delia): tote Regeln (u. a. LinkedIn, alte Info-Box, `marquee`/`reaction1`, `#teamlink`/
+  `#teamlist`, leere Blöcke), `-webkit-` auf die 4 nötigen Zeilen, letzte feste Farben als Tokens, Tippfehler
+  „affects“, `text-wrap: pretty` beim Sortier-Hinweis. Bleibt: Tabellen-Regeln (`stats.php` nutzt `style.css`).
+- **PR 2 Responsive per CSS** (Delia CSS/Markup, Fred JS/Tests): ein Breakpoint bei 800 px per `@media` statt
+  `.mobile`/`.desktop`/`sizefit`; Regeln an derselben Stelle umschreiben (Spezifität). JS: `adaptToDevice()` und
+  `sizeClass` raus, `toggleMobileMenu` per `matchMedia`. **`getBrowserWidth()`/`gDisplayType` bleibt für Analytics**
+  (`display_type` in `pok_analytics_events_tbl`, Grafana). Startseite mobil: Logo, Farbschalter und Feedback zeigen
+  (heute fehlt der Farbschalter). Löschen-Icon: auf Touch-Geräten (`hover: none`) immer sichtbar, sonst bei Hover –
+  gleiches Prinzip wie heute, nur nach Gerät statt nach Breite. Neue `responsive.spec.ts` (Burger-Menü, Umschalten
+  ohne Neuladen, `display_type` xs/lg, keine `mobile`/`desktop`/`sizefit`-Klassen mehr).
+- **PR 3 Vereinheitlichen** (Delia): gemeinsame Basis für Buttons, Felder, Menü-Boxen, Overlays (Radius-/Abstands-
+  Tokens); Fixes bei 320 px (Schloss-Icon). Button-Form orientiert sich an den Menü-Grafiken (abgerundet, wie die
+  Topnav-Icons). Lange Menütexte bei 320 px bleiben vorerst (Menüs kommen mit B-40).
+- Bleibt draußen (B-40): Menüs als Overlay, Segment-Schalter, Kartengestaltung, Kartenauswahl mobil, Platz-
+  Konkurrenz, Tastaturbedienung von Burger/Schließen, grundsätzlich bessere Lösung zum Löschen von Spielern.
+
+**Umgesetzt (2026-10-23, PR #32, #33, #34; auf Staging abgenommen von Andreas):** `style.css` 1.918 → 1.219 Zeilen
+(−36 %). PR 1 tote Regeln/Präfixe/Farb-Tokens; PR 2 ein Breakpoint bei 800 px per `@media`, `.mobile`/`.desktop`/
+`sizefit` und `adaptToDevice()` entfernt (Analytics-`display_type` bleibt über `getBrowserWidth()`), Löschen-Icon auf
+Touch-Geräten immer sichtbar, Startseite mobil mit Farbschalter, neue `responsive.spec.ts`; PR 3 gemeinsame Basis
+(`.btn`, `.btn-box`, `.field`, `.menu_box`, `.overlay_panel`, Radius-/Abstands-Tokens), einheitlicher Fokusring,
+Felder mobil 16 px, Fixes bei 320 px. Nachgetragen: `script_feedback.js?v=1.9`.
+
 ### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
 Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
 `.desktop`, an `window`-Größe gebunden) statt über CSS. `style.css` enthält **0 `@media`-Queries** – die Umschaltung
@@ -698,6 +734,78 @@ nach B-36, ggf. zusammen mit B-14.
 **Querverweis (Delia, 2026-10-22):** Die konkrete Layout-Engine-Umstellung des Kartenbereichs (von JS-`getCardPos`/
 `position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
 sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
+
+### B-44 Startseite Light-Mode: Logo ohne Schriftzug
+Beim B-36-Review gefunden (Delia, 2026-10-23), schon vorher so: Auf der Startseite (`init.html`) zeigt das Logo im
+Light-Mode nur das Bildzeichen, der Schriftzug fehlt (Screenshot `init_w375_light.png` aus Delias PR-3-Vergleich).
+Klein; vermutlich falsches Bild oder fehlender Light-Mode-Tausch auf der Startseite.
+
+### B-45 Toten Stern-Bewertungscode im Feedback entfernen
+Die Bewertungssterne im Feedback sind seit jeher per CSS ausgeblendet (`display: none`); der Stern-Code in
+`script/script_feedback.js` (u. a. `fb_star_*`, `.blink`) ist damit toter Code. Bei Gelegenheit entfernen (Fred),
+oder bewusst entscheiden, die Sterne wieder einzuführen.
+
+### B-46 bis B-51: Fundament für B-40 (aus Delias Einschätzung, 2026-10-23)
+Nach B-36 hat Delia CSS, Bildschirmgrößen und Touch bewertet: CSS gelb-grün (gut gegliedert, kein `!important`), aber
+**nicht State of the Art** bei Touch und Seitengerüst, Bedienbarkeit rot (Bilder mit `onclick` statt Buttons). Kein
+Big-Bang auf Mobile-first – Desktop-first mit einem Breakpoint bleibt –, aber das Fundament vor der Umgestaltung (B-40)
+verbessern, damit neue Menüs und Karten nicht auf dem starren Gerüst landen. Andreas (2026-10-23): alle sechs Punkte im
+nächsten Sprint angehen. Reihenfolge laut Delia: B-46 → B-47 → B-48 → B-49, B-50 nebenher; B-51 neu dazu (Andreas).
+Bewusst „gut genug“, nicht anfassen: ein Breakpoint und Desktop-first, Durchschnittszeiger per JS,
+`getBrowserWidth()` für Analytics, Invert-Filter für Icons, `opacity: 0` am `body` gegen Flackern.
+
+### B-46 Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste)
+Heute: `.container` `100vh`, `.up-container` `89vh`, Kartenleiste `position: fixed` (feste 89/11-Aufteilung). Am Handy
+ist `vh` wegen der Adressleiste unzuverlässig, im Querformat bleibt kaum Höhe; das ist die technische Wurzel der
+„Platz-Konkurrenz“ (Timer, Topic, „New Round“ vs. Karten, B-40). Ziel: CSS-Grid mit `100dvh`, Kartenbereich scrollt
+allein, Topic/Timer/New Round bekommen feste Zonen, Querformat mitbedacht, Safe-Area optional. Aufwand M (Delia).
+Sichtprüfung auf echten Handys (iOS Safari) hoch und quer.
+
+### B-47 Touch von der Breite trennen, Touch-Ziele ≥ 44 px
+Heute wird „schmal“ mit „Touch“ gleichgesetzt: iPad/Touch-Laptop (≥ 800 px) bekommen Desktop-Größen (Icons 32 px,
+Lösch-Icon 20 px, Thumbnails 27 px), Hinweise nur per Hover, iOS zoomt in Felder (16-px-Regel nur unter 800 px).
+Ziel: `@media (pointer: coarse)` bzw. `(any-pointer: coarse)` für größere Ziele (≥ 44 px) und 16-px-Felder,
+Touch-Alternative zu Hover-only-Elementen, `touch-action: manipulation` (der `body` reagiert auf `ondblclick`).
+Aufwand S (Delia).
+
+### B-48 Topnav aus echten Buttons, Hinweise als Text
+Heute: Topnav-Icons sind `<img onclick>` mit festen `right: …px`-Positionen (bzw. `%` im Burger-Menü), Hinweisblasen
+sind Text in PNGs (`cta_*.png`, nur per Hover, nicht themebar). Ziel: Flex-Leiste mit echten `<button>`-Elementen,
+Hinweise als Text/Tooltips, per Tastatur bedienbar (Fokus, Screenreader). Aufwand M (Delia Markup/CSS, Fred
+Öffnen/Schließen und Fokus). Passt zu B-51.
+
+### B-49 Fluide Kartengrößen
+Heute: Karten fest 100×148 px, Kartenleiste 45/55 px. Ziel: Größe über eine Variable (`--card-w: clamp(…)` +
+`aspect-ratio`) für Tischkarten und Kartenleiste – am kleinen Handy passen mehr Karten nebeneinander, auf großen
+Bildschirmen dürfen sie wachsen. Seit B-41 (Flex-Layout) einfach umsetzbar. Achtung: E2E-Test zum Kartenabstand
+(B-41) prüft feste Abstände → mit anpassen. Aufwand S–M (Delia + Fred; Ben, falls Kartenbilder betroffen). Vor
+„Kartenlayout“ und „Kartenauswahl mobil“ aus B-40.
+
+### B-50 Kleinpaket Qualität
+- `prefers-reduced-motion` auch für CSS-Animationen (Wackeln, Aufblitzen, Einblenden, Konfetti), heute nur fürs
+  Karten-Gleiten in JS.
+- `user-select: none` nur noch gezielt (Karten, Kartenleiste) statt auf dem ganzen `body` – Topic-Text kopierbar.
+- Kontraste anheben: Datenschutz-Links und deaktivierte Elemente (`--box-disabled` in Dark ca. 1,6:1).
+- Tokens für z-Index und Schriftgrößen; Token-Namen nach Bedeutung statt Einsatzort, einheitliche Schreibweise.
+- Erster Besuch: Farbmodus aus `prefers-color-scheme` (eigener Schalter bleibt).
+- Kleinkram: `font-family: Arial, serif` → `sans-serif`, Alt-Text „Se tup“, leere `<label>`s.
+Aufwand S (Delia), kann nebenher laufen.
+
+### B-51 Menüs neu denken: Overlays und sinnvolle Struktur
+Aus B-40 herausgelöst (Andreas, 2026-10-23): die Menüdialoge als modales Voll-Overlay (halbtransparent zum
+Hintergrund, wie „Become Observer/Player“), damit auch mobil sinnvoll mit responsiven Elementen; dabei die Menüs
+**grundsätzlich überdenken** – welche Einstellungen es gibt, wie sie gruppiert und benannt sind, was in welches Menü
+gehört (vgl. B-42: Sortierung in die Konfiguration, nicht ins Spiel). Delias Idee zur Spieler-Liste („Players“ statt
+Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden einheitlich machen (heute drei
+Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
+Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
+dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
+Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
+Umfragen (`survey_intro`, aus der API) per `innerHTML` in die Seite. Der Inhalt ist Admin-Content aus der DB, keine
+Nutzereingabe. Sina soll einordnen, ob das bleiben kann (gewollte Formatierung) oder auf `textContent`/remarkable
+ohne HTML umgestellt werden sollte. Nicht dringend.
 
 ### B-42 Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“
 Andreas möchte die Konfiguration userfreundlicher machen. Erster Kandidat: die Option „Define the sort order in-game“
@@ -763,6 +871,12 @@ Daten-Update keine `CHOOSE`-Werte mehr in `pok_teams_tbl`; E2E grün.
 abstrakt, sortiert wird nach dem Kartenwert); Hinweis entsprechend „…arranged by card value.“ Im Anonym-Modus ist das
 **ganze Auswahlfeld deaktiviert** und zeigt fest „Card value“, egal was gespeichert ist; der gespeicherte Wert bleibt
 und erscheint nach dem Ausschalten des Anonym-Modus automatisch wieder.
+
+**Live (2026-10-23, PR #31):** Daten-Update von Andreas eingespielt: 40 Teams umgestellt (29 `CHOOSE:SEQUENCE`,
+11 `CHOOSE:NAME`; die Analyse zählte nur Runden der letzten 180 Tage, die Tabelle enthält alle Teams seit Beginn).
+Alle auf `SEQUENCE` (wie geplant). Für die 11 `CHOOSE:NAME`-Teams wäre `NAME` genauer gewesen; Auswirkung gering
+(keine Runde in den letzten 180 Tagen), Umstellen im Menü ist ein Klick. Lehre: bei Daten-Updates die betroffenen
+Werte vorher sichern bzw. nach altem Wert unterscheiden.
 
 ### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
 **Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
@@ -859,6 +973,12 @@ Code-Analyse + numerischer Simulation von `getCardPos` über einen Breiten-Sweep
 Optionaler Mini-Hygiene-Gewinn (kein B-41-Fix, entfernt das Wobbeln NICHT): `requestAnimationFrame`-Coalescing des
 Resize-Handlers (max. ein Reposition pro Frame) – bei der B-40-Umstellung mitnehmen.
 
+**Entscheidung Anonym-Modus (Andreas, 2026-10-23):** Im Anonym-Modus gleiten die Karten grundsätzlich nicht (so war es
+schon vor B-41: `c_move` wurde entfernt; heute `flip = !anonymousMode` in `updatePlayersCards`). Grund: Beim Aufdecken
+werden die Namen durch `******` ersetzt und nach Wert sortiert; eine Gleitbewegung würde verraten, wer welchen Wert
+gewählt hat – ebenso beim Ändern einer Karte nach dem Aufdecken. Eine Verfeinerung (nur bei Aufdecken/neuer Runde
+abschalten) wurde bewusst verworfen: so ist es einfacher und sicherer.
+
 ### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
 Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).
 Ziel: Oberfläche modernisieren und mobil deutlich verbessern – **ohne den bestehenden Charme der App zu verlieren**.
@@ -867,19 +987,29 @@ Dafür eine eigene Design-Rolle (siehe `.claude/agents/`), die gestalten **und**
 Ideen-Sammlung von Andreas (2026-10-22, unsortiert, wird im Refinement geschärft und in einzelne Einträge
 geschnitten):
 - **Menüs als modales Voll-Overlay** (halbtransparent zum Hintergrund, wie „Become Observer/Player"), dadurch auch
-  mobil sinnvoller mit responsiven Elementen aufbaubar.
-- **Menüs userfreundlicher strukturieren und aufräumen.**
+  mobil sinnvoller mit responsiven Elementen aufbaubar. → jetzt **B-51**.
+- **Menüs userfreundlicher strukturieren und aufräumen.** → jetzt **B-51**.
 - **Kartenlayout verbessern** – z. B. die Spielernamen besser unter den Karten platzieren.
 - **Karten mit Beschriftungen** ermöglichen (z. B. um echtes Delegation Poker zu spielen).
 - **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
 - **Kartenziffern modernisieren.**
 - **„Karte nach dem Aufdecken geändert"**: als zusätzliche Karte dargestellt, die auf die erste gelegt wird, wobei
-  der ursprüngliche Wert noch erkennbar bleibt.
+  der ursprüngliche Wert noch erkennbar bleibt. **Im Anonym-Modus deaktivieren** (Andreas, 2026-10-23): sonst ließe
+  sich über die geänderte Karte zuordnen, wer welchen Wert gewählt hat.
 - **Kartenauswahl für Mobile deutlich verbessern.**
 - **Mobile-Darstellung allgemein deutlich verbessern.**
 - **Platz-Konkurrenz auflösen:** Timer, Notiz-/Topic-Zettel, „Neue Runde"-Knopf u. a. konkurrieren mit den Karten um
   den Platz – das nervt. Layout so umbauen, dass diese Elemente den Kartenbereich nicht verdrängen (z. B. eigene
   Zonen/Leiste, Overlay, oder Karten-Bereich bekommt verlässlich seinen Raum).
+
+- **Spieler entfernen ohne Lösch-Icon auf jeder Karte** (Andreas: heute schlechte UX; Ideen von Delia, 2026-10-23):
+  1. Spieler-Liste im Menü („Players“) mit Name, Status (aktiv / inaktiv seit …), Rolle und „Remove“ mit Rückfrage –
+     Delias Empfehlung als Basis (Karten bleiben ruhig, gut mit Touch/Tastatur; Ben müsste „inaktiv seit“ liefern).
+  2. Karte antippen/anklicken öffnet ein kleines Kontextmenü („Remove from table“, später z. B. „Make observer“) –
+     optional als Ergänzung (muss entdeckbar sein).
+  3. Inaktive Spieler blasser darstellen und nur dort „Remove?“ anbieten – als visuelle Hilfe zu 1 (braucht ein
+     verlässliches Aktivitätssignal, Ben/Fred).
+  Bis dahin bleibt das Icon (B-36: auf Touch-Geräten immer sichtbar, sonst bei Hover).
 
 Hinweis: Überschneidet sich mit B-37 (Responsive per CSS) – das Responsive-Fundament ist Teil dieses Themas. Vor
 Umsetzung je Punkt eine REQ-artige Schärfung (Ziel, Umfang, Akzeptanzkriterien) und Schnitt in kleine, einzeln

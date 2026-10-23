@@ -15,6 +15,6 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  // desktop layout ("lg" display type)
+  // desktop layout (min-width: 800px; analytics display_type "lg"); responsive.spec.ts switches the viewport itself
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } }],
 });

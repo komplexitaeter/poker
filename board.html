@@ -2,18 +2,17 @@
 <html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width">
-    <meta name="viewport" content="initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Agile Estimations</title>
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.12" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.15" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.8" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.3" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.9" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.4" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -21,90 +20,90 @@
 <!-- hidden inline (not only in style.css) so nothing shows before the stylesheet and the first server response arrive -->
 <body onload="loadBoard()" class="body-fade-in" style="opacity: 0" ondblclick="updateDao(false)">
 <div class="container" onclick="void(0);">
-    <div class="up-container sizefit">
+    <div class="up-container">
 
-        <div class="topnav_title sizefit">
-            <div id="team_name" class="sizefit" onclick="copyLink()"></div>
-            <div id="show_qr_code" class="sizefit switchable" onclick="showQRCode(true)"></div>
-            <div id="copy_link_btn" class="topnav_clink sizefit" onclick="copyLink()">Copy Link</div>
+        <div class="topnav_title">
+            <div id="team_name" onclick="copyLink()"></div>
+            <div id="show_qr_code" class="switchable" onclick="showQRCode(true)"></div>
+            <div id="copy_link_btn" class="topnav_clink" onclick="copyLink()">Copy Link</div>
         </div>
 
-        <div id="mobile-menu" class="mobile-menu sizefit" data-state="closed">
-            <a href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter" class="sizefit"/></a>
+        <div id="mobile-menu" class="mobile-menu" data-state="closed">
+            <a href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter"/></a>
 
             <img src="src/mmenu.png" class="open_menu switchable" alt="Menu" onclick="toggleMobileMenu('open')"/>
 
-            <img onclick="switchColorMode()" src="src/toggle_dark.svg" id="cmode_btn" class="cmode_btn_board topnav topnav_btn sizefit" alt="Color mode" />
+            <img onclick="switchColorMode()" src="src/toggle_dark.svg" id="cmode_btn" class="cmode_btn_board topnav topnav_btn" alt="Color mode" />
 
-            <img onclick="toggle_box('user_settings');" src="src/user_settings_off.svg" id="user_settings_btn" class="topnav topnav_btn sizefit" alt="User settings" onmousemove="hideTeaser()" />
-            <img src="src/cta_user_settings.png" id="cta_user_settings" class="cta_design topnav sizefit switchable" alt="Se tup your user profile" />
+            <img onclick="toggle_box('user_settings');" src="src/user_settings_off.svg" id="user_settings_btn" class="topnav topnav_btn" alt="User settings" onmousemove="hideTeaser()" />
+            <img src="src/cta_user_settings.png" id="cta_user_settings" class="cta_design topnav switchable" alt="Se tup your user profile" />
 
-            <img onclick="toggle_box('topic');" src="src/topic.svg" id="topic_btn" class="topnav topnav_btn sizefit" alt="Topic" onmousemove="hideTeaser()" />
-            <img src="src/cta_topic.png" id="cta_topic" class="cta_design topnav sizefit switchable" alt="Set a topic" />
+            <img onclick="toggle_box('topic');" src="src/topic.svg" id="topic_btn" class="topnav topnav_btn" alt="Topic" onmousemove="hideTeaser()" />
+            <img src="src/cta_topic.png" id="cta_topic" class="cta_design topnav switchable" alt="Set a topic" />
 
-            <img onclick="toggle_box('cset');" src="src/cset.svg" id="cset_btn" class="topnav topnav_btn sizefit" alt="Setup" onmousemove="hideTeaser()" />
-            <img src="src/cta_cset.png" id="cta_cset" class="cta_design topnav sizefit switchable" alt="Board Setup" />
+            <img onclick="toggle_box('cset');" src="src/cset.svg" id="cset_btn" class="topnav topnav_btn" alt="Setup" onmousemove="hideTeaser()" />
+            <img src="src/cta_cset.png" id="cta_cset" class="cta_design topnav switchable" alt="Board Setup" />
 
-            <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.svg" id="stopwatch_btn" class="topnav topnav_btn sizefit" alt="Stopwatch" onmousemove="hideTeaser()" />
-            <img src="src/cta_stopwatch.png" id="cta_stopwatch" class="cta_design topnav sizefit switchable" alt="A Stopwatch" />
+            <img onclick="switchStopwatchVisiblity()" src="src/stopwatch.svg" id="stopwatch_btn" class="topnav topnav_btn" alt="Stopwatch" onmousemove="hideTeaser()" />
+            <img src="src/cta_stopwatch.png" id="cta_stopwatch" class="cta_design topnav switchable" alt="A Stopwatch" />
 
-            <img onclick="toggle_box('feedback');" src="src/feedback.svg" id="feedback_btn" class="topnav topnav_btn sizefit" alt="Feedback" onmousemove="hideTeaser()" />
-            <img src="src/cta_feedback.png" id="cta_feedback" class="cta_design topnav sizefit switchable" alt="We love feedback!" />
+            <img onclick="toggle_box('feedback');" src="src/feedback.svg" id="feedback_btn" class="topnav topnav_btn" alt="Feedback" onmousemove="hideTeaser()" />
+            <img src="src/cta_feedback.png" id="cta_feedback" class="cta_design topnav switchable" alt="We love feedback!" />
 
-            <img src="src/cta_teaser.png" id="cta_teaser" class="topnav sizefit switchable" alt="Teaser for a new feature" />
+            <img src="src/cta_teaser.png" id="cta_teaser" class="topnav switchable" alt="Teaser for a new feature" />
 
             <div class="close-menu" onclick="toggleMobileMenu('closed')"></div>
-            <div id="topic_box" class="topnav sizefit">
-                <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav sizefit" onkeydown="topicChanged()"></textarea>
-                <input id="topic_reset" class="box_sbmt_button topnav sizefit" type="button" onclick="reset_topic()" value="Undo"/>
-                <input id="topic_save" class="box_sbmt_button topnav sizefit" type="button" onclick="save_topic()" value="Save"/>
+            <div id="topic_box" class="topnav menu_box">
+                <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav field" onkeydown="topicChanged()"></textarea>
+                <input id="topic_reset" class="btn-box topnav" type="button" onclick="reset_topic()" value="Undo"/>
+                <input id="topic_save" class="btn-box topnav" type="button" onclick="save_topic()" value="Save"/>
             </div>
-            <div id="feedback_box" class="topnav sizefit">
-                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star sizefit" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
+            <div id="feedback_box" class="topnav menu_box">
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
+                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
                 <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
-    Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav sizefit"></textarea>
-                <input class="box_sbmt_button topnav sizefit" type="button" onclick="feedback_submit();" value="Send Feedback"/>
+    Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav field"></textarea>
+                <input class="btn-box topnav" type="button" onclick="feedback_submit();" value="Send Feedback"/>
             </div>
-            <div id="cset_box" class="topnav sizefit">
+            <div id="cset_box" class="topnav menu_box">
                 <label for="cet_team_name" class="topnav">Change team name</label>
-                <input class="topnav sizefit setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
-                <input id="cet_change_name" class="box_sbmt_button topnav sizefit" type="button" onclick="updateTeamName()" value="Ok" />
+                <input class="topnav field setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
+                <input id="cet_change_name" class="btn-box topnav" type="button" onclick="updateTeamName()" value="Ok" />
 
                 <label for="cet_pre" class="topnav">Define your deck of cards</label>
-                <select id="cet_pre" onchange="preSet();" class="topnav sizefit">
+                <select id="cet_pre" onchange="preSet();" class="topnav field">
                     <option value="0" selected>Select a preset ...</option>
                 </select>
 
-                <div id="cards_thumbs" class="topnav sizefit"></div>
+                <div id="cards_thumbs" class="topnav"></div>
 
                 <label for="cet_order_by" class="topnav">Arrange revealed cards by</label>
-                <select id="cet_order_by" onchange="changeSortOrder()" class="topnav sizefit">
+                <select id="cet_order_by" onchange="changeSortOrder()" class="topnav field">
                     <option value="SEQUENCE" selected>Card value</option>
                     <option value="NAME">Player name</option>
                 </select>
                 <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card value.</div>
 
-                <label for="cet_anonymous" class="topnav">Set players transparency (only effects new rounds)</label>
-                <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav sizefit">
+                <label for="cet_anonymous" class="topnav">Set players transparency (only affects new rounds)</label>
+                <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav field">
                     <option value="0">Show names on results (default)</option>
                     <option value="1" selected>Hide names on results (anonymous)</option>
                 </select>
 
                 <label for="cet_dark_side" class="topnav">Calculate average value</label>
-                <input id="cet_dark_side" class="box_sbmt_button topnav sizefit" type="button" onclick="pushJediBtn()" data-state="0" />
+                <input id="cet_dark_side" class="btn-box topnav" type="button" onclick="pushJediBtn()" data-state="0" />
             </div>
 
-            <div id="user_settings_box" class="topnav sizefit">
+            <div id="user_settings_box" class="topnav menu_box">
                 <label for="cet_usr_name" class="topnav">Change your name</label>
-                <input class="topnav sizefit setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
-                <input id="cet_change_user" class="box_sbmt_button topnav sizefit" type="button" onclick="updateUserName()" value="Ok" />
+                <input class="topnav field setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
+                <input id="cet_change_user" class="btn-box topnav" type="button" onclick="updateUserName()" value="Ok" />
 
                 <label for="cet_toggle_user_type" class="topnav">Switch your role</label>
-                <input id="cet_toggle_user_type" class="box_sbmt_button topnav sizefit" type="button" onclick="toggleUserType()" />
+                <input id="cet_toggle_user_type" class="btn-box topnav" type="button" onclick="toggleUserType()" />
 
                 <div id="user_settings_privacy_link" class="privacy_link">
                     <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a> | <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a> | <a onclick="showDeleteUserOverlay()">Delete User</a>
@@ -113,28 +112,28 @@
 
         </div>
 
-        <div id="topic" class="sizefit display_none" data-hash="0"></div>
+        <div id="topic" class="display_none" data-hash="0"></div>
 
-        <div id="cbox" class="sizefit"></div>
+        <div id="cbox"></div>
 
 
-        <input id="newroundbtn" type="button" onclick="newRound();" value="Cancel Round" class="sizefit" data-state="closed" />
+        <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" data-state="closed" />
 
         <div id="stopwatch" class="stopwatch_control">
             <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
             <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()" alt="pause"/>
             <label for="stopwatch_timer"></label>
-            <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00" class="sizefit"/>
+            <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00"/>
             <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()" alt="reset"/>
         </div>
     </div>
 
-    <div class="down-container sizefit" id="down-container">
+    <div class="down-container" id="down-container">
 
-        <div class="controls sizefit" id="ctl">
+        <div class="controls" id="ctl">
         </div>
 
-        <footer class="survey-container sizefit" id="survey-container">
+        <footer class="survey-container" id="survey-container">
             <button id="survey-button" onclick="toggleSurvey()">Survey<i id="survey-arrow" class="arrow up"></i></button>
             <div id="survey-content" class="survey-closed" data-state="closed">
 
@@ -144,21 +143,21 @@
     </div>
 
 </div>
-<img id="index" class="sizefit" src="src/index.png" title="average result" alt="average result" />
+<img id="index" src="src/index.png" title="average result" alt="average result" />
 
 <div id="overlay_qr" class="overlay hidden"></div>
 <div id="overlay_qr_code" class="overlay hidden" onclick="showQRCode(false)">
     <div id="canvas_qr_code"></div>
 </div>
 
-<div id="overlay_name_input" class="overlay hidden topnav">
-    <label for="nameinput"></label><input id="nameinput" class="sizefit topnav" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
-    <div id="removed_msg" class="sizefit">
+<div id="overlay_name_input" class="overlay overlay_panel hidden topnav">
+    <label for="nameinput"></label><input id="nameinput" class="topnav" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
+    <div id="removed_msg" class="overlay_msg">
         <h1>You were temporarily kicked out of the game</h1>
         <span>This usually happens when you have been off for a while and someone removes you from the table. What do you want to do now?</span>
     </div>
-    <input id="become_player_btn" class="overlay_action_btn sizefit topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
-    <input id="become_observer_btn" class="overlay_action_btn sizefit topnav" type="button" value="Become Observer" tabindex="3" disabled />
+    <input id="become_player_btn" class="btn topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
+    <input id="become_observer_btn" class="btn topnav" type="button" value="Become Observer" tabindex="3" disabled />
 
     <div id="overlay_privacy_link" class="privacy_link">
         <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy</a>
@@ -168,16 +167,16 @@
 
 </div>
 
-<div id="overlay_delete_user" class="overlay hidden topnav">
-    <div id="delete_user_msg" class="sizefit">
+<div id="overlay_delete_user" class="overlay overlay_panel hidden topnav">
+    <div id="delete_user_msg" class="overlay_msg">
         <h1>Delete your user data?</h1>
         <span>Your privacy is key. By proceeding, all your user data, personal settings, voting results, and feedback will be permanently and irrevocably deleted.</span>
     </div>
-    <input class="overlay_action_btn sizefit topnav" type="button" value="Cancel" onclick="showDeleteUserOverlay(false)" />
-    <input class="overlay_action_btn sizefit topnav" type="button" value="Delete User" onclick="deleteUser()" />
+    <input class="btn topnav" type="button" value="Cancel" onclick="showDeleteUserOverlay(false)" />
+    <input class="btn topnav" type="button" value="Delete User" onclick="deleteUser()" />
 </div>
 
-<div id="promo-tab" class="promo-tab promo-hidden sizefit">
+<div id="promo-tab" class="promo-tab promo-hidden">
     <div class="promo-question">
         <span id="promo-question"></span>
         <button class="promo-close" aria-label="Close"><svg class="promo-close-icon" viewBox="0 0 512 512" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8zm121.6 313.1c4.7 4.7 4.7 12.3 0 17L338 377.6c-4.7 4.7-12.3 4.7-17 0L256 312l-65.1 65.6c-4.7 4.7-12.3 4.7-17 0L134.4 338c-4.7-4.7-4.7-12.3 0-17l65.6-65-65.6-65.1c-4.7-4.7-4.7-12.3 0-17l39.5-39.6c4.7-4.7 12.3-4.7 17 0l65 65.7 65.1-65.6c4.7-4.7 12.3-4.7 17 0l39.6 39.5c4.7 4.7 4.7 12.3 0 17L312 256l65.6 65.1z"/></svg></button>
