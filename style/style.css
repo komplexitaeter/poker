@@ -1399,6 +1399,13 @@ div#cbox.mobile {
     color: var(--text-color);
 }
 
+/* B-42: disabled in anonymous mode, same look as .box_sbmt_button:disabled */
+#cet_order_by:disabled {
+    border-color: var(--box-disabled);
+    color: var(--box-disabled);
+    cursor: not-allowed;
+}
+
 #cet_order_by.desktop {
     font-size: smaller;
     border-radius: 12px;

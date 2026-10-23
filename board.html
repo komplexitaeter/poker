@@ -8,12 +8,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.10" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.11" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.8" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.2" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.3" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -83,10 +83,10 @@
 
                 <label for="cet_order_by" class="topnav">Arrange revealed cards by</label>
                 <select id="cet_order_by" onchange="changeSortOrder()" class="topnav sizefit">
-                    <option value="SEQUENCE" selected>Card</option>
+                    <option value="SEQUENCE" selected>Card value</option>
                     <option value="NAME">Player name</option>
                 </select>
-                <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card.</div>
+                <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card value.</div>
 
                 <label for="cet_anonymous" class="topnav">Set players transparency (only effects new rounds)</label>
                 <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav sizefit">
