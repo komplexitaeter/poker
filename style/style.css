@@ -83,17 +83,20 @@ img {
     outline: none;
 }
 
-    #brand.mobile{
+@media (max-width: 799.98px) {
+    /* board: the logo moves into the burger menu (the start page keeps it) */
+    .mobile-menu #brand {
         display:none;
     }
 
-    .mobile-menu.mobile[data-state=open] #brand.mobile{
+    .mobile-menu[data-state=open] #brand {
         height: auto;
         top: 0;
         width: 8rem;
         display: unset;
         margin-top: 10px;
     }
+}
 
 #topic {
     margin: 2em auto 0;
@@ -107,14 +110,17 @@ img {
     border: 2px dotted var(--topic-color);
 }
 
-    #topic.desktop {
+@media (min-width: 800px) {
+    #topic {
         min-width: 50%;
     }
+}
 
-    #topic.mobile {
+@media (max-width: 799.98px) {
+    #topic {
         min-width: 90%;
     }
-
+}
 
 a {
     color: var(--link-color);
@@ -129,20 +135,23 @@ a {
     outline: none;
 }
 
-    #newroundbtn.desktop{
+@media (min-width: 800px) {
+    #newroundbtn {
         font-size: medium;
         padding: 5pt;
         margin-top: 20px;
         width: 200px;
         border-radius: 15pt;
     }
+}
 
-    #newroundbtn.mobile{
+@media (max-width: 799.98px) {
+    #newroundbtn {
         font-size: 1rem;
         border-radius: 2rem;
     }
 
-    #newroundbtn.mobile[data-state=open]{
+    #newroundbtn[data-state=open] {
         z-index: 5;
         top: 15px;
         left: 40%;
@@ -150,15 +159,15 @@ a {
         padding: 0.2rem 0.8rem;
     }
 
-    #newroundbtn.mobile[data-state=closed]{
+    #newroundbtn[data-state=closed] {
         display: none;
     }
+}
 
     #newroundbtn:hover {
         border-color: var(--bluish);
         color: var(--bluish);
     }
-
 
 #teaminput {
     background: var(--background-color);
@@ -185,7 +194,6 @@ a {
     text-align: left;
     box-shadow: 0 0 8px 2px var(--focus-ring);
 }
-
 
 #teambtn {
     background: var(--background-color);
@@ -214,12 +222,13 @@ a {
     margin-right: auto;
 }
 
-
 .controls {
     width: auto;
-    position: absolute; /* or 'static' if the parent container handles positioning */
-    bottom: 0; /* Adjust or remove based on your layout */
-    margin: 0 auto; /* Only necessary if not using flex on the parent */
+    position: absolute;
+    bottom: 0;
+    margin: 0 auto;
+    display: flex;
+    background: var(--background-color);
     transition: height 0.8s ease-in-out;
 }
 
@@ -242,25 +251,18 @@ a {
     visibility: hidden;
 }
 
-    .controls.mobile{
-        position:absolute;
-        bottom: 0;
+@media (max-width: 799.98px) {
+    .controls {
         left: 0;
         right: 0;
-        display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
-        background: var(--background-color);
     }
+}
 
-    .controls.desktop{
-        background: var(--background-color);
+@media (min-width: 800px) {
+    .controls {
         border-top: 2px solid var(--secondary-border-color);
-        width: auto;
-        position: absolute;
-        bottom: 0;
-        margin: 0 auto;
-        display: flex;
         align-items: flex-end;
         justify-content: center;
         padding-left: 40px;
@@ -271,29 +273,27 @@ a {
         height: 90px;
     }
 
-    .show_card_stats.desktop {
+    .show_card_stats {
         height: 165px;
     }
+}
 
+.controls img {
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
 
-    .controls img.desktop {
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-
-    .controls img.mobile {
-        border-top-left-radius: 5px;
-        border-top-right-radius: 5px;
-    }
-
-    .controls img.mobile{
+@media (max-width: 799.98px) {
+    .controls img {
         width: 55px;
         height: auto;
         align-self: center;
         float: right;
     }
+}
 
-    .controls img.desktop{
+@media (min-width: 800px) {
+    .controls img {
         width: 45px;
         box-shadow: 0 0 0 0 var(--secondary-border-color);
         border-bottom: 1px solid transparent;
@@ -302,13 +302,14 @@ a {
         cursor: not-allowed;
     }
 
-        .controls .ctl_hover.desktop {
-            cursor: pointer;
-        }
+    .controls .ctl_hover {
+        cursor: pointer;
+    }
 
-        .controls .ctl_hover.desktop:hover {
-            border-bottom: 1px solid var(--primary-border-color);
-        }
+    .controls .ctl_hover:hover {
+        border-bottom: 1px solid var(--primary-border-color);
+    }
+}
 
         .controls .off {
             display: none;
@@ -317,16 +318,20 @@ a {
             display: unset;
         }
 
-    .controls .selected.desktop {
+@media (min-width: 800px) {
+    .controls .selected {
         border-bottom: 1px solid var(--primary-border-color);
     }
+}
 
-    .controls .selected.mobile {
+@media (max-width: 799.98px) {
+    .controls .selected {
         border-top: 1px solid var(--primary-border-color);
         border-left: 1px solid var(--primary-border-color);
         border-right: 1px solid var(--primary-border-color);
         background-color: var(--secondary-background-color);
     }
+}
 
     .controls .ctl {
         margin-left: 2px;
@@ -337,9 +342,11 @@ a {
         filter:  grayscale(100%);
     }
 
-    .controls .ctl.mobile{
+@media (max-width: 799.98px) {
+    .controls .ctl {
         flex: 0 0 auto;
     }
+}
 
 /* B-41: cards flow in a centered flex-wrap layout; no JS positioning.
    Horizontal gaps reproduce the former 110 px JS grid: cards render
@@ -363,8 +370,10 @@ div#cbox {
 
 /* .c.mobile is 100px wide but its bordered image renders 102px (overflows
    by 2px), so the column gap is 2px larger to keep the same visible gap. */
-div#cbox.mobile {
-    column-gap: 10px;
+@media (max-width: 799.98px) {
+    div#cbox {
+        column-gap: 10px;
+    }
 }
 
 .c {
@@ -385,10 +394,11 @@ div#cbox.mobile {
         100% {opacity: 1;}
     }
 
-    .c.mobile {
+@media (max-width: 799.98px) {
+    .c {
         width: 100px;
     }
-
+}
 
     .c .background {
         display: block;
@@ -396,25 +406,28 @@ div#cbox.mobile {
         border-radius: 15px;
     }
 
-        .c .background.mobile {
-            width: 100%;
-            height: 100%;
-        }
+@media (max-width: 799.98px) {
+    .c .background {
+        width: 100%;
+        height: 100%;
+    }
+}
 
-        .c .background.desktop {
-            width: 100px;
-            height: 148px;
-        }
+@media (min-width: 800px) {
+    .c .background {
+        width: 100px;
+        height: 148px;
+    }
 
-    .c:hover .delete.desktop {
+    .c:hover .delete {
         display: block;
         cursor: pointer;
     }
+}
 
     .c:hover .background {
         border-color: var(--bluish);
     }
-
 
     .c .delete {
         position: absolute;
@@ -425,21 +438,32 @@ div#cbox.mobile {
         background: var(--background-color);
     }
 
-    .c .delete.mobile{
+@media (max-width: 799.98px) {
+    .c .delete {
         width:20%;
         height:auto;
     }
+}
 
-    .c .delete.desktop {
+@media (min-width: 800px) {
+    .c .delete {
         display: none;
         width: 20px;
         height: 20px;
     }
 
-        .c .delete.desktop:hover {
-            content: url('../src/delete_red.png');
-            border-color: var(--danger-color);
-        }
+    .c .delete:hover {
+        content: url('../src/delete_red.png');
+        border-color: var(--danger-color);
+    }
+}
+
+/* touch devices cannot hover: show the delete icon on every card (as on small screens) */
+@media (min-width: 800px) and (hover: none) {
+    .c .delete {
+        display: block;
+    }
+}
 
     .c span {
         position: absolute;
@@ -450,18 +474,21 @@ div#cbox.mobile {
         color: var(--text-color);
     }
 
-    .c span.mobile{
+@media (max-width: 799.98px) {
+    .c span {
         font-size: 0.8rem;
     }
+}
 
-    .c span.desktop{
+@media (min-width: 800px) {
+    .c span {
         font-size: 8pt;
     }
+}
 
     .cardValueChanged {
         animation: shake 1s ease-in-out;
     }
-
 
 @keyframes shake {
     0% {
@@ -488,16 +515,21 @@ div#cbox.mobile {
     margin-right: auto;
     font-weight: bold;
 }
-    .topnav_title.mobile {
+
+@media (max-width: 799.98px) {
+    .topnav_title {
         top:20px;
         font-size: 12pt;
     }
+}
 
-    .topnav_title.desktop {
+@media (min-width: 800px) {
+    .topnav_title {
         top: 15px;
         font-size: 16pt;
         cursor: pointer;
     }
+}
 
 .topnav_title>div {
     display: inline;
@@ -513,19 +545,22 @@ div#cbox.mobile {
     overflow: hidden;
     white-space: nowrap;
     background-color: var(--background-color);
+    font-size: 8pt;
 }
 
-    .topnav_clink.mobile {
+@media (max-width: 799.98px) {
+    .topnav_clink {
         top: -4px;
-        font-size: 8pt;
         left: 5px;
     }
+}
 
-    .topnav_clink.desktop {
+@media (min-width: 800px) {
+    .topnav_clink {
         top: 0;
-        font-size: 8pt;
         cursor: pointer;
     }
+}
 
 #team_name:hover~.topnav_clink {
     color: var(--bluish);
@@ -548,10 +583,11 @@ div#cbox.mobile {
     cursor: pointer;
 }
 
-#show_qr_code.mobile {
-    visibility: hidden;
+@media (max-width: 799.98px) {
+    #show_qr_code {
+        visibility: hidden;
+    }
 }
-
 
 #show_qr_code:hover {
     background-image: url("../src/open_qr_code_icon_hover.png");
@@ -569,13 +605,17 @@ div#cbox.mobile {
     width: 100%;
 }
 
-    .up-container.desktop{
+@media (min-width: 800px) {
+    .up-container {
         overflow: hidden;
     }
+}
 
-    .up-container.mobile{
+@media (max-width: 799.98px) {
+    .up-container {
         overflow-y: scroll;
     }
+}
 
 .down-container{
     bottom: 0;
@@ -586,42 +626,47 @@ div#cbox.mobile {
     align-items: flex-end;
 }
 
-.mobile-menu.desktop {
-    top: 0;
-    width: 100%;
-    position: absolute;
-    z-index: 1;
-}
-
-    .mobile-menu.desktop .open_menu{
-        display: none;
+@media (min-width: 800px) {
+    .mobile-menu {
+        top: 0;
+        width: 100%;
+        position: absolute;
+        z-index: 1;
     }
 
-.mobile-menu.mobile[data-state=closed]  {
-    position: absolute;
-    top: 5px;
-    right: 10px;
-    width: 50px;
-    height: 50px;
-    margin-left: auto;
-    margin-right: auto;
+    .mobile-menu .open_menu {
+        display: none;
+    }
 }
 
-        .mobile-menu.mobile[data-state=closed] .open_menu{
-            height: auto;
-            width: 100%;
-            z-index:2;
-        }
+@media (max-width: 799.98px) {
+    .mobile-menu[data-state=closed] {
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        width: 50px;
+        height: 50px;
+        margin-left: auto;
+        margin-right: auto;
+    }
 
-        .mobile-menu.mobile[data-state=open] .open_menu{
-            display: none;
-        }
+    .mobile-menu[data-state=closed] .open_menu {
+        height: auto;
+        width: 100%;
+        z-index:2;
+    }
+
+    .mobile-menu[data-state=open] .open_menu {
+        display: none;
+    }
+}
 
     .close-menu{
         display: none;
     }
 
-    .mobile-menu.mobile[data-state=open] .close-menu{
+@media (max-width: 799.98px) {
+    .mobile-menu[data-state=open] .close-menu {
         display: block;
         position: absolute;
         right: 20px;
@@ -633,11 +678,11 @@ div#cbox.mobile {
         background-repeat: no-repeat;
     }
 
-        .mobile-menu.mobile .close-menu:active{
-            filter: invert(100%);
-        }
+    .mobile-menu .close-menu:active {
+        filter: invert(100%);
+    }
 
-    .mobile-menu.mobile[data-state=open] {
+    .mobile-menu[data-state=open] {
         position: absolute;
         width: 95%;
         height: 99%;
@@ -650,38 +695,40 @@ div#cbox.mobile {
         background-image: unset;
     }
 
-    .mobile-menu.mobile[data-state=open] .topnav_btn{
+    .mobile-menu[data-state=open] .topnav_btn {
         display: unset;
         width:10%;
         height: auto;
         top:52px;
     }
 
-    .mobile-menu.mobile #cmode_btn{
+    .mobile-menu #cmode_btn {
         left: 5%;
         top: 56px;
         width:13%;
         height:auto;
     }
-    .mobile-menu.mobile #user_settings_btn{
+
+    .mobile-menu #user_settings_btn {
         left:23%;
     }
 
-    .mobile-menu.mobile #topic_btn{
+    .mobile-menu #topic_btn {
         left:37%;
     }
 
-    .mobile-menu.mobile #cset_btn{
+    .mobile-menu #cset_btn {
         left:51%;
     }
 
-    .mobile-menu.mobile #stopwatch_btn{
+    .mobile-menu #stopwatch_btn {
         left:65%;
     }
 
-    .mobile-menu.mobile #feedback_btn{
+    .mobile-menu #feedback_btn {
         left:79%;
     }
+}
 
 .survey-container {
     font-size: small;
@@ -694,12 +741,16 @@ div#cbox.mobile {
     visibility: hidden;
 }
 
-.survey-container.desktop {
-    display: unset;
+@media (min-width: 800px) {
+    .survey-container {
+        display: unset;
+    }
 }
 
-.survey-container.mobile {
-    display: none;
+@media (max-width: 799.98px) {
+    .survey-container {
+        display: none;
+    }
 }
 
 #survey-button {
@@ -848,9 +899,12 @@ div#cbox.mobile {
     z-index: 1;
 }
 
-    .topnav_btn.mobile{
+@media (max-width: 799.98px) {
+    /* board: the buttons move into the burger menu (the start page keeps them) */
+    .mobile-menu .topnav_btn {
         display:none;
     }
+}
 
     .topnav_btn:hover {
         cursor: pointer;
@@ -967,18 +1021,19 @@ div#cbox.mobile {
         position: absolute;
     }
 
-    #cta_teaser.mobile {
+@media (max-width: 799.98px) {
+    #cta_teaser {
         display: none;
     }
 
-    .cta_design.mobile{
+    .cta_design {
         display:none;
     }
+}
 
     .topnav_btn_bling {
         transform: scale(1.6);
     }
-
 
 .stopwatch_control{
     margin-top:1rem;
@@ -1012,14 +1067,6 @@ div#cbox.mobile {
     z-index: 999999;
 }
 
-#topic_box.mobile {
-    margin-top: 9vh;
-    width:95%;
-    height: 45%;
-    right: 2.5%;
-    padding-bottom: 1rem;
-}
-
 #topic_txt {
     margin-top: 0.5rem;
     outline: none;
@@ -1030,19 +1077,22 @@ div#cbox.mobile {
     resize: none;
 }
 
-#topic_txt.desktop {
-    width: 88%;
-    height: 170px;
-    border-radius: 3pt;
-    padding: 5px;
+@media (min-width: 800px) {
+    #topic_txt {
+        width: 88%;
+        height: 170px;
+        padding: 5px;
+    }
 }
 
-#topic_txt.mobile {
-    width: 80%;
-    height: 6rem;
-    border-radius: 1rem;
-    padding: 1rem;
-    font-size: 1rem;
+@media (max-width: 799.98px) {
+    #topic_txt {
+        width: 80%;
+        height: 6rem;
+        border-radius: 1rem;
+        padding: 1rem;
+        font-size: 1rem;
+    }
 }
 
 #feedback_box {
@@ -1058,13 +1108,16 @@ div#cbox.mobile {
     z-index: 999999;
 }
 
-    #feedback_box.mobile {
+@media (max-width: 799.98px) {
+    #topic_box,
+    #feedback_box {
         margin-top: 9vh;
         width:95%;
         height: 45%;
         right: 2.5%;
         padding-bottom: 1rem;
     }
+}
 
 .feedback_star {
     display: none;
@@ -1074,11 +1127,12 @@ div#cbox.mobile {
     transition: all 0.4s ease-out;
 }
 
-    .feedback_star.mobile {
+@media (max-width: 799.98px) {
+    .feedback_star {
         width: 7%;
         padding: 2% 0;
-        transition: all 0.4s ease-out;
     }
+}
 
     .feedback_star:hover {
         transform: scale(1.2);
@@ -1086,7 +1140,6 @@ div#cbox.mobile {
     .feedback_star.blink {
         transform: scale(1.4);
     }
-
 
 #feedback_txt {
     outline: none;
@@ -1098,20 +1151,23 @@ div#cbox.mobile {
     margin-top: 1em;
 }
 
-    #feedback_txt.desktop {
+@media (min-width: 800px) {
+    #feedback_txt {
         width: 88%;
         height: 170px;
-        border-radius: 3pt;
         padding: 5px;
     }
+}
 
-    #feedback_txt.mobile {
+@media (max-width: 799.98px) {
+    #feedback_txt {
         width: 80%;
         height: 3rem;
         border-radius: 1rem;
         padding: 1rem;
         font-size: 1rem;
     }
+}
 
 .box_sbmt_button {
     background: var(--light-background);
@@ -1119,20 +1175,24 @@ div#cbox.mobile {
     color: var(--text-color);
 }
 
-    .box_sbmt_button.desktop {
+@media (min-width: 800px) {
+    .box_sbmt_button {
         font-size: smaller;
         padding: 4px 15px;
         border-radius: 12px;
         cursor: pointer;
     }
+}
 
-    .box_sbmt_button.mobile {
+@media (max-width: 799.98px) {
+    .box_sbmt_button {
         font-size: 1rem;
         padding: 0.5rem 0.5rem;
         border-radius: 2rem;
         margin-top: 1rem;
         margin-bottom: 1rem;
     }
+}
 
 .box_sbmt_button:enabled:hover {
     border-color: var(--bluish);
@@ -1159,14 +1219,6 @@ div#cbox.mobile {
     z-index: 999999;
 }
 
-    #cset_box.mobile {
-        top: 16%;
-        width: 95%;
-        height: 80%;
-        right: 2.5%;
-        overflow: scroll;
-    }
-
 #user_settings_box {
     position: absolute;
     right: 60px;
@@ -1181,13 +1233,16 @@ div#cbox.mobile {
     z-index: 999999;
 }
 
-    #user_settings_box.mobile {
+@media (max-width: 799.98px) {
+    #cset_box,
+    #user_settings_box {
         top: 16%;
         width: 95%;
         height: 80%;
         right: 2.5%;
         overflow: scroll;
     }
+}
 
 #cet_toggle_user_type {
     width: 90%;
@@ -1204,35 +1259,42 @@ div#cbox.mobile {
     width: 70%;
 }
 
-#cet_pre {
+#cet_pre,
+#cet_order_by,
+#cet_anonymous {
     background: var(--light-background);
     border: 1px solid var(--light-border-color);
     color: var(--text-color);
+    width: 90%;
 }
 
-    #cet_pre.desktop {
+#cet_pre {
+    margin-bottom: 1rem;
+}
+
+@media (min-width: 800px) {
+    #cet_pre,
+    #cet_order_by,
+    #cet_anonymous {
         font-size: smaller;
-        margin-bottom: 1rem;
         border-radius: 12px;
-        width: 90%;
     }
+}
 
-    #cet_pre.mobile {
+@media (max-width: 799.98px) {
+    #cet_pre,
+    #cet_order_by,
+    #cet_anonymous {
         font-size: 1rem;
-        margin-bottom: 1rem;
         border-radius: 1rem;
-        width: 90%;
     }
 
-    #cet_pre.mobile option{
+    #cet_pre option,
+    #cet_order_by option,
+    #cet_anonymous option {
         font-size: medium;
         top:100%;
     }
-
-#cet_order_by {
-    background: var(--light-background);
-    border: 1px solid var(--light-border-color);
-    color: var(--text-color);
 }
 
 /* B-42: locked in anonymous mode. Unlike a disabled button the select still shows
@@ -1246,23 +1308,6 @@ div#cbox.mobile {
     cursor: not-allowed;
 }
 
-#cet_order_by.desktop {
-    font-size: smaller;
-    border-radius: 12px;
-    width: 90%;
-}
-
-#cet_order_by.mobile {
-    font-size: 1rem;
-    border-radius: 1rem;
-    width: 90%;
-}
-
-#cet_order_by.mobile option{
-    font-size: medium;
-    top:100%;
-}
-
 /* B-42: hint below the sort select, only visible in anonymous mode */
 #cet_order_by_hint {
     margin: 0.3rem 1.5rem 0;
@@ -1271,29 +1316,6 @@ div#cbox.mobile {
     line-height: 1.3;
     color: var(--switch-color);
     text-align: left;
-}
-
-#cet_anonymous {
-    background: var(--light-background);
-    border: 1px solid var(--light-border-color);
-    color: var(--text-color);
-}
-
-#cet_anonymous.desktop {
-    font-size: smaller;
-    border-radius: 12px;
-    width: 90%;
-}
-
-#cet_anonymous.mobile {
-    font-size: 1rem;
-    border-radius: 1rem;
-    width: 90%;
-}
-
-#cet_anonymous.mobile option{
-    font-size: medium;
-    top:100%;
 }
 
 #cet_dark_side {
@@ -1334,20 +1356,24 @@ div#cbox.mobile {
         opacity: 1;
     }
 
-    .cs_c.desktop {
+@media (min-width: 800px) {
+    .cs_c {
         width: 27px;
         border-radius: 5px;
     }
-    .cs_c.desktop:hover {
+
+    .cs_c:hover {
         cursor: pointer;
     }
+}
 
-
-    .cs_c.mobile {
+@media (max-width: 799.98px) {
+    .cs_c {
         width: 14vw;
         height: auto;
         border-radius: 0.6rem;
     }
+}
 
 .cs_c_on {
     filter: unset;
@@ -1439,16 +1465,6 @@ table tr:first-child{
     opacity: 100%;
 }
 
-#overlay_name_input {
-    z-index: 99999999;
-    justify-content: flex-start;
-    align-items: center;
-    background-color: var(--background-color);
-    opacity: 96%;
-    display: flex;
-    flex-direction: column; /* Richtet die Kinder vertikal aus */
-}
-
 #nameinput {
     background: var(--background-color);
     border: 1px solid var(--primary-border-color);
@@ -1458,20 +1474,24 @@ table tr:first-child{
     margin-bottom: 2rem;
 }
 
-    #nameinput.mobile {
+@media (max-width: 799.98px) {
+    #nameinput {
         width: 65%;
         margin-top: 50px;
         line-height: 1.8rem;
         padding: 0.1rem;
         font-size: 1rem;
     }
+}
 
-    #nameinput.desktop {
+@media (min-width: 800px) {
+    #nameinput {
         font-size: medium;
         padding: 5pt;
         margin-top: 60px;
         width: 200px;
     }
+}
 
     #nameinput:focus {
         outline: none;
@@ -1484,7 +1504,6 @@ table tr:first-child{
         border-color: var(--bluish);
     }
 
-
 .overlay_action_btn {
     background: var(--background-color);
     border: 1px solid var(--primary-border-color);
@@ -1495,20 +1514,24 @@ table tr:first-child{
     margin-bottom: 0.5rem;
 }
 
-    .overlay_action_btn.desktop{
+@media (min-width: 800px) {
+    .overlay_action_btn {
         font-size: medium;
         padding: 5pt;
         width: 200px;
         border-radius: 15pt;
     }
+}
 
-    .overlay_action_btn.mobile{
+@media (max-width: 799.98px) {
+    .overlay_action_btn {
         font-size: 1rem;
         border-radius: 1rem;
         width: 65%;
         height: 5rem;
         margin-bottom: 1rem;
     }
+}
 
     .overlay_action_btn:hover {
         border-color: var(--bluish);
@@ -1527,20 +1550,6 @@ table tr:first-child{
         box-shadow: none; /* Kein Schatten */
         pointer-events: none; /* Deaktiviert den Mauszeiger und alle Events */
     }
-
-#removed_msg {
-    margin-bottom: 2rem;
-    margin-top: 2rem;
-}
-
-#removed_msg.desktop {
-    width: 450px;
-}
-
-#removed_msg.mobile {
-    width: 65%;
-}
-
 
 .privacy_link {
     display: flex;
@@ -1576,8 +1585,10 @@ table tr:first-child{
     transition: left 0.8s ease-in-out;
 }
 
-#index.mobile {
-    display: none;
+@media (max-width: 799.98px) {
+    #index {
+        display: none;
+    }
 }
 
 @keyframes flashRed {
@@ -1590,6 +1601,7 @@ table tr:first-child{
     animation: flashRed 1.5s ease-in-out;
 }
 
+#overlay_name_input,
 #overlay_delete_user {
     z-index: 99999999;
     justify-content: flex-start;
@@ -1597,22 +1609,28 @@ table tr:first-child{
     background-color: var(--background-color);
     opacity: 96%;
     display: flex;
-    flex-direction: column; /* Richtet die Kinder vertikal aus */
+    flex-direction: column;
 }
 
+#removed_msg,
 #delete_user_msg {
     margin-bottom: 2rem;
     margin-top: 2rem;
 }
 
-#delete_user_msg.desktop {
-    width: 450px;
+@media (min-width: 800px) {
+    #removed_msg,
+    #delete_user_msg {
+        width: 450px;
+    }
 }
 
-#delete_user_msg.mobile {
-    width: 65%;
+@media (max-width: 799.98px) {
+    #removed_msg,
+    #delete_user_msg {
+        width: 65%;
+    }
 }
-
 
 .promo-tab {
     position: fixed;
@@ -1630,8 +1648,10 @@ table tr:first-child{
     white-space: nowrap;
 }
 
-#promo-tab.mobile {
-    display: none;
+@media (max-width: 799.98px) {
+    #promo-tab {
+        display: none;
+    }
 }
 
 #promo-question {
@@ -1688,4 +1708,3 @@ table tr:first-child{
 .promo-tab.promo-hidden {
     bottom: -40px;
 }
-

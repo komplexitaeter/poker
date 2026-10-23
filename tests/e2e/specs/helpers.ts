@@ -1,4 +1,4 @@
-import { Browser, Page, Locator, expect } from '@playwright/test';
+import { Browser, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
 
 /**
  * Every third-party library the board needs (remarkable, qr-code-styling, js-confetti) is now
@@ -6,8 +6,8 @@ import { Browser, Page, Locator, expect } from '@playwright/test';
  * (B-15). The tests therefore block all external hosts and keep only 127.0.0.1/localhost reachable.
  * This also covers production analytics (plausible.io), which must stay blocked.
  */
-export async function newPlayer(browser: Browser): Promise<Page> {
-  const context = await browser.newContext();
+export async function newPlayer(browser: Browser, options: BrowserContextOptions = {}): Promise<Page> {
+  const context = await browser.newContext(options);
   await context.route(/^https?:\/\//, route => {
     const host = new URL(route.request().url()).hostname;
     if (host === '127.0.0.1' || host === 'localhost') return route.continue();
