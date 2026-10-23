@@ -89,6 +89,8 @@ Abgeschlossen:
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
 | B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | erledigt |
 | B-43 | `survey_intro` per `innerHTML` prüfen (Sina) | neu |
+| B-44 | Startseite Light-Mode: Logo ohne Schriftzug | neu |
+| B-45 | Toten Stern-Bewertungscode im Feedback entfernen | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -716,6 +718,16 @@ nach B-36, ggf. zusammen mit B-14.
 **Querverweis (Delia, 2026-10-22):** Die konkrete Layout-Engine-Umstellung des Kartenbereichs (von JS-`getCardPos`/
 `position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
 sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
+
+### B-44 Startseite Light-Mode: Logo ohne Schriftzug
+Beim B-36-Review gefunden (Delia, 2026-10-23), schon vorher so: Auf der Startseite (`init.html`) zeigt das Logo im
+Light-Mode nur das Bildzeichen, der Schriftzug fehlt (Screenshot `init_w375_light.png` aus Delias PR-3-Vergleich).
+Klein; vermutlich falsches Bild oder fehlender Light-Mode-Tausch auf der Startseite.
+
+### B-45 Toten Stern-Bewertungscode im Feedback entfernen
+Die Bewertungssterne im Feedback sind seit jeher per CSS ausgeblendet (`display: none`); der Stern-Code in
+`script/script_feedback.js` (u. a. `fb_star_*`, `.blink`) ist damit toter Code. Bei Gelegenheit entfernen (Fred),
+oder bewusst entscheiden, die Sterne wieder einzuführen.
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
