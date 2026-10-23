@@ -7,31 +7,23 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-**Sprint 6 – „Schlank & performant"** (ab 2026-10-22): Thema Performance/Schlankheit. Startet mit einem
-**Schlank-Spike** (Bestandsaufnahme: Assets, CSS, JS, `dao.php`-Payload) → priorisierte, einzeln deploybare
-Verbesserungen. Vorbereitete Einträge: B-35 (Assets), B-36 (CSS aufräumen), B-37 (Responsive per CSS), B-38
-(`dao.php`-Payload, Spike). Reihenfolge nach Aufwand/Nutzen aus dem Spike; Umsetzung klein und gestaffelt.
-Nebenher: B-19/B-24-Nachkontrolle nach der nächsten Werktags-Spitze; B-20-Nachkontrolle (FPM-grep + `free -m`).
-
-**Schlank-Spike-Ergebnis (2026-10-22, Details je Eintrag B-35/B-36/B-37/B-38/B-39).** Priorisierung nach
-Aufwand/Nutzen:
-1. **Server-Kompression gzip** (B-35) – **erledigt auf Live + Staging** (2026-10-22): `image/svg+xml` in `gzip_types`
-   ergänzt → Brand-SVGs jetzt gzipped (~180 KB/Board-Load gespart). CSS/JS waren schon komprimiert.
-2. **B-39 Resize: Karten sofort positionieren statt zu animieren** – klein, Frontend-only, spürbare UX-Verbesserung.
-3. **SVG/PNG verlustfrei optimieren** (B-35, `svgo`/`oxipng`) – klein, moderater Gewinn.
-4. **CSS aufräumen** (B-36) – mittel, Pixel-Gegenprüfung nötig (Klassen teils per JS gesetzt).
-5. **Responsive JS→CSS** (B-37) – groß, Regressionsrisiko, später; ggf. mit B-14.
-
-**Bewusst NICHT verfolgt:** tote Bilder löschen (werden nicht geladen → kein Laufzeiteffekt, nur Repo-Kosmetik;
-Andreas: „nicht ran jetzt"). `cards.json`-Doppellesung war ein Messfehler – pro dao-Request nur **1×**, vernachlässigbar.
-`dao.php`-Payload mit 1–2 KB zu klein für Reduktion („so lassen" wie B-09).
+Kein laufender Sprint. Nächster Kandidat: **B-42** (Sortier-Option vereinfachen, `refined`).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
-(`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`).
-
-Akut (außerhalb des Sprints): B-28 PHP2Shell patchen – erledigt 2026-10-21.
+(`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
+(FPM-grep + `free -m`).
 
 Abgeschlossen:
+- **Sprint 6 – „Schlank & performant"** (2026-10-22/23, live mit PR #25 und #28):
+  - Schlank-Spike (Assets, CSS, JS, `dao.php`) mit priorisierten Ergebnissen in B-35 bis B-38. Bewusst nicht verfolgt:
+    tote Bilder löschen (kein Laufzeiteffekt), `dao.php`-Payload (1–2 KB, zu klein für Reduktion).
+  - B-35 (Teil): gzip für SVG auf Live und Staging (~180 KB je Board-Load). Rest von B-35 (SVG/PNG optimieren) offen.
+  - B-39: kein Gleiten beim Resize. B-32: CI-Install ~1 min statt ~12 min.
+  - B-41: Kartenbereich per CSS-Flex statt JS-Positionen, Sortier-Glide per FLIP, Höhe gleitet bei Reihenwechsel;
+    Ursache des Resize-Wobbelns (Timing-Fehler im B-39-Fix) per E2E-Test belegt und behoben; Nachfix für den Abstand
+    des Löschen-Icons.
+  - B-08: MySQL-Event-Jobs als `db_jobs_pok.sql` im Repo. Neu angelegt: B-40 (Design-Epic), B-42 (refined), Design-
+    Agentin Delia.
 - **Sprint 5** (2026-10-22): B-11, B-26, B-27 + Bugfix B-33 – nach `master` gemergt und live (PR #21). Alle Writes
   laufen per POST (405 ohne POST); Null-Guards in den Topnav-Toggles; Favicons/Touch-Icons nach `src/` + explizit
   verlinkt; Namensänderung behält die Karte, Verlassen räumt die Karte. **B-20** (Server-Config) bleibt offen: MySQL
@@ -92,7 +84,7 @@ Abgeschlossen:
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
-| B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt (release) |
+| B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
 | B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | refined |
 
 ### B-01 SQL-Injection in `api/` beheben
