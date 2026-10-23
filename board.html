@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.20" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.21" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.12" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.9" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.13" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.10" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -255,12 +255,6 @@
             </section>
 
             <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
-                <!-- rating stars: switched off (display: none), still read by script_feedback.js -->
-                <img src="src/star_off.png" class="feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
-                <img src="src/star_off.png" class="feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
-                <img src="src/star_off.png" class="feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
-                <img src="src/star_off.png" class="feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
-                <img src="src/star_off.png" class="feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
                 <label class="lab" for="feedback_txt">Feedback is your most powerful way to change the world. Tell us what we could improve – leave your email if we may ask back :)</label>
                 <textarea maxlength="1800" rows="7" id="feedback_txt" class="field"></textarea>
                 <div class="row end">
@@ -277,23 +271,18 @@
 <!-- short messages, e.g. "Board link copied" (showToast in script.js) -->
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<!-- B-51: overlays in the look of the menu panel: a backdrop with a card in the middle.
-     The QR overlay is replaced by the QR code in "Invite" (#invite_qr); remove it with its JS. -->
-<div id="overlay_qr" class="overlay hidden"></div>
-<div id="overlay_qr_code" class="overlay hidden" onclick="showQRCode(false)">
-    <div id="canvas_qr_code"></div>
-</div>
+<!-- B-51: overlays in the look of the menu panel: a backdrop with a card in the middle -->
 
-<div id="overlay_name_input" class="overlay overlay_panel hidden topnav">
+<div id="overlay_name_input" class="overlay overlay_panel hidden">
     <div class="overlay_card">
         <h2 class="overlay_title">join the board</h2>
-        <label for="nameinput" class="lab">What's your name?</label><input id="nameinput" class="topnav" type="text" size="15" maxlength="15" placeholder="Your name" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
+        <label for="nameinput" class="lab">What's your name?</label><input id="nameinput" type="text" size="15" maxlength="15" placeholder="Your name" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
         <div id="removed_msg" class="overlay_msg">
             <h1>You were temporarily kicked out of the game</h1>
             <span>This usually happens when you have been off for a while and someone removes you from the table. What do you want to do now?</span>
         </div>
-        <input id="become_player_btn" class="btn primary topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
-        <input id="become_observer_btn" class="btn topnav" type="button" value="Become Observer" tabindex="3" disabled />
+        <input id="become_player_btn" class="btn primary" type="button" value="Participate as a Player" tabindex="2" disabled />
+        <input id="become_observer_btn" class="btn" type="button" value="Become Observer" tabindex="3" disabled />
 
         <div id="overlay_privacy_link" class="privacy_link">
             <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy</a>
@@ -303,13 +292,13 @@
     </div>
 </div>
 
-<div id="overlay_delete_user" class="overlay overlay_panel hidden topnav" role="alertdialog" aria-labelledby="delete_user_title" aria-describedby="delete_user_text">
+<div id="overlay_delete_user" class="overlay overlay_panel hidden" role="alertdialog" aria-labelledby="delete_user_title" aria-describedby="delete_user_text">
     <div class="overlay_card">
         <h2 id="delete_user_title" class="overlay_title">Delete your user data?</h2>
         <p id="delete_user_text" class="overlay_text">Your privacy is key. By proceeding, all your user data, personal settings, voting results, and feedback will be permanently and irrevocably deleted.</p>
         <div class="row end">
-            <button type="button" class="btn-box topnav" onclick="showDeleteUserOverlay(false)">Cancel</button>
-            <button type="button" class="btn-box danger topnav" onclick="deleteUser()">Delete User</button>
+            <button type="button" class="btn-box" onclick="showDeleteUserOverlay(false)">Cancel</button>
+            <button type="button" class="btn-box danger" onclick="deleteUser()">Delete User</button>
         </div>
     </div>
 </div>

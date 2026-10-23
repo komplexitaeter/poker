@@ -3,9 +3,9 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 
 /**
  * B-48: the header is made of real buttons and can be used with the keyboard.
- * Menu boxes open with Enter (aria-expanded), Escape closes them and puts the focus back on the
- * button; the stopwatch is an on/off switch (aria-pressed). On phones the burger menu opens and
- * closes with the keyboard as well.
+ * B-51: the menu sections open with Enter in the menu panel (aria-expanded), Escape closes it and
+ * puts the focus back on the button; the stopwatch is an on/off switch (aria-pressed). On phones the
+ * menu button opens the menu (bottom sheet) and it closes with the keyboard as well.
  */
 
 test('keyboard: topic box opens with Enter, Escape closes it, stopwatch sets aria-pressed (B-48)', async ({ browser }) => {
@@ -16,17 +16,21 @@ test('keyboard: topic box opens with Enter, Escape closes it, stopwatch sets ari
   const topicBtn = alice.locator('#topic_btn');
   const stopwatchBtn = alice.locator('#stopwatch_btn');
 
-  // Tab from the stopwatch reaches the topic button, Enter opens the box
+  // Tab from the stopwatch reaches invite, then the topic button; Enter opens the panel
   await stopwatchBtn.focus();
+  await alice.keyboard.press('Tab');
+  await expect(alice.locator('#invite_btn')).toBeFocused();
   await alice.keyboard.press('Tab');
   await expect(topicBtn).toBeFocused();
   await alice.keyboard.press('Enter');
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
   await expect(alice.locator('#topic_box')).toBeVisible();
   await expect(topicBtn).toHaveAttribute('aria-expanded', 'true');
   await expect(alice.locator('#topic_txt')).toBeFocused();
 
   // Escape closes it and the focus is back on the button
   await alice.keyboard.press('Escape');
+  await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
   await expect(alice.locator('#topic_box')).toBeHidden();
   await expect(topicBtn).toHaveAttribute('aria-expanded', 'false');
   await expect(topicBtn).toBeFocused();
@@ -39,9 +43,10 @@ test('keyboard: topic box opens with Enter, Escape closes it, stopwatch sets ari
   await alice.locator('#user_settings_btn').press('Enter');
   await expect(alice.locator('#cet_usr_name')).toBeFocused();
 
-  // "Delete User" shows its overlay and closes the box under it
-  await alice.locator('#user_settings_privacy_link').getByText('Delete User').click();
+  // "Delete my data" shows its overlay and closes the menu under it
+  await alice.locator('#delete_user_btn').click();
   await expect(alice.locator('#overlay_delete_user')).not.toHaveClass(/hidden/);
+  await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
   await expect(alice.locator('#user_settings_box')).toBeHidden();
   await alice.locator('#overlay_delete_user').getByRole('button', { name: 'Cancel' }).click();
   await expect(alice.locator('#overlay_delete_user')).toHaveClass(/hidden/);
@@ -56,31 +61,33 @@ test('keyboard: topic box opens with Enter, Escape closes it, stopwatch sets ari
   await expect(alice.locator('#stopwatch')).toBeHidden();
 });
 
-test('keyboard on a phone: burger opens with Enter, Escape closes box first, then the menu (B-48)', async ({ browser }) => {
+test('keyboard on a phone: the menu button opens the index with Enter, Escape closes the menu (B-48, B-51)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 375, height: 800 } });
   const url = await createTeam(alice, 'KeyboardPhone');
   await joinAsPlayer(alice, url, 'Alice');
 
-  const menu = alice.locator('#mobile-menu');
-  const burger = alice.locator('#mobile-menu .open_menu');
+  const menu = alice.locator('dialog#menu');
+  const menuBtn = alice.locator('#menu_btn');
+  const index = alice.locator('#menu_index');
 
-  await burger.focus();
+  await menuBtn.focus();
   await alice.keyboard.press('Enter');
-  await expect(menu).toHaveAttribute('data-state', 'open');
-  await expect(burger).toHaveAttribute('aria-expanded', 'true');
-  await expect(alice.locator('#topic_btn')).toBeFocused();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+  await expect(index).toBeVisible();
+  await expect(menuBtn).toHaveAttribute('aria-expanded', 'true');
+  await expect(index.getByRole('button', { name: /Invite/ })).toBeFocused();
 
-  // a box opened from the menu: the first Escape closes only the box
+  // Tab to "Topic", Enter opens the section with its field focused
+  await alice.keyboard.press('Tab');
+  await expect(index.getByRole('button', { name: /Topic/ })).toBeFocused();
   await alice.keyboard.press('Enter');
   await expect(alice.locator('#topic_box')).toBeVisible();
-  await alice.keyboard.press('Escape');
-  await expect(alice.locator('#topic_box')).toBeHidden();
-  await expect(menu).toHaveAttribute('data-state', 'open');
-  await expect(alice.locator('#topic_btn')).toBeFocused();
+  await expect(index).toBeHidden();
+  await expect(alice.locator('#topic_txt')).toBeFocused();
 
-  // the second Escape closes the menu, the focus goes back to the burger
+  // Escape closes the menu, the focus goes back to the menu button
   await alice.keyboard.press('Escape');
-  await expect(menu).toHaveAttribute('data-state', 'closed');
-  await expect(burger).toHaveAttribute('aria-expanded', 'false');
-  await expect(burger).toBeFocused();
+  await expect(menu).not.toHaveAttribute('open');
+  await expect(menuBtn).toHaveAttribute('aria-expanded', 'false');
+  await expect(menuBtn).toBeFocused();
 });

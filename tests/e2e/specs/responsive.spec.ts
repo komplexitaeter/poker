@@ -7,6 +7,8 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersVia
  * mobile/desktop/sizefit any more. The analytics display type (xs/m/md/lg) is still sent.
  * B-46: New Round is no longer part of the burger menu: below the cards on large screens, in a
  * dock above the deck on phones.
+ * B-51: phones have a menu button (#menu_btn) that opens the menu index as a bottom sheet;
+ * large screens show the header shortcuts instead.
  */
 const SMALL = { width: 375, height: 800 };
 const LARGE = { width: 1280, height: 900 };
@@ -35,8 +37,8 @@ async function aliceInOpenRound(page: Page, teamName: string) {
 const legacyClassCount = (page: Page) =>
   page.evaluate(() => document.querySelectorAll('.mobile, .desktop, .sizefit').length);
 
-const burger = (page: Page) => page.locator('#mobile-menu .open_menu');
-const closeMenu = (page: Page) => page.locator('#mobile-menu .close-menu');
+const burger = (page: Page) => page.locator('#menu_btn');
+const closeMenu = (page: Page) => page.locator('#menu_close');
 
 async function expectSmallLayout(page: Page) {
   await expect(burger(page)).toBeVisible();
@@ -66,16 +68,19 @@ test('small screen: burger menu holds the topnav, New Round stays in the dock (B
   const deck = await alice.locator('#ctl').boundingBox();
   expect(dock!.y + dock!.height).toBeLessThanOrEqual(deck!.y + 1);
 
-  // open the menu: the topnav buttons appear
+  // open the menu: the index with all sections appears
   await burger(alice).click();
-  await expect(alice.locator('#mobile-menu')).toHaveAttribute('data-state', 'open');
-  await expect(alice.locator('#topic_btn')).toBeVisible();
-  await expect(alice.locator('#feedback_btn')).toBeVisible();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+  const index = alice.locator('#menu_index');
+  await expect(index).toBeVisible();
+  for (const name of ['Invite', 'Topic', 'Board settings', 'You', 'Feedback']) {
+    await expect(index.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible();
+  }
 
   // close it again
   await closeMenu(alice).click();
-  await expect(alice.locator('#mobile-menu')).toHaveAttribute('data-state', 'closed');
-  await expect(alice.locator('#topic_btn')).toBeHidden();
+  await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
+  await expect(index).toBeHidden();
   await expect(alice.locator('#newroundbtn')).toBeVisible();
 
   expect(await legacyClassCount(alice)).toBe(0);
@@ -105,9 +110,10 @@ test('resizing switches the layout and display type without a reload (B-36)', as
 
   await alice.setViewportSize(SMALL);
   await expectSmallLayout(alice);
-  // an analytics event now reports the small display type
+  // an analytics event now reports the small display type (phones: "Appearance" in "You")
   await burger(alice).click();
-  await alice.locator('#cmode_btn').click();
+  await alice.locator('#menu_index').getByRole('button', { name: /^You/ }).click();
+  await alice.locator('input[name=cet_color_mode][value=light]').check();
   await expect.poll(() => displayTypes.get('USE_COLOR_SWITCH')).toEqual(['xs']);
   await closeMenu(alice).click();
 

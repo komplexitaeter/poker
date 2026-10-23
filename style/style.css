@@ -1,12 +1,14 @@
 /* Agile Poker stylesheet – "console" look (Sprint 8, B-48/B-50).
  * One breakpoint: small screens (phones) up to 799.98px, large screens from 800px
- * (mirrored in script/script.js, toggleMobileMenu). Monospace type, flat surfaces,
+ * (mirrored in script/script_feedback.js, gPhoneQuery). Monospace type, flat surfaces,
  * small radii; colors come from the tokens below (dark = default, light = body.light-theme).
  * Board page grid (B-46): see "Board layout". Short landscape screens (max-height: 500px)
  * get the phone topic strip as well.
  * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens".
  * Menus (B-51): one panel (#menu, a <dialog>) – side panel on large screens, bottom sheet on
- * phones; see "Menu panel". Overlays and the survey share its look. */
+ * phones; see "Menu panel". Overlays and the survey share its look.
+ * Console decorations in generated content ("// ", "$ ", "→") carry an empty alternative text
+ * (content: "…" / ""), so screen readers do not read them as part of a name. */
 
 /* ---------- Tokens ---------- */
 
@@ -26,8 +28,7 @@
     --z-promo: 100;
     --z-panel: 200;       /* menu panel (large screens; phones: top layer of the modal dialog) */
     --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
-    --z-scrim: 300;       /* QR code backdrop */
-    --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
+    --z-overlay: 301;     /* full screen overlays (name input, delete user), the large QR code */
     /* shapes */
     --radius-s: 3px;      /* small tiles, tooltips */
     --radius-m: 4px;      /* fields, buttons, topnav buttons */
@@ -314,7 +315,7 @@ textarea.field {
     color: var(--bg);
 }
 
-/* Full screen overlays (name input, delete user, QR code): a backdrop with a card in the
+/* Full screen overlays (name input, delete user): a backdrop with a card in the
  * middle, in the look of the menu panel (B-51). Shown/hidden with .visible/.hidden (script.js). */
 .overlay {
     position: absolute;
@@ -363,7 +364,7 @@ textarea.field {
 }
 
 .overlay_title::before {
-    content: "// ";
+    content: "// " / "";
     color: var(--line-strong);
     font-weight: normal;
 }
@@ -520,7 +521,7 @@ textarea.field {
 }
 
 .topic-label::before {
-    content: "// ";
+    content: "// " / "";
     color: var(--line-strong);
 }
 
@@ -757,7 +758,7 @@ textarea.field {
 
 /* label in vim command style: ":topic" */
 .topnav-bar .lbl::before {
-    content: ":";
+    content: ":" / "";
     color: var(--muted);
 }
 
@@ -937,7 +938,7 @@ textarea.field {
 
 /* console heading: "// Board settings" */
 .m-head h2::before {
-    content: "// ";
+    content: "// " / "";
     color: var(--line-strong);
     font-weight: normal;
 }
@@ -981,7 +982,7 @@ textarea.field {
 }
 
 .m-index button::after {
-    content: "→";
+    content: "→" / "";
     color: var(--muted);
 }
 
@@ -1001,7 +1002,7 @@ textarea.field {
 .m-index b { display: block; }
 
 .m-index b::before {
-    content: "$ ";
+    content: "$ " / "";
     color: var(--muted);
     font-weight: normal;
 }
@@ -1172,14 +1173,14 @@ fieldset:disabled .seg input:checked + span {
 .grp > summary::-webkit-details-marker { display: none; }
 
 .grp > summary::before {
-    content: "▸";
+    content: "▸" / "";
     flex: none;
     width: 1em;
     color: var(--muted);
 }
 
 .grp[open] > summary::before {
-    content: "▾";
+    content: "▾" / "";
     color: var(--accent);
 }
 
@@ -1187,7 +1188,7 @@ fieldset:disabled .seg input:checked + span {
 
 /* console heading: "## Deck" */
 .grp > summary b::before {
-    content: "## ";
+    content: "## " / "";
     color: var(--line-strong);
     font-weight: normal;
 }
@@ -1282,9 +1283,6 @@ fieldset:disabled .seg input:checked + span {
 
 #invite_link { font-size: var(--fs-s); }
 
-/* the rating stars are switched off */
-.feedback_star { display: none; }
-
 /* card set thumbnails */
 #cards_thumbs {
     display: flex;
@@ -1293,13 +1291,29 @@ fieldset:disabled .seg input:checked + span {
 }
 
 .cs_c {
+    box-sizing: content-box;
     width: 30px;
+    padding: 0;
+    background: none;
+    line-height: 0;
     border: 1px solid var(--medium_color);
     border-radius: var(--radius-s);
     filter: grayscale(100%);
     opacity: 0.4;
     cursor: pointer;
     transition: transform .5s ease-in-out;
+}
+
+.cs_c > img {
+    display: block;
+    width: 100%;
+    border-radius: inherit;
+}
+
+.cs_c:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    opacity: 1;
 }
 
 .cs_c:hover {
@@ -1738,7 +1752,7 @@ div#cbox {
 }
 
 #survey-button::before {
-    content: "// ";
+    content: "// " / "";
     color: var(--line-strong);
     font-weight: normal;
 }
@@ -1806,7 +1820,7 @@ div#cbox {
 }
 
 .vote_option::before {
-    content: "> ";
+    content: "> " / "";
     color: var(--muted);
 }
 
@@ -1851,38 +1865,7 @@ div#cbox {
 
 .down { transform: translateY(-2px) rotate(45deg); }
 
-/* ---------- Overlays: QR code, privacy links ---------- */
-
-#overlay_qr {
-    z-index: var(--z-scrim);
-    background: var(--scrim);
-}
-
-#overlay_qr_code {
-    z-index: var(--z-overlay);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: zoom-out;
-}
-
-/* never wider than the screen: an overflow would widen the layout viewport on phones
- * and push fixed elements (toast) off the bottom */
-#overlay_qr_code { overflow: hidden; }
-
-/* the QR code is a fixed 300px SVG (+ padding): shrink it on very narrow phones */
-@media (max-width: 380px) {
-    #canvas_qr_code { transform: scale(0.85); }
-}
-
-#canvas_qr_code {
-    position: absolute;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-l);
-    padding: 20px;
-    background: var(--bg);
-    box-shadow: 0 12px 32px var(--shadow-color);
-}
+/* ---------- Overlays: name input, privacy links ---------- */
 
 #nameinput { margin: 0 0 var(--space-3); }
 
@@ -1998,7 +1981,7 @@ div#cbox {
 }
 
 .toast::before {
-    content: "> ";
+    content: "> " / "";
     color: var(--muted);
 }
 

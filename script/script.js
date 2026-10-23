@@ -60,7 +60,6 @@ function getBrowserWidth(){
 function newRound() {
     let url = './api/newround.php?t=' + t;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    toggleMobileMenu("closed");
 }
 
 function playerTypeUpdate(playerType, name) {
@@ -178,11 +177,13 @@ function toggleC(cardId, flag) {
         e.classList.add('on');
         e.classList.remove('off');
         e_conf.classList.add('cs_c_on');
+        e_conf.setAttribute('aria-pressed', 'true');
     }
     else {
         e.classList.remove('on');
         e.classList.add('off');
         e_conf.classList.remove('cs_c_on');
+        e_conf.setAttribute('aria-pressed', 'false');
     }
 }
 
@@ -519,6 +520,7 @@ function updateDom(myJson, isOnLoad) {
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
+    updateMenuSummaries(myJson);
 
     activateJediMode(myJson.show_avg);
     updateJediBtn();
@@ -534,7 +536,9 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
 
-        if (myJson.needs_setup) toggle_box('cset', false);
+        // a new board opens "Board settings" by itself, without taking the focus (name input first);
+        // not on phones, where the sheet would cover the name input (as before: the box was in the closed menu)
+        if (myJson.needs_setup && !gPhoneQuery.matches) openMenu('cset', null, false);
 
         updateDao(false);
     }
@@ -683,10 +687,6 @@ function loadBoard() {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
         }
-        // Escape closes the phone menu, unless it just closed a menu box (script_feedback.js)
-        if (event.key === 'Escape' && !event.defaultPrevented) {
-            toggleMobileMenu('closed');
-        }
     });
 }
 
@@ -799,24 +799,6 @@ function switchColorMode(){
 }
 
 
-function toggleMobileMenu(target_state){
-    let menu = document.getElementById("mobile-menu");
-    if (menu === null) return; // B-51: the burger menu is gone (menu panel #menu)
-    // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
-    if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
-        let opener = menu.querySelector('.open_menu');
-        let focusInside = menu.contains(document.activeElement);
-        menu.setAttribute('data-state', target_state);
-        opener.setAttribute('aria-expanded', target_state === 'open' ? 'true' : 'false');
-        if (target_state === 'open') {
-            menu.querySelector('.topnav-bar .icon-btn').focus();
-        } else if (focusInside) {
-            // the focused button disappears with the panel
-            opener.focus();
-        }
-    }
-}
-
 /* B-46: on phones the topic strip shows one line; the arrow button (or a tap on the topic)
  * shows all of it. Elsewhere the button is hidden by CSS and the topic is shown in full. */
 function toggleTopic(event) {
@@ -840,6 +822,11 @@ function copyLink() {
 let gToastTimer = null;
 function showToast(text) {
     let toast = document.getElementById('toast');
+    // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
+    // (closeMenu() puts it back)
+    let menu = document.getElementById('menu');
+    let host = (menu !== null && menu.open && menu.matches(':modal')) ? menu : document.body;
+    if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');
     clearTimeout(gToastTimer);
@@ -872,20 +859,8 @@ function generateQRCode(url) {
 
     });
 
-    qrCode.append(document.getElementById("canvas_qr_code"));
-}
-
-function showQRCode(showIt) {
-    let overlay = document.getElementById("overlay_qr");
-    let overlay_qr = document.getElementById("overlay_qr_code");
-    if (showIt) {
-        toggleStyleClass(overlay, "visible", "hidden");
-        toggleStyleClass(overlay_qr, "visible", "hidden");
-
-    } else {
-        toggleStyleClass(overlay_qr, "hidden", "visible");
-        toggleStyleClass(overlay, "hidden", "visible");
-    }
+    // B-51: one instance only, in "Invite" (a second one would duplicate the SVG ids)
+    qrCode.append(document.getElementById("invite_qr"));
 }
 
 function hideTeaser(updateUser=true) {
@@ -1026,6 +1001,27 @@ function updateAnonymityConfig(anonymousRequestToggle) {
     checkRadio('cet_anonymous', anonymousRequestToggle === 1 ? '1' : '0');
 }
 
+/* B-51: board settings – the summaries of the groups (shown while a group is closed) and the hints
+ * in the phone index; kept up to date with every update. Plain text only (team name). */
+function setTextIfChanged(id, text) {
+    let e = document.getElementById(id);
+    if (e !== null && e.textContent !== text) e.textContent = text;
+}
+
+function updateMenuSummaries(myJson) {
+    let flags = (myJson.cardset_flags || '').padEnd(gCardsConfig.length, '0');
+    let cardsOn = gCardsConfig.filter(card => flags.charAt(card.index) === '1').length;
+    setTextIfChanged('cset_sum_deck', cardsOn + ' of ' + gCardsConfig.length + ' cards');
+
+    let anonymous = myJson.anonymous_request_toggle === 1;
+    let byName = myJson.results_order === 'NAME' && !anonymous && myJson.anonymous_mode !== 1;
+    setTextIfChanged('cset_sum_results', (anonymous ? 'anonymous' : 'names shown')
+        + ' \u00b7 ' + (byName ? 'by name' : 'by value')
+        + ' \u00b7 ' + (myJson.show_avg === 1 ? 'pointer on' : 'pointer off'));
+
+    setTextIfChanged('cset_sum_team', myJson.team_name);
+}
+
 
 function loadCardConfig() {
     /* - load card config from cards.json to create all the html needed
@@ -1055,14 +1051,17 @@ function loadCardConfig() {
         cardElement.alt = card.description;
         ctl.appendChild(cardElement);
 
-        let thumbElement = document.createElement("img");
+        // B-51: a switch per card (aria-pressed = in the deck, set by toggleC)
+        let thumbElement = document.createElement("button");
+        thumbElement.type = "button";
         thumbElement.id = "_" + card.card_key;
-        thumbElement.src = "src/c_" + card.card_key + ".png";
         thumbElement.setAttribute("data-card_key", card.card_key);
-        thumbElement.src = "src/c_" + card.card_key + ".png";
-        thumbElement.classList.add("topnav");
+        thumbElement.setAttribute("aria-pressed", "false");
         thumbElement.classList.add("cs_c");
-        thumbElement.alt = card.description;
+        let thumbImage = document.createElement("img");
+        thumbImage.src = "src/c_" + card.card_key + ".png";
+        thumbImage.alt = card.description;
+        thumbElement.appendChild(thumbImage);
         thumbElement.addEventListener("click", toggleCSet);
         cardsThumbs.appendChild(thumbElement);
     });
@@ -1289,8 +1288,9 @@ function showConfetty(playersCount) {
 function showDeleteUserOverlay(openIt=true) {
     let overlayDiv= document.getElementById('overlay_delete_user');
     if (openIt) {
-        closeTopnavBoxes(); // the "You" box stays open otherwise (its links count as topnav)
+        closeMenu(false); // the overlay takes over (B-51)
         removeStyleClass(overlayDiv, 'hidden');
+        overlayDiv.querySelector('button').focus();
     }
     else addStyleClass(overlayDiv, 'hidden');
 }
