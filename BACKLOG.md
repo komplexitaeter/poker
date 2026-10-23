@@ -8,7 +8,8 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 ## Aktueller Sprint
 
 **Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
-Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Planning läuft (Delia, Fred).
+Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Planning läuft: Mockup `mockups/` (Delia) – Andreas hat Variante C (Panel/Dock) und Menüs als Side Panel am
+Desktop gewählt; Runde 2 mit „Console Style“, Ergebnisdarstellung (B-53) und Topic-Liste (B-52).
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
@@ -100,6 +101,8 @@ Abgeschlossen:
 | B-49 | Fluide Kartengrößen | neu |
 | B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | neu |
 | B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | neu |
+| B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
+| B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -800,6 +803,19 @@ Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden ei
 Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-52 Topics als Backlog-Items
+Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
+das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
+Rundenhistorie wird heute schon geschrieben (`pok_roundstats_tbl`, `pok_roundstat_details_tbl`) und ließe sich je
+Topic rückwirkend anzeigen. Berührt Datenmodell/API (Ben). Erst im Mockup (Delia, B-51) zeigen, dann refinen.
+
+### B-53 Ergebnisdarstellung neu
+Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
+Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
+die Häufigkeitsbalken (`show_card_stats`) stehen. Ziel: Ergebnisse separat und anders darstellen (Verteilung,
+Konsens/Ausreißer, Zeiger-Idee erhalten), ggf. mit gespeicherter Historie (passt zu B-52). Vorschlag kommt im
+Mockup (Delia).
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
