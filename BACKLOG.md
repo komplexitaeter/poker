@@ -664,8 +664,10 @@ Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nut
   `.mobile`/`.desktop`-Varianten. Dazu 24 verschiedene Hex-Farben neben 30 Tokens, 25 `-webkit-`-Präfixe.
 - **`.mobile`/`.desktop` wird mit aufgeräumt** (B-37 geht in B-36 auf): Responsive über CSS (`@media`) statt über die
   per JS gesetzten Klassen.
-- **Kleine optische Vereinheitlichungen sind erlaubt:** Hat ein Button mal 1 px mehr Rand oder einen anderen Radius,
-  wird das zusammengeführt. „Kein sichtbarer Unterschied“ gilt nicht pixelgenau.
+- **Vereinheitlichen ist ausdrücklich erwünscht:** Elemente, die faktisch gleich aussehen oder gleich aussehen
+  *sollten* (z. B. Buttons, Boxen), bekommen eine gemeinsame Gestaltung, auch wenn ihre Werte heute auseinanderliegen
+  (Rand, Radius, Abstände, Farben). „Kein sichtbarer Unterschied“ heißt: keine ungewollte Veränderung, nicht
+  pixelgenau.
 - **Kein Screenshot-Vergleichstest:** Andreas nimmt auf Staging per Sichtprüfung ab. Delia liefert zur Übergabe
   Vorher-nachher-Bilder der geänderten Ansichten (einmalig, nicht als dauerhafter Test).
 - Nach B-42, damit die wegfallende Sortier-Leiste nicht mit aufgeräumt wird. Planning folgt nach B-42.
