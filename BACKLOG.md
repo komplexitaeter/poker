@@ -7,7 +7,9 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
 ## Aktueller Sprint
 
-Kein laufender Sprint. Nächster Kandidat: **B-42** (Sortier-Option vereinfachen, `refined`).
+**Sprint 7 – „Konfiguration & CSS aufräumen"** (ab 2026-10-23):
+1. **B-42** Sortier-Option vereinfachen – zuerst, damit B-36 die wegfallende Sortier-Leiste nicht mit aufräumt.
+2. **B-36** CSS vereinfachen, inklusive `.mobile`/`.desktop` (B-37 geht darin auf) – danach, Planning folgt.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
@@ -79,13 +81,13 @@ Abgeschlossen:
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
-| B-36 | Totes/redundantes CSS entfernen, `style.css` aufräumen | refined |
-| B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | neu |
+| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | refined |
+| B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | in B-36 aufgegangen |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
-| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | refined |
+| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | im Sprint |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -654,6 +656,19 @@ Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nut
 
 **AK:** kein sichtbarer Unterschied (Sichtprüfung Board/init, Light/Dark, Topnav-Boxen); messbar kleinere `style.css`;
 `?v=`-Bump für `style.css`; E2E grün. Mittel groß; erst nach dem Schlank-Spike schneiden.
+
+**Neu-Zuschnitt (2026-10-23, Andreas):**
+- **Analyse (Kai, 2026-10-23):** Kaum echte Doppel-Selektoren (5, fast nur Keyframe-Schritte). Die Redundanz steckt
+  in gleichen Deklarationsblöcken für verschiedene Elemente (32 Blöcke, 90 Vorkommen, z. B. `display:none` 15× in
+  zwei Schreibweisen) – jeder Button/jede Box einzeln gestylt statt über eine gemeinsame Basis – und in 117
+  `.mobile`/`.desktop`-Varianten. Dazu 24 verschiedene Hex-Farben neben 30 Tokens, 25 `-webkit-`-Präfixe.
+- **`.mobile`/`.desktop` wird mit aufgeräumt** (B-37 geht in B-36 auf): Responsive über CSS (`@media`) statt über die
+  per JS gesetzten Klassen.
+- **Kleine optische Vereinheitlichungen sind erlaubt:** Hat ein Button mal 1 px mehr Rand oder einen anderen Radius,
+  wird das zusammengeführt. „Kein sichtbarer Unterschied“ gilt nicht pixelgenau.
+- **Kein Screenshot-Vergleichstest:** Andreas nimmt auf Staging per Sichtprüfung ab. Delia liefert zur Übergabe
+  Vorher-nachher-Bilder der geänderten Ansichten (einmalig, nicht als dauerhafter Test).
+- Nach B-42, damit die wegfallende Sortier-Leiste nicht mit aufgeräumt wird. Planning folgt nach B-42.
 
 ### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
 Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
