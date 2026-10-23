@@ -59,7 +59,7 @@ Abgeschlossen:
 | B-05 | E2E-Tests für weitere Funktionen | neu |
 | B-06 | Testfälle gemeinsam reverse-engineeren | neu |
 | B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
-| B-08 | MySQL-Statistik-Job ins Repo aufnehmen | neu |
+| B-08 | MySQL-Statistik-Job ins Repo aufnehmen | erledigt |
 | B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
 | B-10 | `poker-msg` modernisieren und absichern | neu |
 | B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt |
@@ -186,6 +186,15 @@ Nicht enthalten (später, eigener Eintrag bei Bedarf): README insgesamt überarb
 ### B-08 MySQL-Statistik-Job ins Repo aufnehmen
 Die `_stats`-Tabellen werden von einem MySQL-Event befüllt, das nicht im Repo liegt.
 Definition exportieren (`SHOW CREATE EVENT`) und versionieren.
+
+**Erledigt (2026-10-23):** Export von Live (`mysqldump --events --routines --triggers`, keine Routinen/Trigger vorhanden)
+liegt als `db_jobs_pok.sql` im Repo. Drei Events, `event_scheduler = ON`:
+- `pok_active_users_evt` (minütlich) → `pok_active_user_stats`: aktive Spieler je Zeitfenster.
+- `pok_daily_team_stats_evt` (täglich 23:55) → `pok_daily_teams_stats`: je Team mit Aktivität in 24 h; **`RECURRING`, wenn
+  mehr als 2 Spieler aktiv waren, sonst `EXPLORING`**. Teams mit höchstens 2 aktiven Spielern werden nur am ersten Tag
+  (`team_age < 1`) erfasst.
+- `pok_active_use_evt` → `pok_active_use_stats_tbl`: **deaktiviert, lief nie** – Tabelle bleibt leer (Kandidat zum
+  Aufräumen, nicht dringend).
 
 ### B-09 Wachstum von `pok_analytics_events_tbl` begrenzen
 Tabelle wächst unbegrenzt. Aufbewahrungsdauer festlegen, alte Daten löschen oder verdichten.
