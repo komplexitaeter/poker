@@ -77,30 +77,14 @@ function toggle_box(boxName, focusField = true) {
     measureEvent(box.event);
 }
 
+// B-51: "Average pointer" Hide/Show (radio group); the lock on "Show" is CSS
 function updateJediBtn() {
-    let jediBtn = document.getElementById("cet_dark_side");
-    if (gLastJson.show_avg === 1) {
-        jediBtn.value = "Hide average indicator";
-        jediBtn.setAttribute("data-state", "1");
-        jediBtn.classList.remove("locked");
-    } else {
-        jediBtn.value = "Show average (join the dark side)";
-        jediBtn.setAttribute("data-state", "0");
-        jediBtn.classList.add("locked");
-    }
+    checkRadio('cet_dark_side', gLastJson.show_avg === 1 ? '1' : '0');
 }
 
-function pushJediBtn() {
-    let jediBtn = document.getElementById("cet_dark_side");
-    let state = jediBtn.getAttribute("data-state");
-    if (state === "0") {
-        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=1&t=' + t;
-        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    }
-    if (state === "1") {
-        let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=0&t=' + t;
-        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    }
+function pushJediBtn(showAvg) {
+    let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + t;
+    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
 function toggle_feedback_box(setOn) {
@@ -427,18 +411,18 @@ function preSet() {
     }
 }
 
-function changeSortOrder() {
-    let e = document.getElementById("cet_order_by");
-    const url = './api/update_results_order.php?t='+t+'&results_order='+e.value;
+// B-51: called by the radio group with SEQUENCE or NAME
+function changeSortOrder(resultsOrder) {
+    const url = './api/update_results_order.php?t='+t+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
     let httpRequest = new XMLHttpRequest();
     httpRequest.open("POST", url, false);
     httpRequest.send();
     pushDomChange();
 }
 
-function changeAnonymity() {
-    let e = document.getElementById("cet_anonymous");
-    const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+e.value;
+// B-51: called by the radio group with 0 (show names) or 1 (anonymous)
+function changeAnonymity(anonymous) {
+    const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
     let httpRequest = new XMLHttpRequest();
     httpRequest.open("POST", url, false);
     httpRequest.send();
@@ -475,9 +459,9 @@ function updateUserName() {
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
 
-function toggleUserType() {
-    let playerType = 'PLAYER';
-    if (gLastJson.player_type === 'PLAYER') playerType = 'OBSERVER';
+// B-51: called by the radio group with PLAYER or OBSERVER
+function toggleUserType(playerType) {
+    if (playerType !== 'OBSERVER') playerType = 'PLAYER';
 
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
