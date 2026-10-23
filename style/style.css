@@ -2,8 +2,8 @@
  * One breakpoint: small screens (phones) up to 799.98px, large screens from 800px
  * (mirrored in script/script.js, toggleMobileMenu). Monospace type, flat surfaces,
  * small radii; colors come from the tokens below (dark = default, light = body.light-theme).
- * Board page grid (B-46): see "Board layout". Two more cases there: phones in portrait
- * (small screen and not landscape-short) and phones in landscape (max-height: 500px).
+ * Board page grid (B-46): see "Board layout". Short landscape screens (max-height: 500px)
+ * get the phone topic strip as well.
  * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens". */
 
 /* ---------- Tokens ---------- */
@@ -21,12 +21,10 @@
     /* stacking order (lowest first) */
     --z-raised: 1;        /* small things above their neighbours, open phone menu */
     --z-burger: 2;
-    --z-newround: 5;      /* New Round on top of the open phone menu */
     --z-nav: 10;          /* header incl. its menu boxes, above the table */
     --z-promo: 100;
     --z-toast: 250;       /* short messages (showToast), above the deck and open menus */
     --z-menu: 200;        /* menu boxes (inside the header stacking context) */
-    --z-hint: 210;        /* header tooltips, above an open menu box */
     --z-scrim: 300;       /* QR code backdrop */
     --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
     /* shapes */
@@ -42,8 +40,6 @@
     --space-4: 2rem;
     /* minimum size of a header button; larger on touch screens */
     --tap: 36px;
-    /* board: width of the round panel on large screens (B-46) */
-    --panel-w: clamp(240px, 24vw, 340px);
 }
 
 @media (pointer: coarse) {
@@ -394,19 +390,22 @@ textarea.field {
 
 /* ---------- Board layout (B-46) ---------- */
 
-/* One grid for the whole screen: header / table + round panel / card deck.
+/* One grid for the whole screen: header / topic / table / card deck.
  * dvh follows the visible height on phones (address bar), vh is the fallback.
- * Only the table scrolls; the deck and the round actions keep their place.
+ * Only the table scrolls; the deck keeps its place. The round actions (.dock: New Round,
+ * stopwatch) follow the cards and stick to the bottom of the table when it scrolls.
+ * Phones: the topic is a one-line strip, the actions a dock right above the deck.
  * Safe areas (viewport-fit=cover): left/right here, bottom below the deck. */
 .container {
     position: relative; /* anchor of the phone menu and its boxes */
     display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--panel-w);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     grid-template-areas:
-        "head  head"
-        "table panel"
-        "deck  deck";
+        "head"
+        "topic"
+        "table"
+        "deck";
     height: 100vh;
     height: 100dvh;
     padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
@@ -422,10 +421,14 @@ textarea.field {
 .table {
     grid-area: table;
     min-height: 0;
-    padding: 0 var(--space-2); /* cards keep off the panel; phones: none (3 cards fit at 320px) */
+    display: flex;
+    flex-direction: column;
+    padding: 0 var(--space-2);
     overflow-y: auto;
     overscroll-behavior: contain;
 }
+
+.table > #cbox { flex: none; }
 
 /* the deck spans the full width (wide card sets need it until B-49) */
 .down-container {
@@ -437,52 +440,48 @@ textarea.field {
     padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Round panel (large screens): topic on top (scrolls when long), actions at the bottom */
-.panel {
-    grid-area: panel;
-    min-height: 0;
+/* Topic (large screens): "// topic", the topic as a quoted block, edit pen on the right.
+ * Short topics keep the bar one line high; long ones scroll inside it (the table keeps its room).
+ * --topic-line: line height of the topic; label and topic are centered on the buttons' row. */
+.topic-bar {
+    --topic-line: 1.5rem;
+    --topic-pad: calc((var(--tap) - var(--topic-line)) / 2 - 2px);
+    grid-area: topic;
     display: flex;
-    flex-direction: column;
-    border-left: 1px solid var(--line);
+    align-items: flex-start;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-1) var(--space-3);
     text-align: left;
 }
 
-.panel-topic {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    padding: var(--space-2) var(--space-3) var(--space-3);
-}
-
-/* "// topic" with an edit button */
-.panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-1);
-}
-
-.panel-head h2 {
+.topic-label {
+    flex: none;
     margin: 0;
+    padding: calc(var(--topic-pad) + 2px) 0;
     font-size: var(--fs-s);
     font-weight: normal;
+    line-height: var(--topic-line);
     color: var(--muted);
 }
 
-.panel-head h2::before {
+.topic-label::before {
     content: "// ";
     color: var(--line-strong);
 }
 
-.panel-head .icon-btn { color: var(--muted); }
-.panel-head .icon-btn:hover { color: var(--accent); }
+.topic-edit {
+    margin-left: auto;
+    color: var(--muted);
+}
 
-/* no topic yet: an invitation to set one (shown while #topic is hidden) */
+.topic-edit:hover { color: var(--accent); }
+
+/* no topic yet: an invitation to set one instead of the topic and the pen */
 .topic-empty {
     display: none;
-    width: 100%;
     min-height: var(--tap);
-    padding: var(--space-2) 12px;
+    padding: 0 12px;
     border: 1px dashed var(--line-strong);
     border-radius: var(--radius-m);
     background: transparent;
@@ -504,67 +503,63 @@ textarea.field {
 }
 
 #topic.display_none ~ .topic-empty { display: block; }
+#topic.display_none ~ .topic-edit { display: none; }
 
 /* the arrow that unfolds the topic is for the phone strip only */
 #topic_toggle { display: none; }
 
-/* round actions: stopwatch above New Round */
+/* Round actions: New Round, the stopwatch below it. They follow the cards; when the table
+ * scrolls they stick to its bottom edge (the background covers the cards behind). */
 .dock {
+    position: sticky;
+    bottom: 0;
     flex: none;
     display: flex;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: var(--space-2);
-    padding: var(--space-3);
-    border-top: 1px solid var(--line);
+    padding: var(--space-2) 0 var(--space-3);
+    background: var(--bg);
 }
 
-/* Phones in landscape: little height. The panel stays a narrow column on the right
- * (more room for the table), with less padding. */
+/* nothing to show yet (stopwatch off, nobody has voted): no empty zone over the cards */
+.dock:has(> #stopwatch.display_none):has(> #newroundbtn.display_none) { display: none; }
+
+/* Phones in landscape: little height, so a lower header */
 @media (max-height: 500px) and (orientation: landscape) {
-    .container { --panel-w: clamp(180px, 28vw, 240px); }
-
     .container > .head { min-height: 44px; }
+}
 
-    .panel-topic { padding: var(--space-1) var(--space-2) var(--space-2); }
+/* Small screens: the actions as a dock right above the deck (thumb zone, always in view),
+ * stopwatch left, New Round right. */
+@media (max-width: 799.98px) {
+    .table { padding: 0; } /* 3 cards fit at 320px */
 
     .dock {
+        margin-top: auto; /* few cards: still at the bottom */
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
         gap: var(--space-1);
-        padding: var(--space-2);
+        padding: var(--space-1) 8px;
+        background: var(--bg-2);
+        border-top: 1px solid var(--line);
     }
+
+    .dock > #stopwatch { order: -1; }
 }
 
-/* Phones in portrait (small screen, unless it is a short landscape screen, see above):
- * the panel dissolves into two zones of the grid – the topic as a strip below the header,
- * the actions as a dock right above the deck (thumb zone, always in view). */
-@media (max-width: 799.98px) and (min-height: 500.02px), (max-width: 799.98px) and (orientation: portrait) {
-    .container {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-        grid-template-areas:
-            "head"
-            "strip"
-            "table"
-            "dock"
-            "deck";
-    }
-
-    .panel { display: contents; }
-
-    .table { padding: 0; }
-
-    .panel-topic {
-        grid-area: strip;
-        display: flex;
-        align-items: flex-start;
+/* Phones (and short landscape screens): the topic as a strip below the header, one line
+ * that unfolds with the arrow; no label, no pen (the menu has "topic"), no strip without topic */
+@media (max-width: 799.98px), (max-height: 500px) and (orientation: landscape) {
+    .topic-bar {
         gap: var(--space-1);
-        min-width: 0;
-        overflow: visible;
         padding: 0 6px 0 10px;
     }
 
-    /* no topic: no strip (as before) */
-    .panel-head,
+    .topic-label,
+    .topic-bar .topic-edit,
+    #topic.display_none ~ .topic-edit,
     .topic-empty,
     #topic.display_none ~ .topic-empty,
     #topic.display_none ~ #topic_toggle { display: none; }
@@ -577,21 +572,6 @@ textarea.field {
 
     #topic_toggle .i { transition: transform 0.2s; }
     #topic_toggle[aria-expanded=true] .i { transform: rotate(180deg); }
-
-    .dock {
-        grid-area: dock;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--space-1);
-        padding: var(--space-1) 8px;
-        background: var(--bg-2);
-        border-top: 1px solid var(--line);
-    }
-
-    /* nothing to show yet (stopwatch off, nobody has voted): no empty bar */
-    .dock:has(> #stopwatch.display_none):has(> #newroundbtn.display_none) { display: none; }
 }
 
 /* ---------- Header: logo, prompt with team name, topnav buttons ---------- */
@@ -640,7 +620,6 @@ textarea.field {
 }
 
 .team-name {
-    position: relative; /* anchor for the hint (else it hangs off the board grid on phones) */
     display: inline-flex;
     align-items: center;
     min-width: 0;
@@ -689,7 +668,7 @@ textarea.field {
 
 /* Header button: icon (+ label), transparent until hovered or active */
 .icon-btn {
-    position: relative; /* anchor for the hint */
+    position: relative; /* anchor for the first-time teaser (#cta_teaser) */
     flex: none;
     display: inline-flex;
     align-items: center;
@@ -754,36 +733,6 @@ textarea.field {
 .sw-state::before { content: "[ ]"; }
 .sw-btn[aria-pressed=true] .sw-state::before { content: "[x]"; }
 
-/* Hints: short text tooltips on hover and keyboard focus (replace the former cta_*.png) */
-[data-hint]::after {
-    content: "# " attr(data-hint);
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    z-index: var(--z-hint);
-    padding: 3px 8px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-s);
-    background: var(--bg-3);
-    color: var(--text);
-    font: normal var(--fs-xs) var(--font);
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s;
-}
-
-.head-title [data-hint]::after {
-    right: auto;
-    left: 0;
-}
-
-[data-hint]:hover::after,
-[data-hint]:focus-visible::after { opacity: 1; }
-
-/* no hint while its menu is open (it would cover the box) */
-[data-hint][aria-expanded=true]::after { opacity: 0; }
-
 /* Teaser for first-time users below "you" (hidden for good by hideTeaser()) */
 #cta_teaser {
     position: absolute;
@@ -802,11 +751,6 @@ textarea.field {
 #cta_teaser::before { content: "^ "; }
 
 #cta_teaser.hidden { display: none; }
-
-/* touch screens cannot hover: no hints (labels and the menu say it all) */
-@media (hover: none) {
-    [data-hint]::after { content: none; }
-}
 
 /* reduced motion: the cursor stays on */
 @media (prefers-reduced-motion: reduce) {
@@ -835,7 +779,7 @@ textarea.field {
     #cmode_btn .lbl { display: none; }
 }
 
-/* medium screens: icons only (name via aria-label, explanation via hint) */
+/* medium screens: icons only (name via aria-label) */
 @media (min-width: 800px) and (max-width: 1179.98px) {
     .topnav-bar .lbl,
     #copy_link_btn .lbl { display: none; }
@@ -1060,7 +1004,7 @@ textarea.field {
 /* ---------- Topic note ---------- */
 
 /* console: a quoted block with a magenta bar; headings and bold text keep the topic color.
- * Large screens: in full length in the round panel (the panel scrolls). */
+ * Large screens: in the topic bar, long topics scroll inside it. */
 #topic {
     margin: 0;
     padding: 2px 0 2px 12px;
@@ -1068,6 +1012,17 @@ textarea.field {
     overflow-wrap: anywhere;
     color: var(--text);
     border-left: 3px solid var(--topic-color);
+}
+
+/* large screens: in the topic bar; long topics scroll inside it */
+.topic-bar #topic {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: var(--topic-pad) 0;
+    line-height: var(--topic-line);
+    max-height: min(25vh, 12rem); /* about 8 lines */
+    max-height: min(25dvh, 12rem);
+    overflow-y: auto;
 }
 
 #topic > :first-child { margin-top: 0; }
@@ -1079,12 +1034,12 @@ textarea.field {
 #topic h2,
 #topic h3 { color: var(--topic-color); }
 
-/* Phones in portrait: one line in the strip below the header; the arrow (or a tap) unfolds it */
-@media (max-width: 799.98px) and (min-height: 500.02px), (max-width: 799.98px) and (orientation: portrait) {
-    #topic {
+/* Phones (and short landscape screens): one line in the strip below the header; the arrow
+ * (or a tap) unfolds it */
+@media (max-width: 799.98px), (max-height: 500px) and (orientation: landscape) {
+    .topic-bar #topic {
         flex: 1;
-        min-width: 0;
-        margin-top: var(--space-2);
+        margin: var(--space-2) 0 0;
         padding: 4px 8px 4px 10px;
         line-height: 1.5;
         max-height: 1.5em; /* one line; also cuts off lines after a <br> */
@@ -1096,16 +1051,16 @@ textarea.field {
     }
 
     /* blocks run inline in the one-line view, so the ellipsis works */
-    .panel-topic[data-expanded=false] #topic :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre) {
+    .topic-bar[data-expanded=false] #topic :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre) {
         display: inline;
         margin: 0;
         padding: 0;
         font-size: inherit;
     }
 
-    .panel-topic[data-expanded=false] #topic :is(p, li, h1, h2, h3, h4, h5, h6)::after { content: " "; }
+    .topic-bar[data-expanded=false] #topic :is(p, li, h1, h2, h3, h4, h5, h6)::after { content: " "; }
 
-    .panel-topic[data-expanded=true] #topic {
+    .topic-bar[data-expanded=true] #topic {
         max-height: 40vh;
         max-height: 40dvh;
         overflow-y: auto;
@@ -1229,10 +1184,10 @@ div#cbox {
     }
 }
 
-/* ---------- New round button, stopwatch (round panel / dock) ---------- */
+/* ---------- New round button, stopwatch (.dock) ---------- */
 
 #newroundbtn {
-    width: 100%;
+    min-width: 12rem;
     min-height: var(--tap);
 }
 
@@ -1273,10 +1228,10 @@ div#cbox {
     color: var(--text-color);
 }
 
-@media (max-width: 799.98px) and (min-height: 500.02px), (max-width: 799.98px) and (orientation: portrait) {
+@media (max-width: 799.98px) {
     /* dock: stopwatch left, New Round right; sized so both fit in one row at 320px */
     #newroundbtn {
-        width: auto;
+        min-width: 0;
         margin-left: auto;
         padding: 0.2rem 0.6rem;
         font-size: var(--fs-m);

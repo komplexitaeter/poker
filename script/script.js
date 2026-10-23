@@ -815,7 +815,7 @@ function toggleTopic(event) {
     if (event.target.closest('a')) return; // links in the topic just open
     let expanded = button.getAttribute('aria-expanded') !== 'true';
     button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    button.closest('.panel-topic').setAttribute('data-expanded', expanded ? 'true' : 'false');
+    button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
 }
 
 function copyLink() {
@@ -961,8 +961,13 @@ function updateStopwatchInterval() {
 }
 
 function switchStopwatchVisiblity(){
+    // B-46: confirm the own click with a toast (others just see the stopwatch appear)
+    let switchingOn = document.getElementById("stopwatch_btn").getAttribute("aria-pressed") !== "true";
     let url = './api/timer.php?t=' +t + '&action=toggle_visibility';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{
+        pushDomChange();
+        showToast(switchingOn ? 'Stopwatch on \u2013 everyone on the board sees it' : 'Stopwatch off');
+    });
     measureEvent("TOGGLE_TIMER");
 }
 
