@@ -116,6 +116,7 @@ Abgeschlossen:
 | B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | neu |
 | B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
 | B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
+| B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -816,6 +817,12 @@ Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden ei
 Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-54 Feedback-Text ohne `encodeURIComponent()`
+Beim B-48-Review gefunden (Fred, 2026-10-23), schon vorher so: `feedback_submit()` in `script/script_feedback.js`
+hängt den Text als `'&text=' + fb_text` an die URL. Mit `&` oder `#` im Feedback kommt der Text abgeschnitten an.
+Fix: `encodeURIComponent()` (Konvention aus CLAUDE.md). Klein (Fred). Ebenso: „Delete User“ ist ein `<a>` ohne
+`href` und per Tastatur nicht erreichbar → `<button>` im Link-Stil (mit B-51 erledigen).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
