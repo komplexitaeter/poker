@@ -89,6 +89,15 @@ function require_post() {
     }
 }
 
+/*
+ * Maps a stored pok_teams_tbl.results_order to the values the app still knows (B-42): NAME or SEQUENCE.
+ * Legacy CHOOSE:* values (the removed in-game choice; live data only ever had CHOOSE:SEQUENCE) and anything
+ * unexpected become SEQUENCE, the default for new teams.
+ */
+function normalize_results_order($results_order) {
+    return $results_order === 'NAME' ? 'NAME' : 'SEQUENCE';
+}
+
 function sort_players_by_sequence(array $players)
 {
     $ret_val = array();
@@ -252,7 +261,8 @@ function getDao($t, $id) {
         $timer_time = $obj->timer_time;
         $timer_visibility = $obj->timer_visibility;
         $topic = $obj->topic;
-        $results_order = $obj->results_order;
+        /* B-42: CHOOSE:* (in-game choice, removed) is treated as SEQUENCE until the data update has run */
+        $results_order = normalize_results_order($obj->results_order);
         $show_avg = (int)$obj->show_avg;
         $anonymous_mode = (int)$obj->anonymous_mode;
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
@@ -372,7 +382,7 @@ function getDao($t, $id) {
 
     }
 
-    if ($all_players_ready and (substr_count($results_order, 'SEQUENCE')>0 or $anonymous_mode == 1 ))
+    if ($all_players_ready and ($results_order === 'SEQUENCE' or $anonymous_mode == 1 ))
         $players = sort_players_by_sequence($players);
 
     for ($i=0;$i<count($players);$i++) {

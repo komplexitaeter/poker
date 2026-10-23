@@ -11,7 +11,6 @@ let gTopic = null;
 let gCardsConfig = null;
 let gCardsPresets = null;
 let gSurvey = null;
-let gResultOder = 'NAME';
 let gAllPlayersReady = false;
 let gLastJson = null;
 let gJsonBefore = null;
@@ -215,29 +214,6 @@ function updateDao(isOnLoad) {
             }
 
         });
-}
-
-function updateOrderByButtons(results_order, allPlayersReady, anonymousMode) {
-    let order_by_switch = document.getElementById("order_by_switch");
-    let orderByDiv = document.getElementById("order_by_div");
-
-        if (results_order.includes('CHOOSE') && !anonymousMode) {
-            if (allPlayersReady) {
-                if (results_order.includes('SEQUENCE')) {
-                    toggleStyleClass(order_by_switch, "by_value","by_name");
-                } else {
-                    toggleStyleClass(order_by_switch, "by_name","by_value");
-                }
-                toggleStyleClass(orderByDiv, "display_flex","display_none");
-            } else {
-                toggleStyleClass(orderByDiv, "display_none","display_flex");
-            }
-        } else {
-            toggleStyleClass(orderByDiv, "display_none","display_flex");
-        }
-
-
-    gResultOder = results_order;
 }
 
 /* B-41: The cards are laid out by CSS (#cbox is a centered flex-wrap container),
@@ -547,11 +523,9 @@ function updateDom(myJson, isOnLoad) {
 
 
     controlsDsp(myJson.player_type);
-    updateOrderByButtons(myJson.results_order
-                        , myJson.all_players_ready && myJson.players.length>0
-                        , myJson.anonymous_mode);
     updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
-    updateOrderByConfig(myJson.results_order);
+    updateOrderByConfig(myJson.results_order
+                        , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
 
     activateJediMode(myJson.show_avg);
@@ -1005,16 +979,30 @@ function stopwatchReset(){
 }
 
 
-function updateOrderByConfig(resultsOrder) {
+/* B-42: The sort order is only set in the menu (Card value = SEQUENCE, Player name = NAME).
+ * Legacy values like 'CHOOSE:SEQUENCE' (before the data update) are shown as Card value.
+ * In anonymous mode the server always arranges revealed cards by card value, so the
+ * select is disabled and shows "Card value", whatever is stored; a hint explains why.
+ * Nothing is sent to the API: the stored value stays and shows up again as soon as
+ * anonymous mode is switched off. This already applies when anonymous mode is
+ * requested for the next round, so it reacts as soon as "Hide names" is chosen.
+ * The hint is only referenced via aria-describedby while it is visible. */
+function updateOrderByConfig(resultsOrder, anonymousMode) {
     let dropDown = document.getElementById("cet_order_by");
-    let order = resultsOrder;
+    let hint = document.getElementById("cet_order_by_hint");
+    let order = (resultsOrder === 'NAME' && !anonymousMode) ? 'NAME' : 'SEQUENCE';
 
-    if (resultsOrder.includes('CHOOSE')) {
-        order = 'CHOOSE';
+    if (dropDown.value !== order) {
+        dropDown.value = order;
     }
 
-    if (dropDown.value !== resultsOrder ) {
-        dropDown.value = order;
+    dropDown.disabled = anonymousMode;
+    if (anonymousMode) {
+        toggleStyleClass(hint, "display_block", "display_none");
+        dropDown.setAttribute("aria-describedby", "cet_order_by_hint");
+    } else {
+        toggleStyleClass(hint, "display_none", "display_block");
+        dropDown.removeAttribute("aria-describedby");
     }
 }
 
@@ -1081,17 +1069,6 @@ function loadCardConfig() {
 
 function getCardConfig(cardKey) {
     return gCardsConfig.find(card => card.card_key === cardKey);
-}
-
-function toggleOrderBy() {
-    let url = './api/update_results_order.php?t='+t+'&results_order=';
-    if (gResultOder === 'CHOOSE:SEQUENCE') {
-        url += 'CHOOSE:NAME';
-        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    } else if (gResultOder === 'CHOOSE:NAME') {
-        url += 'CHOOSE:SEQUENCE';
-        fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    }
 }
 
 // Load JSON text from server hosted file and return JSON parsed object

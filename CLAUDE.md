@@ -138,7 +138,9 @@ tests/e2e/setup.sh stop
 ```
 
 `setup.sh` kopiert die App mit einer eigenen `config.php` nach `$E2E_DIR/www`; nach Änderungen an der App erneut
-`start` aufrufen. Abgedeckt sind: Team anlegen, Beitreten mehrerer Spieler, Karte legen, Aufdecken, neue Runde,
+`start` aufrufen. **Immer nur eine E2E-Instanz gleichzeitig:** Alle Instanzen teilen die DB `pok_e2e` und den
+poker-msg-Port 8443, auch mit anderem `E2E_DIR`/`E2E_PORT`. Ein zweites `start` setzt die DB eines laufenden Testlaufs
+zurück. Agenten deshalb nicht parallel testen lassen. Abgedeckt sind: Team anlegen, Beitreten mehrerer Spieler, Karte legen, Aufdecken, neue Runde,
 Kartenset wechseln. CDN-Skripte liefern die Tests aus npm-Paketen gleicher Version aus; Analytics wird blockiert.
 Details zum Schreiben von Tests: `.claude/agents/e2e-tester.md`.
 
