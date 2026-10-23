@@ -296,26 +296,23 @@ function updateCards(cardsDiv, players) {
 }
 
 function createCardDiv(player, playersCount, isOnLoad) {
-    // size class right away, so the new card has its final size when the layout is measured
-    const sizeClass = (gDisplayType === "xs" || gDisplayType === "sm") ? 'mobile' : 'desktop';
-
     let newCard = document.createElement('div');
     newCard.id = player.mkey;
-    newCard.classList.add('c', 'sizefit', sizeClass);
+    newCard.classList.add('c');
     if (!isOnLoad && playersCount>1) newCard.classList.add('c_fade-in');
 
     let cardImg = document.createElement('img');
-    cardImg.classList.add('background', 'sizefit', sizeClass, 'card_image');
+    cardImg.classList.add('background', 'card_image');
     cardImg.src = 'src/c_' + player.display_card_key + '.png';
     newCard.appendChild(cardImg);
 
     let cardSpan = document.createElement('span');
-    cardSpan.classList.add('sizefit', sizeClass, 'card_player_name');
+    cardSpan.classList.add('card_player_name');
     cardSpan.innerText = player.name;
     newCard.appendChild(cardSpan);
 
     let cardDeleteImg = document.createElement('img');
-    cardDeleteImg.classList.add('delete', 'sizefit', sizeClass);
+    cardDeleteImg.classList.add('delete');
     cardDeleteImg.src = "./src/delete.png";
     cardDeleteImg.alt = "Delete";
     cardDeleteImg.onclick = deletePlayer;
@@ -509,7 +506,6 @@ function updateDom(myJson, isOnLoad) {
     if (!isOnLoad) {
         if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
             /* returns true when new cards have been added */
-            adaptToDevice();
             setColor();
         }
     }
@@ -541,7 +537,6 @@ function updateDom(myJson, isOnLoad) {
         }
 
         document.body.style.opacity = '1';
-        adaptToDevice();
 
         if (myJson.needs_setup) toggle_box('cset');
 
@@ -764,7 +759,7 @@ function loadInit() {
 function measureEvent(eventCode) {
     const url = "./api/measure_event.php?id="+sid
             +"&event_code="+eventCode
-            +"&display_type="+gDisplayType;
+            +"&display_type="+getBrowserWidth();
     fetch(url, { method: 'POST' }).then();
 }
 
@@ -805,7 +800,8 @@ function switchColorMode(){
 function toggleMobileMenu(target_state){
     let menu = document.getElementById("mobile-menu");
     let newroundbtn = document.getElementById("newroundbtn");
-    if(menu.getAttribute('data-state') !== target_state && (getBrowserWidth() === "xs" || getBrowserWidth() === "sm")){
+    // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
+    if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
         menu.setAttribute('data-state', target_state);
         newroundbtn.setAttribute('data-state', target_state);
     }
@@ -870,21 +866,6 @@ function hideTeaser(updateUser=true) {
     }
 
     addStyleClass(e, "hidden");
-}
-
-function adaptToDevice() {
-    let size = getBrowserWidth();
-    if (size === "xs" || size === "sm") {
-        Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
-            e.classList.add("mobile");
-            e.classList.remove("desktop");
-        });
-    } else {
-        Array.from(document.getElementsByClassName("sizefit")).forEach(e => {
-            e.classList.add("desktop");
-            e.classList.remove("mobile");
-        });
-    }
 }
 
 function updateStopwatch(timer_status, timer_time, timer_visibility){
@@ -1040,7 +1021,6 @@ function loadCardConfig() {
         cardElement.id = card.card_key;
         cardElement.src = "src/c_" + card.card_key + ".png";
         cardElement.classList.add("ctl");
-        cardElement.classList.add("sizefit");
         cardElement.alt = card.description;
         ctl.appendChild(cardElement);
 
@@ -1051,7 +1031,6 @@ function loadCardConfig() {
         thumbElement.src = "src/c_" + card.card_key + ".png";
         thumbElement.classList.add("topnav");
         thumbElement.classList.add("cs_c");
-        thumbElement.classList.add("sizefit");
         thumbElement.alt = card.description;
         thumbElement.addEventListener("click", toggleCSet);
         cardsThumbs.appendChild(thumbElement);
@@ -1122,12 +1101,10 @@ function handleResize() {
     const cbox = document.getElementById('cbox');
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
-    adaptToDevice();
     showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
 }
 
 function initDisplayHandling() {
-    adaptToDevice();
     window.addEventListener('resize', handleResize);
 }
 
@@ -1302,7 +1279,7 @@ function getBrowserLanguage() {
 
 function getPromo() {
     if (getBrowserLanguage().startsWith('de') && !gPromoInitiated) {
-        fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + gDisplayType, { method: 'POST' })
+        fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + getBrowserWidth(), { method: 'POST' })
             .then(response => response.json())
             .then(promoData => {
                 initPromo(

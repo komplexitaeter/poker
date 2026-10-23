@@ -5,7 +5,6 @@ function toggleTopnav(e) {
         toggle_feedback_box(false);
         toggle_topic_box(false);
         toggle_cardset_box(false);
-        toggle_info_box(false);
         toggle_user_settings_box(false);
     }
 }
@@ -31,7 +30,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(true);
             toggle_topic_box(false);
             toggle_cardset_box(false);
-            toggle_info_box(false);
             toggle_user_settings_box(false);
             measureEvent("OPEN_FEEDBACK_BOX");
         }
@@ -39,7 +37,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(false);
-            toggle_info_box(false);
             toggle_user_settings_box(false);
         }
     }
@@ -49,7 +46,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_topic_box(true);
             toggle_cardset_box(false);
-            toggle_info_box(false);
             toggle_user_settings_box(false);
             measureEvent("OPEN_TOPIC_BOX");
         }
@@ -57,7 +53,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(false);
-            toggle_info_box(false);
             toggle_user_settings_box(false);
         }
     }
@@ -72,7 +67,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(true);
-            toggle_info_box(false);
             toggle_user_settings_box(false);
             measureEvent("OPEN_SETUP_BOX");
         }
@@ -80,25 +74,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(false)
-            toggle_info_box(false);
-            toggle_user_settings_box(false);
-        }
-    }
-    if (boxName === 'info') {
-        let e = document.getElementById('info_box');
-        if (e.style.display === '' || e.style.display === null || e.style.display === 'none') {
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(false);
-            toggle_info_box(true);
-            toggle_user_settings_box(false);
-            measureEvent("OPEN_INFO_BOX");
-        }
-        else {
-            toggle_feedback_box(false);
-            toggle_topic_box(false);
-            toggle_cardset_box(false);
-            toggle_info_box(false);
             toggle_user_settings_box(false);
         }
     }
@@ -112,7 +87,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(false);
-            toggle_info_box(false);
             toggle_user_settings_box(true);
             measureEvent("OPEN_USER_SETTINGS_BOX");
         }
@@ -120,7 +94,6 @@ function toggle_box(boxName) {
             toggle_feedback_box(false);
             toggle_topic_box(false);
             toggle_cardset_box(false);
-            toggle_info_box(false);
             toggle_user_settings_box(false);
         }
     }
@@ -214,24 +187,6 @@ function toggle_cardset_box(setOn) {
             e.style.display = 'none';
             document.getElementById('cset_btn').classList.remove('topnav_btn_on');
             document.getElementById('cset_btn').src = 'src/cset.svg';
-        }
-    }
-}
-
-function toggle_info_box(setOn) {
-    let e = document.getElementById('info_box');
-    if (e !== null) {
-        if (setOn) {
-            e.style.display = 'block';
-            document.getElementById('info_btn').classList.add('topnav_btn_on');
-            document.getElementById('info_btn').src = 'src/info_on.png';
-        }
-        else {
-            if (document.getElementById('info_btn').classList.contains("topnav_btn_on")) {
-                e.style.display = 'none';
-                document.getElementById('info_btn').classList.remove('topnav_btn_on');
-                document.getElementById('info_btn').src = 'src/info.png';
-            }
         }
     }
 }
