@@ -93,7 +93,7 @@ Abgeschlossen:
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt (release) |
-| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | neu |
+| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | refined |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -706,8 +706,44 @@ Andreas möchte die Konfiguration userfreundlicher machen. Erster Kandidat: die 
 2. Umschalter Name/Wert für alle direkt aufs Board, Eintrag im Menü entfällt – Gestaltungsfrage für B-40 (Delia),
    mehr Platzbedarf unter den Karten.
 
-Offene Fragen: Welche Option? Weitere Konfigurationspunkte gleich mit analysieren (z. B. Anonym-Modus, Durchschnitt,
-Timer)?
+**Refined (2026-10-23, Andreas, nach UX-Einschätzung von Delia): Option 1.**
+- Begründung (Andreas, Delia): Die Sortierung ist eine Rahmenbedingung, die man einmal festlegt, keine Spielhandlung.
+  Auf dem Board stehen nur Dinge, die man jede Runde tut; die Leiste nimmt Platz und Aufmerksamkeit genau dort, wo nach
+  dem Aufdecken alle hinschauen, und wird nie bedient. Ob nach Karte oder Name sortiert wird, hängt vom Spielkontext ab
+  (Schätzen → Karte; z. B. Emotionskarten als Stimmungsumfrage → Name, Reihenfolge bleibt stabil).
+- **Kein automatischer Standard je Kartenset** (wäre „versteckte Magie“, z. B. für Teams, die bewusst „nach Name“
+  gewählt haben). Stattdessen steht die Einstellung direkt unter der Kartenset-Auswahl, damit man beides zusammen sieht.
+  Später denkbar (eigener Eintrag, nur wenn Daten es tragen): beim Kartenset-Wechsel einmal vorschlagen statt umstellen.
+
+**Zuschnitt:**
+- „Define the sort order in-game“ (`CHOOSE`) entfällt, ebenso die Name/Value-Leiste nach dem Aufdecken.
+- Einstellung im Menü, **direkt unter der Kartenset-Auswahl**: Beschriftung „Arrange revealed cards by“, zwei Optionen
+  **„Card“** (`SEQUENCE`, Standard) und **„Player name“** (`NAME`). Für B-42 reicht das bestehende `<select>`; ein
+  Segment-Schalter fürs ganze Menü kommt mit B-40.
+- **Anonym-Modus:** Dort wird nach dem Aufdecken immer nach Karte sortiert (`api/lib.php`, Zeile ~375), „Player name“
+  greift also nicht. Die Option „Player name“ im Anonym-Modus ausgrauen bzw. mit kurzem Hinweis versehen (Text Delia),
+  damit die Einstellung nicht kaputt wirkt.
+- Bestehende Teams: `CHOOSE:*` → `SEQUENCE` (die 5 Teams sehen dieselbe Reihenfolge wie bisher, nur ohne Leiste).
+  `NAME`-Teams unverändert. Rundenhistorie (`pok_roundstats_tbl`) bleibt unangetastet.
+
+**Umsetzungsplan:**
+- **Ben (BE):** `api/update_results_order.php` nimmt nur noch `NAME` und `SEQUENCE` an (Rest → 400), `CHOOSE`-Logik
+  raus. `getDao()` liefert gespeicherte `CHOOSE:*` bis zum Daten-Update robust als `SEQUENCE` aus. SQL für den
+  Betreiber (in `db_schema_pok_inc.sql` dokumentieren, Andreas spielt es nach dem Deploy ein):
+  `update pok_teams_tbl set results_order = 'SEQUENCE' where results_order like 'CHOOSE%';` (vorher Anzahl zählen).
+  Spaltenkommentar von `results_order` auf `[NAME|SEQUENCE]` anpassen.
+- **Fred (FE):** Leiste `#order_by_div` samt `updateOrderByButtons`/`toggleOrderBy` und `CHOOSE`-Zweige in
+  `script.js` entfernen; Menü-Logik (`updateOrderByConfig`, `changeSortOrder`) auf zwei Werte; Anonym-Hinweis
+  (Ausgrauen/Hinweis abhängig von `anonymous_mode`) anbinden. `?v=`-Bumps.
+- **Delia (DES):** Beschriftung, Reihenfolge im Menü (unter Kartenset), Hinweistext und Optik des ausgegrauten
+  Zustands; CSS der Leiste entfernen.
+- **E2E:** Einstellung „Player name“ sortiert nach Name, „Card“ nach Karte; keine Leiste mehr nach dem Aufdecken;
+  Anonym-Modus zeigt den Hinweis und sortiert nach Karte; API lehnt `CHOOSE` ab.
+
+**AK:** Menü zeigt unter dem Kartenset „Arrange revealed cards by“ mit „Card“ / „Player name“, Standard „Card“; nach
+dem Aufdecken keine Name/Value-Leiste mehr; Umstellen im Menü sortiert die aufgedeckten Karten sofort um (Gleiten wie
+bei B-41); im Anonym-Modus ist „Player name“ ausgegraut bzw. erklärt; API nimmt nur `NAME`/`SEQUENCE`; nach dem
+Daten-Update keine `CHOOSE`-Werte mehr in `pok_teams_tbl`; E2E grün.
 
 ### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
 **Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
