@@ -87,7 +87,7 @@ Abgeschlossen:
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
 | B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
 | B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
-| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | im Sprint (Nachfix) |
+| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | erledigt (release) |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -674,6 +674,8 @@ Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nut
 - Beim B-42-Review gefunden (Delia, 2026-10-23), mit erledigen: Menü-Label „Set players transparency (only **effects**
   new rounds)“ → „affects“; bei 320 px Breite überlappt das Schloss-Icon den Text von „Show average“, und „Hide names on
   results (anonymous)“ wird abgeschnitten.
+  Außerdem (Delia): Beim Sortier-Hinweis steht auf Desktop das letzte Wort „value.“ allein in der zweiten Zeile
+  (z. B. `text-wrap: pretty`).
 
 ### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
 Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
