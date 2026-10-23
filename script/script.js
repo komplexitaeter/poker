@@ -538,7 +538,7 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
 
-        if (myJson.needs_setup) toggle_box('cset');
+        if (myJson.needs_setup) toggle_box('cset', false);
 
         updateDao(false);
     }
@@ -687,6 +687,10 @@ function loadBoard() {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
         }
+        // Escape closes the phone menu, unless it just closed a menu box (script_feedback.js)
+        if (event.key === 'Escape' && !event.defaultPrevented) {
+            toggleMobileMenu('closed');
+        }
     });
 }
 
@@ -765,27 +769,16 @@ function measureEvent(eventCode) {
 
 
 function setColor() {
-    let toggleImg = document.getElementById("cmode_btn");
+    // the color mode button (#cmode_btn) shows moon/sun via CSS (body.light-theme)
     let brandImg = document.getElementById("brand");
 
-
     if (gColorMode === "dark") {
-        toggleImg.src = "./src/toggle_light.svg";
         brandImg.src = "./src/brand_dark.svg";
         document.body.classList.remove('light-theme');
     } else {
-        toggleImg.src = "./src/toggle_dark.svg";
         brandImg.src = "./src/brand_light.svg";
         document.body.classList.add('light-theme');
     }
-
-    Array.from(document.getElementsByClassName("switchable")).forEach(element => {
-        if (gColorMode === "dark") {
-            element.classList.remove("light");
-        } else {
-            element.classList.add("light");
-        }
-    });
 }
 
 function switchColorMode(){
@@ -802,8 +795,17 @@ function toggleMobileMenu(target_state){
     let newroundbtn = document.getElementById("newroundbtn");
     // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
     if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
+        let opener = menu.querySelector('.open_menu');
+        let focusInside = menu.contains(document.activeElement);
         menu.setAttribute('data-state', target_state);
         newroundbtn.setAttribute('data-state', target_state);
+        opener.setAttribute('aria-expanded', target_state === 'open' ? 'true' : 'false');
+        if (target_state === 'open') {
+            menu.querySelector('.topnav-bar .icon-btn').focus();
+        } else if (focusInside) {
+            // the focused button disappears with the panel
+            opener.focus();
+        }
     }
 }
 
@@ -901,10 +903,12 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
     switch(timer_visibility){
         case 0:
             addStyleClass(document.getElementById("stopwatch"),"display_none");
+            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "false");
         break;
 
         case 1:
             removeStyleClass(document.getElementById("stopwatch"),"display_none");
+            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "true");
         break;
 
         default:
@@ -1257,7 +1261,10 @@ function showConfetty(playersCount) {
 
 function showDeleteUserOverlay(openIt=true) {
     let overlayDiv= document.getElementById('overlay_delete_user');
-    if (openIt) removeStyleClass(overlayDiv, 'hidden')
+    if (openIt) {
+        closeTopnavBoxes(); // the "You" box stays open otherwise (its links count as topnav)
+        removeStyleClass(overlayDiv, 'hidden');
+    }
     else addStyleClass(overlayDiv, 'hidden');
 }
 
