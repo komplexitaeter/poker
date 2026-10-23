@@ -918,6 +918,15 @@ geschnitten):
   den Platz – das nervt. Layout so umbauen, dass diese Elemente den Kartenbereich nicht verdrängen (z. B. eigene
   Zonen/Leiste, Overlay, oder Karten-Bereich bekommt verlässlich seinen Raum).
 
+- **Spieler entfernen ohne Lösch-Icon auf jeder Karte** (Andreas: heute schlechte UX; Ideen von Delia, 2026-10-23):
+  1. Spieler-Liste im Menü („Players“) mit Name, Status (aktiv / inaktiv seit …), Rolle und „Remove“ mit Rückfrage –
+     Delias Empfehlung als Basis (Karten bleiben ruhig, gut mit Touch/Tastatur; Ben müsste „inaktiv seit“ liefern).
+  2. Karte antippen/anklicken öffnet ein kleines Kontextmenü („Remove from table“, später z. B. „Make observer“) –
+     optional als Ergänzung (muss entdeckbar sein).
+  3. Inaktive Spieler blasser darstellen und nur dort „Remove?“ anbieten – als visuelle Hilfe zu 1 (braucht ein
+     verlässliches Aktivitätssignal, Ben/Fred).
+  Bis dahin bleibt das Icon (B-36: auf Touch-Geräten immer sichtbar, sonst bei Hover).
+
 Hinweis: Überschneidet sich mit B-37 (Responsive per CSS) – das Responsive-Fundament ist Teil dieses Themas. Vor
 Umsetzung je Punkt eine REQ-artige Schärfung (Ziel, Umfang, Akzeptanzkriterien) und Schnitt in kleine, einzeln
 deploybare Schritte; Verhalten/Datenmodell nur ändern, wo ausdrücklich gewollt (z. B. Karten-Beschriftungen und
