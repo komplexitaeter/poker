@@ -889,6 +889,12 @@ Code-Analyse + numerischer Simulation von `getCardPos` über einen Breiten-Sweep
 Optionaler Mini-Hygiene-Gewinn (kein B-41-Fix, entfernt das Wobbeln NICHT): `requestAnimationFrame`-Coalescing des
 Resize-Handlers (max. ein Reposition pro Frame) – bei der B-40-Umstellung mitnehmen.
 
+**Entscheidung Anonym-Modus (Andreas, 2026-10-23):** Im Anonym-Modus gleiten die Karten grundsätzlich nicht (so war es
+schon vor B-41: `c_move` wurde entfernt; heute `flip = !anonymousMode` in `updatePlayersCards`). Grund: Beim Aufdecken
+werden die Namen durch `******` ersetzt und nach Wert sortiert; eine Gleitbewegung würde verraten, wer welchen Wert
+gewählt hat – ebenso beim Ändern einer Karte nach dem Aufdecken. Eine Verfeinerung (nur bei Aufdecken/neuer Runde
+abschalten) wurde bewusst verworfen: so ist es einfacher und sicherer.
+
 ### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
 Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).
 Ziel: Oberfläche modernisieren und mobil deutlich verbessern – **ohne den bestehenden Charme der App zu verlieren**.
@@ -904,7 +910,8 @@ geschnitten):
 - **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
 - **Kartenziffern modernisieren.**
 - **„Karte nach dem Aufdecken geändert"**: als zusätzliche Karte dargestellt, die auf die erste gelegt wird, wobei
-  der ursprüngliche Wert noch erkennbar bleibt.
+  der ursprüngliche Wert noch erkennbar bleibt. **Im Anonym-Modus deaktivieren** (Andreas, 2026-10-23): sonst ließe
+  sich über die geänderte Karte zuordnen, wer welchen Wert gewählt hat.
 - **Kartenauswahl für Mobile deutlich verbessern.**
 - **Mobile-Darstellung allgemein deutlich verbessern.**
 - **Platz-Konkurrenz auflösen:** Timer, Notiz-/Topic-Zettel, „Neue Runde"-Knopf u. a. konkurrieren mit den Karten um
