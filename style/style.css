@@ -1,14 +1,10 @@
 /* Agile Poker stylesheet – "console" look (Sprint 8, B-48/B-50).
  * One breakpoint: small screens (phones) up to 799.98px, large screens from 800px
- * (mirrored in script/script_feedback.js, gPhoneQuery). Monospace type, flat surfaces,
+ * (mirrored in script/script.js, toggleMobileMenu). Monospace type, flat surfaces,
  * small radii; colors come from the tokens below (dark = default, light = body.light-theme).
  * Board page grid (B-46): see "Board layout". Short landscape screens (max-height: 500px)
  * get the phone topic strip as well.
- * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens".
- * Menus (B-51): one panel (#menu, a <dialog>) – side panel on large screens, bottom sheet on
- * phones; see "Menu panel". Overlays and the survey share its look.
- * Console decorations in generated content ("// ", "$ ", "→") carry an empty alternative text
- * (content: "…" / ""), so screen readers do not read them as part of a name. */
+ * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens". */
 
 /* ---------- Tokens ---------- */
 
@@ -23,17 +19,18 @@
     --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
     --fs-xl: 1.125rem;    /* 18px: stopwatch display */
     /* stacking order (lowest first) */
-    --z-raised: 1;        /* small things above their neighbours */
-    --z-nav: 10;          /* header, above the table */
+    --z-raised: 1;        /* small things above their neighbours, open phone menu */
+    --z-burger: 2;
+    --z-nav: 10;          /* header incl. its menu boxes, above the table */
     --z-promo: 100;
-    --z-panel: 200;       /* menu panel (large screens; phones: top layer of the modal dialog) */
-    --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
-    --z-overlay: 301;     /* full screen overlays (name input, delete user), the large QR code */
+    --z-toast: 250;       /* short messages (showToast), above the deck and open menus */
+    --z-menu: 200;        /* menu boxes (inside the header stacking context) */
+    --z-scrim: 300;       /* QR code backdrop */
+    --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
     /* shapes */
     --radius-s: 3px;      /* small tiles, tooltips */
     --radius-m: 4px;      /* fields, buttons, topnav buttons */
-    --radius-l: 6px;      /* panels, overlay cards */
-    --radius-sheet: 12px; /* top corners of the phone bottom sheet */
+    --radius-l: 6px;      /* menu boxes, panels */
     --radius-card: 15px;  /* playing cards: matches the corners of the card images */
     --radius-pill: var(--radius-m); /* buttons (formerly pills) */
     /* spacing */
@@ -43,8 +40,6 @@
     --space-4: 2rem;
     /* minimum size of a header button; larger on touch screens */
     --tap: 36px;
-    /* width of the menu panel on large screens */
-    --panel-w: 380px;
 }
 
 @media (pointer: coarse) {
@@ -72,7 +67,6 @@ body {
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
     --survey-voted_background: rgba(0, 0, 0, 0.67);
-    --scrim: rgba(0, 0, 0, 0.6);  /* backdrop behind the phone menu and the overlays */
 }
 
 body.light-theme {
@@ -95,7 +89,6 @@ body.light-theme {
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
     --survey-voted_background: rgba(255, 255, 255, 0.67);
-    --scrim: rgba(40, 40, 40, 0.45);
 }
 
 /* Former token names, kept as aliases so the rest of the sheet (and script.js, which uses
@@ -280,43 +273,35 @@ textarea.field {
     box-shadow: 0 0 8px 2px var(--focus-ring);
 }
 
-/* Primary and destructive variants (menu panel, overlays) */
-.btn.primary,
-.btn-box.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
-    font-weight: bold;
+/* Menu box (topic, feedback, setup, user settings), opened by JS (style.display).
+ * Hangs below the header, right-aligned to the button bar (small screens: see below). */
+.menu_box {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    padding-bottom: var(--space-3);
+    border: 1px solid var(--primary-border-color);
+    border-radius: var(--radius-l);
+    background: var(--light-background);
+    box-shadow: 0 8px 24px var(--shadow-color);
+    text-align: center; /* the header itself is left-aligned */
+    display: none;
+    z-index: var(--z-menu);
+    /* the board page does not scroll (B-46): a long box scrolls itself */
+    max-height: calc(100vh - 70px);
+    max-height: calc(100dvh - 70px);
+    overflow-y: auto;
 }
 
-.btn.primary:enabled:hover,
-.btn-box.primary:enabled:hover {
-    color: var(--on-accent);
-    filter: brightness(1.1);
+.topnav label {
+    display: block;
+    margin: var(--space-3) 0 0.1rem 1.5rem;
+    font-size: var(--fs-s);
+    color: var(--switch-color);
+    text-align: left;
 }
 
-.btn.primary:disabled,
-.btn-box.primary:disabled {
-    background: transparent;
-    border-color: var(--disabled);
-    color: var(--disabled);
-    font-weight: normal;
-    filter: none;
-}
-
-.btn-box.danger {
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
-.btn-box.danger:enabled:hover {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: var(--bg);
-}
-
-/* Full screen overlays (name input, delete user): a backdrop with a card in the
- * middle, in the look of the menu panel (B-51). Shown/hidden with .visible/.hidden (script.js). */
+/* Full screen overlay with a column of content (name input, delete user) */
 .overlay {
     position: absolute;
     top: 0;
@@ -331,73 +316,22 @@ textarea.field {
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    box-sizing: border-box;
-    padding: max(48px, 8vh) var(--space-3) var(--space-3);
-    background: var(--scrim);
-    overflow-y: auto;
+    background-color: var(--background-color);
+    opacity: 96%;
 }
-
-/* the name input comes first on a new board: the backdrop hides the board almost fully */
-#overlay_name_input { background: color-mix(in srgb, var(--bg) 92%, transparent); }
-
-.overlay_card {
-    box-sizing: border-box;
-    width: min(26rem, 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: var(--space-3) var(--space-3) 20px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-l);
-    background: var(--bg-2);
-    box-shadow: 0 12px 32px var(--shadow-color);
-    text-align: left;
-}
-
-/* the card title in the panel's heading style: "// join the board" */
-.overlay_title {
-    align-self: stretch;
-    margin: 0 0 var(--space-3);
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--line);
-    font-size: var(--fs-l);
-}
-
-.overlay_title::before {
-    content: "// " / "";
-    color: var(--line-strong);
-    font-weight: normal;
-}
-
-.overlay_card > .lab { align-self: stretch; }
-
-.overlay_text {
-    margin: 0 0 var(--space-3);
-    line-height: 1.5;
-}
-
-.overlay_card > .row { align-self: stretch; }
 
 .overlay_msg {
-    margin: 0 0 var(--space-3);
-    line-height: 1.5;
+    margin: var(--space-4) 0;
+    width: 450px;
 }
-
-.overlay_msg h1 {
-    margin: 0 0 var(--space-2);
-    font-size: var(--fs-l);
-    color: var(--topic-color);
-}
-
-/* removed from the table: the message instead of the name input (script.js hides #nameinput) */
-.overlay_card:has(#nameinput.display_none) > .lab { display: none; }
 
 /* one column for the name input and the choices; wide enough for "Participate as a Player"
- * in the monospace font (23 characters) */
+ * in the monospace font (23 characters), never wider than the screen */
 .overlay_panel .btn,
 #nameinput {
     box-sizing: border-box;
-    width: 100%;
+    width: 18rem;
+    max-width: calc(100% - 2 * var(--space-3));
 }
 
 .overlay_panel .btn {
@@ -411,14 +345,25 @@ textarea.field {
     .btn-box {
         font-size: var(--fs-l);
         padding: var(--space-2) var(--space-3);
+        margin: var(--space-3) 0;
     }
 
     /* 16px keeps iOS from zooming into the field */
     .field { font-size: var(--fs-l); }
 
-    .overlay_panel { padding-top: 24px; }
+    .menu_box {
+        right: 2.5%;
+        width: 95%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
 
-    .overlay_panel .btn { min-height: 3rem; }
+    .overlay_msg { width: 65%; }
+
+    .overlay_panel .btn {
+        min-height: 3rem;
+        margin-bottom: var(--space-3);
+    }
 }
 
 /* ---------- Start page ---------- */
@@ -521,7 +466,7 @@ textarea.field {
 }
 
 .topic-label::before {
-    content: "// " / "";
+    content: "// ";
     color: var(--line-strong);
 }
 
@@ -631,7 +576,9 @@ textarea.field {
 
 /* ---------- Header: logo, prompt with team name, topnav buttons ---------- */
 
-/* One flex row on board and start page */
+/* One flex row on board and start page. Large screens: the header is the anchor of the menu
+ * boxes. Small screens (board): it stays static, so the open burger menu and the boxes are
+ * placed in .container. */
 .head {
     position: relative;
     z-index: var(--z-nav);
@@ -758,11 +705,14 @@ textarea.field {
 
 /* label in vim command style: ":topic" */
 .topnav-bar .lbl::before {
-    content: ":" / "";
+    content: ":";
     color: var(--muted);
 }
 
 .topnav_btn_bling { transform: scale(1.3); }
+
+#copy_link_btn { color: var(--muted); }
+#copy_link_btn:hover { color: var(--accent); }
 
 /* color mode: moon in dark mode, sun in light mode */
 #cmode_btn .i-sun,
@@ -802,34 +752,44 @@ textarea.field {
 
 #cta_teaser.hidden { display: none; }
 
-/* not over an open menu panel (B-51) */
-.container:has(> .menu[open]) #cta_teaser { display: none; }
-
 /* reduced motion: the cursor stays on */
 @media (prefers-reduced-motion: reduce) {
     .cursor { animation: none; }
 }
 
-/* ---------- Header: shortcuts (large screens), menu button (phones) ---------- */
+/* ---------- Header: topnav buttons and burger menu ---------- */
 
-.topnav-bar {
-    display: flex;
-    align-items: center;
-    gap: 2px;
+.open_menu,
+.close-menu { display: none; }
+
+@media (min-width: 800px) {
+    .mobile-menu {
+        position: relative; /* anchor of the menu boxes */
+        display: flex;
+        align-items: center;
+    }
+
+    .topnav-bar {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    /* the color mode label is for the phone menu only */
+    #cmode_btn .lbl { display: none; }
 }
-
-/* the color mode button has no label */
-#cmode_btn .lbl { display: none; }
-
-/* the menu button is for phones only */
-.menu-btn { display: none; }
 
 /* medium screens: icons only (name via aria-label) */
 @media (min-width: 800px) and (max-width: 1179.98px) {
-    .container .topnav-bar .lbl { display: none; }
+    .topnav-bar .lbl,
+    #copy_link_btn .lbl { display: none; }
 }
 
 @media (max-width: 799.98px) {
+    /* board: static, so the open burger menu and the boxes are placed in .container
+       (the start page header keeps its feedback box anchored) */
+    .container > .head { position: static; }
+
     .head {
         min-height: 52px;
         padding: 4px 6px 4px 10px;
@@ -844,11 +804,64 @@ textarea.field {
 
     .team-name { font-size: var(--fs-m); }
 
+    #show_qr_code,
+    #copy_link_btn .lbl,
     .sw-btn .lbl { display: none; }
 
-    /* board: the shortcuts move into the menu index, the menu button opens it */
-    .container .topnav-bar { display: none; }
-    .menu-btn { display: inline-flex; }
+    /* closed: only the burger shows */
+    .mobile-menu[data-state=closed] .topnav-bar { display: none; }
+
+    .mobile-menu[data-state=closed] .open_menu {
+        display: inline-flex;
+        z-index: var(--z-burger);
+    }
+
+    /* open: a panel over the whole board */
+    .mobile-menu[data-state=open] {
+        position: absolute;
+        width: 95%;
+        right: 2.5%;
+        top: 5px;
+        bottom: 5px;
+        box-sizing: border-box;
+        background-color: var(--bg-4);
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius-l);
+        z-index: var(--z-raised);
+    }
+
+    .mobile-menu[data-state=open] .close-menu {
+        display: inline-flex;
+        position: absolute;
+        right: 8px;
+        top: 8px;
+    }
+
+    /* the topnav as a row of large tiles: icon above label */
+    .mobile-menu[data-state=open] .topnav-bar {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: var(--space-1);
+        padding: 64px var(--space-2) 0;
+    }
+
+    .mobile-menu[data-state=open] .topnav-bar .icon-btn {
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        min-height: 56px;
+        padding: 4px 2px;
+        border-color: var(--line);
+        font-size: var(--fs-xs);
+    }
+
+    /* a box opened with the menu closed (e.g. setup on a new board) hangs below the header */
+    .mobile-menu .menu_box { top: 56px; }
+
+    .mobile-menu[data-state=open] .menu_box {
+        top: 136px;
+        max-height: calc(100% - 146px);
+    }
 }
 
 /* phones (board): no prompt decoration, the logo shrinks to its mark (room for the team name) */
@@ -865,455 +878,104 @@ textarea.field {
 
 /* ---------- Start page header ---------- */
 
+.head > .topnav-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
 @media (max-width: 420px) {
     .head > .topnav-bar .lbl { display: none; }
 }
 
-/* ---------- Menu panel (B-51) ---------- */
-
-/* One component, two containers. #menu is a <dialog>, shown with its open attribute; inside,
- * one section (.menu_sec) is visible at a time (hidden attribute).
- * Large screens: a side panel docked on the right below the header, as high as topic bar and
- * table (it covers them, not the deck); it does not move while open (non-modal: show()).
- * Board: placed on the page grid (.container is its containing block). Start page: fixed.
- * Phones: a bottom sheet over a backdrop (modal: showModal(), ::backdrop). */
-.menu {
-    position: fixed;
-    top: max(48px, calc(var(--tap) + 8px)); /* start page: below the one-row header (.head) */
-    right: 0;
-    bottom: 0;
-    left: auto;
-    z-index: var(--z-panel);
-    box-sizing: border-box;
-    width: min(var(--panel-w), 100%);
-    max-width: 100%;
-    height: auto;
-    max-height: none;
-    margin: 0;
-    padding: 0;
-    flex-direction: column;
-    border: 0;
-    border-left: 1px solid var(--line-strong);
-    background: var(--bg-2);
-    color: var(--text);
-    box-shadow: -10px 0 24px -12px var(--shadow-color);
-    text-align: left;
+/* the feedback box hangs below the header on the right */
+.head > .menu_box {
+    top: calc(100% + 6px);
+    right: 10px;
 }
 
-.menu[open] {
-    display: flex;
-    animation: panel-in 0.18s ease-out;
+@media (max-width: 799.98px) {
+    .head > .menu_box { right: 2.5%; }
 }
 
-/* board: on the page grid, rows topic + table (an absolutely positioned grid child) */
-.container > .menu {
-    position: absolute;
-    grid-row: 2 / 4;
-    grid-column: 1;
-    top: 0;
+/* ---------- Menu boxes ---------- */
+
+/* widths on large screens (small screens: see .menu_box) */
+@media (min-width: 800px) {
+    #topic_box { width: 320px; }
+    #feedback_box { width: 300px; }
+    #cset_box { width: 428px; }
+    #user_settings_box { width: 400px; }
 }
 
-/* low screens (phones in landscape): the deck row as well, the panel needs the height */
-@media (max-height: 500px) {
-    .container > .menu { grid-row: 2 / 5; }
-}
-
-.menu::backdrop { background: rgba(0, 0, 0, 0.55); }
-
-.m-head {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: 6px 8px 6px var(--space-3);
-    border-bottom: 1px solid var(--line);
-}
-
-.m-head h2 {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    font-size: var(--fs-l);
-}
-
-/* console heading: "// Board settings" */
-.m-head h2::before {
-    content: "// " / "";
-    color: var(--line-strong);
-    font-weight: normal;
-}
-
-#menu_close { margin-left: auto; }
-
-/* "back to the index": phones only, not on the index itself */
-#menu_back { display: none; }
-
-.m-body {
-    flex: 1 1 auto; /* auto: the phone sheet is as high as its content (up to its max-height) */
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 14px var(--space-3) 20px;
-}
-
-.grab { display: none; }
-
-/* the index (phones): one row per section, "$ Invite  →" */
-.m-index {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.m-index button {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 54px;
-    padding: 8px 4px;
-    border: 0;
-    border-bottom: 1px solid var(--line);
-    background: none;
-    color: var(--text);
-    font: var(--fs-m) var(--font);
-    text-align: left;
-    cursor: pointer;
-}
-
-.m-index button::after {
-    content: "→" / "";
-    color: var(--muted);
-}
-
-.m-index button:hover b,
-.m-index button:focus-visible b { color: var(--accent); }
-
-.m-index button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-}
-
-.m-index span {
-    flex: 1;
-    min-width: 0;
-}
-
-.m-index b { display: block; }
-
-.m-index b::before {
-    content: "$ " / "";
-    color: var(--muted);
-    font-weight: normal;
-}
-
-.m-index small {
-    display: block;
-    color: var(--muted);
-    font-size: var(--fs-s);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* building blocks of the sections */
-.f {
-    min-width: 0;
-    margin: 0 0 var(--space-3);
-    padding: 0;
-    border: 0;
-}
-
-.lab {
-    display: block;
-    margin: 0 0 6px;
-    padding: 0;
-    font-size: var(--fs-s);
-    color: var(--muted);
-    text-align: left;
-}
-
-.hint {
-    margin: 6px 0 0;
-    font-size: var(--fs-xs);
-    line-height: 1.4;
-    color: var(--muted);
-    text-wrap: pretty; /* no single word alone in the last line */
-}
-
-.center { text-align: center; }
-
-.row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.row.end {
-    justify-content: flex-end;
+#topic_txt,
+#feedback_txt {
+    width: 90%;
+    height: 170px;
     margin-top: var(--space-2);
 }
 
-.menu .field {
-    width: 100%;
-    min-width: 0;
-    min-height: var(--tap);
+/* the rating stars are switched off */
+.feedback_star { display: none; }
+
+.setup_input_field {
+    width: 75%;
+    margin-bottom: var(--space-2);
 }
 
-.row > .field { flex: 1; }
+#cet_pre,
+#cet_order_by,
+#cet_anonymous,
+#cet_dark_side,
+#cet_toggle_user_type { width: 90%; }
 
-.menu textarea.field {
-    display: block;
-    resize: vertical;
+#cet_pre { margin-bottom: var(--space-3); }
+
+/* B-42: locked in anonymous mode. Unlike a disabled button the select still shows
+ * information ("Card value"), so the text stays readable in the muted label color;
+ * the dashed border marks it as locked. */
+#cet_order_by:disabled {
+    border-style: dashed;
+    border-color: var(--switch-color);
+    color: var(--switch-color);
+    opacity: 1;
+    cursor: not-allowed;
 }
 
-.menu .btn-box {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: var(--tap);
+/* B-42: hint below the sort select, only visible in anonymous mode */
+#cet_order_by_hint {
+    margin: 0.3rem 1.5rem 0;
+    text-wrap: pretty; /* no single word alone in the last line */
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--switch-color);
+    text-align: left;
 }
 
-.menu .btn-box .i {
-    width: 16px;
-    height: 16px;
+/* lock icon on the average button; same padding on both sides keeps the text centered */
+.locked {
+    background-image: url('../src/lock.png');
+    background-repeat: no-repeat;
+    background-position: 0.9rem center;
+    background-size: 14px;
+    padding-left: 2.25rem;
+    padding-right: 2.25rem;
 }
 
-.menu select.field { cursor: pointer; }
-
-/* segment switch: a radio group that looks like one control (fieldset.f > .seg > label) */
-.seg {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-m);
-    background: var(--bg);
+.locked:hover {
+    background-image: url('../src/lock_hover.png');
 }
-
-.seg label {
-    position: relative;
-    flex: 1;
-    display: flex;
-    min-width: 0;
-}
-
-/* the radio itself lies invisibly over its label: click, keyboard and screen readers as usual */
-.seg input {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    opacity: 0;
-    cursor: pointer;
-}
-
-.seg span {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-height: calc(var(--tap) - 6px);
-    padding: 2px var(--space-2);
-    border-radius: var(--radius-s);
-    color: var(--muted);
-    font-size: var(--fs-s);
-    text-align: center;
-}
-
-.seg input:hover + span { color: var(--text); }
-
-.seg input:checked + span {
-    background: var(--text);
-    color: var(--bg);
-    font-weight: bold;
-}
-
-.seg input:focus-visible + span {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-}
-
-/* locked (B-42: sort order in anonymous mode): the choice stays readable, the dashed border
- * marks it as locked */
-fieldset:disabled .seg { border-style: dashed; }
-
-fieldset:disabled .seg input { cursor: not-allowed; }
-
-fieldset:disabled .seg input:checked + span {
-    background: var(--bg-4);
-    color: var(--muted);
-}
-
-/* average pointer: a lock on "Show" while it is hidden ("join the dark side") */
-.seg .i-lock {
-    width: 14px;
-    height: 14px;
-}
-
-.seg input:checked + span .i-lock { display: none; }
-
-/* board settings: groups, one open at a time; a closed group shows its summary on the right */
-.grp { border-bottom: 1px solid var(--line); }
-
-.grp > summary {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    min-height: var(--tap);
-    box-sizing: border-box;
-    padding: 10px 2px;
-    list-style: none;
-    cursor: pointer;
-}
-
-.grp > summary::-webkit-details-marker { display: none; }
-
-.grp > summary::before {
-    content: "▸" / "";
-    flex: none;
-    width: 1em;
-    color: var(--muted);
-}
-
-.grp[open] > summary::before {
-    content: "▾" / "";
-    color: var(--accent);
-}
-
-.grp > summary b { flex: none; }
-
-/* console heading: "## Deck" */
-.grp > summary b::before {
-    content: "## " / "";
-    color: var(--line-strong);
-    font-weight: normal;
-}
-
-.grp > summary:hover b { color: var(--accent); }
-
-.grp > summary:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-}
-
-.grp > summary small {
-    flex: 1;
-    min-width: 0;
-    color: var(--muted);
-    font-size: var(--fs-s);
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.grp[open] > summary small { visibility: hidden; }
-
-.grp-body { padding: 4px 0 var(--space-2) 1.4em; }
-
-.grp + .hint { margin-top: var(--space-3); }
-
-/* privacy, imprint, delete my data */
-.m-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px var(--space-3);
-    margin: 20px 0 0;
-    font-size: var(--fs-s);
-}
-
-.m-links a {
-    color: var(--muted);
-    text-decoration: none;
-}
-
-.m-links a:hover { color: var(--text); }
-
-.m-links .btn-box {
-    margin-left: auto;
-    min-height: 0;
-    padding: 4px 10px;
-    font-size: var(--fs-s);
-}
-
-/* invite: the QR code of the board link (a white tile, readable in both modes) */
-.qr-box {
-    display: block;
-    width: 200px;
-    height: 200px;
-    margin: 20px auto 0;
-    padding: 10px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-l);
-    background: var(--bg);
-    cursor: zoom-in;
-}
-
-.qr-box:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
-
-.qr-box > svg,
-.qr-box > canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-/* tapped: the same code large in the middle of the screen over a backdrop (aria-expanded) */
-.qr-box[aria-expanded=true] {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    z-index: var(--z-overlay);
-    width: min(340px, calc(100vw - 2 * var(--space-3)));
-    height: min(340px, calc(100vw - 2 * var(--space-3)));
-    margin: 0;
-    padding: 20px;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 100vmax var(--scrim), 0 12px 32px var(--shadow-color);
-    cursor: zoom-out;
-}
-
-#invite_link { font-size: var(--fs-s); }
 
 /* card set thumbnails */
-#cards_thumbs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 4px;
-}
-
 .cs_c {
-    box-sizing: content-box;
-    width: 30px;
-    padding: 0;
-    background: none;
-    line-height: 0;
+    width: 27px;
+    margin: 0 2px;
     border: 1px solid var(--medium_color);
     border-radius: var(--radius-s);
     filter: grayscale(100%);
     opacity: 0.4;
     cursor: pointer;
     transition: transform .5s ease-in-out;
-}
-
-.cs_c > img {
-    display: block;
-    width: 100%;
-    border-radius: inherit;
-}
-
-.cs_c:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    opacity: 1;
 }
 
 .cs_c:hover {
@@ -1327,66 +989,16 @@ fieldset:disabled .seg input:checked + span {
     opacity: 1;
 }
 
-@keyframes panel-in {
-    from { transform: translateX(14px); opacity: 0.4; }
-    to { transform: none; opacity: 1; }
-}
-
-@keyframes sheet-up {
-    from { transform: translateY(30px); opacity: 0.4; }
-    to { transform: none; opacity: 1; }
-}
-
-/* Phones: the same panel as a bottom sheet with a grab bar; back button inside the sections */
 @media (max-width: 799.98px) {
-    .menu,
-    .container > .menu {
-        position: fixed;
-        top: auto;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        max-height: 88vh;
-        max-height: 88dvh;
-        border: 1px solid var(--line-strong);
-        border-bottom: 0;
-        border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-        box-shadow: 0 -8px 24px var(--shadow-color);
-    }
-
-    .menu[open] { animation-name: sheet-up; }
-
-    .grab {
-        display: block;
-        flex: none;
-        width: 40px;
-        height: 4px;
-        margin: 8px auto 0;
-        border-radius: 2px;
-        background: var(--line-strong);
-    }
-
-    .m-head { padding-left: 8px; }
-
-    .menu:not(:has(#menu_index[hidden])) .m-head h2 { padding-left: 8px; }
-
-    #menu_back { display: inline-flex; }
-
-    .menu:has(#menu_index:not([hidden])) #menu_back { display: none; }
-
-    .m-body { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+    #topic_txt,
+    #feedback_txt { height: 6rem; }
 
     .cs_c {
-        width: calc((100% - 5 * 4px) / 6);
-        max-width: 56px;
+        width: 14vw;
+        height: auto;
         border-radius: var(--radius-m);
         cursor: auto;
     }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .menu[open] { animation: none; }
 }
 
 /* ---------- Topic note ---------- */
@@ -1723,54 +1335,44 @@ div#cbox {
 
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
-/* B-51: a tab at the bottom right in the look of the menu panel; it unfolds upwards */
 .survey-container {
+    font-size: var(--fs-s);
+    width: auto;
+    max-width: 18rem;
     position: absolute;
     bottom: 0;
-    right: var(--space-3);
-    width: 18rem;
-    max-width: calc(100% - 2 * var(--space-3));
-    font-size: var(--fs-s);
-    text-align: left;
+    right: 0;
+    margin: 0 auto;
     visibility: hidden;
+    display: unset;
 }
 
 #survey-button {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-left: auto;
-    min-height: var(--tap);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--line-strong);
-    border-bottom: 0;
-    border-radius: var(--radius-l) var(--radius-l) 0 0;
-    background: var(--bg-2);
-    color: var(--text);
-    font: bold var(--fs-s) var(--font);
     cursor: pointer;
+    display: block;
+    width: auto;
+    margin: auto var(--space-3) auto auto;
+    padding: var(--space-3);
+    background: var(--survey-background);
+    color: var(--text-color);
+    border: 0;
+    text-align: center;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
 }
 
-#survey-button::before {
-    content: "// " / "";
-    color: var(--line-strong);
-    font-weight: normal;
-}
+#survey-button:hover { opacity: 0.7; }
 
-#survey-button:hover { color: var(--accent); }
-
-#survey-button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
+#survey-button .arrow { margin-left: var(--space-3); }
 
 #survey-content {
     display: block;
-    box-sizing: border-box;
-    border-left: 1px solid var(--line-strong);
-    background: var(--bg-2);
-    color: var(--text);
-    overflow-y: auto;
+    background: var(--survey-background);
+    color: var(--text-color);
+    width: auto;
+    text-align: left;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
 }
 
 .survey-closed {
@@ -1782,100 +1384,116 @@ div#cbox {
 .survey-open {
     padding: var(--space-3);
     height: 17.5rem;
-    border-top: 1px solid var(--line-strong);
     transition: height 1s ease-out 0s;
 }
 
-#survey_intro {
-    margin-bottom: var(--space-3);
-    line-height: 1.5;
-}
-
+#survey_intro,
 #vote_options,
 #vote_results {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    display: block;
     margin-bottom: var(--space-3);
+    padding: var(--space-2);
+    background-color: var(--survey-sec-background);
+    border-radius: var(--space-2);
 }
 
 .vote_option,
 .vote_results_bar {
     display: flex;
-    width: 100%;
-    min-height: var(--tap);
-    box-sizing: border-box;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-m);
-    background: var(--bg);
-    color: var(--text);
-    font: var(--fs-s) var(--font);
+    margin: 0.3rem auto;
+    width: 99%;
+    border-radius: var(--space-3);
+    background-color: transparent;
 }
 
 .vote_option {
-    align-items: center;
-    padding: 4px var(--space-2);
-    text-align: left;
     cursor: pointer;
+    padding: 0.3rem 0 0.3rem var(--space-3);
+    color: var(--text-color);
+    border: 1px solid var(--text-color);
+    justify-content: center;
 }
 
-.vote_option::before {
-    content: "> " / "";
-    color: var(--muted);
+.vote_option:hover {
+    background-color: var(--medium_color);
+    font-weight: bold;
 }
-
-.vote_option:hover,
-.vote_option:focus-visible {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.vote_option:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
 
 #vote_count {
-    color: var(--muted);
-    font-size: var(--fs-xs);
+    margin: auto;
+    width: 50%;
 }
 
 .vote_results_bar {
+    border: 1px solid var(--primary-border-color);
+    text-align: left;
+    justify-content: flex-start;
+    align-items: center;
     position: relative;
-    align-items: stretch;
-    overflow: hidden;
 }
 
-/* the share of votes: a bar in the accent color behind the text */
 .vote_results_bar_value {
-    display: flex;
-    align-items: center;
-    padding: 4px var(--space-2);
-    background: color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: var(--space-3);
+    padding: 0.3rem 0 0.3rem var(--space-3);
+    background: var(--survey-voted_background);
     width: 0;
     white-space: nowrap;
     overflow: visible;
+    text-overflow: ellipsis;
 }
 
 .arrow {
     border: solid var(--muted);
-    border-width: 0 2px 2px 0;
+    border-width: 0 3px 3px 0;
     display: inline-block;
     padding: 3px;
 }
 
-.up { transform: translateY(2px) rotate(-135deg); }
+.up { transform: rotate(-135deg); }
 
-.down { transform: translateY(-2px) rotate(45deg); }
+.down { transform: rotate(45deg); }
 
-/* ---------- Overlays: name input, privacy links ---------- */
+/* ---------- Overlays: QR code, privacy links ---------- */
 
-#nameinput { margin: 0 0 var(--space-3); }
+#overlay_qr {
+    z-index: var(--z-scrim);
+    background-color: var(--background-color);
+    opacity: 85%;
+}
+
+#overlay_qr_code {
+    z-index: var(--z-overlay);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+/* never wider than the screen: an overflow would widen the layout viewport on phones
+ * and push fixed elements (toast) off the bottom */
+#overlay_qr_code { overflow: hidden; }
+
+/* the QR code is a fixed 300px SVG (+ padding): shrink it on very narrow phones */
+@media (max-width: 380px) {
+    #canvas_qr_code { transform: scale(0.85); }
+}
+
+#canvas_qr_code {
+    position: absolute;
+    border: 1px solid var(--primary-border-color);
+    border-radius: var(--radius-l);
+    padding: 20px;
+    background-color: var(--background-color);
+}
+
+#nameinput { margin: 60px 0 var(--space-4); }
 
 .privacy_link {
     display: flex;
     justify-content: center;
     align-items: center;
-    align-self: stretch;
     font-size: var(--fs-s);
-    margin-top: var(--space-2);
+    margin-top: 30px;
     color: var(--muted); /* readable (B-50), was the disabled color */
     cursor: default;
 }
@@ -1890,6 +1508,10 @@ div#cbox {
 
 .privacy_link span {
     margin: 0 2px; /* Same margin as links for even spacing */
+}
+
+@media (max-width: 799.98px) {
+    #nameinput { margin-top: 50px; }
 }
 
 /* ---------- Promo tab ---------- */
@@ -1981,7 +1603,7 @@ div#cbox {
 }
 
 .toast::before {
-    content: "> " / "";
+    content: "> ";
     color: var(--muted);
 }
 

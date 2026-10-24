@@ -60,6 +60,7 @@ function getBrowserWidth(){
 function newRound() {
     let url = './api/newround.php?t=' + t;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    toggleMobileMenu("closed");
 }
 
 function playerTypeUpdate(playerType, name) {
@@ -177,13 +178,11 @@ function toggleC(cardId, flag) {
         e.classList.add('on');
         e.classList.remove('off');
         e_conf.classList.add('cs_c_on');
-        e_conf.setAttribute('aria-pressed', 'true');
     }
     else {
         e.classList.remove('on');
         e.classList.add('off');
         e_conf.classList.remove('cs_c_on');
-        e_conf.setAttribute('aria-pressed', 'false');
     }
 }
 
@@ -438,7 +437,11 @@ function updateDom(myJson, isOnLoad) {
     gSurvey = myJson.survey;
     gUserName = myJson.name;
 
-    checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
+    if (myJson.player_type === "PLAYER") {
+        document.getElementById('cet_toggle_user_type').value = "Become Observer";
+    } else {
+        document.getElementById('cet_toggle_user_type').value = "Participate as a Player";
+    }
 
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
@@ -520,7 +523,6 @@ function updateDom(myJson, isOnLoad) {
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
-    updateMenuSummaries(myJson);
 
     activateJediMode(myJson.show_avg);
     updateJediBtn();
@@ -536,9 +538,7 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
 
-        // a new board opens "Board settings" by itself, without taking the focus (name input first);
-        // not on phones, where the sheet would cover the name input (as before: the box was in the closed menu)
-        if (myJson.needs_setup && !gPhoneQuery.matches) openMenu('cset', null, false);
+        if (myJson.needs_setup) toggle_box('cset', false);
 
         updateDao(false);
     }
@@ -687,6 +687,10 @@ function loadBoard() {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
         }
+        // Escape closes the phone menu, unless it just closed a menu box (script_feedback.js)
+        if (event.key === 'Escape' && !event.defaultPrevented) {
+            toggleMobileMenu('closed');
+        }
     });
 }
 
@@ -767,7 +771,6 @@ function measureEvent(eventCode) {
 function setColor() {
     // the color mode button (#cmode_btn) shows moon/sun via CSS (body.light-theme)
     let brandImg = document.getElementById("brand");
-    checkRadio('cet_color_mode', gColorMode === "dark" ? 'dark' : 'light');
 
     if (gColorMode === "dark") {
         brandImg.src = "./src/brand_dark.svg";
@@ -778,18 +781,6 @@ function setColor() {
     }
 }
 
-/* B-51: "Appearance" in the "You" section (radio group) */
-function setColorMode(mode) {
-    if (mode !== gColorMode) switchColorMode();
-}
-
-/* B-51: the segment switches in the menu are radio groups (name = former select id);
- * check the radio with the given value (values are fixed strings, never user input) */
-function checkRadio(name, value) {
-    let radio = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
-    if (radio !== null && !radio.checked) radio.checked = true;
-}
-
 function switchColorMode(){
     if (gColorMode === "dark") gColorMode = "light";
     else gColorMode = "dark";
@@ -798,6 +789,23 @@ function switchColorMode(){
     fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&color_mode=' + gColorMode, { method: 'POST' }).then();
 }
 
+
+function toggleMobileMenu(target_state){
+    let menu = document.getElementById("mobile-menu");
+    // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
+    if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
+        let opener = menu.querySelector('.open_menu');
+        let focusInside = menu.contains(document.activeElement);
+        menu.setAttribute('data-state', target_state);
+        opener.setAttribute('aria-expanded', target_state === 'open' ? 'true' : 'false');
+        if (target_state === 'open') {
+            menu.querySelector('.topnav-bar .icon-btn').focus();
+        } else if (focusInside) {
+            // the focused button disappears with the panel
+            opener.focus();
+        }
+    }
+}
 
 /* B-46: on phones the topic strip shows one line; the arrow button (or a tap on the topic)
  * shows all of it. Elsewhere the button is hidden by CSS and the topic is shown in full. */
@@ -822,11 +830,6 @@ function copyLink() {
 let gToastTimer = null;
 function showToast(text) {
     let toast = document.getElementById('toast');
-    // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
-    // (closeMenu() puts it back)
-    let menu = document.getElementById('menu');
-    let host = (menu !== null && menu.open && menu.matches(':modal')) ? menu : document.body;
-    if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');
     clearTimeout(gToastTimer);
@@ -859,8 +862,20 @@ function generateQRCode(url) {
 
     });
 
-    // B-51: one instance only, in "Invite" (a second one would duplicate the SVG ids)
-    qrCode.append(document.getElementById("invite_qr"));
+    qrCode.append(document.getElementById("canvas_qr_code"));
+}
+
+function showQRCode(showIt) {
+    let overlay = document.getElementById("overlay_qr");
+    let overlay_qr = document.getElementById("overlay_qr_code");
+    if (showIt) {
+        toggleStyleClass(overlay, "visible", "hidden");
+        toggleStyleClass(overlay_qr, "visible", "hidden");
+
+    } else {
+        toggleStyleClass(overlay_qr, "hidden", "visible");
+        toggleStyleClass(overlay, "hidden", "visible");
+    }
 }
 
 function hideTeaser(updateUser=true) {
@@ -975,17 +990,19 @@ function stopwatchReset(){
 /* B-42: The sort order is only set in the menu (Card value = SEQUENCE, Player name = NAME).
  * Legacy values like 'CHOOSE:SEQUENCE' (before the data update) are shown as Card value.
  * In anonymous mode the server always arranges revealed cards by card value, so the
- * radio group (B-51) is disabled and shows "Card value", whatever is stored; a hint explains why.
+ * select is disabled and shows "Card value", whatever is stored; a hint explains why.
  * Nothing is sent to the API: the stored value stays and shows up again as soon as
  * anonymous mode is switched off. This already applies when anonymous mode is
  * requested for the next round, so it reacts as soon as "Hide names" is chosen.
  * The hint is only referenced via aria-describedby while it is visible. */
 function updateOrderByConfig(resultsOrder, anonymousMode) {
-    let dropDown = document.getElementById("cet_order_by"); // the fieldset of the radio group
+    let dropDown = document.getElementById("cet_order_by");
     let hint = document.getElementById("cet_order_by_hint");
     let order = (resultsOrder === 'NAME' && !anonymousMode) ? 'NAME' : 'SEQUENCE';
 
-    checkRadio('cet_order_by', order);
+    if (dropDown.value !== order) {
+        dropDown.value = order;
+    }
 
     dropDown.disabled = anonymousMode;
     if (anonymousMode) {
@@ -998,28 +1015,11 @@ function updateOrderByConfig(resultsOrder, anonymousMode) {
 }
 
 function updateAnonymityConfig(anonymousRequestToggle) {
-    checkRadio('cet_anonymous', anonymousRequestToggle === 1 ? '1' : '0');
-}
+    let dropDown = document.getElementById("cet_anonymous");
 
-/* B-51: board settings – the summaries of the groups (shown while a group is closed) and the hints
- * in the phone index; kept up to date with every update. Plain text only (team name). */
-function setTextIfChanged(id, text) {
-    let e = document.getElementById(id);
-    if (e !== null && e.textContent !== text) e.textContent = text;
-}
-
-function updateMenuSummaries(myJson) {
-    let flags = (myJson.cardset_flags || '').padEnd(gCardsConfig.length, '0');
-    let cardsOn = gCardsConfig.filter(card => flags.charAt(card.index) === '1').length;
-    setTextIfChanged('cset_sum_deck', cardsOn + ' of ' + gCardsConfig.length + ' cards');
-
-    let anonymous = myJson.anonymous_request_toggle === 1;
-    let byName = myJson.results_order === 'NAME' && !anonymous && myJson.anonymous_mode !== 1;
-    setTextIfChanged('cset_sum_results', (anonymous ? 'anonymous' : 'names shown')
-        + ' \u00b7 ' + (byName ? 'by name' : 'by value')
-        + ' \u00b7 ' + (myJson.show_avg === 1 ? 'pointer on' : 'pointer off'));
-
-    setTextIfChanged('cset_sum_team', myJson.team_name);
+    if (dropDown.value !== anonymousRequestToggle ) {
+        dropDown.value = anonymousRequestToggle;
+    }
 }
 
 
@@ -1051,17 +1051,14 @@ function loadCardConfig() {
         cardElement.alt = card.description;
         ctl.appendChild(cardElement);
 
-        // B-51: a switch per card (aria-pressed = in the deck, set by toggleC)
-        let thumbElement = document.createElement("button");
-        thumbElement.type = "button";
+        let thumbElement = document.createElement("img");
         thumbElement.id = "_" + card.card_key;
+        thumbElement.src = "src/c_" + card.card_key + ".png";
         thumbElement.setAttribute("data-card_key", card.card_key);
-        thumbElement.setAttribute("aria-pressed", "false");
+        thumbElement.src = "src/c_" + card.card_key + ".png";
+        thumbElement.classList.add("topnav");
         thumbElement.classList.add("cs_c");
-        let thumbImage = document.createElement("img");
-        thumbImage.src = "src/c_" + card.card_key + ".png";
-        thumbImage.alt = card.description;
-        thumbElement.appendChild(thumbImage);
+        thumbElement.alt = card.description;
         thumbElement.addEventListener("click", toggleCSet);
         cardsThumbs.appendChild(thumbElement);
     });
@@ -1288,9 +1285,8 @@ function showConfetty(playersCount) {
 function showDeleteUserOverlay(openIt=true) {
     let overlayDiv= document.getElementById('overlay_delete_user');
     if (openIt) {
-        closeMenu(false); // the overlay takes over (B-51)
+        closeTopnavBoxes(); // the "You" box stays open otherwise (its links count as topnav)
         removeStyleClass(overlayDiv, 'hidden');
-        overlayDiv.querySelector('button').focus();
     }
     else addStyleClass(overlayDiv, 'hidden');
 }
