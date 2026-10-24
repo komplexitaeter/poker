@@ -18,13 +18,11 @@ Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nach
 bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
 Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
 parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
-**Stand 2026-10-23 spätabends (weiter Montag):** In `release`: `cards.json` `symbol`/XXL (#36), Schritt 1 Console-Look
-+ Header (#37), Schritt 2 Gerüst/Touch/Toast (#38), Schritt 2b Topic-Leiste oben, New Round/Stoppuhr unter den Karten,
-keine Header-Hinweise, Stoppuhr-Toast (#39), Schritt 3 Menüs als Side Panel/Bottom-Sheet mit neuer Struktur inkl. B-54
-(#40; `style.css` 1.21, `script.js` 2.10, `script_feedback.js` 1.13). Offen: Andreas sichtet 2b und 3 auf echten
-Geräten (iPhone Sheet/Backdrop/Tastatur, iPad, QR). Delia: kurz Freds Änderung an der Konsolen-Deko (`content: "…" / ""`
-für Screenreader) abnicken. Nächstes für Rollout 1: B-55 (Hinweis-Toast + Umfrage, Ben-SQL, Sina B-43), Entscheidung
-`mockups/`, optional Schritt 4 (B-49), dann PR `release` → `master`.
+**Stand 2026-10-24:** Schritt 3 (#40) von Andreas als schlechter bewertet und per #41 revertiert; `release` = Stand #39
++ B-54. Lehre: Create-Team-Ablauf, Name-Dialog, Kick-Overlay, Copy Link und QR-Overlay (Beamer) waren gut und bleiben;
+Console-Stil nicht übertreiben (auch Nicht-Techies), keine Deko in Menüs. Neuer Anlauf `feature/B-51-menus-2`: nur
+Menüs als Overlays (Desktop Side Panel bis ganz unten, Handy Bottom-Sheet), Board settings als Gruppen (Akkordeon),
+kein Invite-Panel; dazu Prompt dezenter (`<Spieler>@<Team>`, kein `~$`), Topic-Leiste nur bei gesetztem Topic.
 **Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
 1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
    Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
@@ -855,6 +853,8 @@ Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber �
 die Häufigkeitsbalken (`show_card_stats`) stehen. Ziel: Ergebnisse separat und anders darstellen (Verteilung,
 Konsens/Ausreißer, Zeiger-Idee erhalten), ggf. mit gespeicherter Historie (passt zu B-52). Vorschlag kommt im
 Mockup (Delia).
+Idee Andreas (2026-10-24) zur Sidebar: Beim ersten Besuch gibt es noch kein Topic, keine Historie, keine Spreads →
+Sidebar zunächst eingeklappt, Board clean wie in Rollout 1; Lösung nötig für „New Round“ und eine aktivierte Stoppuhr.
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
