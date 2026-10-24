@@ -1,10 +1,11 @@
 /* Agile Poker stylesheet – "console" look (Sprint 8, B-48/B-50).
  * One breakpoint: small screens (phones) up to 799.98px, large screens from 800px
- * (mirrored in script/script.js, toggleMobileMenu). Monospace type, flat surfaces,
+ * (mirrored in script/script.js where the menu panel is opened). Monospace type, flat surfaces,
  * small radii; colors come from the tokens below (dark = default, light = body.light-theme).
  * Board page grid (B-46): see "Board layout". Short landscape screens (max-height: 500px)
  * get the phone topic strip as well.
- * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens". */
+ * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens".
+ * Menus (B-51): one panel, see "Menu panel". */
 
 /* ---------- Tokens ---------- */
 
@@ -19,12 +20,10 @@
     --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
     --fs-xl: 1.125rem;    /* 18px: stopwatch display */
     /* stacking order (lowest first) */
-    --z-raised: 1;        /* small things above their neighbours, open phone menu */
-    --z-burger: 2;
-    --z-nav: 10;          /* header incl. its menu boxes, above the table */
+    --z-nav: 10;          /* header, above the table */
     --z-promo: 100;
-    --z-toast: 250;       /* short messages (showToast), above the deck and open menus */
-    --z-menu: 200;        /* menu boxes (inside the header stacking context) */
+    --z-panel: 150;       /* menu panel (large screens), above deck, survey and promo */
+    --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
     --z-scrim: 300;       /* QR code backdrop */
     --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
     /* shapes */
@@ -40,6 +39,8 @@
     --space-4: 2rem;
     /* minimum size of a header button; larger on touch screens */
     --tap: 36px;
+    /* menu panel width on large screens */
+    --panel-w: 380px;
 }
 
 @media (pointer: coarse) {
@@ -66,6 +67,7 @@ body {
     --flash-red-background: #340000;
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
+    --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
     --survey-voted_background: rgba(0, 0, 0, 0.67);
 }
 
@@ -88,6 +90,7 @@ body.light-theme {
     --flash-red-background: #ffd9d9;
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
+    --scrim: rgba(29, 32, 39, 0.4);
     --survey-voted_background: rgba(255, 255, 255, 0.67);
 }
 
@@ -273,26 +276,7 @@ textarea.field {
     box-shadow: 0 0 8px 2px var(--focus-ring);
 }
 
-/* Menu box (topic, feedback, setup, user settings), opened by JS (style.display).
- * Hangs below the header, right-aligned to the button bar (small screens: see below). */
-.menu_box {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    padding-bottom: var(--space-3);
-    border: 1px solid var(--primary-border-color);
-    border-radius: var(--radius-l);
-    background: var(--light-background);
-    box-shadow: 0 8px 24px var(--shadow-color);
-    text-align: center; /* the header itself is left-aligned */
-    display: none;
-    z-index: var(--z-menu);
-    /* the board page does not scroll (B-46): a long box scrolls itself */
-    max-height: calc(100vh - 70px);
-    max-height: calc(100dvh - 70px);
-    overflow-y: auto;
-}
-
+/* empty labels of the name overlay keep their spacing (the menu uses .lab) */
 .topnav label {
     display: block;
     margin: var(--space-3) 0 0.1rem 1.5rem;
@@ -350,13 +334,6 @@ textarea.field {
 
     /* 16px keeps iOS from zooming into the field */
     .field { font-size: var(--fs-l); }
-
-    .menu_box {
-        right: 2.5%;
-        width: 95%;
-        max-height: 80vh;
-        overflow-y: auto;
-    }
 
     .overlay_msg { width: 65%; }
 
@@ -441,6 +418,7 @@ textarea.field {
 }
 
 /* Topic (large screens): "// topic", the topic as a quoted block, edit pen on the right.
+ * No topic: no bar at all (B-51); the topic is set in the menu.
  * Short topics keep the bar one line high; long ones scroll inside it (the table keeps its room).
  * --topic-line: line height of the topic; label and topic are centered on the buttons' row. */
 .topic-bar {
@@ -477,33 +455,7 @@ textarea.field {
 
 .topic-edit:hover { color: var(--accent); }
 
-/* no topic yet: an invitation to set one instead of the topic and the pen */
-.topic-empty {
-    display: none;
-    min-height: var(--tap);
-    padding: 0 12px;
-    border: 1px dashed var(--line-strong);
-    border-radius: var(--radius-m);
-    background: transparent;
-    color: var(--muted);
-    font: var(--fs-s) var(--font);
-    text-align: left;
-    cursor: pointer;
-}
-
-.topic-empty:hover,
-.topic-empty:focus-visible {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.topic-empty:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
-
-#topic.display_none ~ .topic-empty { display: block; }
-#topic.display_none ~ .topic-edit { display: none; }
+.topic-bar:has(> #topic.display_none) { display: none; }
 
 /* the arrow that unfolds the topic is for the phone strip only */
 #topic_toggle { display: none; }
@@ -550,7 +502,7 @@ textarea.field {
 }
 
 /* Phones (and short landscape screens): the topic as a strip below the header, one line
- * that unfolds with the arrow; no label, no pen (the menu has "topic"), no strip without topic */
+ * that unfolds with the arrow; no label, no pen (the menu has "Topic") */
 @media (max-width: 799.98px), (max-height: 500px) and (orientation: landscape) {
     .topic-bar {
         gap: var(--space-1);
@@ -558,11 +510,7 @@ textarea.field {
     }
 
     .topic-label,
-    .topic-bar .topic-edit,
-    #topic.display_none ~ .topic-edit,
-    .topic-empty,
-    #topic.display_none ~ .topic-empty,
-    #topic.display_none ~ #topic_toggle { display: none; }
+    .topic-bar .topic-edit { display: none; }
 
     #topic_toggle {
         display: inline-flex;
@@ -611,7 +559,8 @@ textarea.field {
     width: auto;
 }
 
-/* team name as a shell prompt: poker@<team>:~$ (click copies the link) */
+/* B-51: the prompt <player>@<team> with a softly pulsing caret (click copies the link).
+ * Deliberately no "~$" and no blinking block: readable for people who never saw a console. */
 .head-title {
     display: flex;
     align-items: center;
@@ -641,7 +590,23 @@ textarea.field {
 
 .team-name:hover #team_name { color: var(--accent); }
 
-.prompt { color: var(--ok); }
+.prompt {
+    flex: 0 1 auto;
+    display: inline-flex;
+    min-width: 0;
+    max-width: 12ch;
+    color: var(--muted);
+    font-weight: normal;
+}
+
+#prompt_user {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* no player name yet (name overlay): the team name alone */
+.prompt:has(> #prompt_user:empty) { display: none; }
 
 /* start page: the prompt without a team */
 .prompt-line {
@@ -651,19 +616,22 @@ textarea.field {
     white-space: nowrap;
 }
 
-.prompt-path {
-    color: var(--muted);
-    font-weight: normal;
+.prompt-line .prompt {
+    max-width: none;
+    color: var(--text);
+    font-weight: bold;
 }
 
-.cursor {
+/* a thin caret that slowly dims and comes back (no hard blink) */
+.caret {
     flex: none;
     display: inline-block;
-    width: 0.6em;
+    width: 2px;
     height: 1.1em;
-    margin-left: 0.4em;
+    margin-left: 0.35em;
+    border-radius: 1px;
     background: var(--accent);
-    animation: blink 1.1s steps(1) infinite;
+    animation: caret-pulse 2.4s ease-in-out infinite;
 }
 
 /* Header button: icon (+ label), transparent until hovered or active */
@@ -690,7 +658,7 @@ textarea.field {
 
 .icon-btn:hover { border-color: var(--line-strong); }
 
-/* open menu (aria-expanded, set by script_feedback.js) */
+/* open menu section (aria-expanded, set by the menu script) */
 .icon-btn[aria-expanded=true],
 .topnav_btn_on {
     border-color: var(--accent);
@@ -752,31 +720,23 @@ textarea.field {
 
 #cta_teaser.hidden { display: none; }
 
-/* reduced motion: the cursor stays on */
+/* reduced motion: the caret stays, half dimmed */
 @media (prefers-reduced-motion: reduce) {
-    .cursor { animation: none; }
+    .caret {
+        animation: none;
+        opacity: 0.6;
+    }
 }
 
-/* ---------- Header: topnav buttons and burger menu ---------- */
+/* ---------- Header: topnav buttons, menu button ---------- */
 
-.open_menu,
-.close-menu { display: none; }
+/* the menu button (index as a bottom sheet) is for phones only */
+.menu-btn { display: none; }
 
-@media (min-width: 800px) {
-    .mobile-menu {
-        position: relative; /* anchor of the menu boxes */
-        display: flex;
-        align-items: center;
-    }
-
-    .topnav-bar {
-        display: flex;
-        align-items: center;
-        gap: 2px;
-    }
-
-    /* the color mode label is for the phone menu only */
-    #cmode_btn .lbl { display: none; }
+.topnav-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 
 /* medium screens: icons only (name via aria-label) */
@@ -786,10 +746,6 @@ textarea.field {
 }
 
 @media (max-width: 799.98px) {
-    /* board: static, so the open burger menu and the boxes are placed in .container
-       (the start page header keeps its feedback box anchored) */
-    .container > .head { position: static; }
-
     .head {
         min-height: 52px;
         padding: 4px 6px 4px 10px;
@@ -808,66 +764,14 @@ textarea.field {
     #copy_link_btn .lbl,
     .sw-btn .lbl { display: none; }
 
-    /* closed: only the burger shows */
-    .mobile-menu[data-state=closed] .topnav-bar { display: none; }
-
-    .mobile-menu[data-state=closed] .open_menu {
-        display: inline-flex;
-        z-index: var(--z-burger);
-    }
-
-    /* open: a panel over the whole board */
-    .mobile-menu[data-state=open] {
-        position: absolute;
-        width: 95%;
-        right: 2.5%;
-        top: 5px;
-        bottom: 5px;
-        box-sizing: border-box;
-        background-color: var(--bg-4);
-        border: 1px solid var(--line-strong);
-        border-radius: var(--radius-l);
-        z-index: var(--z-raised);
-    }
-
-    .mobile-menu[data-state=open] .close-menu {
-        display: inline-flex;
-        position: absolute;
-        right: 8px;
-        top: 8px;
-    }
-
-    /* the topnav as a row of large tiles: icon above label */
-    .mobile-menu[data-state=open] .topnav-bar {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: var(--space-1);
-        padding: 64px var(--space-2) 0;
-    }
-
-    .mobile-menu[data-state=open] .topnav-bar .icon-btn {
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-        min-height: 56px;
-        padding: 4px 2px;
-        border-color: var(--line);
-        font-size: var(--fs-xs);
-    }
-
-    /* a box opened with the menu closed (e.g. setup on a new board) hangs below the header */
-    .mobile-menu .menu_box { top: 56px; }
-
-    .mobile-menu[data-state=open] .menu_box {
-        top: 136px;
-        max-height: calc(100% - 146px);
-    }
+    /* board: the header buttons move into the menu sheet (index) */
+    .container .topnav-bar { display: none; }
+    .container .menu-btn { display: inline-flex; }
 }
 
-/* phones (board): no prompt decoration, the logo shrinks to its mark (room for the team name) */
+/* phones (board): the team name alone (no player name), the logo shrinks to its mark */
 @media (max-width: 420px) {
-    .team-name .prompt,
-    .team-name .prompt-path { display: none; }
+    .team-name .prompt { display: none; }
 
     .container #brand {
         width: 20px;
@@ -878,98 +782,399 @@ textarea.field {
 
 /* ---------- Start page header ---------- */
 
-.head > .topnav-bar {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-}
-
 @media (max-width: 420px) {
     .head > .topnav-bar .lbl { display: none; }
 }
 
-/* the feedback box hangs below the header on the right */
-.head > .menu_box {
-    top: calc(100% + 6px);
-    right: 10px;
-}
+/* ---------- Menu panel (B-51) ---------- */
 
-@media (max-width: 799.98px) {
-    .head > .menu_box { right: 2.5%; }
-}
-
-/* ---------- Menu boxes ---------- */
-
-/* widths on large screens (small screens: see .menu_box) */
-@media (min-width: 800px) {
-    #topic_box { width: 320px; }
-    #feedback_box { width: 300px; }
-    #cset_box { width: 428px; }
-    #user_settings_box { width: 400px; }
-}
-
-#topic_txt,
-#feedback_txt {
-    width: 90%;
-    height: 170px;
-    margin-top: var(--space-2);
-}
-
-/* the rating stars are switched off */
-.feedback_star { display: none; }
-
-.setup_input_field {
-    width: 75%;
-    margin-bottom: var(--space-2);
-}
-
-#cet_pre,
-#cet_order_by,
-#cet_anonymous,
-#cet_dark_side,
-#cet_toggle_user_type { width: 90%; }
-
-#cet_pre { margin-bottom: var(--space-3); }
-
-/* B-42: locked in anonymous mode. Unlike a disabled button the select still shows
- * information ("Card value"), so the text stays readable in the muted label color;
- * the dashed border marks it as locked. */
-#cet_order_by:disabled {
-    border-style: dashed;
-    border-color: var(--switch-color);
-    color: var(--switch-color);
-    opacity: 1;
-    cursor: not-allowed;
-}
-
-/* B-42: hint below the sort select, only visible in anonymous mode */
-#cet_order_by_hint {
-    margin: 0.3rem 1.5rem 0;
-    text-wrap: pretty; /* no single word alone in the last line */
-    font-size: 0.75rem;
-    line-height: 1.3;
-    color: var(--switch-color);
+/* One menu component (#menu, a <dialog>) on board and start page, one section visible at a time.
+ * Large screens: a side panel on the right, from below the header down to the bottom edge of
+ * the screen (over topic, table and deck), non-modal: the board stays visible and usable.
+ * Phones: a bottom sheet over a backdrop (modal), up to 90% of the screen height.
+ * Plain headings, no console decoration: the menus are for everybody. */
+.menu {
+    position: fixed;
+    top: max(48px, calc(var(--tap) + 12px)); /* start page: below the one-row header */
+    right: 0;
+    bottom: 0;
+    left: auto;
+    z-index: var(--z-panel);
+    box-sizing: border-box;
+    width: min(var(--panel-w), 100%);
+    max-width: 100%;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    flex-direction: column;
+    border: 0;
+    border-left: 1px solid var(--line-strong);
+    background: var(--bg-2);
+    color: var(--text);
+    box-shadow: -12px 0 28px -14px var(--shadow-color);
     text-align: left;
 }
 
-/* lock icon on the average button; same padding on both sides keeps the text centered */
-.locked {
-    background-image: url('../src/lock.png');
-    background-repeat: no-repeat;
-    background-position: 0.9rem center;
-    background-size: 14px;
-    padding-left: 2.25rem;
-    padding-right: 2.25rem;
+.menu[open] {
+    display: flex;
+    animation: panel-in 0.2s ease-out;
 }
 
-.locked:hover {
-    background-image: url('../src/lock_hover.png');
+/* board: placed on the page grid, rows topic to deck, so it starts right below the header
+ * (whatever its height) and ends at the bottom edge (an absolutely positioned grid child) */
+.container > .menu {
+    position: absolute;
+    grid-row: 2 / 5;
+    grid-column: 1;
+    top: 0;
+}
+
+.menu::backdrop { background: var(--scrim); }
+
+.m-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 8px 8px 8px var(--space-3);
+    border-bottom: 1px solid var(--line);
+}
+
+.m-head h2 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--fs-l);
+}
+
+#menu_close { margin-left: auto; }
+
+/* back to the index: phones only, not on the index itself */
+#menu_back { display: none; }
+
+.m-body {
+    flex: 1 1 auto; /* auto: the phone sheet is as high as its content (up to its max-height) */
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-3) var(--space-3) 20px;
+}
+
+.grab { display: none; }
+
+/* the index (phones): one row per section with a short description */
+.m-index {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.m-index button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 4px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: none;
+    color: var(--text);
+    font: var(--fs-m) var(--font);
+    text-align: left;
+    cursor: pointer;
+}
+
+.m-index li:last-child button { border-bottom: 0; }
+
+.m-index .i { color: var(--muted); }
+
+.m-index button:hover b,
+.m-index button:focus-visible b,
+.m-index button:hover .i-next { color: var(--accent); }
+
+.m-index button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.m-index span {
+    flex: 1;
+    min-width: 0;
+}
+
+.m-index b { display: block; }
+
+.m-index small {
+    display: block;
+    color: var(--muted);
+    font-size: var(--fs-s);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.m-index .i-next {
+    width: 16px;
+    height: 16px;
+}
+
+/* building blocks of the sections */
+.f {
+    min-width: 0;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    border: 0;
+}
+
+.f:last-child { margin-bottom: 0; }
+
+.lab {
+    display: block;
+    margin: 0 0 6px;
+    padding: 0;
+    font-size: var(--fs-s);
+    line-height: 1.45;
+    color: var(--muted);
+    text-align: left;
+}
+
+.hint {
+    margin: 6px 0 0;
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    color: var(--muted);
+    text-wrap: pretty; /* no single word alone in the last line */
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.row.end {
+    justify-content: flex-end;
+    margin-top: var(--space-2);
+}
+
+.menu .field {
+    width: 100%;
+    min-width: 0;
+    min-height: var(--tap);
+}
+
+.row > .field { flex: 1; }
+
+.menu textarea.field {
+    display: block;
+    resize: vertical;
+    line-height: 1.45;
+}
+
+.menu select.field { cursor: pointer; }
+
+.menu .btn-box {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--tap);
+    margin: 0;
+    padding: 4px 14px;
+}
+
+/* the main action of a section (Save, Send feedback) */
+.btn-box.primary:enabled {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+.btn-box.primary:enabled:hover {
+    background: transparent;
+    color: var(--accent);
+}
+
+.btn-box.danger { color: var(--danger); }
+
+.btn-box.danger:enabled:hover { border-color: var(--danger); color: var(--danger); }
+
+/* segment switch: a radio group that looks like one control (fieldset.f > .seg > label);
+ * used where there are two or three values */
+.seg {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+}
+
+.seg label {
+    position: relative;
+    flex: 1;
+    display: flex;
+    min-width: 0;
+}
+
+/* the radio itself lies invisibly over its label: click, keyboard and screen readers as usual */
+.seg input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.seg span {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: calc(var(--tap) - 6px);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-s);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-align: center;
+}
+
+.seg input:hover + span { color: var(--text); }
+
+.seg input:checked + span {
+    background: var(--text);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+.seg input:focus-visible + span {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* locked (B-42: sort order in anonymous mode): the choice stays readable, the dashed border
+ * marks it as locked */
+fieldset:disabled .seg { border-style: dashed; }
+
+fieldset:disabled .seg input { cursor: not-allowed; }
+
+fieldset:disabled .seg input:checked + span {
+    background: var(--bg-4);
+    color: var(--muted);
+}
+
+/* average pointer: a lock on "Show" while it is hidden ("join the dark side") */
+.seg .i-lock {
+    width: 14px;
+    height: 14px;
+}
+
+.seg input:checked + span .i-lock { display: none; }
+
+/* Board settings: groups below each other, each a framed block that opens and closes on its
+ * own (accordion, several may be open). The header row has a chevron, the name and, while
+ * closed, a one-line summary on the right. */
+.grp {
+    margin: 0 0 var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg);
+}
+
+.grp > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: calc(var(--tap) + 8px);
+    box-sizing: border-box;
+    padding: 6px 12px;
+    border-radius: var(--radius-l);
+    list-style: none;
+    cursor: pointer;
+}
+
+.grp > summary::-webkit-details-marker { display: none; }
+
+.grp > summary .i-chev {
+    width: 16px;
+    height: 16px;
+    color: var(--muted);
+    transition: transform 0.15s;
+}
+
+.grp[open] > summary .i-chev {
+    transform: rotate(90deg);
+    color: var(--accent);
+}
+
+.grp > summary b { flex: none; }
+
+.grp > summary:hover b { color: var(--accent); }
+
+.grp > summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.grp > summary small {
+    flex: 1;
+    min-width: 0;
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.grp[open] > summary { border-bottom: 1px solid var(--line); border-radius: var(--radius-l) var(--radius-l) 0 0; }
+
+.grp[open] > summary small { display: none; }
+
+.grp-body { padding: 12px; }
+
+/* privacy, imprint, delete my data */
+.m-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px var(--space-3);
+    margin: 24px 0 0;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-s);
+}
+
+.m-links a {
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.m-links a:hover { color: var(--text); }
+
+.menu .m-links .btn-box {
+    margin-left: auto;
+    min-height: 0;
+    padding: 4px 10px;
+    font-size: var(--fs-s);
 }
 
 /* card set thumbnails */
+#cards_thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 4px;
+}
+
 .cs_c {
-    width: 27px;
-    margin: 0 2px;
+    width: 30px;
     border: 1px solid var(--medium_color);
     border-radius: var(--radius-s);
     filter: grayscale(100%);
@@ -989,16 +1194,67 @@ textarea.field {
     opacity: 1;
 }
 
-@media (max-width: 799.98px) {
-    #topic_txt,
-    #feedback_txt { height: 6rem; }
+/* the rating stars are switched off */
+.feedback_star { display: none; }
 
-    .cs_c {
-        width: 14vw;
-        height: auto;
-        border-radius: var(--radius-m);
+/* Phones: a bottom sheet over a backdrop, full width, up to 90% of the screen height,
+ * as high as its content; back button in the sections, a grab bar on top */
+@media (max-width: 799.98px) {
+    .menu,
+    .container > .menu {
+        position: fixed;
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 90vh;
+        max-height: 90dvh;
+        border: 0;
+        border-top: 1px solid var(--line-strong);
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -12px 32px var(--shadow-color);
+    }
+
+    .menu[open] { animation-name: sheet-in; }
+
+    .grab {
+        display: block;
+        flex: none;
+        width: 40px;
+        height: 4px;
+        margin: 8px auto 0;
+        border-radius: 2px;
+        background: var(--line-strong);
+    }
+
+    .m-head { padding-left: var(--space-2); }
+
+    .m-head:not(:has(#menu_back)) { padding-left: var(--space-3); }
+
+    #menu_back { display: inline-flex; }
+
+    .menu:has(#menu_index:not([hidden])) #menu_back { display: none; }
+
+    .menu:has(#menu_index:not([hidden])) .m-head { padding-left: var(--space-3); }
+
+    /* thumbnails: seven per row, the whole width of the sheet */
+    #cards_thumbs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    }
+
+    .cs_c,
+    #cards_thumbs .cs_c {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
         cursor: auto;
     }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .menu[open] { animation: none; }
 }
 
 /* ---------- Topic note ---------- */
@@ -1655,7 +1911,7 @@ div#cbox {
         bottom: -14px;
     }
 
-    /* card set thumbnails in the board setup */
+    /* card set thumbnails in the board settings */
     .cs_c { min-width: 44px; }
 
     .privacy_link a {
@@ -1726,6 +1982,21 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     60% { transform: translateY(5px); }
     80% { transform: translateY(-2px); }
     100% { transform: translateY(0); }
+}
+
+@keyframes panel-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes sheet-in {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes caret-pulse {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 0.15; }
 }
 
 @keyframes flashRed {

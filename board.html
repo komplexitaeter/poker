@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.19" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.22" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.14" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.8" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.15" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.11" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -32,6 +32,9 @@
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
     <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
     <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
 </svg>
@@ -41,9 +44,10 @@
     <header class="head">
         <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter tools"/></a>
 
-        <!-- the team name as a shell prompt; click copies the board link -->
+        <!-- prompt: <player>@<team> and a softly pulsing caret; click copies the board link.
+             #prompt_user is filled from the DAO (textContent), empty until the player has a name. -->
         <div class="head-title">
-            <button type="button" class="team-name" onclick="copyLink()"><span class="prompt" aria-hidden="true">poker@</span><span id="team_name"></span><span class="prompt-path" aria-hidden="true">:~$</span><span class="cursor" aria-hidden="true"></span></button>
+            <button type="button" class="team-name" onclick="copyLink()"><span class="prompt" aria-hidden="true"><span id="prompt_user"></span><span class="prompt-at">@</span></span><span id="team_name"></span><span class="caret" aria-hidden="true"></span></button>
             <button type="button" id="copy_link_btn" class="icon-btn" onclick="copyLink()" aria-label="Copy board link"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy Link</span></button>
             <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
         </div>
@@ -51,88 +55,29 @@
         <span class="head-fill"></span>
 
         <!-- stopwatch: a direct on/off switch for everyone on the board (aria-pressed set by script.js) -->
-        <button type="button" id="stopwatch_btn" class="icon-btn sw-btn topnav" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
+        <button type="button" id="stopwatch_btn" class="icon-btn sw-btn" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
 
-        <div id="mobile-menu" class="mobile-menu" data-state="closed">
-            <button type="button" class="icon-btn open_menu" aria-label="Menu" aria-expanded="false" onclick="toggleMobileMenu('open')"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
-            <button type="button" class="icon-btn close-menu" aria-label="Close menu" onclick="toggleMobileMenu('closed')"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+        <!-- B-51 large screens: each button opens its section of the menu panel (#menu) directly
+             (data-open); same order and names as the phone menu index -->
+        <nav class="topnav-bar" aria-label="Board menu">
+            <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
+            <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">board</span></button>
+            <button type="button" id="user_settings_btn" class="icon-btn" data-open="user_settings" aria-label="You" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()" onfocus="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span><span id="cta_teaser" aria-hidden="true">set up your user profile</span></button>
+            <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
+            <button type="button" id="cmode_btn" class="icon-btn" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
+        </nav>
 
-            <nav class="topnav-bar" aria-label="Board menu">
-                <button type="button" id="topic_btn" class="icon-btn topnav" aria-label="Topic" aria-expanded="false" aria-controls="topic_box" onclick="toggle_box('topic');" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
-                <button type="button" id="cset_btn" class="icon-btn topnav" aria-label="Board setup" aria-expanded="false" aria-controls="cset_box" onclick="toggle_box('cset');" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">board</span></button>
-                <button type="button" id="user_settings_btn" class="icon-btn topnav" aria-label="Your settings" aria-expanded="false" aria-controls="user_settings_box" onclick="toggle_box('user_settings');" onmousemove="hideTeaser()" onfocus="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span><span id="cta_teaser" class="topnav" aria-hidden="true">set up your user profile</span></button>
-                <button type="button" id="feedback_btn" class="icon-btn topnav" aria-label="Feedback" aria-expanded="false" aria-controls="feedback_box" onclick="toggle_box('feedback');" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
-                <button type="button" id="cmode_btn" class="icon-btn topnav" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="lbl">mode</span></button>
-            </nav>
-
-            <div id="topic_box" class="topnav menu_box">
-                <label for="topic_txt"></label><textarea maxlength="1800" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="topnav field" onkeydown="topicChanged()"></textarea>
-                <input id="topic_reset" class="btn-box topnav" type="button" onclick="reset_topic()" value="Undo"/>
-                <input id="topic_save" class="btn-box topnav" type="button" onclick="save_topic()" value="Save"/>
-            </div>
-            <div id="feedback_box" class="topnav menu_box">
-                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
-                <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
-                <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve.
-Feel free to leave your email address so we can ask you for specifics :)" id="feedback_txt" class="topnav field"></textarea>
-                <input class="btn-box topnav" type="button" onclick="feedback_submit();" value="Send Feedback"/>
-            </div>
-            <div id="cset_box" class="topnav menu_box">
-                <label for="cet_team_name" class="topnav">Change team name</label>
-                <input class="topnav field setup_input_field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
-                <input id="cet_change_name" class="btn-box topnav" type="button" onclick="updateTeamName()" value="Ok" />
-
-                <label for="cet_pre" class="topnav">Define your deck of cards</label>
-                <select id="cet_pre" onchange="preSet();" class="topnav field">
-                    <option value="0" selected>Select a preset ...</option>
-                </select>
-
-                <div id="cards_thumbs" class="topnav"></div>
-
-                <label for="cet_order_by" class="topnav">Arrange revealed cards by</label>
-                <select id="cet_order_by" onchange="changeSortOrder()" class="topnav field">
-                    <option value="SEQUENCE" selected>Card value</option>
-                    <option value="NAME">Player name</option>
-                </select>
-                <div id="cet_order_by_hint" class="topnav display_none">In anonymous mode, revealed cards are always arranged by card value.</div>
-
-                <label for="cet_anonymous" class="topnav">Set players transparency (only affects new rounds)</label>
-                <select id="cet_anonymous" onchange="changeAnonymity()" class="topnav field">
-                    <option value="0">Show names on results (default)</option>
-                    <option value="1" selected>Hide names on results (anonymous)</option>
-                </select>
-
-                <label for="cet_dark_side" class="topnav">Calculate average value</label>
-                <input id="cet_dark_side" class="btn-box topnav" type="button" onclick="pushJediBtn()" data-state="0" />
-            </div>
-
-            <div id="user_settings_box" class="topnav menu_box">
-                <label for="cet_usr_name" class="topnav">Change your name</label>
-                <input class="topnav field setup_input_field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
-                <input id="cet_change_user" class="btn-box topnav" type="button" onclick="updateUserName()" value="Ok" />
-
-                <label for="cet_toggle_user_type" class="topnav">Switch your role</label>
-                <input id="cet_toggle_user_type" class="btn-box topnav" type="button" onclick="toggleUserType()" />
-
-                <div id="user_settings_privacy_link" class="privacy_link">
-                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a> | <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a> | <a onclick="showDeleteUserOverlay()">Delete User</a>
-                </div>
-            </div>
-
-        </div>
+        <!-- phones: one button opens the menu index (bottom sheet) -->
+        <button type="button" id="menu_btn" class="icon-btn menu-btn" data-open="index" aria-label="Menu" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
     </header>
 
-    <!-- topic: a full-width strip above the table (large screens: long topics scroll inside it;
-         phones: one line that unfolds with the arrow button) -->
+    <!-- topic: a full-width strip above the table, only while a topic is set (large screens: long
+         topics scroll inside it; phones: one line that unfolds with the arrow button) -->
     <section class="topic-bar" data-expanded="false" aria-label="Topic">
         <h2 class="topic-label">topic</h2>
         <div id="topic" class="display_none" data-hash="0" onclick="toggleTopic(event)"></div>
         <button type="button" id="topic_toggle" class="icon-btn" aria-label="Show the whole topic" aria-expanded="false" aria-controls="topic" onclick="toggleTopic(event)"><svg class="i" aria-hidden="true"><use href="#i-down"/></svg></button>
-        <button type="button" class="topic-empty topnav" onclick="toggle_box('topic')">+ set a topic</button>
-        <button type="button" class="icon-btn topic-edit topnav" aria-label="Edit topic" onclick="toggle_box('topic')"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
+        <button type="button" class="icon-btn topic-edit" data-open="topic" aria-controls="menu" aria-label="Edit topic"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
     </section>
 
     <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide).
@@ -167,6 +112,154 @@ Feel free to leave your email address so we can ask you for specifics :)" id="fe
         </footer>
 
     </div>
+
+    <!-- B-51: the menu. One component (style.css, "Menu panel"):
+         large screens = side panel on the right, from below the header down to the bottom edge
+         (non-modal, covers topic, table and deck); phones = bottom sheet over a backdrop (modal).
+         Shown with the dialog's open attribute; inside, exactly one section is visible (hidden).
+         Openers carry data-open="<section>" (index, topic, cset, user_settings, feedback),
+         the close button data-close. Field ids are the same as before (cet_*, topic_txt, ...). -->
+    <dialog id="menu" class="menu" aria-labelledby="menu_title">
+        <div class="grab" aria-hidden="true"></div>
+        <header class="m-head">
+            <!-- phones only: back to the index (hidden by CSS on large screens and on the index) -->
+            <button type="button" id="menu_back" class="icon-btn" data-open="index" aria-label="Back to menu"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></button>
+            <h2 id="menu_title">Menu</h2>
+            <button type="button" id="menu_close" class="icon-btn" data-close aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </header>
+
+        <div class="m-body">
+
+            <!-- phones: the index, same order and names as the header buttons on large screens -->
+            <section id="menu_index" class="menu_sec" data-sec="index" data-title="Menu" hidden>
+                <ul class="m-index">
+                    <li><button type="button" data-open="topic"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span><b>Topic</b><small>What you are estimating</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="user_settings"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span><b>You</b><small>Name, role, appearance</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                </ul>
+                <p class="m-links">
+                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a>
+                    <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a>
+                </p>
+            </section>
+
+            <section id="topic_box" class="menu_sec" data-sec="topic" data-title="Topic" hidden>
+                <label class="lab" for="topic_txt">What are you estimating? (optional, Markdown works)</label>
+                <textarea maxlength="1800" rows="7" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="field" onkeydown="topicChanged()"></textarea>
+                <div class="row end">
+                    <button type="button" id="topic_reset" class="btn-box" onclick="reset_topic()">Undo</button>
+                    <button type="button" id="topic_save" class="btn-box primary" onclick="save_topic()">Save</button>
+                </div>
+            </section>
+
+            <!-- board settings: groups below each other, each opens and closes on its own (accordion);
+                 a closed group shows a one-line summary (#cset_sum_*, filled via textContent) -->
+            <section id="cset_box" class="menu_sec" data-sec="cset" data-title="Board settings" hidden>
+                <details class="grp" data-grp="deck" open>
+                    <summary><svg class="i i-chev" aria-hidden="true"><use href="#i-next"/></svg><b>Deck</b><small id="cset_sum_deck"></small></summary>
+                    <div class="grp-body">
+                        <div class="f">
+                            <label for="cet_pre" class="lab">Card set</label>
+                            <select id="cet_pre" onchange="preSet();" class="field">
+                                <option value="0" selected>Select a preset ...</option>
+                            </select>
+                        </div>
+                        <div class="f">
+                            <span class="lab" id="cards_thumbs_lab">Cards in the deck (tap to switch off or on)</span>
+                            <div id="cards_thumbs" role="group" aria-labelledby="cards_thumbs_lab"></div>
+                        </div>
+                    </div>
+                </details>
+                <details class="grp" data-grp="results">
+                    <summary><svg class="i i-chev" aria-hidden="true"><use href="#i-next"/></svg><b>Results</b><small id="cset_sum_results"></small></summary>
+                    <div class="grp-body">
+                        <fieldset class="f" id="cet_anonymous">
+                            <legend class="lab">Names on revealed cards</legend>
+                            <div class="seg">
+                                <label><input type="radio" name="cet_anonymous" value="0" onchange="changeAnonymity(this.value)"/><span>Show names</span></label>
+                                <label><input type="radio" name="cet_anonymous" value="1" onchange="changeAnonymity(this.value)"/><span>Anonymous</span></label>
+                            </div>
+                            <p class="hint">Takes effect with the next round.</p>
+                        </fieldset>
+                        <fieldset class="f" id="cet_order_by">
+                            <legend class="lab">Arrange revealed cards by</legend>
+                            <div class="seg">
+                                <label><input type="radio" name="cet_order_by" value="SEQUENCE" onchange="changeSortOrder(this.value)"/><span>Card value</span></label>
+                                <label><input type="radio" name="cet_order_by" value="NAME" onchange="changeSortOrder(this.value)"/><span>Player name</span></label>
+                            </div>
+                            <p id="cet_order_by_hint" class="hint display_none">In anonymous mode, revealed cards are always arranged by card value.</p>
+                        </fieldset>
+                        <fieldset class="f" id="cet_dark_side">
+                            <legend class="lab">Average pointer</legend>
+                            <div class="seg">
+                                <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
+                                <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span><svg class="i i-lock" aria-hidden="true"><use href="#i-lock"/></svg>Show</span></label>
+                            </div>
+                            <p class="hint">Join the dark side: a pointer on the deck shows the average.</p>
+                        </fieldset>
+                    </div>
+                </details>
+                <details class="grp" data-grp="team">
+                    <summary><svg class="i i-chev" aria-hidden="true"><use href="#i-next"/></svg><b>Team</b><small id="cset_sum_team"></small></summary>
+                    <div class="grp-body">
+                        <div class="f">
+                            <label for="cet_team_name" class="lab">Team name</label>
+                            <div class="row">
+                                <input class="field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
+                                <button type="button" id="cet_change_name" class="btn-box" onclick="updateTeamName()">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+            <section id="user_settings_box" class="menu_sec" data-sec="user_settings" data-title="You" hidden>
+                <div class="f">
+                    <label for="cet_usr_name" class="lab">Your name</label>
+                    <div class="row">
+                        <input class="field" id="cet_usr_name" size="15" maxlength="40" type="text" value="" oninput="onChangeUserNameInput()" autocomplete="off" />
+                        <button type="button" id="cet_change_user" class="btn-box" onclick="updateUserName()">Save</button>
+                    </div>
+                </div>
+                <fieldset class="f" id="cet_user_type">
+                    <legend class="lab">Your role</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="cet_user_type" value="PLAYER" onchange="toggleUserType(this.value)"/><span>Player</span></label>
+                        <label><input type="radio" name="cet_user_type" value="OBSERVER" onchange="toggleUserType(this.value)"/><span>Observer</span></label>
+                    </div>
+                    <p class="hint">Observers see the table but do not vote.</p>
+                </fieldset>
+                <fieldset class="f" id="cet_color_mode">
+                    <legend class="lab">Appearance</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="cet_color_mode" value="light" onchange="setColorMode(this.value)"/><span>Light</span></label>
+                        <label><input type="radio" name="cet_color_mode" value="dark" onchange="setColorMode(this.value)"/><span>Dark</span></label>
+                    </div>
+                </fieldset>
+                <p id="user_settings_privacy_link" class="m-links">
+                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a>
+                    <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a>
+                    <button type="button" id="delete_user_btn" class="btn-box danger" onclick="showDeleteUserOverlay()">Delete my data</button>
+                </p>
+            </section>
+
+            <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
+                <!-- the rating stars have been switched off for years (dead code, see BACKLOG); kept until script_feedback.js drops them -->
+                <img src="src/star_off.png" class="feedback_star" id="fb_star_1" alt="" />
+                <img src="src/star_off.png" class="feedback_star" id="fb_star_2" alt="" />
+                <img src="src/star_off.png" class="feedback_star" id="fb_star_3" alt="" />
+                <img src="src/star_off.png" class="feedback_star" id="fb_star_4" alt="" />
+                <img src="src/star_off.png" class="feedback_star" id="fb_star_5" alt="" />
+                <label class="lab" for="feedback_txt">Feedback is your most powerful way to change the world. Please let us know how we might improve. Feel free to leave your email address so we can ask you for specifics :)</label>
+                <textarea maxlength="1800" rows="8" id="feedback_txt" class="field"></textarea>
+                <div class="row end">
+                    <button type="button" class="btn-box primary" onclick="feedback_submit();">Send feedback</button>
+                </div>
+            </section>
+
+        </div>
+    </dialog>
 
 </div>
 <img id="index" src="src/index.png" title="average result" alt="average result" />
