@@ -7,14 +7,13 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.21" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.19" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
 </head>
 <body onload="loadInit()" style="opacity: 0">
 
     <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
     <svg class="sprite" aria-hidden="true" focusable="false">
-        <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
         <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
         <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
         <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
@@ -27,28 +26,20 @@
         <span class="head-fill"></span>
 
         <nav class="topnav-bar" aria-label="Menu">
-            <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
-            <button type="button" id="cmode_btn" class="icon-btn" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
+            <button type="button" id="feedback_btn" class="icon-btn topnav" aria-label="Feedback" aria-expanded="false" aria-controls="feedback_box" onclick="toggle_box('feedback');"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
+            <button type="button" id="cmode_btn" class="icon-btn topnav" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
         </nav>
-    </header>
 
-    <!-- B-51: the same menu panel as on the board (style.css, "Menu panel"), here with feedback only -->
-    <dialog id="menu" class="menu" aria-labelledby="menu_title">
-        <div class="grab" aria-hidden="true"></div>
-        <header class="m-head">
-            <h2 id="menu_title">Feedback</h2>
-            <button type="button" id="menu_close" class="icon-btn" data-close aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
-        </header>
-        <div class="m-body">
-            <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
-                <label class="lab" for="feedback_txt">Feedback is your most powerful way to change the world. Tell us what we could improve – leave your email if we may ask back :)</label>
-                <textarea maxlength="1800" rows="7" id="feedback_txt" class="field"></textarea>
-                <div class="row end">
-                    <button type="button" class="btn-box primary" onclick="feedback_submit();">Send feedback</button>
-                </div>
-            </section>
+        <div id="feedback_box" class="topnav menu_box">
+            <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(1, true)" id="fb_star_1" alt="" />
+            <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(2, true)" id="fb_star_2" alt="" />
+            <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(3, true)" id="fb_star_3" alt="" />
+            <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(4, true)" id="fb_star_4" alt="" />
+            <img src="src/star_off.png" class="topnav feedback_star" onclick="feedback_rate(5, true)" id="fb_star_5" alt="" />
+            <label for="feedback_txt"></label><textarea maxlength="1800" placeholder="Feedback is your most powerful way to change the world. So please let us know how we might improve." id="feedback_txt" class="topnav field"></textarea>
+            <input class="btn-box topnav" type="button" onclick="feedback_submit();" value="Send Feedback"/>
         </div>
-    </dialog>
+    </header>
 
     <form id="teamForm">
         <label for="teaminput">
@@ -63,8 +54,8 @@
         <li>Have Fun!</li>
     </ol>
 
-    <script src="script/script_feedback.js?v=1.13" type="text/javascript" defer></script>
+    <script src="script/script_feedback.js?v=1.11" type="text/javascript" defer></script>
     <script src="script/script_team.js?v=1.7" type="text/javascript" defer></script>
-    <script src="script/script.js?v=2.10" type="text/javascript" defer></script>
+    <script src="script/script.js?v=2.8" type="text/javascript" defer></script>
 </body>
 </html>

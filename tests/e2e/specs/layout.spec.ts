@@ -69,8 +69,6 @@ test('Copy Link shows a toast instead of growing the button', async ({ browser }
 
   const toast = alice.locator('#toast');
   await expect(toast).not.toHaveClass(/toast-on/);
-  await alice.locator('#invite_btn').click(); // B-51: Copy lives in "Invite"
-  await expect(alice.locator('#invite_link')).toHaveValue(url);
   await alice.locator('#copy_link_btn').click();
   await expect(toast).toHaveClass(/toast-on/);
   await expect(toast).toHaveText('Board link copied');

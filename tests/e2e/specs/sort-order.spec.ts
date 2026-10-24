@@ -4,23 +4,11 @@ import { newPlayer, createTeam, joinAsPlayer, tableCard, pickCard, teamWithTwoPl
 /**
  * B-42: The order of the revealed cards is only set in the menu ("Arrange revealed cards by":
  * Card value = SEQUENCE, Player name = NAME). The Name/Value bar below the cards is gone. In
- * anonymous mode the server always arranges by card value, so the choice is disabled, shows
+ * anonymous mode the server always arranges by card value, so the select is disabled, shows
  * "Card value" whatever is stored, and a hint is shown. The stored value is kept.
- * B-51: the choice is a radio group (fieldset #cet_order_by) in the group "Results" of the board
- * settings panel; the panel stays open while cards are picked.
  */
 const firstCard = (page: Page) => page.locator('#cbox .c').first();
 const cardId = (page: Page, name: string) => tableCard(page, name).getAttribute('id') as Promise<string>;
-
-const orderRadio = (page: Page, value: 'SEQUENCE' | 'NAME') =>
-  page.locator(`input[name=cet_order_by][value=${value}]`);
-
-/** Opens "Board settings" and its group "Results". */
-async function openResults(page: Page) {
-  await page.locator('#cset_btn').click();
-  await page.locator('#cset_box details[data-grp="results"] > summary').click();
-  await expect(page.locator('#cet_order_by')).toBeVisible();
-}
 
 test('the menu setting arranges revealed cards by player name or by card value, without a bar (B-42)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Sort Team');
@@ -28,16 +16,17 @@ test('the menu setting arranges revealed cards by player name or by card value, 
   const aliceId = await cardId(alice, 'Alice');
   const bobId = await cardId(alice, 'Bob');
 
-  await openResults(alice);
-  const group = alice.locator('#cet_order_by');
-  await expect(group.locator('legend')).toHaveText('Arrange revealed cards by');
-  await expect(group.locator('label')).toHaveText(['Card value', 'Player name']);
-  await expect(orderRadio(alice, 'SEQUENCE')).toBeChecked();
+  await alice.locator('#cset_btn').click();
+  const select = alice.locator('#cet_order_by');
+  await expect(select).toBeVisible();
+  await expect(alice.locator('label[for="cet_order_by"]')).toHaveText('Arrange revealed cards by');
+  await expect(select.locator('option')).toHaveText(['Card value', 'Player name']);
+  await expect(select).toHaveValue('SEQUENCE');
   await expect(alice.locator('#cet_order_by_hint')).toBeHidden();
-  await expect(group).not.toHaveAttribute('aria-describedby');
+  await expect(select).not.toHaveAttribute('aria-describedby');
 
-  await orderRadio(alice, 'NAME').check();
-  await expect(orderRadio(alice, 'NAME')).toBeChecked();
+  await select.selectOption({ label: 'Player name' });
+  await expect(select).toHaveValue('NAME');
 
   // Alice 8, Bob 3: by name Alice comes first
   await pickCard(alice, 'eight01');
@@ -50,15 +39,16 @@ test('the menu setting arranges revealed cards by player name or by card value, 
   await expect(alice.locator('#order_by_div')).toHaveCount(0);
 
   // switching to "Card value" re-arranges the revealed cards right away, for everyone
-  // (B-51: picking a card leaves the panel open)
-  await expect(group).toBeVisible();
-  await orderRadio(alice, 'SEQUENCE').check();
+  // (picking a card closed the menu, so open it again)
+  await expect(select).toBeHidden();
+  await alice.locator('#cset_btn').click();
+  await select.selectOption({ label: 'Card value' });
   await expect(firstCard(alice)).toHaveAttribute('id', bobId);
   await expect(firstCard(bob)).toHaveAttribute('id', bobId);
-  await expect(orderRadio(bob, 'SEQUENCE')).toBeChecked();
+  await expect(bob.locator('#cet_order_by')).toHaveValue('SEQUENCE');
 });
 
-test('anonymous mode: the choice is disabled, shows "Card value", a hint is shown and cards are arranged by card value (B-42)', async ({ browser }) => {
+test('anonymous mode: the select is disabled, shows "Card value", a hint is shown and cards are arranged by card value (B-42)', async ({ browser }) => {
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'Anon Sort');
   const t = encodeURIComponent(new URL(url).searchParams.get('t')!);
@@ -71,16 +61,15 @@ test('anonymous mode: the choice is disabled, shows "Card value", a hint is show
   await expect(tableCard(alice, 'Bob')).toBeVisible();
   const bobId = await cardId(alice, 'Bob');
 
-  await openResults(alice);
-  const group = alice.locator('#cet_order_by');
-  await expect(orderRadio(alice, 'SEQUENCE')).toBeDisabled();
-  await expect(orderRadio(alice, 'NAME')).toBeDisabled();
-  await expect(orderRadio(alice, 'SEQUENCE')).toBeChecked();
-  await expect(group.locator('input:checked + span')).toHaveText('Card value');
+  await alice.locator('#cset_btn').click();
+  const select = alice.locator('#cet_order_by');
+  await expect(select).toBeDisabled();
+  await expect(select).toHaveValue('SEQUENCE');
+  await expect(select.locator('option:checked')).toHaveText('Card value');
   const hint = alice.locator('#cet_order_by_hint');
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('In anonymous mode, revealed cards are always arranged by card value.');
-  await expect(group).toHaveAttribute('aria-describedby', 'cet_order_by_hint');
+  await expect(select).toHaveAttribute('aria-describedby', 'cet_order_by_hint');
 
   // Alice 8, Bob 3: arranged by card value although "Player name" is stored
   await pickCard(alice, 'eight01');
@@ -90,33 +79,31 @@ test('anonymous mode: the choice is disabled, shows "Card value", a hint is show
   await expect(alice.locator('#order_by_div')).toHaveCount(0);
 });
 
-test('choosing "Anonymous" in the menu disables the choice at once and keeps the stored "Player name" (B-42)', async ({ browser }) => {
+test('choosing "Hide names" in the menu disables the select at once and keeps the stored "Player name" (B-42)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Anon Toggle');
   await expect(tableCard(alice, 'Bob')).toBeVisible();
 
-  await openResults(alice);
-  const group = alice.locator('#cet_order_by');
+  await alice.locator('#cset_btn').click();
+  const select = alice.locator('#cet_order_by');
   const hint = alice.locator('#cet_order_by_hint');
-  await orderRadio(alice, 'NAME').check();
-  await expect(orderRadio(alice, 'NAME')).toBeChecked();
+  await select.selectOption({ label: 'Player name' });
+  await expect(select).toHaveValue('NAME');
   await expect(hint).toBeHidden();
 
   // a card on the table: anonymous mode itself only starts with the next round
   await pickCard(bob, 'three01');
 
-  await alice.locator('input[name=cet_anonymous][value="1"]').check();
-  await expect(alice.locator('input[name=cet_anonymous][value="1"]')).toBeChecked();
-  await expect(orderRadio(alice, 'SEQUENCE')).toBeDisabled();
-  await expect(orderRadio(alice, 'NAME')).toBeDisabled();
-  await expect(orderRadio(alice, 'SEQUENCE')).toBeChecked();
+  await alice.locator('#cet_anonymous').selectOption('1');
+  await expect(select).toBeDisabled();
+  await expect(select).toHaveValue('SEQUENCE');
   await expect(hint).toBeVisible();
-  await expect(group).toHaveAttribute('aria-describedby', 'cet_order_by_hint');
+  await expect(select).toHaveAttribute('aria-describedby', 'cet_order_by_hint');
 
   // switching anonymous mode off again shows the stored value, nothing was overwritten
-  await alice.locator('input[name=cet_anonymous][value="0"]').check();
-  await expect(orderRadio(alice, 'NAME')).toBeEnabled();
-  await expect(orderRadio(alice, 'NAME')).toBeChecked();
+  await alice.locator('#cet_anonymous').selectOption('0');
+  await expect(select).toBeEnabled();
+  await expect(select).toHaveValue('NAME');
   await expect(hint).toBeHidden();
-  await expect(group).not.toHaveAttribute('aria-describedby');
-  await expect(orderRadio(bob, 'NAME')).toBeChecked();
+  await expect(select).not.toHaveAttribute('aria-describedby');
+  await expect(bob.locator('#cet_order_by')).toHaveValue('NAME');
 });
