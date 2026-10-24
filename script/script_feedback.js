@@ -330,7 +330,7 @@ function feedback_submit() {
 
     fetch('./api/feedback.php?id=' + localStorage.getItem('SID')
         + '&stars=' + fb_star
-        + '&text=' + fb_text
+        + '&text=' + encodeURIComponent(fb_text)
     , { method: 'POST' }).then();
 }
 
