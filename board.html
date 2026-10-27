@@ -7,11 +7,11 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.32" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.33" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.18" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.19" type="text/javascript"></script>
     <script defer src="script/script.js?v=2.17" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
@@ -155,14 +155,14 @@
             </section>
 
             <!-- board settings: tabs Deck | Results | Team, one panel visible at a time
-                 (showCsetTab() in script_feedback.js: aria-selected on the tab, hidden on the panels) -->
+                 (showMenuTab() in script_feedback.js: aria-selected on the tab, hidden on the panels) -->
             <section id="cset_box" class="menu_sec" data-sec="cset" data-title="Board settings" hidden>
-                <div class="cset-tabs" role="tablist" aria-label="Board settings">
+                <div class="m-tabs" role="tablist" aria-label="Board settings">
                     <button type="button" role="tab" id="cset_tab_deck" data-tab="deck" aria-selected="true" aria-controls="cset_panel_deck">Deck</button>
                     <button type="button" role="tab" id="cset_tab_results" data-tab="results" aria-selected="false" aria-controls="cset_panel_results" tabindex="-1">Results</button>
                     <button type="button" role="tab" id="cset_tab_team" data-tab="team" aria-selected="false" aria-controls="cset_panel_team" tabindex="-1">Team</button>
                 </div>
-                <div class="cset-panel" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
+                <div class="m-tabpanel" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
                     <div class="f">
                         <label for="cet_pre" class="lab">Card set</label>
                         <select id="cet_pre" onchange="preSet();" class="field">
@@ -174,7 +174,7 @@
                         <div id="cards_thumbs" role="group" aria-labelledby="cards_thumbs_lab"></div>
                     </div>
                 </div>
-                <div class="cset-panel" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
+                <div class="m-tabpanel" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
                     <fieldset class="f" id="cet_anonymous">
                         <legend class="lab">Names on revealed cards</legend>
                         <div class="seg">
@@ -200,7 +200,7 @@
                         <p class="hint">Join the dark side: a pointer on the deck shows the average.</p>
                     </fieldset>
                 </div>
-                <div class="cset-panel" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
+                <div class="m-tabpanel" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
                     <div class="f">
                         <label for="cet_team_name" class="lab">Team name</label>
                         <div class="row">
@@ -241,11 +241,52 @@
                 </p>
             </section>
 
+            <!-- B-57: feedback in two tabs (same pattern as board settings, showMenuTab() in script_feedback.js):
+                 "Send feedback" (type Bug | Feature | Other + text) and "Backlog" (our public list with
+                 status and reactions). Backlog entries are clones of #fb_item_tpl, filled via textContent only. -->
             <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
-                <label class="lab" for="feedback_txt">Feedback is your most powerful way to change the world. Please let us know how we might improve. Feel free to leave your email address so we can ask you for specifics :)</label>
-                <textarea maxlength="1800" rows="8" id="feedback_txt" class="field"></textarea>
-                <div class="row end">
-                    <button type="button" class="btn-box primary" onclick="feedback_submit();">Send feedback</button>
+                <div class="m-tabs" role="tablist" aria-label="Feedback">
+                    <button type="button" role="tab" id="fb_tab_send" data-tab="send" aria-selected="true" aria-controls="fb_panel_send">Send feedback</button>
+                    <button type="button" role="tab" id="fb_tab_backlog" data-tab="backlog" aria-selected="false" aria-controls="fb_panel_backlog" tabindex="-1">Backlog</button>
+                </div>
+                <div class="m-tabpanel" role="tabpanel" id="fb_panel_send" data-tab="send" aria-labelledby="fb_tab_send">
+                    <div id="feedback_form" class="fb-form">
+                        <fieldset class="f" id="fb_type">
+                            <legend class="lab">What is it about?</legend>
+                            <div class="seg">
+                                <label><input type="radio" name="fb_type" value="BUG" data-placeholder="What happened? What did you expect?"/><span>Bug</span></label>
+                                <label><input type="radio" name="fb_type" value="FEATURE" data-placeholder="What would help your team?"/><span>Feature</span></label>
+                                <label><input type="radio" name="fb_type" value="OTHER" data-placeholder="Anything on your mind?" checked/><span>Other</span></label>
+                            </div>
+                        </fieldset>
+                        <div class="f">
+                            <label class="lab" for="feedback_txt">Your message</label>
+                            <textarea maxlength="1800" rows="7" id="feedback_txt" class="field" placeholder="Anything on your mind?" aria-describedby="fb_hint fb_bug_hint"></textarea>
+                            <p id="fb_hint" class="hint">We read every message. Leave your email address if we may ask you for details.</p>
+                            <p id="fb_bug_hint" class="hint fb-bug-only">With a bug we also send technical details (browser, window size, app version), never your team.</p>
+                        </div>
+                        <div class="row end">
+                            <button type="button" id="feedback_send" class="btn-box primary" onclick="feedback_submit();">Send feedback</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="m-tabpanel" role="tabpanel" id="fb_panel_backlog" data-tab="backlog" aria-labelledby="fb_tab_backlog" hidden>
+                    <p class="hint fb-intro">What we are working on. Tap a reaction to tell us what matters to you.</p>
+                    <ul id="fb_backlog" class="fb-list"></ul>
+                    <p id="fb_backlog_empty" class="fb-empty">Nothing here yet.</p>
+                    <template id="fb_item_tpl">
+                        <li class="fb-item">
+                            <div class="fb-item-head">
+                                <h3 class="fb-title"></h3>
+                                <span class="fb-status"></span>
+                            </div>
+                            <p class="fb-desc"></p>
+                            <div class="fb-react" role="group" aria-label="Reactions">
+                                <button type="button" class="fb-react-btn" data-reaction="LOVE" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">❤️</span><span class="sr-only">Love it, </span><span class="fb-count">0</span></button>
+                                <button type="button" class="fb-react-btn" data-reaction="MEH" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">🙈</span><span class="sr-only">Not for me, </span><span class="fb-count">0</span></button>
+                            </div>
+                        </li>
+                    </template>
                 </div>
             </section>
 

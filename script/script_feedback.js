@@ -35,6 +35,7 @@ function prepareMenuSection(sec) {
         document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
     }
+    if (sec === 'feedback') showMenuTab(document.getElementById('feedback_box'), 'send');
     if (sec === 'user_settings') {
         document.getElementById('cet_usr_name').value = gUserName;
         document.getElementById('cet_change_user').disabled = true;
@@ -46,11 +47,11 @@ function prepareMenuSection(sec) {
     }
 }
 
-/* Board settings: tabs (Deck | Results | Team). The tab buttons carry role="tab" and data-tab, the
- * panels role="tabpanel" and data-tab as well; the selected tab has aria-selected="true" and is the
- * only one in the tab order, the other panels are hidden. focusTab: move the focus to the tab. */
-function showCsetTab(name, focusTab = false) {
-    let box = document.getElementById('cset_box');
+/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: Send feedback | Backlog).
+ * The tab buttons carry role="tab" and data-tab, the panels role="tabpanel" and data-tab as well; the
+ * selected tab has aria-selected="true" and is the only one in the tab order, the other panels are
+ * hidden. box: the section element; focusTab: move the focus to the tab. */
+function showMenuTab(box, name, focusTab = false) {
     if (box === null) return;
     let tab = box.querySelector('[role="tab"][data-tab="' + name + '"]');
     if (tab === null) return;
@@ -61,6 +62,10 @@ function showCsetTab(name, focusTab = false) {
     });
     box.querySelectorAll('[role="tabpanel"]').forEach(p => { p.hidden = p.getAttribute('data-tab') !== name; });
     if (focusTab) tab.focus();
+}
+
+function showCsetTab(name, focusTab = false) {
+    showMenuTab(document.getElementById('cset_box'), name, focusTab);
 }
 
 /* aria-expanded of the openers outside the menu: the header button of the open section, the menu
@@ -189,17 +194,17 @@ function initMenu() {
         }
     });
 
-    // board settings: tabs by click, arrow keys, Home and End (focus follows the selection)
-    let csetBox = document.getElementById('cset_box');
-    if (csetBox !== null) {
-        csetBox.addEventListener('click', function (event) {
+    // tabs in menu sections (board settings, feedback): click, arrow keys, Home and End
+    // (focus follows the selection)
+    menu.querySelectorAll('section.menu_sec:has([role="tablist"])').forEach(box => {
+        box.addEventListener('click', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
-            if (tab !== null) showCsetTab(tab.getAttribute('data-tab'));
+            if (tab !== null) showMenuTab(box, tab.getAttribute('data-tab'));
         });
-        csetBox.addEventListener('keydown', function (event) {
+        box.addEventListener('keydown', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
             if (tab === null) return;
-            let tabs = Array.from(csetBox.querySelectorAll('[role="tab"][data-tab]'));
+            let tabs = Array.from(box.querySelectorAll('[role="tab"][data-tab]'));
             let i = tabs.indexOf(tab);
             if (event.key === 'ArrowRight') i = (i + 1) % tabs.length;
             else if (event.key === 'ArrowLeft') i = (i - 1 + tabs.length) % tabs.length;
@@ -207,9 +212,9 @@ function initMenu() {
             else if (event.key === 'End') i = tabs.length - 1;
             else return;
             event.preventDefault();
-            showCsetTab(tabs[i].getAttribute('data-tab'), true);
+            showMenuTab(box, tabs[i].getAttribute('data-tab'), true);
         });
-    }
+    });
 
     // Escape: modal (phones) via the cancel event, non-modal (large screens) via keydown
     menu.addEventListener('cancel', function (event) {
