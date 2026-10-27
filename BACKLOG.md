@@ -126,6 +126,10 @@ Abgeschlossen:
 | B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | verworfen (→ B-57) |
 | B-56 | Players-Menü: Spielerliste mit Status, Entfernen statt Lösch-Icon auf den Karten | neu |
 | B-57 | Ideas & Bugs: Meldungen mit Typ, öffentliche Liste mit Status und Abstimmung, Moderation | neu |
+| B-58 | Geänderte Karte sichtbar machen: ursprüngliche Karte versetzt darunter (statt Sperren) | neu |
+| B-59 | Aufdecken, bevor alle gewählt haben („reveal now“) | neu |
+| B-60 | Spaß-Funktionen: Reaktionen/Emojis, Werfen, Fun-Karten | neu |
+| B-61 | Eigene Kartenwerte / eigene Decks | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -826,6 +830,27 @@ Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden ei
 Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-58 Geänderte Karte sichtbar machen (statt Karte sperren)
+Häufigster Nutzerwunsch im Feedback (≈ 9×, 2022–2026): „Karte nach dem Aufdecken sperren“. Andreas (2026-10-27): intern
+heiß diskutiert; Philosophie der App ist „nah an der Physik“ – am Tisch kann man seine Karte auch noch tauschen. Heute
+deshalb das (inzwischen dezentere) Wackeln als Hinweis; manchen reicht das nicht, Sperren finden wir aber ein blödes
+Feature. **Idee Andreas:** Ändert jemand nach dem Aufdecken seine Karte, liegen zwei Karten leicht versetzt
+übereinander; jeder kann nachschauen, was die ursprüngliche Karte war – transparent statt verboten. Refinement nötig
+(Darstellung, mehrfaches Ändern, Anonym-Modus, Daten: ursprüngliche Karte je Runde speichern → Ben). Öffentlich in der
+Backlog-Liste (B-57)? – noch klären.
+
+### B-59 Aufdecken, bevor alle gewählt haben
+Feedback (3×): Button „reveal now“, wenn jemand abwesend ist, statt ihn zu entfernen. Andreas: ins Backlog + öffentlich;
+refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns Smarteres ein.
+
+### B-60 Spaß-Funktionen
+Feedback (≈ 6×): Reaktionen/Emojis, Papierkugeln werfen, Fun-Karten, Emojis im Namen, Musik. Andreas: Backlog +
+öffentlich; er hatte schon einmal ein Mock-up dazu gebaut, fand es cool. Refinement nötig.
+
+### B-61 Eigene Kartenwerte / eigene Decks
+Feedback (≈ 4×): eigene Zahlen/Begriffe, Business-Value-Deck. Andreas: Backlog + öffentlich, aber gut durchdenken;
+offene Frage, ob so etwas irgendwann hinter eine Paywall gehört.
 
 ### B-57 Ideas & Bugs: Meldungen, öffentliche Liste, Abstimmung
 Andreas (2026-10-27), statt der Umfrage B-55 (Team: Verhalten ist das Hauptsignal, Umfrage-Antworten ohne „was“ wenig
