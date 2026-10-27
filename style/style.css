@@ -30,7 +30,6 @@
     --radius-s: 3px;      /* small tiles, tooltips */
     --radius-m: 4px;      /* fields, buttons, topnav buttons */
     --radius-l: 6px;      /* menu boxes, panels */
-    --radius-card: 15px;  /* playing cards: matches the corners of the card images */
     --radius-pill: var(--radius-m); /* buttons (formerly pills) */
     /* spacing */
     --space-1: 0.25rem;
@@ -41,6 +40,28 @@
     --tap: 36px;
     /* menu panel width on large screens */
     --panel-w: 380px;
+    /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
+     * the largest width between --card-min and --card-max at which all cards fit into #table,
+     * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
+     * The images are 300 x 443px: sharp up to 150px on 2x screens. */
+    --card-min: 56px;     /* the player's name is still readable (10px, about 8 characters) */
+    --card-max: 150px;
+    --card-ratio: 1.48;   /* height / width (100 x 148) */
+    /* Without script.js: 100px from about 455px to 1440px (as before B-49), 22vw below
+     * (4 cards per row at 320-430px), 6.94vw above (grows with the screen), 64-140px. */
+    --card-fluid: clamp(64px, min(22vw, max(100px, 6.94vw)), 140px);
+    /* smallest delete icon on a card: none here, 28px on touch screens (see "Touch screens") */
+    --card-del-min: 0px;
+    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px); never wider than
+     * 16 cards fit in one row ((100vw - 80px padding) / 16 - 4px margin), at least 36px. */
+    --deck-w: clamp(36px, min((100vw - 80px) / 16 - 4px, max(45px, 2.5vw + 13px)), 64px);
+    --deck-h: calc(var(--deck-w) * 1.48 + 23.4px);  /* deck bar height: 90px at 45px */
+    --deck-stats: calc(var(--deck-w) * 5 / 3);      /* max. height of a usage bar: 75px at 45px */
+}
+
+/* phones: the deck scrolls sideways; 55px at 375px as before, smaller in landscape (12vh) */
+@media (max-width: 799.98px) {
+    :root { --deck-w: clamp(44px, min(12vw + 10px, 12vh), 64px); }
 }
 
 @media (pointer: coarse) {
@@ -1326,14 +1347,18 @@ fieldset:disabled .seg input:checked + span {
 /* ---------- Cards on the table ---------- */
 
 /* B-41: cards flow in a centered flex-wrap layout; no JS positioning.
-   Horizontal gaps reproduce the former 110 px JS grid: cards render
-   102 x 150 px (100 x 148 px image + 1px border), so 8px between cards.
-   Vertically the delete icon (.c .delete, bottom:-10px, ~22px high) hangs
-   about 10px below a card, so rows are 20px apart and 22px stay below the
-   last row: the icon keeps ~10-12px of air to the next card / element. */
+   B-49: everything scales with the card width --card-w (100px: as before B-49);
+   script.js overrides it inline (fit to table), the fluid width is the fallback.
+   Columns: 10% of the card apart (the former 110px grid at 100px).
+   Rows: the delete icon (--card-del, 20% of the card) hangs half its size below
+   a card, plus 10% air: 20px at 100px; the same stays below the last row. */
 div#cbox {
+    --card-w: var(--card-fluid);
+    --card-del: max(var(--card-del-min), var(--card-w) * 0.2);
+    --card-gap-x: calc(var(--card-w) * 0.1);
+    --card-gap-y: calc(var(--card-del) / 2 + var(--card-w) * 0.1);
     margin-top: 2em; /* small screens: see below */
-    padding: 4px 0 22px;
+    padding: 4px 0 calc(var(--card-gap-y) + 2px);
     outline: none;
     width: 100%;
     display: flex;
@@ -1341,39 +1366,43 @@ div#cbox {
     justify-content: center;
     align-content: flex-start;
     align-items: flex-start;
-    gap: 20px 8px;
+    gap: var(--card-gap-y) var(--card-gap-x);
     position: relative;
 }
+
 
 .c {
     /* relative: anchor for the absolutely positioned name and delete button */
     position: relative;
     text-align: left;
     display: inline-block;
-    border-radius: var(--radius-card);
+    width: var(--card-w);
+    border-radius: calc(var(--card-w) * 0.15); /* 15px at 100px, the corners of the images */
     background: var(--secondary-background-color);
 }
 
 .c .background {
     display: block;
-    width: 100px;
-    height: 148px;
+    box-sizing: border-box;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / var(--card-ratio);
     border: 1px solid var(--light-border-color);
-    border-radius: var(--radius-card);
+    border-radius: inherit;
 }
 
 .c:hover .background { border-color: var(--bluish); }
 
 .c span {
     position: absolute;
-    top: 4px;
+    top: calc(var(--card-w) * 0.04);
     width: 100%;
     line-height: 2em;
     box-sizing: border-box;
-    padding: 0 4px;
+    padding: 0 4%;
     text-align: center;
     color: var(--text-color);
-    font-size: var(--fs-xs);
+    font-size: clamp(10px, var(--card-w) * 0.11, 14px); /* 11px at 100px */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1383,10 +1412,10 @@ div#cbox {
 .c .delete {
     display: none;
     position: absolute;
-    bottom: -10px;
-    right: 5px;
-    width: 20px;
-    height: 20px;
+    bottom: calc(var(--card-del) / -2);
+    right: 5%;
+    width: var(--card-del);
+    height: var(--card-del);
     border: 1px solid var(--bluish);
     border-radius: 100%;
     background: var(--background-color);
@@ -1409,26 +1438,12 @@ div#cbox {
     .c .delete { display: block; }
 }
 
-/* Small screens: the card is 100px wide, but its bordered image renders 102px (overflows
-   by 2px), so the column gap is 2px larger to keep the same 110px grid as on large screens. */
+/* Small screens: the delete icon on every card */
 @media (max-width: 799.98px) {
-    div#cbox {
-        margin-top: 1em;
-        column-gap: 10px;
-    }
-
-    .c { width: 100px; }
-
-    .c .background {
-        width: 100%;
-        height: 100%;
-    }
-
+    div#cbox { margin-top: 1em; }
 
     .c .delete {
         display: block;
-        width: 20%;
-        height: auto;
         cursor: auto;
     }
 
@@ -1503,23 +1518,25 @@ div#cbox {
     align-items: flex-end;
     justify-content: center;
     padding: 0 40px 5px;
-    height: 90px;
+    height: var(--deck-h);
     background: var(--background-color);
     border-top: 2px solid var(--secondary-border-color);
-    border-top-left-radius: 45px;
-    border-top-right-radius: 45px;
+    border-top-left-radius: var(--deck-w);
+    border-top-right-radius: var(--deck-w);
     transition: height 0.8s ease-in-out;
 }
 
-.show_card_stats { height: 165px; }
+/* room for the usage bars */
+.show_card_stats { height: calc(var(--deck-h) + var(--deck-stats)); }
 
+/* usage bar: script.js sets --usage (0..1, share of the players) on each deck card */
 .controls img {
-    width: 45px;
+    width: var(--deck-w);
     padding-bottom: 10px;
     border-bottom: 1px solid transparent;
     border-top-left-radius: var(--radius-s);
     border-top-right-radius: var(--radius-s);
-    box-shadow: 0 0 0 0 var(--secondary-border-color);
+    box-shadow: 0 calc(var(--usage, 0) * var(--deck-stats) * -1) 0 0 var(--secondary-border-color);
     transition: box-shadow 0.8s ease-in-out;
     cursor: not-allowed;
 }
@@ -1541,8 +1558,9 @@ div#cbox {
 #index {
     position: fixed;
     left: 557px;
-    bottom: calc(77px + env(safe-area-inset-bottom));
-    width: 15px;
+    /* just over the top edge of the deck cards: 77px / 15px at 45px deck cards */
+    bottom: calc(var(--deck-w) * 1.48 + 10.4px + env(safe-area-inset-bottom));
+    width: calc(var(--deck-w) / 3);
     transition: left 0.8s ease-in-out;
 }
 
@@ -1564,7 +1582,6 @@ div#cbox {
     .show_card_stats { height: auto; }
 
     .controls img {
-        width: 55px;
         height: auto;
         padding-bottom: 0;
         border-bottom: none;
@@ -1901,13 +1918,8 @@ div#cbox {
         padding: 7px;
     }
 
-    /* delete icon on a card */
-    .c .delete,
-    .c .delete:hover {
-        width: 28px;
-        height: 28px;
-        bottom: -14px;
-    }
+    /* delete icon on a card: at least 28px (the row gap grows with it) */
+    :root { --card-del-min: 28px; }
 
     /* card set thumbnails in the board settings */
     .cs_c { min-width: 44px; }
