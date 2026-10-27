@@ -458,7 +458,7 @@ function feedback_submit() {
  * Loaded each time the tab is shown; entries are clones of #fb_item_tpl, filled via textContent only.
  * Pull updates of the board do not touch it. On the start page (#fb_react_hint present) the user may not be
  * known yet (vote_roadmap.php: 403), so the reactions are shown, but disabled. */
-const gFbStatusText = {PLANNED: 'planned', IN_PROGRESS: 'in progress', DONE: 'done ✅'};
+const gFbStatusText = {PLANNED: 'planned', IN_PROGRESS: 'in progress', DONE: 'done'};
 let gFbBacklogRequest = 0; // only the latest load fills the list
 
 function fbCanReact() {

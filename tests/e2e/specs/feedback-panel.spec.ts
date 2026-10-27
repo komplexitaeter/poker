@@ -161,7 +161,7 @@ test('backlog: seed entry with badge, titles as text, reactions set / change / r
 
   const seed = page.locator('#fb_backlog li.fb-item').filter({ has: page.locator('.fb-title', { hasText: /^New look$/ }) });
   await expect(seed).toHaveCount(1);
-  await expect(seed.locator('.fb-status')).toHaveText('done ✅');
+  await expect(seed.locator('.fb-status')).toHaveText('done');
   await expect(seed.locator('.fb-status')).toHaveAttribute('data-status', 'DONE');
   await expect(page.locator('#fb_backlog_empty')).toBeHidden();
 
@@ -257,7 +257,7 @@ test('start page: backlog is shown, reactions are disabled with a hint', async (
   await page.locator('#fb_tab_backlog').click();
 
   const seed = page.locator('#fb_backlog li.fb-item').filter({ has: page.locator('.fb-title', { hasText: /^New look$/ }) });
-  await expect(seed.locator('.fb-status')).toHaveText('done ✅');
+  await expect(seed.locator('.fb-status')).toHaveText('done');
   await expect(seed.locator('.fb-react-btn')).toHaveCount(2);
   for (const btn of await seed.locator('.fb-react-btn').all()) await expect(btn).toBeDisabled();
   await expect(page.locator('#fb_react_hint')).toHaveText('Join a board to react.');
