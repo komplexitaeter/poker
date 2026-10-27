@@ -15,6 +15,10 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, expectTableCard,
  * frames, then a short pause (as when the mouse slows down), then it measures. Rows are grouped by
  * the card's rendered top (within half a card height), so a card that is still on its way to another
  * row counts as part of the row it is visually in.
+ *
+ * B-49: the card size follows the table ("fit to table"), so the distance is no longer a fixed number
+ * of pixels: it stays at 110% of the card width (the gap is 10% of the card). A card that still glides
+ * or scales would show a different distance or width than its neighbours.
  */
 function measureNeighbourDistances(page: Page) {
   return page.evaluate(() => {
@@ -30,7 +34,8 @@ function measureNeighbourDistances(page: Page) {
       lefts.sort((a, b) => a - b);
       for (let i = 1; i < lefts.length; i++) distances.push(lefts[i] - lefts[i - 1]);
     });
-    return { distances, rows: rows.length };
+    const widths = rects.map(r => r.width);
+    return { distances, widths, rows: rows.length };
   });
 }
 
@@ -39,7 +44,7 @@ test('distance between neighbouring cards stays constant while resizing (B-41)',
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'Spacing Team');
   await joinAsPlayer(alice, url, 'Alice');
-  // 21 cards: 2 rows at 1500px, 4 rows at 650px, so the sweep crosses several wrap points
+  // 21 cards: the sweep crosses several wrap points and card sizes (B-49: fit to table)
   await addPlayersViaApi(alice, url, Array.from({ length: 20 }, (_, i) => `P${String(i + 1).padStart(2, '0')}`));
   await alice.reload();
   await expect(alice.locator('#cbox .c')).toHaveCount(21);
@@ -49,7 +54,7 @@ test('distance between neighbouring cards stays constant while resizing (B-41)',
   await alice.waitForTimeout(1500); // initial fade-in/glides are over
 
   const deviations: string[] = [];
-  let reference: number | null = null;
+  const cardWidths = new Set<number>();
   let maxRows = 0;
   // 1499 -> 649px in 10px steps, crosses the display type thresholds 1199/991/800 as well. The old
   // layout wrapped at multiples of 110px; ending each step on 110n-1 makes every wrap happen in the
@@ -59,14 +64,21 @@ test('distance between neighbouring cards stays constant while resizing (B-41)',
       await alice.setViewportSize({ width: w, height: 900 });
     }
     await alice.waitForTimeout(80);
-    const { distances, rows } = await measureNeighbourDistances(alice);
+    const { distances, widths, rows } = await measureNeighbourDistances(alice);
     maxRows = Math.max(maxRows, rows);
+    // all cards have the same size (none is still scaling) ...
+    const cardWidth = widths[0];
+    cardWidths.add(Math.round(cardWidth));
+    for (const w of widths) {
+      if (Math.abs(w - cardWidth) > 0.5) deviations.push(`${width}px: card ${w.toFixed(1)}px wide, not ${cardWidth.toFixed(1)}px`);
+    }
+    // ... and stand 110% of their width apart (none is still gliding)
     for (const d of distances) {
-      reference ??= d;
-      if (Math.abs(d - reference) > 1) deviations.push(`${width}px: ${d.toFixed(1)}px`);
+      if (Math.abs(d - 1.1 * cardWidth) > 1) deviations.push(`${width}px: ${d.toFixed(1)}px apart at ${cardWidth.toFixed(1)}px`);
     }
   }
 
   expect(maxRows).toBeGreaterThan(2); // the sweep really covered several rows
-  expect(deviations, `distance should stay at ${reference}px`).toEqual([]);
+  expect(cardWidths.size).toBeGreaterThan(1); // ... and several card sizes
+  expect(deviations).toEqual([]);
 });

@@ -33,7 +33,8 @@ const cardId = (page: Page, name: string) => tableCard(page, name).getAttribute(
 test('cards glide to their new place when the order changes, also across rows (B-41)', async ({ browser }) => {
   const alice = await newPlayer(browser);
   await recordAnimations(alice);
-  // narrow board: two cards per row, so a re-sort moves a card into the next row
+  // narrow board: two cards per row (B-49: the phone maximum of 110px fits twice, 78px would be needed
+  // for three), so a re-sort moves a card into the next row
   await alice.setViewportSize({ width: 250, height: 900 });
   const url = await createTeam(alice, 'Flip Team');
   await joinAsPlayer(alice, url, 'Alice');

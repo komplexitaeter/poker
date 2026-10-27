@@ -45,7 +45,7 @@
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
      * The images are 300 x 443px: sharp up to 150px on 2x screens. */
     --card-min: 56px;     /* the player's name is still readable (10px, about 8 characters) */
-    --card-max: 150px;
+    --card-max: 150px;    /* phones: 110px, see below */
     --card-ratio: 1.48;   /* height / width (100 x 148) */
     /* Without script.js: 100px from about 455px to 1440px (as before B-49), 22vw below
      * (4 cards per row at 320-430px), 6.94vw above (grows with the screen), 64-140px. */
@@ -61,7 +61,10 @@
 
 /* phones: the deck scrolls sideways; 55px at 375px as before, smaller in landscape (12vh) */
 @media (max-width: 799.98px) {
-    :root { --deck-w: clamp(44px, min(12vw + 10px, 12vh), 64px); }
+    :root {
+        --deck-w: clamp(44px, min(12vw + 10px, 12vh), 64px);
+        --card-max: 110px; /* few players: no giant cards on a phone */
+    }
 }
 
 @media (pointer: coarse) {
