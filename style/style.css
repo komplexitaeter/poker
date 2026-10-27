@@ -1078,9 +1078,44 @@ fieldset:disabled .seg input:checked + span {
 
 .seg input:checked + span .i-lock { display: none; }
 
-/* Board settings: groups below each other, each a framed block that opens and closes on its
- * own (accordion, several may be open). The header row has a chevron, the name and, while
- * closed, a one-line summary on the right. */
+/* Board settings: tabs Deck | Results | Team (role=tab, aria-selected) above one framed panel.
+ * Provisional look in the style of the segment switch; Delia refines it. */
+.cset-tabs {
+    display: flex;
+    gap: 2px;
+    margin: 0 0 var(--space-2);
+    padding: 2px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+}
+
+.cset-tabs [role="tab"] {
+    flex: 1;
+    min-height: calc(var(--tap) - 6px);
+    padding: 2px var(--space-2);
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: var(--fs-s);
+    cursor: pointer;
+}
+
+.cset-tabs [role="tab"]:hover { color: var(--text); }
+
+.cset-tabs [role="tab"][aria-selected="true"] {
+    background: var(--text);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+.cset-tabs [role="tab"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
 .grp {
     margin: 0 0 var(--space-2);
     border: 1px solid var(--line);
@@ -1088,55 +1123,7 @@ fieldset:disabled .seg input:checked + span {
     background: var(--bg);
 }
 
-.grp > summary {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: calc(var(--tap) + 8px);
-    box-sizing: border-box;
-    padding: 6px 12px;
-    border-radius: var(--radius-l);
-    list-style: none;
-    cursor: pointer;
-}
-
-.grp > summary::-webkit-details-marker { display: none; }
-
-.grp > summary .i-chev {
-    width: 16px;
-    height: 16px;
-    color: var(--muted);
-    transition: transform 0.15s;
-}
-
-.grp[open] > summary .i-chev {
-    transform: rotate(90deg);
-    color: var(--accent);
-}
-
-.grp > summary b { flex: none; }
-
-.grp > summary:hover b { color: var(--accent); }
-
-.grp > summary:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-}
-
-.grp > summary small {
-    flex: 1;
-    min-width: 0;
-    color: var(--muted);
-    font-size: var(--fs-s);
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.grp[open] > summary { border-bottom: 1px solid var(--line); border-radius: var(--radius-l) var(--radius-l) 0 0; }
-
-.grp[open] > summary small { display: none; }
+.grp[hidden] { display: none; }
 
 .grp-body { padding: 12px; }
 
@@ -1193,9 +1180,6 @@ fieldset:disabled .seg input:checked + span {
     border: 1px solid var(--light-border-color);
     opacity: 1;
 }
-
-/* the rating stars are switched off */
-.feedback_star { display: none; }
 
 /* Phones: a bottom sheet over a backdrop, full width, up to 90% of the screen height,
  * as high as its content; back button in the sections, a grab bar on top */

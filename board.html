@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.22" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.23" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.15" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.11" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.16" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.12" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -153,11 +153,15 @@
                 </div>
             </section>
 
-            <!-- board settings: groups below each other, each opens and closes on its own (accordion);
-                 a closed group shows a one-line summary (#cset_sum_*, filled via textContent) -->
+            <!-- board settings: tabs Deck | Results | Team, one panel visible at a time
+                 (showCsetTab() in script_feedback.js: aria-selected on the tab, hidden on the panels) -->
             <section id="cset_box" class="menu_sec" data-sec="cset" data-title="Board settings" hidden>
-                <details class="grp" data-grp="deck" open>
-                    <summary><svg class="i i-chev" aria-hidden="true"><use href="#i-next"/></svg><b>Deck</b><small id="cset_sum_deck"></small></summary>
+                <div class="cset-tabs" role="tablist" aria-label="Board settings">
+                    <button type="button" role="tab" id="cset_tab_deck" data-tab="deck" aria-selected="true" aria-controls="cset_panel_deck">Deck</button>
+                    <button type="button" role="tab" id="cset_tab_results" data-tab="results" aria-selected="false" aria-controls="cset_panel_results" tabindex="-1">Results</button>
+                    <button type="button" role="tab" id="cset_tab_team" data-tab="team" aria-selected="false" aria-controls="cset_panel_team" tabindex="-1">Team</button>
+                </div>
+                <div class="grp" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
                     <div class="grp-body">
                         <div class="f">
                             <label for="cet_pre" class="lab">Card set</label>
@@ -170,9 +174,8 @@
                             <div id="cards_thumbs" role="group" aria-labelledby="cards_thumbs_lab"></div>
                         </div>
                     </div>
-                </details>
-                <details class="grp" data-grp="results">
-                    <summary><svg class="i i-chev" aria-hidden="true"><use href="#i-next"/></svg><b>Results</b><small id="cset_sum_results"></small></summary>
+                </div>
+                <div class="grp" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
                     <div class="grp-body">
                         <fieldset class="f" id="cet_anonymous">
                             <legend class="lab">Names on revealed cards</legend>
@@ -199,9 +202,8 @@
                             <p class="hint">Join the dark side: a pointer on the deck shows the average.</p>
                         </fieldset>
                     </div>
-                </details>
-                <details class="grp" data-grp="team">
-                    <summary><svg class="i i-chev" aria-hidden="true"><use href="#i-next"/></svg><b>Team</b><small id="cset_sum_team"></small></summary>
+                </div>
+                <div class="grp" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
                     <div class="grp-body">
                         <div class="f">
                             <label for="cet_team_name" class="lab">Team name</label>
@@ -211,7 +213,7 @@
                             </div>
                         </div>
                     </div>
-                </details>
+                </div>
             </section>
 
             <section id="user_settings_box" class="menu_sec" data-sec="user_settings" data-title="You" hidden>
@@ -245,12 +247,6 @@
             </section>
 
             <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
-                <!-- the rating stars have been switched off for years (dead code, see BACKLOG); kept until script_feedback.js drops them -->
-                <img src="src/star_off.png" class="feedback_star" id="fb_star_1" alt="" />
-                <img src="src/star_off.png" class="feedback_star" id="fb_star_2" alt="" />
-                <img src="src/star_off.png" class="feedback_star" id="fb_star_3" alt="" />
-                <img src="src/star_off.png" class="feedback_star" id="fb_star_4" alt="" />
-                <img src="src/star_off.png" class="feedback_star" id="fb_star_5" alt="" />
                 <label class="lab" for="feedback_txt">Feedback is your most powerful way to change the world. Please let us know how we might improve. Feel free to leave your email address so we can ask you for specifics :)</label>
                 <textarea maxlength="1800" rows="8" id="feedback_txt" class="field"></textarea>
                 <div class="row end">

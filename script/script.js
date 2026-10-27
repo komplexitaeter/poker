@@ -60,7 +60,6 @@ function getBrowserWidth(){
 function newRound() {
     let url = './api/newround.php?t=' + t;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    toggleMobileMenu("closed");
 }
 
 function playerTypeUpdate(playerType, name) {
@@ -439,7 +438,9 @@ function updateDom(myJson, isOnLoad) {
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
     // B-51: header prompt <player>@<team>; plain text only
-    document.getElementById('prompt_user').textContent = myJson.name ? myJson.name : '';
+    let promptUser = document.getElementById('prompt_user');
+    let promptText = myJson.name ? myJson.name : '';
+    if (promptUser.textContent !== promptText) promptUser.textContent = promptText;
 
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
@@ -536,7 +537,9 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
 
-        if (myJson.needs_setup) toggle_box('cset', false);
+        // a new board opens "Board settings" by itself, without taking the focus (name input first);
+        // not on phones, where the sheet would cover the name input
+        if (myJson.needs_setup && !gPhoneQuery.matches) openMenu('cset', null, false);
 
         updateDao(false);
     }
@@ -685,10 +688,6 @@ function loadBoard() {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
         }
-        // Escape closes the phone menu, unless it just closed a menu box (script_feedback.js)
-        if (event.key === 'Escape' && !event.defaultPrevented) {
-            toggleMobileMenu('closed');
-        }
     });
 }
 
@@ -801,24 +800,6 @@ function switchColorMode(){
 }
 
 
-function toggleMobileMenu(target_state){
-    let menu = document.getElementById("mobile-menu");
-    if (menu === null) return; // B-51: the burger menu is gone (menu panel #menu)
-    // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
-    if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
-        let opener = menu.querySelector('.open_menu');
-        let focusInside = menu.contains(document.activeElement);
-        menu.setAttribute('data-state', target_state);
-        opener.setAttribute('aria-expanded', target_state === 'open' ? 'true' : 'false');
-        if (target_state === 'open') {
-            menu.querySelector('.topnav-bar .icon-btn').focus();
-        } else if (focusInside) {
-            // the focused button disappears with the panel
-            opener.focus();
-        }
-    }
-}
-
 /* B-46: on phones the topic strip shows one line; the arrow button (or a tap on the topic)
  * shows all of it. Elsewhere the button is hidden by CSS and the topic is shown in full. */
 function toggleTopic(event) {
@@ -842,6 +823,11 @@ function copyLink() {
 let gToastTimer = null;
 function showToast(text) {
     let toast = document.getElementById('toast');
+    // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
+    // (closeMenu() puts it back)
+    let menu = document.getElementById('menu');
+    let host = (menu !== null && menu.open && menu.matches(':modal')) ? menu : document.body;
+    if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');
     clearTimeout(gToastTimer);
@@ -1061,8 +1047,6 @@ function loadCardConfig() {
         thumbElement.id = "_" + card.card_key;
         thumbElement.src = "src/c_" + card.card_key + ".png";
         thumbElement.setAttribute("data-card_key", card.card_key);
-        thumbElement.src = "src/c_" + card.card_key + ".png";
-        thumbElement.classList.add("topnav");
         thumbElement.classList.add("cs_c");
         thumbElement.alt = card.description;
         thumbElement.addEventListener("click", toggleCSet);
@@ -1291,7 +1275,7 @@ function showConfetty(playersCount) {
 function showDeleteUserOverlay(openIt=true) {
     let overlayDiv= document.getElementById('overlay_delete_user');
     if (openIt) {
-        closeTopnavBoxes(); // the "You" box stays open otherwise (its links count as topnav)
+        closeMenu(false); // the overlay takes over (B-51)
         removeStyleClass(overlayDiv, 'hidden');
     }
     else addStyleClass(overlayDiv, 'hidden');
