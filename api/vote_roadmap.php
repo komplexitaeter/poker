@@ -1,7 +1,8 @@
 <?php
 /*
- * B-57: sets (LOVE / MEH) or removes (NONE) the reaction of a user (id = SID) on a visible entry of the public list.
- * One reaction per user id and entry. Answers with the updated entry (same shape as in get_roadmap.php).
+ * B-57: sets (UP / DOWN) or removes (NONE) the reaction of a user (id = SID) on a visible entry of the public list.
+ * One reaction per user id, entry and phase; the phase follows from the current status of the entry (roadmap_phase()),
+ * the client does not send it. Answers with the updated entry (same shape as in get_roadmap.php).
  * 400: invalid parameters, 403: user id has not joined a board (not in pok_players_tbl), 404: entry does not exist or is not visible.
  */
 require '../config.php';
@@ -30,18 +31,20 @@ if ($sql->get_result()->fetch_object()->cnt < 1) {
     exit;
 }
 
-if (count(get_roadmap_items($link, $id, $item)) !== 1) {
+$items = get_roadmap_items($link, $id, $item);
+if (count($items) !== 1) {
     http_response_code(404);
     exit;
 }
+$phase = roadmap_phase($items[0]['status']);
 
 if ($reaction === 'NONE') {
-    $sql = $link->prepare("delete from pok_roadmap_votes_tbl where item_id = ? and user_id = ?");
-    $sql->bind_param('is', $item, $id);
+    $sql = $link->prepare("delete from pok_roadmap_votes_tbl where item_id = ? and user_id = ? and phase = ?");
+    $sql->bind_param('iss', $item, $id, $phase);
 } else {
-    $sql = $link->prepare("insert into pok_roadmap_votes_tbl (item_id, user_id, reaction) values (?, ?, ?) as new
+    $sql = $link->prepare("insert into pok_roadmap_votes_tbl (item_id, user_id, phase, reaction) values (?, ?, ?, ?) as new
                            on duplicate key update reaction = new.reaction");
-    $sql->bind_param('iss', $item, $id, $reaction);
+    $sql->bind_param('isss', $item, $id, $phase, $reaction);
 }
 $sql->execute();
 

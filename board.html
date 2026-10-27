@@ -7,11 +7,11 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.34" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.35" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.21" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.22" type="text/javascript"></script>
     <script defer src="script/script.js?v=2.18" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
@@ -245,6 +245,8 @@
                  "Send feedback" (type Bug | Feature | Other + text) and "Backlog" (our public list with
                  status and reactions). Backlog entries are clones of #fb_item_tpl, filled via textContent only. -->
             <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
+                <!-- B-57: the feedback goes to us, not to the team on the board -->
+                <p class="hint fb-intro">For the makers of this app – tell us what to fix or build next. Your team won't see this.</p>
                 <div class="m-tabs" role="tablist" aria-label="Feedback">
                     <button type="button" role="tab" id="fb_tab_send" data-tab="send" aria-selected="true" aria-controls="fb_panel_send">Send feedback</button>
                     <button type="button" role="tab" id="fb_tab_backlog" data-tab="backlog" aria-selected="false" aria-controls="fb_panel_backlog" tabindex="-1">Backlog</button>
@@ -256,12 +258,12 @@
                             <div class="seg">
                                 <label><input type="radio" name="fb_type" value="BUG" data-placeholder="What happened? What did you expect?"/><span>Bug</span></label>
                                 <label><input type="radio" name="fb_type" value="FEATURE" data-placeholder="What would help your team?"/><span>Feature</span></label>
-                                <label><input type="radio" name="fb_type" value="OTHER" data-placeholder="Anything on your mind?" checked/><span>Other</span></label>
+                                <label><input type="radio" name="fb_type" value="OTHER" data-placeholder="Anything you want to tell the Komplexitäter team?" checked/><span>Other</span></label>
                             </div>
                         </fieldset>
                         <div class="f">
                             <label class="lab" for="feedback_txt">Your message</label>
-                            <textarea maxlength="1800" rows="7" id="feedback_txt" class="field" placeholder="Anything on your mind?" aria-describedby="fb_hint fb_bug_hint"></textarea>
+                            <textarea maxlength="1800" rows="7" id="feedback_txt" class="field" placeholder="Anything you want to tell the Komplexitäter team?" aria-describedby="fb_hint fb_bug_hint"></textarea>
                             <p id="fb_hint" class="hint">We read every message. Leave your email address if we may ask you for details.</p>
                             <p id="fb_bug_hint" class="hint fb-bug-only">With a bug we also send technical details (browser, window size, app version) to help us fix it.</p>
                         </div>
@@ -271,7 +273,7 @@
                     </div>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="fb_panel_backlog" data-tab="backlog" aria-labelledby="fb_tab_backlog" hidden>
-                    <p class="hint fb-intro">What we are working on. Tap a reaction to tell us what matters to you.</p>
+                    <p class="hint fb-intro">What we are working on. Vote for what matters to you.</p>
                     <ul id="fb_backlog" class="fb-list"></ul>
                     <p id="fb_backlog_empty" class="fb-empty">Nothing here yet.</p>
                     <template id="fb_item_tpl">
@@ -282,8 +284,8 @@
                             </div>
                             <p class="fb-desc"></p>
                             <div class="fb-react" role="group" aria-label="Reactions">
-                                <button type="button" class="fb-react-btn" data-reaction="LOVE" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">❤️</span><span class="sr-only">Love it, </span><span class="fb-count">0</span></button>
-                                <button type="button" class="fb-react-btn" data-reaction="MEH" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">🙈</span><span class="sr-only">Not for me, </span><span class="fb-count">0</span></button>
+                                <button type="button" class="fb-react-btn" data-reaction="UP" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">👍</span><span class="sr-only">Thumbs up, </span><span class="fb-count">0</span></button>
+                                <button type="button" class="fb-react-btn" data-reaction="DOWN" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">👎</span><span class="sr-only">Thumbs down, </span><span class="fb-count">0</span></button>
                             </div>
                         </li>
                     </template>

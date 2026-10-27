@@ -420,24 +420,41 @@ function getDao($t, $id) {
         "players"=>$players );
 }
 
-/* B-57: allowed values for feedback types, roadmap status and reactions */
+/* B-57: allowed values for feedback types, roadmap status and reactions (UP = thumbs up, DOWN = thumbs down) */
 const FEEDBACK_TYPES = ['BUG', 'FEATURE', 'OTHER'];
 const ROADMAP_STATUS = ['PLANNED', 'IN_PROGRESS', 'DONE'];
-const ROADMAP_REACTIONS = ['LOVE', 'MEH'];
+const ROADMAP_REACTIONS = ['UP', 'DOWN'];
 
 /*
- * Visible entries of the public list (B-57), sorted, with the count per reaction and the reaction of $user_id
- * (null if none). $item_id limits the result to that entry (empty array if it is not visible).
+ * B-57: votes are stored per phase - WANT while an entry is PLANNED or IN_PROGRESS, DONE once it is DONE.
+ * So an entry set to DONE starts again at 0 in the public list. Same rule in SQL: roadmap_phase_sql().
+ */
+function roadmap_phase(string $status): string {
+    return $status === 'DONE' ? 'DONE' : 'WANT';
+}
+
+function roadmap_phase_sql(string $status_column): string {
+    return "case when $status_column = 'DONE' then 'DONE' else 'WANT' end";
+}
+
+/*
+ * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none),
+ * both for the current phase of the entry only. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by
+ * (UP - DOWN) descending, then sort_order, then newest first.
+ * $item_id limits the result to that entry (empty array if it is not visible).
  */
 function get_roadmap_items($link, string $user_id, ?int $item_id = null): array {
-    $sql = $link->prepare("select r.id, r.item_type, r.title, r.description, r.status
-                                 ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.reaction = 'LOVE') as love_cnt
-                                 ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.reaction = 'MEH') as meh_cnt
-                                 ,(select v.reaction from pok_roadmap_votes_tbl v where v.item_id = r.id and v.user_id = ?) as my_reaction
-                             from pok_roadmap_tbl r
-                            where r.visible = 1
-                              and (? is null or r.id = ?)
-                            order by r.sort_order, r.id desc");
+    $phase = roadmap_phase_sql('r.status');
+    $sql = $link->prepare("select x.* from (
+                               select r.id, r.item_type, r.title, r.description, r.status, r.sort_order
+                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'UP') as up_cnt
+                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'DOWN') as down_cnt
+                                     ,(select v.reaction from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.user_id = ?) as my_reaction
+                                 from pok_roadmap_tbl r
+                                where r.visible = 1
+                                  and (? is null or r.id = ?)
+                           ) x
+                           order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED'), x.up_cnt - x.down_cnt desc, x.sort_order, x.id desc");
     $sql->bind_param('sii', $user_id, $item_id, $item_id);
     $sql->execute();
     $items = array();
@@ -449,7 +466,7 @@ function get_roadmap_items($link, string $user_id, ?int $item_id = null): array 
             "title" => $obj->title,
             "description" => $obj->description,
             "status" => $obj->status,
-            "reactions" => array("LOVE" => (int)$obj->love_cnt, "MEH" => (int)$obj->meh_cnt),
+            "reactions" => array("UP" => (int)$obj->up_cnt, "DOWN" => (int)$obj->down_cnt),
             "my_reaction" => $obj->my_reaction
         );
     }
