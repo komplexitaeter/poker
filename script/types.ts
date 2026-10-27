@@ -11,7 +11,7 @@ export interface myJsonType {
     mkey: string;
     id: string;
     color_mode: string;
-    hide_teaser: number;
+    hide_teaser: number; // B-57: 1 = feedback panel opened once (no red dot on the feedback menu)
     survey: string;
     team_name: string;
     cardset_flags: string;

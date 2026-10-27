@@ -512,6 +512,7 @@ function updateDom(myJson, isOnLoad) {
     gAllPlayersReady = myJson.all_players_ready;
     gSurvey = myJson.survey;
     gUserName = myJson.name;
+    updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
     // B-51: the player's name as a tag on the cursor behind the team name in the header; plain text only

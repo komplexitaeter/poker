@@ -397,7 +397,7 @@ function getDao($t, $id) {
         "mkey"=>$mkey,
         "id"=>$id,
         "color_mode"=>(String)$color_mode,
-        "hide_teaser"=>(Int)$hide_teaser,
+        "hide_teaser"=>(Int)$hide_teaser, // B-57: 1 = feedback panel seen (no red dot)
         "survey"=>$survey,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,

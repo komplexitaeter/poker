@@ -7,6 +7,7 @@ $id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) 
 $color_mode = filter_input(INPUT_GET, "color_mode", FILTER_SANITIZE_FULL_SPECIAL_CHARS	);
 $survey_skipped = filter_input(INPUT_GET, "survey_skipped", FILTER_SANITIZE_NUMBER_INT );
 $survey_vote =  filter_input(INPUT_GET, "survey_vote", FILTER_SANITIZE_NUMBER_INT );
+// B-57: hide_teaser = 1 means "the user has opened the feedback panel once" (red dot on the feedback menu gone)
 $hide_teaser = filter_input(INPUT_GET, "hide_teaser", FILTER_SANITIZE_NUMBER_INT );
 
 

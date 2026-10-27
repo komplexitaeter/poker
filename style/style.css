@@ -722,6 +722,37 @@ textarea.field {
 
 .topnav_btn_bling { transform: scale(1.3); }
 
+/* B-57: red dot on the feedback menu until the panel was opened once (body.fb-new, script_feedback.js);
+ * static, no pulsing. Header: on the icon of the feedback button and of the phone menu button. */
+#feedback_btn,
+#menu_btn { position: relative; }
+
+.fb-new #feedback_btn::after,
+.fb-new #menu_btn::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 24px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 0 2px var(--bg-2);
+    pointer-events: none;
+}
+
+/* phone menu index: behind the entry name */
+.fb-new #menu_index [data-open="feedback"] b::after {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    vertical-align: middle;
+}
+
 #copy_link_btn { color: var(--muted); }
 #copy_link_btn:hover { color: var(--accent); }
 
