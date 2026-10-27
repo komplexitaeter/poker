@@ -67,3 +67,19 @@ interface VoteOption {
     total_count: number;
     votes_percentage: number;
 }
+/* B-57: public list "Ideas & Bugs" - api/get_roadmap.php ({items}) and api/vote_roadmap.php (one RoadmapItem) */
+type RoadmapReaction = 'LOVE' | 'MEH'; // shown as ❤️ / 🙈
+
+interface RoadmapItem {
+    id: number;
+    type: 'BUG' | 'FEATURE' | 'OTHER';
+    title: string;
+    description: string | null;
+    status: 'PLANNED' | 'IN_PROGRESS' | 'DONE';
+    reactions: Record<RoadmapReaction, number>;
+    my_reaction: RoadmapReaction | null;
+}
+
+interface Roadmap {
+    items: RoadmapItem[];
+}

@@ -1,5 +1,9 @@
 <?php
-function db_init() {
+/*
+ * $charset: 'utf8' (= utf8mb3) for the old tables; 'utf8mb4' where texts may contain emojis
+ * (pok_feedback_tbl and the roadmap tables, B-57).
+ */
+function db_init(string $charset = 'utf8') {
     $link = mysqli_init();
     mysqli_real_connect(
         $link,
@@ -9,7 +13,7 @@ function db_init() {
         _MYSQL_DB,
         _MYSQL_PORT
     );
-    $link->set_charset("utf8");
+    $link->set_charset($charset);
     return $link;
 }
 
@@ -414,6 +418,42 @@ function getDao($t, $id) {
         "players_count"=>$players_count,
         "ready_players_count"=>$ready_players_count,
         "players"=>$players );
+}
+
+/* B-57: allowed values for feedback types, roadmap status and reactions */
+const FEEDBACK_TYPES = ['BUG', 'FEATURE', 'OTHER'];
+const ROADMAP_STATUS = ['PLANNED', 'IN_PROGRESS', 'DONE'];
+const ROADMAP_REACTIONS = ['LOVE', 'MEH'];
+
+/*
+ * Visible entries of the public list (B-57), sorted, with the count per reaction and the reaction of $user_id
+ * (null if none). $item_id limits the result to that entry (empty array if it is not visible).
+ */
+function get_roadmap_items($link, string $user_id, ?int $item_id = null): array {
+    $sql = $link->prepare("select r.id, r.item_type, r.title, r.description, r.status
+                                 ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.reaction = 'LOVE') as love_cnt
+                                 ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.reaction = 'MEH') as meh_cnt
+                                 ,(select v.reaction from pok_roadmap_votes_tbl v where v.item_id = r.id and v.user_id = ?) as my_reaction
+                             from pok_roadmap_tbl r
+                            where r.visible = 1
+                              and (? is null or r.id = ?)
+                            order by r.sort_order, r.id desc");
+    $sql->bind_param('sii', $user_id, $item_id, $item_id);
+    $sql->execute();
+    $items = array();
+    $result = $sql->get_result();
+    while ($obj = $result->fetch_object()) {
+        $items[] = array(
+            "id" => (int)$obj->id,
+            "type" => $obj->item_type,
+            "title" => $obj->title,
+            "description" => $obj->description,
+            "status" => $obj->status,
+            "reactions" => array("LOVE" => (int)$obj->love_cnt, "MEH" => (int)$obj->meh_cnt),
+            "my_reaction" => $obj->my_reaction
+        );
+    }
+    return $items;
 }
 
 function get_survey_id($link, $team_id, $user_id) {
