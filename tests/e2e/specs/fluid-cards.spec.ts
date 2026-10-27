@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, Browser } from '@playwright/test';
 import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, pickCard } from './helpers';
 
 /**
@@ -31,31 +31,51 @@ const cardWidth = (page: Page, name: string) =>
 const layoutWidth = (page: Page, name: string) =>
   tableCard(page, name).evaluate(card => (card as HTMLElement).offsetWidth);
 
-test('phone: 21 players fit on the table without scrolling (B-49)', async ({ browser }) => {
-  const alice = await newPlayer(browser, { viewport: PHONE });
-  const url = await createTeam(alice, 'Fluid Phone');
+/** Joins Alice plus `others` players on a touch phone and votes, so the dock (New Round) shows. */
+async function phoneTable(browser: Browser, viewport: { width: number; height: number }, others: number, name: string) {
+  const alice = await newPlayer(browser, { viewport, hasTouch: true, isMobile: true });
+  const url = await createTeam(alice, name);
   await joinAsPlayer(alice, url, 'Alice');
-  await addPlayersViaApi(alice, url, Array.from({ length: 20 }, (_, i) => `P${String(i + 1).padStart(2, '0')}`));
+  await addPlayersViaApi(alice, url, Array.from({ length: others }, (_, i) => `P${String(i + 1).padStart(2, '0')}`));
   await alice.reload();
-  await expect(alice.locator('#cbox .c')).toHaveCount(21);
-  // someone has voted: the dock (New Round) shows, the cards still fit
+  await expect(alice.locator('#cbox .c')).toHaveCount(others + 1);
   await pickCard(alice, 'three01');
   await expect(alice.locator('#newroundbtn')).toBeVisible();
+  return alice;
+}
 
-  await expect.poll(() => alice.evaluate(() => {
-    const table = document.getElementById('table')!;
-    return table.scrollHeight - table.clientHeight;
-  })).toBeLessThanOrEqual(0);
-  // every card lies inside the visible table, above the dock
-  const outside = await alice.evaluate(() => {
-    const table = document.getElementById('table')!.getBoundingClientRect();
-    const dock = document.querySelector('#table .dock')!.getBoundingClientRect();
-    return Array.from(document.querySelectorAll('#cbox .c'))
-      .map(card => card.getBoundingClientRect())
-      .filter(r => r.top < table.top || r.bottom > dock.top || r.left < table.left || r.right > table.right).length;
+const tableOverflow = (page: Page) => page.evaluate(() => {
+  const table = document.getElementById('table')!;
+  return table.scrollHeight - table.clientHeight;
+});
+
+// --card-min 64px: measured maximum without scrolling (touch, after a vote): 15 at 375x667, 25 at 393x852
+for (const { viewport, players } of [
+  { viewport: PHONE, players: 15 },
+  { viewport: { width: 393, height: 852 }, players: 20 },
+]) {
+  test(`phone ${viewport.width}x${viewport.height}: ${players} players fit on the table without scrolling (B-49)`, async ({ browser }) => {
+    const alice = await phoneTable(browser, viewport, players - 1, 'Fluid Phone');
+    await expect.poll(() => tableOverflow(alice)).toBeLessThanOrEqual(0);
+    // every card lies inside the visible table, above the dock
+    const outside = await alice.evaluate(() => {
+      const table = document.getElementById('table')!.getBoundingClientRect();
+      const dock = document.querySelector('#table .dock')!.getBoundingClientRect();
+      return Array.from(document.querySelectorAll('#cbox .c'))
+        .map(card => card.getBoundingClientRect())
+        .filter(r => r.top < table.top || r.bottom > dock.top || r.left < table.left || r.right > table.right).length;
+    });
+    expect(outside).toBe(0);
+    expect(await layoutWidth(alice, 'Alice')).toBeGreaterThanOrEqual(64); // --card-min: names stay readable
   });
-  expect(outside).toBe(0);
-  expect(await cardWidth(alice, 'Alice')).toBeGreaterThanOrEqual(54); // --card-min: names stay readable
+}
+
+test('phone 375x667: 21 players get the minimum card width and the table scrolls (B-49)', async ({ browser }) => {
+  const alice = await phoneTable(browser, PHONE, 20, 'Fluid Scroll');
+  await expect.poll(() => layoutWidth(alice, 'Alice')).toBe(64); // --card-min, not smaller
+  await expect.poll(() => tableOverflow(alice)).toBeGreaterThan(0);
+  // the page itself does not scroll, only the table
+  expect(await alice.evaluate(() => document.scrollingElement!.scrollHeight - window.innerHeight)).toBeLessThanOrEqual(0);
 });
 
 test('large screen: few players get large cards (B-49)', async ({ browser }) => {
