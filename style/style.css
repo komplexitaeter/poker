@@ -44,7 +44,7 @@
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
      * The images are 300 x 443px: sharp up to 150px on 2x screens. */
-    --card-min: 54px;     /* the name is still readable (10px, about 8 characters); 21 cards in 4 rows at 375px with the gutter */
+    --card-min: 64px;     /* the name stays readable; on a 375x667 phone 20 cards fit without scrolling, more scroll */
     --card-max: 150px;    /* phones: 110px, see below */
     --card-ratio: 1.48;   /* height / width (100 x 148) */
     /* side gutter of #cbox: the gap between two cards, at least this (large screens: plus the
@@ -1438,8 +1438,9 @@ div#cbox {
     }
 }
 
+/* phones: 8px (not 1em) – on a 375x667 touch phone 20 cards fit at --card-min without scrolling */
 @media (max-width: 799.98px) {
-    div#cbox { margin-top: 1em; }
+    div#cbox { margin-top: var(--space-2); }
 }
 
 /* ---------- New round button, stopwatch (.dock) ---------- */
@@ -1574,6 +1575,9 @@ div#cbox {
     .controls img {
         height: auto;
         padding-bottom: 0;
+        /* transparent frame: selecting a card only colours it, the deck keeps its height
+         * (otherwise the table loses 1px on the first vote and the table cards shrink) */
+        border: 1px solid transparent;
         border-bottom: none;
         align-self: center;
         float: right;
