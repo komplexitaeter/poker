@@ -836,14 +836,14 @@ verwertbar): Feedback-Panel erweitern zu „Ideas & Bugs“.
 - **Öffentliche Liste** darunter: Einträge mit Status (planned / in progress / ✅ done), von uns selbst formuliert
   (nie Nutzertexte direkt → keine Moderation fremder Inhalte nötig). Reaktion je Eintrag (z. B. ❤️ / 🙈), eine Stimme pro
   User-ID. Erster Eintrag: „New look ✅“ (ersetzt die Umfrage; einige Tage nach Rollout 1).
-- **Moderation:** Eingang abhaken; Liste anlegen/ändern/Status setzen. **Nicht** in `stats.php` (öffentlich, ohne
-  Login), sondern eigene Admin-Seite hinter nginx-Basic-Auth (Server-Befehle bereitet Claude vor). Sina reviewt.
+- **Moderation:** Eingang abhaken; Liste anlegen/ändern/Status setzen – in `stats.php` (seit Sprint 3 per nginx Basic
+  Auth geschützt), Aktionen per POST an `stats.php` selbst. Sina reviewt.
 - Aus B-55-Analyse noch offen, falls die Survey-Funktion je wieder genutzt wird: `get_survey.php` `bind_param('i')`
   → `'s'`; `fillBars[vote_option.id - 1]` → Index; Survey-Box auf `textContent` (B-43). Emojis: Tabellen sind `utf8mb3`
   → für ❤️/🙈 `utf8mb4` bzw. Codes statt Zeichen speichern.
 - Ergänzend (Team-Konsens): Basis-Kennzahlen vor Rollout 1 festhalten (Ben): wiederkehrende User-IDs, Runden je
   Session, Menü-Nutzung – Vergleich vorher/nachher.
-Umfang: 2–3 PRs (DB, API, Admin-Seite, Panel, Tests). Zeitpunkt: eigener Sprint vor bzw. mit Rollout 2.
+Umfang: 2–3 PRs (DB, API, Moderation in `stats.php`, Panel, Tests). **Zeitpunkt (Andreas, 2026-10-27): noch vor Rollout 1.**
 
 ### B-56 Players-Menü
 Delias Idee aus B-40/B-51, von Andreas für nach Rollout 1 gewünscht („freue mich sehr“, 2026-10-27): eigener Menüpunkt

@@ -36,7 +36,8 @@ Datenfluss bei einer Änderung am Board:
 - `style/style.css` – ein Stylesheet, Light/Dark-Mode.
 - `api/*.php` – ein Skript pro Aktion; gemeinsame Funktionen in `api/lib.php` (`db_init()`, `validate_team()`, …).
 - `cards.json` – Kartensets und Sortierung.
-- `stats.php` – interne Nutzungsstatistik (keine Authentifizierung).
+- `stats.php` – interne Nutzungsstatistik, auf beiden Servern per nginx Basic Auth geschützt (`location = /stats.php`,
+  siehe `docs/stats-basic-auth.md`). Admin-Funktionen deshalb dort (POST an `stats.php` selbst), nicht als eigene `api/`-Endpunkte.
 - `db_schema_pok.sql` – Basisschema; `db_schema_pok_inc.sql` – inkrementelle Änderungen seit dem letzten Merge;
   `db_jobs_pok.sql` – MySQL-Event-Jobs für die Statistik-Tabellen.
 - `src/` – Bilder; `src/xcf/` – GIMP-Quelldateien der Karten.
@@ -119,7 +120,6 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 - SQL teils per String-Konkatenation (z. B. `validate_team()` in `api/lib.php`, `api/delete.php`, `api/feedback.php`),
   teils mit Prepared Statements. Neuer Code nur mit Prepared Statements.
 - Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
-- `stats.php` öffentlich erreichbar.
 - Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
 - Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
