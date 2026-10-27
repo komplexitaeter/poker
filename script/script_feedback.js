@@ -35,6 +35,7 @@ function prepareMenuSection(sec) {
         document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
     }
+    if (sec === 'feedback') showMenuTab(document.getElementById('feedback_box'), 'send');
     if (sec === 'user_settings') {
         document.getElementById('cet_usr_name').value = gUserName;
         document.getElementById('cet_change_user').disabled = true;
@@ -46,11 +47,11 @@ function prepareMenuSection(sec) {
     }
 }
 
-/* Board settings: tabs (Deck | Results | Team). The tab buttons carry role="tab" and data-tab, the
- * panels role="tabpanel" and data-tab as well; the selected tab has aria-selected="true" and is the
- * only one in the tab order, the other panels are hidden. focusTab: move the focus to the tab. */
-function showCsetTab(name, focusTab = false) {
-    let box = document.getElementById('cset_box');
+/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: Send feedback | Backlog).
+ * The tab buttons carry role="tab" and data-tab, the panels role="tabpanel" and data-tab as well; the
+ * selected tab has aria-selected="true" and is the only one in the tab order, the other panels are
+ * hidden. box: the section element; focusTab: move the focus to the tab. */
+function showMenuTab(box, name, focusTab = false) {
     if (box === null) return;
     let tab = box.querySelector('[role="tab"][data-tab="' + name + '"]');
     if (tab === null) return;
@@ -61,6 +62,11 @@ function showCsetTab(name, focusTab = false) {
     });
     box.querySelectorAll('[role="tabpanel"]').forEach(p => { p.hidden = p.getAttribute('data-tab') !== name; });
     if (focusTab) tab.focus();
+    if (box.id === 'feedback_box' && name === 'backlog') loadFeedbackBacklog(); // B-57
+}
+
+function showCsetTab(name, focusTab = false) {
+    showMenuTab(document.getElementById('cset_box'), name, focusTab);
 }
 
 /* aria-expanded of the openers outside the menu: the header button of the open section, the menu
@@ -189,17 +195,17 @@ function initMenu() {
         }
     });
 
-    // board settings: tabs by click, arrow keys, Home and End (focus follows the selection)
-    let csetBox = document.getElementById('cset_box');
-    if (csetBox !== null) {
-        csetBox.addEventListener('click', function (event) {
+    // tabs in menu sections (board settings, feedback): click, arrow keys, Home and End
+    // (focus follows the selection)
+    menu.querySelectorAll('section.menu_sec:has([role="tablist"])').forEach(box => {
+        box.addEventListener('click', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
-            if (tab !== null) showCsetTab(tab.getAttribute('data-tab'));
+            if (tab !== null) showMenuTab(box, tab.getAttribute('data-tab'));
         });
-        csetBox.addEventListener('keydown', function (event) {
+        box.addEventListener('keydown', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
             if (tab === null) return;
-            let tabs = Array.from(csetBox.querySelectorAll('[role="tab"][data-tab]'));
+            let tabs = Array.from(box.querySelectorAll('[role="tab"][data-tab]'));
             let i = tabs.indexOf(tab);
             if (event.key === 'ArrowRight') i = (i + 1) % tabs.length;
             else if (event.key === 'ArrowLeft') i = (i - 1 + tabs.length) % tabs.length;
@@ -207,9 +213,9 @@ function initMenu() {
             else if (event.key === 'End') i = tabs.length - 1;
             else return;
             event.preventDefault();
-            showCsetTab(tabs[i].getAttribute('data-tab'), true);
+            showMenuTab(box, tabs[i].getAttribute('data-tab'), true);
         });
-    }
+    });
 
     // Escape: modal (phones) via the cancel event, non-modal (large screens) via keydown
     menu.addEventListener('cancel', function (event) {
@@ -350,17 +356,153 @@ function vote(option_id){
 
 }
 
+/* B-57: "Send feedback" tab. The type (Bug | Feature | Other) sets the placeholder of the text; with a bug the
+ * technical context (no team id, no names) goes along. An empty text is not sent. */
+function feedbackType() {
+    let radio = document.querySelector('input[name="fb_type"]:checked');
+    return radio === null ? 'OTHER' : radio.value;
+}
+
+function setFeedbackType(type) {
+    checkRadio('fb_type', type);
+    let radio = document.querySelector('input[name="fb_type"]:checked');
+    let txt = document.getElementById('feedback_txt');
+    if (radio !== null && txt !== null) txt.placeholder = radio.getAttribute('data-placeholder') || '';
+}
+
+/* the ?v= of a script or stylesheet in the page, e.g. assetVersion('script/script.js') -> '2.17' */
+function assetVersion(file) {
+    let el = document.querySelector('script[src*="' + file + '"], link[href*="' + file + '"]');
+    if (el === null) return null;
+    return new URL(el.getAttribute('src') || el.getAttribute('href'), location.href).searchParams.get('v');
+}
+
+/* compact JSON with what helps to reproduce a bug: browser, window size, touch, app version, theme */
+function bugContext() {
+    return JSON.stringify({
+        browser: navigator.userAgent.slice(0, 250),
+        window: window.innerWidth + 'x' + window.innerHeight,
+        touch: navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches,
+        version: 'js ' + assetVersion('script/script.js') + ', css ' + assetVersion('style/style.css'),
+        theme: document.body.classList.contains('light-theme') ? 'light' : 'dark'
+    });
+}
+
 function feedback_submit() {
-    let fb_text = document.getElementById('feedback_txt').value;
-    closeMenu();
-    document.getElementById('feedback_txt').value = '';
+    let txt = document.getElementById('feedback_txt');
+    let fb_text = txt.value.trim();
+    if (fb_text === '') {
+        txt.focus();
+        return;
+    }
+    let type = feedbackType();
 
     // B-54: free text in URLs always encoded; stars are no longer asked for (0)
-    fetch('./api/feedback.php?id=' + localStorage.getItem('SID')
+    let url = './api/feedback.php?id=' + encodeURIComponent(localStorage.getItem('SID'))
         + '&stars=0'
-        + '&text=' + encodeURIComponent(fb_text)
-    , { method: 'POST' }).then();
+        + '&type=' + encodeURIComponent(type)
+        + '&text=' + encodeURIComponent(fb_text);
+    if (type === 'BUG') url += '&context=' + encodeURIComponent(bugContext());
+    fetch(url, { method: 'POST' }).then();
+
+    closeMenu();
+    txt.value = '';
+    setFeedbackType('OTHER');
+    showToast('Thanks – we read every message.');
 }
+
+/* B-57: "Backlog" tab - our public list (api/get_roadmap.php) with status and reactions (api/vote_roadmap.php).
+ * Loaded each time the tab is shown; entries are clones of #fb_item_tpl, filled via textContent only.
+ * Pull updates of the board do not touch it. On the start page (#fb_react_hint present) the user may not be
+ * known yet (vote_roadmap.php: 403), so the reactions are shown, but disabled. */
+const gFbStatusText = {PLANNED: 'planned', IN_PROGRESS: 'in progress', DONE: 'done ✅'};
+let gFbBacklogRequest = 0; // only the latest load fills the list
+
+function fbCanReact() {
+    return document.getElementById('fb_react_hint') === null;
+}
+
+function fillBacklogItem(li, item) {
+    li.dataset.item = item.id;
+    li.querySelector('.fb-title').textContent = item.title;
+    li.querySelector('.fb-desc').textContent = item.description || '';
+    let status = li.querySelector('.fb-status');
+    status.dataset.status = item.status;
+    status.textContent = gFbStatusText[item.status] || '';
+    li.querySelectorAll('.fb-react-btn').forEach(btn => {
+        let reaction = btn.dataset.reaction;
+        btn.setAttribute('aria-pressed', item.my_reaction === reaction ? 'true' : 'false');
+        btn.querySelector('.fb-count').textContent = (item.reactions && item.reactions[reaction]) || 0;
+        btn.disabled = !fbCanReact();
+    });
+}
+
+function loadFeedbackBacklog() {
+    let list = document.getElementById('fb_backlog');
+    let empty = document.getElementById('fb_backlog_empty');
+    let tpl = document.getElementById('fb_item_tpl');
+    if (list === null || tpl === null) return;
+    let request = ++gFbBacklogRequest;
+    // no "Nothing here yet." while loading; the entries of the last load stay until the new ones are there
+    if (empty !== null && list.children.length === 0) empty.hidden = true;
+    list.setAttribute('aria-busy', 'true');
+
+    fetch('./api/get_roadmap.php?id=' + encodeURIComponent(localStorage.getItem('SID')))
+        .then(response => response.ok ? response.json() : Promise.reject(response.status))
+        .then(json => {
+            if (request !== gFbBacklogRequest) return;
+            list.replaceChildren(...json.items.map(item => {
+                let li = tpl.content.firstElementChild.cloneNode(true);
+                fillBacklogItem(li, item);
+                return li;
+            }));
+        })
+        .catch(() => {})
+        .finally(() => {
+            if (request !== gFbBacklogRequest) return;
+            list.removeAttribute('aria-busy');
+            if (empty !== null) empty.hidden = false; // CSS hides it while the list has entries
+        });
+}
+
+/* a click on a reaction: set it, or remove it when it is the own one already (NONE) */
+function reactOnBacklogItem(btn) {
+    let li = btn.closest('li.fb-item');
+    if (li === null || !fbCanReact()) return;
+    let reaction = btn.getAttribute('aria-pressed') === 'true' ? 'NONE' : btn.dataset.reaction;
+    let buttons = li.querySelectorAll('.fb-react-btn');
+    buttons.forEach(b => { b.disabled = true; });
+
+    fetch('./api/vote_roadmap.php?id=' + encodeURIComponent(localStorage.getItem('SID'))
+        + '&item=' + encodeURIComponent(li.dataset.item)
+        + '&reaction=' + encodeURIComponent(reaction), { method: 'POST' })
+        .then(response => {
+            if (response.ok) return response.json();
+            if (response.status === 403) showToast('Join a board to react.');
+            return Promise.reject(response.status);
+        })
+        .then(item => fillBacklogItem(li, item))
+        .catch(() => { buttons.forEach(b => { b.disabled = false; }); });
+}
+
+function initFeedbackPanel() {
+    let types = document.getElementById('fb_type');
+    if (types !== null) {
+        types.addEventListener('change', () => setFeedbackType(feedbackType()));
+        setFeedbackType(feedbackType());
+    }
+    let list = document.getElementById('fb_backlog');
+    if (list !== null) {
+        list.addEventListener('click', function (event) {
+            let btn = event.target.closest('.fb-react-btn');
+            if (btn !== null && !btn.disabled) reactOnBacklogItem(btn);
+        });
+    }
+    let empty = document.getElementById('fb_backlog_empty');
+    if (empty !== null) empty.hidden = true; // until the first load
+}
+
+document.addEventListener('DOMContentLoaded', initFeedbackPanel);
 
 function topicChanged() {
     gTopicChangePending = true;
