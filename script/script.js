@@ -60,7 +60,6 @@ function getBrowserWidth(){
 function newRound() {
     let url = './api/newround.php?t=' + t;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    toggleMobileMenu("closed");
 }
 
 function playerTypeUpdate(playerType, name) {
@@ -437,11 +436,11 @@ function updateDom(myJson, isOnLoad) {
     gSurvey = myJson.survey;
     gUserName = myJson.name;
 
-    if (myJson.player_type === "PLAYER") {
-        document.getElementById('cet_toggle_user_type').value = "Become Observer";
-    } else {
-        document.getElementById('cet_toggle_user_type').value = "Participate as a Player";
-    }
+    checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
+    // B-51: header prompt <player>@<team>; plain text only
+    let promptUser = document.getElementById('prompt_user');
+    let promptText = myJson.name ? myJson.name : '';
+    if (promptUser.textContent !== promptText) promptUser.textContent = promptText;
 
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
@@ -538,7 +537,9 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
 
-        if (myJson.needs_setup) toggle_box('cset', false);
+        // a new board opens "Board settings" by itself, without taking the focus (name input first);
+        // not on phones, where the sheet would cover the name input
+        if (myJson.needs_setup && !gPhoneQuery.matches) openMenu('cset', null, false);
 
         updateDao(false);
     }
@@ -687,10 +688,6 @@ function loadBoard() {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
         }
-        // Escape closes the phone menu, unless it just closed a menu box (script_feedback.js)
-        if (event.key === 'Escape' && !event.defaultPrevented) {
-            toggleMobileMenu('closed');
-        }
     });
 }
 
@@ -771,6 +768,7 @@ function measureEvent(eventCode) {
 function setColor() {
     // the color mode button (#cmode_btn) shows moon/sun via CSS (body.light-theme)
     let brandImg = document.getElementById("brand");
+    checkRadio('cet_color_mode', gColorMode === "dark" ? 'dark' : 'light');
 
     if (gColorMode === "dark") {
         brandImg.src = "./src/brand_dark.svg";
@@ -781,6 +779,18 @@ function setColor() {
     }
 }
 
+/* B-51: "Appearance" in the "You" section (radio group) */
+function setColorMode(mode) {
+    if (mode !== gColorMode) switchColorMode();
+}
+
+/* B-51: the segment switches in the menu are radio groups (name = former select id);
+ * check the radio with the given value (values are fixed strings, never user input) */
+function checkRadio(name, value) {
+    let radio = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+    if (radio !== null && !radio.checked) radio.checked = true;
+}
+
 function switchColorMode(){
     if (gColorMode === "dark") gColorMode = "light";
     else gColorMode = "dark";
@@ -789,23 +799,6 @@ function switchColorMode(){
     fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&color_mode=' + gColorMode, { method: 'POST' }).then();
 }
 
-
-function toggleMobileMenu(target_state){
-    let menu = document.getElementById("mobile-menu");
-    // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
-    if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
-        let opener = menu.querySelector('.open_menu');
-        let focusInside = menu.contains(document.activeElement);
-        menu.setAttribute('data-state', target_state);
-        opener.setAttribute('aria-expanded', target_state === 'open' ? 'true' : 'false');
-        if (target_state === 'open') {
-            menu.querySelector('.topnav-bar .icon-btn').focus();
-        } else if (focusInside) {
-            // the focused button disappears with the panel
-            opener.focus();
-        }
-    }
-}
 
 /* B-46: on phones the topic strip shows one line; the arrow button (or a tap on the topic)
  * shows all of it. Elsewhere the button is hidden by CSS and the topic is shown in full. */
@@ -830,6 +823,11 @@ function copyLink() {
 let gToastTimer = null;
 function showToast(text) {
     let toast = document.getElementById('toast');
+    // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
+    // (closeMenu() puts it back)
+    let menu = document.getElementById('menu');
+    let host = (menu !== null && menu.open && menu.matches(':modal')) ? menu : document.body;
+    if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');
     clearTimeout(gToastTimer);
@@ -990,19 +988,17 @@ function stopwatchReset(){
 /* B-42: The sort order is only set in the menu (Card value = SEQUENCE, Player name = NAME).
  * Legacy values like 'CHOOSE:SEQUENCE' (before the data update) are shown as Card value.
  * In anonymous mode the server always arranges revealed cards by card value, so the
- * select is disabled and shows "Card value", whatever is stored; a hint explains why.
+ * radio group (B-51) is disabled and shows "Card value", whatever is stored; a hint explains why.
  * Nothing is sent to the API: the stored value stays and shows up again as soon as
  * anonymous mode is switched off. This already applies when anonymous mode is
  * requested for the next round, so it reacts as soon as "Hide names" is chosen.
  * The hint is only referenced via aria-describedby while it is visible. */
 function updateOrderByConfig(resultsOrder, anonymousMode) {
-    let dropDown = document.getElementById("cet_order_by");
+    let dropDown = document.getElementById("cet_order_by"); // the fieldset of the radio group
     let hint = document.getElementById("cet_order_by_hint");
     let order = (resultsOrder === 'NAME' && !anonymousMode) ? 'NAME' : 'SEQUENCE';
 
-    if (dropDown.value !== order) {
-        dropDown.value = order;
-    }
+    checkRadio('cet_order_by', order);
 
     dropDown.disabled = anonymousMode;
     if (anonymousMode) {
@@ -1015,11 +1011,7 @@ function updateOrderByConfig(resultsOrder, anonymousMode) {
 }
 
 function updateAnonymityConfig(anonymousRequestToggle) {
-    let dropDown = document.getElementById("cet_anonymous");
-
-    if (dropDown.value !== anonymousRequestToggle ) {
-        dropDown.value = anonymousRequestToggle;
-    }
+    checkRadio('cet_anonymous', anonymousRequestToggle === 1 ? '1' : '0');
 }
 
 
@@ -1055,8 +1047,6 @@ function loadCardConfig() {
         thumbElement.id = "_" + card.card_key;
         thumbElement.src = "src/c_" + card.card_key + ".png";
         thumbElement.setAttribute("data-card_key", card.card_key);
-        thumbElement.src = "src/c_" + card.card_key + ".png";
-        thumbElement.classList.add("topnav");
         thumbElement.classList.add("cs_c");
         thumbElement.alt = card.description;
         thumbElement.addEventListener("click", toggleCSet);
@@ -1285,7 +1275,7 @@ function showConfetty(playersCount) {
 function showDeleteUserOverlay(openIt=true) {
     let overlayDiv= document.getElementById('overlay_delete_user');
     if (openIt) {
-        closeTopnavBoxes(); // the "You" box stays open otherwise (its links count as topnav)
+        closeMenu(false); // the overlay takes over (B-51)
         removeStyleClass(overlayDiv, 'hidden');
     }
     else addStyleClass(overlayDiv, 'hidden');

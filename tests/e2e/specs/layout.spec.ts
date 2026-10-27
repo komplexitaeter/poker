@@ -9,6 +9,7 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWi
  * On phones the topic is a one-line strip that unfolds with its arrow button.
  * Copy Link and the own stopwatch switch confirm with a toast from the bottom edge (showToast);
  * the header has no hover hints any more.
+ * B-51: without a topic there is no topic bar at all (the topic is set in the menu).
  */
 const SMALL = { width: 375, height: 667 };
 
@@ -16,10 +17,12 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
   for (const viewport of [{ width: 1280, height: 600 }, SMALL]) {
     const alice = await newPlayer(browser, { viewport });
     const url = await createTeam(alice, 'Layout Grid');
-    await addPlayersViaApi(alice, url, Array.from({ length: 20 }, (_, i) => `P${i + 1}`));
+    // B-51: without a topic bar the table has more room, so enough players that it surely overflows
+    await addPlayersViaApi(alice, url, Array.from({ length: 40 }, (_, i) => `P${i + 1}`));
     await joinAsPlayer(alice, url, 'Alice');
     await pickCard(alice, 'three01');
-    await expect(alice.locator('#cbox .c')).toHaveCount(21);
+    await expect(alice.locator('#cbox .c')).toHaveCount(41);
+    await expect(alice.locator('.topic-bar')).toBeHidden();
 
     // the page itself does not scroll, the table does
     await expect.poll(() => alice.evaluate(() => document.scrollingElement!.scrollHeight - window.innerHeight))
@@ -28,12 +31,18 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
     await expect.poll(() => alice.locator('#table').evaluate(el => el.scrollHeight - el.clientHeight))
       .toBeGreaterThan(0);
 
-    // deck at the bottom edge, New Round visible above it (stuck to the bottom of the table)
-    const deck = (await alice.locator('#ctl').boundingBox())!;
-    expect(Math.round(deck.y + deck.height)).toBe(viewport.height);
+    // deck at the bottom edge, New Round visible above it (stuck to the bottom of the table);
+    // polled, the heights settle only after their animations
+    await expect.poll(async () => {
+      const deck = (await alice.locator('#ctl').boundingBox())!;
+      return Math.round(deck.y + deck.height);
+    }).toBe(viewport.height);
     await expect(alice.locator('#newroundbtn')).toBeVisible();
-    const btn = (await alice.locator('#newroundbtn').boundingBox())!;
-    expect(btn.y + btn.height).toBeLessThanOrEqual(deck.y + 1);
+    await expect.poll(async () => {
+      const deck = (await alice.locator('#ctl').boundingBox())!;
+      const btn = (await alice.locator('#newroundbtn').boundingBox())!;
+      return btn.y + btn.height <= deck.y + 1;
+    }).toBe(true);
     await alice.context().close();
   }
 });
@@ -87,13 +96,17 @@ test('large screen: topic bar above the table, New Round right below the cards (
   await addPlayersViaApi(alice, url, ['Bob']);
   await joinAsPlayer(alice, url, 'Alice');
 
-  // no topic: an invitation instead of the topic and the pen
-  const empty = alice.locator('.topic-empty');
-  await expect(empty).toBeVisible();
+  // no topic: no topic bar at all, the table starts right below the header (B-51);
+  // the topic is set from the header button
+  const topicBar = alice.locator('.topic-bar');
+  await expect(topicBar).toBeHidden();
   await expect(alice.locator('.topic-edit')).toBeHidden();
-  await empty.click();
+  expect(Math.round((await alice.locator('#table').boundingBox())!.y))
+    .toBe(Math.round((await alice.locator('header.head').boundingBox())!.y + (await alice.locator('header.head').boundingBox())!.height));
+  await alice.locator('#topic_btn').click();
   await expect(alice.locator('#topic_box')).toBeVisible();
   await alice.keyboard.press('Escape');
+  await expect(alice.locator('#topic_box')).toBeHidden();
 
   // a long topic: full width between header and table, its height is capped (the table keeps its room)
   const t = new URL(url).searchParams.get('t')!;
@@ -108,8 +121,13 @@ test('large screen: topic bar above the table, New Round right below the cards (
   expect(Math.round(table.y)).toBe(Math.round(bar.y + bar.height));
   expect(bar.height).toBeLessThanOrEqual(800 * 0.25 + 16);
   expect(await alice.locator('#topic').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await expect(topicBar).toBeVisible();
   await expect(alice.locator('.topic-edit')).toBeVisible();
-  await expect(empty).toBeHidden();
+  // the pen in the bar opens the topic in the menu as well
+  await alice.locator('.topic-edit').click();
+  await expect(alice.locator('#topic_box')).toBeVisible();
+  await expect(alice.locator('#topic_txt')).toHaveValue(topic);
+  await alice.keyboard.press('Escape');
 
   // few cards: New Round sits right below them, not at the bottom of the screen
   await pickCard(alice, 'three01');
