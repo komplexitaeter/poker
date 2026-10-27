@@ -71,6 +71,8 @@
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="fb_panel_backlog" data-tab="backlog" aria-labelledby="fb_tab_backlog" hidden>
                     <p class="hint fb-intro">What we are working on. Tap a reaction to tell us what matters to you.</p>
+                    <!-- start page: the user may not be known yet, reactions only on a board (script_feedback.js) -->
+                    <p id="fb_react_hint" class="hint">Join a board to react.</p>
                     <ul id="fb_backlog" class="fb-list"></ul>
                     <p id="fb_backlog_empty" class="fb-empty">Nothing here yet.</p>
                     <template id="fb_item_tpl">
@@ -104,7 +106,10 @@
         <li>Have Fun!</li>
     </ol>
 
-    <script src="script/script_feedback.js?v=1.19" type="text/javascript" defer></script>
+    <!-- short messages, e.g. after sending feedback (showToast in script.js) -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="script/script_feedback.js?v=1.20" type="text/javascript" defer></script>
     <script src="script/script_team.js?v=1.7" type="text/javascript" defer></script>
     <script src="script/script.js?v=2.17" type="text/javascript" defer></script>
 </body>
