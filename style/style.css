@@ -44,9 +44,12 @@
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
      * The images are 300 x 443px: sharp up to 150px on 2x screens. */
-    --card-min: 56px;     /* the player's name is still readable (10px, about 8 characters) */
+    --card-min: 54px;     /* the name is still readable (10px, about 8 characters); 21 cards in 4 rows at 375px with the gutter */
     --card-max: 150px;    /* phones: 110px, see below */
     --card-ratio: 1.48;   /* height / width (100 x 148) */
+    /* side gutter of #cbox: the gap between two cards, at least this (large screens: plus the
+     * 8px padding of .table) – the outer cards never touch the edge of the table */
+    --card-gutter-min: 8px;
     /* Without script.js: 100px from about 455px to 1440px (as before B-49), 22vw below
      * (4 cards per row at 320-430px), 6.94vw above (grows with the screen), 64-140px. */
     --card-fluid: clamp(64px, min(22vw, max(100px, 6.94vw)), 140px);
@@ -1340,8 +1343,10 @@ div#cbox {
     --card-del: max(var(--card-del-min), var(--card-w) * 0.2);
     --card-gap-x: calc(var(--card-w) * 0.1);
     --card-gap-y: calc(var(--card-del) / 2 + var(--card-w) * 0.1);
+    --card-gutter: max(var(--card-gutter-min), var(--card-gap-x));
     margin-top: 2em; /* small screens: see below */
-    padding: 4px 0 calc(var(--card-gap-y) + 2px);
+    padding: 4px var(--card-gutter) calc(var(--card-gap-y) + 2px);
+    box-sizing: border-box;
     outline: none;
     width: 100%;
     display: flex;
@@ -1382,7 +1387,7 @@ div#cbox {
     width: 100%;
     line-height: 2em;
     box-sizing: border-box;
-    padding: 0 4%;
+    padding: 0 10%; /* clear of the rounded corners; a longer name ends with an ellipsis */
     text-align: center;
     color: var(--text-color);
     font-size: clamp(10px, var(--card-w) * 0.11, 14px); /* 11px at 100px */
@@ -1405,7 +1410,10 @@ div#cbox {
     cursor: pointer;
 }
 
-.c:hover .delete { display: block; }
+/* B-49: shown by input device, not by width: mouse = on hover (or keyboard focus inside the
+ * card), touch = always (see below), whatever the window size */
+.c:hover .delete,
+.c:focus-within .delete { display: block; }
 
 .c .delete:hover {
     content: url('../src/delete_red.png');
@@ -1416,15 +1424,9 @@ div#cbox {
 
 .cardValueChanged { animation: shake 1s ease-in-out; }
 
-/* touch devices cannot hover: show the delete icon on every card (as on small screens) */
-@media (hover: none) {
-    .c .delete { display: block; }
-}
-
-/* Small screens: the delete icon on every card */
-@media (max-width: 799.98px) {
-    div#cbox { margin-top: 1em; }
-
+/* touch devices cannot hover: the delete icon on every card, no sticky hover color
+ * (its size: --card-del-min, "Touch screens") */
+@media (hover: none), (pointer: coarse) {
     .c .delete {
         display: block;
         cursor: auto;
@@ -1434,6 +1436,10 @@ div#cbox {
         content: normal;
         border-color: var(--bluish);
     }
+}
+
+@media (max-width: 799.98px) {
+    div#cbox { margin-top: 1em; }
 }
 
 /* ---------- New round button, stopwatch (.dock) ---------- */
@@ -1462,6 +1468,7 @@ div#cbox {
 .stopwatch_control > img {
     width: 30px;
     height: auto;
+    aspect-ratio: 1; /* its height counts before the image has loaded (fit to table, B-49) */
 }
 
 .stopwatch_control > img.display_none { display: none; }
