@@ -2,7 +2,7 @@
 /*
  * B-57: sets (LOVE / MEH) or removes (NONE) the reaction of a user (id = SID) on a visible entry of the public list.
  * One reaction per user id and entry. Answers with the updated entry (same shape as in get_roadmap.php).
- * 400: invalid parameters, 403: unknown user id, 404: entry does not exist or is not visible.
+ * 400: invalid parameters, 403: user id has not joined a board (not in pok_players_tbl), 404: entry does not exist or is not visible.
  */
 require '../config.php';
 require './lib.php';
@@ -20,11 +20,12 @@ if (strlen($id) < 10 || !is_int($item) || !in_array($reaction, array_merge(ROADM
 
 $link = db_init('utf8mb4');
 
-// only users the board already knows (dao.php creates them), so not every random id can vote
-$sql = $link->prepare("select count(1) cnt from pok_user_tbl where id = ?");
+// only users who joined a board (player or observer), so not every random id can vote
+// (dao.php creates a pok_user_tbl row for any id, so that table is no proof)
+$sql = $link->prepare("select count(1) cnt from pok_players_tbl where id = ?");
 $sql->bind_param('s', $id);
 $sql->execute();
-if ($sql->get_result()->fetch_object()->cnt != 1) {
+if ($sql->get_result()->fetch_object()->cnt < 1) {
     http_response_code(403);
     exit;
 }

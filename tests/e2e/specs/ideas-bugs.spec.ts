@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 
 /**
  * B-57 "Ideas & Bugs", backend part: typed feedback with technical context, the public list
@@ -9,9 +9,9 @@ import { newPlayer, createTeam } from './helpers';
 
 const unique = (prefix: string) => `${prefix} ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-/** Opens a board, so dao.php creates the user, and returns the SID. */
+/** Creates a board and joins it (only users in pok_players_tbl may react), returns the SID. */
 async function boardUser(page: Page): Promise<string> {
-  await createTeam(page, 'IdeasTeam');
+  await joinAsPlayer(page, await createTeam(page, 'IdeasTeam'), 'Ida');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('SID'))).not.toBeNull();
   const sid = (await page.evaluate(() => localStorage.getItem('SID'))) as string;
   const t = new URL(page.url()).searchParams.get('t') as string;
@@ -153,5 +153,27 @@ test('vote_roadmap.php rejects GET, invalid values and unknown users', async ({ 
   expect((await vote(page, sid, `${item}%20or%201=1`, 'LOVE')).status()).toBe(400);
   expect((await vote(page, '', item, 'LOVE')).status()).toBe(400);
   expect((await vote(page, 'E2EUNKNOWNUSER01', item, 'LOVE')).status()).toBe(403);
+
+  // a user dao.php knows (pok_user_tbl), but who never joined a board, may not react either
+  const lurker = 'E2ELURKER' + Date.now().toString(36).slice(-6).toUpperCase();
+  expect((await page.request.get(`./api/get_roadmap.php?id=${lurker}`)).ok()).toBeTruthy();
+  const t = new URL(page.url()).searchParams.get('t') as string;
+  expect((await page.request.get(`./api/dao.php?id=${lurker}&t=${encodeURIComponent(t)}`)).ok()).toBeTruthy();
+  expect((await vote(page, lurker, item, 'LOVE')).status()).toBe(403);
   expect((await vote(page, sid, 999999, 'LOVE')).status()).toBe(404);
+});
+
+test('delete_user.php removes the reactions of the user', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const sid = await boardUser(page);
+  const title = unique('Delete me reaction');
+  const item = await createItem(page, title, sid);
+  expect((await vote(page, sid, item, 'LOVE')).ok()).toBeTruthy();
+
+  const count = async () => (await (await page.request.get(`./api/get_roadmap.php?id=${encodeURIComponent(sid)}`)).json())
+    .items.find((i: { id: number }) => i.id === item).reactions.LOVE;
+  expect(await count()).toBe(1);
+
+  expect((await page.request.post(`./api/delete_user.php?id=${encodeURIComponent(sid)}`)).ok()).toBeTruthy();
+  expect(await count()).toBe(0);
 });

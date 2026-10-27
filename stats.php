@@ -33,6 +33,7 @@ session_set_cookie_params(array(
     'samesite' => 'Strict',
     'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
 ));
+ini_set('session.use_strict_mode', '1');
 session_start();
 if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
 $csrf = $_SESSION['csrf'];
@@ -52,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'feedback_done') {
         // tick off (done=1) or reopen (done=0) one feedback; the first done date is kept
-        $fb_id = filter_var($_POST['fb_id'] ?? null, FILTER_VALIDATE_INT);
+        $fb_id = filter_var($_POST['fb_id'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
         if (!is_int($fb_id)) reject(400, 'Invalid feedback id.');
         $done = post_text('done', 1) === '1' ? 1 : 0;
         $sql = $link->prepare("update pok_feedback_tbl
@@ -70,7 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = post_text('description', 600);
         if ($description === '') $description = null;
         $status = post_text('status', 12);
-        $sort_order = filter_var($_POST['sort_order'] ?? '0', FILTER_VALIDATE_INT);
+        $sort_order = filter_var($_POST['sort_order'] ?? '0', FILTER_VALIDATE_INT,
+            array('options' => array('min_range' => -1000000, 'max_range' => 1000000)));
         $visible = post_text('visible', 1) === '1' ? 1 : 0;
 
         if (!in_array($type, FEEDBACK_TYPES, true) || !in_array($status, ROADMAP_STATUS, true)

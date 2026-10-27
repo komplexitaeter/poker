@@ -20,6 +20,11 @@ $sql->bind_param('s', $id);
 $sql->execute();
 $sql->close();
 
+$sql = $link->prepare("DELETE FROM pok_roadmap_votes_tbl WHERE user_id=?");
+$sql->bind_param('s', $id);
+$sql->execute();
+$sql->close();
+
 $sql = $link->prepare("DELETE FROM pok_players_tbl WHERE id=?");
 $sql->bind_param('s', $id);
 $sql->execute();
