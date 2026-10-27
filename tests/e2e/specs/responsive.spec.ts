@@ -45,7 +45,8 @@ async function expectSmallLayout(page: Page) {
   await expect(page.locator('#topic_btn')).toBeHidden();
   await expect(page.locator('#cset_btn')).toBeHidden();
   await expect(page.locator('#newroundbtn')).toBeVisible(); // B-46: in the dock, not in the menu
-  await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(100);
+  // B-49: two players fit easily, so the cards get the phone maximum (--card-max, 110px below 800px)
+  await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(110);
 }
 
 async function expectLargeLayout(page: Page) {
@@ -54,6 +55,8 @@ async function expectLargeLayout(page: Page) {
   await expect(page.locator('#cset_btn')).toBeVisible();
   await expect(page.locator('#newroundbtn')).toBeVisible();
   await expect(page.locator('#ctl')).toHaveCSS('height', '90px');
+  // B-49: two players on a large table: the cards use the room up to --card-max (150px)
+  await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(150);
 }
 
 test('small screen: burger menu holds the topnav, New Round stays in the dock (B-36, B-46)', async ({ browser }) => {

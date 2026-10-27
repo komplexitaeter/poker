@@ -238,15 +238,70 @@ function cancelAnimations(element, animationId) {
     });
 }
 
-/* Card positions relative to #cbox, including a running FLIP transform. */
+/* Card positions and widths relative to #cbox, including a running FLIP transform. */
 function getCardPositions(cardsDiv) {
     const boxRect = cardsDiv.getBoundingClientRect();
     const positions = new Map();
     Array.from(cardsDiv.children).forEach(card => {
         const rect = card.getBoundingClientRect();
-        positions.set(card, { left: rect.left - boxRect.left, top: rect.top - boxRect.top });
+        positions.set(card, { left: rect.left - boxRect.left, top: rect.top - boxRect.top, width: rect.width });
     });
     return positions;
+}
+
+/* B-49: fit to table. The cards get the largest width between --card-min and --card-max
+ * (style.css, :root) at which all of them fit into the table without scrolling; below
+ * --card-min the table scrolls. Gaps and padding scale with the width as in style.css
+ * (div#cbox). The result is set as --card-w on #cbox; returns true when it changed.
+ * The measured area does not depend on --card-w: the table height comes from the page
+ * grid, the width is taken including a possible scrollbar, and the dock (New Round,
+ * stopwatch) is always reserved, even while it is hidden, so the cards keep their size
+ * when the first vote shows it. */
+function fitCardsToTable() {
+    const cbox = document.getElementById('cbox');
+    const table = document.getElementById('table');
+    if (cbox === null || table === null) return false;
+
+    const rootStyle = getComputedStyle(document.documentElement);
+    const token = name => parseFloat(rootStyle.getPropertyValue(name));
+    const min = token('--card-min');
+    const max = token('--card-max');
+    const ratio = token('--card-ratio');
+    const delMin = token('--card-del-min') || 0;
+    if (!(min > 0 && max >= min && ratio > 0)) return false;
+
+    const tableStyle = getComputedStyle(table);
+    const width = table.offsetWidth - parseFloat(tableStyle.paddingLeft) - parseFloat(tableStyle.paddingRight);
+
+    const dock = table.querySelector('.dock');
+    let dockHeight = 0;
+    if (dock !== null) {
+        const hidden = getComputedStyle(dock).display === 'none';
+        if (hidden) dock.style.display = 'flex';
+        dockHeight = dock.offsetHeight;
+        if (hidden) dock.style.removeProperty('display');
+    }
+    // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - dockHeight - 7;
+
+    const n = cbox.children.length;
+    let fit = min;
+    for (let w = max; w > min; w--) {
+        const gapX = 0.1 * w;
+        const gapY = Math.max(delMin, 0.2 * w) / 2 + 0.1 * w;
+        // half a pixel to spare: the browser must not wrap a card earlier than computed
+        const cols = Math.max(1, Math.floor((width + gapX - 0.5) / (w + gapX)));
+        const rows = Math.ceil(n / cols);
+        if (rows * (w * ratio + gapY) <= height) {
+            fit = w;
+            break;
+        }
+    }
+
+    const value = fit + 'px';
+    if (cbox.style.getPropertyValue('--card-w') === value) return false;
+    cbox.style.setProperty('--card-w', value);
+    return true;
 }
 
 function removeCards(cardsDiv, players) {
@@ -381,6 +436,8 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
             return card;
         });
     arrangeCards(cardsDiv, orderedCards);
+    // B-49: the card size follows the number of cards; the change glides with the FLIP below
+    fitCardsToTable();
 
     // Last + Invert + Play
     const lastPositions = getCardPositions(cardsDiv);
@@ -391,10 +448,13 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
             if (last === undefined) return; // removed
             const dx = first.left - last.left;
             const dy = first.top - last.top;
-            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+            const scale = last.width > 0 ? first.width / last.width : 1;
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(first.width - last.width) < 0.5) return;
             movedCards.add(card);
+            // scaled from the top left corner, so the translation applies to that corner
             card.animate(
-                [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+                [{ transform: `translate(${dx}px, ${dy}px) scale(${scale})`, transformOrigin: '0 0' },
+                 { transform: 'none', transformOrigin: '0 0' }],
                 { id: 'flip', duration: CARD_ANIMATION_MS, easing: 'ease' });
         });
     }
@@ -1118,11 +1178,24 @@ function handleResize() {
     const cbox = document.getElementById('cbox');
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
+    fitCardsToTable(); // B-49: no glide either
     showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
 }
 
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
+    // B-49: the table also changes its size without a window resize (topic shown, unfolded or
+    // hidden): the cards jump to their new size like on a resize. Only the border box counts,
+    // a scrollbar coming or going does not change the area the cards are fitted to.
+    const table = document.getElementById('table');
+    if (table !== null && typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => {
+            const cbox = document.getElementById('cbox');
+            if (!fitCardsToTable()) return;
+            Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
+            finishAnimations(cbox, 'height');
+        }).observe(table, { box: 'border-box' });
+    }
 }
 
 function calculateCardStats(players) {
@@ -1147,6 +1220,13 @@ function calculateCardStats(players) {
     return cardStats;
 }
 
+/* Left edge of the average indicator when it points at the middle of a deck card whose left
+ * edge is at left (B-49: deck cards and indicator scale with the screen). */
+function indicatorLeft(img, left) {
+    const index = document.getElementById('index');
+    return left + (img.getBoundingClientRect().width - index.getBoundingClientRect().width) / 2;
+}
+
 function calculateIndicatorLefPosition(cardStats) {
     let hasResult = false;
     let resultCnt = 0;
@@ -1165,7 +1245,7 @@ function calculateIndicatorLefPosition(cardStats) {
         } else if (cardConfig && cardConfig.description === "infinity") {
             let e = document.getElementById(cardKey);
             curPos = e.getBoundingClientRect().left;
-            returnPos = curPos + 15;
+            returnPos = indicatorLeft(e, curPos);
         }
     });
 
@@ -1188,13 +1268,13 @@ function calculateIndicatorLefPosition(cardStats) {
                 let range = curVal - lastVal;
                 let relativePosition = (avgResult - lastVal) / range;
                 let newPosition = lastPos + relativePosition * (curPos - lastPos);
-                return Math.round(newPosition) + 15;
+                return Math.round(indicatorLeft(e, newPosition));
             }
 
             if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
                 let e = document.getElementById(img.id);
                 curPos = e.getBoundingClientRect().left;
-                return curPos + 15;
+                return indicatorLeft(e, curPos);
             }
 
             lastVal = curVal;
@@ -1233,17 +1313,11 @@ function showCardUsage(players, allPlayersReady, showAvg) {
     images.forEach(img => {
         const cardStat = cardStats[img.id];
 
-        if (cardStat) {
-            const usagePercentage = cardStat.usagePercentage || 0;
-            const boxShadowSize = Math.round(75 * usagePercentage);
-
-            if (cardStat.usageCount >0 && allPlayersReady) {
-                img.style.boxShadow = `0 -${boxShadowSize}px 0 0 var(--secondary-border-color)`;
-            } else {
-                img.style.boxShadow = '0 0px 0 0 var(--secondary-border-color)';
-            }
+        // B-49: the usage bar (style.css, .controls img) scales with the deck cards
+        if (cardStat && cardStat.usageCount > 0 && allPlayersReady) {
+            img.style.setProperty('--usage', String(cardStat.usagePercentage || 0));
         } else {
-            img.style.boxShadow = '0 0px 0 0 var(--secondary-border-color)';
+            img.style.setProperty('--usage', '0');
         }
     });
 

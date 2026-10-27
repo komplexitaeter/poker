@@ -17,11 +17,12 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
   for (const viewport of [{ width: 1280, height: 600 }, SMALL]) {
     const alice = await newPlayer(browser, { viewport });
     const url = await createTeam(alice, 'Layout Grid');
-    // B-51: without a topic bar the table has more room, so enough players that it surely overflows
-    await addPlayersViaApi(alice, url, Array.from({ length: 40 }, (_, i) => `P${i + 1}`));
+    // B-51: without a topic bar the table has more room, so enough players that it surely overflows;
+    // B-49: the cards shrink to fit the table down to --card-min (56px), so even more of them
+    await addPlayersViaApi(alice, url, Array.from({ length: 69 }, (_, i) => `P${i + 1}`));
     await joinAsPlayer(alice, url, 'Alice');
     await pickCard(alice, 'three01');
-    await expect(alice.locator('#cbox .c')).toHaveCount(41);
+    await expect(alice.locator('#cbox .c')).toHaveCount(70);
     await expect(alice.locator('.topic-bar')).toBeHidden();
 
     // the page itself does not scroll, the table does
