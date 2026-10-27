@@ -18,11 +18,11 @@ Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nach
 bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
 Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
 parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
-**Stand 2026-10-24:** Schritt 3 (#40) von Andreas als schlechter bewertet und per #41 revertiert; `release` = Stand #39
-+ B-54. Lehre: Create-Team-Ablauf, Name-Dialog, Kick-Overlay, Copy Link und QR-Overlay (Beamer) waren gut und bleiben;
-Console-Stil nicht übertreiben (auch Nicht-Techies), keine Deko in Menüs. Neuer Anlauf `feature/B-51-menus-2`: nur
-Menüs als Overlays (Desktop Side Panel bis ganz unten, Handy Bottom-Sheet), Board settings als Gruppen (Akkordeon),
-kein Invite-Panel; dazu Prompt dezenter (`<Spieler>@<Team>`, kein `~$`), Topic-Leiste nur bei gesetztem Topic.
+**Stand 2026-10-27:** In `release`: Menüs als Overlays, zweiter Anlauf (#42: Desktop Side Panel bis unten, Handy
+Bottom-Sheet, Board settings als Tabs, Prompt = Teamname + Cursor mit Namensschild, ohne Topic keine Topic-Leiste),
+Nachbesserungen #43–#45 (Menü bleibt beim Breakpoint-Wechsel offen, kräftigeres Logo/QR-Logo, Safari-Tab-Reihenfolge
+Startseite, Namensschild-Zentrierung, keine Griffleiste am Sheet). Andreas (2026-10-27): `mockups/` bleibt vorerst;
+B-55 (Hinweis-Toast + Umfrage) noch offen, ob überhaupt gewünscht; B-49 (fluide Karten) jetzt umsetzen (läuft).
 **Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
 1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
    Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
