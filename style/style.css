@@ -879,8 +879,6 @@ textarea.field {
     padding: var(--space-3) var(--space-3) 20px;
 }
 
-.grab { display: none; }
-
 /* the index (phones): one row per section with a short description */
 .m-index {
     list-style: none;
@@ -1208,7 +1206,7 @@ fieldset:disabled .seg input:checked + span {
 }
 
 /* Phones: a bottom sheet over a backdrop, full width, up to 90% of the screen height,
- * as high as its content; back button in the sections, a grab bar on top */
+ * as high as its content; back button in the sections (no grab bar: the sheet cannot be dragged) */
 @media (max-width: 799.98px) {
     .menu,
     .container > .menu {
@@ -1227,16 +1225,6 @@ fieldset:disabled .seg input:checked + span {
     }
 
     .menu[open] { animation-name: sheet-in; }
-
-    .grab {
-        display: block;
-        flex: none;
-        width: 40px;
-        height: 4px;
-        margin: 8px auto 0;
-        border-radius: 2px;
-        background: var(--line-strong);
-    }
 
     .m-head { padding-left: var(--space-2); }
 
