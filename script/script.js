@@ -437,7 +437,7 @@ function updateDom(myJson, isOnLoad) {
     gUserName = myJson.name;
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
-    // B-51: header prompt <player>@<team>; plain text only
+    // B-51: the player's name as a tag on the cursor behind the team name in the header; plain text only
     let promptUser = document.getElementById('prompt_user');
     let promptText = myJson.name ? myJson.name : '';
     if (promptUser.textContent !== promptText) promptUser.textContent = promptText;
@@ -771,10 +771,10 @@ function setColor() {
     checkRadio('cet_color_mode', gColorMode === "dark" ? 'dark' : 'light');
 
     if (gColorMode === "dark") {
-        brandImg.src = "./src/brand_dark.svg";
+        brandImg.src = "./src/brand_dark.svg?v=2";
         document.body.classList.remove('light-theme');
     } else {
-        brandImg.src = "./src/brand_light.svg";
+        brandImg.src = "./src/brand_light.svg?v=2";
         document.body.classList.add('light-theme');
     }
 }
@@ -849,7 +849,7 @@ function generateQRCode(url) {
             color: "var(--text-color)",
             type: "extra-rounded"
         },
-        image: "src/logo_qr_code.png",
+        image: "src/logo_qr_code.png?v=2",
         cornersSquareOptions: {
             type: "extra-rounded"
         },

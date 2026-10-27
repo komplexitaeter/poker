@@ -86,3 +86,25 @@ test('keyboard on a phone: the menu button opens the index with Enter, Escape cl
   await expect(menuBtn).toHaveAttribute('aria-expanded', 'false');
   await expect(menuBtn).toBeFocused();
 });
+
+test('start page: Tab goes through the header, the team name field and then its button (B-51)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  await page.goto('/');
+  await expect(page.locator('#teaminput')).toBeVisible();
+
+  // from the team name field Tab goes straight to the create button, Shift+Tab back
+  await page.locator('#teaminput').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#teambtn')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#teaminput')).toBeFocused();
+
+  // the whole order follows the page: logo, feedback, color mode, team name, button
+  await page.locator('#teambtn').focus();
+  const order: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press('Shift+Tab');
+    order.push(await page.evaluate(() => document.activeElement?.id || document.activeElement?.className || ''));
+  }
+  expect(order).toEqual(['teaminput', 'cmode_btn', 'feedback_btn', 'brand']);
+});
