@@ -18,11 +18,12 @@ Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nach
 bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
 Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
 parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
-**Stand 2026-10-27:** In `release`: Menüs als Overlays, zweiter Anlauf (#42: Desktop Side Panel bis unten, Handy
-Bottom-Sheet, Board settings als Tabs, Prompt = Teamname + Cursor mit Namensschild, ohne Topic keine Topic-Leiste),
-Nachbesserungen #43–#45 (Menü bleibt beim Breakpoint-Wechsel offen, kräftigeres Logo/QR-Logo, Safari-Tab-Reihenfolge
-Startseite, Namensschild-Zentrierung, keine Griffleiste am Sheet). Andreas (2026-10-27): `mockups/` bleibt vorerst;
-B-55 (Hinweis-Toast + Umfrage) noch offen, ob überhaupt gewünscht; B-49 (fluide Karten) jetzt umsetzen (läuft).
+**Stand 2026-10-27 (Sprint 8 umgesetzt):** In `release`: B-46/B-47 Gerüst + Touch, B-48 Header-Buttons, B-51 Menüs
+als Overlays (#42–#45), B-49 fluide Karten „fit to table“ (#46: Größe aus Spielerzahl + Tischfläche, Handy-Max 110 px,
+animiert bei Datenänderung, nicht beim Resize – Andreas: passt so). B-50 teilweise (Tokens, Schrift-Fallback, Kontraste,
+reduced motion für den Cursor; offen: reduced motion für Konfetti/Wackeln, `user-select` gezielt, Farbmodus aus
+`prefers-color-scheme` beim ersten Besuch). B-55 offen (Andreas überlegt). `mockups/` bleibt vorerst. Nächstes:
+Andreas sichtet Staging, dann PR `release` → `master` (Rollout 1).
 **Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
 1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
    Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
@@ -114,12 +115,12 @@ Abgeschlossen:
 | B-43 | `survey_intro` per `innerHTML` prüfen (Sina) | neu |
 | B-44 | Startseite Light-Mode: Logo ohne Schriftzug | neu |
 | B-45 | Toten Stern-Bewertungscode im Feedback entfernen | neu |
-| B-46 | Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste, `dvh`) | neu |
-| B-47 | Touch von der Breite trennen, Touch-Ziele ≥ 44 px | neu |
-| B-48 | Topnav aus echten Buttons, Hinweise als Text | neu |
-| B-49 | Fluide Kartengrößen | neu |
-| B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | neu |
-| B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | neu |
+| B-46 | Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste, `dvh`) | erledigt (release) |
+| B-47 | Touch von der Breite trennen, Touch-Ziele ≥ 44 px | erledigt (release) |
+| B-48 | Topnav aus echten Buttons, Hinweise als Text | erledigt (release) |
+| B-49 | Fluide Kartengrößen | erledigt (release) |
+| B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | teilweise (release) |
+| B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | erledigt (release) |
 | B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
 | B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
 | B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | erledigt (release) |
