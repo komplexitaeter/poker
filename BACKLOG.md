@@ -123,8 +123,9 @@ Abgeschlossen:
 | B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
 | B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
 | B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | erledigt (release) |
-| B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | neu |
+| B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | verworfen (→ B-57) |
 | B-56 | Players-Menü: Spielerliste mit Status, Entfernen statt Lösch-Icon auf den Karten | neu |
+| B-57 | Ideas & Bugs: Meldungen mit Typ, öffentliche Liste mit Status und Abstimmung, Moderation | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -825,6 +826,24 @@ Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden ei
 Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-57 Ideas & Bugs: Meldungen, öffentliche Liste, Abstimmung
+Andreas (2026-10-27), statt der Umfrage B-55 (Team: Verhalten ist das Hauptsignal, Umfrage-Antworten ohne „was“ wenig
+verwertbar): Feedback-Panel erweitern zu „Ideas & Bugs“.
+- **Melden:** Typ Bug / Feature / Other + Text; bei Bugs automatisch technischer Kontext (Browser, Fenstergröße, Touch,
+  App-Version, Hell/Dunkel; **keine** Team-ID). Speicherung privat (neue Spalten `fb_type`, `fb_context` bzw. eigene
+  Tabelle). Bestätigung per Toast („Thanks – we read every message.“).
+- **Öffentliche Liste** darunter: Einträge mit Status (planned / in progress / ✅ done), von uns selbst formuliert
+  (nie Nutzertexte direkt → keine Moderation fremder Inhalte nötig). Reaktion je Eintrag (z. B. ❤️ / 🙈), eine Stimme pro
+  User-ID. Erster Eintrag: „New look ✅“ (ersetzt die Umfrage; einige Tage nach Rollout 1).
+- **Moderation:** Eingang abhaken; Liste anlegen/ändern/Status setzen. **Nicht** in `stats.php` (öffentlich, ohne
+  Login), sondern eigene Admin-Seite hinter nginx-Basic-Auth (Server-Befehle bereitet Claude vor). Sina reviewt.
+- Aus B-55-Analyse noch offen, falls die Survey-Funktion je wieder genutzt wird: `get_survey.php` `bind_param('i')`
+  → `'s'`; `fillBars[vote_option.id - 1]` → Index; Survey-Box auf `textContent` (B-43). Emojis: Tabellen sind `utf8mb3`
+  → für ❤️/🙈 `utf8mb4` bzw. Codes statt Zeichen speichern.
+- Ergänzend (Team-Konsens): Basis-Kennzahlen vor Rollout 1 festhalten (Ben): wiederkehrende User-IDs, Runden je
+  Session, Menü-Nutzung – Vergleich vorher/nachher.
+Umfang: 2–3 PRs (DB, API, Admin-Seite, Panel, Tests). Zeitpunkt: eigener Sprint vor bzw. mit Rollout 2.
 
 ### B-56 Players-Menü
 Delias Idee aus B-40/B-51, von Andreas für nach Rollout 1 gewünscht („freue mich sehr“, 2026-10-27): eigener Menüpunkt
