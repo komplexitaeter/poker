@@ -91,6 +91,40 @@ test('large screen: the side panel opens and closes by click and Escape, the foc
   await expect(alice.locator('#feedback_btn')).toHaveAttribute('aria-expanded', 'false');
 });
 
+test('a click on the header button of the open section closes it without a focus ring, the keyboard keeps it (B-57)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: LARGE });
+  const url = await createTeam(alice, 'Menu Ring');
+  await joinAsPlayer(alice, url, 'Alice');
+  const fbBtn = alice.locator('#feedback_btn');
+  const ring = () => fbBtn.evaluate(el => el.matches(':focus-visible'));
+
+  // real click (Chromium focuses the button on mousedown)
+  await fbBtn.click();
+  await expect(alice.locator('#feedback_txt')).toBeFocused();
+  await fbBtn.click();
+  await expect(menu(alice)).not.toHaveAttribute('open');
+  expect(await ring()).toBe(false);
+
+  // like Safari: a click does not move the focus, it is still in the text field of the panel (typed into)
+  await fbBtn.click();
+  await expect(alice.locator('#feedback_txt')).toBeFocused();
+  await alice.keyboard.type('half a thought');
+  await fbBtn.dispatchEvent('click', { detail: 1 });
+  await expect(menu(alice)).not.toHaveAttribute('open');
+  expect(await ring()).toBe(false);
+
+  // keyboard: Enter on the button closes it, the focus goes back with a visible ring
+  await fbBtn.click();
+  await expect(alice.locator('#feedback_txt')).toBeFocused();
+  await alice.keyboard.press('Shift+Tab');
+  await expect(alice.locator('#feedback_txt')).not.toBeFocused();
+  await fbBtn.focus();
+  await alice.keyboard.press('Enter');
+  await expect(menu(alice)).not.toHaveAttribute('open');
+  await expect(fbBtn).toBeFocused();
+  expect(await ring()).toBe(true);
+});
+
 test('a board that needs setup opens "Board settings" on large screens without taking the focus, not on phones (B-51)', async ({ browser }) => {
   // an entry link with preset=custom creates a board without cards (needs_setup)
   const setupLink = (team: string) => `/?tool=e2e&team=${encodeURIComponent(team)}&preset=custom`;

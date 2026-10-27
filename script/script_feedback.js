@@ -215,7 +215,14 @@ function initMenu() {
             // a header button of the open section closes the menu
             if (!menu.contains(opener) && opener.hasAttribute('aria-expanded') && openMenuSection() !== null
                 && (opener.id === 'menu_btn' || openMenuSection() === sec)) {
-                closeMenu();
+                if (event.detail === 0) {
+                    closeMenu(); // keyboard (Enter/Space): the focus goes back to the button, ring visible
+                } else {
+                    // mouse/touch: no programmatic focus, it would show the focus ring (Safari focuses
+                    // nothing on a click, so the focus would come from a field in the panel)
+                    if (menu.contains(document.activeElement)) document.activeElement.blur();
+                    closeMenu(false);
+                }
             } else {
                 openMenu(sec, opener);
             }
@@ -688,22 +695,3 @@ function toggleUserType(playerType) {
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
 }
-
-/**
- * Returns a random number between min (inclusive) and max (exclusive)
- */
-function getRandom(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min)) + min;
-}
-
-function feedback_bling() {
-    setTimeout(function () { document.getElementById('feedback_btn').classList.add('topnav_btn_bling') }, 0);
-    setTimeout(function () { document.getElementById('feedback_btn').classList.remove('topnav_btn_bling') }, 400);
-    setTimeout(function () { feedback_bling() }, getRandom(2 * 60 * 1000, 8 * 60 * 1000));
-}
-
-setTimeout(function () { feedback_bling() }, getRandom(60 * 1000, 4 * 60 * 1000));
-
-

@@ -82,7 +82,7 @@ test('send feedback: type and bug context (no team id, no name) are sent, empty 
 
   // placeholder per type
   await expect(page.locator('input[name=fb_type][value=OTHER]')).toBeChecked();
-  await expect(txt).toHaveAttribute('placeholder', 'Anything on your mind?');
+  await expect(txt).toHaveAttribute('placeholder', 'Anything you want to tell the Komplexitäter team?');
   await page.locator('#fb_type label', { hasText: 'Bug' }).click();
   await expect(txt).toHaveAttribute('placeholder', 'What happened? What did you expect?');
   await page.locator('#fb_type label', { hasText: 'Feature' }).click();
@@ -136,7 +136,7 @@ test('send feedback: type and bug context (no team id, no name) are sent, empty 
   await openFeedback(page);
   await expect(page.locator('input[name=fb_type][value=OTHER]')).toBeChecked();
   await expect(txt).toHaveValue('');
-  await expect(txt).toHaveAttribute('placeholder', 'Anything on your mind?');
+  await expect(txt).toHaveAttribute('placeholder', 'Anything you want to tell the Komplexitäter team?');
   await txt.fill('An idea');
   await page.locator('#fb_type label', { hasText: 'Feature' }).click();
   const [second] = await Promise.all([
