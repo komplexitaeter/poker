@@ -125,6 +125,7 @@ Abgeschlossen:
 | B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
 | B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | erledigt (release) |
 | B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | neu |
+| B-56 | Players-Menü: Spielerliste mit Status, Entfernen statt Lösch-Icon auf den Karten | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -825,6 +826,13 @@ Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden ei
 Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-56 Players-Menü
+Delias Idee aus B-40/B-51, von Andreas für nach Rollout 1 gewünscht („freue mich sehr“, 2026-10-27): eigener Menüpunkt
+„Players“ im Side Panel / Bottom-Sheet mit Liste aller Spieler und Beobachter (Name, Rolle, Status, z. B. „inaktiv
+seit …“), Entfernen mit Rückfrage. Das Lösch-Icon auf den Karten fällt dann weg (bis dahin: Icon bei Touch immer, mit
+Maus nur bei Hover). Inaktive Spieler auf dem Tisch ggf. blasser. Für „inaktiv seit“ und Beobachter in der Liste
+braucht es Ben (DAO liefert `last_callback_time` heute nur für Spieler). Sina prüfen lassen (Entfernen anderer).
 
 ### B-55 Rollout 1: Hinweis und Umfrage zur neuen Optik
 Idee Andreas (2026-10-23): Nutzer nach Rollout 1 fragen, ob die Richtung passt. Bestehende Umfrage-Funktion nutzen
