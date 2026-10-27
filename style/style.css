@@ -677,7 +677,6 @@ textarea.field {
 
 /* Header button: icon (+ label), transparent until hovered or active */
 .icon-btn {
-    position: relative; /* anchor for the first-time teaser (#cta_teaser) */
     flex: none;
     display: inline-flex;
     align-items: center;
@@ -741,25 +740,6 @@ textarea.field {
 
 .sw-state::before { content: "[ ]"; }
 .sw-btn[aria-pressed=true] .sw-state::before { content: "[x]"; }
-
-/* Teaser for first-time users below "you" (hidden for good by hideTeaser()) */
-#cta_teaser {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    padding: 3px 8px;
-    border: 1px dashed var(--accent);
-    border-radius: var(--radius-s);
-    background: var(--bg);
-    color: var(--accent);
-    font: var(--fs-xs) var(--font);
-    white-space: nowrap;
-    pointer-events: none;
-}
-
-#cta_teaser::before { content: "^ "; }
-
-#cta_teaser.hidden { display: none; }
 
 /* reduced motion: the caret stays, half dimmed */
 @media (prefers-reduced-motion: reduce) {
@@ -1937,7 +1917,6 @@ div#cbox {
 /* ---------- Small screens: hidden on the board ---------- */
 
 @media (max-width: 799.98px) {
-    #cta_teaser,
     .survey-container,
     #index,
     #promo-tab { display: none; }
