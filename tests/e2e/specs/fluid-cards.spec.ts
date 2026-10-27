@@ -49,9 +49,10 @@ const tableOverflow = (page: Page) => page.evaluate(() => {
   return table.scrollHeight - table.clientHeight;
 });
 
-// --card-min 64px: measured maximum without scrolling (touch, after a vote): 15 at 375x667, 25 at 393x852
+// --card-min 64px: measured maximum without scrolling (touch, after a vote): 20 at 375x667, 25 at 393x852;
+// 375x667 with 16-20 players: at --card-min the table was 2px too high before the phone margin of #cbox shrank
 for (const { viewport, players } of [
-  { viewport: PHONE, players: 15 },
+  { viewport: PHONE, players: 18 },
   { viewport: { width: 393, height: 852 }, players: 20 },
 ]) {
   test(`phone ${viewport.width}x${viewport.height}: ${players} players fit on the table without scrolling (B-49)`, async ({ browser }) => {
