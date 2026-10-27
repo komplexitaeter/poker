@@ -27,7 +27,7 @@
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
-    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.5 3.5-7 8-7s8 2.5 8 7"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
@@ -63,7 +63,7 @@
              (data-open); same order and names as the phone menu index -->
         <nav class="topnav-bar" aria-label="Board menu">
             <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
-            <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">board</span></button>
+            <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span class="lbl">board</span></button>
             <button type="button" id="user_settings_btn" class="icon-btn" data-open="user_settings" aria-label="You" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span></button>
             <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
             <button type="button" id="cmode_btn" class="icon-btn" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
@@ -135,7 +135,7 @@
             <section id="menu_index" class="menu_sec" data-sec="index" data-title="Menu" hidden>
                 <ul class="m-index">
                     <li><button type="button" data-open="topic"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span><b>Topic</b><small>What you are estimating</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
-                    <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="user_settings"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span><b>You</b><small>Name, role, appearance</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                 </ul>
