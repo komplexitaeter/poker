@@ -254,9 +254,11 @@ function getCardPositions(cardsDiv) {
  * --card-min the table scrolls. Gaps and padding scale with the width as in style.css
  * (div#cbox). The result is set as --card-w on #cbox; returns true when it changed.
  * The measured area does not depend on --card-w: the table height comes from the page
- * grid, the width is taken including a possible scrollbar, and the dock (New Round,
- * stopwatch) is always reserved, even while it is hidden, so the cards keep their size
- * when the first vote shows it. */
+ * grid, the width is taken including a possible scrollbar, and the dock is always reserved
+ * at its full height, with New Round and the stopwatch, even while (parts of) it are hidden:
+ * the cards keep their size when the first vote, the stopwatch or a new round changes it.
+ * The side gutter of #cbox (--card-gutter: the gap between two cards, at least
+ * --card-gutter-min) is taken off the width. */
 function fitCardsToTable() {
     const cbox = document.getElementById('cbox');
     const table = document.getElementById('table');
@@ -268,19 +270,13 @@ function fitCardsToTable() {
     const max = token('--card-max');
     const ratio = token('--card-ratio');
     const delMin = token('--card-del-min') || 0;
+    const gutterMin = token('--card-gutter-min') || 0;
     if (!(min > 0 && max >= min && ratio > 0)) return false;
 
     const tableStyle = getComputedStyle(table);
     const width = table.offsetWidth - parseFloat(tableStyle.paddingLeft) - parseFloat(tableStyle.paddingRight);
 
-    const dock = table.querySelector('.dock');
-    let dockHeight = 0;
-    if (dock !== null) {
-        const hidden = getComputedStyle(dock).display === 'none';
-        if (hidden) dock.style.display = 'flex';
-        dockHeight = dock.offsetHeight;
-        if (hidden) dock.style.removeProperty('display');
-    }
+    const dockHeight = fullDockHeight(table.querySelector('.dock'));
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
     const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - dockHeight - 7;
 
@@ -289,8 +285,9 @@ function fitCardsToTable() {
     for (let w = max; w > min; w--) {
         const gapX = 0.1 * w;
         const gapY = Math.max(delMin, 0.2 * w) / 2 + 0.1 * w;
+        const inner = width - 2 * Math.max(gutterMin, gapX);
         // half a pixel to spare: the browser must not wrap a card earlier than computed
-        const cols = Math.max(1, Math.floor((width + gapX - 0.5) / (w + gapX)));
+        const cols = Math.max(1, Math.floor((inner + gapX - 0.5) / (w + gapX)));
         const rows = Math.ceil(n / cols);
         if (rows * (w * ratio + gapY) <= height) {
             fit = w;
@@ -302,6 +299,24 @@ function fitCardsToTable() {
     if (cbox.style.getPropertyValue('--card-w') === value) return false;
     cbox.style.setProperty('--card-w', value);
     return true;
+}
+
+/* B-49: height of the dock with everything it can show (New Round and the stopwatch), whatever
+ * is visible right now; the inline styles only last for the measurement (no repaint). */
+function fullDockHeight(dock) {
+    if (dock === null) return 0;
+    const shown = [];
+    const show = (element, display) => {
+        if (element === null || getComputedStyle(element).display !== 'none') return;
+        element.style.display = display;
+        shown.push(element);
+    };
+    show(dock, 'flex');
+    show(dock.querySelector('#stopwatch'), 'flex');
+    show(dock.querySelector('#newroundbtn'), 'inline-block');
+    const height = dock.offsetHeight;
+    shown.forEach(element => element.style.removeProperty('display'));
+    return height;
 }
 
 function removeCards(cardsDiv, players) {
@@ -343,6 +358,7 @@ function updateCards(cardsDiv, players) {
         const nameSpan = card.getElementsByClassName('card_player_name')[0];
         if (nameSpan.textContent !== player.name) {
             nameSpan.textContent = player.name;
+            nameSpan.title = player.name; // the full name when it ends with an ellipsis
         }
     });
 
@@ -363,6 +379,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     let cardSpan = document.createElement('span');
     cardSpan.classList.add('card_player_name');
     cardSpan.innerText = player.name;
+    cardSpan.title = player.name; // the full name when it ends with an ellipsis
     newCard.appendChild(cardSpan);
 
     let cardDeleteImg = document.createElement('img');

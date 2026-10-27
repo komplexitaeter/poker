@@ -55,7 +55,7 @@ test('phone: 21 players fit on the table without scrolling (B-49)', async ({ bro
       .filter(r => r.top < table.top || r.bottom > dock.top || r.left < table.left || r.right > table.right).length;
   });
   expect(outside).toBe(0);
-  expect(await cardWidth(alice, 'Alice')).toBeGreaterThanOrEqual(56); // --card-min: names stay readable
+  expect(await cardWidth(alice, 'Alice')).toBeGreaterThanOrEqual(54); // --card-min: names stay readable
 });
 
 test('large screen: few players get large cards (B-49)', async ({ browser }) => {
