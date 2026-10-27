@@ -18,12 +18,11 @@ Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nach
 bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
 Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
 parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
-**Stand 2026-10-27 (Sprint 8 umgesetzt):** In `release`: B-46/B-47 Gerüst + Touch, B-48 Header-Buttons, B-51 Menüs
-als Overlays (#42–#45), B-49 fluide Karten „fit to table“ (#46: Größe aus Spielerzahl + Tischfläche, Handy-Max 110 px,
-animiert bei Datenänderung, nicht beim Resize – Andreas: passt so). B-50 teilweise (Tokens, Schrift-Fallback, Kontraste,
-reduced motion für den Cursor; offen: reduced motion für Konfetti/Wackeln, `user-select` gezielt, Farbmodus aus
-`prefers-color-scheme` beim ersten Besuch). B-55 offen (Andreas überlegt). `mockups/` bleibt vorerst. Nächstes:
-Andreas sichtet Staging, dann PR `release` → `master` (Rollout 1).
+**Stand 2026-10-27 abends (Sprint 8 umgesetzt):** In `release` zusätzlich: Teaser ausgebaut (#47; Backend-Feld
+`hide_teaser` + DB-Spalte bleiben vorerst), Fit-Korrekturen (#48: Seitenabstand, Zone New Round/Stoppuhr bzw. Dock immer
+reserviert, Lösch-Icon nach Eingabegerät statt Breite, Namen mit „…“), `--card-min` 64 px (#49: 375×667 bis 20 Spieler,
+393×852 bis 25 ohne Scrollen). B-50 teilweise, B-55 offen (Andreas überlegt), `mockups/` bleibt. Nächstes: Andreas
+sichtet Staging, dann PR `release` → `master` (Rollout 1).
 **Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
 1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
    Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
@@ -1054,6 +1053,8 @@ geschnitten):
   mobil sinnvoller mit responsiven Elementen aufbaubar. → jetzt **B-51**.
 - **Menüs userfreundlicher strukturieren und aufräumen.** → jetzt **B-51**.
 - **Kartenlayout verbessern** – z. B. die Spielernamen besser unter den Karten platzieren.
+  Andreas (2026-10-27): Namen später **über** die Karten setzen; heute passen bei ~100-px-Karten in Mono-Schrift nur
+  ~8–9 Zeichen (Rest „…“, voller Name als Tooltip).
 - **Karten mit Beschriftungen** ermöglichen (z. B. um echtes Delegation Poker zu spielen).
 - **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
 - **Kartenziffern modernisieren.**
