@@ -831,6 +831,11 @@ Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visib
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
 
+### B-62 E2E-Tests für den Feedback-Pfad (rudimentär)
+Vorschlag Tessa, Andreas (2026-10-27): ja, aber nur rudimentär; internes Backlog, nicht in der öffentlichen Liste.
+Kernpfad: Meldung absenden (Bug mit Kontext, ohne Team-ID), einmal abstimmen, roter Punkt verschwindet nach dem
+Öffnen des Menüs. Keine Randfälle.
+
 ### B-58 Geänderte Karte sichtbar machen (statt Karte sperren)
 Häufigster Nutzerwunsch im Feedback (≈ 9×, 2022–2026): „Karte nach dem Aufdecken sperren“. Andreas (2026-10-27): intern
 heiß diskutiert; Philosophie der App ist „nah an der Physik“ – am Tisch kann man seine Karte auch noch tauschen. Heute
@@ -869,6 +874,11 @@ verwertbar): Feedback-Panel erweitern zu „Ideas & Bugs“.
 - Ergänzend (Team-Konsens): Basis-Kennzahlen vor Rollout 1 festhalten (Ben): wiederkehrende User-IDs, Runden je
   Session, Menü-Nutzung – Vergleich vorher/nachher.
 Umfang: 2–3 PRs (DB, API, Moderation in `stats.php`, Panel, Tests). **Zeitpunkt (Andreas, 2026-10-27): noch vor Rollout 1.**
+- **Team-Einschätzung nach Umsetzung (2026-10-27), Entscheidungen Andreas:** Kanal = qualitatives Signal, Stimmen sind
+  ein Stimmungsbild, keine Zählung. Bewusst **nicht**: Begrenzung der Stimmen pro Tag (wer den Aufwand treibt, sendet
+  auch ein Signal; echte Absicherung bräuchte mehr als die User-ID), roter Punkt bei neuen Einträgen erneut (nervt
+  Leute, die keine Rückmeldung geben wollen), Textfeld nach 👎 (dafür gibt es „New issue“), Sessions beobachten (zu
+  aufwändig; bekannte Nutzer melden sich, wenn etwas klemmt). Tests: B-62.
 
 ### B-56 Players-Menü
 Delias Idee aus B-40/B-51, von Andreas für nach Rollout 1 gewünscht („freue mich sehr“, 2026-10-27): eigener Menüpunkt
