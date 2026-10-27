@@ -85,6 +85,18 @@ create table if not exists pok_roadmap_votes_tbl (
 insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
 select 'FEATURE', 'New look', 'Fresh console look, menus as side panel, cards that fit your screen.', 'DONE', 0, 1 from dual
  where not exists (select 1 from pok_roadmap_tbl where title = 'New look');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'See changed cards', 'If someone changes their card after the reveal, the original card stays visible underneath.', 'PLANNED', 10, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'See changed cards');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'Reveal now', 'Reveal the cards even if someone is away and has not voted yet.', 'PLANNED', 20, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'Reveal now');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'Fun reactions', 'Emoji reactions and a bit more fun on the table.', 'PLANNED', 30, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'Fun reactions');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'Custom cards', 'Your own card values and decks.', 'PLANNED', 40, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'Custom cards');
 
-/* optional: mark the feedback before B-57 as done, so the inbox in stats.php starts empty */
--- update pok_feedback_tbl set done_date = datum where fb_type is null and done_date is null;
+/* mark the feedback before B-57 as done, so the inbox in stats.php starts empty (Andreas, 2026-10-27) */
+update pok_feedback_tbl set done_date = datum where fb_type is null and done_date is null;
