@@ -87,10 +87,15 @@ test('keyboard on a phone: the menu button opens the index with Enter, Escape cl
   await expect(menuBtn).toBeFocused();
 });
 
-test('start page: Tab goes through the header, the team name field and then its button (B-51)', async ({ browser }) => {
+test('start page: Tab goes from the team name field to its button, then to the header (B-51)', async ({ browser }) => {
   const page = await newPlayer(browser);
   await page.goto('/');
   await expect(page.locator('#teaminput')).toBeVisible();
+
+  // explicit tabindex 1/2 (like the name page): Safari without "Press Tab to highlight each item"
+  // only stops at buttons that have a tabindex
+  await expect(page.locator('#teaminput')).toHaveAttribute('tabindex', '1');
+  await expect(page.locator('#teambtn')).toHaveAttribute('tabindex', '2');
 
   // from the team name field Tab goes straight to the create button, Shift+Tab back
   await page.locator('#teaminput').focus();
@@ -99,12 +104,12 @@ test('start page: Tab goes through the header, the team name field and then its 
   await page.keyboard.press('Shift+Tab');
   await expect(page.locator('#teaminput')).toBeFocused();
 
-  // the whole order follows the page: logo, feedback, color mode, team name, button
+  // after the button the header follows: logo, feedback, color mode
   await page.locator('#teambtn').focus();
   const order: string[] = [];
-  for (let i = 0; i < 4; i++) {
-    await page.keyboard.press('Shift+Tab');
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('Tab');
     order.push(await page.evaluate(() => document.activeElement?.id || document.activeElement?.className || ''));
   }
-  expect(order).toEqual(['teaminput', 'cmode_btn', 'feedback_btn', 'brand']);
+  expect(order).toEqual(['brand', 'feedback_btn', 'cmode_btn']);
 });
