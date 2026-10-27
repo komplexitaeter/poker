@@ -242,13 +242,13 @@
             </section>
 
             <!-- B-57: feedback in two tabs (same pattern as board settings, showMenuTab() in script_feedback.js):
-                 "Send feedback" (type Bug | Feature | Other + text) and "Backlog" (our public list with
+                 "New issue" (type Bug | Feature | Other + text) and "Backlog" (our public list with
                  status and reactions). Backlog entries are clones of #fb_item_tpl, filled via textContent only. -->
             <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
                 <!-- B-57: the feedback goes to us, not to the team on the board -->
                 <p class="hint fb-intro">For the makers of this app – tell us what to fix or build next. Your team won't see this.</p>
                 <div class="m-tabs" role="tablist" aria-label="Feedback">
-                    <button type="button" role="tab" id="fb_tab_send" data-tab="send" aria-selected="true" aria-controls="fb_panel_send">Send feedback</button>
+                    <button type="button" role="tab" id="fb_tab_send" data-tab="send" aria-selected="true" aria-controls="fb_panel_send">New issue</button>
                     <button type="button" role="tab" id="fb_tab_backlog" data-tab="backlog" aria-selected="false" aria-controls="fb_panel_backlog" tabindex="-1">Backlog</button>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="fb_panel_send" data-tab="send" aria-labelledby="fb_tab_send">
