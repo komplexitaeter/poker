@@ -437,7 +437,7 @@ function updateDom(myJson, isOnLoad) {
     gUserName = myJson.name;
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
-    // B-51: header prompt <player>@<team>; plain text only
+    // B-51: the player's name as a tag on the cursor behind the team name in the header; plain text only
     let promptUser = document.getElementById('prompt_user');
     let promptText = myJson.name ? myJson.name : '';
     if (promptUser.textContent !== promptText) promptUser.textContent = promptText;

@@ -128,6 +128,32 @@ function closeMenu(restoreFocus = true) {
     gMenuOpener = null;
 }
 
+/* The breakpoint changes while the menu is open: the panel (show()) and the sheet (showModal()) are
+ * the same dialog, so it is reopened in the other mode with the same section. Fields, the tab in
+ * board settings and the focus stay (no prepareMenuSection()). The index exists on phones only:
+ * an index open at the switch to the large layout closes the menu. */
+function switchMenuLayout() {
+    let menu = getMenu();
+    let sec = openMenuSection();
+    if (sec === null) return;
+    if (sec === 'index' && !gPhoneQuery.matches) {
+        closeMenu(false);
+        return;
+    }
+    if (menu.matches(':modal') === gPhoneQuery.matches) return;
+
+    let focused = menu.contains(document.activeElement) ? document.activeElement : null;
+    let toast = document.getElementById('toast');
+    if (toast !== null && menu.contains(toast)) document.body.appendChild(toast);
+    let opener = gMenuOpener;
+    menu.close();
+    if (gPhoneQuery.matches) menu.showModal(); else menu.show();
+    gMenuOpener = opener;
+    if (focused !== null && focused.isConnected) focused.focus({preventScroll: true});
+    else if (menu.contains(document.activeElement)) document.activeElement.blur();
+    updateMenuExpanded();
+}
+
 function initMenu() {
     let menu = getMenu();
     if (menu === null) return;
@@ -197,8 +223,7 @@ function initMenu() {
         closeMenu();
     });
 
-    // the panel and the sheet are different containers: switching the breakpoint closes the menu
-    gPhoneQuery.addEventListener('change', function () { closeMenu(false); });
+    gPhoneQuery.addEventListener('change', switchMenuLayout);
 }
 
 document.addEventListener('DOMContentLoaded', initMenu);

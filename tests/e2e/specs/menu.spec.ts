@@ -169,10 +169,60 @@ test('phone: index, section, back, close; the backdrop closes the sheet (B-51)',
   await expect(menu(alice)).not.toHaveAttribute('open');
   await expect(menuBtn).toBeFocused();
 
-  // switching to the large layout closes an open sheet
+  // the index exists on phones only: switching to the large layout with the index open closes the sheet
   await menuBtn.click();
-  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+  await expect(index).toBeVisible();
   await alice.setViewportSize(LARGE);
+  await expect(menu(alice)).not.toHaveAttribute('open');
+});
+
+test('a breakpoint switch keeps the menu open: same section, tab, unsaved input and focus (B-51)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: LARGE });
+  const url = await createTeam(alice, 'Menu Switch');
+  await joinAsPlayer(alice, url, 'Alice');
+
+  // large screen: board settings, tab "Team", a half-typed team name
+  await alice.locator('#cset_btn').click();
+  await tab(alice, 'Team').click();
+  const teamName = alice.locator('#cet_team_name');
+  await teamName.fill('Half typed');
+  await expect(alice.locator('#cet_change_name')).toBeEnabled();
+  expect(await isModal(alice)).toBe(false);
+
+  // narrower: the side panel becomes the sheet, directly in the section (not the index)
+  await alice.setViewportSize(PHONE);
+  await expect.poll(() => isModal(alice)).toBe(true);
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+  await expect(alice.locator('#menu_title')).toHaveText('Board settings');
+  await expect(alice.locator('#cset_box')).toBeVisible();
+  await expect(alice.locator('#menu_index')).toBeHidden();
+  await expect(tab(alice, 'Team')).toHaveAttribute('aria-selected', 'true');
+  await expect(alice.locator('#cset_panel_team')).toBeVisible();
+  await expect(teamName).toHaveValue('Half typed');
+  await expect(teamName).toBeFocused();
+  await expect(alice.locator('#cet_change_name')).toBeEnabled();
+  await expect(alice.locator('#menu_btn')).toHaveAttribute('aria-expanded', 'true');
+
+  // wider again: the sheet becomes the side panel, still the same section, tab and input
+  await alice.setViewportSize(LARGE);
+  await expect.poll(() => isModal(alice)).toBe(false);
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+  await expect(alice.locator('#menu_title')).toHaveText('Board settings');
+  await expect(tab(alice, 'Team')).toHaveAttribute('aria-selected', 'true');
+  await expect(teamName).toHaveValue('Half typed');
+  await expect(teamName).toBeFocused();
+  await expect(alice.locator('#cset_btn')).toHaveAttribute('aria-expanded', 'true');
+
+  // on the phone the back button leads to the index; Escape closes the panel and the focus goes back
+  await alice.setViewportSize(PHONE);
+  await expect.poll(() => isModal(alice)).toBe(true);
+  await alice.locator('#menu_back').click();
+  await expect(alice.locator('#menu_index')).toBeVisible();
+  await expect(alice.locator('#menu_title')).not.toHaveText('Board settings');
+  await alice.locator('#menu_index').getByRole('button', { name: /^Board settings/ }).click();
+  await alice.setViewportSize(LARGE);
+  await expect.poll(() => isModal(alice)).toBe(false);
+  await alice.keyboard.press('Escape');
   await expect(menu(alice)).not.toHaveAttribute('open');
 });
 
