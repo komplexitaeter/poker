@@ -1101,12 +1101,13 @@ fieldset:disabled .seg input:checked + span {
 
 .seg input:checked + span .i-lock { display: none; }
 
-/* Board settings: tabs Deck | Results | Team (role=tab, aria-selected) above the content of the
+/* Tabs in a menu section (board settings: Deck | Results | Team; feedback: Send feedback | Backlog;
+ * role=tab, aria-selected) above the content of the
  * chosen tab. Same frame as the segment switch so it belongs to the family, but calmer: the chosen
  * tab is a raised surface with an accent line, not the inverted fill of a chosen value. That keeps
  * "where am I" (tabs) apart from "what is set" (.seg). The bar stays at the top while the panel
  * scrolls (long card decks on phones). */
-.cset-tabs {
+.m-tabs {
     position: sticky;
     top: calc(-1 * var(--space-3)); /* the padding of .m-body: sticks to the top edge of the sheet */
     z-index: 1;
@@ -1117,7 +1118,7 @@ fieldset:disabled .seg input:checked + span {
     background: var(--bg-2);
 }
 
-.cset-tabs::after { /* the line below the bar, also while it sticks */
+.m-tabs::after { /* the line below the bar, also while it sticks */
     content: "";
     position: absolute;
     right: 0;
@@ -1128,7 +1129,7 @@ fieldset:disabled .seg input:checked + span {
     pointer-events: none;
 }
 
-.cset-tabs [role="tab"] {
+.m-tabs [role="tab"] {
     flex: 1;
     min-width: 0;
     min-height: var(--tap);
@@ -1141,9 +1142,9 @@ fieldset:disabled .seg input:checked + span {
     cursor: pointer;
 }
 
-.cset-tabs [role="tab"]:hover { color: var(--text); border-color: var(--text); }
+.m-tabs [role="tab"]:hover { color: var(--text); border-color: var(--text); }
 
-.cset-tabs [role="tab"][aria-selected="true"] {
+.m-tabs [role="tab"][aria-selected="true"] {
     border-color: var(--accent);
     background: var(--bg-4);
     color: var(--text);
@@ -1151,12 +1152,158 @@ fieldset:disabled .seg input:checked + span {
     box-shadow: inset 0 -3px 0 var(--accent);
 }
 
-.cset-tabs [role="tab"]:focus-visible {
+.m-tabs [role="tab"]:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
 
-.cset-panel[hidden] { display: none; }
+.m-tabpanel[hidden] { display: none; }
+
+/* ---------- Feedback (B-57): Send feedback | Backlog ---------- */
+
+/* the note about technical details only while "Bug" is chosen */
+.fb-bug-only { display: none; }
+
+#feedback_box:has(input[name="fb_type"][value="BUG"]:checked) .fb-bug-only { display: block; }
+
+.fb-intro { margin: 0 0 var(--space-3); }
+
+/* Backlog: one tile per entry, quieter than a card on the table. Status as a small badge,
+ * reactions as two counters below. Filled by script (clones of #fb_item_tpl, textContent). */
+.fb-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fb-item {
+    padding: var(--space-2) var(--space-3) var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+}
+
+.fb-item-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.fb-title {
+    min-width: 0;
+    margin: 0;
+    font-size: var(--fs-m);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.fb-desc {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: var(--fs-s);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+}
+
+.fb-desc:empty { display: none; }
+
+/* status badge: data-status="PLANNED" | "IN_PROGRESS" | "DONE", text set by script */
+.fb-status {
+    flex: none;
+    padding: 1px 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.fb-status:empty { display: none; }
+
+.fb-status[data-status="IN_PROGRESS"] {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.fb-status[data-status="DONE"] {
+    border-color: var(--ok);
+    color: var(--ok);
+}
+
+.fb-react {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.fb-react-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 56px;
+    min-height: 32px;
+    padding: 2px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+.fb-react-btn:hover { border-color: var(--text); color: var(--text); }
+
+/* the own reaction: accent frame and fill, like a chosen tab */
+.fb-react-btn[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--bg-4);
+    color: var(--text);
+    font-weight: bold;
+    box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.fb-react-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.fb-react-btn:disabled { cursor: wait; opacity: 0.6; }
+
+.fb-emoji { font-size: var(--fs-l); line-height: 1; }
+
+.fb-count { font-variant-numeric: tabular-nums; }
+
+/* empty state: only while the list has no entry */
+.fb-empty {
+    margin: 0;
+    padding: var(--space-4) var(--space-3);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-l);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-align: center;
+}
+
+.fb-list:has(> li) ~ .fb-empty { display: none; }
+
+/* text for screen readers only (e.g. the meaning of a reaction emoji) */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
 
 /* privacy, imprint, delete my data */
 .m-links {
@@ -1917,6 +2064,9 @@ div#cbox {
 
     /* card set thumbnails in the board settings */
     .cs_c { min-width: 44px; }
+
+    /* B-57: reactions in the feedback backlog */
+    .fb-react-btn { min-height: var(--tap); min-width: var(--tap); }
 
     .privacy_link a {
         display: inline-block;
