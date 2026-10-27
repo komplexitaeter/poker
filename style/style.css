@@ -559,8 +559,9 @@ textarea.field {
     width: auto;
 }
 
-/* B-51: the prompt <player>@<team> with a softly pulsing caret (click copies the link).
- * Deliberately no "~$" and no blinking block: readable for people who never saw a console. */
+/* B-51: the team name with a softly pulsing text cursor. The cursor carries the player's name as a
+ * small tag, like the name flags on cursors in shared documents: "you are here, in this team".
+ * A text cursor is familiar to everybody (no "~$", no "@", no blinking block). Click copies the link. */
 .head-title {
     display: flex;
     align-items: center;
@@ -590,25 +591,23 @@ textarea.field {
 
 .team-name:hover #team_name { color: var(--accent); }
 
-.prompt {
-    flex: 0 1 auto;
-    display: inline-flex;
+/* the name tag hangs at the top of the cursor, square corner towards it (inside .caret) */
+.you-tag {
     min-width: 0;
     max-width: 12ch;
-    color: var(--muted);
-    font-weight: normal;
-}
-
-#prompt_user {
-    min-width: 0;
+    padding: 1px 5px;
+    border-radius: 0 var(--radius-m) var(--radius-m) var(--radius-m);
+    background: var(--accent);
+    color: var(--on-accent);
+    font: bold var(--fs-xs) / 1.35 var(--font);
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* no player name yet (name overlay): the team name alone */
-.prompt:has(> #prompt_user:empty) { display: none; }
+/* no player name yet (name overlay): the team name and the cursor alone */
+.you-tag:empty { display: none; }
 
-/* start page: the prompt without a team */
+/* start page: "poker" with the cursor */
 .prompt-line {
     display: inline-flex;
     align-items: center;
@@ -616,19 +615,20 @@ textarea.field {
     white-space: nowrap;
 }
 
-.prompt-line .prompt {
-    max-width: none;
-    color: var(--text);
-    font-weight: bold;
+/* the cursor: a thin line that slowly dims and comes back (no hard blink); on the board it
+ * carries the name tag, which stays steady */
+.caret {
+    flex: none; /* the team name shrinks first; the tag has its own maximum width */
+    display: inline-flex;
+    align-items: flex-start;
+    margin-left: 0.3em;
 }
 
-/* a thin caret that slowly dims and comes back (no hard blink) */
-.caret {
+.caret::before {
+    content: "";
     flex: none;
-    display: inline-block;
     width: 2px;
-    height: 1.1em;
-    margin-left: 0.35em;
+    height: 1.2em;
     border-radius: 1px;
     background: var(--accent);
     animation: caret-pulse 2.4s ease-in-out infinite;
@@ -722,7 +722,7 @@ textarea.field {
 
 /* reduced motion: the caret stays, half dimmed */
 @media (prefers-reduced-motion: reduce) {
-    .caret {
+    .caret::before {
         animation: none;
         opacity: 0.6;
     }
@@ -769,9 +769,16 @@ textarea.field {
     .container .menu-btn { display: inline-flex; }
 }
 
-/* phones (board): the team name alone (no player name), the logo shrinks to its mark */
+/* phones (board): the team name gets the room, the tag shows the initial of the player
+ * (monospace, so 1ch is one letter), the logo shrinks to its mark */
 @media (max-width: 420px) {
-    .team-name .prompt { display: none; }
+    .you-tag {
+        max-width: 1ch;
+        padding: 1px 0;
+        border: solid var(--accent); /* the side padding as border: overflow clips inside it */
+        border-width: 0 5px;
+        text-overflow: clip;
+    }
 
     .container #brand {
         width: 20px;
@@ -1078,54 +1085,62 @@ fieldset:disabled .seg input:checked + span {
 
 .seg input:checked + span .i-lock { display: none; }
 
-/* Board settings: tabs Deck | Results | Team (role=tab, aria-selected) above one framed panel.
- * Provisional look in the style of the segment switch; Delia refines it. */
+/* Board settings: tabs Deck | Results | Team (role=tab, aria-selected) above the content of the
+ * chosen tab. Same frame as the segment switch so it belongs to the family, but calmer: the chosen
+ * tab is a raised surface with an accent line, not the inverted fill of a chosen value. That keeps
+ * "where am I" (tabs) apart from "what is set" (.seg). The bar stays at the top while the panel
+ * scrolls (long card decks on phones). */
 .cset-tabs {
+    position: sticky;
+    top: calc(-1 * var(--space-3)); /* the padding of .m-body: sticks to the top edge of the sheet */
+    z-index: 1;
     display: flex;
     gap: 2px;
-    margin: 0 0 var(--space-2);
-    padding: 2px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-m);
-    background: var(--bg);
+    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) var(--space-2);
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    background: var(--bg-2);
+}
+
+.cset-tabs::after { /* the line below the bar, also while it sticks */
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -12px;
+    left: 0;
+    height: 12px;
+    background: linear-gradient(var(--bg-2), transparent);
+    pointer-events: none;
 }
 
 .cset-tabs [role="tab"] {
     flex: 1;
-    min-height: calc(var(--tap) - 6px);
+    min-width: 0;
+    min-height: var(--tap);
     padding: 2px var(--space-2);
-    border: 0;
-    border-radius: var(--radius-s);
-    background: transparent;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
     color: var(--muted);
-    font: inherit;
-    font-size: var(--fs-s);
+    font: var(--fs-s) var(--font);
     cursor: pointer;
 }
 
-.cset-tabs [role="tab"]:hover { color: var(--text); }
+.cset-tabs [role="tab"]:hover { color: var(--text); border-color: var(--text); }
 
 .cset-tabs [role="tab"][aria-selected="true"] {
-    background: var(--text);
-    color: var(--bg);
+    border-color: var(--accent);
+    background: var(--bg-4);
+    color: var(--text);
     font-weight: bold;
+    box-shadow: inset 0 -3px 0 var(--accent);
 }
 
 .cset-tabs [role="tab"]:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: 1px;
+    outline-offset: 2px;
 }
 
-.grp {
-    margin: 0 0 var(--space-2);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-l);
-    background: var(--bg);
-}
-
-.grp[hidden] { display: none; }
-
-.grp-body { padding: 12px; }
+.cset-panel[hidden] { display: none; }
 
 /* privacy, imprint, delete my data */
 .m-links {

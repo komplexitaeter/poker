@@ -7,7 +7,7 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.23" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.24" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -44,10 +44,12 @@
     <header class="head">
         <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg" alt="Komplexitäter tools"/></a>
 
-        <!-- prompt: <player>@<team> and a softly pulsing caret; click copies the board link.
-             #prompt_user is filled from the DAO (textContent), empty until the player has a name. -->
+        <!-- team name with a softly pulsing text cursor; the cursor carries the player's name as a small
+             tag (like the name flags of cursors in shared documents). Click copies the board link.
+             #prompt_user is filled from the DAO (textContent); empty until the player has a name, then
+             the tag is hidden and only the team name and the cursor show. -->
         <div class="head-title">
-            <button type="button" class="team-name" onclick="copyLink()"><span class="prompt" aria-hidden="true"><span id="prompt_user"></span><span class="prompt-at">@</span></span><span id="team_name"></span><span class="caret" aria-hidden="true"></span></button>
+            <button type="button" class="team-name" onclick="copyLink()"><span id="team_name"></span><span class="caret" aria-hidden="true"><span id="prompt_user" class="you-tag"></span></span></button>
             <button type="button" id="copy_link_btn" class="icon-btn" onclick="copyLink()" aria-label="Copy board link"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy Link</span></button>
             <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
         </div>
@@ -161,56 +163,50 @@
                     <button type="button" role="tab" id="cset_tab_results" data-tab="results" aria-selected="false" aria-controls="cset_panel_results" tabindex="-1">Results</button>
                     <button type="button" role="tab" id="cset_tab_team" data-tab="team" aria-selected="false" aria-controls="cset_panel_team" tabindex="-1">Team</button>
                 </div>
-                <div class="grp" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
-                    <div class="grp-body">
-                        <div class="f">
-                            <label for="cet_pre" class="lab">Card set</label>
-                            <select id="cet_pre" onchange="preSet();" class="field">
-                                <option value="0" selected>Select a preset ...</option>
-                            </select>
-                        </div>
-                        <div class="f">
-                            <span class="lab" id="cards_thumbs_lab">Cards in the deck (tap to switch off or on)</span>
-                            <div id="cards_thumbs" role="group" aria-labelledby="cards_thumbs_lab"></div>
-                        </div>
+                <div class="cset-panel" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
+                    <div class="f">
+                        <label for="cet_pre" class="lab">Card set</label>
+                        <select id="cet_pre" onchange="preSet();" class="field">
+                            <option value="0" selected>Select a preset ...</option>
+                        </select>
+                    </div>
+                    <div class="f">
+                        <span class="lab" id="cards_thumbs_lab">Cards in the deck (tap to switch off or on)</span>
+                        <div id="cards_thumbs" role="group" aria-labelledby="cards_thumbs_lab"></div>
                     </div>
                 </div>
-                <div class="grp" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
-                    <div class="grp-body">
-                        <fieldset class="f" id="cet_anonymous">
-                            <legend class="lab">Names on revealed cards</legend>
-                            <div class="seg">
-                                <label><input type="radio" name="cet_anonymous" value="0" onchange="changeAnonymity(this.value)"/><span>Show names</span></label>
-                                <label><input type="radio" name="cet_anonymous" value="1" onchange="changeAnonymity(this.value)"/><span>Anonymous</span></label>
-                            </div>
-                            <p class="hint">Takes effect with the next round.</p>
-                        </fieldset>
-                        <fieldset class="f" id="cet_order_by">
-                            <legend class="lab">Arrange revealed cards by</legend>
-                            <div class="seg">
-                                <label><input type="radio" name="cet_order_by" value="SEQUENCE" onchange="changeSortOrder(this.value)"/><span>Card value</span></label>
-                                <label><input type="radio" name="cet_order_by" value="NAME" onchange="changeSortOrder(this.value)"/><span>Player name</span></label>
-                            </div>
-                            <p id="cet_order_by_hint" class="hint display_none">In anonymous mode, revealed cards are always arranged by card value.</p>
-                        </fieldset>
-                        <fieldset class="f" id="cet_dark_side">
-                            <legend class="lab">Average pointer</legend>
-                            <div class="seg">
-                                <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
-                                <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span><svg class="i i-lock" aria-hidden="true"><use href="#i-lock"/></svg>Show</span></label>
-                            </div>
-                            <p class="hint">Join the dark side: a pointer on the deck shows the average.</p>
-                        </fieldset>
-                    </div>
+                <div class="cset-panel" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
+                    <fieldset class="f" id="cet_anonymous">
+                        <legend class="lab">Names on revealed cards</legend>
+                        <div class="seg">
+                            <label><input type="radio" name="cet_anonymous" value="0" onchange="changeAnonymity(this.value)"/><span>Show names</span></label>
+                            <label><input type="radio" name="cet_anonymous" value="1" onchange="changeAnonymity(this.value)"/><span>Anonymous</span></label>
+                        </div>
+                        <p class="hint">Takes effect with the next round.</p>
+                    </fieldset>
+                    <fieldset class="f" id="cet_order_by">
+                        <legend class="lab">Arrange revealed cards by</legend>
+                        <div class="seg">
+                            <label><input type="radio" name="cet_order_by" value="SEQUENCE" onchange="changeSortOrder(this.value)"/><span>Card value</span></label>
+                            <label><input type="radio" name="cet_order_by" value="NAME" onchange="changeSortOrder(this.value)"/><span>Player name</span></label>
+                        </div>
+                        <p id="cet_order_by_hint" class="hint display_none">In anonymous mode, revealed cards are always arranged by card value.</p>
+                    </fieldset>
+                    <fieldset class="f" id="cet_dark_side">
+                        <legend class="lab">Average pointer</legend>
+                        <div class="seg">
+                            <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
+                            <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span><svg class="i i-lock" aria-hidden="true"><use href="#i-lock"/></svg>Show</span></label>
+                        </div>
+                        <p class="hint">Join the dark side: a pointer on the deck shows the average.</p>
+                    </fieldset>
                 </div>
-                <div class="grp" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
-                    <div class="grp-body">
-                        <div class="f">
-                            <label for="cet_team_name" class="lab">Team name</label>
-                            <div class="row">
-                                <input class="field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
-                                <button type="button" id="cet_change_name" class="btn-box" onclick="updateTeamName()">Save</button>
-                            </div>
+                <div class="cset-panel" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
+                    <div class="f">
+                        <label for="cet_team_name" class="lab">Team name</label>
+                        <div class="row">
+                            <input class="field" id="cet_team_name" size="15" maxlength="40" type="text" value="" oninput="onChangeTeamNameInput()"/>
+                            <button type="button" id="cet_change_name" class="btn-box" onclick="updateTeamName()">Save</button>
                         </div>
                     </div>
                 </div>
