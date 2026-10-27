@@ -48,7 +48,7 @@ Es gibt keinen Build-Schritt für die App. npm wird nur für die Tests in `tests
 
 ## Datenbank
 
-MySQL 8.0, Datenbank `pok_db`, App-User `pok_usr`. `db_schema_pok.sql` entspricht dem Live-Schema (Stand 2026-10-16,
+MySQL 8.0, Datenbank `pok_db` (Live) bzw. `pok_staging` (Release-/Staging-Server), App-User `pok_usr`. `db_schema_pok.sql` entspricht dem Live-Schema (Stand 2026-10-16,
 Export ohne Daten). Schemaänderungen kommen zuerst in `db_schema_pok_inc.sql` und werden bei größeren Releases in
 `db_schema_pok.sql` übernommen.
 
