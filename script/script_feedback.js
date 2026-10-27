@@ -118,7 +118,43 @@ function openMenu(sec, opener = null, focusField = true) {
         document.activeElement.blur();
     }
 
+    if (sec === 'feedback') markFeedbackSeen(); // B-57
     if (gMenuSections[sec].event) measureEvent(gMenuSections[sec].event);
+}
+
+/* B-57: a red dot on the feedback menu (header button, phone menu button and index entry) until the user has
+ * opened the feedback panel once. Stored per user on the server: pok_user_tbl.hide_teaser = 1 means "seen"
+ * (the column of the former teaser, reused). Board only; the start page has no user profile (gFeedbackDot
+ * stays null). true: dot shown, false: seen - a pull update (updateDom) never brings the dot back. */
+let gFeedbackDot = null;
+
+function updateFeedbackDot(seen) {
+    if (gFeedbackDot === false) return;
+    gFeedbackDot = !seen;
+    renderFeedbackDot();
+}
+
+function renderFeedbackDot() {
+    let on = gFeedbackDot === true;
+    document.body.classList.toggle('fb-new', on);
+    let labels = {feedback_btn: 'Feedback', menu_btn: 'Menu'};
+    for (let id in labels) {
+        let btn = document.getElementById(id);
+        if (btn !== null) btn.setAttribute('aria-label', labels[id] + (on ? ' \u2013 new' : ''));
+    }
+    let entry = document.querySelector('#menu_index [data-open="feedback"]');
+    if (entry !== null) {
+        if (on) entry.setAttribute('aria-label', 'Feedback \u2013 new: Tell us what to improve');
+        else entry.removeAttribute('aria-label');
+    }
+}
+
+function markFeedbackSeen() {
+    if (gFeedbackDot !== true) return;
+    gFeedbackDot = false;
+    renderFeedbackDot();
+    fetch('./api/update_user.php?id=' + encodeURIComponent(localStorage.getItem('SID')) + '&hide_teaser=1',
+        {method: 'POST'}).then();
 }
 
 /* restoreFocus: false when something else takes the focus (overlay) or the opener is gone */
