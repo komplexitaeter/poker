@@ -36,7 +36,6 @@ function prepareMenuSection(sec) {
         document.getElementById('cet_change_name').disabled = true;
     }
     if (sec === 'user_settings') {
-        hideTeaser();
         document.getElementById('cet_usr_name').value = gUserName;
         document.getElementById('cet_change_user').disabled = true;
     }

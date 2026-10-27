@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.29" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.30" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.17" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.15" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.18" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.16" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -57,15 +57,15 @@
         <span class="head-fill"></span>
 
         <!-- stopwatch: a direct on/off switch for everyone on the board (aria-pressed set by script.js) -->
-        <button type="button" id="stopwatch_btn" class="icon-btn sw-btn" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
+        <button type="button" id="stopwatch_btn" class="icon-btn sw-btn" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
 
         <!-- B-51 large screens: each button opens its section of the menu panel (#menu) directly
              (data-open); same order and names as the phone menu index -->
         <nav class="topnav-bar" aria-label="Board menu">
-            <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
-            <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">board</span></button>
-            <button type="button" id="user_settings_btn" class="icon-btn" data-open="user_settings" aria-label="You" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()" onfocus="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span><span id="cta_teaser" aria-hidden="true">set up your user profile</span></button>
-            <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu" onmousemove="hideTeaser()"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
+            <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
+            <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg><span class="lbl">board</span></button>
+            <button type="button" id="user_settings_btn" class="icon-btn" data-open="user_settings" aria-label="You" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span></button>
+            <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
             <button type="button" id="cmode_btn" class="icon-btn" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
         </nav>
 

@@ -544,10 +544,6 @@ function updateDom(myJson, isOnLoad) {
 
     if (isOnLoad) {
 
-        if (myJson.hide_teaser === 1) {
-            hideTeaser(false);
-        }
-
         if (myJson.color_mode && myJson.color_mode.length > 0) {
             gColorMode = myJson.color_mode;
         }
@@ -934,16 +930,6 @@ function showQRCode(showIt) {
         toggleStyleClass(overlay_qr, "hidden", "visible");
         toggleStyleClass(overlay, "hidden", "visible");
     }
-}
-
-function hideTeaser(updateUser=true) {
-    let e = document.getElementById("cta_teaser");
-
-    if (updateUser && !e.classList.contains("hidden")) {
-        fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&hide_teaser=1', { method: 'POST' }).then();
-    }
-
-    addStyleClass(e, "hidden");
 }
 
 function updateStopwatch(timer_status, timer_time, timer_visibility){
