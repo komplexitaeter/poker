@@ -628,6 +628,19 @@ textarea.field {
     top: -0.05em; /* the line box hangs below the letters (descender room): centre on the letters */
 }
 
+/* Centre cursor and tag on the lowercase letters of the team name, independent of font metrics
+ * (SF Mono in Safari vs. other monospace fonts): the team name's box is trimmed to the x-height,
+ * so flex centring hits the middle of the lowercase letters. The padding keeps ascenders and
+ * descenders visible (overflow: hidden for the ellipsis) and is symmetric, so the centre stays.
+ * Without text-box support (Firefox) the top: -0.05em approximation above remains. */
+@supports (text-box: trim-both ex alphabetic) {
+    .team-name #team_name {
+        text-box: trim-both ex alphabetic;
+        padding-block: 0.35em;
+    }
+    .team-name .caret { top: 0; }
+}
+
 .caret::before {
     content: "";
     flex: none;
