@@ -1130,7 +1130,7 @@ fieldset:disabled .seg input:checked + span {
 
 .seg input:checked + span .i-lock { display: none; }
 
-/* Tabs in a menu section (board settings: Deck | Results | Team; feedback: Send feedback | Backlog;
+/* Tabs in a menu section (board settings: Deck | Results | Team; feedback: New issue | Backlog;
  * role=tab, aria-selected) above the content of the
  * chosen tab. Same frame as the segment switch so it belongs to the family, but calmer: the chosen
  * tab is a raised surface with an accent line, not the inverted fill of a chosen value. That keeps
@@ -1188,7 +1188,7 @@ fieldset:disabled .seg input:checked + span {
 
 .m-tabpanel[hidden] { display: none; }
 
-/* ---------- Feedback (B-57): Send feedback | Backlog ---------- */
+/* ---------- Feedback (B-57): New issue | Backlog ---------- */
 
 /* the note about technical details only while "Bug" is chosen */
 .fb-bug-only { display: none; }

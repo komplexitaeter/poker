@@ -47,7 +47,7 @@ function prepareMenuSection(sec) {
     }
 }
 
-/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: Send feedback | Backlog).
+/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: New issue | Backlog).
  * The tab buttons carry role="tab" and data-tab, the panels role="tabpanel" and data-tab as well; the
  * selected tab has aria-selected="true" and is the only one in the tab order, the other panels are
  * hidden. box: the section element; focusTab: move the focus to the tab. */
