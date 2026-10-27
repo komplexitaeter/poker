@@ -124,7 +124,9 @@ function roadmap_form(?object $item, string $csrf, string $fb_filter): string {
         . '<select name="status" title="status">' . select_options(ROADMAP_STATUS, $item->status ?? 'PLANNED') . '</select>'
         . '<label><input type="checkbox" name="visible" value="1"' . (($item->visible ?? 1) == 1 ? ' checked' : '') . '> visible</label>';
     if ($item !== null) {
-        $html .= '<span class="votes" title="reactions">&#x2764;&#xFE0F; ' . h($item->love_cnt) . ' &middot; &#x1F648; ' . h($item->meh_cnt) . '</span>'
+        $html .= '<span class="votes" title="reactions per phase (only the current phase is shown in the app)">'
+            . 'wanted: &#x1F44D; ' . h($item->want_up_cnt) . ' &#x1F44E; ' . h($item->want_down_cnt)
+            . ' &middot; after done: &#x1F44D; ' . h($item->done_up_cnt) . ' &#x1F44E; ' . h($item->done_down_cnt) . '</span>'
             . '<button type="submit">Save</button>';
     } else {
         $html .= '<button type="submit">Add</button>';
@@ -290,13 +292,19 @@ while ($obj = $result->fetch_object()) {
     </table>
 
     <h2 id="roadmap">Ideas &amp; Bugs &ndash; public list</h2>
-    <p>Written by us, shown in the app (visible entries only, sorted by order, then newest first).</p>
+    <p>Written by us, shown in the app (visible entries only, sorted by status DONE, IN_PROGRESS, PLANNED, then thumbs up minus thumbs down of the current phase, then order, then newest first).</p>
 <?php
-$result = $link->query("select r.*
-                              ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.reaction = 'LOVE') as love_cnt
-                              ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.reaction = 'MEH') as meh_cnt
-                          from pok_roadmap_tbl r
-                         order by r.sort_order, r.id desc");
+$result = $link->query("select x.* from (
+                            select r.*
+                                  ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = 'WANT' and v.reaction = 'UP') as want_up_cnt
+                                  ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = 'WANT' and v.reaction = 'DOWN') as want_down_cnt
+                                  ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = 'DONE' and v.reaction = 'UP') as done_up_cnt
+                                  ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = 'DONE' and v.reaction = 'DOWN') as done_down_cnt
+                              from pok_roadmap_tbl r
+                          ) x
+                         order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED')
+                                 ,case when x.status = 'DONE' then x.done_up_cnt - x.done_down_cnt else x.want_up_cnt - x.want_down_cnt end desc
+                                 ,x.sort_order, x.id desc");
 while ($obj = $result->fetch_object()) {
     echo roadmap_form($obj, $csrf, $fb_filter) . "\n";
 }

@@ -68,7 +68,9 @@ interface VoteOption {
     votes_percentage: number;
 }
 /* B-57: public list "Ideas & Bugs" - api/get_roadmap.php ({items}) and api/vote_roadmap.php (one RoadmapItem) */
-type RoadmapReaction = 'LOVE' | 'MEH'; // shown as ❤️ / 🙈
+type RoadmapReaction = 'UP' | 'DOWN'; // shown as 👍 / 👎
+// counts and my_reaction belong to the current phase of the entry (WANT while PLANNED/IN_PROGRESS, DONE when DONE);
+// the list comes sorted: DONE, IN_PROGRESS, PLANNED, then (UP - DOWN) descending
 
 interface RoadmapItem {
     id: number;

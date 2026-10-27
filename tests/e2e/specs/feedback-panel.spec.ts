@@ -173,8 +173,8 @@ test('backlog: seed entry with badge, titles as text, reactions set / change / r
   await expect(item.locator('.fb-status')).toHaveText('planned');
   await expect(item.locator('.fb-status')).toHaveAttribute('data-status', 'PLANNED');
 
-  const love = item.locator('.fb-react-btn[data-reaction=LOVE]');
-  const meh = item.locator('.fb-react-btn[data-reaction=MEH]');
+  const love = item.locator('.fb-react-btn[data-reaction=UP]');
+  const meh = item.locator('.fb-react-btn[data-reaction=DOWN]');
   await expect(love).toHaveAttribute('aria-pressed', 'false');
   await expect(love.locator('.fb-count')).toHaveText('0');
   await expect(meh.locator('.fb-count')).toHaveText('0');
@@ -185,7 +185,7 @@ test('backlog: seed entry with badge, titles as text, reactions set / change / r
     love.click(),
   ]);
   expect(vote.method()).toBe('POST');
-  expect(new URL(vote.url()).searchParams.get('reaction')).toBe('LOVE');
+  expect(new URL(vote.url()).searchParams.get('reaction')).toBe('UP');
   await expect(love).toHaveAttribute('aria-pressed', 'true');
   await expect(love.locator('.fb-count')).toHaveText('1');
   await expect(meh).toHaveAttribute('aria-pressed', 'false');
@@ -204,8 +204,8 @@ test('backlog: seed entry with badge, titles as text, reactions set / change / r
   await openFeedback(other);
   await other.locator('#fb_tab_backlog').click();
   const otherItem = other.locator('#fb_backlog li.fb-item').filter({ has: other.locator('.fb-title', { hasText: title }) });
-  await expect(otherItem.locator('.fb-react-btn[data-reaction=MEH] .fb-count')).toHaveText('1');
-  await expect(otherItem.locator('.fb-react-btn[data-reaction=MEH]')).toHaveAttribute('aria-pressed', 'false');
+  await expect(otherItem.locator('.fb-react-btn[data-reaction=DOWN] .fb-count')).toHaveText('1');
+  await expect(otherItem.locator('.fb-react-btn[data-reaction=DOWN]')).toHaveAttribute('aria-pressed', 'false');
 
   // remove (the same reaction again)
   const [remove] = await Promise.all([
