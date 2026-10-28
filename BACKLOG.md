@@ -35,6 +35,10 @@ Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-
 (FPM-grep + `free -m`).
 
 Abgeschlossen:
+- **Sprint 8 – „Neuer Look“ = Rollout 1** (live 2026-10-28 mit PR #56): Console-Look, Seitengerüst, Menüs als Side
+  Panel/Bottom-Sheet, fluide Karten (B-46 bis B-49, B-51, Teile B-50), Ideas & Bugs (B-57), Promo-Teaser „THE AGILE
+  GAME“ abgeschaltet (#57, Code bleibt). Nächstes: Rollout 2 (B-53, B-52) etwa eine Woche später; Feedback über B-57
+  beobachten, Basis-Kennzahl wiederkehrende User-IDs vorher/nachher.
 - **Sprint 7 – „Konfiguration & CSS aufräumen"** (2026-10-23, live mit PR #35):
   - B-42: Sortier-Option „im Spiel wählen“ gestrichen, nur noch Kartenwert/Name; im Anonym-Modus fest „Card value“.
   - B-36 (mit B-37): `style.css` um gut ein Drittel kleiner, Responsive per CSS (ein Breakpoint, 800 px) statt
