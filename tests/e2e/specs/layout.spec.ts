@@ -35,11 +35,12 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
 
     // deck at the bottom edge, New Round visible next to it (large screens, B-66) or above it
     // (phones, stuck to the bottom of the table); polled, the heights settle only after their animations
-    // (B-68: from 1200px the deck is centered in the bottom bar, so the bar is measured)
+    // (B-68: from 800px the deck is a tray floating a little above the bottom edge)
     await expect.poll(async () => {
       const deck = (await alice.locator('#down-container').boundingBox())!;
-      return Math.round(deck.y + deck.height);
-    }).toBe(viewport.height);
+      const gap = viewport.height - Math.round(deck.y + deck.height);
+      return viewport.width >= 800 ? gap >= 0 && gap <= 24 : gap === 0;
+    }).toBe(true);
     await expect(alice.locator('#newroundbtn')).toBeVisible();
     await expect.poll(async () => {
       const deck = (await alice.locator('#ctl').boundingBox())!;
@@ -149,7 +150,7 @@ test('large screen: topic in the column, New Round at its foot next to the deck 
   await expect(alice.locator('#topic_txt')).toHaveValue(topic);
   await alice.keyboard.press('Escape');
 
-  // B-66/B-68: New Round sits in the bottom right corner, right of the deck and level with it
+  // B-66/B-68: New Round sits at the foot of the column, right of the deck and level with it
   await pickCard(alice, 'three01');
   await expect(alice.locator('#newroundbtn')).toBeEnabled();
   const deck = (await alice.locator('#ctl').boundingBox())!;
@@ -157,7 +158,7 @@ test('large screen: topic in the column, New Round at its foot next to the deck 
   expect(btn.x).toBeGreaterThanOrEqual(deck.x + deck.width);
   expect(1100 - (btn.x + btn.width)).toBeLessThan(40);
   expect(btn.y).toBeGreaterThanOrEqual(deck.y);
-  expect(800 - (btn.y + btn.height)).toBeLessThan(40);
+  expect(btn.y + btn.height).toBeLessThanOrEqual(deck.y + deck.height);
 
   // no hover hints in the header
   expect(await alice.locator('[data-hint]').count()).toBe(0);

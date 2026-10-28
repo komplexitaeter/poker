@@ -45,10 +45,10 @@ async function shot(page: Page, name: string): Promise<void> {
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${name}.png` });
 }
 
-// The table height limits the card size: 2 rows in a smaller window (as on staging), 4 rows at 1280 x 800.
+// The table height limits the card size: 2 rows in a smaller window (as on staging), 3 rows at 1280 x 800.
 for (const { viewport, players, rows } of [
   { viewport: { width: 1000, height: 600 }, players: 10, rows: 2 },
-  { viewport: DESKTOP, players: 25, rows: 4 }, // B-68: the column takes 380px of the width
+  { viewport: DESKTOP, players: 25, rows: 3 }, // B-68: the column takes 380px of the width, the deck row is higher
 ]) {
   test(`desktop ${viewport.width}x${viewport.height}, ${rows} rows: the timer neither covers nor resizes the cards (B-49, B-66)`, async ({ browser }) => {
     const alice = await newPlayer(browser, { viewport });
