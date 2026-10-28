@@ -902,6 +902,8 @@ Feedback (≈ 4×): eigene Zahlen/Begriffe, Business-Value-Deck. Andreas: Backlo
 offene Frage, ob so etwas irgendwann hinter eine Paywall gehört.
 
 ### B-57 Ideas & Bugs: Meldungen, öffentliche Liste, Abstimmung
+**Rolle des Kanals (Andreas, 2026-10-28):** Kommunikationsinstrument zu unseren Usern und Feedbackkanal – keine
+Abstimmung über die Roadmap. Wir bleiben Product Owner; Stimmen sind Hinweise, keine Priorisierung.
 Andreas (2026-10-27), statt der Umfrage B-55 (Team: Verhalten ist das Hauptsignal, Umfrage-Antworten ohne „was“ wenig
 verwertbar): Feedback-Panel erweitern zu „Ideas & Bugs“.
 - **Melden:** Typ Bug / Feature / Other + Text; bei Bugs automatisch technischer Kontext (Browser, Fenstergröße, Touch,
