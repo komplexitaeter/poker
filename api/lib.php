@@ -209,6 +209,9 @@ function getDao($t, $id) {
     $timer_time = null;
     $timer_status = null;
     $timer_visibility = 0;
+    $timer_mode = 'STOPWATCH';
+    $timer_timebox = 300;
+    $timer_auto_restart = 0;
     $card_key = '';
     $player_type = null;
     $cardset_flags = null;
@@ -248,6 +251,9 @@ function getDao($t, $id) {
                                 ,ifnull(t.timer_start_time, current_timestamp)
                                 ,ifnull(t.timer_pause_time, current_timestamp)) timer_time
                   ,t.timer_visibility
+                  ,t.timer_mode
+                  ,t.timer_timebox
+                  ,t.timer_auto_restart
                   ,t.topic
                   ,t.results_order
                   ,t.show_avg
@@ -264,6 +270,9 @@ function getDao($t, $id) {
         $timer_status = $obj->timer_status;
         $timer_time = $obj->timer_time;
         $timer_visibility = $obj->timer_visibility;
+        $timer_mode = $obj->timer_mode;
+        $timer_timebox = $obj->timer_timebox;
+        $timer_auto_restart = $obj->timer_auto_restart;
         $topic = $obj->topic;
         /* B-42: CHOOSE:* (in-game choice, removed) is treated as SEQUENCE until the data update has run */
         $results_order = normalize_results_order($obj->results_order);
@@ -405,6 +414,9 @@ function getDao($t, $id) {
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
         "timer_visibility"=>(Int)$timer_visibility,
+        "timer_mode"=>(String)$timer_mode, // B-67: STOPWATCH | TIMER
+        "timer_timebox"=>(Int)$timer_timebox, // B-67: seconds, only used in TIMER mode
+        "timer_auto_restart"=>(Int)$timer_auto_restart, // B-67: 1 = new/cancelled round restarts the timer
         "results_order"=>$results_order,
         "show_avg"=>$show_avg,
         "anonymous_mode"=>$anonymous_mode,
