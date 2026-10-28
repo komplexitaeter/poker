@@ -4,14 +4,13 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWi
 
 /**
  * B-46: The board is one screen-high grid. Only the table scrolls, the deck stays at the bottom.
- * The topic is a full-width bar between header and table (step 2b: no round panel on the right).
- * B-66: New Round and the timer sit in the bottom right corner next to the deck (large screens);
- * on phones they sit in a dock right above the deck.
+ * B-68: large screens (from 800px) have a column on the right: round status, topic, spread and at its
+ * foot New Round and the timer, level with the deck (side-column.spec.ts); on phones the spread and
+ * the round actions sit in a strip right above the deck.
  * On phones the topic is a one-line strip that unfolds with its arrow button.
  * Copy Link and the own timer switch (B-67: in the timer panel) confirm with a toast from the bottom edge (showToast);
  * the header has no hover hints any more.
  * B-51: without a topic there is no topic bar at all (the topic is set in the menu).
- * B-68: from 1200px the topic, the round status and the spread are in a right column (side-column.spec.ts).
  */
 const SMALL = { width: 375, height: 667 };
 
@@ -109,8 +108,7 @@ test('Copy Link shows a toast instead of growing the button', async ({ browser }
   await expect(toast).not.toHaveClass(/toast-on/, { timeout: 5000 });
 });
 
-// B-68: below 1200px (from 1200px the topic is in the right column, see side-column.spec.ts)
-test('large screen: topic bar above the table, New Round in the bottom right corner (B-46, B-66)', async ({ browser }) => {
+test('large screen: topic in the column, New Round at its foot next to the deck (B-46, B-66, B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1100, height: 800 } });
   const url = await createTeam(alice, 'Layout Topic Bar');
   await addPlayersViaApi(alice, url, ['Bob']);
@@ -128,7 +126,7 @@ test('large screen: topic bar above the table, New Round in the bottom right cor
   await alice.keyboard.press('Escape');
   await expect(alice.locator('#topic_box')).toBeHidden();
 
-  // a long topic: full width between header and table, its height is capped (the table keeps its room)
+  // a long topic: in the column below the round status, its height is capped
   const t = new URL(url).searchParams.get('t')!;
   const topic = Array.from({ length: 30 }, (_, i) => `Paragraph ${i + 1}`).join('\n\n');
   await alice.request.post(`/api/update_topic.php?t=${encodeURIComponent(t)}`, { form: { topic } });
@@ -136,10 +134,12 @@ test('large screen: topic bar above the table, New Round in the bottom right cor
   const bar = (await alice.locator('.topic-bar').boundingBox())!;
   const head = (await alice.locator('header.head').boundingBox())!;
   const table = (await alice.locator('#table').boundingBox())!;
-  expect(Math.round(bar.y)).toBe(Math.round(head.y + head.height));
-  expect(bar.width).toBeGreaterThanOrEqual(1090);
-  expect(Math.round(table.y)).toBe(Math.round(bar.y + bar.height));
-  expect(bar.height).toBeLessThanOrEqual(800 * 0.25 + 16);
+  const status = (await alice.locator('#round_status').boundingBox())!;
+  expect(Math.round(bar.y)).toBe(Math.round(status.y + status.height));
+  expect(Math.round(bar.x + bar.width)).toBe(1100);
+  expect(bar.x).toBeGreaterThanOrEqual(table.x + table.width - 1);
+  expect(Math.round(table.y)).toBe(Math.round(head.y + head.height));
+  expect(bar.height).toBeLessThanOrEqual(800 * 0.4 + 80); // topic up to 40vh, label and padding
   expect(await alice.locator('#topic').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
   await expect(topicBar).toBeVisible();
   await expect(alice.locator('.topic-edit')).toBeVisible();
@@ -149,7 +149,7 @@ test('large screen: topic bar above the table, New Round in the bottom right cor
   await expect(alice.locator('#topic_txt')).toHaveValue(topic);
   await alice.keyboard.press('Escape');
 
-  // B-66: New Round sits in the bottom right corner, right of the deck and level with it
+  // B-66/B-68: New Round sits in the bottom right corner, right of the deck and level with it
   await pickCard(alice, 'three01');
   await expect(alice.locator('#newroundbtn')).toBeEnabled();
   const deck = (await alice.locator('#ctl').boundingBox())!;
@@ -185,7 +185,7 @@ test('timer switch: a toast for the own click only (B-46, B-67)', async ({ brows
   await bob.context().close();
 });
 
-test('round button always there; many deck cards in a narrow window: the corner moves above the deck (B-67)', async ({ browser }) => {
+test('round button always there; many deck cards in a narrow window: the deck scrolls, the corner stays (B-67, B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1440, height: 900 } });
   const url = await createTeam(alice, 'Layout Corner');
   // Fibonacci plus ½, coffee, ? and ! (15 cards); the id is checked before it goes into the statement
@@ -198,7 +198,7 @@ test('round button always there; many deck cards in a narrow window: the corner 
   await addPlayersViaApi(alice, url, ['Bob']);
   await joinAsPlayer(alice, url, 'Alice');
   await alice.reload();
-  await expect(alice.locator('#ctl > .on')).toHaveCount(15);
+  await expect(alice.locator('#ctl img.on')).toHaveCount(15);
 
   // before the first card: there, but disabled (Andreas)
   const btn = alice.locator('#newroundbtn');
@@ -215,21 +215,19 @@ test('round button always there; many deck cards in a narrow window: the corner 
   await expect(btn).toBeEnabled();
 
   const box = async (sel: string) => (await alice.locator(sel).boundingBox())!;
-  for (const [width, above] of [[1440, false], [1100, false], [900, true]] as const) {
+  // B-68: from 800px always the corner on the right edge; a deck too wide for its room scrolls sideways
+  for (const width of [1440, 1100, 900]) {
     await alice.setViewportSize({ width, height: 900 });
     await expect.poll(async () => {
       const deck = await box('#ctl');
       const dock = await box('.dock');
-      return above ? dock.y + dock.height <= deck.y + 1 : dock.x >= deck.x + deck.width;
+      return dock.x >= deck.x + deck.width - 0.5 && Math.abs(dock.x + dock.width - width) < 1;
     }, { message: `width ${width}` }).toBe(true);
-    // two places only (Andreas): the full-width row as on phones, or the corner on the right edge
-    const dock = await box('.dock');
-    if (above) expect(dock.width).toBeGreaterThanOrEqual(width - 1);
-    else expect(Math.abs(dock.x + dock.width - width)).toBeLessThan(1);
-    // timer and button in one row above the deck, the timer above the button in the corner
+    // the timer above the button
     const timer = await box('#timer');
     const b = await box('#newroundbtn');
-    expect(above ? Math.abs(timer.y + timer.height / 2 - (b.y + b.height / 2)) < 4 : timer.y + timer.height <= b.y).toBe(true);
+    expect(timer.y + timer.height).toBeLessThanOrEqual(b.y);
   }
+  expect(await alice.locator('#ctl').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
   await alice.context().close();
 });

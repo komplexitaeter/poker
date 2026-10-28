@@ -20,8 +20,6 @@ let gTimerInterval = null;
 let gLastShowAvg = null;
 let gUserName = null;
 let gPromoInitiated = false;
-// B-68: large screens with the right column (style.css, "Right column")
-const gSideQuery = window.matchMedia('(min-width: 1200px)');
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
@@ -195,6 +193,35 @@ function setCSet(cSet) {
     gCardsConfig.forEach(card => {
         toggleC(card.card_key, str.charAt(card.index));
     });
+    updateDeckKeys();
+}
+
+/* B-68: keys 1–9 and 0 pick the first ten cards of the deck (in deck order) */
+const DECK_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+function updateDeckKeys() {
+    document.querySelectorAll('#ctl img.ctl').forEach(img => {
+        img.nextElementSibling.textContent = '';
+    });
+    document.querySelectorAll('#ctl img.on').forEach((img, i) => {
+        if (i < DECK_KEYS.length) img.nextElementSibling.textContent = DECK_KEYS[i];
+    });
+}
+
+/* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
+ * (observers have no click handler). Not while typing, in the menu or in an overlay. */
+function pickCardByKey(event) {
+    const n = DECK_KEYS.indexOf(event.key);
+    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    const target = event.target;
+    if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog')) return;
+    const menu = document.getElementById('menu');
+    if (menu !== null && menu.open) return;
+    if (document.querySelector('.overlay.visible, #overlay_name_input.visible') !== null) return;
+    const img = document.querySelectorAll('#ctl img.on')[n];
+    if (img === undefined) return;
+    event.preventDefault();
+    img.click();
 }
 
 function updateDao(isOnLoad) {
@@ -255,11 +282,10 @@ function getCardPositions(cardsDiv) {
  * --card-min the table scrolls. Gaps and padding scale with the width as in style.css
  * (div#cbox). The result is set as --card-w on #cbox; returns true when it changed.
  * The measured area does not depend on --card-w: the table height comes from the page
- * grid, the width is taken including a possible scrollbar, and the dock is always reserved
- * at its full height, with New Round and the timer, even while (parts of) it are hidden:
- * the cards keep their size when the first vote, the timer or a new round changes it.
- * B-66: on large screens the dock sits in the bottom right corner next to the deck, outside the
- * table, and takes no room from it.
+ * grid, the width is taken including a possible scrollbar. B-68: the round actions (.dock) and
+ * the spread sit outside the table with a fixed height (the column, or the strip above the
+ * deck on phones), so the cards keep their size when the first vote, the timer or a new round
+ * changes them.
  * The side gutter of #cbox (--card-gutter: the gap between two cards, at least
  * --card-gutter-min) is taken off the width. */
 function fitCardsToTable() {
@@ -279,9 +305,8 @@ function fitCardsToTable() {
     const tableStyle = getComputedStyle(table);
     const width = table.offsetWidth - parseFloat(tableStyle.paddingLeft) - parseFloat(tableStyle.paddingRight);
 
-    const dockHeight = fullDockHeight(table.querySelector('.dock'));
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
-    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - dockHeight - 7;
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7;
 
     const n = cbox.children.length;
     let fit = min;
@@ -302,25 +327,6 @@ function fitCardsToTable() {
     if (cbox.style.getPropertyValue('--card-w') === value) return false;
     cbox.style.setProperty('--card-w', value);
     return true;
-}
-
-/* B-49: height of the dock with everything it can show (New Round and the timer), whatever
- * is visible right now; the inline styles only last for the measurement (no repaint).
- * 0 when the dock is out of the table's flow (B-66, large screens: bottom right corner). */
-function fullDockHeight(dock) {
-    if (dock === null || getComputedStyle(dock).position === 'absolute') return 0;
-    const shown = [];
-    const show = (element, display) => {
-        if (element === null || getComputedStyle(element).display !== 'none') return;
-        element.style.display = display;
-        shown.push(element);
-    };
-    show(dock, 'flex');
-    show(dock.querySelector('#timer'), 'flex');
-    show(dock.querySelector('#newroundbtn'), 'inline-block');
-    const height = dock.offsetHeight;
-    shown.forEach(element => element.style.removeProperty('display'));
-    return height;
 }
 
 function removeCards(cardsDiv, players) {
@@ -592,7 +598,6 @@ function updateDom(myJson, isOnLoad) {
 
     updateNewRoundBtn(myJson.one_ore_more_player_ready, myJson.all_players_ready);
 
-    showCardUsage(myJson.players, myJson.all_players_ready, myJson.show_avg);
     updateSide(myJson);
 
 
@@ -757,6 +762,8 @@ function loadBoard() {
     document.addEventListener('keydown', function(event) {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
+        } else {
+           pickCardByKey(event);
         }
     });
 }
@@ -1225,7 +1232,14 @@ function loadCardConfig() {
         cardElement.src = "src/c_" + card.card_key + ".png";
         cardElement.classList.add("ctl");
         cardElement.alt = card.description;
-        ctl.appendChild(cardElement);
+        // B-68: the card with its key below it (shown on devices with a mouse, style.css)
+        let slot = document.createElement("span");
+        slot.className = "ctl-slot";
+        let key = document.createElement("span");
+        key.className = "ctl-key";
+        key.setAttribute("aria-hidden", "true");
+        slot.append(cardElement, key);
+        ctl.appendChild(slot);
 
         let thumbElement = document.createElement("img");
         thumbElement.id = "_" + card.card_key;
@@ -1303,7 +1317,6 @@ function handleResize() {
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
-    showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
     updateSide(gLastJson);
 }
 
@@ -1321,38 +1334,15 @@ function initDisplayHandling() {
             finishAnimations(cbox, 'height');
         }).observe(table, { box: 'border-box' });
     }
-    // B-67: the round actions in the corner or in the row above the deck (updateDockRow)
-    const down = document.getElementById('down-container');
-    const deck = document.getElementById('ctl');
-    if (down !== null && deck !== null && typeof ResizeObserver === 'function') {
-        const observer = new ResizeObserver(updateDockRow);
-        observer.observe(down);
-        observer.observe(deck);
-    }
 }
 
-/* B-67: large screens: the round actions (.dock) sit in the bottom right corner next to the deck;
- * when the deck and the corner (--dock-w) do not fit side by side, they move into the row above the
- * deck, as on phones (class "dock-row", style.css). The deck keeps its width in both places.
- * B-68: from 1200px on the corner is the foot of the right column and always stays there. */
-function updateDockRow() {
-    const container = document.querySelector('.container');
-    const down = document.getElementById('down-container');
-    const deck = document.getElementById('ctl');
-    if (container === null || down === null || deck === null) return;
-    if (gSideQuery.matches) {
-        container.classList.remove('dock-row');
-        return;
-    }
-    const dockW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-w')) || 0;
-    container.classList.toggle('dock-row', deck.scrollWidth + dockW > down.clientWidth);
-}
-
-/* B-68: the right column (large screens, style.css "Right column"): where the round is and, once the
- * cards are revealed, the spread. Plain text only (textContent). The spread has one bar per card in
- * the deck (the most chosen card gets the full height), the card below it, the vote count above it;
- * the most chosen card(s) in the accent color, from two votes on. The average pointer follows
- * the board setting (show_avg) and is placed like the one on the deck. */
+/* B-68: the column (style.css "Column"; large screens on the right, phones a strip above the deck):
+ * where the round is and, once the cards are revealed, the spread. Plain text only (textContent).
+ * The spread has one stacked bar per card in the deck (one segment per vote, the most chosen card
+ * gets the full height), the vote count above it and the card's value below it (cards.json
+ * "symbol", else its description); the most chosen card(s) in the accent color, from two votes
+ * on. Its room is kept before the reveal (style.css), so nothing moves. The average pointer
+ * follows the board setting (show_avg). */
 function updateSide(json) {
     const status = document.getElementById('round_status');
     const spread = document.getElementById('spread');
@@ -1365,13 +1355,14 @@ function updateSide(json) {
     if (status.textContent !== text) status.textContent = text;
 
     spread.hidden = !revealed;
-    if (!revealed) return;
 
+    // the columns follow the deck, also before the reveal (they keep the spread's room)
     const bars = document.getElementById('spread_bars');
     const deckCards = Array.from(document.querySelectorAll('#ctl img.on'));
     const keys = deckCards.map(img => img.id).join(',');
     if (bars.getAttribute('data-keys') !== keys) {
         bars.replaceChildren(...deckCards.map(img => {
+            const config = getCardConfig(img.id);
             const col = document.createElement('div');
             col.className = 'spread-col';
             col.setAttribute('data-card', img.id);
@@ -1379,28 +1370,46 @@ function updateSide(json) {
             count.className = 'spread-count';
             const bar = document.createElement('span');
             bar.className = 'spread-bar';
-            const card = document.createElement('img');
-            card.src = img.getAttribute('src');
-            card.alt = img.alt;
-            col.append(count, bar, card);
+            const value = document.createElement('span');
+            value.className = 'spread-value';
+            value.textContent = config ? (config.symbol || config.description) : '';
+            col.append(count, bar, value);
             return col;
         }));
         bars.setAttribute('data-keys', keys);
     }
 
+    const pointer = document.getElementById('spread_index');
+    if (!revealed) {
+        toggleStyleClass(pointer, 'hidden', 'visible');
+        return;
+    }
+
     const cardStats = calculateCardStats(json.players);
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
+    const chosen = [];
     Array.from(bars.children).forEach(col => {
         const stat = cardStats[col.getAttribute('data-card')];
         const n = stat ? stat.usageCount : 0;
         col.style.setProperty('--usage', String(top > 0 ? n / top : 0));
+        col.style.setProperty('--votes', String(Math.max(1, n)));
         col.classList.toggle('top', n > 1 && n === top);
+        col.classList.toggle('zero', n === 0);
         col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
+        const config = getCardConfig(col.getAttribute('data-card'));
+        if (n > 0 && config && config.numeric_value != null) chosen.push(col.querySelector('.spread-value').textContent);
     });
 
-    const pointer = document.getElementById('spread_index');
+    // the range of the chosen numeric values, in deck order: "2 – 20", or "5" when all agree
+    let range = '';
+    if (chosen.length > 0) {
+        range = chosen[0] === chosen[chosen.length - 1] ? chosen[0] : chosen[0] + ' – ' + chosen[chosen.length - 1];
+    }
+    const rangeElement = document.getElementById('spread_range');
+    if (rangeElement.textContent !== range) rangeElement.textContent = range;
+
     let left = null;
-    if (json.show_avg === 1 && gSideQuery.matches) {
+    if (json.show_avg === 1) {
         left = calculateIndicatorLefPosition(cardStats,
             key => bars.querySelector('[data-card="' + key + '"]'), pointer);
     }
@@ -1434,17 +1443,15 @@ function calculateCardStats(players) {
     return cardStats;
 }
 
-/* Left edge of the average indicator when it points at the middle of a deck card whose left
- * edge is at left (B-49: deck cards and indicator scale with the screen). */
+/* Left edge of the average pointer when it points at the middle of an element (a bar of the
+ * spread) whose left edge is at left. */
 function indicatorLeft(img, left, pointer) {
     return left + (img.getBoundingClientRect().width - pointer.getBoundingClientRect().width) / 2;
 }
 
-/* elementFor: the element the pointer points at for a card key (the deck card, B-68: or its bar in
- * the spread of the right column); pointer: the pointer image. Viewport coordinates. */
-function calculateIndicatorLefPosition(cardStats,
-                                       elementFor = key => document.getElementById(key),
-                                       pointer = document.getElementById('index')) {
+/* elementFor: the element the pointer points at for a card key (B-68: its bar in the spread);
+ * pointer: the pointer image. Viewport coordinates. */
+function calculateIndicatorLefPosition(cardStats, elementFor, pointer) {
     let hasResult = false;
     let resultCnt = 0;
     let resultSum = 0;
@@ -1503,54 +1510,6 @@ function calculateIndicatorLefPosition(cardStats,
     return null;
 }
 
-
-function updateAvgIndicator(cardStats, showStats) {
-    let index = document.getElementById("index");
-    if (showStats) {
-        let indicatorLeftPos = calculateIndicatorLefPosition(cardStats);
-        if (indicatorLeftPos != null) {
-            index.style.left = indicatorLeftPos + "px";
-            if (index.classList.contains("hidden")) {
-                toggleStyleClass(index, "visible", "hidden")
-            }
-        } else {
-            toggleStyleClass(index, "hidden", "visible");
-        }
-    } else {
-        toggleStyleClass(index, "hidden", "visible");
-    }
-}
-
-function showCardUsage(players, allPlayersReady, showAvg) {
-    let cardStats = calculateCardStats(players);
-
-    const images = document.querySelectorAll('#ctl img.on');
-
-    images.forEach(img => {
-        const cardStat = cardStats[img.id];
-
-        // B-49: the usage bar (style.css, .controls img) scales with the deck cards
-        if (cardStat && cardStat.usageCount > 0 && allPlayersReady) {
-            img.style.setProperty('--usage', String(cardStat.usagePercentage || 0));
-        } else {
-            img.style.setProperty('--usage', '0');
-        }
-    });
-
-    let ctl = document.getElementById("ctl");
-
-    if (allPlayersReady && players.length>0) {
-        ctl.classList.add("show_card_stats");
-        if (showAvg === 1) {
-            updateAvgIndicator(cardStats, true);
-        } else {
-            updateAvgIndicator(cardStats,false);
-        }
-    } else {
-        ctl.classList.remove("show_card_stats");
-        updateAvgIndicator(cardStats,false);
-    }
-}
 
 function showConfetty(playersCount) {
     const jsConfetti = new JSConfetti();
