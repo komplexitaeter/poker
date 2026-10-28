@@ -835,6 +835,18 @@ Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visib
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
 
+### B-63 `stats.php`: eigene Anmeldeseite statt Basic Auth
+Andreas (2026-10-28): Chrome füllt den Basic-Auth-Dialog von `stats.php` nicht aus, und nach jedem Browser-Neustart
+muss man sich neu anmelden. Idee: normales Login-Formular in `stats.php` (Benutzer + Passwort), damit
+Passwortmanager speichern und ausfüllen; danach angemeldet bleiben (z. B. 30 Tage).
+- Passwort nur als Hash in `config.php` (`password_hash`), Vorlage in `config.example.php`.
+- „Angemeldet bleiben“ per signiertem Cookie (HMAC mit Secret aus `config.php`), nicht per PHP-Session: die
+  Session-Dateien räumt Ubuntu nach `session.gc_maxlifetime` (24 min) ab. CSRF-Token für die Moderation bleibt.
+- Schutz gegen Durchprobieren (z. B. Verzögerung nach Fehlversuch oder nginx `limit_req` auf `/stats.php`).
+- nginx-Basic-Auth danach entfernen (Schritt auf beiden Servern) – oder als zweite Schicht behalten? → Sina.
+- `docs/stats-basic-auth.md` und `CLAUDE.md` anpassen.
+Umsetzung Ben, Review Sina.
+
 ### B-62 E2E-Tests für den Feedback-Pfad (rudimentär)
 Vorschlag Tessa, Andreas (2026-10-27): ja, aber nur rudimentär; internes Backlog, nicht in der öffentlichen Liste.
 Kernpfad: Meldung absenden (Bug mit Kontext, ohne Team-ID), einmal abstimmen, roter Punkt verschwindet nach dem
