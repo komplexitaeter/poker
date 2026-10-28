@@ -406,7 +406,8 @@ textarea.field {
  * Only the table scrolls; the deck keeps its place. B-66: the round actions (.dock: timer above
  * New Round) sit in the bottom right corner next to the deck.
  * Phones: the topic is a one-line strip, the actions a dock right above the deck.
- * Safe areas (viewport-fit=cover): left/right here, bottom below the deck. */
+ * Safe areas (viewport-fit=cover): left/right here, bottom below the deck.
+ * B-68: from 1200px a right column, see "Right column" (after the survey, so it overrides). */
 .container {
     position: relative; /* anchor of the phone menu and its boxes */
     display: grid;
@@ -913,8 +914,8 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
  * (whatever its height) and ends at the bottom edge (an absolutely positioned grid child) */
 .container > .menu {
     position: absolute;
-    grid-row: 2 / 5;
-    grid-column: 1;
+    grid-row: 2 / -1;
+    grid-column: 1 / -1; /* B-68: over the right column */
     top: 0;
 }
 
@@ -2056,6 +2057,218 @@ div#cbox {
 .up { transform: rotate(-135deg); }
 
 .down { transform: rotate(45deg); }
+
+/* ---------- Right column (B-68) ---------- */
+
+/* Large screens (from 1200px): a column on the right, always there, so the table keeps its size
+ * from round to round. From the top: where the round is (#round_status), the topic (.topic-bar)
+ * and, once the cards are revealed, the spread (.side, #spread; filled by updateSide() in
+ * script.js). Its foot is the bottom right corner with timer and round button (.dock): the bottom
+ * bar runs through below table and column, the column's left edge runs down through the bar, so
+ * the two hairlines cross. The menu panel covers the column. Below 1200px: no column, the topic
+ * strip, the spread on the deck and the corner or row as before. */
+.round-status,
+.side { display: none; }
+
+@media (min-width: 1200px) {
+    :root {
+        --side-w: clamp(320px, 25vw, 360px);
+        /* the deck shares the width with the column */
+        --deck-w: clamp(36px, min((100vw - var(--side-w) - 80px) / 16 - 4px, max(45px, 2.5vw + 13px)), 64px);
+        /* the bottom bar: deck, or timer row and a 44px round button, with 12px air above and below */
+        --dock-h: calc(max(var(--deck-h) + 2 * 12px, var(--tap) + 44px + var(--space-2) + 2 * 12px) + env(safe-area-inset-bottom));
+        --spread-h: 112px; /* the bar of the most chosen card */
+    }
+
+    .container {
+        grid-template-columns: minmax(0, 1fr) var(--side-w);
+        grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+        grid-template-areas:
+            "head  head"
+            "table status"
+            "table topic"
+            "table side"
+            "deck  dock";
+    }
+
+    /* the column: one hairline on its left edge, sections apart by a hairline */
+    .round-status,
+    .container > .topic-bar,
+    .side {
+        box-sizing: border-box;
+        min-width: 0;
+        margin: 0;
+        border-left: 1px solid var(--line);
+        text-align: left;
+    }
+
+    /* "// voting · 3/5 voted": plain text, set by script.js */
+    .round-status {
+        grid-area: status;
+        display: block;
+        padding: var(--space-3) var(--space-3) var(--space-2);
+        font-size: var(--fs-s);
+        line-height: 1.5rem;
+        color: var(--text);
+    }
+
+    .round-status::before,
+    .side-label::before {
+        content: "// ";
+        color: var(--line-strong);
+    }
+
+    /* the topic: "// topic" and the pen in one row, the topic below, long ones scroll */
+    .container > .topic-bar {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0 var(--space-2);
+        padding: var(--space-2) var(--space-2) var(--space-3) var(--space-3);
+        border-top: 1px solid var(--line);
+    }
+
+    .topic-bar .topic-label { padding: 0; }
+
+    .topic-bar .topic-edit { order: 1; }
+
+    .topic-bar #topic {
+        order: 2;
+        flex: 1 1 100%;
+        margin: var(--space-1) var(--space-2) 0 0;
+        max-height: min(40vh, 24rem);
+        max-height: min(40dvh, 24rem);
+    }
+
+    .side {
+        grid-area: side;
+        display: block;
+        min-height: 0;
+        overflow-y: auto;
+        padding: var(--space-3);
+        border-top: 1px solid var(--line);
+    }
+
+    .side-label {
+        margin: 0 0 var(--space-3);
+        font-size: var(--fs-s);
+        font-weight: normal;
+        line-height: 1.5rem;
+        color: var(--muted);
+    }
+
+    /* the spread: one bar per deck card, the count above, the card below; the pointer under it */
+    .spread[hidden] { display: none; }
+
+    .spread-chart {
+        position: relative; /* anchor of the pointer */
+        padding-bottom: 16px;
+    }
+
+    .spread-bars {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 3px;
+    }
+
+    .spread-col {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .spread-count {
+        min-height: 1rem;
+        font-size: var(--fs-xs);
+        line-height: 1rem;
+        font-variant-numeric: tabular-nums;
+        color: var(--muted);
+    }
+
+    .spread-bar {
+        width: 72%;
+        height: calc(var(--usage, 0) * var(--spread-h));
+        min-height: 1px; /* no vote: a baseline */
+        border-radius: 2px 2px 0 0;
+        background: var(--line-strong);
+        transition: height 0.8s ease-in-out;
+    }
+
+    .spread-col img {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    /* the most chosen card(s), from two votes on */
+    .spread-col.top .spread-bar { background: var(--accent); }
+
+    .spread-col.top .spread-count {
+        color: var(--accent);
+        font-weight: bold;
+    }
+
+    /* the average pointer (left set by script.js) */
+    .spread-index {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 12px;
+        transition: left 0.8s ease-in-out;
+    }
+
+    /* the spread is in the column: the deck neither grows nor shows usage bars, no pointer on it */
+    .controls,
+    .show_card_stats { height: var(--deck-h); }
+
+    .controls img { box-shadow: none; }
+
+    #index { display: none; }
+
+    /* the bottom bar: one strip below table and column, the deck centered in it (a wide deck
+     * scrolls sideways rather than run under the corner) */
+    .container > .down-container,
+    .container:not(.dock-row) .down-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-sizing: border-box;
+        height: var(--dock-h);
+        background: var(--bg-2);
+        border-top: 1px solid var(--line);
+    }
+
+    .container:not(.dock-row) .down-container > .controls {
+        min-width: 0;
+        max-width: 100%;
+        overflow: auto hidden;
+        border-top: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    /* the corner: as wide as the column, timer row above the button. The timer row keeps its room
+     * while the timer is off, so the button never moves. */
+    .container:not(.dock-row) .dock {
+        width: var(--side-w);
+        gap: var(--space-2);
+        padding: 12px var(--space-3) calc(12px + env(safe-area-inset-bottom));
+    }
+
+    .container:not(.dock-row) .timer.display_none {
+        display: flex;
+        visibility: hidden;
+    }
+
+    .container:not(.dock-row) #newroundbtn { min-height: 44px; }
+
+    /* the survey: in the column, above the corner */
+    .survey-container { right: calc(-1 * var(--side-w)); }
+}
 
 /* ---------- Overlays: QR code, privacy links ---------- */
 
