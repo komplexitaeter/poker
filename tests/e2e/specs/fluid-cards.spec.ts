@@ -49,10 +49,10 @@ const tableOverflow = (page: Page) => page.evaluate(() => {
   return table.scrollHeight - table.clientHeight;
 });
 
-// --card-min 64px: measured maximum without scrolling (touch, after a vote): 20 at 375x667, 25 at 393x852;
-// 375x667 with 16-20 players: at --card-min the table was 2px too high before the phone margin of #cbox shrank
+// --card-min 64px: measured maximum without scrolling (touch, after a vote); B-68: the spread strip above
+// the deck takes its room, 15 at 375x667 (20 before)
 for (const { viewport, players } of [
-  { viewport: PHONE, players: 18 },
+  { viewport: PHONE, players: 15 },
   { viewport: { width: 393, height: 852 }, players: 20 },
 ]) {
   test(`phone ${viewport.width}x${viewport.height}: ${players} players fit on the table without scrolling (B-49)`, async ({ browser }) => {
@@ -61,7 +61,7 @@ for (const { viewport, players } of [
     // every card lies inside the visible table, above the dock
     const outside = await alice.evaluate(() => {
       const table = document.getElementById('table')!.getBoundingClientRect();
-      const dock = document.querySelector('#table .dock')!.getBoundingClientRect();
+      const dock = document.querySelector('.dock')!.getBoundingClientRect();
       return Array.from(document.querySelectorAll('#cbox .c'))
         .map(card => card.getBoundingClientRect())
         .filter(r => r.top < table.top || r.bottom > dock.top || r.left < table.left || r.right > table.right).length;
@@ -104,17 +104,18 @@ test('a new player: the cards shrink with a glide, a resize just sets the size (
   const alice = await newPlayer(browser, { viewport: PHONE });
   await recordAnimations(alice);
   const url = await createTeam(alice, 'Fluid Glide');
-  // 6 cards fit at the phone maximum (3 rows of 2 would not, 2 rows of 3 do); a 7th makes them smaller
-  await addPlayersViaApi(alice, url, ['Bob', 'Carol', 'Dave', 'Erin', 'Fay']);
+  // 3 cards fit at the phone maximum (one row); a 4th makes them smaller (B-68: 2 rows do not fit any
+  // more, the spread strip above the deck takes its room)
+  await addPlayersViaApi(alice, url, ['Bob', 'Carol']);
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#cbox .c')).toHaveCount(6);
+  await expect(alice.locator('#cbox .c')).toHaveCount(3);
   await expect.poll(() => cardWidth(alice, 'Alice')).toBe(110);
   await alice.waitForTimeout(1200); // glides of the join are over
   const before = (await recorded(alice)).length;
 
   const zoe = await newPlayer(browser);
   await joinAsPlayer(zoe, url, 'Zoe');
-  await expect(alice.locator('#cbox .c')).toHaveCount(7);
+  await expect(alice.locator('#cbox .c')).toHaveCount(4);
   await expect.poll(() => layoutWidth(alice, 'Alice')).toBeLessThan(110);
   const small = await layoutWidth(alice, 'Alice');
 
@@ -139,20 +140,20 @@ test('prefers-reduced-motion: a new player changes the size without a glide (B-4
   await alice.emulateMedia({ reducedMotion: 'reduce' });
   await recordAnimations(alice);
   const url = await createTeam(alice, 'Fluid Calm');
-  await addPlayersViaApi(alice, url, ['Bob', 'Carol', 'Dave', 'Erin', 'Fay']);
+  await addPlayersViaApi(alice, url, ['Bob', 'Carol']);
   await joinAsPlayer(alice, url, 'Alice');
   await expect.poll(() => cardWidth(alice, 'Alice')).toBe(110);
 
   const zoe = await newPlayer(browser);
   await joinAsPlayer(zoe, url, 'Zoe');
-  await expect(alice.locator('#cbox .c')).toHaveCount(7);
+  await expect(alice.locator('#cbox .c')).toHaveCount(4);
   await expect.poll(() => cardWidth(alice, 'Alice')).toBeLessThan(110);
   await alice.waitForTimeout(300);
   expect(await recorded(alice)).toEqual([]);
 });
 
-// B-68: below 1200px; from 1200px the pointer is in the spread of the right column
-test('the average indicator points at the middle of the deck card (B-49)', async ({ browser }) => {
+// B-68: the pointer is in the spread of the column (large screens) or of the strip above the deck (phones)
+test('the average pointer points at the middle of the bar of the card (B-49, B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1100, height: 800 } });
   const url = await createTeam(alice, 'Fluid Average');
   const t = new URL(url).searchParams.get('t')!;
@@ -163,25 +164,16 @@ test('the average indicator points at the middle of the deck card (B-49)', async
   await joinAsPlayer(bob, url, 'Bob');
   await pickCard(bob, 'five001');
   await pickCard(alice, 'five001');
-  await expect(alice.locator('#ctl')).toHaveClass(/show_card_stats/);
-  await expect(alice.locator('#index')).toHaveClass(/visible/);
+  await expect(alice.locator('#spread_index')).toHaveClass(/visible/);
 
   const offCentre = () => alice.evaluate(() => {
-    const index = document.getElementById('index')!.getBoundingClientRect();
-    const card = document.getElementById('five001')!.getBoundingClientRect();
-    return Math.abs((index.left + index.width / 2) - (card.left + card.width / 2));
-  });
-  await expect.poll(offCentre).toBeLessThan(1);
-  // the usage bar scales with the deck card (custom property, no inline box-shadow)
-  await expect(alice.locator('#ctl img#five001')).toHaveAttribute('style', /--usage: 1/);
-
-  // B-68: a wide screen: no pointer on the deck, the one in the right column points at the card's bar
-  await alice.setViewportSize({ width: 1920, height: 1080 });
-  await expect(alice.locator('#index')).toBeHidden();
-  await expect(alice.locator('#spread_index')).toHaveClass(/visible/);
-  await expect.poll(() => alice.evaluate(() => {
     const index = document.getElementById('spread_index')!.getBoundingClientRect();
     const bar = document.querySelector('#spread_bars [data-card="five001"]')!.getBoundingClientRect();
     return Math.abs((index.left + index.width / 2) - (bar.left + bar.width / 2));
-  })).toBeLessThan(1);
+  });
+  await expect.poll(offCentre).toBeLessThan(1);
+  for (const viewport of [{ width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+    await alice.setViewportSize(viewport);
+    await expect.poll(offCentre).toBeLessThan(1);
+  }
 });

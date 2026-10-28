@@ -45,6 +45,10 @@ test('keyboard: topic box opens with Enter, Escape closes it, timer panel by key
   // "Delete my data" shows its overlay and closes the menu under it
   await alice.locator('#delete_user_btn').click();
   await expect(alice.locator('#overlay_delete_user')).not.toHaveClass(/hidden/);
+  // a key does not pick a card behind the overlay (B-68)
+  const pickedBefore = await alice.locator('#ctl img.selected').count();
+  await alice.keyboard.press('1');
+  await expect(alice.locator('#ctl img.selected')).toHaveCount(pickedBefore);
   await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
   await expect(alice.locator('#user_settings_box')).toBeHidden();
   await alice.locator('#overlay_delete_user').getByRole('button', { name: 'Cancel' }).click();

@@ -31,7 +31,6 @@ async function aliceInOpenRound(page: Page, teamName: string) {
   await addPlayersViaApi(page, url, ['Bob']);
   await joinAsPlayer(page, url, 'Alice');
   await pickCard(page, 'three01');
-  await expect(page.locator('#ctl')).not.toHaveClass(/show_card_stats/);
 }
 
 const legacyClassCount = (page: Page) =>
@@ -54,7 +53,7 @@ async function expectLargeLayout(page: Page) {
   await expect(page.locator('#topic_btn')).toBeVisible();
   await expect(page.locator('#cset_btn')).toBeVisible();
   await expect(page.locator('#newroundbtn')).toBeVisible();
-  await expect(page.locator('#ctl')).toHaveCSS('height', '90px');
+  await expect(page.locator('#ctl img.on').first()).toHaveCSS('width', '45px');
   // B-49: two players on a large table: the cards use the room up to --card-max (150px)
   await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(150);
 }

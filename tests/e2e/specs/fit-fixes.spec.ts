@@ -3,11 +3,10 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, pickC
 
 /**
  * B-49 follow-up: the card size depends on the number of players and the table only.
- * Phones: the dock (New Round + timer) is always reserved at its full height, so switching the
+ * B-68: the round actions (.dock, New Round + timer) and the spread lie outside the table with a
+ * fixed height (large screens: the column; phones: a strip above the deck), so switching the
  * timer, the first vote or a new round neither resizes the cards nor lets the dock cover
  * them; the outer cards keep a side gutter to the edge of the table.
- * B-66: large screens have the dock in the bottom right corner next to the deck, below the table
- * (B-67: or in the row above the deck as on phones, when deck and corner do not fit side by side).
  * The delete icon depends on the input device, not on the width.
  * SHOT_DIR (optional): screenshots of the cases.
  */
@@ -35,7 +34,7 @@ const geometry = (page: Page) => page.evaluate(() => {
     .map(img => img.getBoundingClientRect().bottom), card.getBoundingClientRect().bottom));
   return {
     cardsBottom: Math.max(...bottoms),
-    dockTop: document.querySelector('#table .dock')!.getBoundingClientRect().top,
+    dockTop: document.querySelector('.dock')!.getBoundingClientRect().top,
     tableBottom: t.bottom,
     overflow: table.scrollHeight - table.clientHeight,
     sideGap: Math.min(...rects.map(r => Math.min(r.left - t.left, t.right - r.right))),
@@ -46,10 +45,10 @@ async function shot(page: Page, name: string): Promise<void> {
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${name}.png` });
 }
 
-// The table height limits the card size: 2 rows in a smaller window (as on staging), 3 rows at 1280 x 800.
+// The table height limits the card size: 2 rows in a smaller window (as on staging), 4 rows at 1280 x 800.
 for (const { viewport, players, rows } of [
   { viewport: { width: 1000, height: 600 }, players: 10, rows: 2 },
-  { viewport: DESKTOP, players: 25, rows: 3 },
+  { viewport: DESKTOP, players: 25, rows: 4 }, // B-68: the column takes 380px of the width
 ]) {
   test(`desktop ${viewport.width}x${viewport.height}, ${rows} rows: the timer neither covers nor resizes the cards (B-49, B-66)`, async ({ browser }) => {
     const alice = await newPlayer(browser, { viewport });
@@ -73,11 +72,8 @@ for (const { viewport, players, rows } of [
       expect(await settledWidth(alice)).toBe(off);
       const g = await geometry(alice);
       expect(g.cardsBottom).toBeLessThanOrEqual(g.dockTop);
-      // B-66: in the corner, below the table; B-67: deck and corner too wide for the window (1000px):
-      // the row at the bottom of the table, as on phones
-      if (await alice.locator('.container.dock-row').count() === 0) {
-        expect(g.dockTop).toBeGreaterThanOrEqual(g.tableBottom - 0.5);
-      }
+      // B-68: at the foot of the column, below the table
+      expect(g.dockTop).toBeGreaterThanOrEqual(g.tableBottom - 0.5);
       expect(g.overflow).toBeLessThanOrEqual(0);
       expect(g.sideGap).toBeGreaterThanOrEqual(16); // 8px table padding + gutter of at least 8px
     }
