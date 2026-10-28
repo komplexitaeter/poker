@@ -27,7 +27,8 @@ sichtet Staging, dann PR `release` → `master` (Rollout 1).
 1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
    Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
    Dazu B-55 (Hinweis-Toast + Umfrage). Vor dem Rollout klären: `mockups/` aus `release` nehmen oder mitlaufen lassen.
-2. **Rollout 2 (ca. eine Woche später): neue Funktionen** – B-53 (Ergebnisdarstellung) und B-52 (Topic-Backlog,
+2. **Rollout 2 (Andreas, 2026-10-28 neu gedacht):** B-66 Basic Controls (Rundenknopf + Timer unten rechts) und B-67 Timer
+   (T-Minus). Ergebnis-Seitenleiste (B-53) erst mit Rollout 3. Vorher geplant: B-53 (Ergebnisdarstellung) und B-52 (Topic-Backlog,
    History), mit Ben und Sina. Beginn erst, wenn Rollout 1 als PR nach `master` liegt.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
@@ -945,6 +946,21 @@ Beim B-48-Review gefunden (Fred, 2026-10-23), schon vorher so: `feedback_submit(
 hängt den Text als `'&text=' + fb_text` an die URL. Mit `&` oder `#` im Feedback kommt der Text abgeschnitten an.
 Fix: `encodeURIComponent()` (Konvention aus CLAUDE.md). Klein (Fred). Ebenso: „Delete User“ ist ein `<a>` ohne
 `href` und per Tastatur nicht erreichbar → `<button>` im Link-Stil (mit B-51 erledigen).
+
+### B-66 „Basic Controls“: Kartenleiste mit Rundenknopf und Timer (Rollout 2)
+Andreas (2026-10-28): Die untere Leiste wird das „Basic Controls Panel“ – alles, was man mindestens zum Spielen
+braucht: Karten wählen, Runde starten, Timer (optional). Desktop: Karten in der Leiste, Rundenknopf + Timer rechts
+in einer Box, die so hoch ist wie die Leiste und (sobald es die rechte Leiste gibt) so breit wie die rechte Leiste –
+es ergibt sich unten rechts ein sauberes „Kreuz“. Mobil: Timer + Rundenknopf liegen über den Karten (ähnlich heute).
+Übergang bis zur rechten Ergebnis-Leiste (Rollout 3): Streuung (Spreads) und optional der Durchschnittszeiger über den
+Controls anzeigen, wenn eine Runde aufgedeckt ist. Mockup-Runde 3 war in dieser Ecke noch unruhig. Erst Konzept
+(Delia), dann Umsetzung (Delia + Fred).
+
+### B-67 Timer statt Stoppuhr (T-Minus)
+Andreas (2026-10-28): Timer nach Raketenstart-Schema. Timebox 0 = wie heute, zählt T+ hoch (Stoppuhr). Timebox z. B.
+5 Minuten = startet bei T−05:00 und läuft gegen 0, danach weiter ins T+. Offen (UX, Delia): Anzeige und Steuerung
+trennen? Einstellungen (an/aus, Timebox, Pause/Reset) im Menü, für alle nur die Anzeige – oder Pause/Reset weiter
+direkt unten? Braucht Ben (Timebox je Team speichern) und Fred.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
