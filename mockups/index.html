@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Agile Poker – mockups</title>
+<style>
+    body { font: 15px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; margin: 0; padding: 2rem; background: #0c0e12; color: #d9dee8; }
+    h1 { font-size: 20px; margin: 0 0 .3rem; } h1::before { content: "$ "; color: #5af78e; }
+    h2 { font-size: 15px; margin: 1.8rem 0 .4rem; color: #8b94a5; } h2::before { content: "## "; color: #586174; }
+    p { margin: .3rem 0; color: #8b94a5; max-width: 60rem; }
+    ul { margin: 0; padding-left: 1.2rem; } li { margin: .25rem 0; }
+    a { color: #84cbff; } a:visited { color: #c9a7ff; }
+    small { color: #8b94a5; }
+    kbd { border: 1px solid #586174; border-radius: 3px; padding: 0 4px; font: inherit; }
+</style>
+</head>
+<body>
+<h1>Agile Poker – mockups</h1>
+<p>Static design mockups for discussion (Sprint 8, B-51/B-52/B-53). Not part of the app, no data is sent anywhere.
+    Round 3: Console is the look. Open a link, then use the small <b>mock</b> tab on the left edge (or key <kbd>M</kbd>) to switch states.</p>
+
+<h2>Everyday flow (like today)</h2>
+<ul>
+    <li><a href="board/?state=voting">Voting – cards being placed, “Cancel round”</a></li>
+    <li><a href="board/">Revealed – spread, the most chosen card is noted silently, “New round”</a></li>
+    <li><a href="board/?result=consensus">Revealed – consensus</a> · <a href="board/?result=close">close</a> · <a href="board/?result=mixed">with ? and ☕</a></li>
+    <li><a href="board/?topics=none&amp;state=voting">No topic at all</a> <small>(topic is optional, like today)</small></li>
+    <li><a href="board/?mode=light">Light mode</a> · <a href="board/?mode=light&amp;state=voting">light, voting</a></li>
+    <li><a href="board/?players=18">18 players</a></li>
+</ul>
+
+<h2>Topic list (optional extension)</h2>
+<ul>
+    <li><a href="board/?topics=backlog">With a topic list – “Next topic” appears next to “New round”</a></li>
+    <li><a href="board/?menu=topics">Topic menu without a list – “+ add next topic” turns it into a list</a></li>
+    <li><a href="board/?topics=backlog&amp;menu=topics">Topic menu with a list</a></li>
+</ul>
+
+<h2>Card sets – spread with symbols</h2>
+<ul>
+    <li><a href="board/?deck=emotions">Emotions</a> · <a href="board/?deck=emotions&amp;result=consensus">emotions, all the same</a></li>
+    <li><a href="board/?deck=tshirt">T-shirt sizes</a> · <a href="board/?deck=traffic">traffic lights</a> · <a href="board/?deck=stars">stars</a> · <a href="board/?deck=judge&amp;result=mixed">JUDGE (with veto)</a> · <a href="board/?deck=delegation">Delegation Poker</a></li>
+</ul>
+
+<h2>Menus</h2>
+<ul>
+    <li><a href="board/?menu=board">Board settings – variant A: groups (recommended)</a> · <a href="board/?menu=board&amp;settings=tabs">variant B: tabs</a></li>
+    <li><a href="board/?timer=0">Stopwatch off</a> <small>(toggle in the header: “Stopwatch [ ]”)</small></li>
+    <li><a href="board/?menu=players">Players</a> · <a href="board/?menu=you">You</a> · <a href="board/?menu=invite">Invite</a></li>
+</ul>
+
+<h2>Phone</h2>
+<ul>
+    <li><a href="board/?device=portrait">Portrait</a> · <a href="board/?device=portrait&amp;state=voting">voting</a> · <a href="board/?device=portrait&amp;menu=index">menu (stopwatch switch)</a> · <a href="board/?device=portrait&amp;menu=board">board settings</a> · <a href="board/?device=portrait&amp;deck=emotions&amp;mode=light">emotions, light</a></li>
+    <li><a href="board/?device=landscape">Landscape</a> · <a href="board/?device=landscape&amp;state=voting">voting</a></li>
+    <li><a href="board/?device=desktop">Desktop frame 1280×800</a></li>
+</ul>
+
+<h2>Comparison only</h2>
+<ul>
+    <li><a href="board/?theme=classic">Today’s look (classic) on the new layout</a> <small>– not offered in the app</small></li>
+</ul>
+<p><small>Parameters: mode, device (desktop|portrait|landscape), state (voting|revealed), result (consensus|close|spread|mixed), deck (fibonacci|emotions|tshirt|traffic|stars|judge|delegation|…), topics (none|single|backlog), menu (index|topics|players|board|you|feedback|invite), settings (groups|tabs), timer=0, players=N, long=1, clean=1 (no mock tab).</small></p>
+</body>
+</html>

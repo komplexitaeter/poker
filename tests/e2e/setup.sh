@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Starts a local copy of the poker app for the e2e tests:
 # nginx (port 8080) -> PHP-FPM for the app, /poker-msg -> poker-msg WebSocket server (127.0.0.1:8443),
-# MySQL database created from db_schema_pok.sql.
+# MySQL database created from db_schema_pok.sql plus the pending changes in db_schema_pok_inc.sql.
 #
 # Usage: tests/e2e/setup.sh start|stop
 #
@@ -75,7 +75,7 @@ start() {
     stop >/dev/null
     mkdir -p -m 700 "$E2E_DIR"
     check_owner
-    mkdir -p "$E2E_DIR"/{www,tmp,logs}
+    mkdir -p "$E2E_DIR"/{www,tmp,logs,tmp/sessions}
     rm -f "$E2E_DIR"/logs/*.log   # logs of this run only
 
     # --- app copy with test config (the repo's config.php stays untouched)
@@ -106,7 +106,9 @@ GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'localhost';
 GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'127.0.0.1';
 EOF
     $MYSQL_ADMIN "$DB_NAME" < "$REPO_DIR/db_schema_pok.sql"
-    log "database $DB_NAME created from db_schema_pok.sql"
+    # pending schema changes, as on the servers before the next merge into db_schema_pok.sql (check queries -> /dev/null)
+    $MYSQL_ADMIN "$DB_NAME" < "$REPO_DIR/db_schema_pok_inc.sql" > /dev/null
+    log "database $DB_NAME created from db_schema_pok.sql + db_schema_pok_inc.sql"
 
     # --- poker-msg
     local msg_dir="${POKER_MSG_DIR:-$E2E_DIR/poker-msg}"
@@ -144,6 +146,8 @@ php_admin_value[error_log] = $E2E_DIR/logs/php-error.log
 php_admin_flag[log_errors] = on
 ; file changes (e.g. fault injection in the app copy) take effect immediately
 php_admin_flag[opcache.enable] = off
+; sessions (form token in stats.php) independent of the php.ini of the runner
+php_admin_value[session.save_path] = $E2E_DIR/tmp/sessions
 EOF
     local fpm_args=(-y "$E2E_DIR/php-fpm.conf")
     [[ $(id -u) -eq 0 ]] && fpm_args+=(-R)

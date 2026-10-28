@@ -60,7 +60,6 @@ function getBrowserWidth(){
 function newRound() {
     let url = './api/newround.php?t=' + t;
     fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
-    toggleMobileMenu("closed");
 }
 
 function playerTypeUpdate(playerType, name) {
@@ -209,9 +208,8 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
             gJsonBefore = myJson;
 
-            if (isOnLoad) {
-                getPromo();
-            }
+            // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
+            // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
         });
 }
@@ -239,15 +237,85 @@ function cancelAnimations(element, animationId) {
     });
 }
 
-/* Card positions relative to #cbox, including a running FLIP transform. */
+/* Card positions and widths relative to #cbox, including a running FLIP transform. */
 function getCardPositions(cardsDiv) {
     const boxRect = cardsDiv.getBoundingClientRect();
     const positions = new Map();
     Array.from(cardsDiv.children).forEach(card => {
         const rect = card.getBoundingClientRect();
-        positions.set(card, { left: rect.left - boxRect.left, top: rect.top - boxRect.top });
+        positions.set(card, { left: rect.left - boxRect.left, top: rect.top - boxRect.top, width: rect.width });
     });
     return positions;
+}
+
+/* B-49: fit to table. The cards get the largest width between --card-min and --card-max
+ * (style.css, :root) at which all of them fit into the table without scrolling; below
+ * --card-min the table scrolls. Gaps and padding scale with the width as in style.css
+ * (div#cbox). The result is set as --card-w on #cbox; returns true when it changed.
+ * The measured area does not depend on --card-w: the table height comes from the page
+ * grid, the width is taken including a possible scrollbar, and the dock is always reserved
+ * at its full height, with New Round and the stopwatch, even while (parts of) it are hidden:
+ * the cards keep their size when the first vote, the stopwatch or a new round changes it.
+ * The side gutter of #cbox (--card-gutter: the gap between two cards, at least
+ * --card-gutter-min) is taken off the width. */
+function fitCardsToTable() {
+    const cbox = document.getElementById('cbox');
+    const table = document.getElementById('table');
+    if (cbox === null || table === null) return false;
+
+    const rootStyle = getComputedStyle(document.documentElement);
+    const token = name => parseFloat(rootStyle.getPropertyValue(name));
+    const min = token('--card-min');
+    const max = token('--card-max');
+    const ratio = token('--card-ratio');
+    const delMin = token('--card-del-min') || 0;
+    const gutterMin = token('--card-gutter-min') || 0;
+    if (!(min > 0 && max >= min && ratio > 0)) return false;
+
+    const tableStyle = getComputedStyle(table);
+    const width = table.offsetWidth - parseFloat(tableStyle.paddingLeft) - parseFloat(tableStyle.paddingRight);
+
+    const dockHeight = fullDockHeight(table.querySelector('.dock'));
+    // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - dockHeight - 7;
+
+    const n = cbox.children.length;
+    let fit = min;
+    for (let w = max; w > min; w--) {
+        const gapX = 0.1 * w;
+        const gapY = Math.max(delMin, 0.2 * w) / 2 + 0.1 * w;
+        const inner = width - 2 * Math.max(gutterMin, gapX);
+        // half a pixel to spare: the browser must not wrap a card earlier than computed
+        const cols = Math.max(1, Math.floor((inner + gapX - 0.5) / (w + gapX)));
+        const rows = Math.ceil(n / cols);
+        if (rows * (w * ratio + gapY) <= height) {
+            fit = w;
+            break;
+        }
+    }
+
+    const value = fit + 'px';
+    if (cbox.style.getPropertyValue('--card-w') === value) return false;
+    cbox.style.setProperty('--card-w', value);
+    return true;
+}
+
+/* B-49: height of the dock with everything it can show (New Round and the stopwatch), whatever
+ * is visible right now; the inline styles only last for the measurement (no repaint). */
+function fullDockHeight(dock) {
+    if (dock === null) return 0;
+    const shown = [];
+    const show = (element, display) => {
+        if (element === null || getComputedStyle(element).display !== 'none') return;
+        element.style.display = display;
+        shown.push(element);
+    };
+    show(dock, 'flex');
+    show(dock.querySelector('#stopwatch'), 'flex');
+    show(dock.querySelector('#newroundbtn'), 'inline-block');
+    const height = dock.offsetHeight;
+    shown.forEach(element => element.style.removeProperty('display'));
+    return height;
 }
 
 function removeCards(cardsDiv, players) {
@@ -289,6 +357,7 @@ function updateCards(cardsDiv, players) {
         const nameSpan = card.getElementsByClassName('card_player_name')[0];
         if (nameSpan.textContent !== player.name) {
             nameSpan.textContent = player.name;
+            nameSpan.title = player.name; // the full name when it ends with an ellipsis
         }
     });
 
@@ -309,6 +378,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     let cardSpan = document.createElement('span');
     cardSpan.classList.add('card_player_name');
     cardSpan.innerText = player.name;
+    cardSpan.title = player.name; // the full name when it ends with an ellipsis
     newCard.appendChild(cardSpan);
 
     let cardDeleteImg = document.createElement('img');
@@ -382,6 +452,8 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
             return card;
         });
     arrangeCards(cardsDiv, orderedCards);
+    // B-49: the card size follows the number of cards; the change glides with the FLIP below
+    fitCardsToTable();
 
     // Last + Invert + Play
     const lastPositions = getCardPositions(cardsDiv);
@@ -392,10 +464,13 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
             if (last === undefined) return; // removed
             const dx = first.left - last.left;
             const dy = first.top - last.top;
-            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+            const scale = last.width > 0 ? first.width / last.width : 1;
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(first.width - last.width) < 0.5) return;
             movedCards.add(card);
+            // scaled from the top left corner, so the translation applies to that corner
             card.animate(
-                [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }],
+                [{ transform: `translate(${dx}px, ${dy}px) scale(${scale})`, transformOrigin: '0 0' },
+                 { transform: 'none', transformOrigin: '0 0' }],
                 { id: 'flip', duration: CARD_ANIMATION_MS, easing: 'ease' });
         });
     }
@@ -436,12 +511,13 @@ function updateDom(myJson, isOnLoad) {
     gAllPlayersReady = myJson.all_players_ready;
     gSurvey = myJson.survey;
     gUserName = myJson.name;
+    updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
-    if (myJson.player_type === "PLAYER") {
-        document.getElementById('cet_toggle_user_type').value = "Become Observer";
-    } else {
-        document.getElementById('cet_toggle_user_type').value = "Participate as a Player";
-    }
+    checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
+    // B-51: the player's name as a tag on the cursor behind the team name in the header; plain text only
+    let promptUser = document.getElementById('prompt_user');
+    let promptText = myJson.name ? myJson.name : '';
+    if (promptUser.textContent !== promptText) promptUser.textContent = promptText;
 
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
@@ -484,10 +560,6 @@ function updateDom(myJson, isOnLoad) {
     }
 
     if (isOnLoad) {
-
-        if (myJson.hide_teaser === 1) {
-            hideTeaser(false);
-        }
 
         if (myJson.color_mode && myJson.color_mode.length > 0) {
             gColorMode = myJson.color_mode;
@@ -538,7 +610,9 @@ function updateDom(myJson, isOnLoad) {
 
         document.body.style.opacity = '1';
 
-        if (myJson.needs_setup) toggle_box('cset');
+        // a new board opens "Board settings" by itself, without taking the focus (name input first);
+        // not on phones, where the sheet would cover the name input
+        if (myJson.needs_setup && !gPhoneQuery.matches) openMenu('cset', null, false);
 
         updateDao(false);
     }
@@ -765,27 +839,29 @@ function measureEvent(eventCode) {
 
 
 function setColor() {
-    let toggleImg = document.getElementById("cmode_btn");
+    // the color mode button (#cmode_btn) shows moon/sun via CSS (body.light-theme)
     let brandImg = document.getElementById("brand");
-
+    checkRadio('cet_color_mode', gColorMode === "dark" ? 'dark' : 'light');
 
     if (gColorMode === "dark") {
-        toggleImg.src = "./src/toggle_light.svg";
-        brandImg.src = "./src/brand_dark.svg";
+        brandImg.src = "./src/brand_dark.svg?v=2";
         document.body.classList.remove('light-theme');
     } else {
-        toggleImg.src = "./src/toggle_dark.svg";
-        brandImg.src = "./src/brand_light.svg";
+        brandImg.src = "./src/brand_light.svg?v=2";
         document.body.classList.add('light-theme');
     }
+}
 
-    Array.from(document.getElementsByClassName("switchable")).forEach(element => {
-        if (gColorMode === "dark") {
-            element.classList.remove("light");
-        } else {
-            element.classList.add("light");
-        }
-    });
+/* B-51: "Appearance" in the "You" section (radio group) */
+function setColorMode(mode) {
+    if (mode !== gColorMode) switchColorMode();
+}
+
+/* B-51: the segment switches in the menu are radio groups (name = former select id);
+ * check the radio with the given value (values are fixed strings, never user input) */
+function checkRadio(name, value) {
+    let radio = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+    if (radio !== null && !radio.checked) radio.checked = true;
 }
 
 function switchColorMode(){
@@ -797,25 +873,40 @@ function switchColorMode(){
 }
 
 
-function toggleMobileMenu(target_state){
-    let menu = document.getElementById("mobile-menu");
-    let newroundbtn = document.getElementById("newroundbtn");
-    // breakpoint mirrored in style/style.css (@media (max-width: 799.98px))
-    if(menu.getAttribute('data-state') !== target_state && window.matchMedia('(max-width: 799.98px)').matches){
-        menu.setAttribute('data-state', target_state);
-        newroundbtn.setAttribute('data-state', target_state);
-    }
+/* B-46: on phones the topic strip shows one line; the arrow button (or a tap on the topic)
+ * shows all of it. Elsewhere the button is hidden by CSS and the topic is shown in full. */
+function toggleTopic(event) {
+    let button = document.getElementById('topic_toggle');
+    if (getComputedStyle(button).display === 'none') return;
+    if (event.target.closest('a')) return; // links in the topic just open
+    let expanded = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
 }
 
 function copyLink() {
     let text = window.location.href;
     navigator.clipboard.writeText(text).then(function() {
-        let copyButton = document.getElementById("copy_link_btn");
-        copyButton.classList.remove("react");
-        setTimeout(function() {
-            copyButton.classList.add("react");
-        }, 75);
+        showToast('Board link copied');
     });
+}
+
+/* Short message that pops up from the bottom edge for a moment (style.css, .toast).
+ * Plain text only (textContent). Calling it again replaces the text and restarts the timer. */
+let gToastTimer = null;
+function showToast(text) {
+    let toast = document.getElementById('toast');
+    // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
+    // (closeMenu() puts it back)
+    let menu = document.getElementById('menu');
+    let host = (menu !== null && menu.open && menu.matches(':modal')) ? menu : document.body;
+    if (toast.parentElement !== host) host.appendChild(toast);
+    toast.textContent = text;
+    toast.classList.add('toast-on');
+    clearTimeout(gToastTimer);
+    gToastTimer = setTimeout(function () {
+        toast.classList.remove('toast-on');
+    }, 2200);
 }
 
 
@@ -831,7 +922,7 @@ function generateQRCode(url) {
             color: "var(--text-color)",
             type: "extra-rounded"
         },
-        image: "src/logo_qr_code.png",
+        image: "src/logo_qr_code.png?v=2",
         cornersSquareOptions: {
             type: "extra-rounded"
         },
@@ -856,16 +947,6 @@ function showQRCode(showIt) {
         toggleStyleClass(overlay_qr, "hidden", "visible");
         toggleStyleClass(overlay, "hidden", "visible");
     }
-}
-
-function hideTeaser(updateUser=true) {
-    let e = document.getElementById("cta_teaser");
-
-    if (updateUser && !e.classList.contains("hidden")) {
-        fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&hide_teaser=1', { method: 'POST' }).then();
-    }
-
-    addStyleClass(e, "hidden");
 }
 
 function updateStopwatch(timer_status, timer_time, timer_visibility){
@@ -901,10 +982,12 @@ function updateStopwatch(timer_status, timer_time, timer_visibility){
     switch(timer_visibility){
         case 0:
             addStyleClass(document.getElementById("stopwatch"),"display_none");
+            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "false");
         break;
 
         case 1:
             removeStyleClass(document.getElementById("stopwatch"),"display_none");
+            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "true");
         break;
 
         default:
@@ -939,8 +1022,13 @@ function updateStopwatchInterval() {
 }
 
 function switchStopwatchVisiblity(){
+    // B-46: confirm the own click with a toast (others just see the stopwatch appear)
+    let switchingOn = document.getElementById("stopwatch_btn").getAttribute("aria-pressed") !== "true";
     let url = './api/timer.php?t=' +t + '&action=toggle_visibility';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    fetch(url, { method: 'POST' }).then(()=>{
+        pushDomChange();
+        showToast(switchingOn ? 'Stopwatch on \u2013 everyone on the board sees it' : 'Stopwatch off');
+    });
     measureEvent("TOGGLE_TIMER");
 }
 
@@ -963,19 +1051,17 @@ function stopwatchReset(){
 /* B-42: The sort order is only set in the menu (Card value = SEQUENCE, Player name = NAME).
  * Legacy values like 'CHOOSE:SEQUENCE' (before the data update) are shown as Card value.
  * In anonymous mode the server always arranges revealed cards by card value, so the
- * select is disabled and shows "Card value", whatever is stored; a hint explains why.
+ * radio group (B-51) is disabled and shows "Card value", whatever is stored; a hint explains why.
  * Nothing is sent to the API: the stored value stays and shows up again as soon as
  * anonymous mode is switched off. This already applies when anonymous mode is
  * requested for the next round, so it reacts as soon as "Hide names" is chosen.
  * The hint is only referenced via aria-describedby while it is visible. */
 function updateOrderByConfig(resultsOrder, anonymousMode) {
-    let dropDown = document.getElementById("cet_order_by");
+    let dropDown = document.getElementById("cet_order_by"); // the fieldset of the radio group
     let hint = document.getElementById("cet_order_by_hint");
     let order = (resultsOrder === 'NAME' && !anonymousMode) ? 'NAME' : 'SEQUENCE';
 
-    if (dropDown.value !== order) {
-        dropDown.value = order;
-    }
+    checkRadio('cet_order_by', order);
 
     dropDown.disabled = anonymousMode;
     if (anonymousMode) {
@@ -988,11 +1074,7 @@ function updateOrderByConfig(resultsOrder, anonymousMode) {
 }
 
 function updateAnonymityConfig(anonymousRequestToggle) {
-    let dropDown = document.getElementById("cet_anonymous");
-
-    if (dropDown.value !== anonymousRequestToggle ) {
-        dropDown.value = anonymousRequestToggle;
-    }
+    checkRadio('cet_anonymous', anonymousRequestToggle === 1 ? '1' : '0');
 }
 
 
@@ -1028,8 +1110,6 @@ function loadCardConfig() {
         thumbElement.id = "_" + card.card_key;
         thumbElement.src = "src/c_" + card.card_key + ".png";
         thumbElement.setAttribute("data-card_key", card.card_key);
-        thumbElement.src = "src/c_" + card.card_key + ".png";
-        thumbElement.classList.add("topnav");
         thumbElement.classList.add("cs_c");
         thumbElement.alt = card.description;
         thumbElement.addEventListener("click", toggleCSet);
@@ -1101,11 +1181,24 @@ function handleResize() {
     const cbox = document.getElementById('cbox');
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
+    fitCardsToTable(); // B-49: no glide either
     showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
 }
 
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
+    // B-49: the table also changes its size without a window resize (topic shown, unfolded or
+    // hidden): the cards jump to their new size like on a resize. Only the border box counts,
+    // a scrollbar coming or going does not change the area the cards are fitted to.
+    const table = document.getElementById('table');
+    if (table !== null && typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => {
+            const cbox = document.getElementById('cbox');
+            if (!fitCardsToTable()) return;
+            Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
+            finishAnimations(cbox, 'height');
+        }).observe(table, { box: 'border-box' });
+    }
 }
 
 function calculateCardStats(players) {
@@ -1130,6 +1223,13 @@ function calculateCardStats(players) {
     return cardStats;
 }
 
+/* Left edge of the average indicator when it points at the middle of a deck card whose left
+ * edge is at left (B-49: deck cards and indicator scale with the screen). */
+function indicatorLeft(img, left) {
+    const index = document.getElementById('index');
+    return left + (img.getBoundingClientRect().width - index.getBoundingClientRect().width) / 2;
+}
+
 function calculateIndicatorLefPosition(cardStats) {
     let hasResult = false;
     let resultCnt = 0;
@@ -1148,7 +1248,7 @@ function calculateIndicatorLefPosition(cardStats) {
         } else if (cardConfig && cardConfig.description === "infinity") {
             let e = document.getElementById(cardKey);
             curPos = e.getBoundingClientRect().left;
-            returnPos = curPos + 15;
+            returnPos = indicatorLeft(e, curPos);
         }
     });
 
@@ -1171,13 +1271,13 @@ function calculateIndicatorLefPosition(cardStats) {
                 let range = curVal - lastVal;
                 let relativePosition = (avgResult - lastVal) / range;
                 let newPosition = lastPos + relativePosition * (curPos - lastPos);
-                return Math.round(newPosition) + 15;
+                return Math.round(indicatorLeft(e, newPosition));
             }
 
             if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
                 let e = document.getElementById(img.id);
                 curPos = e.getBoundingClientRect().left;
-                return curPos + 15;
+                return indicatorLeft(e, curPos);
             }
 
             lastVal = curVal;
@@ -1216,17 +1316,11 @@ function showCardUsage(players, allPlayersReady, showAvg) {
     images.forEach(img => {
         const cardStat = cardStats[img.id];
 
-        if (cardStat) {
-            const usagePercentage = cardStat.usagePercentage || 0;
-            const boxShadowSize = Math.round(75 * usagePercentage);
-
-            if (cardStat.usageCount >0 && allPlayersReady) {
-                img.style.boxShadow = `0 -${boxShadowSize}px 0 0 var(--secondary-border-color)`;
-            } else {
-                img.style.boxShadow = '0 0px 0 0 var(--secondary-border-color)';
-            }
+        // B-49: the usage bar (style.css, .controls img) scales with the deck cards
+        if (cardStat && cardStat.usageCount > 0 && allPlayersReady) {
+            img.style.setProperty('--usage', String(cardStat.usagePercentage || 0));
         } else {
-            img.style.boxShadow = '0 0px 0 0 var(--secondary-border-color)';
+            img.style.setProperty('--usage', '0');
         }
     });
 
@@ -1257,7 +1351,10 @@ function showConfetty(playersCount) {
 
 function showDeleteUserOverlay(openIt=true) {
     let overlayDiv= document.getElementById('overlay_delete_user');
-    if (openIt) removeStyleClass(overlayDiv, 'hidden')
+    if (openIt) {
+        closeMenu(false); // the overlay takes over (B-51)
+        removeStyleClass(overlayDiv, 'hidden');
+    }
     else addStyleClass(overlayDiv, 'hidden');
 }
 

@@ -11,7 +11,7 @@ export interface myJsonType {
     mkey: string;
     id: string;
     color_mode: string;
-    hide_teaser: number;
+    hide_teaser: number; // B-57: 1 = feedback panel opened once (no red dot on the feedback menu)
     survey: string;
     team_name: string;
     cardset_flags: string;
@@ -44,6 +44,7 @@ interface Card {
     card_key: string;
     sort_order: number;
     description: string;
+    symbol?: string; // short label for non-numeric cards (B-53)
     numeric_value: number | null;
     flow_control: boolean;
 }
@@ -65,4 +66,22 @@ interface VoteOption {
     text: string;
     total_count: number;
     votes_percentage: number;
+}
+/* B-57: public list "Ideas & Bugs" - api/get_roadmap.php ({items}) and api/vote_roadmap.php (one RoadmapItem) */
+type RoadmapReaction = 'UP' | 'DOWN'; // shown as 👍 / 👎
+// counts and my_reaction belong to the current phase of the entry (WANT while PLANNED/IN_PROGRESS, DONE when DONE);
+// the list comes sorted: DONE, IN_PROGRESS, PLANNED, then (UP - DOWN) descending
+
+interface RoadmapItem {
+    id: number;
+    type: 'BUG' | 'FEATURE' | 'OTHER';
+    title: string;
+    description: string | null;
+    status: 'PLANNED' | 'IN_PROGRESS' | 'DONE';
+    reactions: Record<RoadmapReaction, number>;
+    my_reaction: RoadmapReaction | null;
+}
+
+interface Roadmap {
+    items: RoadmapItem[];
 }

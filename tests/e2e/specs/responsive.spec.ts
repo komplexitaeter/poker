@@ -5,6 +5,10 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersVia
  * B-36: The layout switches purely by CSS media queries at 800 px (style/style.css,
  * max-width: 799.98px / min-width: 800px). No element carries the former JS classes
  * mobile/desktop/sizefit any more. The analytics display type (xs/m/md/lg) is still sent.
+ * B-46: New Round is no longer part of the burger menu: below the cards on large screens, in a
+ * dock above the deck on phones.
+ * B-51: phones have a menu button (#menu_btn) that opens the menu index as a bottom sheet;
+ * large screens show the header shortcuts instead.
  */
 const SMALL = { width: 375, height: 800 };
 const LARGE = { width: 1280, height: 900 };
@@ -33,15 +37,16 @@ async function aliceInOpenRound(page: Page, teamName: string) {
 const legacyClassCount = (page: Page) =>
   page.evaluate(() => document.querySelectorAll('.mobile, .desktop, .sizefit').length);
 
-const burger = (page: Page) => page.locator('#mobile-menu .open_menu');
-const closeMenu = (page: Page) => page.locator('#mobile-menu .close-menu');
+const burger = (page: Page) => page.locator('#menu_btn');
+const closeMenu = (page: Page) => page.locator('#menu_close');
 
 async function expectSmallLayout(page: Page) {
   await expect(burger(page)).toBeVisible();
   await expect(page.locator('#topic_btn')).toBeHidden();
   await expect(page.locator('#cset_btn')).toBeHidden();
-  await expect(page.locator('#newroundbtn')).toBeHidden();
-  await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(100);
+  await expect(page.locator('#newroundbtn')).toBeVisible(); // B-46: in the dock, not in the menu
+  // B-49: two players fit easily, so the cards get the phone maximum (--card-max, 110px below 800px)
+  await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(110);
 }
 
 async function expectLargeLayout(page: Page) {
@@ -50,27 +55,36 @@ async function expectLargeLayout(page: Page) {
   await expect(page.locator('#cset_btn')).toBeVisible();
   await expect(page.locator('#newroundbtn')).toBeVisible();
   await expect(page.locator('#ctl')).toHaveCSS('height', '90px');
+  // B-49: two players on a large table: the cards use the room up to --card-max (150px)
+  await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(150);
 }
 
-test('small screen: burger menu holds the topnav and New Round (B-36)', async ({ browser }) => {
+test('small screen: burger menu holds the topnav, New Round stays in the dock (B-36, B-46)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: SMALL });
   const displayTypes = recordDisplayTypes(alice);
   await aliceInOpenRound(alice, 'RespSmall');
 
   await expectSmallLayout(alice);
 
-  // open the menu: the topnav buttons and New Round appear
+  // New Round sits in the dock right above the deck
+  const dock = await alice.locator('#newroundbtn').boundingBox();
+  const deck = await alice.locator('#ctl').boundingBox();
+  expect(dock!.y + dock!.height).toBeLessThanOrEqual(deck!.y + 1);
+
+  // open the menu: the index with all sections appears
   await burger(alice).click();
-  await expect(alice.locator('#mobile-menu')).toHaveAttribute('data-state', 'open');
-  await expect(alice.locator('#topic_btn')).toBeVisible();
-  await expect(alice.locator('#feedback_btn')).toBeVisible();
-  await expect(alice.locator('#newroundbtn')).toBeVisible();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+  const index = alice.locator('#menu_index');
+  await expect(index).toBeVisible();
+  for (const name of ['Topic', 'Board settings', 'You', 'Feedback']) {
+    await expect(index.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible();
+  }
 
   // close it again
   await closeMenu(alice).click();
-  await expect(alice.locator('#mobile-menu')).toHaveAttribute('data-state', 'closed');
-  await expect(alice.locator('#topic_btn')).toBeHidden();
-  await expect(alice.locator('#newroundbtn')).toBeHidden();
+  await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
+  await expect(index).toBeHidden();
+  await expect(alice.locator('#newroundbtn')).toBeVisible();
 
   expect(await legacyClassCount(alice)).toBe(0);
   await expect.poll(() => displayTypes.get('INIT_ON_LOAD')).toEqual(['xs']);
@@ -99,9 +113,10 @@ test('resizing switches the layout and display type without a reload (B-36)', as
 
   await alice.setViewportSize(SMALL);
   await expectSmallLayout(alice);
-  // an analytics event now reports the small display type
+  // an analytics event now reports the small display type (phones: "Appearance" in "You")
   await burger(alice).click();
-  await alice.locator('#cmode_btn').click();
+  await alice.locator('#menu_index').getByRole('button', { name: /^You/ }).click();
+  await alice.locator('input[name=cet_color_mode][value=light]').check();
   await expect.poll(() => displayTypes.get('USE_COLOR_SWITCH')).toEqual(['xs']);
   await closeMenu(alice).click();
 

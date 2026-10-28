@@ -34,3 +34,106 @@ select results_order, count(*) from pok_teams_tbl where results_order like 'CHOO
 
 /* 2. fix */
 update pok_teams_tbl set results_order = 'SEQUENCE' where results_order like 'CHOOSE%';
+
+/* B-57: Ideas & Bugs - typed feedback with technical context, a public list ("roadmap") with status and
+   reactions, moderation in stats.php. Run BEFORE deploying the B-57 code (feedback.php writes the new columns).
+   All statements are backward compatible: the old code keeps working with the new columns and tables.
+   pok_feedback_tbl is small (a few rows per day), the ALTERs rebuild it in well under a second. */
+
+/* 1. check (read only): no fb_id/fb_type yet, charset utf8mb3; the new tables do not exist yet */
+select column_name, character_set_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_feedback_tbl' order by ordinal_position;
+select table_name from information_schema.tables
+ where table_schema = database() and table_name in ('pok_roadmap_tbl', 'pok_roadmap_votes_tbl');
+
+/* 2. change */
+/* pok_feedback_tbl: primary key (needed to tick off single rows), type, context, done date.
+   A single ALTER is atomic: running it twice fails with "Duplicate column" and changes nothing. */
+alter table pok_feedback_tbl
+  add column fb_id int not null auto_increment primary key first,
+  add column fb_type varchar(10) null comment 'BUG, FEATURE, OTHER; null for feedback before B-57',
+  add column fb_context varchar(500) null comment 'technical context of a bug report (JSON text from the client), never a team id',
+  add column done_date timestamp null comment 'ticked off in stats.php';
+
+/* utf8mb4, so feedback texts may contain emojis (with utf8mb3 such an insert fails). Lossless for the existing
+   utf8mb3 data, no index on the text columns, max row size 7,200 bytes for fb_text. Idempotent. */
+alter table pok_feedback_tbl convert to character set utf8mb4 collate utf8mb4_0900_ai_ci;
+
+/* public list, written by us (never user texts) */
+create table if not exists pok_roadmap_tbl (
+  id int not null auto_increment primary key,
+  item_type varchar(10) not null default 'FEATURE' comment 'BUG, FEATURE, OTHER',
+  title varchar(120) not null,
+  description varchar(600) null,
+  status varchar(12) not null default 'PLANNED' comment 'PLANNED, IN_PROGRESS, DONE',
+  sort_order int not null default 0 comment 'ascending, then newest first',
+  visible tinyint not null default 1,
+  creation_date timestamp not null default current_timestamp,
+  update_date timestamp not null default current_timestamp on update current_timestamp
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
+
+/* one reaction per user id, item and phase (UP = thumbs up, DOWN = thumbs down in the frontend).
+   phase: WANT while the item is PLANNED or IN_PROGRESS, DONE once it is DONE (set by vote_roadmap.php from the
+   item status), so an item set to DONE starts again at 0 in the app, and stats.php shows both phases. */
+create table if not exists pok_roadmap_votes_tbl (
+  item_id int not null,
+  user_id varchar(16) not null,
+  phase varchar(10) not null comment 'WANT, DONE',
+  reaction varchar(10) not null comment 'UP, DOWN',
+  creation_date timestamp not null default current_timestamp on update current_timestamp,
+  primary key (item_id, user_id, phase)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
+
+/* seed (idempotent) */
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'New look', 'Fresh console look, menus as side panel, cards that fit your screen.', 'DONE', 0, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'New look');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'See changed cards', 'If someone changes their card after the reveal, the original card stays visible underneath.', 'PLANNED', 10, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'See changed cards');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'Reveal now', 'Reveal the cards even if someone is away and has not voted yet.', 'PLANNED', 20, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'Reveal now');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'Fun reactions', 'Emoji reactions and a bit more fun on the table.', 'PLANNED', 30, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'Fun reactions');
+insert into pok_roadmap_tbl (item_type, title, description, status, sort_order, visible)
+select 'FEATURE', 'Custom cards', 'Your own card values and decks.', 'PLANNED', 40, 1 from dual
+ where not exists (select 1 from pok_roadmap_tbl where title = 'Custom cards');
+
+/* mark the feedback before B-57 as done, so the inbox in stats.php starts empty (Andreas, 2026-10-27) */
+update pok_feedback_tbl set done_date = datum where fb_type is null and done_date is null;
+
+/* B-57 follow-up, ONLY for staging (already has the first B-57 SQL with LOVE/MEH and without phase).
+   Not needed on live: the B-57 section above already creates the final pok_roadmap_votes_tbl.
+   Run BEFORE deploying the new B-57 code (vote_roadmap.php writes the phase column). */
+
+/* 1. check (read only): no column phase yet, primary key (item_id, user_id) */
+select column_name, column_key, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_roadmap_votes_tbl' order by ordinal_position;
+
+/* 2. change */
+/* Only if the column phase is missing (so a no-op on live and in the e2e setup, which run this whole file).
+   Default WANT only so the old code still running until the deploy can insert; dropped in step 3. */
+set @b57_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roadmap_votes_tbl' and column_name = 'phase') = 0,
+  'alter table pok_roadmap_votes_tbl
+     add column phase varchar(10) not null default ''WANT'' comment ''WANT, DONE'' after user_id,
+     modify column reaction varchar(10) not null comment ''UP, DOWN'',
+     drop primary key,
+     add primary key (item_id, user_id, phase)',
+  'select 1');
+prepare b57_stmt from @b57_sql;
+execute b57_stmt;
+deallocate prepare b57_stmt;
+
+/* old reactions -> new codes, phase from the current item status. Idempotent (only touches LOVE/MEH rows);
+   run again after the deploy if the old code wrote LOVE/MEH in between. */
+update pok_roadmap_votes_tbl v
+  join pok_roadmap_tbl r on r.id = v.item_id
+   set v.phase = case when r.status = 'DONE' then 'DONE' else 'WANT' end
+      ,v.reaction = case v.reaction when 'LOVE' then 'UP' else 'DOWN' end
+ where v.reaction in ('LOVE', 'MEH');
+
+/* 3. after deploying the new code (no-op without a default): same column definition as on live. Idempotent. */
+alter table pok_roadmap_votes_tbl alter column phase drop default;

@@ -1,5 +1,9 @@
 <?php
-function db_init() {
+/*
+ * $charset: 'utf8' (= utf8mb3) for the old tables; 'utf8mb4' where texts may contain emojis
+ * (pok_feedback_tbl and the roadmap tables, B-57).
+ */
+function db_init(string $charset = 'utf8') {
     $link = mysqli_init();
     mysqli_real_connect(
         $link,
@@ -9,7 +13,7 @@ function db_init() {
         _MYSQL_DB,
         _MYSQL_PORT
     );
-    $link->set_charset("utf8");
+    $link->set_charset($charset);
     return $link;
 }
 
@@ -393,7 +397,7 @@ function getDao($t, $id) {
         "mkey"=>$mkey,
         "id"=>$id,
         "color_mode"=>(String)$color_mode,
-        "hide_teaser"=>(Int)$hide_teaser,
+        "hide_teaser"=>(Int)$hide_teaser, // B-57: 1 = feedback panel seen (no red dot)
         "survey"=>$survey,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
@@ -414,6 +418,59 @@ function getDao($t, $id) {
         "players_count"=>$players_count,
         "ready_players_count"=>$ready_players_count,
         "players"=>$players );
+}
+
+/* B-57: allowed values for feedback types, roadmap status and reactions (UP = thumbs up, DOWN = thumbs down) */
+const FEEDBACK_TYPES = ['BUG', 'FEATURE', 'OTHER'];
+const ROADMAP_STATUS = ['PLANNED', 'IN_PROGRESS', 'DONE'];
+const ROADMAP_REACTIONS = ['UP', 'DOWN'];
+
+/*
+ * B-57: votes are stored per phase - WANT while an entry is PLANNED or IN_PROGRESS, DONE once it is DONE.
+ * So an entry set to DONE starts again at 0 in the public list. Same rule in SQL: roadmap_phase_sql().
+ */
+function roadmap_phase(string $status): string {
+    return $status === 'DONE' ? 'DONE' : 'WANT';
+}
+
+function roadmap_phase_sql(string $status_column): string {
+    return "case when $status_column = 'DONE' then 'DONE' else 'WANT' end";
+}
+
+/*
+ * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none),
+ * both for the current phase of the entry only. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by
+ * (UP - DOWN) descending, then sort_order, then newest first.
+ * $item_id limits the result to that entry (empty array if it is not visible).
+ */
+function get_roadmap_items($link, string $user_id, ?int $item_id = null): array {
+    $phase = roadmap_phase_sql('r.status');
+    $sql = $link->prepare("select x.* from (
+                               select r.id, r.item_type, r.title, r.description, r.status, r.sort_order
+                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'UP') as up_cnt
+                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'DOWN') as down_cnt
+                                     ,(select v.reaction from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.user_id = ?) as my_reaction
+                                 from pok_roadmap_tbl r
+                                where r.visible = 1
+                                  and (? is null or r.id = ?)
+                           ) x
+                           order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED'), x.up_cnt - x.down_cnt desc, x.sort_order, x.id desc");
+    $sql->bind_param('sii', $user_id, $item_id, $item_id);
+    $sql->execute();
+    $items = array();
+    $result = $sql->get_result();
+    while ($obj = $result->fetch_object()) {
+        $items[] = array(
+            "id" => (int)$obj->id,
+            "type" => $obj->item_type,
+            "title" => $obj->title,
+            "description" => $obj->description,
+            "status" => $obj->status,
+            "reactions" => array("UP" => (int)$obj->up_cnt, "DOWN" => (int)$obj->down_cnt),
+            "my_reaction" => $obj->my_reaction
+        );
+    }
+    return $items;
 }
 
 function get_survey_id($link, $team_id, $user_id) {

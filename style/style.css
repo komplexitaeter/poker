@@ -1,65 +1,146 @@
-/* Agile Poker stylesheet.
+/* Agile Poker stylesheet – "console" look (Sprint 8, B-48/B-50).
  * One breakpoint: small screens (phones) up to 799.98px, large screens from 800px
- * (mirrored in script/script.js, toggleMobileMenu). Shapes follow the topnav graphics:
- * actions are pills (like the color mode switch), fields and tiles are softly rounded
- * rectangles (like the icon tiles), boxes and cards use the large card radius. */
+ * (mirrored in script/script.js where the menu panel is opened). Monospace type, flat surfaces,
+ * small radii; colors come from the tokens below (dark = default, light = body.light-theme).
+ * Board page grid (B-46): see "Board layout". Short landscape screens (max-height: 500px)
+ * get the phone topic strip as well.
+ * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens".
+ * Menus (B-51): one panel, see "Menu panel". */
 
 /* ---------- Tokens ---------- */
 
-/* Dark Theme */
+/* Theme-independent tokens */
 :root {
-    --background-color: black;
-    --secondary-background-color: #151515;
-    --light-background: #202020;
-    --survey-background: #2d2d2a;
-    --survey-sec-background: #4f4e4e;
-    --survey-voted_background: rgba(0, 0, 0, 0.67);
-    --medium_color: #666666;
-    --light-border-color: #999999;
-    --text-color: white;
-    --primary-border-color: white;
-    --secondary-border-color: #262424;
-    --switch-background-color: rgba(86, 86, 86, 0.44);
-    --switch-color: #a4a2a2;
-    --box-disabled: #3f3d3d;
-    --bluish: #84cbff;
-    /* same in light and dark mode (only defined here) */
-    --topic-color: #fc91f5;
-    --topic-background: #800176;
-    --link-color: #ee01da;
-    --danger-color: #df3636;
-    --flash-red-background: #340000;
-    --focus-ring: rgba(132, 203, 255, 0.6);
-    --shadow-color: rgba(0, 0, 0, 0.1);
+    /* system monospace stack, no webfont download */
+    --font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    /* type scale */
+    --fs-xs: 0.6875rem;   /* 11px: card names, hints, small print */
+    --fs-s: 0.8125rem;    /* 13px: labels, menu buttons, fields */
+    --fs-m: 0.875rem;     /* 14px: body text */
+    --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
+    --fs-xl: 1.125rem;    /* 18px: stopwatch display */
+    /* stacking order (lowest first) */
+    --z-nav: 10;          /* header, above the table */
+    --z-promo: 100;
+    --z-panel: 150;       /* menu panel (large screens), above deck, survey and promo */
+    --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
+    --z-scrim: 300;       /* QR code backdrop */
+    --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
     /* shapes */
-    --radius-s: 5px;      /* card deck, small tiles */
-    --radius-m: 8px;      /* fields, topic note */
-    --radius-l: 15px;     /* cards, menu boxes */
-    --radius-pill: 999px; /* buttons */
+    --radius-s: 3px;      /* small tiles, tooltips */
+    --radius-m: 4px;      /* fields, buttons, topnav buttons */
+    --radius-l: 6px;      /* menu boxes, panels */
+    --radius-pill: var(--radius-m); /* buttons (formerly pills) */
     /* spacing */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
     --space-3: 1rem;
     --space-4: 2rem;
+    /* minimum size of a header button; larger on touch screens */
+    --tap: 36px;
+    /* menu panel width on large screens */
+    --panel-w: 380px;
+    /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
+     * the largest width between --card-min and --card-max at which all cards fit into #table,
+     * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
+     * The images are 300 x 443px: sharp up to 150px on 2x screens. */
+    --card-min: 64px;     /* the name stays readable; on a 375x667 phone 20 cards fit without scrolling, more scroll */
+    --card-max: 150px;    /* phones: 110px, see below */
+    --card-ratio: 1.48;   /* height / width (100 x 148) */
+    /* side gutter of #cbox: the gap between two cards, at least this (large screens: plus the
+     * 8px padding of .table) – the outer cards never touch the edge of the table */
+    --card-gutter-min: 8px;
+    /* Without script.js: 100px from about 455px to 1440px (as before B-49), 22vw below
+     * (4 cards per row at 320-430px), 6.94vw above (grows with the screen), 64-140px. */
+    --card-fluid: clamp(64px, min(22vw, max(100px, 6.94vw)), 140px);
+    /* smallest delete icon on a card: none here, 28px on touch screens (see "Touch screens") */
+    --card-del-min: 0px;
+    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px); never wider than
+     * 16 cards fit in one row ((100vw - 80px padding) / 16 - 4px margin), at least 36px. */
+    --deck-w: clamp(36px, min((100vw - 80px) / 16 - 4px, max(45px, 2.5vw + 13px)), 64px);
+    --deck-h: calc(var(--deck-w) * 1.48 + 23.4px);  /* deck bar height: 90px at 45px */
+    --deck-stats: calc(var(--deck-w) * 5 / 3);      /* max. height of a usage bar: 75px at 45px */
 }
 
-/* Light Theme */
+/* phones: the deck scrolls sideways; 55px at 375px as before, smaller in landscape (12vh) */
+@media (max-width: 799.98px) {
+    :root {
+        --deck-w: clamp(44px, min(12vw + 10px, 12vh), 64px);
+        --card-max: 110px; /* few players: no giant cards on a phone */
+    }
+}
+
+@media (pointer: coarse) {
+    :root { --tap: 44px; }
+}
+
+/* Dark theme (default). Colors live on body because the light theme is a class on body. */
+body {
+    --bg: #0c0e12;          /* page */
+    --bg-2: #13161c;        /* header, card back, fields */
+    --bg-3: #1b1f27;        /* menu boxes, survey */
+    --bg-4: #262b35;        /* blocks inside boxes, open phone menu */
+    --line: #2a303b;        /* quiet separators */
+    --line-strong: #586174; /* borders of controls and cards */
+    --text: #d9dee8;
+    --muted: #8b94a5;       /* labels, hints, prompt path */
+    --disabled: #646c7d;
+    --accent: #84cbff;      /* hover, focus, selection */
+    --on-accent: #0c0e12;
+    --brand-pink: #ff5fd7;  /* links */
+    --topic-color: #fc91f5;
+    --ok: #5af78e;          /* prompt user@host */
+    --danger: #ff6b66;
+    --flash-red-background: #340000;
+    --focus-ring: rgba(132, 203, 255, 0.6);
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
+    --survey-voted_background: rgba(0, 0, 0, 0.67);
+}
+
 body.light-theme {
-    --background-color: white;
-    --secondary-background-color: #e3e3e3;
-    --light-background: #d9d9d9;
-    --survey-background: #e1e1e1;
-    --survey-sec-background: #eae9e9;
+    --bg: #f7f6f1;
+    --bg-2: #eeede6;
+    --bg-3: #e4e3db;
+    --bg-4: #dad9d0;
+    --line: #d3d2c8;
+    --line-strong: #8e8d85;
+    --text: #1d2027;
+    --muted: #5b606b;
+    --disabled: #9a998f;
+    --accent: #0a62b3;
+    --on-accent: #ffffff;
+    --brand-pink: #b1009d;
+    --topic-color: #9a0089;
+    --ok: #1b7a37;
+    --danger: #c0262d;
+    --flash-red-background: #ffd9d9;
+    --focus-ring: rgba(10, 98, 179, 0.5);
+    --shadow-color: rgba(0, 0, 0, 0.18);
+    --scrim: rgba(29, 32, 39, 0.4);
     --survey-voted_background: rgba(255, 255, 255, 0.67);
-    --medium_color: #f1f1f1;
-    --light-border-color: #656565;
-    --text-color: black;
-    --primary-border-color: black;
-    --secondary-border-color: #c5c3c3;
-    --switch-background-color: rgba(189, 189, 189, 0.44);
-    --switch-color: #4f4e4e;
-    --box-disabled: #cbc5c5;
-    --bluish: #0891ff;
+}
+
+/* Former token names, kept as aliases so the rest of the sheet (and script.js, which uses
+ * --text-color and --background-color for the QR code) keeps working. Declared on body
+ * (both themes) so they resolve against the theme colors above. New code: use the tokens above. */
+body,
+body.light-theme {
+    --background-color: var(--bg);
+    --secondary-background-color: var(--bg-2);
+    --light-background: var(--bg-3);
+    --survey-background: var(--bg-3);
+    --survey-sec-background: var(--bg-4);
+    --medium_color: var(--line);
+    --light-border-color: var(--line-strong);
+    --text-color: var(--text);
+    --primary-border-color: var(--line-strong);
+    --secondary-border-color: var(--line);
+    --switch-color: var(--muted);
+    --box-disabled: var(--disabled);
+    --bluish: var(--accent);
+    --link-color: var(--brand-pink);
+    --danger-color: var(--danger);
 }
 
 /* ---------- Base ---------- */
@@ -70,17 +151,28 @@ body {
     margin: 0;
     outline: none;
     padding: 0;
-    background: var(--background-color);
-    color: var(--text-color);
+    background: var(--bg);
+    color: var(--text);
     text-align: center;
     overflow-y: scroll;
     min-height: 100%;
     opacity: 0;
-    font-family: Arial, serif;
+    font-family: var(--font);
+    font-size: var(--fs-m);
     -webkit-user-select: none;
     user-select: none;
     -webkit-user-drag: none;
+    touch-action: manipulation; /* B-47: no double-tap zoom delay (the body reacts to dblclick) */
 }
+
+/* board: the page grid fills the screen, only the table scrolls (B-46) */
+body:has(> .container) { overflow: hidden; }
+
+/* form controls do not inherit the font by default */
+button,
+input,
+select,
+textarea { font-family: inherit; }
 
 .body-fade-in { transition: opacity 1s ease-in 0.1s; }
 
@@ -102,7 +194,24 @@ a {
 .visible { visibility: visible; }
 .hidden { visibility: hidden; }
 
-.light { filter: invert(100%); }
+/* Inline SVG icon sprite (board.html, init.html): line icons in the current text color */
+.sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+svg.i {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
 
 /* ---------- Shared components ---------- */
 
@@ -111,7 +220,7 @@ a {
     background: var(--background-color);
     border: 1px solid var(--primary-border-color);
     color: var(--text-color);
-    font-size: medium;
+    font-size: var(--fs-l);
     padding: 5pt var(--space-3);
     width: 200px;
     border-radius: var(--radius-pill);
@@ -125,7 +234,7 @@ a {
     background: var(--light-background);
     border: 1px solid var(--light-border-color);
     color: var(--text-color);
-    font-size: smaller;
+    font-size: var(--fs-s);
     padding: 4px 15px;
     border-radius: var(--radius-pill);
     font-family: inherit;
@@ -149,11 +258,11 @@ a {
 /* Field inside a menu box: select, text input, textarea */
 .field {
     box-sizing: border-box;
-    background: var(--survey-background); /* slightly apart from the box background */
+    background: var(--bg-2); /* slightly apart from the box background */
     border: 1px solid var(--light-border-color);
     color: var(--text-color);
     font-family: inherit;
-    font-size: smaller;
+    font-size: var(--fs-s);
     padding: 4px 10px;
     border-radius: var(--radius-m);
 }
@@ -170,7 +279,7 @@ textarea.field {
     border: 1px solid var(--primary-border-color);
     color: var(--text-color);
     font-family: inherit;
-    font-size: medium;
+    font-size: var(--fs-l);
     padding: 5pt;
     text-align: center;
     border-radius: var(--radius-m);
@@ -194,22 +303,11 @@ textarea.field {
     box-shadow: 0 0 8px 2px var(--focus-ring);
 }
 
-/* Menu box (topic, feedback, setup, user settings), opened by JS (style.display) */
-.menu_box {
-    position: absolute;
-    top: 45px;
-    padding-bottom: var(--space-3);
-    border: 1px solid var(--primary-border-color);
-    border-radius: var(--radius-l);
-    background: var(--light-background);
-    display: none;
-    z-index: 999999;
-}
-
+/* empty labels of the name overlay keep their spacing (the menu uses .lab) */
 .topnav label {
     display: block;
     margin: var(--space-3) 0 0.1rem 1.5rem;
-    font-size: smaller;
+    font-size: var(--fs-s);
     color: var(--switch-color);
     text-align: left;
 }
@@ -224,7 +322,7 @@ textarea.field {
 }
 
 .overlay_panel {
-    z-index: 99999999;
+    z-index: var(--z-overlay);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -238,44 +336,41 @@ textarea.field {
     width: 450px;
 }
 
-.overlay_panel .btn { margin-bottom: var(--space-2); }
+/* one column for the name input and the choices; wide enough for "Participate as a Player"
+ * in the monospace font (23 characters), never wider than the screen */
+.overlay_panel .btn,
+#nameinput {
+    box-sizing: border-box;
+    width: 18rem;
+    max-width: calc(100% - 2 * var(--space-3));
+}
+
+.overlay_panel .btn {
+    min-height: var(--tap);
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    margin-bottom: var(--space-2);
+}
 
 @media (max-width: 799.98px) {
     .btn-box {
-        font-size: 1rem;
+        font-size: var(--fs-l);
         padding: var(--space-2) var(--space-3);
         margin: var(--space-3) 0;
     }
 
     /* 16px keeps iOS from zooming into the field */
-    .field { font-size: 1rem; }
-
-    .menu_box {
-        top: 16%;
-        right: 2.5%;
-        width: 95%;
-        max-height: 80%;
-        overflow-y: auto;
-    }
+    .field { font-size: var(--fs-l); }
 
     .overlay_msg { width: 65%; }
 
     .overlay_panel .btn {
-        width: 65%;
         min-height: 3rem;
         margin-bottom: var(--space-3);
     }
 }
 
 /* ---------- Start page ---------- */
-
-#brand {
-    position: absolute;
-    left: 10px;
-    top: 11px;
-    width: 140px;
-    outline: none;
-}
 
 #teaminput {
     margin-top: 60px;
@@ -292,320 +387,988 @@ textarea.field {
     width: fit-content;
     text-align: left;
     margin: var(--space-4) auto 1em;
+    line-height: 1.6;
 }
 
-/* ---------- Board layout ---------- */
+.instruction li::marker { color: var(--muted); }
 
+/* ---------- Board layout (B-46) ---------- */
+
+/* One grid for the whole screen: header / topic / table / card deck.
+ * dvh follows the visible height on phones (address bar), vh is the fallback.
+ * Only the table scrolls; the deck keeps its place. The round actions (.dock: New Round,
+ * stopwatch) follow the cards and stick to the bottom of the table when it scrolls.
+ * Phones: the topic is a one-line strip, the actions a dock right above the deck.
+ * Safe areas (viewport-fit=cover): left/right here, bottom below the deck. */
 .container {
+    position: relative; /* anchor of the phone menu and its boxes */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "head"
+        "topic"
+        "table"
+        "deck";
     height: 100vh;
-    position: relative;
+    height: 100dvh;
+    padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
-.up-container {
-    top: 0;
-    position: absolute;
-    height: 89vh;
-    width: 100%;
-    overflow: hidden;
+.container > .head {
+    grid-area: head;
+    padding-top: max(4px, env(safe-area-inset-top));
 }
 
+/* the table: scrolls on its own; #cbox inside stays as high as its cards */
+.table {
+    grid-area: table;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 var(--space-2);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.table > #cbox { flex: none; }
+
+/* the deck spans the full width (wide card sets need it until B-49) */
 .down-container {
-    bottom: 0;
-    position: fixed;
-    width: 100%;
+    grid-area: deck;
+    position: relative; /* anchor of the survey */
     display: flex;
     justify-content: center;
     align-items: flex-end;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
-@media (max-width: 799.98px) {
-    .up-container {
-        overflow: visible;
-        overflow-y: scroll;
-    }
-}
-
-/* ---------- Topnav: team name, copy link, QR code ---------- */
-
-.topnav_title {
-    position: relative;
-    top: 15px;
-    margin: 0 auto;
-    color: var(--text-color);
-    font-size: 16pt;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.topnav_title>div { display: inline; }
-
-.topnav_clink {
-    position: absolute;
-    top: 0;
-    border: 1px solid var(--primary-border-color);
-    border-radius: var(--radius-pill);
-    padding: 0.3rem 0.5rem;
-    margin-left: 0.6rem;
-    transition: transform 2s ease-in-out;
-    overflow: hidden;
-    white-space: nowrap;
-    background-color: var(--background-color);
-    font-size: 8pt;
-    cursor: pointer;
-}
-
-#team_name:hover~.topnav_clink,
-.topnav_clink:hover {
-    color: var(--bluish);
-    border-color: var(--bluish);
-}
-
-#show_qr_code {
-    position: absolute;
-    width: 1.5rem;
-    height: 1.5rem;
-    margin-left: 5.3rem;
-    background-image: url("../src/open_qr_code_icon.png");
-    background-size: 100%;
-    background-repeat: no-repeat;
-    cursor: pointer;
-}
-
-#show_qr_code:hover {
-    background-image: url("../src/open_qr_code_icon_hover.png");
-}
-
-@media (max-width: 799.98px) {
-    .topnav_title {
-        top: 20px;
-        font-size: 12pt;
-        cursor: auto;
-    }
-
-    .topnav_clink {
-        top: -4px;
-        left: 5px;
-        cursor: auto;
-    }
-
-    #show_qr_code { visibility: hidden; }
-}
-
-/* ---------- Topnav: icon buttons and hint bubbles ---------- */
-
-.topnav_btn {
-    position: absolute;
-    width: 32px;
-    top: 14px;
-    transition: transform .5s ease-in-out;
-    z-index: 1;
-}
-
-.topnav_btn:hover,
-.topnav_btn_on {
-    cursor: pointer;
-    transform: scale(1.15);
-}
-
-.topnav_btn_bling { transform: scale(1.6); }
-
-#cmode_btn {
-    margin-top: 1px;
-    height: 20px;
-    width: auto;
-}
-
-#cmode_btn:hover { transform: scale(1); }
-
-.cmode_btn_init { right: 53px; }
-.cmode_btn_board { right: 192px; }
-#user_settings_btn { right: 154px; }
-#topic_btn { right: 119px; }
-#cset_btn { right: 84px; }
-#stopwatch_btn { right: 49px; }
-#feedback_btn { right: 14px; }
-
-.cta_design {
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-#user_settings_btn:hover + #cta_user_settings,
-#topic_btn:hover + #cta_topic,
-#cset_btn:hover + #cta_cset,
-#stopwatch_btn:hover + #cta_stopwatch,
-#feedback_btn:hover + #cta_feedback { opacity: 1; }
-
-.cta_design,
-#cta_teaser { position: absolute; }
-
-#cta_user_settings,
-#cta_teaser { right: 91px; top: 39px; width: 85px; }
-#cta_topic { right: 54px; top: 38px; width: 140px; }
-#cta_cset { right: 33px; top: 38px; width: 170px; }
-#cta_stopwatch { right: 35px; top: 39px; width: 155px; }
-#cta_feedback { right: 20px; top: 40px; width: 160px; }
-
-/* ---------- Topnav: burger menu on small screens ---------- */
-
-.close-menu { display: none; }
-
-@media (min-width: 800px) {
-    .mobile-menu {
-        top: 0;
-        width: 100%;
-        position: absolute;
-        z-index: 1;
-    }
-
-    .mobile-menu .open_menu { display: none; }
-}
-
-@media (max-width: 799.98px) {
-    .mobile-menu[data-state=closed] {
-        position: absolute;
-        top: 5px;
-        right: 10px;
-        width: 50px;
-        height: 50px;
-        margin: 0 auto;
-    }
-
-    .mobile-menu[data-state=closed] .open_menu {
-        height: auto;
-        width: 100%;
-        z-index: 2;
-    }
-
-    .mobile-menu[data-state=open] .open_menu { display: none; }
-
-    .mobile-menu[data-state=open] {
-        position: absolute;
-        width: 95%;
-        height: 99%;
-        min-height: 95%;
-        right: 2.5%;
-        top: 5px;
-        background-color: var(--survey-sec-background);
-        z-index: 1;
-        border-radius: 2rem;
-    }
-
-    .mobile-menu[data-state=open] .close-menu {
-        display: block;
-        position: absolute;
-        right: 20px;
-        top: 10px;
-        height: 30px;
-        width: 30px;
-        background-image: url("../src/cross_black.png");
-        background-size: 100%;
-        background-repeat: no-repeat;
-    }
-
-    .mobile-menu .close-menu:active { filter: invert(100%); }
-
-    .mobile-menu[data-state=open] #brand {
-        display: unset;
-        top: 0;
-        width: 8rem;
-        height: auto;
-        margin-top: 10px;
-    }
-
-    .mobile-menu[data-state=open] .topnav_btn {
-        display: unset;
-        width: 10%;
-        height: auto;
-        top: 52px;
-    }
-
-    .mobile-menu #cmode_btn {
-        left: 5%;
-        top: 56px;
-        width: 13%;
-        height: auto;
-    }
-
-    .mobile-menu #user_settings_btn { left: 23%; }
-    .mobile-menu #topic_btn { left: 37%; }
-    .mobile-menu #cset_btn { left: 51%; }
-    .mobile-menu #stopwatch_btn { left: 65%; }
-    .mobile-menu #feedback_btn { left: 79%; }
-}
-
-/* ---------- Menu boxes ---------- */
-
-/* below the topnav button that opens them (small screens: see .menu_box) */
-@media (min-width: 800px) {
-    #topic_box { right: 95px; width: 200px; }
-    #feedback_box { right: 15px; width: 200px; }
-    #cset_box { right: 50px; width: 428px; }
-    #user_settings_box { right: 60px; width: 400px; }
-}
-
-#topic_txt,
-#feedback_txt {
-    width: 90%;
-    height: 170px;
-    margin-top: var(--space-2);
-}
-
-/* the rating stars are switched off */
-.feedback_star { display: none; }
-
-.setup_input_field {
-    width: 75%;
-    margin-bottom: var(--space-2);
-}
-
-#cet_pre,
-#cet_order_by,
-#cet_anonymous,
-#cet_dark_side,
-#cet_toggle_user_type { width: 90%; }
-
-#cet_pre { margin-bottom: var(--space-3); }
-
-/* B-42: locked in anonymous mode. Unlike a disabled button the select still shows
- * information ("Card value"), so the text stays readable in the muted label color;
- * the dashed border marks it as locked. */
-#cet_order_by:disabled {
-    border-style: dashed;
-    border-color: var(--switch-color);
-    color: var(--switch-color);
-    opacity: 1;
-    cursor: not-allowed;
-}
-
-/* B-42: hint below the sort select, only visible in anonymous mode */
-#cet_order_by_hint {
-    margin: 0.3rem 1.5rem 0;
-    text-wrap: pretty; /* no single word alone in the last line */
-    font-size: 0.75rem;
-    line-height: 1.3;
-    color: var(--switch-color);
+/* Topic (large screens): "// topic", the topic as a quoted block, edit pen on the right.
+ * No topic: no bar at all (B-51); the topic is set in the menu.
+ * Short topics keep the bar one line high; long ones scroll inside it (the table keeps its room).
+ * --topic-line: line height of the topic; label and topic are centered on the buttons' row. */
+.topic-bar {
+    --topic-line: 1.5rem;
+    --topic-pad: calc((var(--tap) - var(--topic-line)) / 2 - 2px);
+    grid-area: topic;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-1) var(--space-3);
     text-align: left;
 }
 
-/* lock icon on the average button; same padding on both sides keeps the text centered */
-.locked {
-    background-image: url('../src/lock.png');
-    background-repeat: no-repeat;
-    background-position: 0.9rem center;
-    background-size: 14px;
-    padding-left: 2.25rem;
-    padding-right: 2.25rem;
+.topic-label {
+    flex: none;
+    margin: 0;
+    padding: calc(var(--topic-pad) + 2px) 0;
+    font-size: var(--fs-s);
+    font-weight: normal;
+    line-height: var(--topic-line);
+    color: var(--muted);
 }
 
-.locked:hover {
-    background-image: url('../src/lock_hover.png');
+.topic-label::before {
+    content: "// ";
+    color: var(--line-strong);
+}
+
+.topic-edit {
+    margin-left: auto;
+    color: var(--muted);
+}
+
+.topic-edit:hover { color: var(--accent); }
+
+.topic-bar:has(> #topic.display_none) { display: none; }
+
+/* the arrow that unfolds the topic is for the phone strip only */
+#topic_toggle { display: none; }
+
+/* Round actions: New Round, the stopwatch below it. They follow the cards; when the table
+ * scrolls they stick to its bottom edge (the background covers the cards behind). */
+.dock {
+    position: sticky;
+    bottom: 0;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0 var(--space-3);
+    background: var(--bg);
+}
+
+/* nothing to show yet (stopwatch off, nobody has voted): no empty zone over the cards */
+.dock:has(> #stopwatch.display_none):has(> #newroundbtn.display_none) { display: none; }
+
+/* Phones in landscape: little height, so a lower header */
+@media (max-height: 500px) and (orientation: landscape) {
+    .container > .head { min-height: 44px; }
+}
+
+/* Small screens: the actions as a dock right above the deck (thumb zone, always in view),
+ * stopwatch left, New Round right. */
+@media (max-width: 799.98px) {
+    .table { padding: 0; } /* 3 cards fit at 320px */
+
+    .dock {
+        margin-top: auto; /* few cards: still at the bottom */
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: var(--space-1);
+        padding: var(--space-1) 8px;
+        background: var(--bg-2);
+        border-top: 1px solid var(--line);
+    }
+
+    .dock > #stopwatch { order: -1; }
+}
+
+/* Phones (and short landscape screens): the topic as a strip below the header, one line
+ * that unfolds with the arrow; no label, no pen (the menu has "Topic") */
+@media (max-width: 799.98px), (max-height: 500px) and (orientation: landscape) {
+    .topic-bar {
+        gap: var(--space-1);
+        padding: 0 6px 0 10px;
+    }
+
+    .topic-label,
+    .topic-bar .topic-edit { display: none; }
+
+    #topic_toggle {
+        display: inline-flex;
+        margin-top: 2px;
+        color: var(--muted);
+    }
+
+    #topic_toggle .i { transition: transform 0.2s; }
+    #topic_toggle[aria-expanded=true] .i { transform: rotate(180deg); }
+}
+
+/* ---------- Header: logo, prompt with team name, topnav buttons ---------- */
+
+/* One flex row on board and start page. Large screens: the header is the anchor of the menu
+ * boxes. Small screens (board): it stays static, so the open burger menu and the boxes are
+ * placed in .container. */
+.head {
+    position: relative;
+    z-index: var(--z-nav);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 48px;
+    box-sizing: border-box;
+    padding: 4px 10px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+.head-fill { flex: 1; }
+
+.brand {
+    flex: none;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    margin-right: var(--space-2);
+    padding-right: 12px;
+    border-right: 1px solid var(--line);
+}
+
+#brand {
+    display: block;
+    height: 24px;
+    width: auto;
+}
+
+/* B-51: the team name with a softly pulsing text cursor. The cursor carries the player's name as a
+ * small tag, like the name flags on cursors in shared documents: "you are here, in this team".
+ * A text cursor is familiar to everybody (no "~$", no "@", no blinking block). Click copies the link. */
+.head-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+.team-name {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    padding: 4px 6px 4px 0;
+    border: 0;
+    border-radius: var(--radius-m);
+    background: transparent;
+    color: var(--text);
+    font: bold var(--fs-l) var(--font);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.team-name #team_name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.team-name:hover #team_name { color: var(--accent); }
+
+/* the name tag sits right of the cursor, vertically centred on the team name (inside .caret) */
+.you-tag {
+    min-width: 0;
+    max-width: 12ch;
+    padding: 1px 5px;
+    border-radius: var(--radius-m);
+    background: var(--accent);
+    color: var(--on-accent);
+    font: bold var(--fs-xs) / 1.35 var(--font);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* no player name yet (name overlay): the team name and the cursor alone */
+.you-tag:empty { display: none; }
+
+/* start page: "poker" with the cursor */
+.prompt-line {
+    display: inline-flex;
+    align-items: center;
+    font: bold var(--fs-l) var(--font);
+    white-space: nowrap;
+}
+
+/* the cursor: a thin line that slowly dims and comes back (no hard blink); on the board it
+ * carries the name tag, which stays steady. Tag and team name keep the same distance to the
+ * cursor (gap = margin-left, both in the team name's font size). */
+.caret {
+    flex: none; /* the team name shrinks first; the tag has its own maximum width */
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    margin-left: 0.3em;
+    position: relative;
+    top: -0.05em; /* the line box hangs below the letters (descender room): centre on the letters */
+}
+
+/* Centre cursor and tag on the lowercase letters of the team name, independent of font metrics
+ * (SF Mono in Safari vs. other monospace fonts): the team name's box is trimmed to the x-height,
+ * so flex centring hits the middle of the lowercase letters. The padding keeps ascenders and
+ * descenders visible (overflow: hidden for the ellipsis) and is symmetric, so the centre stays.
+ * Without text-box support (Firefox) the top: -0.05em approximation above remains. */
+@supports (text-box: trim-both ex alphabetic) {
+    .team-name #team_name {
+        text-box: trim-both ex alphabetic;
+        padding-block: 0.35em;
+    }
+    .team-name .caret { top: 0; }
+}
+
+.caret::before {
+    content: "";
+    flex: none;
+    width: 2px;
+    height: 1.2em;
+    border-radius: 1px;
+    background: var(--accent);
+    animation: caret-pulse 2.4s ease-in-out infinite;
+}
+
+/* Header button: icon (+ label), transparent until hovered or active */
+.icon-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: var(--tap);
+    min-height: var(--tap);
+    box-sizing: border-box;
+    padding: 0 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-m);
+    color: var(--text);
+    font: var(--fs-s) var(--font);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform 0.3s ease-in-out;
+}
+
+.icon-btn:hover { border-color: var(--line-strong); }
+
+/* open menu section (aria-expanded, set by the menu script) */
+.icon-btn[aria-expanded=true],
+.topnav_btn_on {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.icon-btn:focus-visible,
+.team-name:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* label in vim command style: ":topic" */
+.topnav-bar .lbl::before {
+    content: ":";
+    color: var(--muted);
+}
+
+/* B-57: red dot on the feedback menu until the panel was opened once (body.fb-new, script_feedback.js);
+ * static, no pulsing. Header: on the icon of the feedback button and of the phone menu button. */
+#feedback_btn,
+#menu_btn { position: relative; }
+
+.fb-new #feedback_btn::after,
+.fb-new #menu_btn::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 24px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 0 2px var(--bg-2);
+    pointer-events: none;
+}
+
+/* phone menu index: behind the entry name */
+.fb-new #menu_index [data-open="feedback"] b::after {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    vertical-align: middle;
+}
+
+#copy_link_btn { color: var(--muted); }
+#copy_link_btn:hover { color: var(--accent); }
+
+/* color mode: moon in dark mode, sun in light mode */
+#cmode_btn .i-sun,
+.light-theme #cmode_btn .i-moon { display: none; }
+.light-theme #cmode_btn .i-sun { display: block; }
+
+/* stopwatch: a direct on/off switch for the whole board, state in aria-pressed */
+.sw-btn {
+    color: var(--muted);
+    border-color: var(--line);
+}
+
+.sw-btn[aria-pressed=true] {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.sw-state::before { content: "[ ]"; }
+.sw-btn[aria-pressed=true] .sw-state::before { content: "[x]"; }
+
+/* reduced motion: the caret stays, half dimmed */
+@media (prefers-reduced-motion: reduce) {
+    .caret::before {
+        animation: none;
+        opacity: 0.6;
+    }
+}
+
+/* ---------- Header: topnav buttons, menu button ---------- */
+
+/* the menu button (index as a bottom sheet) is for phones only */
+.menu-btn { display: none; }
+
+.topnav-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* medium screens: icons only (name via aria-label) */
+@media (min-width: 800px) and (max-width: 1179.98px) {
+    .topnav-bar .lbl,
+    #copy_link_btn .lbl { display: none; }
+}
+
+@media (max-width: 799.98px) {
+    .head {
+        min-height: 52px;
+        padding: 4px 6px 4px 10px;
+    }
+
+    .brand {
+        margin-right: var(--space-1);
+        padding-right: 8px;
+    }
+
+    #brand { height: 20px; }
+
+    .team-name { font-size: var(--fs-m); }
+
+    #show_qr_code,
+    #copy_link_btn .lbl,
+    .sw-btn .lbl { display: none; }
+
+    /* board: the header buttons move into the menu sheet (index) */
+    .container .topnav-bar { display: none; }
+    .container .menu-btn { display: inline-flex; }
+}
+
+/* phones (board): the team name gets the room, the name tag goes away completely,
+ * the logo shrinks to its mark */
+@media (max-width: 420px) {
+    .you-tag { display: none; }
+
+    .container #brand {
+        width: 20px;
+        object-fit: cover;
+        object-position: left center;
+    }
+}
+
+/* ---------- Start page header ---------- */
+
+@media (max-width: 420px) {
+    .head > .topnav-bar .lbl { display: none; }
+}
+
+/* ---------- Menu panel (B-51) ---------- */
+
+/* One menu component (#menu, a <dialog>) on board and start page, one section visible at a time.
+ * Large screens: a side panel on the right, from below the header down to the bottom edge of
+ * the screen (over topic, table and deck), non-modal: the board stays visible and usable.
+ * Phones: a bottom sheet over a backdrop (modal), up to 90% of the screen height.
+ * Plain headings, no console decoration: the menus are for everybody. */
+.menu {
+    position: fixed;
+    top: max(48px, calc(var(--tap) + 12px)); /* start page: below the one-row header */
+    right: 0;
+    bottom: 0;
+    left: auto;
+    z-index: var(--z-panel);
+    box-sizing: border-box;
+    width: min(var(--panel-w), 100%);
+    max-width: 100%;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    flex-direction: column;
+    border: 0;
+    border-left: 1px solid var(--line-strong);
+    background: var(--bg-2);
+    color: var(--text);
+    box-shadow: -12px 0 28px -14px var(--shadow-color);
+    text-align: left;
+}
+
+.menu[open] {
+    display: flex;
+    animation: panel-in 0.2s ease-out;
+}
+
+/* board: placed on the page grid, rows topic to deck, so it starts right below the header
+ * (whatever its height) and ends at the bottom edge (an absolutely positioned grid child) */
+.container > .menu {
+    position: absolute;
+    grid-row: 2 / 5;
+    grid-column: 1;
+    top: 0;
+}
+
+.menu::backdrop { background: var(--scrim); }
+
+.m-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 8px 8px 8px var(--space-3);
+    border-bottom: 1px solid var(--line);
+}
+
+.m-head h2 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--fs-l);
+}
+
+#menu_close { margin-left: auto; }
+
+/* back to the index: phones only, not on the index itself */
+#menu_back { display: none; }
+
+.m-body {
+    flex: 1 1 auto; /* auto: the phone sheet is as high as its content (up to its max-height) */
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--space-3) var(--space-3) 20px;
+}
+
+/* the index (phones): one row per section with a short description */
+.m-index {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.m-index button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 4px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: none;
+    color: var(--text);
+    font: var(--fs-m) var(--font);
+    text-align: left;
+    cursor: pointer;
+}
+
+.m-index li:last-child button { border-bottom: 0; }
+
+.m-index .i { color: var(--muted); }
+
+.m-index button:hover b,
+.m-index button:focus-visible b,
+.m-index button:hover .i-next { color: var(--accent); }
+
+.m-index button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.m-index span {
+    flex: 1;
+    min-width: 0;
+}
+
+.m-index b { display: block; }
+
+.m-index small {
+    display: block;
+    color: var(--muted);
+    font-size: var(--fs-s);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.m-index .i-next {
+    width: 16px;
+    height: 16px;
+}
+
+/* building blocks of the sections */
+.f {
+    min-width: 0;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    border: 0;
+}
+
+.f:last-child { margin-bottom: 0; }
+
+.lab {
+    display: block;
+    margin: 0 0 6px;
+    padding: 0;
+    font-size: var(--fs-s);
+    line-height: 1.45;
+    color: var(--muted);
+    text-align: left;
+}
+
+.hint {
+    margin: 6px 0 0;
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    color: var(--muted);
+    text-wrap: pretty; /* no single word alone in the last line */
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.row.end {
+    justify-content: flex-end;
+    margin-top: var(--space-2);
+}
+
+.menu .field {
+    width: 100%;
+    min-width: 0;
+    min-height: var(--tap);
+}
+
+.row > .field { flex: 1; }
+
+.menu textarea.field {
+    display: block;
+    resize: vertical;
+    line-height: 1.45;
+}
+
+.menu select.field { cursor: pointer; }
+
+.menu .btn-box {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--tap);
+    margin: 0;
+    padding: 4px 14px;
+}
+
+/* the main action of a section (Save, Send feedback) */
+.btn-box.primary:enabled {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+.btn-box.primary:enabled:hover {
+    background: transparent;
+    color: var(--accent);
+}
+
+.btn-box.danger { color: var(--danger); }
+
+.btn-box.danger:enabled:hover { border-color: var(--danger); color: var(--danger); }
+
+/* segment switch: a radio group that looks like one control (fieldset.f > .seg > label);
+ * used where there are two or three values */
+.seg {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+}
+
+.seg label {
+    position: relative;
+    flex: 1;
+    display: flex;
+    min-width: 0;
+}
+
+/* the radio itself lies invisibly over its label: click, keyboard and screen readers as usual */
+.seg input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.seg span {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: calc(var(--tap) - 6px);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-s);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-align: center;
+}
+
+.seg input:hover + span { color: var(--text); }
+
+.seg input:checked + span {
+    background: var(--text);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+.seg input:focus-visible + span {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+/* locked (B-42: sort order in anonymous mode): the choice stays readable, the dashed border
+ * marks it as locked */
+fieldset:disabled .seg { border-style: dashed; }
+
+fieldset:disabled .seg input { cursor: not-allowed; }
+
+fieldset:disabled .seg input:checked + span {
+    background: var(--bg-4);
+    color: var(--muted);
+}
+
+/* average pointer: a lock on "Show" while it is hidden ("join the dark side") */
+.seg .i-lock {
+    width: 14px;
+    height: 14px;
+}
+
+.seg input:checked + span .i-lock { display: none; }
+
+/* Tabs in a menu section (board settings: Deck | Results | Team; feedback: New issue | Backlog;
+ * role=tab, aria-selected) above the content of the
+ * chosen tab. Same frame as the segment switch so it belongs to the family, but calmer: the chosen
+ * tab is a raised surface with an accent line, not the inverted fill of a chosen value. That keeps
+ * "where am I" (tabs) apart from "what is set" (.seg). The bar stays at the top while the panel
+ * scrolls (long card decks on phones). */
+.m-tabs {
+    position: sticky;
+    top: calc(-1 * var(--space-3)); /* the padding of .m-body: sticks to the top edge of the sheet */
+    z-index: 1;
+    display: flex;
+    gap: 2px;
+    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) var(--space-2);
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    background: var(--bg-2);
+}
+
+.m-tabs::after { /* the line below the bar, also while it sticks */
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -12px;
+    left: 0;
+    height: 12px;
+    background: linear-gradient(var(--bg-2), transparent);
+    pointer-events: none;
+}
+
+.m-tabs [role="tab"] {
+    flex: 1;
+    min-width: 0;
+    min-height: var(--tap);
+    padding: 2px var(--space-2);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+.m-tabs [role="tab"]:hover { color: var(--text); border-color: var(--text); }
+
+.m-tabs [role="tab"][aria-selected="true"] {
+    border-color: var(--accent);
+    background: var(--bg-4);
+    color: var(--text);
+    font-weight: bold;
+    box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.m-tabs [role="tab"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.m-tabpanel[hidden] { display: none; }
+
+/* ---------- Feedback (B-57): New issue | Backlog ---------- */
+
+/* the note about technical details only while "Bug" is chosen */
+.fb-bug-only { display: none; }
+
+#feedback_box:has(input[name="fb_type"][value="BUG"]:checked) .fb-bug-only { display: block; }
+
+.fb-intro { margin: 0 0 var(--space-3); }
+
+/* Backlog: one tile per entry, quieter than a card on the table. Status as a small badge,
+ * reactions as two counters below. Filled by script (clones of #fb_item_tpl, textContent). */
+.fb-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fb-item {
+    padding: var(--space-2) var(--space-3) var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+}
+
+.fb-item-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.fb-title {
+    min-width: 0;
+    margin: 0;
+    font-size: var(--fs-m);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.fb-desc {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: var(--fs-s);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+}
+
+.fb-desc:empty { display: none; }
+
+/* status badge: data-status="PLANNED" | "IN_PROGRESS" | "DONE", text set by script */
+.fb-status {
+    flex: none;
+    padding: 1px 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.fb-status:empty { display: none; }
+
+.fb-status[data-status="IN_PROGRESS"] {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.fb-status[data-status="DONE"] {
+    border-color: var(--ok);
+    color: var(--ok);
+}
+
+.fb-react {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.fb-react-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 56px;
+    min-height: 32px;
+    padding: 2px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+.fb-react-btn:hover { border-color: var(--text); color: var(--text); }
+
+/* the own reaction: accent frame and fill, like a chosen tab */
+.fb-react-btn[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--bg-4);
+    color: var(--text);
+    font-weight: bold;
+    box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.fb-react-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.fb-react-btn:disabled { cursor: wait; opacity: 0.6; }
+
+.fb-emoji { font-size: var(--fs-l); line-height: 1; }
+
+.fb-count { font-variant-numeric: tabular-nums; }
+
+/* empty state: only while the list has no entry */
+.fb-empty {
+    margin: 0;
+    padding: var(--space-4) var(--space-3);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-l);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-align: center;
+}
+
+.fb-list:has(> li) ~ .fb-empty { display: none; }
+
+/* text for screen readers only (e.g. the meaning of a reaction emoji) */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* privacy, imprint, delete my data */
+.m-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px var(--space-3);
+    margin: 24px 0 0;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-s);
+}
+
+.m-links a {
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.m-links a:hover { color: var(--text); }
+
+.menu .m-links .btn-box {
+    margin-left: auto;
+    min-height: 0;
+    padding: 4px 10px;
+    font-size: var(--fs-s);
 }
 
 /* card set thumbnails */
+#cards_thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 4px;
+}
+
 .cs_c {
-    width: 27px;
-    margin: 0 2px;
+    width: 30px;
     border: 1px solid var(--medium_color);
     border-radius: var(--radius-s);
     filter: grayscale(100%);
@@ -625,47 +1388,141 @@ textarea.field {
     opacity: 1;
 }
 
+/* Phones: a bottom sheet over a backdrop, full width, up to 90% of the screen height,
+ * as high as its content; back button in the sections (no grab bar: the sheet cannot be dragged) */
 @media (max-width: 799.98px) {
-    #topic_txt,
-    #feedback_txt { height: 6rem; }
+    .menu,
+    .container > .menu {
+        position: fixed;
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 90vh;
+        max-height: 90dvh;
+        border: 0;
+        border-top: 1px solid var(--line-strong);
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -12px 32px var(--shadow-color);
+    }
 
-    .cs_c {
-        width: 14vw;
-        height: auto;
-        border-radius: var(--radius-m);
+    .menu[open] { animation-name: sheet-in; }
+
+    .m-head { padding-left: var(--space-2); }
+
+    .m-head:not(:has(#menu_back)) { padding-left: var(--space-3); }
+
+    #menu_back { display: inline-flex; }
+
+    .menu:has(#menu_index:not([hidden])) #menu_back { display: none; }
+
+    .menu:has(#menu_index:not([hidden])) .m-head { padding-left: var(--space-3); }
+
+    /* thumbnails: seven per row, the whole width of the sheet */
+    #cards_thumbs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+    }
+
+    .cs_c,
+    #cards_thumbs .cs_c {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
         cursor: auto;
     }
 }
 
-/* ---------- Topic note ---------- */
-
-#topic {
-    margin: 2em auto 0;
-    padding: 0 1em;
-    min-width: 50%;
-    width: fit-content;
-    height: fit-content;
-    border-radius: var(--radius-m);
-    color: var(--topic-color);
-    background: var(--topic-background);
-    border: 2px dotted var(--topic-color);
+@media (prefers-reduced-motion: reduce) {
+    .menu[open] { animation: none; }
 }
 
-@media (max-width: 799.98px) {
-    #topic { min-width: 90%; }
+/* ---------- Topic note ---------- */
+
+/* console: a quoted block with a magenta bar; headings and bold text keep the topic color.
+ * Large screens: in the topic bar, long topics scroll inside it. */
+#topic {
+    margin: 0;
+    padding: 2px 0 2px 12px;
+    text-align: left;
+    overflow-wrap: anywhere;
+    color: var(--text);
+    border-left: 3px solid var(--topic-color);
+}
+
+/* large screens: in the topic bar; long topics scroll inside it */
+.topic-bar #topic {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: var(--topic-pad) 0;
+    line-height: var(--topic-line);
+    max-height: min(25vh, 12rem); /* about 8 lines */
+    max-height: min(25dvh, 12rem);
+    overflow-y: auto;
+}
+
+#topic > :first-child { margin-top: 0; }
+#topic > :last-child { margin-bottom: 0; }
+
+#topic strong,
+#topic b,
+#topic h1,
+#topic h2,
+#topic h3 { color: var(--topic-color); }
+
+/* Phones (and short landscape screens): one line in the strip below the header; the arrow
+ * (or a tap) unfolds it */
+@media (max-width: 799.98px), (max-height: 500px) and (orientation: landscape) {
+    .topic-bar #topic {
+        flex: 1;
+        margin: var(--space-2) 0 0;
+        padding: 4px 8px 4px 10px;
+        line-height: 1.5;
+        max-height: 1.5em; /* one line; also cuts off lines after a <br> */
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        background: var(--bg-2);
+        cursor: pointer;
+    }
+
+    /* blocks run inline in the one-line view, so the ellipsis works */
+    .topic-bar[data-expanded=false] #topic :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre) {
+        display: inline;
+        margin: 0;
+        padding: 0;
+        font-size: inherit;
+    }
+
+    .topic-bar[data-expanded=false] #topic :is(p, li, h1, h2, h3, h4, h5, h6)::after { content: " "; }
+
+    .topic-bar[data-expanded=true] #topic {
+        max-height: 40vh;
+        max-height: 40dvh;
+        overflow-y: auto;
+        white-space: normal;
+        cursor: auto;
+    }
 }
 
 /* ---------- Cards on the table ---------- */
 
 /* B-41: cards flow in a centered flex-wrap layout; no JS positioning.
-   Horizontal gaps reproduce the former 110 px JS grid: cards render
-   102 x 150 px (100 x 148 px image + 1px border), so 8px between cards.
-   Vertically the delete icon (.c .delete, bottom:-10px, ~22px high) hangs
-   about 10px below a card, so rows are 20px apart and 22px stay below the
-   last row: the icon keeps ~10-12px of air to the next card / element. */
+   B-49: everything scales with the card width --card-w (100px: as before B-49);
+   script.js overrides it inline (fit to table), the fluid width is the fallback.
+   Columns: 10% of the card apart (the former 110px grid at 100px).
+   Rows: the delete icon (--card-del, 20% of the card) hangs half its size below
+   a card, plus 10% air: 20px at 100px; the same stays below the last row. */
 div#cbox {
-    margin-top: 2em;
-    padding: 4px 0 22px;
+    --card-w: var(--card-fluid);
+    --card-del: max(var(--card-del-min), var(--card-w) * 0.2);
+    --card-gap-x: calc(var(--card-w) * 0.1);
+    --card-gap-y: calc(var(--card-del) / 2 + var(--card-w) * 0.1);
+    --card-gutter: max(var(--card-gutter-min), var(--card-gap-x));
+    margin-top: 2em; /* small screens: see below */
+    padding: 4px var(--card-gutter) calc(var(--card-gap-y) + 2px);
+    box-sizing: border-box;
     outline: none;
     width: 100%;
     display: flex;
@@ -673,54 +1530,66 @@ div#cbox {
     justify-content: center;
     align-content: flex-start;
     align-items: flex-start;
-    gap: 20px 8px;
+    gap: var(--card-gap-y) var(--card-gap-x);
     position: relative;
 }
+
 
 .c {
     /* relative: anchor for the absolutely positioned name and delete button */
     position: relative;
     text-align: left;
     display: inline-block;
-    border-radius: var(--radius-l);
+    width: var(--card-w);
+    border-radius: calc(var(--card-w) * 0.15); /* 15px at 100px, the corners of the images */
     background: var(--secondary-background-color);
 }
 
 .c .background {
     display: block;
-    width: 100px;
-    height: 148px;
+    box-sizing: border-box;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / var(--card-ratio);
     border: 1px solid var(--light-border-color);
-    border-radius: var(--radius-l);
+    border-radius: inherit;
 }
 
 .c:hover .background { border-color: var(--bluish); }
 
 .c span {
     position: absolute;
-    top: 4px;
+    top: calc(var(--card-w) * 0.04);
     width: 100%;
     line-height: 2em;
+    box-sizing: border-box;
+    padding: 0 10%; /* clear of the rounded corners; a longer name ends with an ellipsis */
     text-align: center;
     color: var(--text-color);
-    font-size: 8pt;
+    font-size: clamp(10px, var(--card-w) * 0.11, 14px); /* 11px at 100px */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* only visible on hover (large screens with a mouse), see the media queries below */
 .c .delete {
     display: none;
     position: absolute;
-    bottom: -10px;
-    right: 5px;
-    width: 20px;
-    height: 20px;
+    bottom: calc(var(--card-del) / -2);
+    right: 5%;
+    width: var(--card-del);
+    height: var(--card-del);
     border: 1px solid var(--bluish);
     border-radius: 100%;
     background: var(--background-color);
     cursor: pointer;
 }
 
-.c:hover .delete { display: block; }
+/* B-49: shown by input device, not by width: mouse = on hover (or keyboard focus inside the
+ * card), touch = always (see below), whatever the window size */
+.c:hover .delete,
+.c:focus-within .delete { display: block; }
 
 .c .delete:hover {
     content: url('../src/delete_red.png');
@@ -731,29 +1600,11 @@ div#cbox {
 
 .cardValueChanged { animation: shake 1s ease-in-out; }
 
-/* touch devices cannot hover: show the delete icon on every card (as on small screens) */
-@media (hover: none) {
-    .c .delete { display: block; }
-}
-
-/* Small screens: the card is 100px wide, but its bordered image renders 102px (overflows
-   by 2px), so the column gap is 2px larger to keep the same 110px grid as on large screens. */
-@media (max-width: 799.98px) {
-    div#cbox { column-gap: 10px; }
-
-    .c { width: 100px; }
-
-    .c .background {
-        width: 100%;
-        height: 100%;
-    }
-
-    .c span { font-size: 0.8rem; }
-
+/* touch devices cannot hover: the delete icon on every card, no sticky hover color
+ * (its size: --card-del-min, "Touch screens") */
+@media (hover: none), (pointer: coarse) {
     .c .delete {
         display: block;
-        width: 20%;
-        height: auto;
         cursor: auto;
     }
 
@@ -763,73 +1614,96 @@ div#cbox {
     }
 }
 
-/* ---------- New round button, stopwatch ---------- */
+/* phones: 8px (not 1em) – on a 375x667 touch phone 20 cards fit at --card-min without scrolling */
+@media (max-width: 799.98px) {
+    div#cbox { margin-top: var(--space-2); }
+}
 
-#newroundbtn { margin-top: 20px; }
+/* ---------- New round button, stopwatch (.dock) ---------- */
+
+#newroundbtn {
+    min-width: 12rem;
+    min-height: var(--tap);
+}
+
+/* hidden until someone has voted: keeps its place, so the stopwatch does not jump */
+.dock #newroundbtn.display_none {
+    display: inline-block;
+    visibility: hidden;
+}
 
 .stopwatch_control {
-    margin-top: var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
     cursor: pointer;
 }
 
-.stopwatch_control>img {
+.stopwatch_control.display_none { display: none; }
+
+.stopwatch_control > img {
     width: 30px;
     height: auto;
+    aspect-ratio: 1; /* its height counts before the image has loaded (fit to table, B-49) */
 }
 
-.stopwatch_control>input {
+.stopwatch_control > img.display_none { display: none; }
+
+.stopwatch_control > label { display: none; }
+
+.stopwatch_control > input {
+    width: 8ch;
+    padding: 0;
     border: none;
     background-color: transparent;
     text-align: center;
-    font-size: large;
-    vertical-align: super;
+    font-family: inherit;
+    font-size: var(--fs-xl);
+    font-variant-numeric: tabular-nums;
     color: var(--text-color);
 }
 
 @media (max-width: 799.98px) {
+    /* dock: stopwatch left, New Round right; sized so both fit in one row at 320px */
     #newroundbtn {
-        width: auto;
-        margin-top: 0;
-        padding: 0.2rem 0.8rem;
+        min-width: 0;
+        margin-left: auto;
+        padding: 0.2rem 0.6rem;
+        font-size: var(--fs-m);
     }
 
-    /* shown in the open burger menu only */
-    #newroundbtn[data-state=open] {
-        z-index: 5;
-        top: 15px;
-        left: 40%;
-        position: absolute;
-    }
+    .stopwatch_control > input { font-size: var(--fs-l); }
 }
 
 /* ---------- Card deck (bottom bar) and average indicator ---------- */
 
 .controls {
     width: auto;
-    position: absolute;
-    bottom: 0;
     margin: 0 auto;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     padding: 0 40px 5px;
-    height: 90px;
+    height: var(--deck-h);
     background: var(--background-color);
     border-top: 2px solid var(--secondary-border-color);
-    border-top-left-radius: 45px;
-    border-top-right-radius: 45px;
+    border-top-left-radius: var(--deck-w);
+    border-top-right-radius: var(--deck-w);
     transition: height 0.8s ease-in-out;
 }
 
-.show_card_stats { height: 165px; }
+/* room for the usage bars */
+.show_card_stats { height: calc(var(--deck-h) + var(--deck-stats)); }
 
+/* usage bar: script.js sets --usage (0..1, share of the players) on each deck card */
 .controls img {
-    width: 45px;
+    width: var(--deck-w);
     padding-bottom: 10px;
     border-bottom: 1px solid transparent;
     border-top-left-radius: var(--radius-s);
     border-top-right-radius: var(--radius-s);
-    box-shadow: 0 0 0 0 var(--secondary-border-color);
+    box-shadow: 0 calc(var(--usage, 0) * var(--deck-stats) * -1) 0 0 var(--secondary-border-color);
     transition: box-shadow 0.8s ease-in-out;
     cursor: not-allowed;
 }
@@ -839,7 +1713,7 @@ div#cbox {
 .controls .ctl_hover { cursor: pointer; }
 
 .controls .ctl_hover:hover,
-.controls .selected { border-bottom: 1px solid var(--primary-border-color); }
+.controls .selected { border-bottom: 1px solid var(--accent); }
 
 .controls .off { display: none; }
 
@@ -847,19 +1721,21 @@ div#cbox {
 
 .ctl_as_guest { filter: grayscale(100%); }
 
+/* left: set by script.js from the deck cards (viewport coordinates), so it is fixed */
 #index {
-    position: absolute;
+    position: fixed;
     left: 557px;
-    bottom: 77px;
-    width: 15px;
+    /* just over the top edge of the deck cards: 77px / 15px at 45px deck cards */
+    bottom: calc(var(--deck-w) * 1.48 + 10.4px + env(safe-area-inset-bottom));
+    width: calc(var(--deck-w) / 3);
     transition: left 0.8s ease-in-out;
 }
 
 /* Small screens: the deck scrolls sideways, the selected card is a raised tab */
 @media (max-width: 799.98px) {
     .controls {
-        left: 0;
-        right: 0;
+        flex: 1 1 auto;
+        min-width: 0;
         height: auto;
         padding: 0;
         flex-wrap: nowrap;
@@ -873,9 +1749,11 @@ div#cbox {
     .show_card_stats { height: auto; }
 
     .controls img {
-        width: 55px;
         height: auto;
         padding-bottom: 0;
+        /* transparent frame: selecting a card only colours it, the deck keeps its height
+         * (otherwise the table loses 1px on the first vote and the table cards shrink) */
+        border: 1px solid transparent;
         border-bottom: none;
         align-self: center;
         float: right;
@@ -890,7 +1768,7 @@ div#cbox {
     .controls .ctl_hover:hover { border-bottom: none; }
 
     .controls .selected {
-        border: 1px solid var(--primary-border-color);
+        border: 1px solid var(--accent);
         border-bottom: none;
         background-color: var(--secondary-background-color);
     }
@@ -899,7 +1777,7 @@ div#cbox {
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
 .survey-container {
-    font-size: small;
+    font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
@@ -1006,7 +1884,7 @@ div#cbox {
 }
 
 .arrow {
-    border: solid var(--background-color);
+    border: solid var(--muted);
     border-width: 0 3px 3px 0;
     display: inline-block;
     padding: 3px;
@@ -1019,46 +1897,52 @@ div#cbox {
 /* ---------- Overlays: QR code, privacy links ---------- */
 
 #overlay_qr {
-    z-index: 99999998;
+    z-index: var(--z-scrim);
     background-color: var(--background-color);
     opacity: 85%;
 }
 
 #overlay_qr_code {
-    z-index: 99999999;
+    z-index: var(--z-overlay);
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
 }
 
+/* never wider than the screen: an overflow would widen the layout viewport on phones
+ * and push fixed elements (toast) off the bottom */
+#overlay_qr_code { overflow: hidden; }
+
+/* the QR code is a fixed 300px SVG (+ padding): shrink it on very narrow phones */
+@media (max-width: 380px) {
+    #canvas_qr_code { transform: scale(0.85); }
+}
+
 #canvas_qr_code {
     position: absolute;
     border: 1px solid var(--primary-border-color);
-    border-radius: 40px;
+    border-radius: var(--radius-l);
     padding: 20px;
     background-color: var(--background-color);
 }
 
-#nameinput {
-    width: 200px;
-    margin: 60px 0 var(--space-4);
-}
+#nameinput { margin: 60px 0 var(--space-4); }
 
 .privacy_link {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 10pt;
+    font-size: var(--fs-s);
     margin-top: 30px;
-    color: var(--box-disabled);
+    color: var(--muted); /* readable (B-50), was the disabled color */
     cursor: default;
 }
 
 .privacy_link a {
     text-decoration: none;
     margin: 5px;
-    color: var(--box-disabled);
+    color: var(--muted);
 }
 
 .privacy_link a:hover { color: var(--text-color); }
@@ -1068,10 +1952,7 @@ div#cbox {
 }
 
 @media (max-width: 799.98px) {
-    #nameinput {
-        width: 65%;
-        margin-top: 50px;
-    }
+    #nameinput { margin-top: 50px; }
 }
 
 /* ---------- Promo tab ---------- */
@@ -1083,7 +1964,7 @@ div#cbox {
     background-color: var(--survey-background);
     color: var(--text-color);
     border-top-right-radius: 10px;
-    z-index: 1000;
+    z-index: var(--z-promo);
     box-shadow: 0 0 10px var(--shadow-color);
     transition: height 0.3s ease-in-out, bottom 0.8s ease-in-out;
     height: 40px;
@@ -1101,7 +1982,7 @@ div#cbox {
 .promo-question {
     padding: 10px 40px 10px 20px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--fs-m);
 }
 
 .promo-content { padding-top: 20px; }
@@ -1129,22 +2010,103 @@ div#cbox {
     border: none;
     color: var(--text-color);
     cursor: pointer;
-    font-size: 12pt;
+    font-size: var(--fs-l);
     line-height: 0;
     padding: 0;
 }
 
 .promo-close-icon { display: block; }
 
+/* ---------- Toast (showToast in script.js) ---------- */
+
+/* A short message that pops up from the bottom edge like toast from a toaster, stays a
+ * moment and drops back. It lies over the deck and the dock, so nothing covers it.
+ * No visibility:hidden while down: the live region stays readable for screen readers. */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    z-index: var(--z-toast);
+    box-sizing: border-box;
+    width: max-content;
+    max-width: calc(100vw - 2 * var(--space-3));
+    padding: 10px var(--space-3);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-m);
+    background: var(--bg-3);
+    color: var(--text);
+    font: var(--fs-m) var(--font);
+    box-shadow: 0 8px 24px var(--shadow-color);
+    pointer-events: none;
+    /* down below the bottom edge, out of sight (incl. its shadow) */
+    transform: translate(-50%, calc(100% + var(--space-3) + 32px + env(safe-area-inset-bottom)));
+    transition: transform 0.3s ease-in;
+}
+
+.toast::before {
+    content: "> ";
+    color: var(--muted);
+}
+
+.toast.toast-on {
+    transform: translate(-50%, 0);
+    /* pops up with a little overshoot */
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* reduced motion: fade in and out in place */
+@media (prefers-reduced-motion: reduce) {
+    .toast,
+    .toast.toast-on { transform: translate(-50%, 0); }
+
+    .toast {
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .toast.toast-on {
+        opacity: 1;
+        transition: opacity 0.2s;
+    }
+}
+
+/* ---------- Touch screens (B-47) ---------- */
+
+/* Touch is not the same as narrow: tablets and touch laptops (800px and up) get large
+ * targets too. --tap (44px on touch, see the tokens) already sizes the header buttons. */
+@media (pointer: coarse) {
+    .btn,
+    .btn-box,
+    .team-name { min-height: var(--tap); }
+
+    /* 16px keeps iOS from zooming into the field (small screens did this already) */
+    .field { font-size: var(--fs-l); }
+
+    /* stopwatch icons: 30px image, 44px target */
+    .stopwatch_control > img {
+        box-sizing: content-box;
+        padding: 7px;
+    }
+
+    /* delete icon on a card: at least 28px (the row gap grows with it) */
+    :root { --card-del-min: 28px; }
+
+    /* card set thumbnails in the board settings */
+    .cs_c { min-width: 44px; }
+
+    /* B-57: reactions in the feedback backlog */
+    .fb-react-btn { min-height: var(--tap); min-width: var(--tap); }
+
+    .privacy_link a {
+        display: inline-block;
+        padding: 12px 6px;
+        margin: 0;
+    }
+}
+
 /* ---------- Small screens: hidden on the board ---------- */
 
 @media (max-width: 799.98px) {
-    /* the logo and the topnav buttons move into the burger menu (the start page keeps them) */
-    .mobile-menu #brand,
-    .mobile-menu .topnav_btn,
-    .cta_design,
-    #cta_teaser,
-    #newroundbtn[data-state=closed],
     .survey-container,
     #index,
     #promo-tab { display: none; }
@@ -1173,7 +2135,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 }
 
 .feedback>h1 {
-    font-size: 10pt;
+    font-size: var(--fs-s);
     margin: 0.2em;
 }
 
@@ -1187,8 +2149,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 }
 
 /* ---------- Animations ---------- */
-
-.react { animation: reaction2 0.8s ease-in-out; }
 
 .flash-red { animation: flashRed 1.5s ease-in-out; }
 
@@ -1206,10 +2166,19 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     100% { transform: translateY(0); }
 }
 
-@keyframes reaction2 {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.4); }
-    100% { transform: scale(1); }
+@keyframes panel-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes sheet-in {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes caret-pulse {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 0.15; }
 }
 
 @keyframes flashRed {

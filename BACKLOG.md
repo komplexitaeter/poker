@@ -8,17 +8,37 @@ Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 ## Aktueller Sprint
 
 **Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
-Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Refinement/Planning folgt.
-
-**Sprint 7 – „Konfiguration & CSS aufräumen"** (ab 2026-10-23):
-1. **B-42** Sortier-Option vereinfachen – zuerst, damit B-36 die wegfallende Sortier-Leiste nicht mit aufräumt.
-2. **B-36** CSS vereinfachen, inklusive `.mobile`/`.desktop` (B-37 geht darin auf) – danach, Planning folgt.
+Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Planning läuft: Mockup `mockups/` (Delia) – Andreas hat Variante C (Panel/Dock) und Menüs als Side Panel am
+Desktop gewählt; Runde 2 mit „Console Style“, Ergebnisdarstellung (B-53) und Topic-Liste (B-52).
+**Entscheidung Andreas (2026-10-23): Console Style wird der Look der App, ohne Theme-Umschalter (Light/Dark bleibt).**
+Mockup-Runde 3 abgenommen (Andreas, 2026-10-23), Entscheidungen: Board settings als Gruppen; gemerkter Wert wird
+gespeichert (UI noch offen, mit B-52/B-53); Emojis sparsam (Emotions, Ampel, ☕, ✋); „New round“ bleibt Hauptbutton;
+Delegation-Poker-Namen später. Desktop: Menüpunkt öffnet direkt das Side Panel, nur Schließen, kein „<“ zur
+Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nachschärfen. Karten-Gleiten (FLIP, B-41)
+bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
+Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
+parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
+**Stand 2026-10-27 abends (Sprint 8 umgesetzt):** In `release` zusätzlich: Teaser ausgebaut (#47; Backend-Feld
+`hide_teaser` + DB-Spalte bleiben vorerst), Fit-Korrekturen (#48: Seitenabstand, Zone New Round/Stoppuhr bzw. Dock immer
+reserviert, Lösch-Icon nach Eingabegerät statt Breite, Namen mit „…“), `--card-min` 64 px (#49: 375×667 bis 20 Spieler,
+393×852 bis 25 ohne Scrollen). B-50 teilweise, B-55 offen (Andreas überlegt), `mockups/` bleibt. Nächstes: Andreas
+sichtet Staging, dann PR `release` → `master` (Rollout 1).
+**Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
+1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
+   Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
+   Dazu B-55 (Hinweis-Toast + Umfrage). Vor dem Rollout klären: `mockups/` aus `release` nehmen oder mitlaufen lassen.
+2. **Rollout 2 (ca. eine Woche später): neue Funktionen** – B-53 (Ergebnisdarstellung) und B-52 (Topic-Backlog,
+   History), mit Ben und Sina. Beginn erst, wenn Rollout 1 als PR nach `master` liegt.
 
 Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
 (`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
 (FPM-grep + `free -m`).
 
 Abgeschlossen:
+- **Sprint 7 – „Konfiguration & CSS aufräumen"** (2026-10-23, live mit PR #35):
+  - B-42: Sortier-Option „im Spiel wählen“ gestrichen, nur noch Kartenwert/Name; im Anonym-Modus fest „Card value“.
+  - B-36 (mit B-37): `style.css` um gut ein Drittel kleiner, Responsive per CSS (ein Breakpoint, 800 px) statt
+    `.mobile`/`.desktop` per JS, gemeinsame Klassen und Tokens. Danach Delias Einschätzung → B-46 bis B-51.
 - **Sprint 6 – „Schlank & performant"** (2026-10-22/23, live mit PR #25 und #28):
   - Schlank-Spike (Assets, CSS, JS, `dao.php`) mit priorisierten Ergebnissen in B-35 bis B-38. Bewusst nicht verfolgt:
     tote Bilder löschen (kein Laufzeiteffekt), `dao.php`-Payload (1–2 KB, zu klein für Reduktion).
@@ -84,7 +104,7 @@ Abgeschlossen:
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
 | B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
-| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt (release) |
+| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | in B-36 aufgegangen |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
 | B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
@@ -94,12 +114,22 @@ Abgeschlossen:
 | B-43 | `survey_intro` per `innerHTML` prüfen (Sina) | neu |
 | B-44 | Startseite Light-Mode: Logo ohne Schriftzug | neu |
 | B-45 | Toten Stern-Bewertungscode im Feedback entfernen | neu |
-| B-46 | Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste, `dvh`) | neu |
-| B-47 | Touch von der Breite trennen, Touch-Ziele ≥ 44 px | neu |
-| B-48 | Topnav aus echten Buttons, Hinweise als Text | neu |
-| B-49 | Fluide Kartengrößen | neu |
-| B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | neu |
-| B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | neu |
+| B-46 | Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste, `dvh`) | erledigt (release) |
+| B-47 | Touch von der Breite trennen, Touch-Ziele ≥ 44 px | erledigt (release) |
+| B-48 | Topnav aus echten Buttons, Hinweise als Text | erledigt (release) |
+| B-49 | Fluide Kartengrößen | erledigt (release) |
+| B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | teilweise (release) |
+| B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | erledigt (release) |
+| B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
+| B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
+| B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | erledigt (release) |
+| B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | verworfen (→ B-57) |
+| B-56 | Players-Menü: Spielerliste mit Status, Entfernen statt Lösch-Icon auf den Karten | neu |
+| B-57 | Ideas & Bugs: Meldungen mit Typ, öffentliche Liste mit Status und Abstimmung, Moderation | neu |
+| B-58 | Geänderte Karte sichtbar machen: ursprüngliche Karte versetzt darunter (statt Sperren) | neu |
+| B-59 | Aufdecken, bevor alle gewählt haben („reveal now“) | neu |
+| B-60 | Spaß-Funktionen: Reaktionen/Emojis, Werfen, Fun-Karten | neu |
+| B-61 | Eigene Kartenwerte / eigene Decks | neu |
 
 ### B-01 SQL-Injection in `api/` beheben
 Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
@@ -801,6 +831,93 @@ Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visib
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
 
+### B-62 E2E-Tests für den Feedback-Pfad (rudimentär)
+Vorschlag Tessa, Andreas (2026-10-27): ja, aber nur rudimentär; internes Backlog, nicht in der öffentlichen Liste.
+Kernpfad: Meldung absenden (Bug mit Kontext, ohne Team-ID), einmal abstimmen, roter Punkt verschwindet nach dem
+Öffnen des Menüs. Keine Randfälle.
+
+### B-58 Geänderte Karte sichtbar machen (statt Karte sperren)
+Häufigster Nutzerwunsch im Feedback (≈ 9×, 2022–2026): „Karte nach dem Aufdecken sperren“. Andreas (2026-10-27): intern
+heiß diskutiert; Philosophie der App ist „nah an der Physik“ – am Tisch kann man seine Karte auch noch tauschen. Heute
+deshalb das (inzwischen dezentere) Wackeln als Hinweis; manchen reicht das nicht, Sperren finden wir aber ein blödes
+Feature. **Idee Andreas:** Ändert jemand nach dem Aufdecken seine Karte, liegen zwei Karten leicht versetzt
+übereinander; jeder kann nachschauen, was die ursprüngliche Karte war – transparent statt verboten. Refinement nötig
+(Darstellung, mehrfaches Ändern, Anonym-Modus, Daten: ursprüngliche Karte je Runde speichern → Ben). Öffentlich in der
+Backlog-Liste (B-57)? – noch klären.
+
+### B-59 Aufdecken, bevor alle gewählt haben
+Feedback (3×): Button „reveal now“, wenn jemand abwesend ist, statt ihn zu entfernen. Andreas: ins Backlog + öffentlich;
+refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns Smarteres ein.
+
+### B-60 Spaß-Funktionen
+Feedback (≈ 6×): Reaktionen/Emojis, Papierkugeln werfen, Fun-Karten, Emojis im Namen, Musik. Andreas: Backlog +
+öffentlich; er hatte schon einmal ein Mock-up dazu gebaut, fand es cool. Refinement nötig.
+
+### B-61 Eigene Kartenwerte / eigene Decks
+Feedback (≈ 4×): eigene Zahlen/Begriffe, Business-Value-Deck. Andreas: Backlog + öffentlich, aber gut durchdenken;
+offene Frage, ob so etwas irgendwann hinter eine Paywall gehört.
+
+### B-57 Ideas & Bugs: Meldungen, öffentliche Liste, Abstimmung
+Andreas (2026-10-27), statt der Umfrage B-55 (Team: Verhalten ist das Hauptsignal, Umfrage-Antworten ohne „was“ wenig
+verwertbar): Feedback-Panel erweitern zu „Ideas & Bugs“.
+- **Melden:** Typ Bug / Feature / Other + Text; bei Bugs automatisch technischer Kontext (Browser, Fenstergröße, Touch,
+  App-Version, Hell/Dunkel; **keine** Team-ID). Speicherung privat (neue Spalten `fb_type`, `fb_context` bzw. eigene
+  Tabelle). Bestätigung per Toast („Thanks – we read every message.“).
+- **Öffentliche Liste** darunter: Einträge mit Status (planned / in progress / ✅ done), von uns selbst formuliert
+  (nie Nutzertexte direkt → keine Moderation fremder Inhalte nötig). Reaktion je Eintrag (z. B. ❤️ / 🙈), eine Stimme pro
+  User-ID. Erster Eintrag: „New look ✅“ (ersetzt die Umfrage; einige Tage nach Rollout 1).
+- **Moderation:** Eingang abhaken; Liste anlegen/ändern/Status setzen – in `stats.php` (seit Sprint 3 per nginx Basic
+  Auth geschützt), Aktionen per POST an `stats.php` selbst. Sina reviewt.
+- Aus B-55-Analyse noch offen, falls die Survey-Funktion je wieder genutzt wird: `get_survey.php` `bind_param('i')`
+  → `'s'`; `fillBars[vote_option.id - 1]` → Index; Survey-Box auf `textContent` (B-43). Emojis: Tabellen sind `utf8mb3`
+  → für ❤️/🙈 `utf8mb4` bzw. Codes statt Zeichen speichern.
+- Ergänzend (Team-Konsens): Basis-Kennzahlen vor Rollout 1 festhalten (Ben): wiederkehrende User-IDs, Runden je
+  Session, Menü-Nutzung – Vergleich vorher/nachher.
+Umfang: 2–3 PRs (DB, API, Moderation in `stats.php`, Panel, Tests). **Zeitpunkt (Andreas, 2026-10-27): noch vor Rollout 1.**
+- **Team-Einschätzung nach Umsetzung (2026-10-27), Entscheidungen Andreas:** Kanal = qualitatives Signal, Stimmen sind
+  ein Stimmungsbild, keine Zählung. Bewusst **nicht**: Begrenzung der Stimmen pro Tag (wer den Aufwand treibt, sendet
+  auch ein Signal; echte Absicherung bräuchte mehr als die User-ID), roter Punkt bei neuen Einträgen erneut (nervt
+  Leute, die keine Rückmeldung geben wollen), Textfeld nach 👎 (dafür gibt es „New issue“), Sessions beobachten (zu
+  aufwändig; bekannte Nutzer melden sich, wenn etwas klemmt). Tests: B-62.
+
+### B-56 Players-Menü
+Delias Idee aus B-40/B-51, von Andreas für nach Rollout 1 gewünscht („freue mich sehr“, 2026-10-27): eigener Menüpunkt
+„Players“ im Side Panel / Bottom-Sheet mit Liste aller Spieler und Beobachter (Name, Rolle, Status, z. B. „inaktiv
+seit …“), Entfernen mit Rückfrage. Das Lösch-Icon auf den Karten fällt dann weg (bis dahin: Icon bei Touch immer, mit
+Maus nur bei Hover). Inaktive Spieler auf dem Tisch ggf. blasser. Für „inaktiv seit“ und Beobachter in der Liste
+braucht es Ben (DAO liefert `last_callback_time` heute nur für Spieler). Sina prüfen lassen (Entfernen anderer).
+
+### B-55 Rollout 1: Hinweis und Umfrage zur neuen Optik
+Idee Andreas (2026-10-23): Nutzer nach Rollout 1 fragen, ob die Richtung passt. Bestehende Umfrage-Funktion nutzen
+(`pok_survey_tbl`, `pok_survey_vote_options_tbl`, `pok_survey_votes_tbl`, `api/get_survey.php`, `toggleSurvey()`),
+vermutlich nur per DB-Eintrag: „How do you like the new look?“ (z. B. Love it / Fine / Takes getting used to / Prefer
+the old one), Intro verweist für Freitext auf die Feedback-Funktion. Dazu einmaliger Toast beim ersten Besuch nach dem
+Rollout („New look – same game. Menus moved to the right.“, Toast-Mechanismus aus Schritt 2). Umfrage nicht
+gleichzeitig mit dem Toast, eher ab dem zweiten Besuch. Delia: Umfrage-Box im neuen Look (Schritt 3). Ben: SQL für die
+Umfrage, prüfen ob „ab zweitem Besuch“ ohne Code geht. Sina: B-43 (`survey_intro` per `innerHTML`) dabei miterledigen.
+Auswertung nach einigen Tagen per SQL, getrennt nach wiederkehrenden und neuen Teams.
+
+### B-54 Feedback-Text ohne `encodeURIComponent()`
+Beim B-48-Review gefunden (Fred, 2026-10-23), schon vorher so: `feedback_submit()` in `script/script_feedback.js`
+hängt den Text als `'&text=' + fb_text` an die URL. Mit `&` oder `#` im Feedback kommt der Text abgeschnitten an.
+Fix: `encodeURIComponent()` (Konvention aus CLAUDE.md). Klein (Fred). Ebenso: „Delete User“ ist ein `<a>` ohne
+`href` und per Tastatur nicht erreichbar → `<button>` im Link-Stil (mit B-51 erledigen).
+
+### B-52 Topics als Backlog-Items
+Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
+das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
+Rundenhistorie wird heute schon geschrieben (`pok_roundstats_tbl`, `pok_roundstat_details_tbl`) und ließe sich je
+Topic rückwirkend anzeigen. Berührt Datenmodell/API (Ben). Erst im Mockup (Delia, B-51) zeigen, dann refinen.
+
+### B-53 Ergebnisdarstellung neu
+Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
+Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
+die Häufigkeitsbalken (`show_card_stats`) stehen. Ziel: Ergebnisse separat und anders darstellen (Verteilung,
+Konsens/Ausreißer, Zeiger-Idee erhalten), ggf. mit gespeicherter Historie (passt zu B-52). Vorschlag kommt im
+Mockup (Delia).
+Idee Andreas (2026-10-24) zur Sidebar: Beim ersten Besuch gibt es noch kein Topic, keine Historie, keine Spreads →
+Sidebar zunächst eingeklappt, Board clean wie in Rollout 1; Lösung nötig für „New Round“ und eine aktivierte Stoppuhr.
+
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
 Umfragen (`survey_intro`, aus der API) per `innerHTML` in die Seite. Der Inhalt ist Admin-Content aus der DB, keine
@@ -990,6 +1107,8 @@ geschnitten):
   mobil sinnvoller mit responsiven Elementen aufbaubar. → jetzt **B-51**.
 - **Menüs userfreundlicher strukturieren und aufräumen.** → jetzt **B-51**.
 - **Kartenlayout verbessern** – z. B. die Spielernamen besser unter den Karten platzieren.
+  Andreas (2026-10-27): Namen später **über** die Karten setzen; heute passen bei ~100-px-Karten in Mono-Schrift nur
+  ~8–9 Zeichen (Rest „…“, voller Name als Tooltip).
 - **Karten mit Beschriftungen** ermöglichen (z. B. um echtes Delegation Poker zu spielen).
 - **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
 - **Kartenziffern modernisieren.**
