@@ -955,12 +955,18 @@ es ergibt sich unten rechts ein sauberes „Kreuz“. Mobil: Timer + Rundenknopf
 Übergang bis zur rechten Ergebnis-Leiste (Rollout 3): Streuung (Spreads) und optional der Durchschnittszeiger über den
 Controls anzeigen, wenn eine Runde aufgedeckt ist. Mockup-Runde 3 war in dieser Ecke noch unruhig. Erst Konzept
 (Delia), dann Umsetzung (Delia + Fred).
+**Entscheidungen Andreas (2026-10-28) nach Delias Konzept:** Optik wie im ursprünglichen Mockup (Runde 3): Timer
+**über** dem Button, bei aktivem Timer unten rechts für alle die Standard-Symbole Pause/Reset (wie im Mockup). Spreads
+bleiben vorerst, wo sie heute sind (über den Karten); Umzug ins Seitenpanel erst in der nächsten Iteration.
 
 ### B-67 Timer statt Stoppuhr (T-Minus)
 Andreas (2026-10-28): Timer nach Raketenstart-Schema. Timebox 0 = wie heute, zählt T+ hoch (Stoppuhr). Timebox z. B.
 5 Minuten = startet bei T−05:00 und läuft gegen 0, danach weiter ins T+. Offen (UX, Delia): Anzeige und Steuerung
 trennen? Einstellungen (an/aus, Timebox, Pause/Reset) im Menü, für alle nur die Anzeige – oder Pause/Reset weiter
 direkt unten? Braucht Ben (Timebox je Team speichern) und Fred.
+**Entscheidungen Andreas (2026-10-28):** Eigenes Menü-Panel „Timer“ wie die anderen Menüs: dort Timer aktivieren
+(dann sehen alle unten rechts Timer + Pause/Reset) und Timebox-Länge festlegen. Timebox 0 bleibt erlaubt = Stoppuhr;
+das muss für den User verständlich erklärt sein.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
