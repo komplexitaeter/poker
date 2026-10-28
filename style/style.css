@@ -38,8 +38,11 @@
     --space-4: 2rem;
     /* minimum size of a header button; larger on touch screens */
     --tap: 36px;
-    /* menu panel width on large screens; B-68: also the width of the column */
+    /* menu panel width on large screens */
     --panel-w: 380px;
+    /* B-68: width of the column (large screens): as wide as the menu panel, narrower on small
+     * desktops (300px at 800px), so the deck keeps room for its cards; the menu panel covers it */
+    --col-w: clamp(300px, 40vw - 20px, var(--panel-w));
     /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
@@ -55,10 +58,11 @@
     --card-fluid: clamp(64px, min(22vw, max(100px, 6.94vw)), 140px);
     /* smallest delete icon on a card: none here, 28px on touch screens (see "Touch screens") */
     --card-del-min: 0px;
-    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px); B-68: the deck
-     * shares the width with the column, never smaller than 45px: when the cards do not fit, it
-     * scrolls sideways. */
-    --deck-w: clamp(45px, min((100vw - var(--panel-w) - 104px) / 16 - 4px, 2.5vw + 13px), 64px);
+    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px). B-68 (large
+     * screens): the cards shrink together when they do not fit into the tray, down to --deck-min;
+     * only then the deck scrolls sideways. */
+    --deck-w: clamp(45px, 2.5vw + 13px, 64px);
+    --deck-min: 26px;
 }
 
 /* phones: the deck scrolls sideways; 55px at 375px as before, smaller in landscape (12vh) */
@@ -94,6 +98,10 @@ body {
     --flash-red-background: #340000;
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
+    /* B-68: the deck tray floating over the table: a deep shadow and a faint light edge, so it
+     * stands out on the dark page too */
+    --tray-shadow: 0 12px 32px -2px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.12);
     --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
     --survey-voted_background: rgba(0, 0, 0, 0.67);
 }
@@ -118,6 +126,7 @@ body.light-theme {
     --flash-red-background: #ffd9d9;
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
+    --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     --scrim: rgba(29, 32, 39, 0.4);
     --survey-voted_background: rgba(255, 255, 255, 0.67);
 }
@@ -398,10 +407,10 @@ textarea.field {
 /* One grid for the whole screen. dvh follows the visible height on phones (address bar), vh is
  * the fallback. Only the table scrolls; everything else keeps its place and its height.
  * B-68, like a console (one surface, zones, hardly any lines):
- * - large screens (from 800px): the table on the left, the deck below it as a rounded tray
- *   floating over the table; the column on the right (as wide as the menu panel) from the header
- *   down to the bottom edge in its own tone: where the round is, the topic, the spread, and at its
- *   foot the round actions (.dock), the button level with the middle of the deck cards.
+ * - large screens (from 800px): the table on the left, the deck below it as a compact rounded
+ *   tray floating over the table; the column on the right (--col-w) from the header down to the
+ *   bottom edge in its own tone: where the round is, the topic, the spread, and at its foot the
+ *   round actions (.dock), the button's bottom edge level with the tray's.
  * - phones: header, topic strip, table, then the spread and the round actions as a strip right
  *   above the deck.
  * Table: the page color; header, column and deck: one panel color (--bg-2), no lines between them.
@@ -457,7 +466,7 @@ textarea.field {
 
 @media (min-width: 800px) {
     .container {
-        grid-template-columns: minmax(0, 1fr) var(--panel-w);
+        grid-template-columns: minmax(0, 1fr) var(--col-w);
         grid-template-rows: auto auto auto minmax(0, 1fr) auto;
         grid-template-areas:
             "head  head"
@@ -467,17 +476,15 @@ textarea.field {
             "deck  dock";
     }
 
-    /* the deck: a rounded tray that floats over the table (page color around it), ending a gap
-     * before the column; no line between deck and column. The tray is centered in its row and the
-     * cards in the tray (see "Card deck"), so the round button at the foot of the column (.dock)
-     * is level with the middle of the cards. */
+    /* the deck: a compact rounded tray that floats over the table (page color around it), ending
+     * a gap before the column and the bottom edge; no line between deck and column. The round
+     * button at the foot of the column (.dock) ends level with the tray's bottom edge. */
     .down-container {
         --tray-gap: 12px;
-        align-self: center;
-        justify-content: center;
+        align-self: end;
         margin: var(--tray-gap) var(--tray-gap) calc(var(--tray-gap) + env(safe-area-inset-bottom));
         border-radius: var(--radius-l);
-        box-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
+        box-shadow: var(--tray-shadow);
     }
 }
 
@@ -1632,9 +1639,9 @@ div#cbox {
 
 /* The round actions at the foot of the column, on the panel color, no frame.
  * Phones: one row right above the deck, timer left, button right. Large screens: in the deck's
- * row, the timer row above the button, both as wide as the column; the button sits in the middle
- * of the row (level with the middle of the deck cards), the timer right above it. The timer keeps
- * its room while it is off, so the button never moves. */
+ * row, the timer row above the button, both as wide as the column, at the bottom: the button ends
+ * level with the deck's tray. The timer keeps its room while it is off, so the button never
+ * moves. */
 .dock {
     grid-area: dock;
     display: flex;
@@ -1651,22 +1658,20 @@ div#cbox {
 }
 
 @media (min-width: 800px) {
-    /* three rows: timer (at the bottom of the first), button, and an empty row as high as the
-     * first, so the button stays in the middle; the dock is at least high enough for that */
+    /* the timer right above the button, both at the bottom: the button ends as far above the
+     * bottom edge as the deck's tray (--tray-gap), level with it; the timer keeps its row while
+     * it is off, so the button never moves */
     .dock {
-        --timer-h: var(--tap);
-        display: grid;
-        grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
-        align-items: end;
-        row-gap: var(--space-2);
-        min-height: calc(2 * (var(--timer-h) + var(--space-2)) + 44px + 24px);
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: stretch;
         padding: 12px var(--space-3) calc(12px + env(safe-area-inset-bottom));
-        box-sizing: border-box;
     }
 
-    .dock > .timer { height: var(--timer-h); }
-
-    .dock > #newroundbtn { grid-row: 2; }
+    .dock > .timer {
+        flex: none;
+        height: var(--tap);
+    }
 }
 
 /* the row (phones): the button fills the rest of the row up to 200px and only shrinks to its
@@ -1696,10 +1701,12 @@ div#cbox {
     color: var(--accent);
 }
 
+/* B-68: the text much paler than an active label, so it does not look clickable */
 #newroundbtn:disabled {
     border-style: dashed;
     border-color: var(--line-strong);
-    color: var(--muted);
+    color: var(--disabled);
+    color: color-mix(in srgb, var(--muted) 40%, var(--bg-2));
 }
 
 /* Timer: display (T−05:00 / T+00:42) and the line icons play/pause and reset in one row.
@@ -1892,29 +1899,41 @@ div#cbox {
 
 .deck-hint { display: none; }
 
-/* keys 1–9 and 0 pick a card (pickCardByKey() in script.js): the key small below each of the first
- * ten cards, the hint on the right; only with a mouse and a keyboard at hand, players only */
-@media (min-width: 800px) and (hover: hover) and (pointer: fine) {
-    .ctl-slot {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+/* B-68, large screens: the deck fills the tray, the cards centered; when they do not fit, they
+ * all shrink alike down to --deck-min, only then the deck scrolls sideways. The tray is compact:
+ * a small margin above the cards, the keys (if any) below them. */
+@media (min-width: 800px) {
+    .controls {
+        width: 100%;
+        justify-content: safe center;
+        padding: 10px 10px 6px;
     }
 
-    /* the hint lies at the bottom edge (right); the deck keeps a row for it below the cards
-     * and a possible scrollbar, unless the keys fit next to it (keys-low, set by
-     * updateDeckRoom() in script.js): then the keys sit at the bottom edge too, level with it */
-    .down-container { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+    .controls img {
+        flex-shrink: 1;
+        min-width: var(--deck-min);
+    }
+}
 
-    .down-container.keys-low { padding-bottom: env(safe-area-inset-bottom); }
+/* keys 1–9 and 0 pick a card (pickCardByKey() in script.js): the key small below each of the first
+ * ten cards, the hint on the right in the same row; only with a mouse and a keyboard at hand,
+ * players only. The hint never takes a row of its own: when it does not fit next to the keys or
+ * the deck scrolls, it is hidden (hint-off, set by updateDeckRoom() in script.js), so the tray
+ * keeps its height. */
+@media (min-width: 800px) and (hover: hover) and (pointer: fine) {
+    /* the slot shrinks (down to --deck-min), the card follows it */
+    .ctl-slot {
+        display: flex;
+        flex: 0 1 auto;
+        flex-direction: column;
+        align-items: center;
+        min-width: calc(var(--deck-min) + 4px);
+    }
 
-    /* the tray: as much room above the cards as below them (keys, hint row), so the cards sit in
-     * its middle, level with the round button (see "Board layout") */
-    .down-container { padding-top: 31px; }
-
-    .down-container.keys-low { padding-top: 18px; }
-
-    .down-container.keys-low .controls { padding-bottom: 4px; }
+    .ctl-slot > img {
+        min-width: 0;
+        max-width: calc(100% - 4px);
+    }
 
     .ctl-key {
         display: block;
@@ -1931,7 +1950,7 @@ div#cbox {
         display: block;
         position: absolute;
         right: var(--space-3);
-        bottom: calc(4px + env(safe-area-inset-bottom));
+        bottom: calc(6px + env(safe-area-inset-bottom)); /* level with the keys */
         margin: 0;
         font-size: 10px;
         line-height: 1;
@@ -1939,6 +1958,7 @@ div#cbox {
     }
 
     .ctl_as_guest .ctl-key,
+    .down-container.hint-off .deck-hint,
     .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
 }
 
@@ -1974,16 +1994,16 @@ div#cbox {
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
 /* B-66/B-68: in the column right above the round actions (.dock), so the two never overlap: the
- * deck's tray is its anchor, the column lies right of it (beyond the tray's gap). The tray and the
- * round button share their middle, so the survey ends a step above the timer row (button 44px,
- * gaps 8px, timer as high as --tap). Large screens only (hidden on phones). */
+ * deck's tray is its anchor, the column lies right of it (beyond the tray's gap). The round button
+ * ends level with the tray, so the survey ends a step above the timer row (button 44px, gaps 8px,
+ * timer as high as --tap). Large screens only (hidden on phones). */
 .survey-container {
     font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
-    bottom: calc(50% + 22px + var(--space-2) + var(--tap) + var(--space-2));
-    right: calc(-1 * (var(--panel-w) + var(--tray-gap, 0px)));
+    bottom: calc(44px + var(--space-2) + var(--tap) + var(--space-2));
+    right: calc(-1 * (var(--col-w) + var(--tray-gap, 0px)));
     margin: 0 auto;
     visibility: hidden;
     display: unset;
@@ -2213,6 +2233,10 @@ div#cbox {
 .spread-seg.in,
 .spread-seg.out { height: 0; }
 
+/* a resize (e.g. the breakpoint to phones) changes --spread-h: the bars jump to it, only votes
+ * animate (no-anim, set by handleResize() in script.js) */
+.spread.no-anim .spread-seg { transition: none; }
+
 .spread-col.zero .spread-bar { background: var(--line); }
 
 .spread-value {
@@ -2319,7 +2343,7 @@ div#cbox {
     }
 
     .side {
-        --spread-h: 96px;
+        --spread-h: 64px;
         min-height: 0;
         overflow-y: auto;
         padding: var(--space-3);
