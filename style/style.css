@@ -18,7 +18,7 @@
     --fs-s: 0.8125rem;    /* 13px: labels, menu buttons, fields */
     --fs-m: 0.875rem;     /* 14px: body text */
     --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
-    --fs-xl: 1.125rem;    /* 18px: timer display */
+    --fs-xl: 1.125rem;    /* 18px: timer display (large screens) */
     /* stacking order (lowest first) */
     --z-nav: 10;          /* header, above the table */
     --z-promo: 100;
@@ -774,6 +774,20 @@ textarea.field {
     margin-left: 8px;
     border-radius: 50%;
     background: var(--danger);
+    vertical-align: middle;
+}
+
+/* B-67: a small green dot behind ":timer" while the timer is on for the board (#timer shown);
+ * green and behind the label, so it does not read as a notification like the red feedback dot */
+body:has(#timer:not(.display_none)) #timer_btn .lbl::after,
+body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--ok);
     vertical-align: middle;
 }
 
@@ -1654,10 +1668,11 @@ div#cbox {
 .timer.display_none { display: none; }
 
 .timer-display {
-    min-width: 7ch; /* T−05:00; h:mm:ss from 60 min on is wider */
+    position: relative; /* anchor of the time-up dot */
+    min-width: 7ch; /* T−05:00; from 60 min on h:mm:ss grows to 9ch, the row stays centered */
     font-size: var(--fs-xl);
     font-variant-numeric: tabular-nums;
-    text-align: right;
+    text-align: center;
     white-space: nowrap;
     color: var(--text);
 }
@@ -1667,7 +1682,7 @@ div#cbox {
     align-items: center;
 }
 
-.timer-btn { color: var(--muted); }
+.timer-btn { color: var(--text); }
 .timer-btn:hover { color: var(--accent); }
 .timer-btn[hidden] { display: none; }
 
@@ -1680,33 +1695,66 @@ div#cbox {
 .timer[data-state=ready] .timer-display,
 .timer[data-state=paused] .timer-display { color: var(--muted); }
 
-/* time is up: T+ in amber (no sound, no blinking) */
-.timer[data-over=true] .timer-display { color: var(--warn); }
+/* time is up: T+ in amber and bold, with a dot in front, so it does not rely on the color alone
+ * (no sound, no blinking). The dot sits outside the text: the row keeps its width. */
+.timer[data-over=true] .timer-display {
+    color: var(--warn);
+    font-weight: bold;
+}
+
+.timer[data-over=true] .timer-display::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 6px 0 0;
+    border-radius: 50%;
+    background: var(--warn);
+}
 
 @media (max-width: 799.98px) {
     /* dock: timer left, New Round right; sized so both fit in one row at 320px */
+    /* the button fills the rest of the row up to 200px and only shrinks to its text: one row
+     * down to 320px (a fixed 200px wrapped below about 380px) */
     #newroundbtn {
+        flex: 1 1 auto;
+        width: auto;
+        max-width: 200px;
         min-width: 0;
         margin-left: auto;
         padding: 0.2rem 0.6rem;
         font-size: var(--fs-m);
     }
 
-    .timer-display { font-size: var(--fs-l); }
+    .timer-display {
+        min-width: 0;
+        font-size: var(--fs-l);
+    }
+
+    /* the time-up dot behind the time, in the empty part of the pause button: the row keeps its width */
+    .timer[data-over=true] .timer-display::before {
+        right: auto;
+        left: 100%;
+        margin: -3.5px 0 0 5px;
+    }
 }
 
 /* ---------- Timer panel (B-67) ---------- */
 
-/* six presets in one segment switch: tighter padding */
-.tmr-presets span { padding: 2px var(--space-1); }
+/* six presets in one segment switch: tighter padding (fits 320px) */
+.tmr-presets span { padding: 2px 0; }
 
 .tmr-other { margin-top: var(--space-2); }
+
+.tmr-other > span { color: var(--muted); }
 
 .tmr-other .lab { margin: 0; }
 
 .menu .tmr-other .field {
     flex: none;
-    width: 6ch;
+    width: 11ch; /* "1–240" next to the spin buttons */
     text-align: center;
 }
 
@@ -1812,12 +1860,15 @@ div#cbox {
 
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
+/* B-66: in the bottom right corner above the round actions (.dock: timer row + button, see
+ * "Board layout"), so the two never overlap; down at the edge when the dock is empty. */
 .survey-container {
+    --survey-above: calc(2 * var(--tap) + var(--space-1) + var(--space-2) + var(--space-2));
     font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
-    bottom: 0;
+    bottom: var(--survey-above);
     right: 0;
     margin: 0 auto;
     visibility: hidden;
@@ -1839,6 +1890,23 @@ div#cbox {
 }
 
 #survey-button:hover { opacity: 0.7; }
+
+/* timer off: only the round button below */
+.container:has(#timer.display_none) .survey-container {
+    --survey-above: calc(var(--tap) + var(--space-2) + var(--space-2));
+}
+
+/* empty dock: the survey tab sits on the bottom edge as before */
+.container:has(#timer.display_none):has(#newroundbtn.display_none) .survey-container { --survey-above: 0px; }
+
+/* above the dock it floats: rounded at the bottom too (open: the content's corners) */
+.survey-container:has(#survey-content.survey-closed) #survey-button,
+.survey-container #survey-content.survey-open { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
+
+.container:has(#timer.display_none):has(#newroundbtn.display_none) .survey-container :is(#survey-button, #survey-content) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
 
 #survey-button .arrow { margin-left: var(--space-3); }
 
@@ -2090,8 +2158,20 @@ div#cbox {
     transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* B-67: in the phone sheet (the toast moves into the modal menu) it drops in from the top edge,
+ * over the dimmed board, so it does not cover the controls at the bottom of the sheet */
+.menu > .toast {
+    top: calc(var(--space-3) + env(safe-area-inset-top));
+    bottom: auto;
+    transform: translate(-50%, calc(-100% - var(--space-3) - 32px - env(safe-area-inset-top)));
+}
+
+.menu > .toast.toast-on { transform: translate(-50%, 0); }
+
 /* reduced motion: fade in and out in place */
 @media (prefers-reduced-motion: reduce) {
+    .menu > .toast,
+    .menu > .toast.toast-on,
     .toast,
     .toast.toast-on { transform: translate(-50%, 0); }
 

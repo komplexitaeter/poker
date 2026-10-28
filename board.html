@@ -7,7 +7,7 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.36" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.37" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -228,7 +228,7 @@
                         <label><input type="radio" name="tmr_visibility" value="0" onchange="setTimerVisibility(this.value)"/><span>Off</span></label>
                         <label><input type="radio" name="tmr_visibility" value="1" onchange="setTimerVisibility(this.value)"/><span>On</span></label>
                     </div>
-                    <p class="hint">Everyone sees it above the round button, with play/pause and reset.</p>
+                    <p class="hint">Shown to everyone at the round button, with play/pause and reset.</p>
                 </fieldset>
                 <fieldset class="f" id="tmr_mode">
                     <legend class="lab">Mode</legend>
@@ -236,7 +236,7 @@
                         <label><input type="radio" name="tmr_mode" value="STOPWATCH" onchange="setTimerMode(this.value)"/><span>Stopwatch</span></label>
                         <label><input type="radio" name="tmr_mode" value="TIMER" onchange="setTimerMode(this.value)"/><span>Timer</span></label>
                     </div>
-                    <p class="hint">Stopwatch counts up. Timer counts down to zero, then on as T+.</p>
+                    <p class="hint">Stopwatch counts up. Timer counts down to zero, then on as T+ in amber.</p>
                 </fieldset>
                 <fieldset class="f" id="tmr_timebox" hidden>
                     <legend class="lab">Timebox (minutes)</legend>
@@ -250,10 +250,10 @@
                     </div>
                     <div class="row tmr-other">
                         <label for="tmr_other" class="lab">other:</label>
-                        <input class="field" id="tmr_other" type="number" min="1" max="240" step="1" inputmode="numeric" placeholder="–" aria-describedby="tmr_other_hint" onchange="setTimerOther()" onkeydown="if (event.key === 'Enter') setTimerOther()"/>
+                        <input class="field" id="tmr_other" type="number" min="1" max="240" step="1" inputmode="numeric" placeholder="1–240" aria-describedby="tmr_other_hint" onchange="setTimerOther()" onkeydown="if (event.key === 'Enter') setTimerOther()"/>
                         <span aria-hidden="true">min</span>
                     </div>
-                    <p id="tmr_other_hint" class="hint">1 to 240 minutes.</p>
+                    <p id="tmr_other_hint" class="sr-only">1 to 240 minutes.</p>
                 </fieldset>
                 <fieldset class="f" id="tmr_auto_restart">
                     <legend class="lab">Auto-start on new round</legend>
@@ -261,7 +261,7 @@
                         <label><input type="radio" name="tmr_auto_restart" value="0" onchange="setTimerAutoRestart(this.value)"/><span>Off</span></label>
                         <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>On</span></label>
                     </div>
-                    <p class="hint">New round and Cancel round restart it.</p>
+                    <p class="hint">New round and Cancel round reset it and start it.</p>
                 </fieldset>
             </section>
 
