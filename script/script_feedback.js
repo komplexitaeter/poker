@@ -11,7 +11,7 @@ const gMenuSections = {
     topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX',         focus: 'topic_txt'},
     cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'cet_pre'},
     user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'},
-    feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'feedback_txt'}
+    feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'fb_tab_backlog'} // opens on the backlog tab
 };
 const gPhoneQuery = window.matchMedia('(max-width: 799.98px)');
 let gMenuOpener = null; // gets the focus back when the menu closes
@@ -35,7 +35,7 @@ function prepareMenuSection(sec) {
         document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
     }
-    if (sec === 'feedback') showMenuTab(document.getElementById('feedback_box'), 'send');
+    if (sec === 'feedback') showMenuTab(document.getElementById('feedback_box'), 'backlog'); // B-57: backlog first
     if (sec === 'user_settings') {
         document.getElementById('cet_usr_name').value = gUserName;
         document.getElementById('cet_change_user').disabled = true;

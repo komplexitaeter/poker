@@ -24,7 +24,7 @@ test('the red dot on the feedback button goes away for good once the panel was o
 
   const sent = alice.waitForResponse(r => r.url().includes('hide_teaser=1'));
   await btn.click();
-  await expect(alice.locator('#feedback_txt')).toBeVisible();
+  await expect(alice.locator('#fb_panel_backlog')).toBeVisible();
   await expect(alice.locator('body')).not.toHaveClass(/\bfb-new\b/);
   await expect(btn).toHaveAttribute('aria-label', 'Feedback');
   expect((await sent).ok()).toBeTruthy();
@@ -34,7 +34,7 @@ test('the red dot on the feedback button goes away for good once the panel was o
   // opening it again sends nothing
   await alice.keyboard.press('Escape');
   await btn.click();
-  await expect(alice.locator('#feedback_txt')).toBeVisible();
+  await expect(alice.locator('#fb_panel_backlog')).toBeVisible();
   expect(updates).toHaveLength(1);
 
   await alice.reload();
@@ -62,7 +62,7 @@ test('phones: the dot sits on the menu button and on the feedback entry of the i
 
   const sent = bob.waitForResponse(r => r.url().includes('hide_teaser=1'));
   await entry.click();
-  await expect(bob.locator('#feedback_txt')).toBeVisible();
+  await expect(bob.locator('#fb_panel_backlog')).toBeVisible();
   expect((await sent).ok()).toBeTruthy();
   await expect(menuBtn).toHaveAttribute('aria-label', 'Menu');
   expect(await entry.locator('b').evaluate(el => getComputedStyle(el, '::after').content)).toBe('none');
