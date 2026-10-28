@@ -104,18 +104,18 @@ test('a new player: the cards shrink with a glide, a resize just sets the size (
   const alice = await newPlayer(browser, { viewport: PHONE });
   await recordAnimations(alice);
   const url = await createTeam(alice, 'Fluid Glide');
-  // 3 cards fit at the phone maximum (one row); a 4th makes them smaller (B-68: 2 rows do not fit any
-  // more, the spread strip above the deck takes its room)
-  await addPlayersViaApi(alice, url, ['Bob', 'Carol']);
+  // 6 cards fit at the phone maximum (two rows; the strip above the deck is slim while voting, B-68);
+  // a 7th makes them smaller
+  await addPlayersViaApi(alice, url, ['Bob', 'Carol', 'Dave', 'Erin', 'Finn']);
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#cbox .c')).toHaveCount(3);
+  await expect(alice.locator('#cbox .c')).toHaveCount(6);
   await expect.poll(() => cardWidth(alice, 'Alice')).toBe(110);
   await alice.waitForTimeout(1200); // glides of the join are over
   const before = (await recorded(alice)).length;
 
   const zoe = await newPlayer(browser);
   await joinAsPlayer(zoe, url, 'Zoe');
-  await expect(alice.locator('#cbox .c')).toHaveCount(4);
+  await expect(alice.locator('#cbox .c')).toHaveCount(7);
   await expect.poll(() => layoutWidth(alice, 'Alice')).toBeLessThan(110);
   const small = await layoutWidth(alice, 'Alice');
 
@@ -140,13 +140,14 @@ test('prefers-reduced-motion: a new player changes the size without a glide (B-4
   await alice.emulateMedia({ reducedMotion: 'reduce' });
   await recordAnimations(alice);
   const url = await createTeam(alice, 'Fluid Calm');
-  await addPlayersViaApi(alice, url, ['Bob', 'Carol']);
+  await addPlayersViaApi(alice, url, ['Bob', 'Carol', 'Dave', 'Erin', 'Finn']);
   await joinAsPlayer(alice, url, 'Alice');
+  await expect(alice.locator('#cbox .c')).toHaveCount(6);
   await expect.poll(() => cardWidth(alice, 'Alice')).toBe(110);
 
   const zoe = await newPlayer(browser);
   await joinAsPlayer(zoe, url, 'Zoe');
-  await expect(alice.locator('#cbox .c')).toHaveCount(4);
+  await expect(alice.locator('#cbox .c')).toHaveCount(7);
   await expect.poll(() => cardWidth(alice, 'Alice')).toBeLessThan(110);
   await alice.waitForTimeout(300);
   expect(await recorded(alice)).toEqual([]);
