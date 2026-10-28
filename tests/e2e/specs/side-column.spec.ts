@@ -53,7 +53,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
     return r.top + (r.height - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth)) / 2;
   });
   const btnMiddle = async () => { const b = await box(alice, '#newroundbtn'); return b.y + b.height / 2; };
-  expect(Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
+  await expect.poll(async () => Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
 
   // the topic is in the column
   await alice.request.post(`/api/update_topic.php?t=${encodeURIComponent(t)}`, { form: { topic: 'PAY-142 pay by invoice' } });
@@ -124,7 +124,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   await expect(status).toBeVisible();
   expect(Math.round((await box(alice, '.side')).x)).toBe(820 - 380);
   await expect(alice.locator('#down-container')).not.toHaveClass(/keys-low/);
-  expect(Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
+  await expect.poll(async () => Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
 
   // phones: no status, the topic strip below the header, the spread and the round actions right
   // above the deck
