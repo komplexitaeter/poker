@@ -1,9 +1,10 @@
 <?php
 /*
- * Internal statistics and moderation of "Ideas & Bugs" (B-57, B-64). Protected by nginx basic auth
- * (docs/stats-basic-auth.md). Moderation actions are POSTs to this page with a session form token
- * (CSRF protection: the browser sends the basic auth credentials with every request automatically),
- * followed by a redirect back (POST/redirect/GET).
+ * Internal statistics and moderation of "Ideas & Bugs" (B-57, B-64). Own login page (B-63): user and
+ * password are checked against the nginx htpasswd file (bcrypt entries only, docs/stats-basic-auth.md),
+ * "stay logged in" is a signed cookie (30 days). Without a valid cookie the page shows the login form
+ * only and runs no query. Moderation actions are POSTs to this page with a valid cookie and a session
+ * form token (CSRF protection), followed by a redirect back (POST/redirect/GET).
  *
  * Tabs (B-64, ?tab=): live (default, reloads every 30 s), usage, ideas (moderation), tech.
  * Only the queries of the shown tab run. Every query has a time range on an indexed column and a
@@ -13,13 +14,19 @@ require './config.php';
 require './api/lib.php';
 
 const STATS_TABS = array('live' => 'Live', 'usage' => 'Usage', 'ideas' => 'Ideas & Bugs', 'tech' => 'Tech');
-const LIVE_MINUTES = 5;          // a client counts as active if its board loaded data within this many minutes
+const ACTIVE_ROUND_MINUTES = 60; // a table counts as active if it started a new round within this many minutes;
+                                 // its clients count if their board loaded data within the same time
 const LIVE_RELOAD_SEC = 30;
 const USAGE_WEEKS = 9;           // weekly users: current week + 8 full weeks
 const USAGE_DAYS = 28;           // daily feature usage
 const LIVE_DAYS = 28;            // rounds per day in the live tab (today + 27 days)
 /* dates worth marking in the usage charts */
 const MILESTONES = array('2026-10-28' => 'Rollout 1');
+/* login (B-63): htpasswd file of nginx, the only place of the credentials (maintained with htpasswd -B -C 12);
+   STATS_COOKIE_SECRET (config.php) is part of the cookie signature key */
+define('AUTH_FILE', defined('STATS_HTPASSWD') ? STATS_HTPASSWD : '/etc/nginx/poker-stats.htpasswd');
+const AUTH_COOKIE = 'pokstats_auth';
+const AUTH_DAYS = 30;
 /* analytics events the current app still sends (script/*.js: measureEvent, gMenuSections in script_feedback.js) */
 const EVENTS = array(
     'BOARD_ON_LOAD'          => 'Board loaded',
@@ -71,18 +78,61 @@ function bar_width($value, $max): string {
     return $max > 0 ? number_format(100 * $value / $max, 1, '.', '') : '0';
 }
 
-session_name('pokstats');
-session_set_cookie_params(array(
-    'path' => $_SERVER['SCRIPT_NAME'] ?? '/stats.php',
-    'httponly' => true,
-    'samesite' => 'Strict',
-    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
-));
-ini_set('session.use_strict_mode', '1');
-session_start();
-if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
-$csrf = $_SESSION['csrf'];
-session_write_close();
+/*
+ * bcrypt entries of the htpasswd file as user => hash, false if the file is not readable or the cookie
+ * secret is missing (login not configured). Other formats (e.g. $apr1$ = MD5) are left out on purpose.
+ */
+function auth_entries() {
+    if (!defined('STATS_COOKIE_SECRET') || strlen((string)STATS_COOKIE_SECRET) < 32) {
+        error_log('stats.php: login not configured, STATS_COOKIE_SECRET missing or shorter than 32 chars in config.php');
+        return false;
+    }
+    $lines = is_readable(AUTH_FILE) ? file(AUTH_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : false;
+    if ($lines === false) {
+        error_log('stats.php: login not configured, cannot read ' . AUTH_FILE . ' (must be readable by the PHP-FPM user)');
+        return false;
+    }
+    $entries = array();
+    foreach ($lines as $line) {
+        $parts = explode(':', trim($line), 2);
+        if (count($parts) !== 2) continue;
+        if (preg_match('/^\$2[yb]\$/', $parts[1])) {
+            $entries[$parts[0]] = $parts[1];
+        } else if (($_POST['user'] ?? null) === $parts[0]) {
+            error_log('stats.php: user "' . $parts[0] . '" in ' . AUTH_FILE . ' has no bcrypt hash, re-hash with htpasswd -B -C 12');
+        }
+    }
+    return $entries;
+}
+
+/*
+ * cookie signature, keyed with the user's hash and the server secret: a new password invalidates all
+ * cookies of that user, and the hash alone (e.g. a leaked htpasswd file) is not enough to forge a cookie
+ */
+function auth_signature(string $payload, string $hash): string {
+    return hash_hmac('sha256', $payload, hash_hmac('sha256', $hash, STATS_COOKIE_SECRET));
+}
+
+function auth_cookie_options(int $expires): array {
+    return array(
+        'expires' => $expires,
+        'path' => $_SERVER['SCRIPT_NAME'] ?? '/stats.php',
+        'httponly' => true,
+        'samesite' => 'Strict',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+    );
+}
+
+/* logged in user from the cookie "user|expires|signature" (checked against the current file), else null */
+function auth_user(array $entries): ?string {
+    $value = $_COOKIE[AUTH_COOKIE] ?? null;
+    if (!is_string($value)) return null;
+    $parts = explode('|', $value);
+    if (count($parts) !== 3 || !ctype_digit($parts[1]) || (int)$parts[1] < time()) return null;
+    $user = rawurldecode($parts[0]);
+    if (!isset($entries[$user])) return null;
+    return hash_equals(auth_signature($parts[0] . '|' . $parts[1], $entries[$user]), $parts[2]) ? $user : null;
+}
 
 $tab = filter_input(INPUT_GET, 'tab');
 if (!is_string($tab) || !array_key_exists($tab, STATS_TABS)) $tab = 'live';
@@ -90,13 +140,73 @@ if (!is_string($tab) || !array_key_exists($tab, STATS_TABS)) $tab = 'live';
 $fb_filter = filter_input(INPUT_GET, 'fb');
 if (!in_array($fb_filter, array('open', 'done', 'all'), true)) $fb_filter = 'open';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+/* this page with the current tab, target of the login form and of the redirect after login/logout */
+$self = 'stats.php?tab=' . $tab . ($tab === 'ideas' ? '&fb=' . $fb_filter : '');
+
+/* ---------- login (B-63) ---------- */
+$entries = auth_entries();
+$login_error = null;
+if ($entries === false) {
+    http_response_code(503);
+    $login_error = 'Login not configured (see the PHP log).';
+    $entries = array();
+}
+$auth_user = auth_user($entries);
+$post_action = $_SERVER['REQUEST_METHOD'] === 'POST' ? post_text('action', 20) : '';
+
+if ($post_action === 'login' && $login_error === null) {
+    // no form token here: a session that expired while the form was open must not block the login
+    $user = post_text('user', 100);
+    $password = $_POST['password'] ?? '';
+    $hash = $entries[$user] ?? null;
+    // unknown user: check against an existing hash (same cost), so the timing does not reveal user names
+    $check_hash = $hash ?? reset($entries);
+    $ok = is_string($password) && strlen($password) <= 200 && is_string($check_hash) && password_verify($password, $check_hash);
+    if ($ok && $hash !== null) {
+        $expires = time() + AUTH_DAYS * 86400;
+        $payload = rawurlencode($user) . '|' . $expires;
+        setcookie(AUTH_COOKIE, $payload . '|' . auth_signature($payload, $hash), auth_cookie_options($expires));
+        header('Location: ' . $self, true, 303);
+        exit;
+    }
+    sleep(1);   // slows down guessing (plus limit_req in nginx, docs/stats-basic-auth.md)
+    $login_error = 'Wrong user or password.';
+    $auth_user = null;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $post_action !== 'login' && $auth_user === null) {
+    reject(403, 'Not logged in - reload stats.php and log in.');
+}
+
+/* form token (CSRF) for logout and moderation; session only when logged in, no session files for anonymous calls */
+$csrf = '';
+if ($auth_user !== null) {
+    session_name('pokstats');
+    session_set_cookie_params(array(
+        'path' => $_SERVER['SCRIPT_NAME'] ?? '/stats.php',
+        'httponly' => true,
+        'samesite' => 'Strict',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+    ));
+    ini_set('session.use_strict_mode', '1');
+    session_start();
+    if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    $csrf = $_SESSION['csrf'];
+    session_write_close();
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $post_action !== 'login') {
     $token = $_POST['csrf'] ?? '';
     if (!is_string($token) || !hash_equals($csrf, $token)) {
         reject(403, 'Invalid or missing form token - reload stats.php and try again.');
     }
+    if ($post_action === 'logout') {
+        setcookie(AUTH_COOKIE, '', auth_cookie_options(1));
+        header('Location: ' . $self, true, 303);
+        exit;
+    }
 
-    $action = post_text('action', 20);
+    $action = $post_action;
     $link = db_init('utf8mb4');
 
     if ($action === 'feedback_done') {
@@ -280,7 +390,7 @@ $data = array();
 $error = null;
 $open_feedback_cnt = 0;
 
-try {
+if ($auth_user !== null) try {   // not logged in: login form only, no query
     $link = db_init('utf8mb4');
     $open_feedback_cnt = rows($link, "select /*+ MAX_EXECUTION_TIME(2000) */ count(1) as cnt
                                         from pok_feedback_tbl where done_date is null")[0]['cnt'];
@@ -288,32 +398,40 @@ try {
     if ($tab === 'live') {
         $data['now'] = rows($link, "select now() as now_time, curdate() as today")[0];
 
-        // active tables: aggregate over the clients active within LIVE_MINUTES (range on last_callback_time);
+        // active tables: teams with a new round (= a finished round) within ACTIVE_ROUND_MINUTES (range on the index
+        // type_code_creation_date), their clients active within the same time (index team_id);
         // the team id is only used for joins inside SQL and never selected
+        $active_rounds = "select team_id, max(creation_date) as last_round
+                            from pok_roundstats_tbl
+                           where type_code = 'NEW_ROUND' and creation_date > now() - interval " . ACTIVE_ROUND_MINUTES . " minute
+                           group by team_id";
         $data['tables'] = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
-                   t.name, t.cardset_flags, t.needs_setup, t.creation_date >= curdate() as created_today
-                  ,a.clients, a.players, a.observers, a.known_users
+                   t.name, t.cardset_flags, t.needs_setup, t.creation_date >= curdate() as created_today, ar.last_round
+                  ,ifnull(a.clients, 0) as clients, ifnull(a.players, 0) as players
+                  ,ifnull(a.observers, 0) as observers, ifnull(a.known_users, 0) as known_users
                   ,(select count(1) from pok_players_tbl p
                      where p.team_id = t.id and p.player_type = 'PLAYER') as team_players
                   ,(select count(1) from pok_players_tbl p
                      where p.team_id = t.id and p.player_type = 'PLAYER' and p.card_key is not null) as cards_laid
                   ,ifnull(r.rounds_today, 0) as rounds_today
                   ,case when t.creation_date >= curdate() then t.creation_date else r.first_round end as active_since
-              from (select p.team_id
+              from (" . $active_rounds . ") as ar
+              join pok_teams_tbl t on t.id = ar.team_id
+              left join (select p.team_id
                           ,count(1) as clients
                           ,sum(p.player_type = 'PLAYER') as players
                           ,sum(p.player_type <> 'PLAYER' and p.player_type <> 'REMOVED') as observers
                           ,sum(u.creation_date < curdate()) as known_users
-                      from pok_players_tbl p
+                      from (" . $active_rounds . ") as ar2
+                      join pok_players_tbl p on p.team_id = ar2.team_id
                       left join pok_user_tbl u on u.id = p.id
-                     where p.last_callback_time > now() - interval " . LIVE_MINUTES . " minute
-                     group by p.team_id) as a
-              join pok_teams_tbl t on t.id = a.team_id
+                     where p.last_callback_time > now() - interval " . ACTIVE_ROUND_MINUTES . " minute
+                     group by p.team_id) as a on a.team_id = t.id
               left join (select team_id, count(1) as rounds_today, min(creation_date) as first_round
                            from pok_roundstats_tbl
                           where type_code = 'NEW_ROUND' and creation_date >= curdate()
                           group by team_id) as r on r.team_id = t.id
-             order by a.clients desc, t.name");
+             order by ar.last_round desc, t.name");
 
         $data['rounds'] = rows($link, "select /*+ MAX_EXECUTION_TIME(3000) */
                    ifnull(sum(creation_date > now() - interval 1 hour), 0) as last_hour
@@ -445,10 +563,10 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-<?php if ($tab === 'live') { ?>
+<?php if ($tab === 'live' && $auth_user !== null) { ?>
     <meta http-equiv="refresh" content="<?= LIVE_RELOAD_SEC ?>" />
 <?php } ?>
-    <title><?= h(STATS_TABS[$tab]) ?> - Agile Poker stats</title>
+    <title><?= $auth_user === null ? 'Login' : h(STATS_TABS[$tab]) ?> - Agile Poker stats</title>
     <style>
         /* B-64: console look of the app (tokens from style/style.css), dark by default, light per OS setting */
         :root {
@@ -503,6 +621,16 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .tabs a[aria-current="page"] { color: var(--text); font-weight: bold; border-bottom-color: var(--accent); }
         .badge { display: inline-block; min-width: 1.6em; padding: 0 0.45em; border-radius: 1em; font-weight: bold;
                  background: var(--danger); color: var(--on-accent); font-size: var(--fs-xs); line-height: 1.6; text-align: center; }
+
+        /* login (B-63) */
+        .logout { margin-left: auto; align-self: center; display: flex; align-items: center; gap: 0.75em; white-space: nowrap; }
+        .login { display: grid; gap: 0.35rem; max-width: 22rem; margin: 2rem auto; padding: 0 1.25rem 1.25rem;
+                 background: var(--bg-3); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: var(--radius-l); }
+        .login label { color: var(--muted); font-size: var(--fs-s); margin-top: 0.5rem; }
+        .login input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line-strong);
+                       border-radius: var(--radius-m); padding: 0.45em 0.6em; }
+        .login button { margin-top: 1rem; }
+        .login .note { margin: 0.5rem 0 0; }
 
         main { max-width: 1280px; margin: 0 auto; padding: 0.5rem 16px 4rem; }
 
@@ -673,9 +801,10 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         }
     </style>
 </head>
-<body class="stats stats-<?= h($tab) ?>">
+<body class="stats stats-<?= $auth_user === null ? 'login' : h($tab) ?>">
 <header class="stats-header">
     <h1>poker stats</h1>
+<?php if ($auth_user !== null) { ?>
     <nav aria-label="Sections">
         <ul class="tabs">
 <?php foreach (STATS_TABS as $key => $label) { ?>
@@ -684,9 +813,28 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 <?php } ?>
         </ul>
     </nav>
+    <form class="logout" method="post" action="<?= h($self) ?>">
+        <input type="hidden" name="csrf" value="<?= h($csrf) ?>">
+        <span class="muted"><?= h($auth_user) ?></span>
+        <button type="submit" name="action" value="logout">Log out</button>
+    </form>
+<?php } ?>
 </header>
 <main>
-<?php if ($error !== null) { ?>
+<?php if ($auth_user === null) { ?>
+    <form class="login" method="post" action="<?= h($self) ?>">
+        <h2>Login</h2>
+<?php if ($login_error !== null) { ?>
+        <p class="error" role="alert"><?= h($login_error) ?></p>
+<?php } ?>
+        <label for="login_user">user</label>
+        <input id="login_user" name="user" autocomplete="username" required autofocus>
+        <label for="login_password">password</label>
+        <input id="login_password" name="password" type="password" autocomplete="current-password" required>
+        <button type="submit" name="action" value="login">Log in</button>
+        <p class="note">Stays logged in for <?= AUTH_DAYS ?> days in this browser.</p>
+    </form>
+<?php } else if ($error !== null) { ?>
     <p class="error">Query failed: <?= h($error) ?></p>
 <?php } else if ($tab === 'live') {
     $tables = $data['tables'];
@@ -697,7 +845,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     <section class="live" aria-labelledby="live_h">
         <h2 id="live_h">Right now</h2>
         <p class="note statusline"><span><span class="pulse" aria-hidden="true"></span><strong>live</strong> as of <?= h(hm($data['now']['now_time'])) ?>, reloads every <?= LIVE_RELOAD_SEC ?> s</span>
-            <span>active = board loaded data within the last <?= LIVE_MINUTES ?> minutes (happens on every action in the team)</span></p>
+            <span>active table = started a new round (finished one) within the last <?= ACTIVE_ROUND_MINUTES ?> minutes; clients = its players and observers whose board loaded data within the same <?= ACTIVE_ROUND_MINUTES ?> minutes (may include some who already left)</span></p>
         <dl class="kpis">
             <div class="kpi"><dt>active tables</dt><dd id="kpi_teams"><?= h(count($tables)) ?></dd></div>
             <div class="kpi"><dt>active clients</dt><dd id="kpi_clients"><?= h($clients) ?> <small><?= h($players) ?> players, <?= h($observers) ?> observers</small></dd></div>
@@ -754,7 +902,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
                 <th>team</th><th class="num">players</th><th class="num">observers</th>
                 <th class="num" title="active clients whose user id was first seen before today">known users</th>
                 <th>deck</th><th class="num">rounds today</th>
-                <th title="first round today (or creation of a team created today)">active since</th><th>cards</th>
+                <th title="first round today (or creation of a team created today); &quot;no round yet&quot;: team from an earlier day without a round today">active since</th>
+                <th title="last new round (within the last <?= ACTIVE_ROUND_MINUTES ?> minutes)">last round</th><th>cards</th>
             </tr></thead>
             <tbody>
 <?php foreach ($tables as $row) {
@@ -767,7 +916,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
                 <td class="num"><?= h($row['known_users']) ?> / <?= h($row['clients']) ?></td>
                 <td class="nowrap"><?= h(deck_name($row['cardset_flags'], (bool)$row['needs_setup'], $cards_conf)) ?></td>
                 <td class="num"><?= h($row['rounds_today']) ?></td>
-                <td class="nowrap"><?= $row['active_since'] === null ? '<span class="muted">before today</span>' : h(hm($row['active_since'])) ?></td>
+                <td class="nowrap"><?= $row['active_since'] === null ? '<span class="muted">no round yet</span>' : h(hm($row['active_since'])) ?></td>
+                <td class="nowrap last-round"><?= h(hm($row['last_round'])) ?></td>
                 <td class="<?= $revealed ? 'state-revealed' : 'state-voting' ?>"><?= $revealed ? 'revealed' : '<span class="mini-bar" aria-hidden="true"><span style="width: ' . bar_width($row['cards_laid'], $row['team_players']) . '%"></span></span>' . h($row['cards_laid'] . ' of ' . $row['team_players'] . ' laid') ?></td>
             </tr>
 <?php } ?>

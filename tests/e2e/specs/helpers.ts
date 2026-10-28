@@ -76,3 +76,18 @@ export async function teamWithTwoPlayers(browser: Browser, teamName: string) {
   await joinAsPlayer(bob, url, 'Bob');
   return { alice, bob, url };
 }
+
+/** Login of stats.php (B-63), as written to the htpasswd file by setup.sh. */
+export const STATS_USER = 'e2e-admin';
+export const STATS_PASSWORD = 'e2e-secret';
+
+/** Opens a page of stats.php and logs in through the form if it shows the login page. */
+export async function gotoStats(page: Page, path = '/stats.php'): Promise<void> {
+  await page.goto(path);
+  const login = page.locator('form.login');
+  if (await login.count() === 0) return;
+  await login.locator('input[name=user]').fill(STATS_USER);
+  await login.locator('input[name=password]').fill(STATS_PASSWORD);
+  await login.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.locator('form.logout')).toBeVisible();
+}

@@ -93,7 +93,16 @@ const _MYSQL_USER = '$DB_USER';
 const _MYSQL_PWD = '$DB_PWD';
 const _MYSQL_DB = '$DB_NAME';
 const _MYSQL_PORT = 3306;
+
+// stats.php login (B-63), credentials in tests/e2e/specs/helpers.ts
+const STATS_HTPASSWD = '$E2E_DIR/poker-stats.htpasswd';
+const STATS_COOKIE_SECRET = '$(php -r 'echo bin2hex(random_bytes(32));')';
 EOF
+    # bcrypt entry as written by "htpasswd -B"; the apr1 entry (MD5) must be rejected by stats.php
+    {
+        echo "e2e-admin:$(php -r 'echo password_hash("e2e-secret", PASSWORD_BCRYPT);')"
+        echo 'e2e-md5:$apr1$e2e$Jw0Ue0yQnHnL0D5cR3nQ2.'
+    } > "$E2E_DIR/poker-stats.htpasswd"
     log "app copied to $E2E_DIR/www"
 
     # --- database

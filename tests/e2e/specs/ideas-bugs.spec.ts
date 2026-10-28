@@ -1,10 +1,10 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, gotoStats } from './helpers';
 
 /**
  * B-57 "Ideas & Bugs", backend part: typed feedback with technical context, the public list
  * (get_roadmap.php / vote_roadmap.php) and the moderation in stats.php (POST with session form token).
- * In the e2e setup stats.php has no basic auth (that is nginx config on the servers only).
+ * stats.php needs a login (B-63): gotoStats() in helpers.ts logs in through the form.
  */
 
 const unique = (prefix: string) => `${prefix} ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -28,7 +28,7 @@ function feedbackRow(page: Page, text: string) {
 /** Creates an entry of the public list through the form in stats.php and returns its id from get_roadmap.php. */
 async function createItem(page: Page, title: string, sid: string,
                           status = 'IN_PROGRESS', sortOrder = -100): Promise<number> {
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   const form = page.locator('form.rm').last();   // the "new entry" form
   await form.locator('input[name=title]').fill(title);
   await form.locator('textarea[name=description]').fill('Described <i>here</i>');
@@ -52,7 +52,7 @@ const statsRow = (page: Page, title: string) =>
 
 /** Sets the status of an entry through its form in stats.php. */
 async function setStatus(page: Page, title: string, status: string) {
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   await statsRow(page, title).locator('select[name=status]').selectOption(status);
   await statsRow(page, title).getByRole('button', { name: 'Save' }).click();
   await expect(statsRow(page, title).locator('select[name=status]')).toHaveValue(status);
@@ -79,7 +79,7 @@ test('feedback is stored with type, context only for bugs, shown escaped in stat
   expect((await post(other, 'nonsense')).ok()).toBeTruthy();
   expect((await page.request.get(`./api/feedback.php?id=E2EFEEDBACK01&type=BUG&text=get`)).status()).toBe(405);
 
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   const bugRow = feedbackRow(page, bug);
   await expect(bugRow.locator('td.fb_text')).toHaveText(bug);        // stored raw (emoji), escaped on output
   await expect(bugRow.locator('td.fb_text b')).toHaveCount(0);
@@ -93,17 +93,17 @@ test('feedback is stored with type, context only for bugs, shown escaped in stat
   await bugRow.getByRole('button', { name: 'Done' }).click();
   await expect(page).toHaveURL(/tab=ideas&fb=open/);   // back in the Ideas & Bugs tab
   await expect(feedbackRow(page, bug)).toHaveCount(0);
-  await page.goto('/stats.php?tab=ideas&fb=done');
+  await gotoStats(page, '/stats.php?tab=ideas&fb=done');
   await expect(feedbackRow(page, bug)).toHaveClass(/done/);
   await feedbackRow(page, bug).getByRole('button', { name: 'Reopen' }).click();
   await expect(feedbackRow(page, bug)).toHaveCount(0);
-  await page.goto('/stats.php?tab=ideas&fb=open');
+  await gotoStats(page, '/stats.php?tab=ideas&fb=open');
   await expect(feedbackRow(page, bug).getByRole('button', { name: 'Done' })).toBeVisible();
 });
 
 test('stats.php rejects moderation POSTs without a valid form token', async ({ browser }) => {
   const page = await newPlayer(browser);
-  await page.goto('/stats.php?tab=ideas');   // session exists, but the token is not sent
+  await gotoStats(page, '/stats.php?tab=ideas');   // session exists, but the token is not sent
   const form = { action: 'roadmap_save', type: 'FEATURE', title: unique('CSRF'), status: 'PLANNED', sort_order: '0', visible: '1' };
 
   expect((await page.request.post('./stats.php', { form })).status()).toBe(403);
@@ -142,7 +142,7 @@ test('public list: seed entry, one reaction per user (set, change, remove), hidd
   expect(await res.json()).toMatchObject({ reactions: { UP: 1, DOWN: 0 }, my_reaction: null });
 
   // counts in stats.php (both phases)
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   const row = statsRow(page, title);
   await expect(row.locator('.votes')).toHaveText('wanted: 👍 1 👎 0 · after done: 👍 0 👎 0');
 
@@ -180,12 +180,12 @@ test('votes per phase: an entry set to DONE starts at 0, new votes count for DON
   expect(await res.json()).toMatchObject({ status: 'DONE', reactions: { UP: 1, DOWN: 0 }, my_reaction: 'UP' });
   expect((await roadmap(other, otherSid)).find(i => i.id === item)).toMatchObject({ reactions: { UP: 1, DOWN: 0 }, my_reaction: null });
 
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 1 · after done: 👍 1 👎 0');
 
   // removing the DONE vote keeps the WANT vote
   expect(await (await vote(page, sid, item, 'NONE')).json()).toMatchObject({ reactions: { UP: 0, DOWN: 0 }, my_reaction: null });
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 1 · after done: 👍 0 👎 0');
 
   // back to PLANNED: the WANT votes are shown again
@@ -264,10 +264,10 @@ test('delete_user.php removes the reactions of the user in all phases', async ({
   expect((await vote(page, sid, item, 'UP')).ok()).toBeTruthy();
   await setStatus(page, title, 'DONE');
   expect((await vote(page, sid, item, 'DOWN')).ok()).toBeTruthy();
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 0 · after done: 👍 0 👎 1');
 
   expect((await page.request.post(`./api/delete_user.php?id=${encodeURIComponent(sid)}`)).ok()).toBeTruthy();
-  await page.goto('/stats.php?tab=ideas');
+  await gotoStats(page, '/stats.php?tab=ideas');
   await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 0 👎 0 · after done: 👍 0 👎 0');
 });

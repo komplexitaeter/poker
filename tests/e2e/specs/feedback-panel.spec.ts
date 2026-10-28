@@ -1,5 +1,5 @@
 import { test, expect, Page, Request } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, gotoStats } from './helpers';
 
 /**
  * B-57 "Ideas & Bugs", frontend part: the feedback panel with the tabs "Send feedback" (type, bug context,
@@ -23,7 +23,7 @@ async function openFeedback(page: Page) {
 /** Creates a visible entry of the public list through stats.php (in a separate page, the board stays as it is). */
 async function createItem(page: Page, title: string, description: string) {
   const admin = await page.context().newPage();
-  await admin.goto('/stats.php?tab=ideas');
+  await gotoStats(admin, '/stats.php?tab=ideas');
   const form = admin.locator('form.rm').last();   // the "new entry" form
   await form.locator('input[name=title]').fill(title);
   await form.locator('textarea[name=description]').fill(description);
@@ -126,7 +126,7 @@ test('send feedback: type and bug context (no team id, no name) are sent, empty 
 
   // stored with type and context (stats.php shows the inbox)
   const admin = await page.context().newPage();
-  await admin.goto('/stats.php?tab=ideas');
+  await gotoStats(admin, '/stats.php?tab=ideas');
   const row = admin.locator('tr.feedback_row').filter({ has: admin.locator('td.fb_text', { hasText: text }) });
   await expect(row.locator('td').nth(1)).toHaveText('BUG');
   await expect(row.locator('td.fb_context')).toHaveText(raw);
