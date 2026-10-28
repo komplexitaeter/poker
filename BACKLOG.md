@@ -836,6 +836,7 @@ Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Ko
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
 
 ### B-63 `stats.php`: eigene Anmeldeseite statt Basic Auth
+**Zurückgestellt (Andreas, 2026-10-28): zu aufwändig, Basic Auth bleibt erstmal.**
 Andreas (2026-10-28): Chrome füllt den Basic-Auth-Dialog von `stats.php` nicht aus, und nach jedem Browser-Neustart
 muss man sich neu anmelden. Idee: normales Login-Formular in `stats.php` (Benutzer + Passwort), damit
 Passwortmanager speichern und ausfüllen; danach angemeldet bleiben (z. B. 30 Tage).
