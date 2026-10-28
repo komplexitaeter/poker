@@ -978,6 +978,16 @@ Timer an laufen als Stopwatch ohne Auto-Start weiter – alles wie bisher. Kopfz
 `:you`), Stoppuhr-Schalter entfällt. Ecke unten rechts: Timer über dem Button, Play/Pause + Reset als Linien-Icons;
 „Zeit um“ = T+ in Amber, kein Ton. Kartenleiste und Spreads bleiben unverändert.
 
+### B-68 Rechte Spalte (Desktop) + Primärsteuerung unten rechts
+Andreas (2026-10-28), nach Team-Runde zu den Controls unten rechts; Umsetzung freigegeben („macht es mal so“):
+- Desktop ab ca. 1200 px: rechte Spalte **immer** sichtbar (kein Ein-/Ausschieben je Runde, Kartengröße bleibt stabil).
+  Oben ein **Status, wo wir gerade sind** (z. B. Abstimmung läuft · 3/5 voted, aufgedeckt, warten auf Spieler) plus
+  Thema; nach dem Aufdecken Spread und optional Durchschnittszeiger (heute über den Karten-Controls).
+- Unten rechts: Timer + Rundenknopf als Teil der unteren Leiste (Primärsteuerung wie im Mockup), so breit wie die Spalte.
+  Der Rundenknopf **ändert seine Position nicht**, wenn der Timer an-/ausgeschaltet wird.
+- Menü-Side-Panel legt sich über die Spalte. Unter ca. 1200 px (Tablet, Phone) wie heute.
+- Themenliste (B-52) und Historie später.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
