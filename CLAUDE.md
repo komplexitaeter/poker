@@ -127,7 +127,10 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 ## Tests
 
 End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
-jedem Push auf `release` und jedem PR nach `release` oder `master`, mit PHP 8.4 wie in Produktion.
+jedem PR nach `release` und jedem Push auf `release`, mit PHP 8.4 wie in Produktion; reine `*.md`-Änderungen lösen
+keinen Lauf aus. PRs `release` → `master` laufen nicht erneut: Kai mergt sie nur, wenn der letzte Lauf auf `release`
+(gleicher Stand) grün ist. **Lokal** (Agenten) laufen nur die Specs, die die Änderung betreffen, plus neue Tests; die
+komplette Suite übernimmt die CI (Andreas, 2026-10-28).
 
 Lokal:
 

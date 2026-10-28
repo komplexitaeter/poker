@@ -22,7 +22,8 @@ keep it minimal and say so.
 ## Workflow
 1. Work on the branch you were told to use (own git worktree). Branch from the current `release`.
 2. Build the change in small, readable steps that match the surrounding code.
-3. Validate with the e2e suite via `tests/e2e/setup.sh` + `npx playwright test` (start MySQL first if needed).
+3. Validate with the affected e2e specs via `tests/e2e/setup.sh` + `npx playwright test specs/<affected>.spec.ts`
+   (start MySQL first if needed). The full suite runs in CI, not locally.
    When you add third-party files, make sure the test setup serves them (helpers `cdnFiles`), and add a test that
    fails without your change.
 4. Commit (end the message with the attribution lines the session uses) and push the branch. Do NOT open a PR and

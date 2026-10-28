@@ -13,7 +13,9 @@ and comments stay in English.
 1. Start the app: `tests/e2e/setup.sh start` (needs nginx, php-fpm, a running MySQL, composer, rsync).
    Set `E2E_DIR` to a scratch directory; `MYSQL_ADMIN` if root needs a password.
    The script copies the app into `$E2E_DIR/www` with its own `config.php`; rerun it after changing app files.
-2. Run the tests: `cd tests/e2e && npm ci && npx playwright test`.
+2. Run the tests: `cd tests/e2e && npm ci && npx playwright test specs/<affected>.spec.ts` – only the specs the
+   change touches plus new ones; the full suite runs in CI (PR into `release`, push to `release`). Run the full suite
+   locally only when asked or to reproduce a CI failure.
 3. On failures look at `tests/e2e/test-results/` (screenshots, traces) and `$E2E_DIR/logs/`
    (`php-error.log`, `nginx-error.log`, `poker-msg.log`).
 4. Stop: `tests/e2e/setup.sh stop`.

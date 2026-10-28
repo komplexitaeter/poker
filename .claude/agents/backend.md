@@ -23,8 +23,9 @@ frontend JS/CSS unless a change needs a matching call adjusted; if so, keep it m
 ## Workflow
 1. Work on the branch you were told to use (own git worktree). Branch from the current `release`.
 2. Build the change in small, readable steps that match the surrounding code.
-3. Validate: `php -l` on every changed file, and run the e2e suite via `tests/e2e/setup.sh` + `npx playwright test`
-   (start MySQL first if needed). A full run must write no `PHP Deprecated`/`PHP Warning` to the PHP log.
+3. Validate: `php -l` on every changed file, and run the affected e2e specs via `tests/e2e/setup.sh` +
+   `npx playwright test specs/<affected>.spec.ts` (start MySQL first if needed). The full suite runs in CI, not
+   locally. The run must write no `PHP Deprecated`/`PHP Warning` to the PHP log.
 4. Add or extend tests for the behaviour you changed, and prove they fail without your fix.
 5. Commit (end the message with the attribution lines the session uses) and push the branch. Do NOT open a PR and
    do NOT merge – hand the branch back with a short German summary: what changed, how you tested, open questions.
