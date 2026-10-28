@@ -84,7 +84,7 @@ test('large screen: the side panel opens and closes by click and Escape, the foc
 
   // the close button
   await alice.locator('#feedback_btn').click();
-  await expect(alice.locator('#feedback_txt')).toBeFocused();
+  await expect(alice.locator('#fb_tab_backlog')).toBeFocused();   // B-57: opens on the backlog tab
   await alice.locator('#menu_close').click();
   await expect(menu(alice)).not.toHaveAttribute('open');
   await expect(alice.locator('#feedback_btn')).toBeFocused();
@@ -100,13 +100,15 @@ test('a click on the header button of the open section closes it without a focus
 
   // real click (Chromium focuses the button on mousedown)
   await fbBtn.click();
-  await expect(alice.locator('#feedback_txt')).toBeFocused();
+  await expect(alice.locator('#fb_tab_backlog')).toBeFocused();
   await fbBtn.click();
   await expect(menu(alice)).not.toHaveAttribute('open');
   expect(await ring()).toBe(false);
 
   // like Safari: a click does not move the focus, it is still in the text field of the panel (typed into)
   await fbBtn.click();
+  await alice.locator('#fb_tab_send').click();
+  await alice.locator('#feedback_txt').click();
   await expect(alice.locator('#feedback_txt')).toBeFocused();
   await alice.keyboard.type('half a thought');
   await fbBtn.dispatchEvent('click', { detail: 1 });
@@ -115,9 +117,9 @@ test('a click on the header button of the open section closes it without a focus
 
   // keyboard: Enter on the button closes it, the focus goes back with a visible ring
   await fbBtn.click();
-  await expect(alice.locator('#feedback_txt')).toBeFocused();
+  await expect(alice.locator('#fb_tab_backlog')).toBeFocused();
   await alice.keyboard.press('Shift+Tab');
-  await expect(alice.locator('#feedback_txt')).not.toBeFocused();
+  await expect(alice.locator('#fb_tab_backlog')).not.toBeFocused();
   await fbBtn.focus();
   await alice.keyboard.press('Enter');
   await expect(menu(alice)).not.toHaveAttribute('open');
@@ -412,8 +414,9 @@ test('feedback from the start page panel: text sent URL-encoded, panel closes (B
 
   await fbBtn.click();
   await expect(page.locator('dialog#menu[open]')).toBeVisible();
-  await expect(page.locator('#feedback_txt')).toBeFocused();
+  await expect(page.locator('#fb_tab_backlog')).toBeFocused();   // B-57: opens on the backlog tab
   await expect(page.locator('.feedback_star')).toHaveCount(0);
+  await page.locator('#fb_tab_send').click();
 
   const text = 'a & b=c #1 + 100% ?x';
   await page.locator('#feedback_txt').fill(text);
