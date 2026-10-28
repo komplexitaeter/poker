@@ -6,7 +6,8 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, pickC
  * Phones: the dock (New Round + timer) is always reserved at its full height, so switching the
  * timer, the first vote or a new round neither resizes the cards nor lets the dock cover
  * them; the outer cards keep a side gutter to the edge of the table.
- * B-66: large screens have the dock in the bottom right corner next to the deck, below the table.
+ * B-66: large screens have the dock in the bottom right corner next to the deck, below the table
+ * (B-67: or in the row above the deck as on phones, when deck and corner do not fit side by side).
  * The delete icon depends on the input device, not on the width.
  * SHOT_DIR (optional): screenshots of the cases.
  */
@@ -72,7 +73,11 @@ for (const { viewport, players, rows } of [
       expect(await settledWidth(alice)).toBe(off);
       const g = await geometry(alice);
       expect(g.cardsBottom).toBeLessThanOrEqual(g.dockTop);
-      expect(g.dockTop).toBeGreaterThanOrEqual(g.tableBottom - 0.5); // B-66: in the corner, below the table
+      // B-66: in the corner, below the table; B-67: deck and corner too wide for the window (1000px):
+      // the row at the bottom of the table, as on phones
+      if (await alice.locator('.container.dock-row').count() === 0) {
+        expect(g.dockTop).toBeGreaterThanOrEqual(g.tableBottom - 0.5);
+      }
       expect(g.overflow).toBeLessThanOrEqual(0);
       expect(g.sideGap).toBeGreaterThanOrEqual(16); // 8px table padding + gutter of at least 8px
     }

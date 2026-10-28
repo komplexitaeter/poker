@@ -219,7 +219,11 @@ test('round button always there; many deck cards in a narrow window: the corner 
       const dock = await box('.dock');
       return above ? dock.y + dock.height <= deck.y + 1 : dock.x >= deck.x + deck.width;
     }, { message: `width ${width}` }).toBe(true);
-    // timer and button in one row above the deck, side by side in the corner
+    // two places only (Andreas): the full-width row as on phones, or the corner on the right edge
+    const dock = await box('.dock');
+    if (above) expect(dock.width).toBeGreaterThanOrEqual(width - 1);
+    else expect(Math.abs(dock.x + dock.width - width)).toBeLessThan(1);
+    // timer and button in one row above the deck, the timer above the button in the corner
     const timer = await box('#timer');
     const b = await box('#newroundbtn');
     expect(above ? Math.abs(timer.y + timer.height / 2 - (b.y + b.height / 2)) < 4 : timer.y + timer.height <= b.y).toBe(true);
