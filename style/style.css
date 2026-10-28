@@ -40,8 +40,11 @@
     --tap: 36px;
     /* menu panel width on large screens */
     --panel-w: 380px;
-    /* B-66: large screens: room kept free right of the deck for the round actions (.dock in the corner) */
-    --dock-w: 14rem;
+    /* B-66: large screens: room kept free right of the deck for the round actions (.dock in the corner).
+     * Plain px, script.js reads it (updateDockRow). --dock-h: the corner as high as the deck bar
+     * (+ 5px padding, 2px top line), at least timer and button. */
+    --dock-w: 224px;
+    --dock-h: calc(max(var(--deck-h) + 7px, 2 * var(--tap) + 3 * var(--space-1)) + env(safe-area-inset-bottom));
     /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
@@ -491,106 +494,59 @@ textarea.field {
 /* the arrow that unfolds the topic is for the phone strip only */
 #topic_toggle { display: none; }
 
-/* B-66 round actions (large screens): the timer above New Round in the bottom right corner,
- * next to the deck (out of the table, positioned on .container). The deck keeps --dock-w free on
- * its right (.down-container), so the two never overlap; the menu panel covers the corner.
- * B-67: timer and button sit together in a small bar like the card bar (same top line and round
- * corners, on the bottom edge), so the corner reads as one unit, also with the button alone. */
+/* B-66/B-67 round actions (.dock: timer and round button). Two places, one look (Andreas):
+ * - a row right above the deck, timer left, button right: on phones, and on large screens when the
+ *   deck and the corner do not fit side by side (class "dock-row" on .container, set by
+ *   updateDockRow() in script.js). At the bottom of the table, sticky when it scrolls.
+ * - large screens with room: a tray in the bottom right corner next to the deck, timer above the
+ *   button. Same material as the row, the header and the menu panel (--bg-2, hairline on top and
+ *   left), flush with the window edges, its top level with the deck's top line; no curved frame,
+ *   that one belongs to the deck. The deck keeps --dock-w free on its right, so the two never
+ *   overlap; the menu panel covers the corner. */
 .dock {
-    position: absolute;
-    right: var(--space-3);
-    bottom: env(safe-area-inset-bottom);
-    z-index: 1;
-    width: calc(var(--dock-w) - 2 * var(--space-3));
-    box-sizing: border-box;
+    position: sticky;
+    bottom: 0;
+    flex: none;
+    margin-top: auto; /* few cards: still at the bottom */
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: var(--space-1);
-    padding: var(--dock-pad-t) var(--dock-pad-x) var(--dock-pad-b);
-    background: var(--background-color);
-    border-top: 2px solid var(--secondary-border-color);
-    border-radius: var(--dock-radius) var(--dock-radius) 0 0;
+    padding: var(--space-1) 8px;
+    background: var(--bg-2);
+    border-top: 1px solid var(--line);
 }
 
 @media (min-width: 800px) {
-    /* B-67: many deck cards in a narrow window: when deck and corner do not fit side by side, the
-     * corner moves into a row above the deck, timer and button next to each other (as on phones).
-     * Pure CSS: --deck-n counts the cards of the deck (up to 30; more never fit next to the corner),
-     * --dock-over is hugely positive when the deck (80px padding, cards with 4px margin) plus the
-     * corner are wider than the window, else negative. clamp(a, --dock-over, b) is then either a
-     * (side by side) or b (row above the deck): a switch, no gliding values in between. */
-    .container {
-        --dock-pad-t: 10px;
-        --dock-pad-x: 14px;
-        --dock-pad-b: var(--space-2);
-        --dock-radius: 28px;
-        --dock-row-h: calc(var(--tap) + var(--dock-pad-t) + var(--dock-pad-b) + 2px); /* one row: button + bar */
-        --dock-row-w: 22rem;                                          /* timer and button side by side */
-        --deck-now: calc(var(--deck-h) + 7px);                        /* the deck bar: + 5px padding, 2px top line */
-        --dock-over: calc((80px + var(--deck-n, 0) * (var(--deck-w) + 4px) + var(--dock-w) - 100vw) * 1000);
-    }
+    /* the row spans the full width (the table has side padding on large screens) */
+    .dock { margin: auto calc(-1 * var(--space-2)) 0; }
 
-    .container:has(#ctl.show_card_stats) { --deck-now: calc(var(--deck-h) + var(--deck-stats) + 7px); }
-
-    .container:has(#ctl > .on:nth-child(1 of .on)) { --deck-n: 1; }
-    .container:has(#ctl > .on:nth-child(2 of .on)) { --deck-n: 2; }
-    .container:has(#ctl > .on:nth-child(3 of .on)) { --deck-n: 3; }
-    .container:has(#ctl > .on:nth-child(4 of .on)) { --deck-n: 4; }
-    .container:has(#ctl > .on:nth-child(5 of .on)) { --deck-n: 5; }
-    .container:has(#ctl > .on:nth-child(6 of .on)) { --deck-n: 6; }
-    .container:has(#ctl > .on:nth-child(7 of .on)) { --deck-n: 7; }
-    .container:has(#ctl > .on:nth-child(8 of .on)) { --deck-n: 8; }
-    .container:has(#ctl > .on:nth-child(9 of .on)) { --deck-n: 9; }
-    .container:has(#ctl > .on:nth-child(10 of .on)) { --deck-n: 10; }
-    .container:has(#ctl > .on:nth-child(11 of .on)) { --deck-n: 11; }
-    .container:has(#ctl > .on:nth-child(12 of .on)) { --deck-n: 12; }
-    .container:has(#ctl > .on:nth-child(13 of .on)) { --deck-n: 13; }
-    .container:has(#ctl > .on:nth-child(14 of .on)) { --deck-n: 14; }
-    .container:has(#ctl > .on:nth-child(15 of .on)) { --deck-n: 15; }
-    .container:has(#ctl > .on:nth-child(16 of .on)) { --deck-n: 16; }
-    .container:has(#ctl > .on:nth-child(17 of .on)) { --deck-n: 17; }
-    .container:has(#ctl > .on:nth-child(18 of .on)) { --deck-n: 18; }
-    .container:has(#ctl > .on:nth-child(19 of .on)) { --deck-n: 19; }
-    .container:has(#ctl > .on:nth-child(20 of .on)) { --deck-n: 20; }
-    .container:has(#ctl > .on:nth-child(21 of .on)) { --deck-n: 21; }
-    .container:has(#ctl > .on:nth-child(22 of .on)) { --deck-n: 22; }
-    .container:has(#ctl > .on:nth-child(23 of .on)) { --deck-n: 23; }
-    .container:has(#ctl > .on:nth-child(24 of .on)) { --deck-n: 24; }
-    .container:has(#ctl > .on:nth-child(25 of .on)) { --deck-n: 25; }
-    .container:has(#ctl > .on:nth-child(26 of .on)) { --deck-n: 26; }
-    .container:has(#ctl > .on:nth-child(27 of .on)) { --deck-n: 27; }
-    .container:has(#ctl > .on:nth-child(28 of .on)) { --deck-n: 28; }
-    .container:has(#ctl > .on:nth-child(29 of .on)) { --deck-n: 29; }
-    .container:has(#ctl > .on:nth-child(30 of .on)) { --deck-n: 30; }
-
-    .dock {
-        width: clamp(calc(var(--dock-w) - 2 * var(--space-3)), var(--dock-over), var(--dock-row-w));
-        bottom: calc(clamp(0px, var(--dock-over), var(--deck-now)) + env(safe-area-inset-bottom)); /* row: on the deck bar */
-        transition: bottom 0.8s ease-in-out; /* follows the deck when its usage bars open */
-    }
-
-    /* side by side: the timer row above the button (both too wide for one row of the corner);
-     * in the row above the deck both fit next to each other */
-    .dock > .timer { flex: 1 0 auto; }
-
-    .dock > #newroundbtn {
-        flex: 1 0 10rem;
-        width: auto;
+    .container:not(.dock-row) .dock {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        z-index: 1;
         box-sizing: border-box;
+        width: var(--dock-w);
+        height: var(--dock-h);
+        margin: 0;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        justify-content: center;
+        padding: var(--space-1) var(--space-3) calc(var(--space-1) + env(safe-area-inset-bottom));
+        border-left: 1px solid var(--line);
     }
 
-    /* the deck centered as before while there is room, pushed left of the corner when there is not;
-     * with the corner above it, the deck needs no room on its right */
-    .down-container {
+    /* the deck centered as before while there is room, pushed left of the corner when there is not */
+    .container:not(.dock-row) .down-container {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto minmax(calc(var(--dock-w) - clamp(0px, var(--dock-over), var(--dock-w))), 1fr);
+        grid-template-columns: minmax(0, 1fr) auto minmax(var(--dock-w), 1fr);
         align-items: end;
-        padding-top: clamp(0px, var(--dock-over), var(--dock-row-h));
     }
 
-    .down-container > .controls { grid-column: 2; }
+    .container:not(.dock-row) .down-container > .controls { grid-column: 2; }
 }
 
 /* Phones in landscape: little height, so a lower header */
@@ -598,30 +554,9 @@ textarea.field {
     .container > .head { min-height: 44px; }
 }
 
-/* Small screens: the actions as a dock right above the deck (thumb zone, always in view), at the
- * bottom of the table (sticky when it scrolls), timer left, New Round right. */
+/* Small screens: 3 cards fit at 320px; the round actions are the row above the deck (.dock) */
 @media (max-width: 799.98px) {
-    .table { padding: 0; } /* 3 cards fit at 320px */
-
-    .dock {
-        position: sticky;
-        right: auto;
-        bottom: 0;
-        z-index: auto;
-        width: auto;
-        flex: none;
-        align-items: center;
-        margin-top: auto; /* few cards: still at the bottom */
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: var(--space-1);
-        padding: var(--space-1) 8px;
-        background: var(--bg-2);
-        border: 0;
-        border-top: 1px solid var(--line);
-        border-radius: 0;
-    }
+    .table { padding: 0; }
 }
 
 /* Phones (and short landscape screens): the topic as a strip below the header, one line
@@ -1720,8 +1655,17 @@ div#cbox {
 
 /* ---------- New round button, timer (.dock, B-66/B-67) ---------- */
 
+/* the row (phones, .dock-row): timer left, the button fills the rest of the row up to 200px and only
+ * shrinks to its text: one row down to 320px; the corner: see below */
 #newroundbtn {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: 200px;
+    min-width: 0;
     min-height: var(--tap);
+    margin-left: auto;
+    padding: 0.2rem 0.6rem;
+    font-size: var(--fs-m);
 }
 
 /* B-67 (Andreas): always there. Disabled ("Cancel Round") until someone has voted, dashed like a
@@ -1757,8 +1701,7 @@ div#cbox {
 
 .timer-display {
     position: relative; /* anchor of the time-up dot */
-    min-width: 7ch; /* T−05:00; from 60 min on h:mm:ss grows to 9ch, the row stays centered */
-    font-size: var(--fs-xl);
+    font-size: var(--fs-l);
     font-variant-numeric: tabular-nums;
     text-align: center;
     white-space: nowrap;
@@ -1783,7 +1726,7 @@ div#cbox {
 .timer[data-state=ready] .timer-display,
 .timer[data-state=paused] .timer-display { color: var(--muted); }
 
-/* time is up: T+ in amber and bold, with a dot in front, so it does not rely on the color alone
+/* time is up: T+ in amber and bold, with a dot, so it does not rely on the color alone
  * (no sound, no blinking). The dot sits outside the text: the row keeps its width. */
 .timer[data-over=true] .timer-display {
     color: var(--warn);
@@ -1794,38 +1737,35 @@ div#cbox {
     content: "";
     position: absolute;
     top: 50%;
-    right: 100%;
+    left: 100%; /* the row: behind the time, in the empty part of the pause button; corner: below */
     width: 7px;
     height: 7px;
-    margin: -3.5px 6px 0 0;
+    margin: -3.5px 0 0 5px;
     border-radius: 50%;
     background: var(--warn);
 }
 
-@media (max-width: 799.98px) {
-    /* dock: timer left, New Round right; sized so both fit in one row at 320px */
-    /* the button fills the rest of the row up to 200px and only shrinks to its text: one row
-     * down to 320px (a fixed 200px wrapped below about 380px) */
-    #newroundbtn {
-        flex: 1 1 auto;
-        width: auto;
-        max-width: 200px;
-        min-width: 0;
-        margin-left: auto;
-        padding: 0.2rem 0.6rem;
-        font-size: var(--fs-m);
-    }
-
-    .timer-display {
-        min-width: 0;
+/* the corner (large screens with room): the timer row above the button, both as wide as the corner */
+@media (min-width: 800px) {
+    .container:not(.dock-row) #newroundbtn {
+        flex: none;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 5pt var(--space-3);
         font-size: var(--fs-l);
     }
 
-    /* the time-up dot behind the time, in the empty part of the pause button: the row keeps its width */
-    .timer[data-over=true] .timer-display::before {
-        right: auto;
-        left: 100%;
-        margin: -3.5px 0 0 5px;
+    .container:not(.dock-row) .timer-display {
+        min-width: 7ch; /* T−05:00; from 60 min on h:mm:ss grows to 9ch, the row stays centered */
+        font-size: var(--fs-xl);
+    }
+
+    /* the dot in front of the time, outside the text: the row keeps its width */
+    .container:not(.dock-row) .timer[data-over=true] .timer-display::before {
+        right: 100%;
+        left: auto;
+        margin: -3.5px 6px 0 0;
     }
 }
 
@@ -1840,13 +1780,24 @@ div#cbox {
 
 .tmr-other .lab { margin: 0; }
 
+/* a plain text field (no spin buttons): room for "1–240" in the field's own font */
 .menu .tmr-other .field {
     flex: none;
-    width: 11ch; /* "1–240" next to the spin buttons */
+    width: calc(5ch + 2 * 10px + 2px);
     text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
-.tmr-other .field:invalid,
+.tmr-other .field::placeholder {
+    color: var(--muted);
+    opacity: 1;
+}
+
+.tmr-other .field:focus {
+    background: var(--bg);
+    color: var(--text);
+}
+
 .tmr-other .field[aria-invalid="true"] { border-color: var(--danger); }
 
 /* a custom timebox is marked like a checked preset (.seg input:checked + span): the frame of the
@@ -1979,21 +1930,22 @@ div#cbox {
 
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
-/* B-66: in the bottom right corner above the round actions (.dock: timer row + button in a frame,
- * see "Board layout"), so the two never overlap; B-67: with the dock in a row above the deck, above
- * that row. */
+/* B-66: in the bottom right corner above the round actions (.dock, see "Board layout"), so the two
+ * never overlap: above the corner, or above the row on top of the deck (.dock-row). Large screens
+ * only (hidden on phones). */
 .survey-container {
-    --survey-above: calc(var(--tap) + var(--space-1) + var(--dock-row-h, 0px) + var(--space-2));
     font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
-    bottom: max(var(--survey-above), clamp(0px, var(--dock-over, -1px), var(--deck-now, 0px) + var(--dock-row-h, 0px) + var(--space-2)));
+    bottom: calc(var(--dock-h) + var(--space-2));
     right: 0;
     margin: 0 auto;
     visibility: hidden;
     display: unset;
 }
+
+.dock-row .survey-container { bottom: calc(100% + var(--tap) + 2 * var(--space-1) + 1px + var(--space-2)); }
 
 #survey-button {
     cursor: pointer;
@@ -2010,11 +1962,6 @@ div#cbox {
 }
 
 #survey-button:hover { opacity: 0.7; }
-
-/* timer off: only the round button below */
-.container:has(#timer.display_none) .survey-container {
-    --survey-above: calc(var(--dock-row-h, 0px) + var(--space-2));
-}
 
 /* above the dock it floats: rounded at the bottom too (open: the content's corners) */
 .survey-container:has(#survey-content.survey-closed) #survey-button,

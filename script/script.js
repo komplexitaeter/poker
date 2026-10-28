@@ -1059,7 +1059,6 @@ function updateTimerConfig(force = false) {
     if (force || document.activeElement !== other) {
         // a custom value is marked like a checked preset (data-set, style.css); a preset leaves the field empty
         other.value = preset ? '' : String(minutes);
-        other.placeholder = '1–240';
         other.closest('.tmr-other').setAttribute('data-set', preset ? 'false' : 'true');
         showTimerOtherError(false);
     }
@@ -1094,17 +1093,12 @@ function setTimerTimebox(minutes) {
     timerAction('set_timebox', minutes).catch(() => updateDao(false));
 }
 
-/* "other: __ min" (whole minutes 1..240). Focus empties the field for typing, Enter saves and leaves
- * the field, Escape drops the input, leaving the field saves a valid input (an invalid one is dropped).
- * Invalid on Enter: a short message below the field, nothing is saved, the field keeps the focus.
- * While the field has the focus, updates from others leave it alone (updateTimerConfig). */
-function timerOtherFocus() {
-    let other = document.getElementById('tmr_other');
-    other.value = '';
-    other.placeholder = '';
-    other.closest('.tmr-other').setAttribute('data-set', 'false');
-}
-
+/* "other: __ min" (whole minutes 1..240), a plain text field (no number field: Safari and Chrome
+ * differ there). The field keeps its value while typing (Tab selects it, a click puts the caret in),
+ * Enter saves and leaves the field, Escape drops the input, leaving the field saves a valid input
+ * (an invalid one is dropped). Invalid on Enter: a short message below the field, nothing is saved,
+ * the field keeps the focus. While the field has the focus, updates from others leave it alone
+ * (updateTimerConfig). */
 function timerOtherKeydown(event) {
     let other = event.target;
     if (event.key === 'Enter') {
@@ -1113,7 +1107,7 @@ function timerOtherKeydown(event) {
     } else if (event.key === 'Escape') {
         // drop the input; preventDefault keeps the menu open (initMenu ignores handled keys)
         event.preventDefault();
-        other.value = '';
+        updateTimerConfig(true);
         other.blur();
     }
 }
@@ -1136,12 +1130,12 @@ function showTimerOtherError(show) {
 function saveTimerOther(showError) {
     let other = document.getElementById('tmr_other');
     let value = other.value.trim();
-    if (value === '' && !other.validity.badInput) {
+    if (value === '') {
         showTimerOtherError(false);
         return true;
     }
     let minutes = Number(value);
-    if (other.validity.badInput || !/^[0-9]+$/.test(value) || minutes < 1 || minutes > 240) {
+    if (!/^[0-9]+$/.test(value) || minutes < 1 || minutes > 240) {
         showTimerOtherError(showError);
         return false;
     }
@@ -1323,6 +1317,26 @@ function initDisplayHandling() {
             finishAnimations(cbox, 'height');
         }).observe(table, { box: 'border-box' });
     }
+    // B-67: the round actions in the corner or in the row above the deck (updateDockRow)
+    const down = document.getElementById('down-container');
+    const deck = document.getElementById('ctl');
+    if (down !== null && deck !== null && typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(updateDockRow);
+        observer.observe(down);
+        observer.observe(deck);
+    }
+}
+
+/* B-67: large screens: the round actions (.dock) sit in the bottom right corner next to the deck;
+ * when the deck and the corner (--dock-w) do not fit side by side, they move into the row above the
+ * deck, as on phones (class "dock-row", style.css). The deck keeps its width in both places. */
+function updateDockRow() {
+    const container = document.querySelector('.container');
+    const down = document.getElementById('down-container');
+    const deck = document.getElementById('ctl');
+    if (container === null || down === null || deck === null) return;
+    const dockW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-w')) || 0;
+    container.classList.toggle('dock-row', deck.scrollWidth + dockW > down.clientWidth);
 }
 
 function calculateCardStats(players) {

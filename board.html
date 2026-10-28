@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.39" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.40" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.25" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.22" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.23" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -90,7 +90,9 @@
         <div id="cbox"></div>
 
         <!-- B-66/B-67: round actions. Large screens: the bottom right corner next to the deck, the timer
-             above the round button; phones: one row right above the deck (timer left, button right).
+             above the round button; phones, and large screens when deck and corner do not fit side by
+             side (.dock-row, updateDockRow() in script.js): one row right above the deck (timer left,
+             button right).
              #timer is shown while the timer is on (timer_visibility); data-state: ready | running |
              paused, data-over="true" once a TIMER has run past its timebox (T+ in amber).
              Display and aria-label are set by updateTimer() in script.js. -->
@@ -250,7 +252,7 @@
                     </div>
                     <div class="row tmr-other" data-set="false">
                         <label for="tmr_other" class="lab">other:</label>
-                        <input class="field" id="tmr_other" type="number" min="1" max="240" step="1" inputmode="numeric" placeholder="1–240" aria-describedby="tmr_other_hint" onfocus="timerOtherFocus()" onkeydown="timerOtherKeydown(event)" onblur="timerOtherBlur()" oninput="showTimerOtherError(false)"/>
+                        <input class="field" id="tmr_other" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="1–240" aria-describedby="tmr_other_hint" onkeydown="timerOtherKeydown(event)" onblur="timerOtherBlur()" oninput="showTimerOtherError(false)"/>
                         <span aria-hidden="true">min</span>
                     </div>
                     <p id="tmr_other_hint" class="sr-only">1 to 240 minutes.</p>

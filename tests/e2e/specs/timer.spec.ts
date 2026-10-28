@@ -219,7 +219,7 @@ test('screenshots: timer off, running, time up, panel (B-67)', async ({ browser 
   }
 });
 
-test('other minutes: focus empties, Enter saves and leaves, Escape drops, marked like a preset (B-67 feedback)', async ({ browser }) => {
+test('other minutes: a plain text field, Enter saves and leaves, Escape drops, marked like a preset (B-67 feedback)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Timer Other');
   await openTimerPanel(alice);
   await openTimerPanel(bob);
@@ -230,10 +230,13 @@ test('other minutes: focus empties, Enter saves and leaves, Escape drops, marked
   const row = (page: Page) => page.locator('.tmr-other');
   await expect(row(alice)).toHaveAttribute('data-set', 'false');
 
-  // focus: empty field, no placeholder; Enter saves and takes the focus away
-  await other.focus();
+  // a text field with a number keyboard, no spin buttons (Safari, Chrome and Firefox alike);
+  // focus keeps the hint; Enter saves and takes the focus away
+  await expect(other).toHaveAttribute('type', 'text');
+  await expect(other).toHaveAttribute('inputmode', 'numeric');
+  await other.click();
   await expect(other).toHaveValue('');
-  await expect(other).toHaveAttribute('placeholder', '');
+  await expect(other).toHaveAttribute('placeholder', '1–240');
   await other.pressSequentially('7');
   await other.press('Enter');
   await expect(other).not.toBeFocused();
@@ -249,8 +252,13 @@ test('other minutes: focus empties, Enter saves and leaves, Escape drops, marked
     el => getComputedStyle(el.nextElementSibling as Element).backgroundColor);
   expect(await other.evaluate(el => getComputedStyle(el).backgroundColor)).toBe(presetBg);
 
-  // invalid: message, nothing saved, the field keeps the focus; typing again hides the message
-  await other.focus();
+  // focus keeps the set value visible (plain field, readable text); invalid: message, nothing saved,
+  // the field keeps the focus; typing again hides the message
+  await other.click();
+  await expect(other).toHaveValue('7');
+  const colors = await other.evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
+  expect(colors[0]).not.toBe(colors[1]);
+  await other.press('ControlOrMeta+a');
   await other.pressSequentially('300');
   await other.press('Enter');
   await expect(alice.locator('#tmr_other_error')).toBeVisible();
