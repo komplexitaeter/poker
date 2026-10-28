@@ -1,9 +1,9 @@
 import { test, expect, Page, Request } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, gotoStats } from './helpers';
 
 /**
- * B-57 "Ideas & Bugs", frontend part: the feedback panel with the tabs "Send feedback" (type, bug context,
- * toast) and "Backlog" (public list with status badge and reactions).
+ * B-57 "Ideas & Bugs", frontend part: the feedback panel with the tabs "New issue" (type, bug context,
+ * toast) and "Backlog" (public list with status badge and reactions). The panel opens on "Backlog".
  */
 
 const unique = (prefix: string) => `${prefix} ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -20,10 +20,17 @@ async function openFeedback(page: Page) {
   await expect(page.locator('dialog#menu[open] #feedback_box')).toBeVisible();
 }
 
+/** Opens the panel and switches to "New issue" (the panel opens on "Backlog"). */
+async function openNewIssue(page: Page) {
+  await openFeedback(page);
+  await page.locator('#fb_tab_send').click();
+  await expect(page.locator('#fb_panel_send')).toBeVisible();
+}
+
 /** Creates a visible entry of the public list through stats.php (in a separate page, the board stays as it is). */
 async function createItem(page: Page, title: string, description: string) {
   const admin = await page.context().newPage();
-  await admin.goto('/stats.php?tab=ideas');
+  await gotoStats(admin, '/stats.php?tab=ideas');
   const form = admin.locator('form.rm').last();   // the "new entry" form
   await form.locator('input[name=title]').fill(title);
   await form.locator('textarea[name=description]').fill(description);
@@ -35,14 +42,30 @@ async function createItem(page: Page, title: string, description: string) {
   await admin.close();
 }
 
-test('feedback tabs: click and arrow keys, the panel reopens on "Send feedback"', async ({ browser }) => {
+test('feedback tabs: the panel opens on "Backlog" (also after reopening), click and arrow keys', async ({ browser }) => {
   const page = await newPlayer(browser);
   await boardWithPlayer(page, 'Tabby');
-  await openFeedback(page);
-
   const send = page.locator('#fb_tab_send');
   const backlog = page.locator('#fb_tab_backlog');
+
+  // initial markup, before the first opening: backlog selected, nothing to switch (no flicker)
+  await expect(backlog).toHaveAttribute('aria-selected', 'true');
+  expect(await backlog.evaluate(el => (el as HTMLElement).tabIndex)).toBe(0);
+  await expect(send).toHaveAttribute('aria-selected', 'false');
+  expect(await send.evaluate(el => (el as HTMLElement).tabIndex)).toBe(-1);
+  expect(await page.locator('#fb_panel_send').evaluate(el => (el as HTMLElement).hidden)).toBe(true);
+  expect(await page.locator('#fb_panel_backlog').evaluate(el => (el as HTMLElement).hidden)).toBe(false);
+
+  await openFeedback(page);
+  await expect(backlog).toHaveAttribute('aria-selected', 'true');
+  await expect(backlog).toBeFocused();
+  await expect(page.locator('#fb_panel_backlog')).toBeVisible();
+  await expect(page.locator('#fb_panel_send')).toBeHidden();
+  await expect(page.locator('#fb_backlog li.fb-item').first()).toBeVisible();   // list loaded
+
+  await send.click();
   await expect(send).toHaveAttribute('aria-selected', 'true');
+  await expect(backlog).toHaveAttribute('aria-selected', 'false');
   await expect(page.locator('#fb_panel_send')).toBeVisible();
   await expect(page.locator('#fb_panel_backlog')).toBeHidden();
 
@@ -61,13 +84,19 @@ test('feedback tabs: click and arrow keys, the panel reopens on "Send feedback"'
   await expect(backlog).toBeFocused();
   await expect(page.locator('#fb_panel_backlog')).toBeVisible();
 
-  // close on the backlog tab, reopen: "Send feedback" again
+  // close on the "New issue" tab, reopen: "Backlog" again, the list is loaded anew
+  await page.keyboard.press('ArrowRight');
+  await expect(send).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Escape');
   await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
+  const reload = page.waitForRequest(r => r.url().includes('/api/get_roadmap.php'));
   await openFeedback(page);
-  await expect(send).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#fb_panel_send')).toBeVisible();
-  await expect(page.locator('#feedback_txt')).toBeFocused();
+  await reload;
+  await expect(backlog).toHaveAttribute('aria-selected', 'true');
+  await expect(backlog).toBeFocused();
+  await expect(page.locator('#fb_panel_backlog')).toBeVisible();
+  await expect(page.locator('#fb_panel_send')).toBeHidden();
+  await expect(page.locator('#fb_backlog li.fb-item').first()).toBeVisible();
 });
 
 test('send feedback: type and bug context (no team id, no name) are sent, empty text is not, toast', async ({ browser }) => {
@@ -76,7 +105,7 @@ test('send feedback: type and bug context (no team id, no name) are sent, empty 
   const requests: Request[] = [];
   page.on('request', r => { if (r.url().includes('/api/feedback.php')) requests.push(r); });
 
-  await openFeedback(page);
+  await openNewIssue(page);
   const txt = page.locator('#feedback_txt');
   const sendBtn = page.getByRole('button', { name: 'Send feedback' });
 
@@ -126,14 +155,14 @@ test('send feedback: type and bug context (no team id, no name) are sent, empty 
 
   // stored with type and context (stats.php shows the inbox)
   const admin = await page.context().newPage();
-  await admin.goto('/stats.php?tab=ideas');
+  await gotoStats(admin, '/stats.php?tab=ideas');
   const row = admin.locator('tr.feedback_row').filter({ has: admin.locator('td.fb_text', { hasText: text }) });
   await expect(row.locator('td').nth(1)).toHaveText('BUG');
   await expect(row.locator('td.fb_context')).toHaveText(raw);
   await admin.close();
 
   // reopened: type is back to "Other", text empty; non-bugs carry no context
-  await openFeedback(page);
+  await openNewIssue(page);
   await expect(page.locator('input[name=fb_type][value=OTHER]')).toBeChecked();
   await expect(txt).toHaveValue('');
   await expect(txt).toHaveAttribute('placeholder', 'Anything you want to tell the Komplexitäter team?');
@@ -156,8 +185,7 @@ test('backlog: seed entry with badge, titles as text, reactions set / change / r
   const description = 'Shown <i>as text</i>';
   await createItem(page, title, description);
 
-  await openFeedback(page);
-  await page.locator('#fb_tab_backlog').click();
+  await openFeedback(page);   // opens on the backlog
 
   const seed = page.locator('#fb_backlog li.fb-item').filter({ has: page.locator('.fb-title', { hasText: /^New look$/ }) });
   await expect(seed).toHaveCount(1);
@@ -202,7 +230,6 @@ test('backlog: seed entry with badge, titles as text, reactions set / change / r
   const other = await newPlayer(browser);
   await boardWithPlayer(other, 'Other');
   await openFeedback(other);
-  await other.locator('#fb_tab_backlog').click();
   const otherItem = other.locator('#fb_backlog li.fb-item').filter({ has: other.locator('.fb-title', { hasText: title }) });
   await expect(otherItem.locator('.fb-react-btn[data-reaction=DOWN] .fb-count')).toHaveText('1');
   await expect(otherItem.locator('.fb-react-btn[data-reaction=DOWN]')).toHaveAttribute('aria-pressed', 'false');
@@ -219,7 +246,6 @@ test('backlog: seed entry with badge, titles as text, reactions set / change / r
   // reopened later: loaded again, the state from the server
   await page.keyboard.press('Escape');
   await openFeedback(page);
-  await page.locator('#fb_tab_backlog').click();
   await expect(item.locator('.fb-react-btn[aria-pressed=true]')).toHaveCount(0);
   await expect(meh.locator('.fb-count')).toHaveText('0');
 });
@@ -234,7 +260,6 @@ test('backlog while loading: no "Nothing here yet." flash; a pull update leaves 
   await page.route('**/api/get_roadmap.php*', async route => { await gate; await route.continue(); });
 
   await openFeedback(page);
-  await page.locator('#fb_tab_backlog').click();
   await expect(page.locator('#fb_backlog')).toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('#fb_backlog_empty')).toBeHidden();
   release();
@@ -253,8 +278,7 @@ test('backlog while loading: no "Nothing here yet." flash; a pull update leaves 
 test('start page: backlog is shown, reactions are disabled with a hint', async ({ browser }) => {
   const page = await newPlayer(browser);
   await page.goto('/');
-  await openFeedback(page);
-  await page.locator('#fb_tab_backlog').click();
+  await openFeedback(page);   // opens on the backlog
 
   const seed = page.locator('#fb_backlog li.fb-item').filter({ has: page.locator('.fb-title', { hasText: /^New look$/ }) });
   await expect(seed.locator('.fb-status')).toHaveText('done');
