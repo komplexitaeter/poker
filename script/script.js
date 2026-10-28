@@ -1383,6 +1383,7 @@ function updateSide(json, glide = true) {
     if (status.textContent !== text) status.textContent = text;
 
     spread.hidden = !revealed;
+    updateTip(json, revealed);
 
     // the columns follow the deck, also before the reveal (they keep the spread's room)
     const bars = document.getElementById('spread_bars');
@@ -1465,6 +1466,62 @@ function updateSide(json, glide = true) {
             pointer.classList.remove('no-glide');
         }
     }
+}
+
+/* B-70: a short tip what to do now, in the column (before the reveal where the spread will be, then
+ * below it; style.css). Plain text only (textContent: names are user input). Hidden on phones. */
+function updateTip(json, revealed) {
+    const tip = document.getElementById('round_tip');
+    if (tip === null) return;
+    const text = tipText(json, revealed);
+    if (tip.textContent !== text) tip.textContent = text;
+}
+
+/* "Bob", "Bob and Cleo", "Bob, Cleo and Dan" */
+function tipNames(names) {
+    if (names.length < 2) return names.join('');
+    return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
+
+/* the players on one side of the spread: "Dan (3)", "Dan, Eve +2 (8)" */
+function tipSide(players, value) {
+    const names = players.slice(0, 2).map(player => player.name).join(', ');
+    return names + (players.length > 2 ? ' +' + (players.length - 2) : '') + ' (' + value + ')';
+}
+
+function tipText(json, revealed) {
+    const players = json.players || [];
+    if (json.players_count < 2) return 'Copy the board link and invite your team.';
+
+    if (!revealed) {
+        if (json.player_type === 'PLAYER' && !json.selected_card_key) {
+            return 'Pick the card that fits best from your point of view. Once everyone has voted, you\'ll see the result.';
+        }
+        const missing = players.filter(player => String(player.display_card_key).startsWith('prgrss'));
+        if (missing.length === 0) return '';
+        const who = missing.length > 3 ? missing.length + ' players' : tipNames(missing.map(player => player.name));
+        return 'Waiting for ' + who + '. The cards are revealed once everyone has voted.';
+    }
+
+    // lowest and highest numeric card; coffee, ?, ! and infinity do not count
+    const numeric = players
+        .map(player => ({ player, config: getCardConfig(player.display_card_key) }))
+        .filter(entry => entry.config && entry.config.numeric_value != null);
+    if (numeric.length === 0) return '';
+    const values = numeric.map(entry => entry.config.numeric_value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (min === max) return numeric.length === players.length ? 'Everyone agrees \u2013 start a new round.' : '';
+    const side = value => {
+        const entries = numeric.filter(entry => entry.config.numeric_value === value);
+        return { players: entries.map(entry => entry.player), label: entries[0].config.symbol || entries[0].config.description };
+    };
+    const low = side(min);
+    const high = side(max);
+    if (json.anonymous_mode === 1) {
+        return 'Lowest (' + low.label + ') and highest (' + high.label + '): explain your choice.';
+    }
+    return tipSide(low.players, low.label) + ' and ' + tipSide(high.players, high.label) + ': explain your choice.';
 }
 
 /* B-68: n blocks (one per vote) in a bar of the spread. New ones are added on top with the class

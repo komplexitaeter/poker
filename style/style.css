@@ -669,6 +669,15 @@ textarea.field {
     top: -0.05em; /* the line box hangs below the letters (descender room): centre on the letters */
 }
 
+/* B-70 board: a bit more room around the line, so it reads as a deliberate divider between team
+ * name and name tag; without the tag it would stand alone: hidden (no name yet, phones) */
+.team-name .caret {
+    gap: 0.5em;
+    margin-left: 0.5em;
+}
+
+.team-name .caret:has(.you-tag:empty) { display: none; }
+
 /* Centre cursor and tag on the lowercase letters of the team name, independent of font metrics
  * (SF Mono in Safari vs. other monospace fonts): the team name's box is trimmed to the x-height,
  * so flex centring hits the middle of the lowercase letters. The padding keeps ascenders and
@@ -842,7 +851,8 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 /* phones (board): the team name gets the room, the name tag goes away completely,
  * the logo shrinks to its mark */
 @media (max-width: 420px) {
-    .you-tag { display: none; }
+    .you-tag,
+    .team-name .caret { display: none; }
 
     .container #brand {
         width: 20px;
@@ -2129,7 +2139,8 @@ div#cbox {
  * revealed), as a strip right above the round actions and the deck. One panel color, no lines between the parts.
  * The spread has a fixed height: its room is kept before the reveal (hidden = invisible), the bars
  * grow inside a fixed area, count and value have their rows. Nothing moves when values change. */
-.round-status { display: none; }
+.round-status,
+.round-tip { display: none; }
 
 .side {
     --spread-h: 34px; /* the bar of the most chosen card */
@@ -2307,6 +2318,28 @@ div#cbox {
         text-align: left;
         color: var(--text);
         background: var(--bg-2);
+    }
+
+    /* B-70: what to do now, muted plain text (set by script.js), below the spread. Before the
+     * reveal the spread's room is empty (kept, invisible): the tip sits at its top, so neither the
+     * spread nor the tip pushes anything when it shows up. */
+    .side { position: relative; }
+
+    .round-tip {
+        display: block;
+        margin: var(--space-2) 0 0;
+        font-size: var(--fs-s);
+        line-height: 1.25rem;
+        text-align: left;
+        color: var(--muted);
+    }
+
+    .side > #spread[hidden] + .round-tip {
+        position: absolute;
+        top: var(--space-3);
+        left: var(--space-3);
+        right: var(--space-3);
+        margin: 0;
     }
 
     /* the topic: "// topic" and the pen in one row, the topic below, long ones scroll */
