@@ -55,14 +55,17 @@ export async function joinAsPlayer(page: Page, boardUrl: string, name: string): 
  * Adds players to a team straight through the API (no browser context per player), for tests
  * that need many cards on the table. The page showing the board has to reload afterwards.
  */
-export async function addPlayersViaApi(page: Page, boardUrl: string, names: string[]): Promise<void> {
+export async function addPlayersViaApi(page: Page, boardUrl: string, names: string[]): Promise<string[]> {
   const t = new URL(boardUrl).searchParams.get('t') ?? '';
+  const ids: string[] = [];
   for (const [i, name] of names.entries()) {
     const id = `E2EAPI${Date.now().toString(36)}${i}`.slice(0, 16).toUpperCase();
     const res = await page.request.post(
       `/api/name.php?id=${id}&type=player&name=${encodeURIComponent(name)}&t=${encodeURIComponent(t)}`);
     expect(res.ok()).toBeTruthy();
+    ids.push(id);
   }
+  return ids; // the player ids (e.g. for api/setc.php)
 }
 
 /** The card of a player on the table. */
