@@ -835,6 +835,21 @@ Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visib
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
 
+### B-64 `stats.php` neu: Tabs, Live-Ansicht, sinnvollere Kennzahlen
+Andreas (2026-10-28), sofort umsetzen (unabhängig von den Nutzern, passt zur Beobachtung nach Rollout 1). Refinement:
+- **Tabs** (Console-Look wie die App, ohne Bibliotheken): Live | Nutzung | Ideas & Bugs | Technik.
+- **Live:** aktive Teams/Clients (letzte 5 min), Runden letzte Stunde; Liste laufender Tische **mit Teamnamen**
+  (geschlossener Bereich, Andreas) – Spielerzahl, Beobachter, Deck, Runden heute, aktiv seit, aufgedeckt ja/nein;
+  Verlauf aktive Clients heute. Automatisch neu laden (ca. 30 s). Nie die Team-ID anzeigen (= Zugangsschlüssel).
+- **Nutzung:** nur, was Grafana nicht zeigt (Grafana hat: Daily Teams exploring/recurring, New Rounds, Active Use,
+  Peak Usage). Neu: neue vs. wiederkehrende User-IDs je Woche (Vergleich vor/nach Rollout 1, Tag markieren),
+  Nutzung von Menüs/Funktionen über `pok_analytics_events_tbl` (veraltete Events wie Info-Box/Simulation-Links raus),
+  Anteil Handy. Einfache CSS-Balken.
+- **Ideas & Bugs:** Eingang + öffentliche Liste wie bisher, eigener Tab, Zähler für offene Meldungen.
+- **Technik (klein):** Tabellengrößen (v. a. `pok_analytics_events_tbl`), PHP-Version, Release-Stand.
+- Alle Abfragen mit Zeitbereich und `MAX_EXECUTION_TIME`; Ausgabe nur escaped (Namen sind Nutzereingaben).
+Umsetzung Ben (Abfragen, Struktur), Delia (Look), Review Sina.
+
 ### B-63 `stats.php`: eigene Anmeldeseite statt Basic Auth
 **Zurückgestellt (Andreas, 2026-10-28): zu aufwändig, Basic Auth bleibt erstmal.**
 Andreas (2026-10-28): Chrome füllt den Basic-Auth-Dialog von `stats.php` nicht aus, und nach jedem Browser-Neustart
