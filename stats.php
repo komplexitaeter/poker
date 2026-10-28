@@ -580,9 +580,9 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .chart .col.empty, .chart .col.future { background: transparent; }
         .chart-x { grid-column: 2; display: flex; justify-content: space-between; margin-top: 0.3em;
                    color: var(--muted); font-size: var(--fs-xs); }
-        .chart-x span { width: 0; display: flex; justify-content: center; white-space: nowrap; }
+        .chart-x > span { width: 0; display: flex; justify-content: center; white-space: nowrap; }
 
-        /* rounds per day: one column per day (.day > .col), gridline before each Monday, value label for today and the peak */
+        /* rounds per day: one column per day (.day > .col), gridline before each Monday, value label on every day (today and the peak highlighted) */
         .chart.days { gap: 3px; background: none; }
         .chart .day.monday { box-shadow: -2px 0 0 var(--line); }
         .chart .day { position: relative; flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; }
@@ -593,9 +593,12 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .chart .col-val { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); padding-bottom: 0.15em;
                           color: var(--text); font-size: var(--fs-xs); line-height: 1; white-space: nowrap; }
         .chart .day .col { position: relative; }
+        .chart .col-val.minor { color: var(--muted); }
         .chart-x.days { gap: 3px; }
-        .chart-x.days span { flex: 1 1 0; min-width: 0; width: auto; justify-content: flex-start; overflow: visible; }
-        .chart-x.days span:last-child { justify-content: flex-end; }
+        .chart-x.days .wd { margin-right: 0.5ch; }
+        @media (max-width: 900px) { .chart .col-val.minor { display: none; } }  /* 3-digit values would collide */
+        .chart-x.days > span { flex: 1 1 0; min-width: 0; width: auto; justify-content: flex-start; overflow: visible; }
+        .chart-x.days > span:last-child { justify-content: flex-end; }
 
         /* Ideas & Bugs moderation (B-57) */
         .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; }
@@ -656,9 +659,13 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             .kpis { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
             .kpi { padding: 0.7rem 0.8rem; }
             .chart-box { padding: 0.75rem 0.5rem 0.5rem; }
-            .chart-x span:nth-child(even) { visibility: hidden; }
-            .chart-x.days span:nth-child(even) { visibility: visible; }
+            .chart-x > span:nth-child(even) { visibility: hidden; }
+            .chart-x.days > span:nth-child(even) { visibility: visible; }
             .chart.days, .chart-x.days { gap: 1px; }
+            /* rounds per day too narrow: dates without weekday, no "today"
+               label (the bar is highlighted) */
+            .chart-x.days .wd { display: none; }
+            .chart-x.days > span:last-child { visibility: hidden; }
             .rm { grid-template-columns: 5em 1fr 1fr;
                   grid-template-areas: "order type status" "title title title" "desc desc desc" "visible visible save" "votes votes votes"; }
             dl.facts { grid-template-columns: 1fr; gap: 0 0; }
@@ -725,12 +732,12 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             . ($r['avg_players'] === null ? '' : ', ' . number_format((float)$r['avg_players'], 1, '.', '') . ' players per round')
             . ($label !== '' ? ' - ' . $label : '');
 ?>
-            <span class="<?= h(implode(' ', $classes)) ?>" data-day="<?= h($day) ?>" data-rounds="<?= h($r['rounds']) ?>" title="<?= h($title) ?>"><span class="col" style="height: <?= bar_width($r['rounds'], $max_rounds) ?>%"><?php if ($show_value) { ?><span class="col-val"><?= h($r['rounds']) ?></span><?php } ?></span></span>
+            <span class="<?= h(implode(' ', $classes)) ?>" data-day="<?= h($day) ?>" data-rounds="<?= h($r['rounds']) ?>" title="<?= h($title) ?>"><span class="col" style="height: <?= bar_width($r['rounds'], $max_rounds) ?>%"><?php if ($r['rounds'] > 0) { ?><span class="col-val<?= $show_value ? '' : ' minor' ?>"><?= h($r['rounds']) ?></span><?php } ?></span></span>
 <?php } ?>
         </div>
         <div class="chart-x days" aria-hidden="true"><?php for ($i = LIVE_DAYS - 1; $i >= 0; $i--) {
             $day = date('Y-m-d', strtotime($data['now']['today'] . ' -' . $i . ' day'));
-            ?><span><?= $i === 0 ? 'today' : ((int)date('N', strtotime($day)) === 1 ? h(date('D m-d', strtotime($day))) : '') ?></span><?php } ?></div>
+            ?><span><?= $i === 0 ? 'today' : ((int)date('N', strtotime($day)) === 1 ? '<span class="wd">Mon </span>' . h(date('m-d', strtotime($day))) : '') ?></span><?php } ?></div>
         </div>
 <?php $labels = array_filter(array_map(fn($i) => milestone(date('Y-m-d', strtotime($data['now']['today'] . ' -' . $i . ' day'))), range(0, LIVE_DAYS - 1)));
     if ($labels) { ?>
