@@ -1340,6 +1340,10 @@ function handleResize() {
 
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
+    // B-68: a deck card image that loads late widens the deck; measure again (load does not bubble)
+    document.addEventListener('load', event => {
+        if (event.target instanceof HTMLImageElement && event.target.closest('#ctl') !== null) updateDeckRoom();
+    }, true);
     // B-49: the table also changes its size without a window resize (topic shown, unfolded or
     // hidden): the cards jump to their new size like on a resize. Only the border box counts,
     // a scrollbar coming or going does not change the area the cards are fitted to.
