@@ -151,7 +151,9 @@ explain select count(1) from pok_players_tbl where last_callback_time > now() - 
 select index_name from information_schema.statistics
  where table_schema = database() and table_name = 'pok_players_tbl' and index_name = 'last_callback_time';
 
-/* 2. change: only if the index is missing (idempotent) */
+/* 2. change: only if the index is missing (idempotent). Evening or weekend. The lock wait timeout makes the ALTER
+   give up after 5 s instead of queueing all dao.php calls behind it if a long query holds the table: just run it again. */
+set session lock_wait_timeout = 5;
 set @b64_sql = if((select count(1) from information_schema.statistics
                     where table_schema = database() and table_name = 'pok_players_tbl' and index_name = 'last_callback_time') = 0,
   'alter table pok_players_tbl add index last_callback_time (last_callback_time), algorithm = inplace, lock = none',

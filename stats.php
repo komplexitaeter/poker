@@ -248,7 +248,8 @@ function release_info(): array {
             fseek($fh, max(0, $size - 4096));
             $lines = preg_split('~\R~', trim((string)stream_get_contents($fh)));
             fclose($fh);
-            if (preg_match('~ (\d{9,}) [+-]\d{4}\t(.*)$~', (string)end($lines), $m)) {
+            // only the action name (pull, checkout, ...): the rest may hold a remote URL with credentials
+            if (preg_match('~ (\d{9,}) [+-]\d{4}\t([a-z-]+)~', (string)end($lines), $m)) {
                 $info['Last git action'] = date('Y-m-d H:i', (int)$m[1]) . ' – ' . $m[2];
             }
         }
@@ -258,14 +259,16 @@ function release_info(): array {
 }
 
 /* ---------- data of the shown tab (queries first, so an error never leaves half a page) ---------- */
-$link = db_init('utf8mb4');
+$link = null;
 $data = array();
 $error = null;
-
-$open_feedback_cnt = rows($link, "select /*+ MAX_EXECUTION_TIME(2000) */ count(1) as cnt
-                                    from pok_feedback_tbl where done_date is null")[0]['cnt'];
+$open_feedback_cnt = 0;
 
 try {
+    $link = db_init('utf8mb4');
+    $open_feedback_cnt = rows($link, "select /*+ MAX_EXECUTION_TIME(2000) */ count(1) as cnt
+                                        from pok_feedback_tbl where done_date is null")[0]['cnt'];
+
     if ($tab === 'live') {
         $data['now'] = rows($link, "select now() as now_time, curdate() as today")[0];
 
@@ -402,9 +405,11 @@ try {
                                                from pok_analytics_events_tbl")[0]['oldest'];
     }
 } catch (mysqli_sql_exception $e) {
-    $error = $e->getMessage();
+    // details only in the PHP log, the page shows the error code
+    error_log('stats.php: ' . $e->getMessage());
+    $error = 'error ' . $e->getCode() . ' (details in the PHP log)';
 }
-$link->close();
+if ($link) $link->close();
 
 $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . '/cards.json'), true) : null;
 ?>
