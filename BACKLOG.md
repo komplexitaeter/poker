@@ -999,6 +999,29 @@ eine schlanke `<`- bzw. `>`-Leiste, die zeigt, dass es weitergeht; Scrollleiste 
 bleiben. Entschieden (Andreas, 2026-10-28): Die Leisten sind nur Hinweis, **kein Klick-Blättern**. Tasten 1–9/0 holen
 eine Karte außerhalb des sichtbaren Bereichs ins Bild. Status: refined.
 
+### B-70 Tipps in der rechten Spalte: was jetzt zu tun ist
+Andreas (2026-10-28), aus der Team-Runde zu B-68: Unter dem Status (und unter dem Spread) ein kurzer Tipp für den
+aktuellen Spieler, wie im Mockup. Allein am Board → Board-Link kopieren und Team einladen; noch nicht gewählt → Karte
+wählen, Ergebnis kommt, sobald alle gewählt haben; gewählt → warten auf (Namen); aufgedeckt → niedrigste und höchste
+Karte (Namen) erklären ihre Wahl; alle gleich → neue Runde. Texte englisch, Ausgabe nur per `textContent`. Erst
+Desktop, Phones später. „Da kommt später noch mehr hin.“ Status: in Umsetzung (Fred).
+
+### B-71 Löschen von Spielern auf Touch-Geräten
+Andreas (2026-10-28): Auf dem Handy trägt jede Spielerkarte dauerhaft einen Mülleimer – unruhig, wirkt für Neue riskant.
+Lieber mit den vorhandenen Karten arbeiten statt eines eigenen Menüs (vgl. B-56). Langes Drücken ist kaum zu erraten,
+Antippen zum Ein-/Ausblenden der Kontext-Icons muss man auch erst herausfinden. Offen: Lösung (Vorschlag Kai: Mülleimer
+nur auf Karten von Spielern, die nicht mehr verbunden sind – das ist der eigentliche Anwendungsfall).
+
+### B-72 Aufräumen: Layout- und Spread-Logik in `script.js`
+Fred (2026-10-28): Nach den B-68-Runden hängt das Layout an mehreren Messwegen (`resize`, `ResizeObserver`, globaler
+Bild-`load`-Listener, `no-anim`-Umschalter); der Spread liest seine Spalten aus dem DOM der Kartenleiste statt aus den
+Daten. Vorschlag: eine `relayout()`-Funktion mit einem Observer, Spread direkt aus JSON und `cards.json`. Ca. 1–2 h,
+ohne Verhaltensänderung.
+
+### B-73 Wackelnder Timer-E2E-Test
+Tessa/Delia (2026-10-28): `timer.spec.ts` schlug lokal vereinzelt fehl („Clicking the checkbox did not change its
+state“), vermutlich Race zwischen Klick und Neu-Rendern nach `pull`. Robust machen, bevor es in der CI rot wird.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
