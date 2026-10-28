@@ -7,7 +7,7 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, gotoStats } from './help
  * stats.php needs a login (B-63): gotoStats() in helpers.ts logs in through the form.
  */
 
-test('live tab shows an active table by name, no tab contains the team id', async ({ browser }) => {
+test('live tab shows a table with a finished round by name, no tab contains the team id', async ({ browser }) => {
   const page = await newPlayer(browser);
   const teamName = `Live <i>${Date.now().toString(36)}</i> & co`;
   const url = await createTeam(page, teamName);
@@ -20,7 +20,14 @@ test('live tab shows an active table by name, no tab contains the team id', asyn
   await expect(admin.locator('.tabs a[aria-current="page"]')).toHaveText('Live');
   await expect(admin.locator('meta[http-equiv="refresh"]')).toHaveCount(1);   // auto reload in the live tab only
   const row = admin.locator('tr.live-table').filter({ has: admin.locator('td.team-name', { hasText: teamName }) });
+  await expect(row).toHaveCount(0);   // active only after a finished round (new round within 60 minutes)
+
+  await pickCard(page, 'three01');
+  await page.locator('#newroundbtn').click();
+  await expect(page.locator('#ctl img#three01')).not.toHaveClass(/selected/);
+  await admin.reload();
   await expect(row).toHaveCount(1);
+  await expect(row.locator('td.last-round')).toHaveText(/^\d\d:\d\d$/);
   await expect(row.locator('td.team-name i')).toHaveCount(0);   // escaped
   await expect(row.locator('td').nth(1)).toHaveText('1');      // one player
   await expect(row.locator('td').nth(4)).toHaveText('Fibonacci');

@@ -96,6 +96,7 @@ const _MYSQL_PORT = 3306;
 
 // stats.php login (B-63), credentials in tests/e2e/specs/helpers.ts
 const STATS_HTPASSWD = '$E2E_DIR/poker-stats.htpasswd';
+const STATS_COOKIE_SECRET = '$(php -r 'echo bin2hex(random_bytes(32));')';
 EOF
     # bcrypt entry as written by "htpasswd -B"; the apr1 entry (MD5) must be rejected by stats.php
     {
