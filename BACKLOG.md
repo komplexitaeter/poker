@@ -1017,7 +1017,10 @@ Andreas (2026-10-28): im Kern eine Frage, wie Browser/OS mit Tabs im Hintergrund
 WebSocket bleibt offen (Ping/Pong ohne JS); Handy friert die Seite ein, Verbindung reißt ab. „Off“ = keine Verbindung,
 nicht „Tab unsichtbar“. `last_callback_time` taugt nicht (nur bei Pulls aktualisiert). Vorschlag: Anwesenheit aus
 `poker-msg` (Client meldet User-ID beim Verbinden, `poker-msg` verteilt die Liste der Verbundenen je Team, Karenz
-1–2 min). Betrifft das Repo `poker-msg`. Nächster Schritt: Refinement mit Ben inkl. Gegenprüfung des Browserverhaltens.
+1–2 min). Betrifft das Repo `poker-msg`. Weitere Varianten (Andreas): (A) `poker-msg` schreibt Status in MySQL;
+(B) `poker-msg` schickt je Board alle ~30 s ein `pull`, wer `dao.php` lädt, setzt `last_callback_time` (Kai empfiehlt B,
+Last ca. +4 `dao.php`/s zur Spitze, ggf. schlanker Ping); (B′) Client fragt selbst alle 30 s (Timer-Drosselung im
+Hintergrund). **Vertagt** (Andreas, 2026-10-28): „noch sind wir da nicht dran“.
 
 ### B-72 Aufräumen: Layout- und Spread-Logik in `script.js`
 Fred (2026-10-28): Nach den B-68-Runden hängt das Layout an mehreren Messwegen (`resize`, `ResizeObserver`, globaler
