@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers, openTimerPanel } from './helpers';
+import { execFileSync } from 'node:child_process';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers, openTimerPanel, setTimer } from './helpers';
 
 /**
  * B-46: The board is one screen-high grid. Only the table scrolls, the deck stays at the bottom.
@@ -147,7 +148,7 @@ test('large screen: topic bar above the table, New Round in the bottom right cor
 
   // B-66: New Round sits in the bottom right corner, right of the deck and level with it
   await pickCard(alice, 'three01');
-  await expect(alice.locator('#newroundbtn')).toBeVisible();
+  await expect(alice.locator('#newroundbtn')).toBeEnabled();
   const deck = (await alice.locator('#ctl').boundingBox())!;
   const btn = (await alice.locator('#newroundbtn').boundingBox())!;
   expect(btn.x).toBeGreaterThanOrEqual(deck.x + deck.width);
@@ -179,4 +180,49 @@ test('timer switch: a toast for the own click only (B-46, B-67)', async ({ brows
   await expect(bobToast).not.toHaveClass(/toast-on/);
   await alice.context().close();
   await bob.context().close();
+});
+
+test('round button always there; many deck cards in a narrow window: the corner moves above the deck (B-67)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: { width: 1440, height: 900 } });
+  const url = await createTeam(alice, 'Layout Corner');
+  // Fibonacci plus ½, coffee, ? and ! (15 cards); the id is checked before it goes into the statement
+  const t = new URL(url).searchParams.get('t') as string;
+  expect(t).toMatch(/^[A-Za-z0-9_-]+$/);
+  const flags = Array(46).fill('0');
+  [0, 1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 24, 43, 44].forEach(i => flags[i] = '1');
+  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
+    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
+  await addPlayersViaApi(alice, url, ['Bob']);
+  await joinAsPlayer(alice, url, 'Alice');
+  await alice.reload();
+  await expect(alice.locator('#ctl > .on')).toHaveCount(15);
+
+  // before the first card: there, but disabled (Andreas)
+  const btn = alice.locator('#newroundbtn');
+  await expect(btn).toBeVisible();
+  await expect(btn).toBeDisabled();
+  await expect(btn).toHaveValue('Cancel Round');
+
+  // the header buttons keep their place when the timer (green dot) is switched on
+  const boardBtnX = async () => (await alice.locator('#cset_btn').boundingBox())!.x;
+  const before = await boardBtnX();
+  await setTimer(alice, true);
+  expect(await boardBtnX()).toBe(before);
+  await pickCard(alice, 'three01');
+  await expect(btn).toBeEnabled();
+
+  const box = async (sel: string) => (await alice.locator(sel).boundingBox())!;
+  for (const [width, above] of [[1440, false], [1100, false], [900, true]] as const) {
+    await alice.setViewportSize({ width, height: 900 });
+    await expect.poll(async () => {
+      const deck = await box('#ctl');
+      const dock = await box('.dock');
+      return above ? dock.y + dock.height <= deck.y + 1 : dock.x >= deck.x + deck.width;
+    }, { message: `width ${width}` }).toBe(true);
+    // timer and button in one row above the deck, side by side in the corner
+    const timer = await box('#timer');
+    const b = await box('#newroundbtn');
+    expect(above ? Math.abs(timer.y + timer.height / 2 - (b.y + b.height / 2)) < 4 : timer.y + timer.height <= b.y).toBe(true);
+  }
+  await alice.context().close();
 });

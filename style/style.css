@@ -493,37 +493,105 @@ textarea.field {
 
 /* B-66 round actions (large screens): the timer above New Round in the bottom right corner,
  * next to the deck (out of the table, positioned on .container). The deck keeps --dock-w free on
- * its right (.down-container), so the two never overlap; the menu panel covers the corner. */
+ * its right (.down-container), so the two never overlap; the menu panel covers the corner.
+ * B-67: timer and button sit together in a small bar like the card bar (same top line and round
+ * corners, on the bottom edge), so the corner reads as one unit, also with the button alone. */
 .dock {
     position: absolute;
     right: var(--space-3);
-    bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+    bottom: env(safe-area-inset-bottom);
     z-index: 1;
     width: calc(var(--dock-w) - 2 * var(--space-3));
+    box-sizing: border-box;
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
     gap: var(--space-1);
+    padding: var(--dock-pad-t) var(--dock-pad-x) var(--dock-pad-b);
+    background: var(--background-color);
+    border-top: 2px solid var(--secondary-border-color);
+    border-radius: var(--dock-radius) var(--dock-radius) 0 0;
 }
 
 @media (min-width: 800px) {
-    /* the deck centered as before while there is room, pushed left of the corner when there is not */
+    /* B-67: many deck cards in a narrow window: when deck and corner do not fit side by side, the
+     * corner moves into a row above the deck, timer and button next to each other (as on phones).
+     * Pure CSS: --deck-n counts the cards of the deck (up to 30; more never fit next to the corner),
+     * --dock-over is hugely positive when the deck (80px padding, cards with 4px margin) plus the
+     * corner are wider than the window, else negative. clamp(a, --dock-over, b) is then either a
+     * (side by side) or b (row above the deck): a switch, no gliding values in between. */
+    .container {
+        --dock-pad-t: 10px;
+        --dock-pad-x: 14px;
+        --dock-pad-b: var(--space-2);
+        --dock-radius: 28px;
+        --dock-row-h: calc(var(--tap) + var(--dock-pad-t) + var(--dock-pad-b) + 2px); /* one row: button + bar */
+        --dock-row-w: 22rem;                                          /* timer and button side by side */
+        --deck-now: calc(var(--deck-h) + 7px);                        /* the deck bar: + 5px padding, 2px top line */
+        --dock-over: calc((80px + var(--deck-n, 0) * (var(--deck-w) + 4px) + var(--dock-w) - 100vw) * 1000);
+    }
+
+    .container:has(#ctl.show_card_stats) { --deck-now: calc(var(--deck-h) + var(--deck-stats) + 7px); }
+
+    .container:has(#ctl > .on:nth-child(1 of .on)) { --deck-n: 1; }
+    .container:has(#ctl > .on:nth-child(2 of .on)) { --deck-n: 2; }
+    .container:has(#ctl > .on:nth-child(3 of .on)) { --deck-n: 3; }
+    .container:has(#ctl > .on:nth-child(4 of .on)) { --deck-n: 4; }
+    .container:has(#ctl > .on:nth-child(5 of .on)) { --deck-n: 5; }
+    .container:has(#ctl > .on:nth-child(6 of .on)) { --deck-n: 6; }
+    .container:has(#ctl > .on:nth-child(7 of .on)) { --deck-n: 7; }
+    .container:has(#ctl > .on:nth-child(8 of .on)) { --deck-n: 8; }
+    .container:has(#ctl > .on:nth-child(9 of .on)) { --deck-n: 9; }
+    .container:has(#ctl > .on:nth-child(10 of .on)) { --deck-n: 10; }
+    .container:has(#ctl > .on:nth-child(11 of .on)) { --deck-n: 11; }
+    .container:has(#ctl > .on:nth-child(12 of .on)) { --deck-n: 12; }
+    .container:has(#ctl > .on:nth-child(13 of .on)) { --deck-n: 13; }
+    .container:has(#ctl > .on:nth-child(14 of .on)) { --deck-n: 14; }
+    .container:has(#ctl > .on:nth-child(15 of .on)) { --deck-n: 15; }
+    .container:has(#ctl > .on:nth-child(16 of .on)) { --deck-n: 16; }
+    .container:has(#ctl > .on:nth-child(17 of .on)) { --deck-n: 17; }
+    .container:has(#ctl > .on:nth-child(18 of .on)) { --deck-n: 18; }
+    .container:has(#ctl > .on:nth-child(19 of .on)) { --deck-n: 19; }
+    .container:has(#ctl > .on:nth-child(20 of .on)) { --deck-n: 20; }
+    .container:has(#ctl > .on:nth-child(21 of .on)) { --deck-n: 21; }
+    .container:has(#ctl > .on:nth-child(22 of .on)) { --deck-n: 22; }
+    .container:has(#ctl > .on:nth-child(23 of .on)) { --deck-n: 23; }
+    .container:has(#ctl > .on:nth-child(24 of .on)) { --deck-n: 24; }
+    .container:has(#ctl > .on:nth-child(25 of .on)) { --deck-n: 25; }
+    .container:has(#ctl > .on:nth-child(26 of .on)) { --deck-n: 26; }
+    .container:has(#ctl > .on:nth-child(27 of .on)) { --deck-n: 27; }
+    .container:has(#ctl > .on:nth-child(28 of .on)) { --deck-n: 28; }
+    .container:has(#ctl > .on:nth-child(29 of .on)) { --deck-n: 29; }
+    .container:has(#ctl > .on:nth-child(30 of .on)) { --deck-n: 30; }
+
+    .dock {
+        width: clamp(calc(var(--dock-w) - 2 * var(--space-3)), var(--dock-over), var(--dock-row-w));
+        bottom: calc(clamp(0px, var(--dock-over), var(--deck-now)) + env(safe-area-inset-bottom)); /* row: on the deck bar */
+        transition: bottom 0.8s ease-in-out; /* follows the deck when its usage bars open */
+    }
+
+    /* side by side: the timer row above the button (both too wide for one row of the corner);
+     * in the row above the deck both fit next to each other */
+    .dock > .timer { flex: 1 0 auto; }
+
+    .dock > #newroundbtn {
+        flex: 1 0 10rem;
+        width: auto;
+        box-sizing: border-box;
+    }
+
+    /* the deck centered as before while there is room, pushed left of the corner when there is not;
+     * with the corner above it, the deck needs no room on its right */
     .down-container {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto minmax(var(--dock-w), 1fr);
+        grid-template-columns: minmax(0, 1fr) auto minmax(calc(var(--dock-w) - clamp(0px, var(--dock-over), var(--dock-w))), 1fr);
         align-items: end;
+        padding-top: clamp(0px, var(--dock-over), var(--dock-row-h));
     }
 
     .down-container > .controls { grid-column: 2; }
-
-    .dock > #newroundbtn {
-        width: 100%;
-        box-sizing: border-box;
-    }
 }
-
-/* nothing to show yet (timer off, nobody has voted) */
-.dock:has(> #timer.display_none):has(> #newroundbtn.display_none) { display: none; }
 
 /* Phones in landscape: little height, so a lower header */
 @media (max-height: 500px) and (orientation: landscape) {
@@ -550,7 +618,9 @@ textarea.field {
         gap: var(--space-1);
         padding: var(--space-1) 8px;
         background: var(--bg-2);
+        border: 0;
         border-top: 1px solid var(--line);
+        border-radius: 0;
     }
 }
 
@@ -778,18 +848,22 @@ textarea.field {
 }
 
 /* B-67: a small green dot behind ":timer" while the timer is on for the board (#timer shown);
- * green and behind the label, so it does not read as a notification like the red feedback dot */
-body:has(#timer:not(.display_none)) #timer_btn .lbl::after,
-body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after {
+ * green and behind the label, so it does not read as a notification like the red feedback dot.
+ * Its room is always kept (transparent while off): the other header buttons do not move. */
+#timer_btn .lbl::after,
+#menu_index [data-open="timer"] b::after {
     content: "";
     display: inline-block;
     width: 6px;
     height: 6px;
     margin-left: 6px;
     border-radius: 50%;
-    background: var(--ok);
+    background: transparent;
     vertical-align: middle;
 }
+
+body:has(#timer:not(.display_none)) #timer_btn .lbl::after,
+body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { background: var(--ok); }
 
 #copy_link_btn { color: var(--muted); }
 #copy_link_btn:hover { color: var(--accent); }
@@ -1650,10 +1724,24 @@ div#cbox {
     min-height: var(--tap);
 }
 
-/* hidden until someone has voted: keeps its place, so the timer does not jump */
-.dock #newroundbtn.display_none {
-    display: inline-block;
-    visibility: hidden;
+/* B-67 (Andreas): always there. Disabled ("Cancel Round") until someone has voted, dashed like a
+ * locked switch; "Cancel Round" while voting; "New Round" (all cards revealed) as the main action. */
+#newroundbtn.primary:enabled {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+#newroundbtn.primary:enabled:hover {
+    background: transparent;
+    color: var(--accent);
+}
+
+#newroundbtn:disabled {
+    border-style: dashed;
+    border-color: var(--line-strong);
+    color: var(--muted);
 }
 
 /* Timer: display (T−05:00 / T+00:42) and the line icons play/pause and reset in one row.
@@ -1758,7 +1846,38 @@ div#cbox {
     text-align: center;
 }
 
-.tmr-other .field:invalid { border-color: var(--danger); }
+.tmr-other .field:invalid,
+.tmr-other .field[aria-invalid="true"] { border-color: var(--danger); }
+
+/* a custom timebox is marked like a checked preset (.seg input:checked + span): the frame of the
+ * switch with the inverse box inside; set by updateTimerConfig(). While typing (focus) the plain
+ * field with the focus ring. */
+.tmr-other[data-set="true"] .field:not(:focus) {
+    border-color: var(--line-strong);
+    background: var(--text);
+    box-shadow: inset 0 0 0 2px var(--bg);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+/* invalid input: the red border of the field carries it, the message below stays small and calm */
+.tmr-other-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: var(--space-1);
+}
+
+.tmr-other-error[hidden] { display: none; }
+
+.tmr-other-error::before {
+    content: "";
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--danger);
+}
 
 /* ---------- Card deck (bottom bar) and average indicator ---------- */
 
@@ -1860,15 +1979,16 @@ div#cbox {
 
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
-/* B-66: in the bottom right corner above the round actions (.dock: timer row + button, see
- * "Board layout"), so the two never overlap; down at the edge when the dock is empty. */
+/* B-66: in the bottom right corner above the round actions (.dock: timer row + button in a frame,
+ * see "Board layout"), so the two never overlap; B-67: with the dock in a row above the deck, above
+ * that row. */
 .survey-container {
-    --survey-above: calc(2 * var(--tap) + var(--space-1) + var(--space-2) + var(--space-2));
+    --survey-above: calc(var(--tap) + var(--space-1) + var(--dock-row-h, 0px) + var(--space-2));
     font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
-    bottom: var(--survey-above);
+    bottom: max(var(--survey-above), clamp(0px, var(--dock-over, -1px), var(--deck-now, 0px) + var(--dock-row-h, 0px) + var(--space-2)));
     right: 0;
     margin: 0 auto;
     visibility: hidden;
@@ -1893,20 +2013,12 @@ div#cbox {
 
 /* timer off: only the round button below */
 .container:has(#timer.display_none) .survey-container {
-    --survey-above: calc(var(--tap) + var(--space-2) + var(--space-2));
+    --survey-above: calc(var(--dock-row-h, 0px) + var(--space-2));
 }
-
-/* empty dock: the survey tab sits on the bottom edge as before */
-.container:has(#timer.display_none):has(#newroundbtn.display_none) .survey-container { --survey-above: 0px; }
 
 /* above the dock it floats: rounded at the bottom too (open: the content's corners) */
 .survey-container:has(#survey-content.survey-closed) #survey-button,
 .survey-container #survey-content.survey-open { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
-
-.container:has(#timer.display_none):has(#newroundbtn.display_none) .survey-container :is(#survey-button, #survey-content) {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-}
 
 #survey-button .arrow { margin-left: var(--space-3); }
 

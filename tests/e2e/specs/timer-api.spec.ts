@@ -155,3 +155,35 @@ test('without auto-restart or with a hidden timer a new round leaves the timer a
   expect(d.timer_status).toBe('PAUSED');
   expect(d.timer_time).toBe(0);
 });
+
+test('changing the timebox or the mode resets the timer (B-67 feedback)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const { dao, timer, backdateTimer } = await newTeam(page, 'TimerResetOnChangeTeam');
+  await timer('set_visibility', '1');
+  await timer('set_mode', 'TIMER');
+
+  // running timer: a new timebox resets it to "ready"
+  await backdateTimer();
+  let d = await dao();
+  expect(d.timer_status).toBe('RUNNING');
+  expect(d.timer_time).toBeGreaterThanOrEqual(100);
+  expect((await timer('set_timebox', '10')).status()).toBe(200);
+  d = await dao();
+  expect([d.timer_status, d.timer_time, d.timer_timebox]).toEqual(['PAUSED', 0, 600]);
+
+  // paused timer: a mode change resets it as well
+  await backdateTimer();
+  expect((await timer('pause')).status()).toBe(200);
+  expect((await dao()).timer_time).toBeGreaterThanOrEqual(100);
+  expect((await timer('set_mode', 'STOPWATCH')).status()).toBe(200);
+  d = await dao();
+  expect([d.timer_status, d.timer_time, d.timer_mode]).toEqual(['PAUSED', 0, 'STOPWATCH']);
+
+  // a rejected value leaves a running timer alone
+  await backdateTimer();
+  expect((await timer('set_timebox', '0')).status()).toBe(400);
+  expect((await timer('set_mode', 'COUNTDOWN')).status()).toBe(400);
+  d = await dao();
+  expect(d.timer_status).toBe('RUNNING');
+  expect(d.timer_time).toBeGreaterThanOrEqual(100);
+});

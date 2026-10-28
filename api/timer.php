@@ -69,24 +69,29 @@ if ($action=='set_visibility') {
     $sql->execute();
 }
 
-/* B-67: STOPWATCH counts up (T+), TIMER counts down from the timebox (T-) and then on into T+ */
+/* B-67: STOPWATCH counts up (T+), TIMER counts down from the timebox (T-) and then on into T+.
+ * Changing the mode or the timebox also resets the timer, so everyone sees the new start value right away. */
 if ($action=='set_mode') {
     $mode = filter_input(INPUT_GET, "value") ?? '';
     if (!in_array($mode, ['STOPWATCH', 'TIMER'], true)) bad_request($link);
     $sql = $link->prepare( "update pok_teams_tbl t
                                      set t.timer_mode = ?
+                                        ,t.timer_start_time = null
+                                        ,t.timer_pause_time = null
                                    where t.id=?");
     $sql->bind_param('ss', $mode, $t);
     $sql->execute();
 }
 
-/* B-67: timebox in whole minutes (1..240), stored in seconds */
+/* B-67: timebox in whole minutes (1..240), stored in seconds; resets the timer (see set_mode) */
 if ($action=='set_timebox') {
     $value = filter_input(INPUT_GET, "value") ?? '';
     if (!preg_match('/^[0-9]{1,3}$/', $value) || (int)$value < 1 || (int)$value > 240) bad_request($link);
     $timebox = (int)$value * 60;
     $sql = $link->prepare( "update pok_teams_tbl t
                                      set t.timer_timebox = ?
+                                        ,t.timer_start_time = null
+                                        ,t.timer_pause_time = null
                                    where t.id=?");
     $sql->bind_param('is', $timebox, $t);
     $sql->execute();

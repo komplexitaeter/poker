@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.37" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.39" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.25" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.20" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.22" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -63,8 +63,8 @@
              (data-open); same order and names as the phone menu index -->
         <nav class="topnav-bar" aria-label="Board menu">
             <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
-            <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span class="lbl">board</span></button>
             <button type="button" id="timer_btn" class="icon-btn" data-open="timer" aria-label="Timer" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">timer</span></button>
+            <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span class="lbl">board</span></button>
             <button type="button" id="user_settings_btn" class="icon-btn" data-open="user_settings" aria-label="You" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span></button>
             <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
             <button type="button" id="cmode_btn" class="icon-btn" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
@@ -103,7 +103,7 @@
                     <button type="button" id="timer_reset" class="icon-btn timer-btn" onclick="timerReset()" aria-label="Reset timer"><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg></button>
                 </div>
             </div>
-            <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" />
+            <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" disabled />
         </div>
     </main>
 
@@ -141,8 +141,8 @@
             <section id="menu_index" class="menu_sec" data-sec="index" data-title="Menu" hidden>
                 <ul class="m-index">
                     <li><button type="button" data-open="topic"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span><b>Topic</b><small>What you are estimating</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
-                    <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="timer"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span><b>Timer</b><small>Stopwatch or timebox for everyone</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="user_settings"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span><b>You</b><small>Name, role, appearance</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                 </ul>
@@ -248,12 +248,13 @@
                         <label><input type="radio" name="tmr_timebox" value="30" onchange="setTimerTimebox(this.value)"/><span>30</span></label>
                         <label><input type="radio" name="tmr_timebox" value="60" onchange="setTimerTimebox(this.value)"/><span>60</span></label>
                     </div>
-                    <div class="row tmr-other">
+                    <div class="row tmr-other" data-set="false">
                         <label for="tmr_other" class="lab">other:</label>
-                        <input class="field" id="tmr_other" type="number" min="1" max="240" step="1" inputmode="numeric" placeholder="1–240" aria-describedby="tmr_other_hint" onchange="setTimerOther()" onkeydown="if (event.key === 'Enter') setTimerOther()"/>
+                        <input class="field" id="tmr_other" type="number" min="1" max="240" step="1" inputmode="numeric" placeholder="1–240" aria-describedby="tmr_other_hint" onfocus="timerOtherFocus()" onkeydown="timerOtherKeydown(event)" onblur="timerOtherBlur()" oninput="showTimerOtherError(false)"/>
                         <span aria-hidden="true">min</span>
                     </div>
                     <p id="tmr_other_hint" class="sr-only">1 to 240 minutes.</p>
+                    <p id="tmr_other_error" class="hint tmr-other-error" role="status" hidden>Please enter 1 to 240 minutes.</p>
                 </fieldset>
                 <fieldset class="f" id="tmr_auto_restart">
                     <legend class="lab">Auto-start on new round</legend>
