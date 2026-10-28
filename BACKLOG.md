@@ -979,6 +979,10 @@ Timer an laufen als Stopwatch ohne Auto-Start weiter – alles wie bisher. Kopfz
 „Zeit um“ = T+ in Amber, kein Ton. Kartenleiste und Spreads bleiben unverändert.
 
 ### B-68 Rechte Spalte (Desktop) + Primärsteuerung unten rechts
+**Gestaltungsprinzip (Andreas, 2026-10-28):** Wer die App das erste Mal öffnet, soll sie einfach finden und nicht
+erschlagen werden – wenige Elemente, klare Hierarchie (Karte wählen, Runde starten), im Zweifel weglassen. Console Style
+ist die Denkrichtung für Gestaltungselemente, nicht für mehr Text oder `//`-Labels. Keine „Border-Schlacht“: Zonen wie
+bei einem Armaturenbrett erkennbar, aber nicht alles mit Linien getrennt.
 Andreas (2026-10-28), nach Team-Runde zu den Controls unten rechts; Umsetzung freigegeben („macht es mal so“):
 - Desktop ab ca. 1200 px: rechte Spalte **immer** sichtbar (kein Ein-/Ausschieben je Runde, Kartengröße bleibt stabil).
   Oben ein **Status, wo wir gerade sind** (z. B. Abstimmung läuft · 3/5 voted, aufgedeckt, warten auf Spieler) plus
