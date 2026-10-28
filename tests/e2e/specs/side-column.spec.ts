@@ -71,6 +71,7 @@ test('column: status, topic, spread and the corner (B-68)', async ({ browser }) 
   const five = alice.locator('#spread_bars [data-card="five001"]');
   await expect(five.locator('.spread-count')).toHaveText('2');
   await expect(five).toHaveClass(/top/);
+  await expect(five.locator('.spread-seg:not(.out)')).toHaveCount(2); // one segment per vote
   await expect(five.locator('.spread-value')).toHaveText('5');
   await expect(alice.locator('#spread_bars [data-card="1pnt501"] .spread-value')).toHaveText('½'); // cards.json symbol
   await expect(alice.locator('#spread_bars [data-card="three01"] .spread-count')).toHaveText('');
@@ -86,6 +87,12 @@ test('column: status, topic, spread and the corner (B-68)', async ({ browser }) 
     return menu.x <= side.x && Math.round(menu.x + menu.width) === DESKTOP.width;
   }).toBe(true);
   await alice.keyboard.press('Escape');
+
+  // the keys sit at the bottom edge, level with the hint, when the deck does not scroll
+  await expect(alice.locator('#down-container')).toHaveClass(/keys-low/);
+  const keyBox = await box(alice, '#ctl .ctl-key >> nth=0');
+  const hintBox = await box(alice, '.deck-hint');
+  expect(Math.abs(keyBox.y + keyBox.height - (hintBox.y + hintBox.height))).toBeLessThan(2.5);
 
   // a key in the menu does not pick a card
   await alice.locator('#cset_btn').click();
@@ -109,6 +116,21 @@ test('column: status, topic, spread and the corner (B-68)', async ({ browser }) 
   const deck = await box(alice, '#down-container');
   expect(Math.abs(strip.y + strip.height - dock.y)).toBeLessThan(1);
   expect(Math.abs(dock.y + dock.height - deck.y)).toBeLessThan(1);
+  await expect(status).toBeHidden();
+
+  // phones, before the reveal: a slim strip with where the round is instead of the spread
+  await alice.locator('#newroundbtn').click();
+  await expect(status).toBeVisible();
+  await expect(status).toHaveText('voting · 0/2 voted');
+  await expect(alice.locator('.side')).toBeHidden();
+  const line = await box(alice, '#round_status');
+  expect(line.height).toBeLessThan(40);
+  expect(Math.abs(line.y + line.height - (await box(alice, '.dock')).y)).toBeLessThan(1);
+  await pickCard(alice, 'five001');
+  await pickCard(bob, 'three01');
+  await expect(alice.locator('#spread')).toBeVisible();
+  await expect(status).toBeHidden();
+  await expect(alice.locator('#spread_bars [data-card="three01"] .spread-seg:not(.out)')).toHaveCount(1);
   await alice.context().close();
   await bob.context().close();
 });
