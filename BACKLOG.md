@@ -35,6 +35,10 @@ Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-
 (FPM-grep + `free -m`).
 
 Abgeschlossen:
+- **Nach Rollout 1 (live 2026-10-28, PRs #57–#66):** B-64 `stats.php` neu (Tabs Live/Usage/Ideas & Bugs/Tech,
+  Runden pro Tag, aktive Tische = Runde in den letzten 60 min), B-63 eigene Anmeldeseite gegen die nginx-htpasswd
+  (bcrypt, Cookie 30 Tage, `limit_req` nur auf `/stats.php`, Basic Auth entfernt), Feedback-Menü öffnet auf
+  „Backlog“, Promo-Teaser aus, CI-Regel (kein Lauf bei PR → `master` und bei `*.md`, lokal nur betroffene Specs).
 - **Sprint 8 – „Neuer Look“ = Rollout 1** (live 2026-10-28 mit PR #56): Console-Look, Seitengerüst, Menüs als Side
   Panel/Bottom-Sheet, fluide Karten (B-46 bis B-49, B-51, Teile B-50), Ideas & Bugs (B-57), Promo-Teaser „THE AGILE
   GAME“ abgeschaltet (#57, Code bleibt). Nächstes: Rollout 2 (B-53, B-52) etwa eine Woche später; Feedback über B-57
