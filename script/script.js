@@ -209,10 +209,9 @@ function updateDeckKeys() {
     updateDeckRoom();
 }
 
-/* B-68: the keys sit at the bottom edge, level with the hint "keys 1–9 pick a card", while the
- * deck does not scroll and its last key stays clear of the hint (class keys-low); otherwise the
- * hint keeps a row of its own below the deck and its scrollbar. Only where the keys show
- * (style.css "Card deck"). */
+/* B-68: the hint "keys 1–9 pick a card" sits in the row of the keys; it is hidden (class
+ * hint-off) when the deck scrolls or its last key does not stay clear of it, so the tray keeps its
+ * height. Only where the keys show (style.css "Card deck"). */
 function updateDeckRoom() {
     const container = document.getElementById('down-container');
     const ctl = document.getElementById('ctl');
@@ -222,7 +221,7 @@ function updateDeckRoom() {
     const lastKey = keyed.length > 0 ? keyed[keyed.length - 1].nextElementSibling : null;
     const fits = ctl.scrollWidth <= ctl.clientWidth + 1
         && (lastKey === null || lastKey.getBoundingClientRect().right + 8 <= hint.getBoundingClientRect().left);
-    container.classList.toggle('keys-low', fits);
+    container.classList.toggle('hint-off', !fits);
 }
 
 /* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
@@ -1334,7 +1333,12 @@ function handleResize() {
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
+    // B-68: the spread bars jump to their new height (e.g. at the breakpoint), only votes animate
+    const spread = document.getElementById('spread');
+    spread.classList.add('no-anim');
     updateSide(gLastJson, false);
+    void spread.offsetHeight;
+    spread.classList.remove('no-anim');
     updateDeckRoom();
 }
 

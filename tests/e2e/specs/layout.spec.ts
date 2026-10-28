@@ -216,7 +216,8 @@ test('round button always there; many deck cards in a narrow window: the deck sc
   await expect(btn).toBeEnabled();
 
   const box = async (sel: string) => (await alice.locator(sel).boundingBox())!;
-  // B-68: from 800px always the corner on the right edge; a deck too wide for its room scrolls sideways
+  // B-68: from 800px always the corner on the right edge; the deck's cards shrink to fit, it does
+  // not scroll (15 cards at 900px)
   for (const width of [1440, 1100, 900]) {
     await alice.setViewportSize({ width, height: 900 });
     await expect.poll(async () => {
@@ -229,6 +230,6 @@ test('round button always there; many deck cards in a narrow window: the deck sc
     const b = await box('#newroundbtn');
     expect(timer.y + timer.height).toBeLessThanOrEqual(b.y);
   }
-  expect(await alice.locator('#ctl').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  expect(await alice.locator('#ctl').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(false);
   await alice.context().close();
 });

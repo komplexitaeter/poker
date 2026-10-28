@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer } from './helpers';
 
 /**
@@ -6,8 +7,8 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer } from './helpe
  * is (#round_status), the topic and, once the cards are revealed, the spread with the average pointer
  * (board setting show_avg). The spread keeps its room before the reveal, so nothing moves. Its foot
  * is the round actions (timer above the round button); the button keeps its place when the timer
- * is switched on or off and is level with the middle of the deck cards; the deck is a tray floating
- * over the table, a gap before the column. The menu panel covers the column. Phones: the spread and
+ * is switched on or off and ends level with the deck's tray; the deck is a compact tray floating
+ * over the table, a gap before the column; its cards shrink to fit before it scrolls. The menu panel covers the column. Phones: the spread and
  * the round actions are a strip right above the deck. The deck is input only (no usage bars, no pointer); keys 1–9
  * and 0 pick a card.
  */
@@ -30,7 +31,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   const side = await box(alice, '.side');
   const table = await box(alice, '#table');
   expect(Math.round(side.x + side.width)).toBe(DESKTOP.width);
-  expect(Math.round(side.width)).toBe(380); // --panel-w
+  expect(Math.round(side.width)).toBe(380); // --col-w (as wide as the menu panel here)
   expect(table.x + table.width).toBeLessThanOrEqual(side.x + 1);
   await expect.poll(async () => {
     const dock = await box(alice, '.dock');
@@ -39,7 +40,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   }).toBe(true);
 
   // the deck: a tray floating over the table, a gap before the column and the bottom edge,
-  // no line on top; the round button is level with the middle of the deck cards
+  // no line on top; the round button ends level with the tray (B-68 polish)
   const tray = await box(alice, '#down-container');
   expect(tray.x + tray.width).toBeLessThanOrEqual(side.x - 8);
   expect(tray.y + tray.height).toBeLessThanOrEqual(DESKTOP.height - 8);
@@ -47,13 +48,12 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
     const cs = getComputedStyle(el);
     return [cs.borderTopWidth, parseFloat(cs.borderTopLeftRadius) > 0, cs.boxShadow.includes('inset')];
   })).toEqual(['0px', true, false]);
-  const cardMiddle = async () => alice.locator('#ctl img.on >> nth=0').evaluate(img => {
-    const r = img.getBoundingClientRect();
-    const cs = getComputedStyle(img);
-    return r.top + (r.height - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth)) / 2;
-  });
-  const btnMiddle = async () => { const b = await box(alice, '#newroundbtn'); return b.y + b.height / 2; };
-  await expect.poll(async () => Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
+  const trayBottom = async () => { const b = await box(alice, '#down-container'); return b.y + b.height; };
+  const btnBottom = async () => { const b = await box(alice, '#newroundbtn'); return b.y + b.height; };
+  await expect.poll(async () => Math.abs(await btnBottom() - await trayBottom())).toBeLessThan(1.5);
+  // compact: hardly any room above the cards
+  const cardTop = (await box(alice, '#ctl img.on >> nth=0')).y;
+  expect(cardTop - (await box(alice, '#down-container')).y).toBeLessThan(16);
 
   // the topic is in the column
   await alice.request.post(`/api/update_topic.php?t=${encodeURIComponent(t)}`, { form: { topic: 'PAY-142 pay by invoice' } });
@@ -76,7 +76,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   expect(await box(alice, '#newroundbtn')).toEqual(btnBefore);
   const timer = await box(alice, '#timer');
   expect(timer.y + timer.height).toBeLessThanOrEqual(btnBefore.y);
-  expect(Math.abs(btnBefore.y + btnBefore.height / 2 - await cardMiddle())).toBeLessThan(1.5);
+  expect(Math.abs(btnBefore.y + btnBefore.height - await trayBottom())).toBeLessThan(1.5);
   await setTimer(alice, false);
   expect(await box(alice, '#newroundbtn')).toEqual(btnBefore);
 
@@ -107,8 +107,9 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   }).toBe(true);
   await alice.keyboard.press('Escape');
 
-  // the keys sit at the bottom edge, level with the hint, when the deck does not scroll
-  await expect(alice.locator('#down-container')).toHaveClass(/keys-low/);
+  // the hint sits in the row of the keys (level with them) when it fits next to them
+  await expect(alice.locator('#down-container')).not.toHaveClass(/hint-off/);
+  await expect(alice.locator('.deck-hint')).toBeVisible();
   const keyBox = await box(alice, '#ctl .ctl-key >> nth=0');
   const hintBox = await box(alice, '.deck-hint');
   expect(Math.abs(keyBox.y + keyBox.height - (hintBox.y + hintBox.height))).toBeLessThan(2.5);
@@ -119,16 +120,23 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   await expect(alice.locator('#ctl img#five001')).toHaveClass(/selected/);
   await alice.keyboard.press('Escape');
 
-  // still the column at 820px; the deck scrolls there, the button stays level with the cards
+  // still the column at 820px, narrower (300-380px); all 15 cards fit without scrolling (they
+  // shrink), the button stays level with the tray
   await alice.setViewportSize({ width: 820, height: 800 });
   await expect(status).toBeVisible();
-  expect(Math.round((await box(alice, '.side')).x)).toBe(820 - 380);
-  await expect(alice.locator('#down-container')).not.toHaveClass(/keys-low/);
-  await expect.poll(async () => Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
+  const narrowSide = await box(alice, '.side');
+  expect(narrowSide.width).toBeGreaterThanOrEqual(300);
+  expect(narrowSide.width).toBeLessThan(380);
+  expect(Math.round(narrowSide.x + narrowSide.width)).toBe(820);
+  await expect.poll(() => alice.locator('#ctl').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expect.poll(async () => Math.abs(await btnBottom() - await trayBottom())).toBeLessThan(1.5);
 
   // phones: no status, the topic strip below the header, the spread and the round actions right
   // above the deck
+  // the bars jump to the phones' height on the resize, only votes animate (2 votes of 2: 34px)
   await alice.setViewportSize({ width: 390, height: 844 });
+  expect(await five.locator('.spread-bar').evaluate(bar => new Promise<number>(resolve =>
+    requestAnimationFrame(() => resolve(bar.getBoundingClientRect().height))))).toBeCloseTo(34, 0);
   await expect(status).toBeHidden();
   await expect(alice.locator('.topic-bar')).toBeVisible();
   await expect(alice.locator('#spread')).toBeVisible();
@@ -154,4 +162,48 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   await expect(alice.locator('#spread_bars [data-card="three01"] .spread-seg:not(.out)')).toHaveCount(1);
   await alice.context().close();
   await bob.context().close();
+});
+
+/** sets the deck of a team straight in the database (card indexes of cards.json) */
+function setDeck(t: string, indexes: number[]) {
+  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // checked before it goes into the statement
+  const flags = Array(46).fill('0');
+  indexes.forEach(i => flags[i] = '1');
+  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
+    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
+}
+
+test('deck tray: the hint never takes a row of its own, scrolling only as a last resort (B-68)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Deck Tray');
+  const t = new URL(url).searchParams.get('t')!;
+  setDeck(t, [0, 2, 3, 4, 6, 9, 10, 11, 12, 13]); // 10 cards: the 10th key lies far right
+  await joinAsPlayer(alice, url, 'Alice');
+  await expect(alice.locator('#ctl img.on')).toHaveCount(10);
+  const hint = alice.locator('.deck-hint');
+  const trayRoom = async () => (await box(alice, '#down-container')).height - (await box(alice, '#ctl')).height;
+
+  // wide: the hint in the row of the keys
+  await expect(alice.locator('#down-container')).not.toHaveClass(/hint-off/);
+  await expect(hint).toBeVisible();
+  const roomWide = await trayRoom();
+
+  // narrower: the hint does not fit next to the keys: hidden, the tray keeps its height
+  await alice.setViewportSize({ width: 900, height: 800 });
+  await expect(alice.locator('#down-container')).toHaveClass(/hint-off/);
+  await expect(hint).toBeHidden();
+  expect(Math.abs(await trayRoom() - roomWide)).toBeLessThan(1);
+  await alice.setViewportSize(DESKTOP);
+  await expect(hint).toBeVisible();
+
+  // a very large deck: the cards shrink to their minimum, only then the deck scrolls
+  setDeck(t, Array.from({ length: 46 }, (_, i) => i));
+  await alice.reload();
+  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  await expect.poll(() => alice.locator('#ctl').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  const w = (await box(alice, '#ctl img.on >> nth=0')).width;
+  expect(w).toBeGreaterThanOrEqual(25.5);
+  expect(w).toBeLessThan(30);
+  await expect(hint).toBeHidden();
+  await alice.context().close();
 });
