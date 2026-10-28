@@ -307,13 +307,19 @@ try {
 
         // course of the day: pok_active_user_stats is filled every minute by the event job (db_jobs_pok.sql);
         // max of "active within the last 10 minutes" per 15-minute slot
-        $data['history'] = rows($link, "select /*+ MAX_EXECUTION_TIME(3000) */
-                   hour(creation_date) * 4 + floor(minute(creation_date) / 15) as slot
-                  ,max(last_ten_minutes) as clients
-              from pok_active_user_stats
-             where creation_date >= curdate()
-             group by slot
-             order by slot");
+        // the table and its job exist only where the event jobs are installed (live, not staging): no chart then
+        try {
+            $data['history'] = rows($link, "select /*+ MAX_EXECUTION_TIME(3000) */
+                       hour(creation_date) * 4 + floor(minute(creation_date) / 15) as slot
+                      ,max(last_ten_minutes) as clients
+                  from pok_active_user_stats
+                 where creation_date >= curdate()
+                 group by slot
+                 order by slot");
+        } catch (mysqli_sql_exception $e) {
+            if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist
+            $data['history'] = array();
+        }
 
 
     } else if ($tab === 'usage') {
@@ -693,7 +699,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     $max = $history ? max($history) : 0;
     $now_slot = (int)substr($data['now']['now_time'], 11, 2) * 4 + intdiv((int)substr($data['now']['now_time'], 14, 2), 15);
     if ($max == 0) { ?>
-        <p class="muted">No data yet (pok_active_user_stats is filled by the event job pok_active_users_evt).</p>
+        <p class="muted">No data (pok_active_user_stats is filled by the event job pok_active_users_evt, see db_jobs_pok.sql).</p>
 <?php } else { ?>
         <p class="note">Clients active within 10 minutes, highest value per 15 minutes (pok_active_user_stats). Peak today: <?= h($max) ?>.</p>
         <div class="chart-box">
