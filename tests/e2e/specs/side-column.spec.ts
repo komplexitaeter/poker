@@ -5,16 +5,17 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer } from './helpe
  * B-68: from 800px a column is always there on the right, as wide as the menu panel: where the round
  * is (#round_status), the topic and, once the cards are revealed, the spread with the average pointer
  * (board setting show_avg). The spread keeps its room before the reveal, so nothing moves. Its foot
- * is the bottom right corner with timer and round button; the button keeps its place when the timer
- * is switched on or off. The menu panel covers the column. Phones: the spread and the round actions
- * are a strip right above the deck. The deck is input only (no usage bars, no pointer); keys 1–9
+ * is the round actions (timer above the round button); the button keeps its place when the timer
+ * is switched on or off and is level with the middle of the deck cards; the deck is a tray floating
+ * over the table, a gap before the column. The menu panel covers the column. Phones: the spread and
+ * the round actions are a strip right above the deck. The deck is input only (no usage bars, no pointer); keys 1–9
  * and 0 pick a card.
  */
 const DESKTOP = { width: 1280, height: 800 };
 
 const box = async (page: Page, selector: string) => (await page.locator(selector).boundingBox())!;
 
-test('column: status, topic, spread and the corner (B-68)', async ({ browser }) => {
+test('column: status, topic, spread and the round actions at its foot (B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Side Column');
   const t = new URL(url).searchParams.get('t')!;
@@ -22,7 +23,7 @@ test('column: status, topic, spread and the corner (B-68)', async ({ browser }) 
   const bob = await newPlayer(browser, { viewport: DESKTOP });
   await joinAsPlayer(bob, url, 'Bob');
 
-  // the column on the right edge, the table left of it, the corner below it, as wide as the column
+  // the column on the right edge down to the bottom, the table left of it; the round actions at its foot
   const status = alice.locator('#round_status');
   await expect(status).toBeVisible();
   await expect(status).toHaveText('voting · 0/2 voted');
@@ -36,6 +37,23 @@ test('column: status, topic, spread and the corner (B-68)', async ({ browser }) 
     return Math.abs(dock.x - side.x) < 1 && Math.abs(dock.width - side.width) < 1
       && Math.abs(dock.y - (side.y + side.height)) < 1 && Math.round(dock.y + dock.height) === DESKTOP.height;
   }).toBe(true);
+
+  // the deck: a tray floating over the table, a gap before the column and the bottom edge,
+  // no line on top; the round button is level with the middle of the deck cards
+  const tray = await box(alice, '#down-container');
+  expect(tray.x + tray.width).toBeLessThanOrEqual(side.x - 8);
+  expect(tray.y + tray.height).toBeLessThanOrEqual(DESKTOP.height - 8);
+  expect(await alice.locator('#down-container').evaluate(el => {
+    const cs = getComputedStyle(el);
+    return [cs.borderTopWidth, parseFloat(cs.borderTopLeftRadius) > 0, cs.boxShadow.includes('inset')];
+  })).toEqual(['0px', true, false]);
+  const cardMiddle = async () => alice.locator('#ctl img.on >> nth=0').evaluate(img => {
+    const r = img.getBoundingClientRect();
+    const cs = getComputedStyle(img);
+    return r.top + (r.height - parseFloat(cs.paddingBottom) - parseFloat(cs.borderBottomWidth)) / 2;
+  });
+  const btnMiddle = async () => { const b = await box(alice, '#newroundbtn'); return b.y + b.height / 2; };
+  expect(Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
 
   // the topic is in the column
   await alice.request.post(`/api/update_topic.php?t=${encodeURIComponent(t)}`, { form: { topic: 'PAY-142 pay by invoice' } });
@@ -58,6 +76,7 @@ test('column: status, topic, spread and the corner (B-68)', async ({ browser }) 
   expect(await box(alice, '#newroundbtn')).toEqual(btnBefore);
   const timer = await box(alice, '#timer');
   expect(timer.y + timer.height).toBeLessThanOrEqual(btnBefore.y);
+  expect(Math.abs(btnBefore.y + btnBefore.height / 2 - await cardMiddle())).toBeLessThan(1.5);
   await setTimer(alice, false);
   expect(await box(alice, '#newroundbtn')).toEqual(btnBefore);
 
@@ -100,10 +119,12 @@ test('column: status, topic, spread and the corner (B-68)', async ({ browser }) 
   await expect(alice.locator('#ctl img#five001')).toHaveClass(/selected/);
   await alice.keyboard.press('Escape');
 
-  // still the column at 820px
+  // still the column at 820px; the deck scrolls there, the button stays level with the cards
   await alice.setViewportSize({ width: 820, height: 800 });
   await expect(status).toBeVisible();
   expect(Math.round((await box(alice, '.side')).x)).toBe(820 - 380);
+  await expect(alice.locator('#down-container')).not.toHaveClass(/keys-low/);
+  expect(Math.abs(await btnMiddle() - await cardMiddle())).toBeLessThan(1.5);
 
   // phones: no status, the topic strip below the header, the spread and the round actions right
   // above the deck

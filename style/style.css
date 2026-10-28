@@ -58,7 +58,7 @@
     /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px); B-68: the deck
      * shares the width with the column, never smaller than 45px: when the cards do not fit, it
      * scrolls sideways. */
-    --deck-w: clamp(45px, min((100vw - var(--panel-w) - 80px) / 16 - 4px, 2.5vw + 13px), 64px);
+    --deck-w: clamp(45px, min((100vw - var(--panel-w) - 104px) / 16 - 4px, 2.5vw + 13px), 64px);
 }
 
 /* phones: the deck scrolls sideways; 55px at 375px as before, smaller in landscape (12vh) */
@@ -398,12 +398,13 @@ textarea.field {
 /* One grid for the whole screen. dvh follows the visible height on phones (address bar), vh is
  * the fallback. Only the table scrolls; everything else keeps its place and its height.
  * B-68, like a console (one surface, zones, hardly any lines):
- * - large screens (from 800px): the table on the left, the deck below it; the column on the
- *   right (as wide as the menu panel) from the header down to the bottom edge: where the round
- *   is, the topic, the spread, and at its foot the round actions (.dock), level with the deck.
+ * - large screens (from 800px): the table on the left, the deck below it as a rounded tray
+ *   floating over the table; the column on the right (as wide as the menu panel) from the header
+ *   down to the bottom edge in its own tone: where the round is, the topic, the spread, and at its
+ *   foot the round actions (.dock), the button level with the middle of the deck cards.
  * - phones: header, topic strip, table, then the spread and the round actions as a strip right
  *   above the deck.
- * Table: the page color; header, column and deck: one panel color (--bg-2) without frames.
+ * Table: the page color; header, column and deck: one panel color (--bg-2), no lines between them.
  * Safe areas (viewport-fit=cover): left/right here, bottom below deck and dock.
  * Details of the column: see "Column (B-68)". */
 .container {
@@ -466,15 +467,18 @@ textarea.field {
             "deck  dock";
     }
 
-    /* the bottom control panel (deck and the corner, .dock): a line on top with a slight inner
-     * shadow sets it apart from the table and the column above it */
-    .down-container,
-    .container > .dock {
-        border-top: 1px solid var(--line);
-        box-shadow: inset 0 6px 6px -6px var(--shadow-color);
+    /* the deck: a rounded tray that floats over the table (page color around it), ending a gap
+     * before the column; no line between deck and column. The tray is centered in its row and the
+     * cards in the tray (see "Card deck"), so the round button at the foot of the column (.dock)
+     * is level with the middle of the cards. */
+    .down-container {
+        --tray-gap: 12px;
+        align-self: center;
+        justify-content: center;
+        margin: var(--tray-gap) var(--tray-gap) calc(var(--tray-gap) + env(safe-area-inset-bottom));
+        border-radius: var(--radius-l);
+        box-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     }
-
-    .down-container { justify-content: center; }
 }
 
 /* Topic (large screens): "// topic", the topic as a quoted block, edit pen on the right.
@@ -1627,13 +1631,12 @@ div#cbox {
 /* ---------- New round button, timer (.dock, B-66/B-67/B-68) ---------- */
 
 /* The round actions at the foot of the column, on the panel color, no frame.
- * Phones: one row right above the deck, timer left, button right. Large screens: level with the
- * deck, the timer row above the button, both as wide as the column; set apart from the deck only
- * by a short dotted mark on its left edge. The timer keeps its room while it is off, so the
- * button never moves. */
+ * Phones: one row right above the deck, timer left, button right. Large screens: in the deck's
+ * row, the timer row above the button, both as wide as the column; the button sits in the middle
+ * of the row (level with the middle of the deck cards), the timer right above it. The timer keeps
+ * its room while it is off, so the button never moves. */
 .dock {
     grid-area: dock;
-    position: relative; /* anchor of the mark */
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -1648,21 +1651,22 @@ div#cbox {
 }
 
 @media (min-width: 800px) {
+    /* three rows: timer (at the bottom of the first), button, and an empty row as high as the
+     * first, so the button stays in the middle; the dock is at least high enough for that */
     .dock {
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: center;
+        --timer-h: var(--tap);
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: end;
+        row-gap: var(--space-2);
+        min-height: calc(2 * (var(--timer-h) + var(--space-2)) + 44px + 24px);
         padding: 12px var(--space-3) calc(12px + env(safe-area-inset-bottom));
+        box-sizing: border-box;
     }
 
-    .dock::before {
-        content: "";
-        position: absolute;
-        top: 30%;
-        bottom: 30%;
-        left: 0;
-        border-left: 1px dotted var(--line-strong);
-    }
+    .dock > .timer { height: var(--timer-h); }
+
+    .dock > #newroundbtn { grid-row: 2; }
 }
 
 /* the row (phones): the button fills the rest of the row up to 200px and only shrinks to its
@@ -1904,6 +1908,12 @@ div#cbox {
 
     .down-container.keys-low { padding-bottom: env(safe-area-inset-bottom); }
 
+    /* the tray: as much room above the cards as below them (keys, hint row), so the cards sit in
+     * its middle, level with the round button (see "Board layout") */
+    .down-container { padding-top: 31px; }
+
+    .down-container.keys-low { padding-top: 18px; }
+
     .down-container.keys-low .controls { padding-bottom: 4px; }
 
     .ctl-key {
@@ -1964,15 +1974,16 @@ div#cbox {
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
 /* B-66/B-68: in the column right above the round actions (.dock), so the two never overlap: the
- * deck's container is its anchor, the column lies right of it. Large screens only (hidden on
- * phones). */
+ * deck's tray is its anchor, the column lies right of it (beyond the tray's gap). The tray and the
+ * round button share their middle, so the survey ends a step above the timer row (button 44px,
+ * gaps 8px, timer as high as --tap). Large screens only (hidden on phones). */
 .survey-container {
     font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
-    bottom: calc(100% + var(--space-2));
-    right: calc(-1 * var(--panel-w));
+    bottom: calc(50% + 22px + var(--space-2) + var(--tap) + var(--space-2));
+    right: calc(-1 * (var(--panel-w) + var(--tray-gap, 0px)));
     margin: 0 auto;
     visibility: hidden;
     display: unset;
