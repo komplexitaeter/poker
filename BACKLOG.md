@@ -1010,7 +1010,9 @@ Desktop, Phones später. „Da kommt später noch mehr hin.“ Status: in Umsetz
 Andreas (2026-10-28): Auf dem Handy trägt jede Spielerkarte dauerhaft einen Mülleimer – unruhig, wirkt für Neue riskant.
 Lieber mit den vorhandenen Karten arbeiten statt eines eigenen Menüs (vgl. B-56). Langes Drücken ist kaum zu erraten,
 Antippen zum Ein-/Ausblenden der Kontext-Icons muss man auch erst herausfinden. Offen: Lösung (Vorschlag Kai: Mülleimer
-nur auf Karten von Spielern, die nicht mehr verbunden sind – das ist der eigentliche Anwendungsfall).
+nur auf Karten von Spielern, die nicht mehr verbunden sind – das ist der eigentliche Anwendungsfall). Andreas:
+„geht stark in die richtige Richtung“; zusätzlich anzeigen, dass jemand „off“ ist (Blitz oder farbiger Punkt). Ben prüft,
+wie zuverlässig „nicht verbunden“ erkennbar ist (`last_callback_time`).
 
 ### B-72 Aufräumen: Layout- und Spread-Logik in `script.js`
 Fred (2026-10-28): Nach den B-68-Runden hängt das Layout an mehreren Messwegen (`resize`, `ResizeObserver`, globaler
