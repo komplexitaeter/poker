@@ -17,6 +17,7 @@ const LIVE_MINUTES = 5;          // a client counts as active if its board loade
 const LIVE_RELOAD_SEC = 30;
 const USAGE_WEEKS = 9;           // weekly users: current week + 8 full weeks
 const USAGE_DAYS = 28;           // daily feature usage
+const LIVE_DAYS = 28;            // rounds per day in the live tab (today + 27 days)
 /* dates worth marking in the usage charts */
 const MILESTONES = array('2026-10-28' => 'Rollout 1');
 /* analytics events the current app still sends (script/*.js: measureEvent, gMenuSections in script_feedback.js) */
@@ -216,6 +217,21 @@ function milestone(string $day, int $days = 1): string {
     return implode(', ', $labels);
 }
 
+/*
+ * rounds (NEW_ROUND), teams with a round and average players per round per day since $start (Y-m-d):
+ * range on the index (type_code, creation_date), cheap enough for the live tab's 30 s reload
+ */
+function rounds_per_day($link, string $start): array {
+    return array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(3000) */
+               date(creation_date) as day
+              ,count(1) as rounds
+              ,count(distinct team_id) as teams
+              ,avg(players_count) as avg_players
+          from pok_roundstats_tbl
+         where type_code = 'NEW_ROUND' and creation_date >= ?
+         group by day", 's', array($start)), null, 'day');
+}
+
 /* release information: asset versions from board.html, git branch/commit and last pull (if .git is readable) */
 function release_info(): array {
     $info = array();
@@ -305,6 +321,9 @@ try {
               from pok_roundstats_tbl
              where type_code = 'NEW_ROUND' and creation_date >= curdate()")[0];
 
+        $data['day_start'] = date('Y-m-d', strtotime($data['now']['today'] . ' -' . (LIVE_DAYS - 1) . ' day'));
+        $data['round_days'] = rounds_per_day($link, $data['day_start']);
+
         // course of the day: pok_active_user_stats is filled every minute by the event job (db_jobs_pok.sql);
         // max of "active within the last 10 minutes" per 15-minute slot
         // the table and its job exist only where the event jobs are installed (live, not staging): no chart then
@@ -378,6 +397,7 @@ try {
               from pok_analytics_events_tbl
              where creation_date >= ? and event_code in ($in)
              group by day, event_code", $types, $params);
+        $data['round_days'] = rounds_per_day($link, $data['day_start']);
 
     } else if ($tab === 'ideas') {
         $where = array('open' => 'where done_date is null', 'done' => 'where done_date is not null', 'all' => '')[$fb_filter];
@@ -562,6 +582,21 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
                    color: var(--muted); font-size: var(--fs-xs); }
         .chart-x span { width: 0; display: flex; justify-content: center; white-space: nowrap; }
 
+        /* rounds per day: one column per day (.day > .col), gridline before each Monday, value label for today and the peak */
+        .chart.days { gap: 3px; background: none; }
+        .chart .day.monday { box-shadow: -2px 0 0 var(--line); }
+        .chart .day { position: relative; flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; }
+        .chart .day.weekend .col { background: var(--line-strong); }
+        .chart .day.today .col { background: var(--link); }
+        .chart .day.milestone { box-shadow: -2px 0 0 var(--warn); }
+        .chart .day:hover .col { background: var(--link); }
+        .chart .col-val { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); padding-bottom: 0.15em;
+                          color: var(--text); font-size: var(--fs-xs); line-height: 1; white-space: nowrap; }
+        .chart .day .col { position: relative; }
+        .chart-x.days { gap: 3px; }
+        .chart-x.days span { flex: 1 1 0; min-width: 0; width: auto; justify-content: flex-start; overflow: visible; }
+        .chart-x.days span:last-child { justify-content: flex-end; }
+
         /* Ideas & Bugs moderation (B-57) */
         .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; }
         .filters .seg-ctrl { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius-m); overflow: hidden; }
@@ -622,6 +657,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             .kpi { padding: 0.7rem 0.8rem; }
             .chart-box { padding: 0.75rem 0.5rem 0.5rem; }
             .chart-x span:nth-child(even) { visibility: hidden; }
+            .chart-x.days span:nth-child(even) { visibility: visible; }
+            .chart.days, .chart-x.days { gap: 1px; }
             .rm { grid-template-columns: 5em 1fr 1fr;
                   grid-template-areas: "order type status" "title title title" "desc desc desc" "visible visible save" "votes votes votes"; }
             dl.facts { grid-template-columns: 1fr; gap: 0 0; }
@@ -660,6 +697,45 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             <div class="kpi"><dt>rounds last hour</dt><dd id="kpi_rounds_hour"><?= h($data['rounds']['last_hour']) ?></dd></div>
             <div class="kpi"><dt>rounds today</dt><dd id="kpi_rounds_today"><?= h($data['rounds']['today']) ?></dd></div>
         </dl>
+
+<?php
+    $max_rounds = $data['round_days'] ? max(array_column($data['round_days'], 'rounds')) : 0;
+?>
+        <h2>Rounds per day</h2>
+        <p class="note">New rounds per day (pok_roundstats_tbl, NEW_ROUND), last <?= LIVE_DAYS ?> days; weekends dimmed. Teams and &#x2300; players per round in the tooltip.</p>
+        <div class="chart-box">
+        <div class="chart-y" aria-hidden="true"><span><?= h($max_rounds) ?></span><span>0</span></div>
+        <div class="chart days" role="img" aria-label="Rounds per day, last <?= LIVE_DAYS ?> days, peak <?= h($max_rounds) ?>, today <?= h($data['round_days'][$data['now']['today']]['rounds'] ?? 0) ?>">
+<?php
+    $peak_shown = false;
+    for ($i = LIVE_DAYS - 1; $i >= 0; $i--) {
+        $day = date('Y-m-d', strtotime($data['now']['today'] . ' -' . $i . ' day'));
+        $r = $data['round_days'][$day] ?? array('rounds' => 0, 'teams' => 0, 'avg_players' => null);
+        $label = milestone($day);
+        $classes = array('day');
+        $weekday = (int)date('N', strtotime($day));
+        if ($weekday === 1) $classes[] = 'monday';
+        if ($weekday >= 6) $classes[] = 'weekend';
+        if ($label !== '') $classes[] = 'milestone';
+        if ($i === 0) $classes[] = 'today';
+        // value label above the column for today and the (first) peak day
+        $show_value = $i === 0 || (!$peak_shown && $max_rounds > 0 && $r['rounds'] == $max_rounds);
+        if ($i !== 0 && $show_value) $peak_shown = true;
+        $title = date('D Y-m-d', strtotime($day)) . ($i === 0 ? ' (so far)' : '') . ': ' . $r['rounds'] . ' rounds, ' . $r['teams'] . ' teams'
+            . ($r['avg_players'] === null ? '' : ', ' . number_format((float)$r['avg_players'], 1, '.', '') . ' players per round')
+            . ($label !== '' ? ' - ' . $label : '');
+?>
+            <span class="<?= h(implode(' ', $classes)) ?>" data-day="<?= h($day) ?>" data-rounds="<?= h($r['rounds']) ?>" title="<?= h($title) ?>"><span class="col" style="height: <?= bar_width($r['rounds'], $max_rounds) ?>%"><?php if ($show_value) { ?><span class="col-val"><?= h($r['rounds']) ?></span><?php } ?></span></span>
+<?php } ?>
+        </div>
+        <div class="chart-x days" aria-hidden="true"><?php for ($i = LIVE_DAYS - 1; $i >= 0; $i--) {
+            $day = date('Y-m-d', strtotime($data['now']['today'] . ' -' . $i . ' day'));
+            ?><span><?= $i === 0 ? 'today' : ((int)date('N', strtotime($day)) === 1 ? h(date('D m-d', strtotime($day))) : '') ?></span><?php } ?></div>
+        </div>
+<?php $labels = array_filter(array_map(fn($i) => milestone(date('Y-m-d', strtotime($data['now']['today'] . ' -' . $i . ' day'))), range(0, LIVE_DAYS - 1)));
+    if ($labels) { ?>
+        <p class="note"><span class="milestone-label"><?= h(implode(', ', $labels)) ?></span></p>
+<?php } ?>
 
         <h2>Active tables</h2>
 <?php if (count($tables) === 0) { ?>
@@ -797,7 +873,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         <h3>Per day</h3>
         <div class="table-wrap">
         <table class="event-days">
-            <thead><tr><th>day</th>
+            <thead><tr><th>day</th><th class="num">rounds</th><th class="num" title="teams that started at least one round">teams</th>
 <?php foreach (EVENTS as $code => $label) { ?>
                 <th class="num" title="<?= h($code) ?>"><?= h($label) ?></th>
 <?php } ?>
@@ -814,6 +890,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 ?>
             <tr<?= $classes ? ' class="' . h(implode(' ', $classes)) . '"' : '' ?>>
                 <td class="nowrap"><?= h(date('D Y-m-d', strtotime($day))) ?><?php if ($label !== '') { ?><br><span class="milestone-label"><?= h($label) ?></span><?php } ?></td>
+                <td class="num"><?= h($data['round_days'][$day]['rounds'] ?? 0) ?></td>
+                <td class="num"><?= h($data['round_days'][$day]['teams'] ?? 0) ?></td>
 <?php   foreach (EVENTS as $code => $_) { ?>
                 <td class="num"><?= h($days[$day][$code]['cnt'] ?? 0) ?></td>
 <?php   } ?>
