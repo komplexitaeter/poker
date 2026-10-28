@@ -208,9 +208,8 @@ function updateDao(isOnLoad) {
             updateDom(myJson, isOnLoad)
             gJsonBefore = myJson;
 
-            if (isOnLoad) {
-                getPromo();
-            }
+            // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
+            // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
         });
 }
