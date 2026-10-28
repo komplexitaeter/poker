@@ -216,12 +216,26 @@ function updateDeckRoom() {
     const container = document.getElementById('down-container');
     const ctl = document.getElementById('ctl');
     const hint = container === null ? null : container.querySelector('.deck-hint');
-    if (ctl === null || hint === null) return;
+    if (ctl === null || container === null) return;
     const keyed = Array.from(ctl.querySelectorAll('img.on')).slice(0, DECK_KEYS.length);
     const lastKey = keyed.length > 0 ? keyed[keyed.length - 1].nextElementSibling : null;
-    const fits = ctl.scrollWidth <= ctl.clientWidth + 1
+    const fits = hint !== null && ctl.scrollWidth <= ctl.clientWidth + 1
         && (lastKey === null || lastKey.getBoundingClientRect().right + 8 <= hint.getBoundingClientRect().left);
     container.classList.toggle('hint-off', !fits);
+    // B-69: the "<" / ">" bars where more cards are hidden (style.css "Card deck")
+    const left = Math.abs(ctl.scrollLeft); // 0 at the start
+    container.classList.toggle('more-left', left > 1);
+    container.classList.toggle('more-right', left + ctl.clientWidth < ctl.scrollWidth - 1);
+}
+
+/* B-69: the deck has no scrollbar; a vertical mouse wheel scrolls it sideways while it overflows */
+function scrollDeckByWheel(event) {
+    const ctl = event.currentTarget;
+    if (event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    if (ctl.scrollWidth <= ctl.clientWidth + 1) return;
+    const step = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1;
+    event.preventDefault();
+    ctl.scrollLeft += event.deltaY * step;
 }
 
 /* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
@@ -237,6 +251,9 @@ function pickCardByKey(event) {
     const img = document.querySelectorAll('#ctl img.on')[n];
     if (img === undefined) return;
     event.preventDefault();
+    // B-69: a card outside the visible part of the deck comes into view
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    img.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
     img.click();
 }
 
@@ -1344,6 +1361,12 @@ function handleResize() {
 
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
+    // B-69: the "<" / ">" bars follow the deck's scroll position; the wheel scrolls it sideways
+    const ctl = document.getElementById('ctl');
+    if (ctl !== null) {
+        ctl.addEventListener('scroll', updateDeckRoom, { passive: true });
+        ctl.addEventListener('wheel', scrollDeckByWheel, { passive: false });
+    }
     // B-68: a deck card image that loads late widens the deck; measure again (load does not bubble)
     document.addEventListener('load', event => {
         if (event.target instanceof HTMLImageElement && event.target.closest('#ctl') !== null) updateDeckRoom();

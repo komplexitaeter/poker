@@ -1867,7 +1867,56 @@ div#cbox {
     margin: 0 auto;
     padding: 12px var(--space-3) 5px;
     overflow: auto hidden;
-    scrollbar-width: thin;
+    /* B-69: no scrollbar (swipe, trackpad and wheel still scroll); the bars below show that
+     * there is more. A card brought into view by its key stays clear of the bars. */
+    scrollbar-width: none;
+    scroll-padding-inline: var(--deck-more-w);
+}
+
+.controls::-webkit-scrollbar { display: none; }
+
+/* B-69: a slim "<" / ">" bar at the edge of the deck where more cards are hidden (more-left,
+ * more-right on .down-container, set by updateDeckRoom() in script.js). Hints only, not clickable:
+ * the deck fades into its background under a small chevron. */
+.down-container { --deck-more-w: 22px; }
+
+.deck-more {
+    position: absolute;
+    top: 0;
+    bottom: env(safe-area-inset-bottom);
+    width: var(--deck-more-w);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--fs-l);
+    line-height: 1;
+    color: var(--muted);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.deck-more-left {
+    left: 0;
+    border-radius: inherit;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    background: linear-gradient(to right, var(--bg-2) 40%, transparent);
+}
+
+.deck-more-right {
+    right: 0;
+    border-radius: inherit;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background: linear-gradient(to left, var(--bg-2) 40%, transparent);
+}
+
+.down-container.more-left .deck-more-left,
+.down-container.more-right .deck-more-right { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+    .deck-more { transition: none; }
 }
 
 .ctl-slot { display: contents; }
