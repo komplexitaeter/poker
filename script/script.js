@@ -217,7 +217,7 @@ function pickCardByKey(event) {
     if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog')) return;
     const menu = document.getElementById('menu');
     if (menu !== null && menu.open) return;
-    if (document.querySelector('.overlay.visible, #overlay_name_input.visible') !== null) return;
+    if (document.querySelector('.overlay:not(.hidden), .overlay.visible') !== null) return; // name, delete user, QR
     const img = document.querySelectorAll('#ctl img.on')[n];
     if (img === undefined) return;
     event.preventDefault();
