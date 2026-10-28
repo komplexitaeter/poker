@@ -835,6 +835,11 @@ Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visib
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
 
+### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
+Andreas (2026-10-28), später: Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php` beim Kartenlegen.
+Damit ließe sich „aktiv“ in `stats.php` genau als „hat in den letzten X Minuten eine Karte gewählt“ definieren
+(heute: Runde in der letzten Stunde abgeschlossen, B-63/B-64). Schemaänderung online (ca. 72.000 Zeilen), Ben + Sina.
+
 ### B-64 `stats.php` neu: Tabs, Live-Ansicht, sinnvollere Kennzahlen
 Andreas (2026-10-28), sofort umsetzen (unabhängig von den Nutzern, passt zur Beobachtung nach Rollout 1). Refinement:
 - **Tabs** (Console-Look wie die App, ohne Bibliotheken): Live | Nutzung | Ideas & Bugs | Technik.
