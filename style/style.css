@@ -18,7 +18,7 @@
     --fs-s: 0.8125rem;    /* 13px: labels, menu buttons, fields */
     --fs-m: 0.875rem;     /* 14px: body text */
     --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
-    --fs-xl: 1.125rem;    /* 18px: stopwatch display */
+    --fs-xl: 1.125rem;    /* 18px: timer display */
     /* stacking order (lowest first) */
     --z-nav: 10;          /* header, above the table */
     --z-promo: 100;
@@ -40,6 +40,8 @@
     --tap: 36px;
     /* menu panel width on large screens */
     --panel-w: 380px;
+    /* B-66: large screens: room kept free right of the deck for the round actions (.dock in the corner) */
+    --dock-w: 14rem;
     /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
@@ -91,6 +93,7 @@ body {
     --topic-color: #fc91f5;
     --ok: #5af78e;          /* prompt user@host */
     --danger: #ff6b66;
+    --warn: #ffb547;        /* B-67: timer over its timebox (T+) */
     --flash-red-background: #340000;
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
@@ -114,6 +117,7 @@ body.light-theme {
     --topic-color: #9a0089;
     --ok: #1b7a37;
     --danger: #c0262d;
+    --warn: #9a5800;
     --flash-red-background: #ffd9d9;
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
@@ -396,8 +400,8 @@ textarea.field {
 
 /* One grid for the whole screen: header / topic / table / card deck.
  * dvh follows the visible height on phones (address bar), vh is the fallback.
- * Only the table scrolls; the deck keeps its place. The round actions (.dock: New Round,
- * stopwatch) follow the cards and stick to the bottom of the table when it scrolls.
+ * Only the table scrolls; the deck keeps its place. B-66: the round actions (.dock: timer above
+ * New Round) sit in the bottom right corner next to the deck.
  * Phones: the topic is a one-line strip, the actions a dock right above the deck.
  * Safe areas (viewport-fit=cover): left/right here, bottom below the deck. */
 .container {
@@ -487,34 +491,58 @@ textarea.field {
 /* the arrow that unfolds the topic is for the phone strip only */
 #topic_toggle { display: none; }
 
-/* Round actions: New Round, the stopwatch below it. They follow the cards; when the table
- * scrolls they stick to its bottom edge (the background covers the cards behind). */
+/* B-66 round actions (large screens): the timer above New Round in the bottom right corner,
+ * next to the deck (out of the table, positioned on .container). The deck keeps --dock-w free on
+ * its right (.down-container), so the two never overlap; the menu panel covers the corner. */
 .dock {
-    position: sticky;
-    bottom: 0;
-    flex: none;
+    position: absolute;
+    right: var(--space-3);
+    bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
+    z-index: 1;
+    width: calc(var(--dock-w) - 2 * var(--space-3));
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) 0 var(--space-3);
-    background: var(--bg);
+    align-items: stretch;
+    gap: var(--space-1);
 }
 
-/* nothing to show yet (stopwatch off, nobody has voted): no empty zone over the cards */
-.dock:has(> #stopwatch.display_none):has(> #newroundbtn.display_none) { display: none; }
+@media (min-width: 800px) {
+    /* the deck centered as before while there is room, pushed left of the corner when there is not */
+    .down-container {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(var(--dock-w), 1fr);
+        align-items: end;
+    }
+
+    .down-container > .controls { grid-column: 2; }
+
+    .dock > #newroundbtn {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* nothing to show yet (timer off, nobody has voted) */
+.dock:has(> #timer.display_none):has(> #newroundbtn.display_none) { display: none; }
 
 /* Phones in landscape: little height, so a lower header */
 @media (max-height: 500px) and (orientation: landscape) {
     .container > .head { min-height: 44px; }
 }
 
-/* Small screens: the actions as a dock right above the deck (thumb zone, always in view),
- * stopwatch left, New Round right. */
+/* Small screens: the actions as a dock right above the deck (thumb zone, always in view), at the
+ * bottom of the table (sticky when it scrolls), timer left, New Round right. */
 @media (max-width: 799.98px) {
     .table { padding: 0; } /* 3 cards fit at 320px */
 
     .dock {
+        position: sticky;
+        right: auto;
+        bottom: 0;
+        z-index: auto;
+        width: auto;
+        flex: none;
+        align-items: center;
         margin-top: auto; /* few cards: still at the bottom */
         flex-direction: row;
         flex-wrap: wrap;
@@ -524,8 +552,6 @@ textarea.field {
         background: var(--bg-2);
         border-top: 1px solid var(--line);
     }
-
-    .dock > #stopwatch { order: -1; }
 }
 
 /* Phones (and short landscape screens): the topic as a strip below the header, one line
@@ -759,20 +785,6 @@ textarea.field {
 .light-theme #cmode_btn .i-moon { display: none; }
 .light-theme #cmode_btn .i-sun { display: block; }
 
-/* stopwatch: a direct on/off switch for the whole board, state in aria-pressed */
-.sw-btn {
-    color: var(--muted);
-    border-color: var(--line);
-}
-
-.sw-btn[aria-pressed=true] {
-    color: var(--accent);
-    border-color: var(--accent);
-}
-
-.sw-state::before { content: "[ ]"; }
-.sw-btn[aria-pressed=true] .sw-state::before { content: "[x]"; }
-
 /* reduced motion: the caret stays, half dimmed */
 @media (prefers-reduced-motion: reduce) {
     .caret::before {
@@ -814,8 +826,7 @@ textarea.field {
     .team-name { font-size: var(--fs-m); }
 
     #show_qr_code,
-    #copy_link_btn .lbl,
-    .sw-btn .lbl { display: none; }
+    #copy_link_btn .lbl { display: none; }
 
     /* board: the header buttons move into the menu sheet (index) */
     .container .topnav-bar { display: none; }
@@ -1619,53 +1630,61 @@ div#cbox {
     div#cbox { margin-top: var(--space-2); }
 }
 
-/* ---------- New round button, stopwatch (.dock) ---------- */
+/* ---------- New round button, timer (.dock, B-66/B-67) ---------- */
 
 #newroundbtn {
-    min-width: 12rem;
     min-height: var(--tap);
 }
 
-/* hidden until someone has voted: keeps its place, so the stopwatch does not jump */
+/* hidden until someone has voted: keeps its place, so the timer does not jump */
 .dock #newroundbtn.display_none {
     display: inline-block;
     visibility: hidden;
 }
 
-.stopwatch_control {
+/* Timer: display (T−05:00 / T+00:42) and the line icons play/pause and reset in one row.
+ * data-state: ready (not started) | running | paused; data-over="true": past the timebox. */
+.timer {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
-    cursor: pointer;
 }
 
-.stopwatch_control.display_none { display: none; }
+.timer.display_none { display: none; }
 
-.stopwatch_control > img {
-    width: 30px;
-    height: auto;
-    aspect-ratio: 1; /* its height counts before the image has loaded (fit to table, B-49) */
-}
-
-.stopwatch_control > img.display_none { display: none; }
-
-.stopwatch_control > label { display: none; }
-
-.stopwatch_control > input {
-    width: 8ch;
-    padding: 0;
-    border: none;
-    background-color: transparent;
-    text-align: center;
-    font-family: inherit;
+.timer-display {
+    min-width: 7ch; /* T−05:00; h:mm:ss from 60 min on is wider */
     font-size: var(--fs-xl);
     font-variant-numeric: tabular-nums;
-    color: var(--text-color);
+    text-align: right;
+    white-space: nowrap;
+    color: var(--text);
 }
 
+.timer-actions {
+    display: flex;
+    align-items: center;
+}
+
+.timer-btn { color: var(--muted); }
+.timer-btn:hover { color: var(--accent); }
+.timer-btn[hidden] { display: none; }
+
+.timer-btn .i {
+    width: 18px;
+    height: 18px;
+}
+
+/* not started and paused: dimmed */
+.timer[data-state=ready] .timer-display,
+.timer[data-state=paused] .timer-display { color: var(--muted); }
+
+/* time is up: T+ in amber (no sound, no blinking) */
+.timer[data-over=true] .timer-display { color: var(--warn); }
+
 @media (max-width: 799.98px) {
-    /* dock: stopwatch left, New Round right; sized so both fit in one row at 320px */
+    /* dock: timer left, New Round right; sized so both fit in one row at 320px */
     #newroundbtn {
         min-width: 0;
         margin-left: auto;
@@ -1673,8 +1692,25 @@ div#cbox {
         font-size: var(--fs-m);
     }
 
-    .stopwatch_control > input { font-size: var(--fs-l); }
+    .timer-display { font-size: var(--fs-l); }
 }
+
+/* ---------- Timer panel (B-67) ---------- */
+
+/* six presets in one segment switch: tighter padding */
+.tmr-presets span { padding: 2px var(--space-1); }
+
+.tmr-other { margin-top: var(--space-2); }
+
+.tmr-other .lab { margin: 0; }
+
+.menu .tmr-other .field {
+    flex: none;
+    width: 6ch;
+    text-align: center;
+}
+
+.tmr-other .field:invalid { border-color: var(--danger); }
 
 /* ---------- Card deck (bottom bar) and average indicator ---------- */
 
@@ -2081,12 +2117,6 @@ div#cbox {
 
     /* 16px keeps iOS from zooming into the field (small screens did this already) */
     .field { font-size: var(--fs-l); }
-
-    /* stopwatch icons: 30px image, 44px target */
-    .stopwatch_control > img {
-        box-sizing: content-box;
-        padding: 7px;
-    }
 
     /* delete icon on a card: at least 28px (the row gap grows with it) */
     :root { --card-del-min: 28px; }

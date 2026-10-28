@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers, openTimerPanel } from './helpers';
 
 /**
  * B-46: The board is one screen-high grid. Only the table scrolls, the deck stays at the bottom.
  * The topic is a full-width bar between header and table (step 2b: no round panel on the right).
- * New Round and the stopwatch follow the cards and stick to the bottom of the table when it
- * scrolls (large screens); on phones they sit in a dock right above the deck.
+ * B-66: New Round and the timer sit in the bottom right corner next to the deck (large screens);
+ * on phones they sit in a dock right above the deck.
  * On phones the topic is a one-line strip that unfolds with its arrow button.
- * Copy Link and the own stopwatch switch confirm with a toast from the bottom edge (showToast);
+ * Copy Link and the own timer switch (B-67: in the timer panel) confirm with a toast from the bottom edge (showToast);
  * the header has no hover hints any more.
  * B-51: without a topic there is no topic bar at all (the topic is set in the menu).
  */
@@ -32,8 +32,8 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
     await expect.poll(() => alice.locator('#table').evaluate(el => el.scrollHeight - el.clientHeight))
       .toBeGreaterThan(0);
 
-    // deck at the bottom edge, New Round visible above it (stuck to the bottom of the table);
-    // polled, the heights settle only after their animations
+    // deck at the bottom edge, New Round visible next to it (large screens, B-66) or above it
+    // (phones, stuck to the bottom of the table); polled, the heights settle only after their animations
     await expect.poll(async () => {
       const deck = (await alice.locator('#ctl').boundingBox())!;
       return Math.round(deck.y + deck.height);
@@ -42,6 +42,10 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
     await expect.poll(async () => {
       const deck = (await alice.locator('#ctl').boundingBox())!;
       const btn = (await alice.locator('#newroundbtn').boundingBox())!;
+      if (viewport.width >= 800) {
+        return btn.x >= deck.x + deck.width - 1 && btn.x + btn.width <= viewport.width
+          && btn.y + btn.height <= viewport.height;
+      }
       return btn.y + btn.height <= deck.y + 1;
     }).toBe(true);
     await alice.context().close();
@@ -102,7 +106,7 @@ test('Copy Link shows a toast instead of growing the button', async ({ browser }
   await expect(toast).not.toHaveClass(/toast-on/, { timeout: 5000 });
 });
 
-test('large screen: topic bar above the table, New Round right below the cards (B-46)', async ({ browser }) => {
+test('large screen: topic bar above the table, New Round in the bottom right corner (B-46, B-66)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1280, height: 800 } });
   const url = await createTeam(alice, 'Layout Topic Bar');
   await addPlayersViaApi(alice, url, ['Bob']);
@@ -141,35 +145,37 @@ test('large screen: topic bar above the table, New Round right below the cards (
   await expect(alice.locator('#topic_txt')).toHaveValue(topic);
   await alice.keyboard.press('Escape');
 
-  // few cards: New Round sits right below them, not at the bottom of the screen
+  // B-66: New Round sits in the bottom right corner, right of the deck and level with it
   await pickCard(alice, 'three01');
   await expect(alice.locator('#newroundbtn')).toBeVisible();
-  const cbox = (await alice.locator('#cbox').boundingBox())!;
+  const deck = (await alice.locator('#ctl').boundingBox())!;
   const btn = (await alice.locator('#newroundbtn').boundingBox())!;
-  expect(btn.y).toBeGreaterThanOrEqual(cbox.y + cbox.height - 1);
-  expect(btn.y - (cbox.y + cbox.height)).toBeLessThan(40);
+  expect(btn.x).toBeGreaterThanOrEqual(deck.x + deck.width);
+  expect(1280 - (btn.x + btn.width)).toBeLessThan(40);
+  expect(btn.y).toBeGreaterThanOrEqual(deck.y);
+  expect(800 - (btn.y + btn.height)).toBeLessThan(40);
 
   // no hover hints in the header
   expect(await alice.locator('[data-hint]').count()).toBe(0);
   await alice.context().close();
 });
 
-test('stopwatch switch: a toast for the own click only (B-46)', async ({ browser }) => {
-  const { alice, bob } = await teamWithTwoPlayers(browser, 'Layout Stopwatch Toast');
+test('timer switch: a toast for the own click only (B-46, B-67)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Layout Timer Toast');
   const aliceToast = alice.locator('#toast');
   const bobToast = bob.locator('#toast');
 
-  await alice.locator('#stopwatch_btn').click();
+  await openTimerPanel(alice);
+  await alice.locator('input[name=tmr_visibility][value="1"]').check();
   await expect(aliceToast).toHaveClass(/toast-on/);
-  await expect(aliceToast).toHaveText('Stopwatch on \u2013 everyone on the board sees it');
-  // Bob sees the stopwatch, but no toast
-  await expect(bob.locator('#stopwatch')).toBeVisible();
-  await expect(bob.locator('#stopwatch_btn')).toHaveAttribute('aria-pressed', 'true');
+  await expect(aliceToast).toHaveText('Timer on \u2013 everyone on the board sees it');
+  // Bob sees the timer, but no toast
+  await expect(bob.locator('#timer')).toBeVisible();
   await expect(bobToast).not.toHaveClass(/toast-on/);
 
-  await alice.locator('#stopwatch_btn').click();
-  await expect(aliceToast).toHaveText('Stopwatch off');
-  await expect(bob.locator('#stopwatch')).toBeHidden();
+  await alice.locator('input[name=tmr_visibility][value="0"]').check();
+  await expect(aliceToast).toHaveText('Timer off');
+  await expect(bob.locator('#timer')).toBeHidden();
   await expect(bobToast).not.toHaveClass(/toast-on/);
   await alice.context().close();
   await bob.context().close();

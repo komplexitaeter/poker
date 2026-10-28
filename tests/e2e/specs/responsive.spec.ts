@@ -76,7 +76,7 @@ test('small screen: burger menu holds the topnav, New Round stays in the dock (B
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
   const index = alice.locator('#menu_index');
   await expect(index).toBeVisible();
-  for (const name of ['Topic', 'Board settings', 'You', 'Feedback']) {
+  for (const name of ['Topic', 'Board settings', 'Timer', 'You', 'Feedback']) {
     await expect(index.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible();
   }
 

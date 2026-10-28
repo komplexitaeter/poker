@@ -91,3 +91,24 @@ export async function gotoStats(page: Page, path = '/stats.php'): Promise<void> 
   await login.getByRole('button', { name: 'Log in' }).click();
   await expect(page.locator('form.logout')).toBeVisible();
 }
+
+/** B-67: opens the timer panel (large screens: the header button, phones: via the menu index). */
+export async function openTimerPanel(page: Page): Promise<void> {
+  if (await page.locator('#timer_btn').isVisible()) {
+    await page.locator('#timer_btn').click();
+  } else {
+    await page.locator('#menu_btn').click();
+    await page.locator('#menu_index [data-open="timer"]').click();
+  }
+  await expect(page.locator('#timer_box')).toBeVisible();
+}
+
+/** B-67: switches the timer on or off for the whole board in the timer panel and closes the menu again. */
+export async function setTimer(page: Page, on: boolean): Promise<void> {
+  await openTimerPanel(page);
+  await page.locator(`input[name=tmr_visibility][value="${on ? 1 : 0}"]`).check();
+  if (on) await expect(page.locator('#timer')).toBeVisible();
+  else await expect(page.locator('#timer')).toBeHidden();
+  await page.locator('#menu_close').click();
+  await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
+}
