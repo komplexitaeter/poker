@@ -254,8 +254,10 @@ function getCardPositions(cardsDiv) {
  * (div#cbox). The result is set as --card-w on #cbox; returns true when it changed.
  * The measured area does not depend on --card-w: the table height comes from the page
  * grid, the width is taken including a possible scrollbar, and the dock is always reserved
- * at its full height, with New Round and the stopwatch, even while (parts of) it are hidden:
- * the cards keep their size when the first vote, the stopwatch or a new round changes it.
+ * at its full height, with New Round and the timer, even while (parts of) it are hidden:
+ * the cards keep their size when the first vote, the timer or a new round changes it.
+ * B-66: on large screens the dock sits in the bottom right corner next to the deck, outside the
+ * table, and takes no room from it.
  * The side gutter of #cbox (--card-gutter: the gap between two cards, at least
  * --card-gutter-min) is taken off the width. */
 function fitCardsToTable() {
@@ -300,10 +302,11 @@ function fitCardsToTable() {
     return true;
 }
 
-/* B-49: height of the dock with everything it can show (New Round and the stopwatch), whatever
- * is visible right now; the inline styles only last for the measurement (no repaint). */
+/* B-49: height of the dock with everything it can show (New Round and the timer), whatever
+ * is visible right now; the inline styles only last for the measurement (no repaint).
+ * 0 when the dock is out of the table's flow (B-66, large screens: bottom right corner). */
 function fullDockHeight(dock) {
-    if (dock === null) return 0;
+    if (dock === null || getComputedStyle(dock).position === 'absolute') return 0;
     const shown = [];
     const show = (element, display) => {
         if (element === null || getComputedStyle(element).display !== 'none') return;
@@ -311,7 +314,7 @@ function fullDockHeight(dock) {
         shown.push(element);
     };
     show(dock, 'flex');
-    show(dock.querySelector('#stopwatch'), 'flex');
+    show(dock.querySelector('#timer'), 'flex');
     show(dock.querySelector('#newroundbtn'), 'inline-block');
     const height = dock.offsetHeight;
     shown.forEach(element => element.style.removeProperty('display'));
@@ -591,7 +594,7 @@ function updateDom(myJson, isOnLoad) {
 
 
     controlsDsp(myJson.player_type);
-    updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
+    updateTimer(myJson);
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
@@ -949,102 +952,186 @@ function showQRCode(showIt) {
     }
 }
 
-function updateStopwatch(timer_status, timer_time, timer_visibility){
+/* B-67: timer instead of stopwatch. The server keeps the state per team (api/timer.php, dao.php):
+ * visibility (on for everyone), mode STOPWATCH | TIMER, timebox (seconds), auto-restart and the
+ * elapsed seconds (timer_time) with the status RUNNING | PAUSED (also before the first start).
+ * STOPWATCH shows T+elapsed. TIMER shows T−rest (rest = timebox − elapsed) while rest > 0, then
+ * T+ (over time, amber). Between two server updates the client counts on by itself (interval).
+ * gTimer: the last server state, gTimerBaseTime: when it arrived. */
+let gTimer = null;
 
-    /* Save last timer value from Json response according to the base date (now),
-     * so the correct clock value can be calculated by the client, without
-     * relying on frequent server responses.
-     * */
-    gTimerTime = timer_time;
+const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
+
+function updateTimer(json) {
+    gTimer = {
+        status: json.timer_status,
+        time: json.timer_time || 0,
+        visible: json.timer_visibility === 1,
+        mode: json.timer_mode === 'TIMER' ? 'TIMER' : 'STOPWATCH',
+        timebox: json.timer_timebox > 0 ? json.timer_timebox : 300,
+        autoRestart: json.timer_auto_restart === 1,
+    };
+    gTimerTime = gTimer.time;
     gTimerBaseTime = new Date();
 
-    switch(timer_status){
-        case "PAUSED":
-            addStyleClass(document.getElementById("stopwatch_pause"),"display_none");
-            removeStyleClass(document.getElementById("stopwatch_start"),"display_none");
-        break;
-
-        case "RUNNING":
-            addStyleClass(document.getElementById("stopwatch_start"),"display_none");
-            removeStyleClass(document.getElementById("stopwatch_pause"),"display_none");
-        break;
-
-        default:
-        break;
-    }
-
-    timer_time = new Date(timer_time * 1000).toISOString().slice(11, 19);
-
-    if(document.getElementById("stopwatch_timer").value !== timer_time){
-        document.getElementById("stopwatch_timer").value = timer_time;
-    }
-
-    switch(timer_visibility){
-        case 0:
-            addStyleClass(document.getElementById("stopwatch"),"display_none");
-            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "false");
-        break;
-
-        case 1:
-            removeStyleClass(document.getElementById("stopwatch"),"display_none");
-            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "true");
-        break;
-
-        default:
-        break;
-    }
-
-    /* Initiate r clear the Interval function, based on the timer status
-     */
-    if (timer_status === "RUNNING" && timer_visibility === 1) {
-        if (gTimerInterval === null) gTimerInterval = setInterval(updateStopwatchInterval, 500);
-    } else {
-        if (gTimerInterval !== null) {
-            clearInterval(gTimerInterval);
-            gTimerInterval = null;
+    let running = gTimer.status === 'RUNNING';
+    let box = document.getElementById('timer');
+    if (box !== null) {
+        box.classList.toggle('display_none', !gTimer.visible);
+        // not started yet (or reset): "ready"; both ready and paused are shown dimmed
+        box.setAttribute('data-state', running ? 'running' : (gTimer.time === 0 ? 'ready' : 'paused'));
+        document.getElementById('timer_start').hidden = running;
+        document.getElementById('timer_pause').hidden = !running;
+        // keep the focus on the control when play turns into pause (and back) by keyboard
+        let focused = document.activeElement;
+        if (focused !== null && focused.hidden && (focused.id === 'timer_start' || focused.id === 'timer_pause')) {
+            document.getElementById(running ? 'timer_pause' : 'timer_start').focus();
         }
+        renderTimer(gTimer.time);
+    }
+    updateTimerConfig();
+
+    if (running && gTimer.visible) {
+        if (gTimerInterval === null) gTimerInterval = setInterval(updateTimerInterval, 500);
+    } else if (gTimerInterval !== null) {
+        clearInterval(gTimerInterval);
+        gTimerInterval = null;
     }
 }
 
-function updateStopwatchInterval() {
-    /* Add the number of seconds elapsed since the last update of the timer time
-     * to this value und update the DOM accordingly (just to create the illusion
-     * of time).
-     * */
-    let timer_time = gTimerTime + Math.round((new Date() - gTimerBaseTime)/1000);
-
-    timer_time = new Date(timer_time * 1000).toISOString().slice(11, 19);
-
-
-    if(document.getElementById("stopwatch_timer").value !== timer_time){
-        document.getElementById("stopwatch_timer").value = timer_time;
-    }
+/* the seconds elapsed since the last server update are added locally (the illusion of time) */
+function updateTimerInterval() {
+    renderTimer(gTimerTime + Math.round((new Date() - gTimerBaseTime) / 1000));
 }
 
-function switchStopwatchVisiblity(){
-    // B-46: confirm the own click with a toast (others just see the stopwatch appear)
-    let switchingOn = document.getElementById("stopwatch_btn").getAttribute("aria-pressed") !== "true";
-    let url = './api/timer.php?t=' +t + '&action=toggle_visibility';
-    fetch(url, { method: 'POST' }).then(()=>{
-        pushDomChange();
-        showToast(switchingOn ? 'Stopwatch on \u2013 everyone on the board sees it' : 'Stopwatch off');
+/* m:ss as mm:ss below one hour, h:mm:ss from 60 minutes on */
+function formatTimerSeconds(seconds) {
+    let h = Math.floor(seconds / 3600);
+    let m = Math.floor(seconds % 3600 / 60);
+    let s = seconds % 60;
+    let pad = n => String(n).padStart(2, '0');
+    return (h > 0 ? h + ':' + pad(m) : pad(m)) + ':' + pad(s);
+}
+
+/* spoken form for the aria-label, e.g. "3 min 12 s" */
+function spokenTimerSeconds(seconds) {
+    let h = Math.floor(seconds / 3600);
+    let m = Math.floor(seconds % 3600 / 60);
+    let s = seconds % 60;
+    return (h > 0 ? h + ' h ' : '') + (h > 0 || m > 0 ? m + ' min ' : '') + s + ' s';
+}
+
+function renderTimer(elapsed) {
+    if (gTimer === null) return;
+    let display = document.getElementById('timer_display');
+    let box = document.getElementById('timer');
+    if (display === null) return;
+    let text, label, over = false;
+    if (gTimer.mode === 'TIMER') {
+        let rest = gTimer.timebox - elapsed;
+        if (rest > 0) {
+            text = 'T−' + formatTimerSeconds(rest);
+            label = spokenTimerSeconds(rest) + ' left';
+        } else {
+            over = true;
+            text = 'T+' + formatTimerSeconds(-rest);
+            label = 'time is up, ' + spokenTimerSeconds(-rest) + ' over';
+        }
+    } else {
+        text = 'T+' + formatTimerSeconds(elapsed);
+        label = spokenTimerSeconds(elapsed) + ' elapsed';
+    }
+    let state = box.getAttribute('data-state');
+    if (state === 'ready') label += ', not started';
+    if (state === 'paused') label += ', paused';
+    if (display.textContent !== text) display.textContent = text;
+    label = (gTimer.mode === 'TIMER' ? 'Timer: ' : 'Stopwatch: ') + label;
+    if (display.getAttribute('aria-label') !== label) display.setAttribute('aria-label', label);
+    box.setAttribute('data-over', over ? 'true' : 'false');
+}
+
+/* the timer panel follows the server state (also when someone else changes it); the "other"
+ * field is left alone while the user types in it */
+function updateTimerConfig(force = false) {
+    if (gTimer === null || document.getElementById('timer_box') === null) return;
+    checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
+    checkRadio('tmr_mode', gTimer.mode);
+    checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
+    document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
+
+    let minutes = Math.round(gTimer.timebox / 60);
+    let preset = TIMER_PRESETS.includes(minutes);
+    document.querySelectorAll('input[name="tmr_timebox"]').forEach(radio => {
+        radio.checked = preset && radio.value === String(minutes);
     });
+    let other = document.getElementById('tmr_other');
+    if (force || document.activeElement !== other) {
+        other.value = preset ? '' : String(minutes);
+        other.setCustomValidity('');
+    }
+}
+
+function timerAction(action, value = null) {
+    let url = './api/timer.php?t=' + encodeURIComponent(t) + '&action=' + action
+        + (value === null ? '' : '&value=' + encodeURIComponent(value));
+    return fetch(url, { method: 'POST' }).then(response => {
+        if (!response.ok) throw new Error('timer.php ' + response.status);
+        pushDomChange();
+    });
+}
+
+function setTimerVisibility(value) {
+    // B-46: confirm the own change with a toast (others just see the timer appear)
+    timerAction('set_visibility', value).then(() => {
+        showToast(value === '1' ? 'Timer on – everyone on the board sees it' : 'Timer off');
+    }).catch(() => updateDao(false));
     measureEvent("TOGGLE_TIMER");
 }
 
-function stopwatchStart(){
-    let url = './api/timer.php?t=' + t + '&action=start';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+function setTimerMode(value) {
+    timerAction('set_mode', value).catch(() => updateDao(false));
 }
 
-function stopwatchPause(){
-    let url = './api/timer.php?t=' + t + '&action=pause';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+function setTimerTimebox(minutes) {
+    let other = document.getElementById('tmr_other');
+    other.value = '';
+    other.setCustomValidity('');
+    timerAction('set_timebox', minutes).catch(() => updateDao(false));
 }
 
-function stopwatchReset(){
-    let url = './api/timer.php?t=' + t + '&action=reset';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+/* "other: __ min": whole minutes 1..240, saved on change or Enter */
+function setTimerOther() {
+    let other = document.getElementById('tmr_other');
+    let value = other.value.trim();
+    if (value === '') return;
+    let minutes = Number(value);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
+        other.setCustomValidity('Please enter 1 to 240 minutes.');
+        other.reportValidity();
+        return;
+    }
+    other.setCustomValidity('');
+    if (gTimer !== null && gTimer.timebox === minutes * 60) return;
+    document.querySelectorAll('input[name="tmr_timebox"]').forEach(radio => {
+        radio.checked = radio.value === String(minutes);
+    });
+    timerAction('set_timebox', String(minutes)).catch(() => updateDao(false));
+}
+
+function setTimerAutoRestart(value) {
+    timerAction('set_auto_restart', value).catch(() => updateDao(false));
+}
+
+function timerStart() {
+    timerAction('start').catch(() => updateDao(false));
+}
+
+function timerPause() {
+    timerAction('pause').catch(() => updateDao(false));
+}
+
+function timerReset() {
+    timerAction('reset').catch(() => updateDao(false));
 }
 
 

@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.35" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.37" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.24" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.19" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.25" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.20" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -36,6 +36,9 @@
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
     <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
 </svg>
 <!-- B-46: page grid (style.css, "Board layout"): header / topic / table / card deck. -->
@@ -56,14 +59,12 @@
 
         <span class="head-fill"></span>
 
-        <!-- stopwatch: a direct on/off switch for everyone on the board (aria-pressed set by script.js) -->
-        <button type="button" id="stopwatch_btn" class="icon-btn sw-btn" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
-
         <!-- B-51 large screens: each button opens its section of the menu panel (#menu) directly
              (data-open); same order and names as the phone menu index -->
         <nav class="topnav-bar" aria-label="Board menu">
             <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
             <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span class="lbl">board</span></button>
+            <button type="button" id="timer_btn" class="icon-btn" data-open="timer" aria-label="Timer" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">timer</span></button>
             <button type="button" id="user_settings_btn" class="icon-btn" data-open="user_settings" aria-label="You" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span></button>
             <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
             <button type="button" id="cmode_btn" class="icon-btn" aria-label="Switch light and dark mode" onclick="switchColorMode()"><svg class="i i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="i i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
@@ -88,16 +89,21 @@
     <main class="table" id="table">
         <div id="cbox"></div>
 
+        <!-- B-66/B-67: round actions. Large screens: the bottom right corner next to the deck, the timer
+             above the round button; phones: one row right above the deck (timer left, button right).
+             #timer is shown while the timer is on (timer_visibility); data-state: ready | running |
+             paused, data-over="true" once a TIMER has run past its timebox (T+ in amber).
+             Display and aria-label are set by updateTimer() in script.js. -->
         <div class="dock">
-            <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" />
-
-            <div id="stopwatch" class="stopwatch_control">
-                <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
-                <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()" alt="pause"/>
-                <label for="stopwatch_timer"></label>
-                <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00"/>
-                <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()" alt="reset"/>
+            <div id="timer" class="timer display_none" role="group" aria-label="Timer" data-state="ready" data-over="false">
+                <span id="timer_display" class="timer-display" role="timer" aria-label="Timer">T+00:00</span>
+                <div class="timer-actions">
+                    <button type="button" id="timer_start" class="icon-btn timer-btn" onclick="timerStart()" aria-label="Start timer"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg></button>
+                    <button type="button" id="timer_pause" class="icon-btn timer-btn" onclick="timerPause()" aria-label="Pause timer" hidden><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg></button>
+                    <button type="button" id="timer_reset" class="icon-btn timer-btn" onclick="timerReset()" aria-label="Reset timer"><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg></button>
+                </div>
             </div>
+            <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" />
         </div>
     </main>
 
@@ -119,7 +125,7 @@
          large screens = side panel on the right, from below the header down to the bottom edge
          (non-modal, covers topic, table and deck); phones = bottom sheet over a backdrop (modal).
          Shown with the dialog's open attribute; inside, exactly one section is visible (hidden).
-         Openers carry data-open="<section>" (index, topic, cset, user_settings, feedback),
+         Openers carry data-open="<section>" (index, topic, cset, timer, user_settings, feedback),
          the close button data-close. Field ids are the same as before (cet_*, topic_txt, ...). -->
     <dialog id="menu" class="menu" aria-labelledby="menu_title">
         <header class="m-head">
@@ -136,6 +142,7 @@
                 <ul class="m-index">
                     <li><button type="button" data-open="topic"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span><b>Topic</b><small>What you are estimating</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="timer"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span><b>Timer</b><small>Stopwatch or timebox for everyone</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="user_settings"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span><b>You</b><small>Name, role, appearance</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                 </ul>
@@ -209,6 +216,53 @@
                         </div>
                     </div>
                 </div>
+            </section>
+
+            <!-- B-67: the timer for the whole board. Every change is saved right away (api/timer.php) and the
+                 fields follow the server state (updateTimerConfig() in script.js), also when someone else
+                 changes it. The timebox is only shown in Timer mode. -->
+            <section id="timer_box" class="menu_sec" data-sec="timer" data-title="Timer" hidden>
+                <fieldset class="f" id="tmr_visibility">
+                    <legend class="lab">Timer for everyone on the board</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="tmr_visibility" value="0" onchange="setTimerVisibility(this.value)"/><span>Off</span></label>
+                        <label><input type="radio" name="tmr_visibility" value="1" onchange="setTimerVisibility(this.value)"/><span>On</span></label>
+                    </div>
+                    <p class="hint">Shown to everyone at the round button, with play/pause and reset.</p>
+                </fieldset>
+                <fieldset class="f" id="tmr_mode">
+                    <legend class="lab">Mode</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="tmr_mode" value="STOPWATCH" onchange="setTimerMode(this.value)"/><span>Stopwatch</span></label>
+                        <label><input type="radio" name="tmr_mode" value="TIMER" onchange="setTimerMode(this.value)"/><span>Timer</span></label>
+                    </div>
+                    <p class="hint">Stopwatch counts up. Timer counts down to zero, then on as T+ in amber.</p>
+                </fieldset>
+                <fieldset class="f" id="tmr_timebox" hidden>
+                    <legend class="lab">Timebox (minutes)</legend>
+                    <div class="seg tmr-presets">
+                        <label><input type="radio" name="tmr_timebox" value="3" onchange="setTimerTimebox(this.value)"/><span>3</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="5" onchange="setTimerTimebox(this.value)"/><span>5</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="10" onchange="setTimerTimebox(this.value)"/><span>10</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="15" onchange="setTimerTimebox(this.value)"/><span>15</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="30" onchange="setTimerTimebox(this.value)"/><span>30</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="60" onchange="setTimerTimebox(this.value)"/><span>60</span></label>
+                    </div>
+                    <div class="row tmr-other">
+                        <label for="tmr_other" class="lab">other:</label>
+                        <input class="field" id="tmr_other" type="number" min="1" max="240" step="1" inputmode="numeric" placeholder="1–240" aria-describedby="tmr_other_hint" onchange="setTimerOther()" onkeydown="if (event.key === 'Enter') setTimerOther()"/>
+                        <span aria-hidden="true">min</span>
+                    </div>
+                    <p id="tmr_other_hint" class="sr-only">1 to 240 minutes.</p>
+                </fieldset>
+                <fieldset class="f" id="tmr_auto_restart">
+                    <legend class="lab">Auto-start on new round</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="tmr_auto_restart" value="0" onchange="setTimerAutoRestart(this.value)"/><span>Off</span></label>
+                        <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>On</span></label>
+                    </div>
+                    <p class="hint">New round and Cancel round reset it and start it.</p>
+                </fieldset>
             </section>
 
             <section id="user_settings_box" class="menu_sec" data-sec="user_settings" data-title="You" hidden>

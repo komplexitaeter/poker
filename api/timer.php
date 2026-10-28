@@ -57,4 +57,57 @@ if ($action=='toggle_visibility') {
     $sql->execute();
 }
 
+/* B-67: explicit visibility (toggle_visibility stays for old clients during the deploy) */
+if ($action=='set_visibility') {
+    $value = filter_input(INPUT_GET, "value") ?? '';
+    if (!in_array($value, ['0', '1'], true)) bad_request($link);
+    $visibility = (int)$value;
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_visibility = ?
+                                   where t.id=?");
+    $sql->bind_param('is', $visibility, $t);
+    $sql->execute();
+}
+
+/* B-67: STOPWATCH counts up (T+), TIMER counts down from the timebox (T-) and then on into T+ */
+if ($action=='set_mode') {
+    $mode = filter_input(INPUT_GET, "value") ?? '';
+    if (!in_array($mode, ['STOPWATCH', 'TIMER'], true)) bad_request($link);
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_mode = ?
+                                   where t.id=?");
+    $sql->bind_param('ss', $mode, $t);
+    $sql->execute();
+}
+
+/* B-67: timebox in whole minutes (1..240), stored in seconds */
+if ($action=='set_timebox') {
+    $value = filter_input(INPUT_GET, "value") ?? '';
+    if (!preg_match('/^[0-9]{1,3}$/', $value) || (int)$value < 1 || (int)$value > 240) bad_request($link);
+    $timebox = (int)$value * 60;
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_timebox = ?
+                                   where t.id=?");
+    $sql->bind_param('is', $timebox, $t);
+    $sql->execute();
+}
+
+/* B-67: restart the timer with every new or cancelled round (see newround.php) */
+if ($action=='set_auto_restart') {
+    $value = filter_input(INPUT_GET, "value") ?? '';
+    if (!in_array($value, ['0', '1'], true)) bad_request($link);
+    $auto_restart = (int)$value;
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_auto_restart = ?
+                                   where t.id=?");
+    $sql->bind_param('is', $auto_restart, $t);
+    $sql->execute();
+}
+
 $link->close();
+
+function bad_request($link) {
+    $link->close();
+    http_response_code(400);
+    exit;
+}

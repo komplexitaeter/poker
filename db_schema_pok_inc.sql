@@ -161,3 +161,35 @@ set @b64_sql = if((select count(1) from information_schema.statistics
 prepare b64_stmt from @b64_sql;
 execute b64_stmt;
 deallocate prepare b64_stmt;
+
+/* B-67: timer instead of stopwatch. Per team: mode STOPWATCH (counts up, as before) or TIMER (counts down from the
+   timebox to 0, then on into T+), timebox in seconds (default 5 min, only used in TIMER mode) and "auto-start on new
+   round" (New round / Cancel round restart a visible timer). The defaults are the migration: every team keeps working
+   exactly as before (stopwatch, no auto-start). Backwards compatible: old code never reads or writes the new columns.
+   Online: MySQL 8.0 adds columns at the end of the table instantly (metadata only, no table copy, no row rewrite),
+   so the size of pok_teams_tbl does not matter. Deploy order: run this BEFORE deploying the new code (dao.php reads
+   the columns). */
+
+/* 1. check (read only): table size, MySQL version (instant needs >= 8.0.12), row format (not COMPRESSED),
+   new columns not there yet */
+select version(), row_format, table_rows, round((data_length + index_length) / 1048576) as mb
+  from information_schema.tables where table_schema = database() and table_name = 'pok_teams_tbl';
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl'
+   and column_name in ('timer_mode', 'timer_timebox', 'timer_auto_restart');
+
+/* 2. change: only if the columns are missing (idempotent). If MySQL refuses algorithm = instant (ERROR 1845/1846),
+   replace it by "algorithm = inplace, lock = none" (online as well, rebuilds the table). The lock wait timeout makes
+   the ALTER give up after 5 s instead of queueing all dao.php calls behind a long query: just run it again. */
+set session lock_wait_timeout = 5;
+set @b67_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'timer_mode') = 0,
+  'alter table pok_teams_tbl
+     add column timer_mode varchar(10) not null default ''STOPWATCH'' comment ''STOPWATCH, TIMER'',
+     add column timer_timebox int not null default 300 comment ''seconds, TIMER mode only'',
+     add column timer_auto_restart tinyint not null default 0 comment ''1 = new/cancelled round restarts the timer'',
+     algorithm = instant',
+  'select 1');
+prepare b67_stmt from @b67_sql;
+execute b67_stmt;
+deallocate prepare b67_stmt;

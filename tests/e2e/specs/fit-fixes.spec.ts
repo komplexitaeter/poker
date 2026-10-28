@@ -1,11 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, pickCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, pickCard, setTimer } from './helpers';
 
 /**
  * B-49 follow-up: the card size depends on the number of players and the table only.
- * The dock (New Round + stopwatch) is always reserved at its full height, so switching the
- * stopwatch, the first vote or a new round neither resizes the cards nor lets the dock cover
+ * Phones: the dock (New Round + timer) is always reserved at its full height, so switching the
+ * timer, the first vote or a new round neither resizes the cards nor lets the dock cover
  * them; the outer cards keep a side gutter to the edge of the table.
+ * B-66: large screens have the dock in the bottom right corner next to the deck, below the table.
  * The delete icon depends on the input device, not on the width.
  * SHOT_DIR (optional): screenshots of the cases.
  */
@@ -22,12 +23,6 @@ async function settledWidth(page: Page): Promise<number> {
   return layoutWidth(page);
 }
 
-async function setStopwatch(page: Page, on: boolean): Promise<void> {
-  await page.locator('#stopwatch_btn').click();
-  await expect(page.locator('#stopwatch_btn')).toHaveAttribute('aria-pressed', String(on));
-  if (on) await expect(page.locator('#stopwatch')).toBeVisible();
-  else await expect(page.locator('#stopwatch')).toBeHidden();
-}
 
 /** Lowest card bottom (incl. the delete icon), top of the dock, scroll overflow, smallest side gap. */
 const geometry = (page: Page) => page.evaluate(() => {
@@ -40,6 +35,7 @@ const geometry = (page: Page) => page.evaluate(() => {
   return {
     cardsBottom: Math.max(...bottoms),
     dockTop: document.querySelector('#table .dock')!.getBoundingClientRect().top,
+    tableBottom: t.bottom,
     overflow: table.scrollHeight - table.clientHeight,
     sideGap: Math.min(...rects.map(r => Math.min(r.left - t.left, t.right - r.right))),
   };
@@ -54,7 +50,7 @@ for (const { viewport, players, rows } of [
   { viewport: { width: 1000, height: 600 }, players: 10, rows: 2 },
   { viewport: DESKTOP, players: 25, rows: 3 },
 ]) {
-  test(`desktop ${viewport.width}x${viewport.height}, ${rows} rows: the stopwatch neither covers nor resizes the cards (B-49)`, async ({ browser }) => {
+  test(`desktop ${viewport.width}x${viewport.height}, ${rows} rows: the timer neither covers nor resizes the cards (B-49, B-66)`, async ({ browser }) => {
     const alice = await newPlayer(browser, { viewport });
     const url = await createTeam(alice, 'Fit Desktop');
     await addPlayersViaApi(alice, url, names(players - 1));
@@ -66,27 +62,28 @@ for (const { viewport, players, rows } of [
     expect(await alice.evaluate(() =>
       new Set(Array.from(document.querySelectorAll<HTMLElement>('#cbox .c')).map(c => c.offsetTop)).size)).toBe(rows);
 
-    await setStopwatch(alice, true);
+    await setTimer(alice, true);
     // right after the switch, and fitted anew after a reload
     for (const reload of [false, true]) {
       if (reload) {
         await alice.reload();
-        await expect(alice.locator('#stopwatch')).toBeVisible();
+        await expect(alice.locator('#timer')).toBeVisible();
       }
       expect(await settledWidth(alice)).toBe(off);
       const g = await geometry(alice);
       expect(g.cardsBottom).toBeLessThanOrEqual(g.dockTop);
+      expect(g.dockTop).toBeGreaterThanOrEqual(g.tableBottom - 0.5); // B-66: in the corner, below the table
       expect(g.overflow).toBeLessThanOrEqual(0);
       expect(g.sideGap).toBeGreaterThanOrEqual(16); // 8px table padding + gutter of at least 8px
     }
-    await shot(alice, `desktop-${viewport.width}-stopwatch-on`);
+    await shot(alice, `desktop-${viewport.width}-timer-on`);
 
-    await setStopwatch(alice, false);
+    await setTimer(alice, false);
     expect(await settledWidth(alice)).toBe(off);
   });
 }
 
-test('phone: the card width ignores stopwatch, first vote and new round (B-49)', async ({ browser }) => {
+test('phone: the card width ignores timer, first vote and new round (B-49)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true });
   const url = await createTeam(alice, 'Fit Phone');
   await addPlayersViaApi(alice, url, names(9));
@@ -95,7 +92,7 @@ test('phone: the card width ignores stopwatch, first vote and new round (B-49)',
   const base = await settledWidth(alice);
   await shot(alice, 'phone-before-vote');
 
-  await setStopwatch(alice, true);
+  await setTimer(alice, true);
   expect(await settledWidth(alice)).toBe(base);
   await pickCard(alice, 'three01');
   await expect(alice.locator('#newroundbtn')).toBeVisible();
@@ -104,9 +101,9 @@ test('phone: the card width ignores stopwatch, first vote and new round (B-49)',
   expect(g.cardsBottom).toBeLessThanOrEqual(g.dockTop);
   expect(g.overflow).toBeLessThanOrEqual(0);
   expect(g.sideGap).toBeGreaterThanOrEqual(8);
-  await shot(alice, 'phone-stopwatch-on-voted');
+  await shot(alice, 'phone-timer-on-voted');
 
-  await setStopwatch(alice, false);
+  await setTimer(alice, false);
   expect(await settledWidth(alice)).toBe(base);
   await alice.locator('#newroundbtn').click();
   await expect(alice.locator('#newroundbtn')).toBeHidden();

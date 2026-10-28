@@ -10,6 +10,7 @@ const gMenuSections = {
     index:         {btn: 'menu_btn'},
     topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX',         focus: 'topic_txt'},
     cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'cet_pre'},
+    timer:         {btn: 'timer_btn',         event: 'OPEN_TIMER_BOX',         focus: 'tmr_visibility'}, // B-67: the checked radio
     user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'},
     feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'fb_tab_backlog'} // opens on the backlog tab
 };
@@ -35,6 +36,7 @@ function prepareMenuSection(sec) {
         document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
     }
+    if (sec === 'timer') updateTimerConfig(true); // B-67: fresh from the last server state
     if (sec === 'feedback') showMenuTab(document.getElementById('feedback_box'), 'backlog'); // B-57: backlog first
     if (sec === 'user_settings') {
         document.getElementById('cet_usr_name').value = gUserName;
@@ -80,7 +82,7 @@ function updateMenuExpanded() {
     });
 }
 
-/* sec: index, topic, cset, user_settings, feedback; opener: the element that gets the focus back on
+/* sec: index, topic, cset, timer, user_settings, feedback; opener: the element that gets the focus back on
  * close (null: none). focusField: false when the board opens the menu by itself (needs_setup). */
 function openMenu(sec, opener = null, focusField = true) {
     let menu = getMenu();
@@ -105,8 +107,11 @@ function openMenu(sec, opener = null, focusField = true) {
     if (focusField) {
         let field = gMenuSections[sec].focus;
         if (field) {
-            if (sec === 'topic') document.getElementById(field).select();
-            else document.getElementById(field).focus();
+            let element = document.getElementById(field);
+            // a radio group (fieldset): its checked radio, as the arrow keys move from there
+            if (element.tagName === 'FIELDSET') element = element.querySelector('input:checked') || element.querySelector('input');
+            if (sec === 'topic') element.select();
+            else element.focus();
         } else if (sec === 'index') {
             // back from a section: the focus on its entry, otherwise on the first entry
             let entry = previousSec !== null && menu.querySelector('#menu_index [data-open="' + previousSec + '"]');
