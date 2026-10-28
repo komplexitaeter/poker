@@ -995,9 +995,9 @@ Andreas (2026-10-28), nach Team-Runde zu den Controls unten rechts; Umsetzung fr
 ### B-69 Kartenleiste: Blätter-Leisten `<` / `>` statt Scrollleiste
 Andreas (2026-10-28): Passen die Karten nicht in die Leiste, scrollt sie waagerecht. Die Scrollleiste ist unschön
 (besonders auf Mobile), und man versteht nicht, dass man scrollen soll. Idee: am linken bzw. rechten Rand bei Bedarf
-eine schlanke `<`- bzw. `>`-Leiste, die zeigt, dass es weitergeht, und per Klick/Tipp weiterblättert; Scrollleiste
-ausblenden, Wischen und Mausrad bleiben. Offen: wie weit ein Klick blättert; Verhalten mit Tasten 1–9/0 (Karte
-außerhalb des sichtbaren Bereichs ins Bild holen).
+eine schlanke `<`- bzw. `>`-Leiste, die zeigt, dass es weitergeht; Scrollleiste ausblenden, Wischen und Mausrad
+bleiben. Entschieden (Andreas, 2026-10-28): Die Leisten sind nur Hinweis, **kein Klick-Blättern**. Tasten 1–9/0 holen
+eine Karte außerhalb des sichtbaren Bereichs ins Bild. Status: refined.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
