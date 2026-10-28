@@ -966,7 +966,7 @@ trennen? Einstellungen (an/aus, Timebox, Pause/Reset) im Menü, für alle nur di
 direkt unten? Braucht Ben (Timebox je Team speichern) und Fred.
 **Entscheidungen Andreas (2026-10-28):** Eigenes Menü-Panel „Timer“ wie die anderen Menüs: dort Timer aktivieren
 (dann sehen alle unten rechts Timer + Pause/Reset) und Timebox-Länge festlegen. Timebox 0 bleibt erlaubt = Stoppuhr;
-das muss für den User verständlich erklärt sein.
+das muss für den User verständlich erklärt sein. Timer an die Runde gekoppelt: „New round“ setzt zurück und startet bei T−Timebox (ok, Andreas).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
