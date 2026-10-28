@@ -1469,49 +1469,63 @@ function updateSide(json, glide = true) {
 }
 
 /* B-70: a short tip what to do now, in the column (before the reveal where the spread will be, then
- * below it; style.css). Plain text only (textContent: names are user input). Hidden on phones. */
+ * below it; style.css). Built from text nodes and <b> (textContent only: names are user input).
+ * Names are highlighted like in the mockup ("Let them explain: Chris (2) and Emil (20)"). Hidden on phones. */
 function updateTip(json, revealed) {
     const tip = document.getElementById('round_tip');
     if (tip === null) return;
-    const text = tipText(json, revealed);
-    if (tip.textContent !== text) tip.textContent = text;
+    const parts = tipText(json, revealed);
+    const key = JSON.stringify(parts);
+    if (tip.dataset.key === key) return;
+    tip.dataset.key = key;
+    tip.replaceChildren(...parts.map(part => {
+        if (typeof part === 'string') return document.createTextNode(part);
+        const b = document.createElement('b');
+        b.textContent = part.name;
+        return b;
+    }));
 }
 
-/* "Bob", "Bob and Cleo", "Bob, Cleo and Dan" */
+/* "Bob", "Bob and Cleo", "Bob, Cleo and Dan" – each name highlighted */
 function tipNames(names) {
-    if (names.length < 2) return names.join('');
-    return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+    const parts = [];
+    names.forEach((name, i) => {
+        if (i > 0) parts.push(i === names.length - 1 ? ' and ' : ', ');
+        parts.push({ name });
+    });
+    return parts;
 }
 
 /* the players on one side of the spread: "Dan (3)", "Dan, Eve +2 (8)" */
 function tipSide(players, value) {
     const names = players.slice(0, 2).map(player => player.name).join(', ');
-    return names + (players.length > 2 ? ' +' + (players.length - 2) : '') + ' (' + value + ')';
+    return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : '') + ' (' + value + ')' };
 }
 
+/* the tip as a list of plain strings and highlighted { name } parts; [] for none */
 function tipText(json, revealed) {
     const players = json.players || [];
-    if (json.players_count < 2) return 'Copy the board link and invite your team.';
+    if (json.players_count < 2) return ['Copy the board link and invite your team.'];
 
     if (!revealed) {
         if (json.player_type === 'PLAYER' && !json.selected_card_key) {
-            return 'Pick the card that fits best from your point of view. Once everyone has voted, you\'ll see the result.';
+            return ['Pick the card that fits best from your point of view. Once everyone has voted, you\'ll see the result.'];
         }
         const missing = players.filter(player => String(player.display_card_key).startsWith('prgrss'));
-        if (missing.length === 0) return '';
-        const who = missing.length > 3 ? missing.length + ' players' : tipNames(missing.map(player => player.name));
-        return 'Waiting for ' + who + '. The cards are revealed once everyone has voted.';
+        if (missing.length === 0) return [];
+        const who = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
+        return ['Waiting for ', ...who, '. The cards are revealed once everyone has voted.'];
     }
 
     // lowest and highest numeric card; coffee, ?, ! and infinity do not count
     const numeric = players
         .map(player => ({ player, config: getCardConfig(player.display_card_key) }))
         .filter(entry => entry.config && entry.config.numeric_value != null);
-    if (numeric.length === 0) return '';
+    if (numeric.length === 0) return [];
     const values = numeric.map(entry => entry.config.numeric_value);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    if (min === max) return numeric.length === players.length ? 'Everyone agrees \u2013 start a new round.' : '';
+    if (min === max) return numeric.length === players.length ? ['Everyone agrees \u2013 start a new round.'] : [];
     const side = value => {
         const entries = numeric.filter(entry => entry.config.numeric_value === value);
         return { players: entries.map(entry => entry.player), label: entries[0].config.symbol || entries[0].config.description };
@@ -1519,9 +1533,9 @@ function tipText(json, revealed) {
     const low = side(min);
     const high = side(max);
     if (json.anonymous_mode === 1) {
-        return 'Lowest (' + low.label + ') and highest (' + high.label + '): explain your choice.';
+        return ['Let them explain: lowest ', { name: '(' + low.label + ')' }, ' and highest ', { name: '(' + high.label + ')' }];
     }
-    return tipSide(low.players, low.label) + ' and ' + tipSide(high.players, high.label) + ': explain your choice.';
+    return ['Let them explain: ', tipSide(low.players, low.label), ' and ', tipSide(high.players, high.label)];
 }
 
 /* B-68: n blocks (one per vote) in a bar of the spread. New ones are added on top with the class

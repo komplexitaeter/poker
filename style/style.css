@@ -2333,6 +2333,7 @@ div#cbox {
         text-align: left;
         color: var(--muted);
     }
+    .round-tip b { font-weight: inherit; color: var(--text); }
 
     .side > #spread[hidden] + .round-tip {
         position: absolute;

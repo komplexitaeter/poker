@@ -39,6 +39,7 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
   // picked: wait for the others, by name; below the status line
   await pickCard(alice, 'three01');
   await expect(tip).toHaveText('Waiting for Bob and Cleo. The cards are revealed once everyone has voted.');
+  await expect(tip.locator('b')).toHaveText(['Bob', 'Cleo']);
   expect(await below(alice, '#round_status', '#round_tip')).toBe(true);
 
   // more than three missing: just the number
@@ -53,7 +54,9 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
   await setCard(alice, url, eve, 'eight01');
   await alice.reload();
   await expect(alice.locator('#round_status')).toHaveText('revealed');
-  await expect(tip).toHaveText('Alice, Bob (3) and Cleo, Eve (8): explain your choice.');
+  await expect(tip).toHaveText('Let them explain: Alice, Bob (3) and Cleo, Eve (8)');
+  // as in the mockup: the names stand out, the rest is muted
+  await expect(tip.locator('b')).toHaveText(['Alice, Bob (3)', 'Cleo, Eve (8)']);
   await expect(alice.locator('.side > #round_tip')).toBeVisible();
   expect(await below(alice, '#spread', '#round_tip')).toBe(true);
 
