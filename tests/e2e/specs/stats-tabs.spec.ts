@@ -46,3 +46,24 @@ test('live tab shows an active table by name, no tab contains the team id', asyn
   await admin.goto('/stats.php?tab=nonsense');   // unknown tab: live
   await expect(admin.locator('.tabs a[aria-current="page"]')).toHaveText('Live');
 });
+
+test('"Rounds per day" counts a new round for today (live and usage tab)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, `Rounds ${Date.now().toString(36)}`);
+  await joinAsPlayer(page, url, 'Rob');
+  await pickCard(page, 'three01');
+  await page.locator('#newroundbtn').click();
+  await expect(page.locator('#ctl img#three01')).not.toHaveClass(/selected/);
+
+  const admin = await page.context().newPage();
+  await admin.goto('/stats.php');
+  await expect(admin.locator('.chart.days .day')).toHaveCount(28);
+  const today = admin.locator('.chart.days .day.today');
+  expect(Number(await today.getAttribute('data-rounds'))).toBeGreaterThanOrEqual(1);
+  await expect(today).toHaveAttribute('title', /\d+ rounds, [1-9]\d* teams/);
+
+  await admin.goto('/stats.php?tab=usage');
+  const usageToday = admin.locator('table.event-days tr.current');
+  expect(Number(await usageToday.locator('td').nth(1).textContent())).toBeGreaterThanOrEqual(1);   // rounds
+  expect(Number(await usageToday.locator('td').nth(2).textContent())).toBeGreaterThanOrEqual(1);   // teams
+});
