@@ -137,3 +137,27 @@ update pok_roadmap_votes_tbl v
 
 /* 3. after deploying the new code (no-op without a default): same column definition as on live. Idempotent. */
 alter table pok_roadmap_votes_tbl alter column phase drop default;
+
+/* B-64: index on pok_players_tbl.last_callback_time for the live tab of stats.php (reloads every 30 s while open):
+   "clients active within the last 5 minutes" becomes a range scan over ~100 rows instead of a full table scan.
+   Also helps pok_daily_team_stats_evt (last_callback_time > ...). stats.php works without it, just slower.
+   Recommended if the check shows more than ~100,000 rows. Online DDL (in place, no lock): the app keeps running.
+   Cost: one more index entry update per dao.php call (last_callback_time is set on every board load). */
+
+/* 1. check (read only): table size, plan of the live query (type ALL = full scan), index not there yet */
+select table_rows, round((data_length + index_length) / 1048576) as mb from information_schema.tables
+ where table_schema = database() and table_name = 'pok_players_tbl';
+explain select count(1) from pok_players_tbl where last_callback_time > now() - interval 5 minute;
+select index_name from information_schema.statistics
+ where table_schema = database() and table_name = 'pok_players_tbl' and index_name = 'last_callback_time';
+
+/* 2. change: only if the index is missing (idempotent). Evening or weekend. The lock wait timeout makes the ALTER
+   give up after 5 s instead of queueing all dao.php calls behind it if a long query holds the table: just run it again. */
+set session lock_wait_timeout = 5;
+set @b64_sql = if((select count(1) from information_schema.statistics
+                    where table_schema = database() and table_name = 'pok_players_tbl' and index_name = 'last_callback_time') = 0,
+  'alter table pok_players_tbl add index last_callback_time (last_callback_time), algorithm = inplace, lock = none',
+  'select 1');
+prepare b64_stmt from @b64_sql;
+execute b64_stmt;
+deallocate prepare b64_stmt;

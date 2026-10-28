@@ -1,10 +1,15 @@
 name: E2E tests
 
+# Full suite on every PR into release and on every push to release (tests the combination of merged PRs).
+# Not on PRs release -> master: they carry a state that was already tested on release (Kai merges only if the
+# last release run is green). Docs-only changes do not run the suite.
 on:
   push:
     branches: [release]
+    paths-ignore: ['**/*.md']
   pull_request:
-    branches: [release, master]
+    branches: [release]
+    paths-ignore: ['**/*.md']
   workflow_dispatch:
 
 permissions:

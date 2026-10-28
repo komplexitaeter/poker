@@ -35,6 +35,10 @@ Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-
 (FPM-grep + `free -m`).
 
 Abgeschlossen:
+- **Sprint 8 – „Neuer Look“ = Rollout 1** (live 2026-10-28 mit PR #56): Console-Look, Seitengerüst, Menüs als Side
+  Panel/Bottom-Sheet, fluide Karten (B-46 bis B-49, B-51, Teile B-50), Ideas & Bugs (B-57), Promo-Teaser „THE AGILE
+  GAME“ abgeschaltet (#57, Code bleibt). Nächstes: Rollout 2 (B-53, B-52) etwa eine Woche später; Feedback über B-57
+  beobachten, Basis-Kennzahl wiederkehrende User-IDs vorher/nachher.
 - **Sprint 7 – „Konfiguration & CSS aufräumen"** (2026-10-23, live mit PR #35):
   - B-42: Sortier-Option „im Spiel wählen“ gestrichen, nur noch Kartenwert/Name; im Anonym-Modus fest „Card value“.
   - B-36 (mit B-37): `style.css` um gut ein Drittel kleiner, Responsive per CSS (ein Breakpoint, 800 px) statt
@@ -830,6 +834,34 @@ Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden ei
 Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
 Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
 dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
+
+### B-64 `stats.php` neu: Tabs, Live-Ansicht, sinnvollere Kennzahlen
+Andreas (2026-10-28), sofort umsetzen (unabhängig von den Nutzern, passt zur Beobachtung nach Rollout 1). Refinement:
+- **Tabs** (Console-Look wie die App, ohne Bibliotheken): Live | Nutzung | Ideas & Bugs | Technik.
+- **Live:** aktive Teams/Clients (letzte 5 min), Runden letzte Stunde; Liste laufender Tische **mit Teamnamen**
+  (geschlossener Bereich, Andreas) – Spielerzahl, Beobachter, Deck, Runden heute, aktiv seit, aufgedeckt ja/nein;
+  Verlauf aktive Clients heute. Automatisch neu laden (ca. 30 s). Nie die Team-ID anzeigen (= Zugangsschlüssel).
+- **Nutzung:** nur, was Grafana nicht zeigt (Grafana hat: Daily Teams exploring/recurring, New Rounds, Active Use,
+  Peak Usage). Neu: neue vs. wiederkehrende User-IDs je Woche (Vergleich vor/nach Rollout 1, Tag markieren),
+  Nutzung von Menüs/Funktionen über `pok_analytics_events_tbl` (veraltete Events wie Info-Box/Simulation-Links raus),
+  Anteil Handy. Einfache CSS-Balken.
+- **Ideas & Bugs:** Eingang + öffentliche Liste wie bisher, eigener Tab, Zähler für offene Meldungen.
+- **Technik (klein):** Tabellengrößen (v. a. `pok_analytics_events_tbl`), PHP-Version, Release-Stand.
+- Alle Abfragen mit Zeitbereich und `MAX_EXECUTION_TIME`; Ausgabe nur escaped (Namen sind Nutzereingaben).
+Umsetzung Ben (Abfragen, Struktur), Delia (Look), Review Sina.
+
+### B-63 `stats.php`: eigene Anmeldeseite statt Basic Auth
+**Zurückgestellt (Andreas, 2026-10-28): zu aufwändig, Basic Auth bleibt erstmal.**
+Andreas (2026-10-28): Chrome füllt den Basic-Auth-Dialog von `stats.php` nicht aus, und nach jedem Browser-Neustart
+muss man sich neu anmelden. Idee: normales Login-Formular in `stats.php` (Benutzer + Passwort), damit
+Passwortmanager speichern und ausfüllen; danach angemeldet bleiben (z. B. 30 Tage).
+- Passwort nur als Hash in `config.php` (`password_hash`), Vorlage in `config.example.php`.
+- „Angemeldet bleiben“ per signiertem Cookie (HMAC mit Secret aus `config.php`), nicht per PHP-Session: die
+  Session-Dateien räumt Ubuntu nach `session.gc_maxlifetime` (24 min) ab. CSRF-Token für die Moderation bleibt.
+- Schutz gegen Durchprobieren (z. B. Verzögerung nach Fehlversuch oder nginx `limit_req` auf `/stats.php`).
+- nginx-Basic-Auth danach entfernen (Schritt auf beiden Servern) – oder als zweite Schicht behalten? → Sina.
+- `docs/stats-basic-auth.md` und `CLAUDE.md` anpassen.
+Umsetzung Ben, Review Sina.
 
 ### B-62 E2E-Tests für den Feedback-Pfad (rudimentär)
 Vorschlag Tessa, Andreas (2026-10-27): ja, aber nur rudimentär; internes Backlog, nicht in der öffentlichen Liste.
