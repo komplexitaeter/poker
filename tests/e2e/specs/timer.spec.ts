@@ -20,7 +20,7 @@ function sql(statement: string): string {
 
 const teamId = (url: string) => {
   const id = new URL(url).searchParams.get('t') as string;
-  expect(id).toMatch(/^[A-Za-z0-9_]+$/); // safe to use in the statements below
+  expect(id).toMatch(/^[A-Za-z0-9_-]+$/); // safe to use in the statements below
   return id;
 };
 
@@ -60,6 +60,21 @@ test('timer on in the panel: everyone sees it, the other panel follows (B-67)', 
   await expect(radio(bob, 'tmr_timebox', '5')).toBeChecked(); // default 300 s
   await expect(display(bob)).toHaveText('T−05:00');
 
+  await radio(bob, 'tmr_visibility', '0').check();
+  await expect(alice.locator('#timer')).toBeHidden();
+  await expect(radio(alice, 'tmr_visibility', '0')).toBeChecked();
+  await alice.context().close();
+  await bob.context().close();
+});
+
+test('timebox presets, other minutes and auto-start: the other panel follows (B-67)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Timer Timebox');
+  await openTimerPanel(alice);
+  await openTimerPanel(bob);
+  await radio(alice, 'tmr_visibility', '1').check();
+  await radio(alice, 'tmr_mode', 'TIMER').check();
+  await expect(display(bob)).toHaveText('T−05:00');
+
   await radio(alice, 'tmr_timebox', '10').check();
   await expect(radio(bob, 'tmr_timebox', '10')).toBeChecked();
   await expect(display(bob)).toHaveText('T−10:00');
@@ -77,10 +92,6 @@ test('timer on in the panel: everyone sees it, the other panel follows (B-67)', 
 
   await radio(alice, 'tmr_auto_restart', '1').check();
   await expect(radio(bob, 'tmr_auto_restart', '1')).toBeChecked();
-
-  await radio(bob, 'tmr_visibility', '0').check();
-  await expect(alice.locator('#timer')).toBeHidden();
-  await expect(radio(alice, 'tmr_visibility', '0')).toBeChecked();
   await alice.context().close();
   await bob.context().close();
 });

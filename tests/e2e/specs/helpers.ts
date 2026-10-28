@@ -1,4 +1,18 @@
-import { Browser, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+import { test, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+
+/**
+ * Contexts from newPlayer() are not closed by Playwright, and most specs do not close them either. A worker
+ * runs many tests with one browser, so it piled up dozens of live boards (WebSocket, pulls, CSS animations)
+ * until every action of the late specs took seconds (B-67: timer.spec.ts timed out in CI with 60+ open
+ * pages). The first newPlayer() of a test therefore closes the contexts left over from earlier tests.
+ */
+let playerContexts: { testId: string; context: BrowserContext }[] = [];
+
+async function closeContextsOfEarlierTests(testId: string): Promise<void> {
+  const old = playerContexts.filter(entry => entry.testId !== testId);
+  playerContexts = playerContexts.filter(entry => entry.testId === testId);
+  await Promise.all(old.map(entry => entry.context.close().catch(() => undefined)));
+}
 
 /**
  * Every third-party library the board needs (remarkable, qr-code-styling, js-confetti) is now
@@ -7,7 +21,10 @@ import { Browser, BrowserContextOptions, Page, Locator, expect } from '@playwrig
  * This also covers production analytics (plausible.io), which must stay blocked.
  */
 export async function newPlayer(browser: Browser, options: BrowserContextOptions = {}): Promise<Page> {
+  const testId = test.info().testId;
+  await closeContextsOfEarlierTests(testId);
   const context = await browser.newContext(options);
+  playerContexts.push({ testId, context });
   await context.route(/^https?:\/\//, route => {
     const host = new URL(route.request().url()).hostname;
     if (host === '127.0.0.1' || host === 'localhost') return route.continue();
