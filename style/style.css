@@ -466,6 +466,14 @@ textarea.field {
             "deck  dock";
     }
 
+    /* the bottom control panel (deck and the corner, .dock): a line on top with a slight inner
+     * shadow sets it apart from the table and the column above it */
+    .down-container,
+    .container > .dock {
+        border-top: 1px solid var(--line);
+        box-shadow: inset 0 6px 6px -6px var(--shadow-color);
+    }
+
     .down-container { justify-content: center; }
 }
 
@@ -1889,10 +1897,19 @@ div#cbox {
         align-items: center;
     }
 
+    /* the hint lies at the bottom edge (right); the deck keeps a row for it below the cards
+     * and a possible scrollbar, unless the keys fit next to it (keys-low, set by
+     * updateDeckRoom() in script.js): then the keys sit at the bottom edge too, level with it */
+    .down-container { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+
+    .down-container.keys-low { padding-bottom: env(safe-area-inset-bottom); }
+
+    .down-container.keys-low .controls { padding-bottom: 4px; }
+
     .ctl-key {
         display: block;
         min-height: 1em;
-        margin-top: 2px;
+        margin-top: 5px;
         font-size: 10px;
         line-height: 1;
         color: var(--muted);
@@ -1902,7 +1919,10 @@ div#cbox {
 
     .deck-hint {
         display: block;
-        margin: -2px var(--space-3) 4px auto;
+        position: absolute;
+        right: var(--space-3);
+        bottom: calc(4px + env(safe-area-inset-bottom));
+        margin: 0;
         font-size: 10px;
         line-height: 1;
         color: var(--line-strong);
@@ -2158,19 +2178,31 @@ div#cbox {
     color: var(--muted);
 }
 
+/* the bar: one segment per vote (.spread-seg, set by updateSide() in script.js), stacked from the
+ * bottom; the most chosen card (--top votes) fills --spread-h. New votes grow in, removed ones
+ * shrink out (in, out), and all segments follow when --top changes. No votes: a thin line. */
 .spread-bar {
     flex: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     width: 72%;
     max-width: 22px;
-    height: calc(var(--usage, 0) * var(--spread-h));
-    /* a 2px gap above each vote */
-    background: linear-gradient(to bottom, transparent 2px, var(--bar) 2px) top / 100% calc(100% / var(--votes, 1)) repeat-y;
+    min-height: 1px;
 }
 
-.spread-col.zero .spread-bar {
-    height: 1px;
-    background: var(--line);
+.spread-seg {
+    flex: none;
+    height: calc(var(--spread-h) / var(--top, 1));
+    /* a 2px gap above each vote */
+    background: linear-gradient(to bottom, transparent 2px, var(--bar) 2px);
+    transition: height 0.5s ease-out;
 }
+
+.spread-seg.in,
+.spread-seg.out { height: 0; }
+
+.spread-col.zero .spread-bar { background: var(--line); }
 
 .spread-value {
     flex: none;
@@ -2195,12 +2227,44 @@ div#cbox {
     .side { --spread-h: 22px; }
 }
 
-/* the average pointer (left set by script.js; no glide, it would trail a resize) */
+/* the average pointer (left set by script.js): it slides to a new spot; no-glide when it shows up
+ * and on a resize (it would trail it) */
 .spread-index {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 12px;
+    transition: left 0.6s ease-in-out;
+}
+
+.spread-index.no-glide { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .spread-seg,
+    .spread-index { transition: none; }
+}
+
+/* phones: while the cards are not revealed, the strip above the deck is a slim line with where
+ * the round is ("// voting · 3/5 voted"); once revealed, the spread */
+@media (max-width: 799.98px) {
+    .round-status {
+        grid-area: side;
+        display: block;
+        min-width: 0;
+        margin: 0;
+        padding: var(--space-1) var(--space-3);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: var(--fs-s);
+        line-height: 1.25rem;
+        text-align: left;
+        color: var(--text);
+        background: var(--bg-2);
+    }
+
+    .container:has(#spread[hidden]) > .side,
+    .container:has(#spread:not([hidden])) > .round-status { display: none; }
 }
 
 @media (min-width: 800px) {

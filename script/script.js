@@ -206,6 +206,23 @@ function updateDeckKeys() {
     document.querySelectorAll('#ctl img.on').forEach((img, i) => {
         if (i < DECK_KEYS.length) img.nextElementSibling.textContent = DECK_KEYS[i];
     });
+    updateDeckRoom();
+}
+
+/* B-68: the keys sit at the bottom edge, level with the hint "keys 1–9 pick a card", while the
+ * deck does not scroll and its last key stays clear of the hint (class keys-low); otherwise the
+ * hint keeps a row of its own below the deck and its scrollbar. Only where the keys show
+ * (style.css "Card deck"). */
+function updateDeckRoom() {
+    const container = document.getElementById('down-container');
+    const ctl = document.getElementById('ctl');
+    const hint = container === null ? null : container.querySelector('.deck-hint');
+    if (ctl === null || hint === null) return;
+    const keyed = Array.from(ctl.querySelectorAll('img.on')).slice(0, DECK_KEYS.length);
+    const lastKey = keyed.length > 0 ? keyed[keyed.length - 1].nextElementSibling : null;
+    const fits = ctl.scrollWidth <= ctl.clientWidth + 1
+        && (lastKey === null || lastKey.getBoundingClientRect().right + 8 <= hint.getBoundingClientRect().left);
+    container.classList.toggle('keys-low', fits);
 }
 
 /* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
@@ -1317,7 +1334,8 @@ function handleResize() {
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
-    updateSide(gLastJson);
+    updateSide(gLastJson, false);
+    updateDeckRoom();
 }
 
 function initDisplayHandling() {
@@ -1342,8 +1360,10 @@ function initDisplayHandling() {
  * gets the full height), the vote count above it and the card's value below it (cards.json
  * "symbol", else its description); the most chosen card(s) in the accent color, from two votes
  * on. Its room is kept before the reveal (style.css), so nothing moves. The average pointer
- * follows the board setting (show_avg). */
-function updateSide(json) {
+ * follows the board setting (show_avg).
+ * The columns and segments are updated in place, so style.css can let the segments grow in and
+ * shrink out and the pointer slide (glide = false: jump, e.g. on a resize). */
+function updateSide(json, glide = true) {
     const status = document.getElementById('round_status');
     const spread = document.getElementById('spread');
     if (status === null || spread === null || !json) return;
@@ -1364,7 +1384,7 @@ function updateSide(json) {
         bars.replaceChildren(...deckCards.map(img => {
             const config = getCardConfig(img.id);
             const col = document.createElement('div');
-            col.className = 'spread-col';
+            col.className = 'spread-col zero';
             col.setAttribute('data-card', img.id);
             const count = document.createElement('span');
             count.className = 'spread-count';
@@ -1381,24 +1401,31 @@ function updateSide(json) {
 
     const pointer = document.getElementById('spread_index');
     if (!revealed) {
+        // empty bars, so the votes grow in on the next reveal
+        bars.querySelectorAll('.spread-bar').forEach(bar => bar.replaceChildren());
         toggleStyleClass(pointer, 'hidden', 'visible');
         return;
     }
 
     const cardStats = calculateCardStats(json.players);
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
+    bars.style.setProperty('--top', String(Math.max(1, top)));
     const chosen = [];
+    const grown = [];
     Array.from(bars.children).forEach(col => {
         const stat = cardStats[col.getAttribute('data-card')];
         const n = stat ? stat.usageCount : 0;
-        col.style.setProperty('--usage', String(top > 0 ? n / top : 0));
-        col.style.setProperty('--votes', String(Math.max(1, n)));
         col.classList.toggle('top', n > 1 && n === top);
         col.classList.toggle('zero', n === 0);
         col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
+        grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
         const config = getCardConfig(col.getAttribute('data-card'));
         if (n > 0 && config && config.numeric_value != null) chosen.push(col.querySelector('.spread-value').textContent);
     });
+    if (grown.length > 0) {
+        void bars.offsetHeight; // the new segments start at height 0 (class "in"), then grow
+        grown.forEach(seg => seg.classList.remove('in'));
+    }
 
     // the range of the chosen numeric values, in deck order: "2 – 20", or "5" when all agree
     let range = '';
@@ -1416,9 +1443,35 @@ function updateSide(json) {
     if (left === null) {
         toggleStyleClass(pointer, 'hidden', 'visible');
     } else {
+        // it slides to a new spot, but jumps when it shows up or on a resize
+        const jump = !glide || !pointer.classList.contains('visible');
+        pointer.classList.toggle('no-glide', jump);
         pointer.style.left = (left - bars.getBoundingClientRect().left) + 'px';
         toggleStyleClass(pointer, 'visible', 'hidden');
+        if (jump) {
+            void pointer.offsetWidth;
+            pointer.classList.remove('no-glide');
+        }
     }
+}
+
+/* B-68: n segments (one per vote) in a bar of the spread. New ones are added on top with the
+ * class "in" (height 0) and returned, the caller removes it so they grow; removed ones shrink
+ * out (class "out") and leave the DOM afterwards. */
+function setSpreadSegments(bar, n) {
+    const segs = Array.from(bar.querySelectorAll('.spread-seg:not(.out)'));
+    const added = [];
+    for (let i = segs.length; i < n; i++) {
+        const seg = document.createElement('span');
+        seg.className = 'spread-seg in';
+        bar.prepend(seg);
+        added.push(seg);
+    }
+    segs.slice(0, Math.max(0, segs.length - n)).forEach(seg => {
+        seg.classList.add('out');
+        setTimeout(() => seg.remove(), 600);
+    });
+    return added;
 }
 
 function calculateCardStats(players) {
