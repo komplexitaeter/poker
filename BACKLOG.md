@@ -851,7 +851,9 @@ Andreas (2026-10-28), sofort umsetzen (unabhängig von den Nutzern, passt zur Be
 Umsetzung Ben (Abfragen, Struktur), Delia (Look), Review Sina.
 
 ### B-63 `stats.php`: eigene Anmeldeseite statt Basic Auth
-**Zurückgestellt (Andreas, 2026-10-28): zu aufwändig, Basic Auth bleibt erstmal.**
+**Wieder aufgenommen (Andreas, 2026-10-28), vereinfacht:** Anmeldeseite prüft gegen die vorhandene nginx-Datei
+`/etc/nginx/poker-stats.htpasswd` (eine Stelle für Zugangsdaten, Pflege weiter mit `htpasswd -B`; Einträge bcrypt,
+auf Live umgestellt). Kein Passwort-Hash und kein Secret in `config.php` nötig. Danach `auth_basic` in nginx entfernen.
 Andreas (2026-10-28): Chrome füllt den Basic-Auth-Dialog von `stats.php` nicht aus, und nach jedem Browser-Neustart
 muss man sich neu anmelden. Idee: normales Login-Formular in `stats.php` (Benutzer + Passwort), damit
 Passwortmanager speichern und ausfüllen; danach angemeldet bleiben (z. B. 30 Tage).
