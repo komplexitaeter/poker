@@ -410,7 +410,7 @@ textarea.field {
  * - large screens (from 800px): the table on the left, the deck below it as a compact rounded
  *   tray floating over the table; the column on the right (--col-w) from the header down to the
  *   bottom edge in its own tone: where the round is, the topic, the spread, and at its foot the
- *   round actions (.dock), the button's bottom edge level with the tray's.
+ *   round actions (.dock), the button's bottom edge a little above the tray's.
  * - phones: header, topic strip, table, then the spread and the round actions as a strip right
  *   above the deck.
  * Table: the page color; header, column and deck: one panel color (--bg-2), no lines between them.
@@ -466,6 +466,7 @@ textarea.field {
 
 @media (min-width: 800px) {
     .container {
+        --dock-lift: 20px; /* the round button above the tray's bottom edge (.dock, survey) */
         grid-template-columns: minmax(0, 1fr) var(--col-w);
         grid-template-rows: auto auto auto minmax(0, 1fr) auto;
         grid-template-areas:
@@ -478,7 +479,7 @@ textarea.field {
 
     /* the deck: a compact rounded tray that floats over the table (page color around it), ending
      * a gap before the column and the bottom edge; no line between deck and column. The round
-     * button at the foot of the column (.dock) ends level with the tray's bottom edge. */
+     * button at the foot of the column (.dock) ends a little above the tray's bottom edge. */
     .down-container {
         --tray-gap: 12px;
         align-self: end;
@@ -1640,7 +1641,7 @@ div#cbox {
 /* The round actions at the foot of the column, on the panel color, no frame.
  * Phones: one row right above the deck, timer left, button right. Large screens: in the deck's
  * row, the timer row above the button, both as wide as the column, at the bottom: the button ends
- * level with the deck's tray. The timer keeps its room while it is off, so the button never
+ * a little above the deck tray's bottom edge. The timer keeps its room while it is off, so the button never
  * moves. */
 .dock {
     grid-area: dock;
@@ -1658,14 +1659,14 @@ div#cbox {
 }
 
 @media (min-width: 800px) {
-    /* the timer right above the button, both at the bottom: the button ends as far above the
-     * bottom edge as the deck's tray (--tray-gap), level with it; the timer keeps its row while
-     * it is off, so the button never moves */
+    /* the timer right above the button, both at the bottom: the button ends a little above the
+     * deck's tray bottom edge (--tray-gap plus --dock-lift, about halfway to the cards' middle);
+     * the timer keeps its row while it is off, so the button never moves */
     .dock {
         flex-direction: column;
         justify-content: flex-end;
         align-items: stretch;
-        padding: 12px var(--space-3) calc(12px + env(safe-area-inset-bottom));
+        padding: 12px var(--space-3) calc(12px + var(--dock-lift) + env(safe-area-inset-bottom));
     }
 
     .dock > .timer {
@@ -1995,14 +1996,14 @@ div#cbox {
 
 /* B-66/B-68: in the column right above the round actions (.dock), so the two never overlap: the
  * deck's tray is its anchor, the column lies right of it (beyond the tray's gap). The round button
- * ends level with the tray, so the survey ends a step above the timer row (button 44px, gaps 8px,
- * timer as high as --tap). Large screens only (hidden on phones). */
+ * ends --dock-lift above the tray's bottom edge, so the survey ends a step above the timer row
+ * (button 44px, gaps 8px, timer as high as --tap). Large screens only (hidden on phones). */
 .survey-container {
     font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
-    bottom: calc(44px + var(--space-2) + var(--tap) + var(--space-2));
+    bottom: calc(var(--dock-lift, 0px) + 44px + var(--space-2) + var(--tap) + var(--space-2));
     right: calc(-1 * (var(--col-w) + var(--tray-gap, 0px)));
     margin: 0 auto;
     visibility: hidden;
@@ -2124,8 +2125,8 @@ div#cbox {
 /* Large screens (from 800px): the column on the right, always there, so the table keeps its size
  * from round to round. From the top: where the round is (#round_status), the topic (.topic-bar)
  * and the spread (.side, #spread; filled by updateSide() in script.js); its foot are the round
- * actions (.dock, see "New round button, timer"). Phones: only the spread, as a strip right above
- * the round actions and the deck. One panel color, no lines between the parts.
+ * actions (.dock, see "New round button, timer"). Phones: no status line, only the spread (once
+ * revealed), as a strip right above the round actions and the deck. One panel color, no lines between the parts.
  * The spread has a fixed height: its room is kept before the reveal (hidden = invisible), the bars
  * grow inside a fixed area, count and value have their rows. Nothing moves when values change. */
 .round-status { display: none; }
@@ -2175,7 +2176,7 @@ div#cbox {
     color: var(--text);
 }
 
-/* one column per deck card: the count, the stacked bar (one segment per vote, --votes), the value;
+/* one column per deck card: the count, the bar (a stack of blocks, one per vote), the value;
  * the pointer below them */
 .spread-chart {
     position: relative; /* anchor of the pointer */
@@ -2209,9 +2210,12 @@ div#cbox {
     color: var(--muted);
 }
 
-/* the bar: one segment per vote (.spread-seg, set by updateSide() in script.js), stacked from the
- * bottom; the most chosen card (--top votes) fills --spread-h. New votes grow in, removed ones
- * shrink out (in, out), and all segments follow when --top changes. No votes: a thin line. */
+/* the bar: a stack of blocks, one per vote (.spread-seg, set by updateSide() in script.js), from
+ * the bottom. A block's height is fixed for the round: --spread-h shared by the players on the
+ * board (--voters), less the 2px gap above each block, at least 2px; with very many players the
+ * bar is capped at --spread-h. So a block never changes when another bar grows; votes fade whole
+ * blocks in and out (in, out; one after another via transition-delay from script.js). Only when
+ * players join or leave do the blocks glide to their new height. No votes: a thin line. */
 .spread-bar {
     flex: none;
     display: flex;
@@ -2220,21 +2224,23 @@ div#cbox {
     width: 72%;
     max-width: 22px;
     min-height: 1px;
+    max-height: var(--spread-h);
+    overflow: hidden;
 }
 
 .spread-seg {
     flex: none;
-    height: calc(var(--spread-h) / var(--top, 1));
-    /* a 2px gap above each vote */
-    background: linear-gradient(to bottom, transparent 2px, var(--bar) 2px);
-    transition: height 0.5s ease-out;
+    height: max(2px, calc(var(--spread-h) / var(--voters, 1) - 2px));
+    margin-top: 2px;
+    background: var(--bar);
+    transition: opacity 0.15s ease-out, height 0.4s ease-out;
 }
 
 .spread-seg.in,
-.spread-seg.out { height: 0; }
+.spread-seg.out { opacity: 0; }
 
-/* a resize (e.g. the breakpoint to phones) changes --spread-h: the bars jump to it, only votes
- * animate (no-anim, set by handleResize() in script.js) */
+/* a resize (e.g. the breakpoint to phones) changes --spread-h: the blocks jump to it (no-anim, set
+ * by handleResize() in script.js) */
 .spread.no-anim .spread-seg { transition: none; }
 
 .spread-col.zero .spread-bar { background: var(--line); }
@@ -2279,27 +2285,10 @@ div#cbox {
     .spread-index { transition: none; }
 }
 
-/* phones: while the cards are not revealed, the strip above the deck is a slim line with where
- * the round is ("// voting · 3/5 voted"); once revealed, the spread */
+/* phones: no status line (the cards on the table show who is missing); the strip above the deck
+ * is only there once the cards are revealed: the spread. Until then its room goes to the table. */
 @media (max-width: 799.98px) {
-    .round-status {
-        grid-area: side;
-        display: block;
-        min-width: 0;
-        margin: 0;
-        padding: var(--space-1) var(--space-3);
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        font-size: var(--fs-s);
-        line-height: 1.25rem;
-        text-align: left;
-        color: var(--text);
-        background: var(--bg-2);
-    }
-
-    .container:has(#spread[hidden]) > .side,
-    .container:has(#spread:not([hidden])) > .round-status { display: none; }
+    .container:has(#spread[hidden]) > .side { display: none; }
 }
 
 @media (min-width: 800px) {

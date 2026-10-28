@@ -7,9 +7,10 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer } from './helpe
  * is (#round_status), the topic and, once the cards are revealed, the spread with the average pointer
  * (board setting show_avg). The spread keeps its room before the reveal, so nothing moves. Its foot
  * is the round actions (timer above the round button); the button keeps its place when the timer
- * is switched on or off and ends level with the deck's tray; the deck is a compact tray floating
- * over the table, a gap before the column; its cards shrink to fit before it scrolls. The menu panel covers the column. Phones: the spread and
- * the round actions are a strip right above the deck. The deck is input only (no usage bars, no pointer); keys 1–9
+ * is switched on or off and ends a little (--dock-lift, 20px) above the deck tray's bottom edge; the deck is a compact tray floating
+ * over the table, a gap before the column; its cards shrink to fit before it scrolls. The menu panel covers the column. Phones: no status
+ * line; the spread (once revealed) and the round actions are a strip right above the deck. The spread's bars are stacks of
+ * blocks of a fixed height per round (bar height / players), votes fade whole blocks in and out. The deck is input only (no usage bars, no pointer); keys 1–9
  * and 0 pick a card.
  */
 const DESKTOP = { width: 1280, height: 800 };
@@ -40,7 +41,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   }).toBe(true);
 
   // the deck: a tray floating over the table, a gap before the column and the bottom edge,
-  // no line on top; the round button ends level with the tray (B-68 polish)
+  // no line on top; the round button ends 20px (--dock-lift) above the tray's bottom edge (B-68 polish)
   const tray = await box(alice, '#down-container');
   expect(tray.x + tray.width).toBeLessThanOrEqual(side.x - 8);
   expect(tray.y + tray.height).toBeLessThanOrEqual(DESKTOP.height - 8);
@@ -50,7 +51,8 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   })).toEqual(['0px', true, false]);
   const trayBottom = async () => { const b = await box(alice, '#down-container'); return b.y + b.height; };
   const btnBottom = async () => { const b = await box(alice, '#newroundbtn'); return b.y + b.height; };
-  await expect.poll(async () => Math.abs(await btnBottom() - await trayBottom())).toBeLessThan(1.5);
+  const LIFT = 20;
+  await expect.poll(async () => Math.abs(await btnBottom() + LIFT - await trayBottom())).toBeLessThan(1.5);
   // compact: hardly any room above the cards
   const cardTop = (await box(alice, '#ctl img.on >> nth=0')).y;
   expect(cardTop - (await box(alice, '#down-container')).y).toBeLessThan(16);
@@ -76,7 +78,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   expect(await box(alice, '#newroundbtn')).toEqual(btnBefore);
   const timer = await box(alice, '#timer');
   expect(timer.y + timer.height).toBeLessThanOrEqual(btnBefore.y);
-  expect(Math.abs(btnBefore.y + btnBefore.height - await trayBottom())).toBeLessThan(1.5);
+  expect(Math.abs(btnBefore.y + btnBefore.height + LIFT - await trayBottom())).toBeLessThan(1.5);
   await setTimer(alice, false);
   expect(await box(alice, '#newroundbtn')).toEqual(btnBefore);
 
@@ -90,7 +92,13 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   const five = alice.locator('#spread_bars [data-card="five001"]');
   await expect(five.locator('.spread-count')).toHaveText('2');
   await expect(five).toHaveClass(/top/);
-  await expect(five.locator('.spread-seg:not(.out)')).toHaveCount(2); // one segment per vote
+  await expect(five.locator('.spread-seg:not(.out)')).toHaveCount(2); // one block per vote
+  // a block: the bar height (64px) shared by the 2 players, less the 2px gap; built up from the
+  // bottom (the lower block first; in DOM order the top one comes first)
+  await expect.poll(() => five.locator('.spread-seg').evaluateAll(segs =>
+    segs.map(seg => Math.round(seg.getBoundingClientRect().height)))).toEqual([30, 30]);
+  expect(await five.locator('.spread-seg').evaluateAll(segs =>
+    segs.map(seg => (seg as HTMLElement).style.transitionDelay))).toEqual(['70ms, 0s', '0ms, 0s']);
   await expect(five.locator('.spread-value')).toHaveText('5');
   await expect(alice.locator('#spread_bars [data-card="1pnt501"] .spread-value')).toHaveText('½'); // cards.json symbol
   await expect(alice.locator('#spread_bars [data-card="three01"] .spread-count')).toHaveText('');
@@ -121,7 +129,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   await alice.keyboard.press('Escape');
 
   // still the column at 820px, narrower (300-380px); all 15 cards fit without scrolling (they
-  // shrink), the button stays level with the tray
+  // shrink), the button stays 20px above the tray's bottom edge
   await alice.setViewportSize({ width: 820, height: 800 });
   await expect(status).toBeVisible();
   const narrowSide = await box(alice, '.side');
@@ -129,11 +137,11 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   expect(narrowSide.width).toBeLessThan(380);
   expect(Math.round(narrowSide.x + narrowSide.width)).toBe(820);
   await expect.poll(() => alice.locator('#ctl').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-  await expect.poll(async () => Math.abs(await btnBottom() - await trayBottom())).toBeLessThan(1.5);
+  await expect.poll(async () => Math.abs(await btnBottom() + LIFT - await trayBottom())).toBeLessThan(1.5);
 
   // phones: no status, the topic strip below the header, the spread and the round actions right
   // above the deck
-  // the bars jump to the phones' height on the resize, only votes animate (2 votes of 2: 34px)
+  // the blocks jump to the phones' height on the resize, only votes animate (2 votes of 2: 34px)
   await alice.setViewportSize({ width: 390, height: 844 });
   expect(await five.locator('.spread-bar').evaluate(bar => new Promise<number>(resolve =>
     requestAnimationFrame(() => resolve(bar.getBoundingClientRect().height))))).toBeCloseTo(34, 0);
@@ -147,14 +155,13 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   expect(Math.abs(dock.y + dock.height - deck.y)).toBeLessThan(1);
   await expect(status).toBeHidden();
 
-  // phones, before the reveal: a slim strip with where the round is instead of the spread
+  // phones, before the reveal: no strip at all (no status line), the table reaches the dock
   await alice.locator('#newroundbtn').click();
-  await expect(status).toBeVisible();
-  await expect(status).toHaveText('voting · 0/2 voted');
+  await expect(alice.locator('#spread')).toBeHidden();
   await expect(alice.locator('.side')).toBeHidden();
-  const line = await box(alice, '#round_status');
-  expect(line.height).toBeLessThan(40);
-  expect(Math.abs(line.y + line.height - (await box(alice, '.dock')).y)).toBeLessThan(1);
+  await expect(status).toBeHidden();
+  const tableBox = await box(alice, '#table');
+  expect(Math.abs(tableBox.y + tableBox.height - (await box(alice, '.dock')).y)).toBeLessThan(1);
   await pickCard(alice, 'five001');
   await pickCard(bob, 'three01');
   await expect(alice.locator('#spread')).toBeVisible();

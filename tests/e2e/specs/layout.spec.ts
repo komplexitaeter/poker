@@ -5,8 +5,8 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWi
 /**
  * B-46: The board is one screen-high grid. Only the table scrolls, the deck stays at the bottom.
  * B-68: large screens (from 800px) have a column on the right: round status, topic, spread and at its
- * foot New Round and the timer, level with the deck (side-column.spec.ts); on phones the spread and
- * the round actions sit in a strip right above the deck.
+ * foot New Round and the timer, next to the deck (side-column.spec.ts); on phones the spread and
+ * the round actions sit in a strip right above the deck (the spread only once revealed, no status line).
  * On phones the topic is a one-line strip that unfolds with its arrow button.
  * Copy Link and the own timer switch (B-67: in the timer panel) confirm with a toast from the bottom edge (showToast);
  * the header has no hover hints any more.
@@ -150,7 +150,7 @@ test('large screen: topic in the column, New Round at its foot next to the deck 
   await expect(alice.locator('#topic_txt')).toHaveValue(topic);
   await alice.keyboard.press('Escape');
 
-  // B-66/B-68: New Round sits at the foot of the column, right of the deck and level with it
+  // B-66/B-68: New Round sits at the foot of the column, right of the deck, within its height
   await pickCard(alice, 'three01');
   await expect(alice.locator('#newroundbtn')).toBeEnabled();
   const deck = (await alice.locator('#ctl').boundingBox())!;
