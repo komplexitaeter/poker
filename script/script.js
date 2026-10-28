@@ -20,6 +20,8 @@ let gTimerInterval = null;
 let gLastShowAvg = null;
 let gUserName = null;
 let gPromoInitiated = false;
+// B-68: large screens with the right column (style.css, "Right column")
+const gSideQuery = window.matchMedia('(min-width: 1200px)');
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
@@ -591,6 +593,7 @@ function updateDom(myJson, isOnLoad) {
     updateNewRoundBtn(myJson.one_ore_more_player_ready, myJson.all_players_ready);
 
     showCardUsage(myJson.players, myJson.all_players_ready, myJson.show_avg);
+    updateSide(myJson);
 
 
     controlsDsp(myJson.player_type);
@@ -1301,6 +1304,7 @@ function handleResize() {
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
     showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
+    updateSide(gLastJson);
 }
 
 function initDisplayHandling() {
@@ -1329,14 +1333,83 @@ function initDisplayHandling() {
 
 /* B-67: large screens: the round actions (.dock) sit in the bottom right corner next to the deck;
  * when the deck and the corner (--dock-w) do not fit side by side, they move into the row above the
- * deck, as on phones (class "dock-row", style.css). The deck keeps its width in both places. */
+ * deck, as on phones (class "dock-row", style.css). The deck keeps its width in both places.
+ * B-68: from 1200px on the corner is the foot of the right column and always stays there. */
 function updateDockRow() {
     const container = document.querySelector('.container');
     const down = document.getElementById('down-container');
     const deck = document.getElementById('ctl');
     if (container === null || down === null || deck === null) return;
+    if (gSideQuery.matches) {
+        container.classList.remove('dock-row');
+        return;
+    }
     const dockW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-w')) || 0;
     container.classList.toggle('dock-row', deck.scrollWidth + dockW > down.clientWidth);
+}
+
+/* B-68: the right column (large screens, style.css "Right column"): where the round is and, once the
+ * cards are revealed, the spread. Plain text only (textContent). The spread has one bar per card in
+ * the deck (the most chosen card gets the full height), the card below it, the vote count above it;
+ * the most chosen card(s) in the accent color, from two votes on. The average pointer follows
+ * the board setting (show_avg) and is placed like the one on the deck. */
+function updateSide(json) {
+    const status = document.getElementById('round_status');
+    const spread = document.getElementById('spread');
+    if (status === null || spread === null || !json) return;
+
+    const revealed = json.all_players_ready && json.players_count > 0;
+    let text = 'waiting for players';
+    if (revealed) text = 'revealed';
+    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + '/' + json.players_count + ' voted';
+    if (status.textContent !== text) status.textContent = text;
+
+    spread.hidden = !revealed;
+    if (!revealed) return;
+
+    const bars = document.getElementById('spread_bars');
+    const deckCards = Array.from(document.querySelectorAll('#ctl img.on'));
+    const keys = deckCards.map(img => img.id).join(',');
+    if (bars.getAttribute('data-keys') !== keys) {
+        bars.replaceChildren(...deckCards.map(img => {
+            const col = document.createElement('div');
+            col.className = 'spread-col';
+            col.setAttribute('data-card', img.id);
+            const count = document.createElement('span');
+            count.className = 'spread-count';
+            const bar = document.createElement('span');
+            bar.className = 'spread-bar';
+            const card = document.createElement('img');
+            card.src = img.getAttribute('src');
+            card.alt = img.alt;
+            col.append(count, bar, card);
+            return col;
+        }));
+        bars.setAttribute('data-keys', keys);
+    }
+
+    const cardStats = calculateCardStats(json.players);
+    const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
+    Array.from(bars.children).forEach(col => {
+        const stat = cardStats[col.getAttribute('data-card')];
+        const n = stat ? stat.usageCount : 0;
+        col.style.setProperty('--usage', String(top > 0 ? n / top : 0));
+        col.classList.toggle('top', n > 1 && n === top);
+        col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
+    });
+
+    const pointer = document.getElementById('spread_index');
+    let left = null;
+    if (json.show_avg === 1 && gSideQuery.matches) {
+        left = calculateIndicatorLefPosition(cardStats,
+            key => bars.querySelector('[data-card="' + key + '"]'), pointer);
+    }
+    if (left === null) {
+        toggleStyleClass(pointer, 'hidden', 'visible');
+    } else {
+        pointer.style.left = (left - bars.getBoundingClientRect().left) + 'px';
+        toggleStyleClass(pointer, 'visible', 'hidden');
+    }
 }
 
 function calculateCardStats(players) {
@@ -1363,12 +1436,15 @@ function calculateCardStats(players) {
 
 /* Left edge of the average indicator when it points at the middle of a deck card whose left
  * edge is at left (B-49: deck cards and indicator scale with the screen). */
-function indicatorLeft(img, left) {
-    const index = document.getElementById('index');
-    return left + (img.getBoundingClientRect().width - index.getBoundingClientRect().width) / 2;
+function indicatorLeft(img, left, pointer) {
+    return left + (img.getBoundingClientRect().width - pointer.getBoundingClientRect().width) / 2;
 }
 
-function calculateIndicatorLefPosition(cardStats) {
+/* elementFor: the element the pointer points at for a card key (the deck card, B-68: or its bar in
+ * the spread of the right column); pointer: the pointer image. Viewport coordinates. */
+function calculateIndicatorLefPosition(cardStats,
+                                       elementFor = key => document.getElementById(key),
+                                       pointer = document.getElementById('index')) {
     let hasResult = false;
     let resultCnt = 0;
     let resultSum = 0;
@@ -1384,9 +1460,8 @@ function calculateIndicatorLefPosition(cardStats) {
             resultCnt += cardStats[cardKey].usageCount;
             resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
         } else if (cardConfig && cardConfig.description === "infinity") {
-            let e = document.getElementById(cardKey);
-            curPos = e.getBoundingClientRect().left;
-            returnPos = indicatorLeft(e, curPos);
+            let e = elementFor(cardKey);
+            if (e !== null) returnPos = indicatorLeft(e, e.getBoundingClientRect().left, pointer);
         }
     });
 
@@ -1403,23 +1478,23 @@ function calculateIndicatorLefPosition(cardStats) {
             let curVal = getCardConfig(img.id).numeric_value;
 
             if (curVal > avgResult) {
-                let e = document.getElementById(img.id);
+                let e = elementFor(img.id);
                 curPos = e.getBoundingClientRect().left;
 
                 let range = curVal - lastVal;
                 let relativePosition = (avgResult - lastVal) / range;
                 let newPosition = lastPos + relativePosition * (curPos - lastPos);
-                return Math.round(indicatorLeft(e, newPosition));
+                return Math.round(indicatorLeft(e, newPosition, pointer));
             }
 
             if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
-                let e = document.getElementById(img.id);
+                let e = elementFor(img.id);
                 curPos = e.getBoundingClientRect().left;
-                return indicatorLeft(e, curPos);
+                return indicatorLeft(e, curPos, pointer);
             }
 
             lastVal = curVal;
-            let e = document.getElementById(img.id);
+            let e = elementFor(img.id);
             curPos = e.getBoundingClientRect().left;
             lastPos = curPos;
         }

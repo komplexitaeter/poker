@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.40" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.41" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.25" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.23" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.24" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -74,6 +74,12 @@
         <button type="button" id="menu_btn" class="icon-btn menu-btn" data-open="index" aria-label="Menu" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
     </header>
 
+    <!-- B-68 large screens (from 1200px): the right column, always there. From the top: where the
+         round is (#round_status, set by updateSide() in script.js), the topic (.topic-bar, placed
+         in the column by style.css) and, once the cards are revealed, the spread (#spread: one bar
+         per deck card, the average pointer when the board shows it). Hidden below 1200px. -->
+    <p id="round_status" class="round-status"></p>
+
     <!-- topic: a full-width strip above the table, only while a topic is set (large screens: long
          topics scroll inside it; phones: one line that unfolds with the arrow button) -->
     <section class="topic-bar" data-expanded="false" aria-label="Topic">
@@ -82,6 +88,16 @@
         <button type="button" id="topic_toggle" class="icon-btn" aria-label="Show the whole topic" aria-expanded="false" aria-controls="topic" onclick="toggleTopic(event)"><svg class="i" aria-hidden="true"><use href="#i-down"/></svg></button>
         <button type="button" class="icon-btn topic-edit" data-open="topic" aria-controls="menu" aria-label="Edit topic"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
     </section>
+
+    <aside class="side" aria-label="Round result">
+        <section id="spread" class="spread" hidden>
+            <h2 class="side-label">spread</h2>
+            <div class="spread-chart">
+                <div id="spread_bars" class="spread-bars"></div>
+                <img id="spread_index" class="spread-index hidden" src="src/index.png" alt="" />
+            </div>
+        </section>
+    </aside>
 
     <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide).
          The round actions follow the cards and stick to the bottom edge when the table scrolls;

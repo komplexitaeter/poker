@@ -11,6 +11,7 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWi
  * Copy Link and the own timer switch (B-67: in the timer panel) confirm with a toast from the bottom edge (showToast);
  * the header has no hover hints any more.
  * B-51: without a topic there is no topic bar at all (the topic is set in the menu).
+ * B-68: from 1200px the topic, the round status and the spread are in a right column (side-column.spec.ts).
  */
 const SMALL = { width: 375, height: 667 };
 
@@ -35,8 +36,9 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
 
     // deck at the bottom edge, New Round visible next to it (large screens, B-66) or above it
     // (phones, stuck to the bottom of the table); polled, the heights settle only after their animations
+    // (B-68: from 1200px the deck is centered in the bottom bar, so the bar is measured)
     await expect.poll(async () => {
-      const deck = (await alice.locator('#ctl').boundingBox())!;
+      const deck = (await alice.locator('#down-container').boundingBox())!;
       return Math.round(deck.y + deck.height);
     }).toBe(viewport.height);
     await expect(alice.locator('#newroundbtn')).toBeVisible();
@@ -107,8 +109,9 @@ test('Copy Link shows a toast instead of growing the button', async ({ browser }
   await expect(toast).not.toHaveClass(/toast-on/, { timeout: 5000 });
 });
 
+// B-68: below 1200px (from 1200px the topic is in the right column, see side-column.spec.ts)
 test('large screen: topic bar above the table, New Round in the bottom right corner (B-46, B-66)', async ({ browser }) => {
-  const alice = await newPlayer(browser, { viewport: { width: 1280, height: 800 } });
+  const alice = await newPlayer(browser, { viewport: { width: 1100, height: 800 } });
   const url = await createTeam(alice, 'Layout Topic Bar');
   await addPlayersViaApi(alice, url, ['Bob']);
   await joinAsPlayer(alice, url, 'Alice');
@@ -134,7 +137,7 @@ test('large screen: topic bar above the table, New Round in the bottom right cor
   const head = (await alice.locator('header.head').boundingBox())!;
   const table = (await alice.locator('#table').boundingBox())!;
   expect(Math.round(bar.y)).toBe(Math.round(head.y + head.height));
-  expect(bar.width).toBeGreaterThanOrEqual(1270);
+  expect(bar.width).toBeGreaterThanOrEqual(1090);
   expect(Math.round(table.y)).toBe(Math.round(bar.y + bar.height));
   expect(bar.height).toBeLessThanOrEqual(800 * 0.25 + 16);
   expect(await alice.locator('#topic').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -152,7 +155,7 @@ test('large screen: topic bar above the table, New Round in the bottom right cor
   const deck = (await alice.locator('#ctl').boundingBox())!;
   const btn = (await alice.locator('#newroundbtn').boundingBox())!;
   expect(btn.x).toBeGreaterThanOrEqual(deck.x + deck.width);
-  expect(1280 - (btn.x + btn.width)).toBeLessThan(40);
+  expect(1100 - (btn.x + btn.width)).toBeLessThan(40);
   expect(btn.y).toBeGreaterThanOrEqual(deck.y);
   expect(800 - (btn.y + btn.height)).toBeLessThan(40);
 

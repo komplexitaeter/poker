@@ -151,8 +151,9 @@ test('prefers-reduced-motion: a new player changes the size without a glide (B-4
   expect(await recorded(alice)).toEqual([]);
 });
 
+// B-68: below 1200px; from 1200px the pointer is in the spread of the right column
 test('the average indicator points at the middle of the deck card (B-49)', async ({ browser }) => {
-  const alice = await newPlayer(browser, { viewport: { width: 1280, height: 800 } });
+  const alice = await newPlayer(browser, { viewport: { width: 1100, height: 800 } });
   const url = await createTeam(alice, 'Fluid Average');
   const t = new URL(url).searchParams.get('t')!;
   const res = await alice.request.post(`/api/update_show_avg.php?t=${encodeURIComponent(t)}&show_avg=1`);
@@ -174,7 +175,13 @@ test('the average indicator points at the middle of the deck card (B-49)', async
   // the usage bar scales with the deck card (custom property, no inline box-shadow)
   await expect(alice.locator('#ctl img#five001')).toHaveAttribute('style', /--usage: 1/);
 
-  // larger deck cards on a wide screen: still in the middle
+  // B-68: a wide screen: no pointer on the deck, the one in the right column points at the card's bar
   await alice.setViewportSize({ width: 1920, height: 1080 });
-  await expect.poll(offCentre).toBeLessThan(1);
+  await expect(alice.locator('#index')).toBeHidden();
+  await expect(alice.locator('#spread_index')).toHaveClass(/visible/);
+  await expect.poll(() => alice.evaluate(() => {
+    const index = document.getElementById('spread_index')!.getBoundingClientRect();
+    const bar = document.querySelector('#spread_bars [data-card="five001"]')!.getBoundingClientRect();
+    return Math.abs((index.left + index.width / 2) - (bar.left + bar.width / 2));
+  })).toBeLessThan(1);
 });
