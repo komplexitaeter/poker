@@ -79,15 +79,26 @@ test('Copy Link shows a toast instead of growing the button', async ({ browser }
 
   const toast = alice.locator('#toast');
   await expect(toast).not.toHaveClass(/toast-on/);
+  // the toast is up for 2.2 s only: watch it inside the page (every frame) instead of polling from the test,
+  // which can miss the window on a slow runner. Resolves true once it is fully inside the screen.
+  const rose = alice.evaluate(() => new Promise<boolean>((resolve) => {
+    const el = document.getElementById('toast')!;
+    const start = performance.now();
+    let seenOn = false;
+    const check = () => {
+      const on = el.classList.contains('toast-on');
+      seenOn = seenOn || on;
+      if (on && el.getBoundingClientRect().bottom <= window.innerHeight) return resolve(true);
+      if ((seenOn && !on) || performance.now() - start > 5000) return resolve(false);
+      requestAnimationFrame(check);
+    };
+    check();
+  }));
   await alice.locator('#copy_link_btn').click();
-  await expect(toast).toHaveClass(/toast-on/);
+  // inside the screen once it is up, then it drops back
+  expect(await rose).toBe(true);
   await expect(toast).toHaveText('Board link copied');
   expect(await alice.evaluate(() => navigator.clipboard.readText())).toBe(url);
-  // inside the screen once it is up, then it drops back
-  await expect.poll(async () => {
-    const box = (await toast.boundingBox())!;
-    return box.y + box.height <= 900;
-  }).toBe(true);
   await expect(toast).not.toHaveClass(/toast-on/, { timeout: 5000 });
 });
 
