@@ -1333,7 +1333,7 @@ function handleResize() {
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
-    // B-68: the spread bars jump to their new height (e.g. at the breakpoint), only votes animate
+    // B-68: the spread's blocks jump to their new height (e.g. at the breakpoint), only votes animate
     const spread = document.getElementById('spread');
     spread.classList.add('no-anim');
     updateSide(gLastJson, false);
@@ -1364,13 +1364,13 @@ function initDisplayHandling() {
 
 /* B-68: the column (style.css "Column"; large screens on the right, phones a strip above the deck):
  * where the round is and, once the cards are revealed, the spread. Plain text only (textContent).
- * The spread has one stacked bar per card in the deck (one segment per vote, the most chosen card
- * gets the full height), the vote count above it and the card's value below it (cards.json
+ * The spread has one bar per card in the deck (a stack of blocks, one per vote; a block's height
+ * follows the number of players, see style.css), the vote count above it and the card's value below it (cards.json
  * "symbol", else its description); the most chosen card(s) in the accent color, from two votes
  * on. Its room is kept before the reveal (style.css), so nothing moves. The average pointer
  * follows the board setting (show_avg).
- * The columns and segments are updated in place, so style.css can let the segments grow in and
- * shrink out and the pointer slide (glide = false: jump, e.g. on a resize). */
+ * The columns and blocks are updated in place, so style.css can let the blocks fade in and out
+ * and the pointer slide (glide = false: jump, e.g. on a resize). */
 function updateSide(json, glide = true) {
     const status = document.getElementById('round_status');
     const spread = document.getElementById('spread');
@@ -1407,6 +1407,11 @@ function updateSide(json, glide = true) {
         bars.setAttribute('data-keys', keys);
     }
 
+    // the block height is fixed per round: the bar height shared by the players on the board
+    // (style.css); only a player joining or leaving changes it
+    const voters = String(Math.max(1, json.players_count));
+    if (bars.style.getPropertyValue('--voters') !== voters) bars.style.setProperty('--voters', voters);
+
     const pointer = document.getElementById('spread_index');
     if (!revealed) {
         // empty bars, so the votes grow in on the next reveal
@@ -1417,7 +1422,6 @@ function updateSide(json, glide = true) {
 
     const cardStats = calculateCardStats(json.players);
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
-    bars.style.setProperty('--top', String(Math.max(1, top)));
     const chosen = [];
     const grown = [];
     Array.from(bars.children).forEach(col => {
@@ -1431,7 +1435,7 @@ function updateSide(json, glide = true) {
         if (n > 0 && config && config.numeric_value != null) chosen.push(col.querySelector('.spread-value').textContent);
     });
     if (grown.length > 0) {
-        void bars.offsetHeight; // the new segments start at height 0 (class "in"), then grow
+        void bars.offsetHeight; // the new blocks start invisible (class "in"), then fade in
         grown.forEach(seg => seg.classList.remove('in'));
     }
 
@@ -1463,21 +1467,41 @@ function updateSide(json, glide = true) {
     }
 }
 
-/* B-68: n segments (one per vote) in a bar of the spread. New ones are added on top with the
- * class "in" (height 0) and returned, the caller removes it so they grow; removed ones shrink
- * out (class "out") and leave the DOM afterwards. */
+/* B-68: n blocks (one per vote) in a bar of the spread. New ones are added on top with the class
+ * "in" (invisible) and returned, the caller removes it so they fade in; removed ones fade out from
+ * the top (class "out") and leave the DOM afterwards. Several at once go one after another: a
+ * growing bar builds up from the bottom, a shrinking one fades out from the top. No motion with
+ * prefers-reduced-motion or on a resize (no-anim). */
+const SPREAD_STEP_MS = 70;
+const SPREAD_FADE_MS = 150;
+
 function setSpreadSegments(bar, n) {
-    const segs = Array.from(bar.querySelectorAll('.spread-seg:not(.out)'));
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        || bar.closest('.no-anim') !== null;
+    let segs = Array.from(bar.querySelectorAll('.spread-seg:not(.out)'));
     const added = [];
-    for (let i = segs.length; i < n; i++) {
-        const seg = document.createElement('span');
-        seg.className = 'spread-seg in';
-        bar.prepend(seg);
-        added.push(seg);
+    if (segs.length < n) {
+        // blocks still fading out sit on top: drop them, the new ones go there
+        bar.querySelectorAll('.spread-seg.out').forEach(seg => seg.remove());
+        for (let i = segs.length; i < n; i++) {
+            const seg = document.createElement('span');
+            seg.className = 'spread-seg in';
+            // the delay only for the fade, not for the height (players joining or leaving)
+            if (!still) seg.style.transitionDelay = ((i - segs.length) * SPREAD_STEP_MS) + 'ms, 0s';
+            bar.prepend(seg);
+            added.push(seg);
+        }
     }
-    segs.slice(0, Math.max(0, segs.length - n)).forEach(seg => {
+    // the blocks in DOM order run from the top: the top ones go first
+    segs.slice(0, Math.max(0, segs.length - n)).forEach((seg, i) => {
+        if (still) {
+            seg.remove();
+            return;
+        }
+        const delay = i * SPREAD_STEP_MS;
+        seg.style.transitionDelay = delay + 'ms, 0s';
         seg.classList.add('out');
-        setTimeout(() => seg.remove(), 600);
+        setTimeout(() => seg.remove(), delay + SPREAD_FADE_MS + 50);
     });
     return added;
 }

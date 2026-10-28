@@ -49,11 +49,12 @@ const tableOverflow = (page: Page) => page.evaluate(() => {
   return table.scrollHeight - table.clientHeight;
 });
 
-// --card-min 64px: measured maximum without scrolling (touch, after a vote); B-68: the spread strip above
-// the deck takes its room, 15 at 375x667 (20 before)
+// --card-min 64px: measured maximum without scrolling (touch, after a vote); B-68: while voting there is
+// no strip above the deck on phones (no status line), 15 at 375x667 (a 4th row of 5 misses by a few
+// pixels), 25 at 393x852
 for (const { viewport, players } of [
   { viewport: PHONE, players: 15 },
-  { viewport: { width: 393, height: 852 }, players: 20 },
+  { viewport: { width: 393, height: 852 }, players: 25 },
 ]) {
   test(`phone ${viewport.width}x${viewport.height}: ${players} players fit on the table without scrolling (B-49)`, async ({ browser }) => {
     const alice = await phoneTable(browser, viewport, players - 1, 'Fluid Phone');
