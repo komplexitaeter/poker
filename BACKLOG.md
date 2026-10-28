@@ -997,14 +997,15 @@ Andreas (2026-10-28): Passen die Karten nicht in die Leiste, scrollt sie waagere
 (besonders auf Mobile), und man versteht nicht, dass man scrollen soll. Idee: am linken bzw. rechten Rand bei Bedarf
 eine schlanke `<`- bzw. `>`-Leiste, die zeigt, dass es weitergeht; Scrollleiste ausblenden, Wischen und Mausrad
 bleiben. Entschieden (Andreas, 2026-10-28): Die Leisten sind nur Hinweis, **kein Klick-Blättern**. Tasten 1–9/0 holen
-eine Karte außerhalb des sichtbaren Bereichs ins Bild. Status: refined.
+eine Karte außerhalb des sichtbaren Bereichs ins Bild. Status: auf `release` (#77), Test auf Staging offen.
 
 ### B-70 Tipps in der rechten Spalte: was jetzt zu tun ist
 Andreas (2026-10-28), aus der Team-Runde zu B-68: Unter dem Status (und unter dem Spread) ein kurzer Tipp für den
 aktuellen Spieler, wie im Mockup. Allein am Board → Board-Link kopieren und Team einladen; noch nicht gewählt → Karte
 wählen, Ergebnis kommt, sobald alle gewählt haben; gewählt → warten auf (Namen); aufgedeckt → niedrigste und höchste
 Karte (Namen) erklären ihre Wahl; alle gleich → neue Runde. Texte englisch, Ausgabe nur per `textContent`. Erst
-Desktop, Phones später. „Da kommt später noch mehr hin.“ Status: in Umsetzung (Fred).
+Desktop, Phones später. „Da kommt später noch mehr hin.“ Form wie im Mockup: „Let them explain: **Chris (2)** and
+**Emil (20)**“. Status: auf `release` (#76), Test auf Staging offen.
 
 ### B-71 Löschen von Spielern auf Touch-Geräten
 Andreas (2026-10-28): Auf dem Handy trägt jede Spielerkarte dauerhaft einen Mülleimer – unruhig, wirkt für Neue riskant.
