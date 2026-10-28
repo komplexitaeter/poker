@@ -1066,8 +1066,11 @@ function updateTimerConfig(force = false) {
     });
     let other = document.getElementById('tmr_other');
     if (force || document.activeElement !== other) {
+        // a custom value is marked like a checked preset (data-set, style.css); a preset leaves the field empty
         other.value = preset ? '' : String(minutes);
-        other.setCustomValidity('');
+        other.placeholder = '1–240';
+        other.closest('.tmr-other').setAttribute('data-set', preset ? 'false' : 'true');
+        showTimerOtherError(false);
     }
 }
 
@@ -1095,27 +1098,70 @@ function setTimerMode(value) {
 function setTimerTimebox(minutes) {
     let other = document.getElementById('tmr_other');
     other.value = '';
-    other.setCustomValidity('');
+    other.closest('.tmr-other').setAttribute('data-set', 'false');
+    showTimerOtherError(false);
     timerAction('set_timebox', minutes).catch(() => updateDao(false));
 }
 
-/* "other: __ min": whole minutes 1..240, saved on change or Enter */
-function setTimerOther() {
+/* "other: __ min" (whole minutes 1..240). Focus empties the field for typing, Enter saves and leaves
+ * the field, Escape drops the input, leaving the field saves a valid input (an invalid one is dropped).
+ * Invalid on Enter: a short message below the field, nothing is saved, the field keeps the focus.
+ * While the field has the focus, updates from others leave it alone (updateTimerConfig). */
+function timerOtherFocus() {
+    let other = document.getElementById('tmr_other');
+    other.value = '';
+    other.placeholder = '';
+    other.closest('.tmr-other').setAttribute('data-set', 'false');
+}
+
+function timerOtherKeydown(event) {
+    let other = event.target;
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        if (saveTimerOther(true)) other.blur();
+    } else if (event.key === 'Escape') {
+        // drop the input; preventDefault keeps the menu open (initMenu ignores handled keys)
+        event.preventDefault();
+        other.value = '';
+        other.blur();
+    }
+}
+
+function timerOtherBlur() {
+    saveTimerOther(false);
+    updateTimerConfig(true);
+}
+
+function showTimerOtherError(show) {
+    let other = document.getElementById('tmr_other');
+    let error = document.getElementById('tmr_other_error');
+    if (other === null || error === null) return;
+    error.hidden = !show;
+    if (show) other.setAttribute('aria-invalid', 'true');
+    else other.removeAttribute('aria-invalid');
+}
+
+/* saves the typed minutes; returns false for an invalid input (with the message if showError) */
+function saveTimerOther(showError) {
     let other = document.getElementById('tmr_other');
     let value = other.value.trim();
-    if (value === '') return;
-    let minutes = Number(value);
-    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 240) {
-        other.setCustomValidity('Please enter 1 to 240 minutes.');
-        other.reportValidity();
-        return;
+    if (value === '' && !other.validity.badInput) {
+        showTimerOtherError(false);
+        return true;
     }
-    other.setCustomValidity('');
-    if (gTimer !== null && gTimer.timebox === minutes * 60) return;
-    document.querySelectorAll('input[name="tmr_timebox"]').forEach(radio => {
-        radio.checked = radio.value === String(minutes);
-    });
+    let minutes = Number(value);
+    if (other.validity.badInput || !/^[0-9]+$/.test(value) || minutes < 1 || minutes > 240) {
+        showTimerOtherError(showError);
+        return false;
+    }
+    showTimerOtherError(false);
+    if (gTimer === null || gTimer.timebox === minutes * 60) return true;
+    // show the new value right away (the server resets the timer, the next pull brings the rest)
+    gTimer.timebox = minutes * 60;
+    gTimerTime = 0;
+    gTimerBaseTime = new Date();
     timerAction('set_timebox', String(minutes)).catch(() => updateDao(false));
+    return true;
 }
 
 function setTimerAutoRestart(value) {

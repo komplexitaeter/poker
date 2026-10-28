@@ -1758,7 +1758,18 @@ div#cbox {
     text-align: center;
 }
 
-.tmr-other .field:invalid { border-color: var(--danger); }
+.tmr-other .field:invalid,
+.tmr-other .field[aria-invalid="true"] { border-color: var(--danger); }
+
+/* a custom timebox is marked like a checked preset (.seg input:checked + span); set by updateTimerConfig() */
+.tmr-other[data-set="true"] .field:not(:focus) {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+.tmr-other-error { color: var(--danger); margin-top: var(--space-1); }
 
 /* ---------- Card deck (bottom bar) and average indicator ---------- */
 

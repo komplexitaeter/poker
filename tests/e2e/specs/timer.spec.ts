@@ -89,6 +89,7 @@ test('timebox presets, other minutes and auto-start: the other panel follows (B-
   await alice.locator('#tmr_other').fill('241');
   await alice.locator('#tmr_other').press('Enter');
   await expect(bob.locator('#tmr_other')).toHaveValue('90');
+  await alice.keyboard.press('Escape');
 
   await radio(alice, 'tmr_auto_restart', '1').check();
   await expect(radio(bob, 'tmr_auto_restart', '1')).toBeChecked();
@@ -216,4 +217,83 @@ test('screenshots: timer off, running, time up, panel (B-67)', async ({ browser 
     await alice.context().close();
     await bob.context().close();
   }
+});
+
+test('other minutes: focus empties, Enter saves and leaves, Escape drops, marked like a preset (B-67 feedback)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Timer Other');
+  await openTimerPanel(alice);
+  await openTimerPanel(bob);
+  await radio(alice, 'tmr_visibility', '1').check();
+  await radio(alice, 'tmr_mode', 'TIMER').check();
+  await expect(display(bob)).toHaveText('T−05:00');
+  const other = alice.locator('#tmr_other');
+  const row = (page: Page) => page.locator('.tmr-other');
+  await expect(row(alice)).toHaveAttribute('data-set', 'false');
+
+  // focus: empty field, no placeholder; Enter saves and takes the focus away
+  await other.focus();
+  await expect(other).toHaveValue('');
+  await expect(other).toHaveAttribute('placeholder', '');
+  await other.pressSequentially('7');
+  await other.press('Enter');
+  await expect(other).not.toBeFocused();
+  await expect(other).toHaveValue('7');
+  await expect(alice.locator('#tmr_other_error')).toBeHidden();
+  for (const page of [alice, bob]) {
+    await expect(row(page)).toHaveAttribute('data-set', 'true'); // marked like a checked preset
+    await expect(page.locator('input[name=tmr_timebox]:checked')).toHaveCount(0);
+    await expect(display(page)).toHaveText('T−07:00');
+  }
+  // the mark looks like a checked preset (inverted)
+  const presetBg = await radio(alice, 'tmr_mode', 'TIMER').evaluate(
+    el => getComputedStyle(el.nextElementSibling as Element).backgroundColor);
+  expect(await other.evaluate(el => getComputedStyle(el).backgroundColor)).toBe(presetBg);
+
+  // invalid: message, nothing saved, the field keeps the focus; typing again hides the message
+  await other.focus();
+  await other.pressSequentially('300');
+  await other.press('Enter');
+  await expect(alice.locator('#tmr_other_error')).toBeVisible();
+  await expect(other).toBeFocused();
+  await other.press('Backspace');
+  await expect(alice.locator('#tmr_other_error')).toBeHidden();
+
+  // while Alice types, an update from Bob does not overwrite the field; Escape drops the input
+  // and the field then shows the stored value
+  await radio(bob, 'tmr_auto_restart', '1').check();
+  await expect(radio(alice, 'tmr_auto_restart', '1')).toBeChecked();
+  await expect(other).toHaveValue('30');
+  await other.press('Escape');
+  await expect(other).not.toBeFocused();
+  await expect(other).toHaveValue('7');
+  await expect(alice.locator('#menu')).toBeVisible(); // Escape in the field does not close the menu
+  await expect(display(bob)).toHaveText('T−07:00');
+
+  // a preset clears the field and its mark
+  await radio(bob, 'tmr_timebox', '15').check();
+  for (const page of [alice, bob]) {
+    await expect(radio(page, 'tmr_timebox', '15')).toBeChecked();
+    await expect(page.locator('#tmr_other')).toHaveValue('');
+    await expect(row(page)).toHaveAttribute('data-set', 'false');
+  }
+  await alice.context().close();
+  await bob.context().close();
+});
+
+test('a new timebox resets a running timer for everyone (B-67 feedback)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Timer Timebox Reset');
+  await openTimerPanel(alice);
+  await radio(alice, 'tmr_visibility', '1').check();
+  await radio(alice, 'tmr_mode', 'TIMER').check();
+  await expect(display(bob)).toHaveText('T−05:00');
+  await bob.getByRole('button', { name: 'Start timer' }).click();
+  await expect(alice.locator('#timer')).toHaveAttribute('data-state', 'running');
+
+  await radio(alice, 'tmr_timebox', '10').check();
+  for (const page of [alice, bob]) {
+    await expect(page.locator('#timer')).toHaveAttribute('data-state', 'ready');
+    await expect(display(page)).toHaveText('T−10:00');
+  }
+  await alice.context().close();
+  await bob.context().close();
 });
