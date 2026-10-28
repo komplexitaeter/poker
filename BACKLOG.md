@@ -968,6 +968,13 @@ direkt unten? Braucht Ben (Timebox je Team speichern) und Fred.
 (dann sehen alle unten rechts Timer + Pause/Reset) und Timebox-Länge festlegen. Timebox 0 bleibt erlaubt = Stoppuhr;
 das muss für den User verständlich erklärt sein. Timer an die Runde gekoppelt: „New round“ und „Cancel round“ setzen zurück und starten bei T−Timebox; Pause/Reset bleiben zusätzlich manuell (Andreas). Im Timer-Panel zusätzlich Schalter „bei jeder Runde neu starten“ an/aus – aus = Timer läuft über
 mehrere Runden, z. B. als Timebox für ein Thema oder die ganze Session (dann auch längere Timeboxen).
+**Final (Andreas, 2026-10-28, nach Screenshot-Mocks auf Basis der echten App – freigegeben zur Umsetzung):**
+Timer-Panel: Timer an/aus · Modus **Stopwatch | Timer** (nur bei Timer: Timebox-Auswahl 3/5/10/15/30/60 + eigene
+Minuten, max. 240) · „Auto-start on new round“ an/aus (New round und Cancel round setzen zurück und starten). Kein
+Erklärtext für „0 = Stoppuhr“ mehr nötig. Defaults: Timer aus, Modus Stopwatch, Auto-Start aus. Migration: Teams mit
+Timer an laufen als Stopwatch ohne Auto-Start weiter – alles wie bisher. Kopfzeile `:timer` (zwischen `:board` und
+`:you`), Stoppuhr-Schalter entfällt. Ecke unten rechts: Timer über dem Button, Play/Pause + Reset als Linien-Icons;
+„Zeit um“ = T+ in Amber, kein Ton. Kartenleiste und Spreads bleiben unverändert.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
