@@ -36,8 +36,9 @@ Datenfluss bei einer Änderung am Board:
 - `style/style.css` – ein Stylesheet, Light/Dark-Mode.
 - `api/*.php` – ein Skript pro Aktion; gemeinsame Funktionen in `api/lib.php` (`db_init()`, `validate_team()`, …).
 - `cards.json` – Kartensets und Sortierung.
-- `stats.php` – interne Nutzungsstatistik, auf beiden Servern per nginx Basic Auth geschützt (`location = /stats.php`,
-  siehe `docs/stats-basic-auth.md`). Admin-Funktionen deshalb dort (POST an `stats.php` selbst), nicht als eigene `api/`-Endpunkte.
+- `stats.php` – interne Nutzungsstatistik mit eigener Anmeldeseite (B-63): prüft gegen die htpasswd-Datei
+  `/etc/nginx/poker-stats.htpasswd` (nur bcrypt), angemeldet bleiben 30 Tage per signiertem Cookie
+  (siehe `docs/stats-basic-auth.md`). Admin-Funktionen deshalb dort (POST an `stats.php` selbst), nicht als eigene `api/`-Endpunkte.
 - `db_schema_pok.sql` – Basisschema; `db_schema_pok_inc.sql` – inkrementelle Änderungen seit dem letzten Merge;
   `db_jobs_pok.sql` – MySQL-Event-Jobs für die Statistik-Tabellen.
 - `src/` – Bilder; `src/xcf/` – GIMP-Quelldateien der Karten.
