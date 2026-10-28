@@ -50,11 +50,14 @@ test('keyboard: topic box opens with Enter, Escape closes it, timer panel by key
   await alice.locator('#overlay_delete_user').getByRole('button', { name: 'Cancel' }).click();
   await expect(alice.locator('#overlay_delete_user')).toHaveClass(/hidden/);
 
-  // B-67: :timer follows :board; Enter opens the timer panel on the checked radio ("Off"),
-  // the arrow key switches the timer on for the whole board, Escape goes back to the button
-  await alice.locator('#cset_btn').focus();
+  // B-67: :timer follows :topic (before :board); Enter opens the timer panel on the checked radio
+  // ("Off"), the arrow key switches the timer on for the whole board, Escape goes back to the button
+  await topicBtn.focus();
   await alice.keyboard.press('Tab');
   await expect(timerBtn).toBeFocused();
+  await alice.keyboard.press('Tab');
+  await expect(alice.locator('#cset_btn')).toBeFocused();
+  await timerBtn.focus();
   await alice.keyboard.press('Enter');
   await expect(alice.locator('#timer_box')).toBeVisible();
   await expect(timerBtn).toHaveAttribute('aria-expanded', 'true');

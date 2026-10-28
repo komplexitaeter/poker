@@ -187,7 +187,7 @@ test('screenshots: timer off, running, time up, panel (B-67)', async ({ browser 
     const bob = await newPlayer(browser);
     await joinAsPlayer(bob, url, 'Bob');
     await pickCard(bob, 'five001');
-    await expect(alice.locator('#newroundbtn')).toBeVisible();
+    await expect(alice.locator('#newroundbtn')).toBeEnabled();
     await alice.waitForTimeout(1000);
     await shot(alice, `b67-fred-${name}-timer-off`);
 

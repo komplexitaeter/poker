@@ -57,7 +57,7 @@ for (const { viewport, players, rows } of [
     await joinAsPlayer(alice, url, 'Alice');
     await expect(alice.locator('#cbox .c')).toHaveCount(players);
     await pickCard(alice, 'three01');
-    await expect(alice.locator('#newroundbtn')).toBeVisible();
+    await expect(alice.locator('#newroundbtn')).toBeEnabled();
     const off = await settledWidth(alice);
     expect(await alice.evaluate(() =>
       new Set(Array.from(document.querySelectorAll<HTMLElement>('#cbox .c')).map(c => c.offsetTop)).size)).toBe(rows);
@@ -95,7 +95,7 @@ test('phone: the card width ignores timer, first vote and new round (B-49)', asy
   await setTimer(alice, true);
   expect(await settledWidth(alice)).toBe(base);
   await pickCard(alice, 'three01');
-  await expect(alice.locator('#newroundbtn')).toBeVisible();
+  await expect(alice.locator('#newroundbtn')).toBeEnabled();
   expect(await settledWidth(alice)).toBe(base);
   const g = await geometry(alice);
   expect(g.cardsBottom).toBeLessThanOrEqual(g.dockTop);
@@ -106,7 +106,7 @@ test('phone: the card width ignores timer, first vote and new round (B-49)', asy
   await setTimer(alice, false);
   expect(await settledWidth(alice)).toBe(base);
   await alice.locator('#newroundbtn').click();
-  await expect(alice.locator('#newroundbtn')).toBeHidden();
+  await expect(alice.locator('#newroundbtn')).toBeDisabled(); // B-67: always there, disabled until a vote
   expect(await settledWidth(alice)).toBe(base);
 });
 

@@ -40,7 +40,7 @@ async function phoneTable(browser: Browser, viewport: { width: number; height: n
   await alice.reload();
   await expect(alice.locator('#cbox .c')).toHaveCount(others + 1);
   await pickCard(alice, 'three01');
-  await expect(alice.locator('#newroundbtn')).toBeVisible();
+  await expect(alice.locator('#newroundbtn')).toBeEnabled();
   return alice;
 }
 

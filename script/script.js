@@ -636,22 +636,13 @@ function activateJediMode(showAvg) {
 }
 
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
+    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Cancel Round")
     let newRoundBtn = document.getElementById('newroundbtn');
-
-    if (oneOreMorePlayerReady) {
-        toggleStyleClass(newRoundBtn, "display_unset", "display_none");
-        let newButtonText;
-        if (allPlayersReady) {
-            newButtonText = 'New Round';
-        } else {
-            newButtonText = 'Cancel Round';
-        }
-        if (document.getElementById('newroundbtn').value !== newButtonText) {
-            document.getElementById('newroundbtn').value = newButtonText
-        }
-    }
-    else {
-        toggleStyleClass(newRoundBtn, "display_none", "display_unset");
+    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New Round' : 'Cancel Round';
+    newRoundBtn.disabled = !oneOreMorePlayerReady;
+    newRoundBtn.classList.toggle('primary', newButtonText === 'New Round'); // all cards revealed
+    if (newRoundBtn.value !== newButtonText) {
+        newRoundBtn.value = newButtonText;
     }
 }
 
