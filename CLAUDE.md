@@ -215,5 +215,7 @@ Regel: Reviewt wird immer von einem anderen Agenten als dem Autor.
   HTML-Antworten. In SQL nur über Prepared Statements.
 - Freitext in URLs im Frontend immer mit `encodeURIComponent()`.
 - Nach Änderungen an JS-Dateien die Versionsnummer im Script-Tag (`?v=…`) in `board.html`/`init.html` erhöhen.
+  Nach Änderungen an `cards.json` die Versionsnummer in `loadCardConfig()` (`./cards.json?v=…`, `script/script.js`) erhöhen
+  (Safari hält die Datei sonst im Cache).
 - CI schlägt fehl, wenn ein Testlauf `PHP Deprecated` oder `PHP Warning` ins PHP-Log schreibt.
 - Frontend ohne Framework und ohne Build; neue Dateien direkt in `board.html`/`init.html` einbinden.
