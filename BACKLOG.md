@@ -1091,6 +1091,12 @@ für sich):
   Werte → sonst lange Namenslisten). Kontrollkarten (Kaffee, ?, !) bleiben dabei neutral. Sonst wie bisher niedrigste/
   höchste Karte. Status: auf `release` (#87). Ergänzt: ohne Zahlen-Spanne (nur ∞/✋) ebenfalls „Talk about the cards you chose.“
 
+Ergänzung (Andreas, 2026-10-29, noch in Rollout 2): Wer **?** oder **!** gewählt hat, steht mit Namen in „Let them
+explain“ (außer Anonym-Modus), z. B. „Let them explain: Andreas, Paul (3), Petra (8), Hannes, Maria (?), Jogi (!)“; ohne
+Zahlen-Spanne nur „Let them explain: Maria (?), Jogi (!)“; bei Ampel/Emoticons „Talk about the cards you chose – Maria
+(?), Jogi (!) first.“ Hat jemand **☕** gewählt, kommt „Maybe take a short break.“ dazu (auch anonym); haben alle die
+Tasse genommen, steht nur dieser Satz. Status: in Umsetzung (Fred).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
