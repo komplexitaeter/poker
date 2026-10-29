@@ -1075,6 +1075,12 @@ also auch in der schwebenden Leiste. Dazu: Abstufung an der Leistenbreite statt 
 44 px, Leiste höher (Mittelkarte, Punkte, Hinweiszeile), Knopf/Timer gehen mit. Überzeugt es nicht, bleibt das iPad
 bei der normalen Leiste (Variante 1). Status: in Umsetzung (Delia).
 
+### B-78 Hinweis „Gerät drehen“ bei Handys quer
+Andreas (2026-10-29), iPhone 12 mini: Hochformat geht gut, quer muss man fast überall scrollen. Ein halbtransparentes
+Overlay mit Dreh-Icon bittet darum, das Gerät zu drehen – nur wenn (1) es ein drehbares Touch-Gerät ist (nicht
+Desktop), (2) es quer gehalten wird und (3) die Höhe so knapp ist, dass Querformat keinen Sinn ergibt. Tablets nicht.
+Status: in Umsetzung (Delia).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
