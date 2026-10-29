@@ -1095,7 +1095,7 @@ Ergänzung (Andreas, 2026-10-29, noch in Rollout 2): Wer **?** oder **!** gewäh
 explain“ (außer Anonym-Modus), z. B. „Let them explain: Andreas, Paul (3), Petra (8), Hannes, Maria (?), Jogi (!)“; ohne
 Zahlen-Spanne nur „Let them explain: Maria (?), Jogi (!)“; bei Ampel/Emoticons „Talk about the cards you chose – Maria
 (?), Jogi (!) first.“ Hat jemand **☕** gewählt, kommt „Maybe take a short break.“ dazu (auch anonym); haben alle die
-Tasse genommen, steht nur dieser Satz. Status: in Umsetzung (Fred).
+Tasse genommen, steht nur dieser Satz. Status: auf `release` (#88).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
