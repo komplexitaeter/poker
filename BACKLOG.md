@@ -1044,6 +1044,16 @@ state“), vermutlich Race zwischen Klick und Neu-Rendern nach `pull`. Robust ma
 Andreas (2026-10-29): Ist ein Overlay-Menü offen (Side-Panel), soll ein Klick irgendwo außerhalb es schließen. Status:
 in Umsetzung (Fred).
 
+### B-75 Kartenleiste auf dem Handy als Karussell
+Andreas (2026-10-29): Auf dem Handy statt Scrollleiste bzw. `<`/`>`-Leisten (B-69) ein Karussell – „ein Highlight für
+mobile“. Desktop bleibt wie B-69. Prototyp: https://claude.ai/artifact/81tkhDGzDCUYKnGymAaNgT (Delia). Entscheidungen:
+Karte in der Mitte größer (alle Karten vertikal zentriert), Positionsanzeige als Punkte ○○⦿○ (Tipp springt), Antippen
+wählt sofort, Einrasten eine Karte pro Wisch (`scroll-snap-stop: always`), Haptik an (nur Android), kein Ton. Wischen
+und Wählen strikt getrennt (Wischen wählt nie, ein Tipp, der nur den Schwung stoppt, wählt nicht; „gewählt“ sieht anders
+aus als „in der Mitte“). Das Element sitzt immer unten am Bildschirm und rutscht nie unter den unteren Rand – die
+Unterkante am iPhone ist für System-Wischgesten empfindlich (Safe Area, Abstand zum Home-Indikator). Status: in
+Umsetzung (Delia).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
