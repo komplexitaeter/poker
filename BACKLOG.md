@@ -1002,8 +1002,9 @@ Andreas (2026-10-28), nach Team-Runde zu den Controls unten rechts; Umsetzung fr
 Andreas (2026-10-28): Passen die Karten nicht in die Leiste, scrollt sie waagerecht. Die Scrollleiste ist unschön
 (besonders auf Mobile), und man versteht nicht, dass man scrollen soll. Idee: am linken bzw. rechten Rand bei Bedarf
 eine schlanke `<`- bzw. `>`-Leiste, die zeigt, dass es weitergeht; Scrollleiste ausblenden, Wischen und Mausrad
-bleiben. Entschieden (Andreas, 2026-10-28): Die Leisten sind nur Hinweis, **kein Klick-Blättern**. Tasten 1–9/0 holen
-eine Karte außerhalb des sichtbaren Bereichs ins Bild. Status: auf `release` (#77), Test auf Staging offen.
+bleiben. Entschieden (Andreas, 2026-10-28): Die Leisten sind nur Hinweis, kein Klick-Blättern. **Geändert (Andreas,
+2026-10-29): Die Leisten sind doch klickbar** – Klick/Tipp blättert um etwa eine sichtbare Breite minus eine Karte
+(Buttons ohne Tab-Stopp). Tasten 1–9/0 holen eine Karte außerhalb des sichtbaren Bereichs ins Bild. Status: auf `release` (#77), Test auf Staging offen.
 
 ### B-70 Tipps in der rechten Spalte: was jetzt zu tun ist
 Andreas (2026-10-28), aus der Team-Runde zu B-68: Unter dem Status (und unter dem Spread) ein kurzer Tipp für den

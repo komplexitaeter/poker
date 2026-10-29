@@ -1887,9 +1887,10 @@ div#cbox {
 .controls::-webkit-scrollbar { display: none; }
 
 /* B-69: a chevron bar at the edge of the deck where more cards are hidden (more-left, more-right on
- * .down-container, set by updateDeckRoom() in script.js). Hints only, not clickable: a solid strip
- * a shade off the tray (darker in light, lighter in dark mode) carries the chevron, then the deck
- * fades into it. --deck-more-w is the whole bar, --deck-more-strip its solid part. */
+ * .down-container, set by updateDeckRoom() in script.js). A click / tap scrolls the deck by about
+ * one visible width (scrollDeckByBar() in script.js). A solid strip a shade off the tray (darker in
+ * light, lighter in dark mode) carries the chevron, then the deck fades into it. --deck-more-w is
+ * the whole bar, --deck-more-strip its solid part (::before, rounded like the tray). */
 .down-container {
     --deck-more-w: 34px;
     --deck-more-strip: 22px;
@@ -1903,13 +1904,33 @@ div#cbox {
     box-sizing: border-box;
     display: flex;
     align-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
     color: var(--text);
-    pointer-events: none;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    /* hidden until there is more: not clickable then, and not in the accessibility tree */
+    visibility: hidden;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, visibility 0.15s;
+}
+
+.deck-more::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--deck-more-strip);
+    border-radius: inherit;
+    background: var(--bg-4);
+    transition: background-color 0.15s;
 }
 
 .deck-more .i {
+    position: relative; /* above the strip */
     width: var(--deck-more-strip);
     height: var(--deck-more-strip);
     stroke-width: 2.5;
@@ -1918,26 +1939,47 @@ div#cbox {
 .deck-more-left {
     left: 0;
     justify-content: flex-start;
-    border-radius: inherit;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    background: linear-gradient(to right, var(--bg-4) var(--deck-more-strip), transparent);
+    background: linear-gradient(to right, var(--bg-4), transparent)
+        no-repeat var(--deck-more-strip) 0 / calc(var(--deck-more-w) - var(--deck-more-strip)) 100%;
 }
+
+.deck-more-left::before { left: 0; }
 
 .deck-more-right {
     right: 0;
     justify-content: flex-end;
-    border-radius: inherit;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-    background: linear-gradient(to left, var(--bg-4) var(--deck-more-strip), transparent);
+    background: linear-gradient(to left, var(--bg-4), transparent)
+        no-repeat 0 0 / calc(var(--deck-more-w) - var(--deck-more-strip)) 100%;
+}
+
+.deck-more-right::before { right: 0; }
+
+/* phones: the tray spans the screen and has no corners; the strip sticks up into the screen with
+ * a rounded outer top corner, and the fade runs along its top edge too */
+@media (max-width: 799px) {
+    .deck-more-left::before { border-top-left-radius: var(--radius-l); }
+    .deck-more-right::before { border-top-right-radius: var(--radius-l); }
+    .deck-more::before { box-shadow: 0 -4px 8px -2px var(--bg-4); }
 }
 
 .down-container.more-left .deck-more-left,
-.down-container.more-right .deck-more-right { opacity: 1; }
+.down-container.more-right .deck-more-right {
+    visibility: visible;
+    opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .deck-more:hover { color: var(--accent); }
+    .deck-more:hover::before { background-color: color-mix(in srgb, var(--bg-4), var(--text) 12%); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-    .deck-more { transition: none; }
+    .deck-more,
+    .deck-more::before { transition: none; }
 }
 
 .ctl-slot { display: contents; }

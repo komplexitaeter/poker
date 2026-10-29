@@ -238,6 +238,17 @@ function scrollDeckByWheel(event) {
     ctl.scrollLeft += event.deltaY * step;
 }
 
+/* B-69: a click / tap on the "<" (direction -1) or ">" (1) bar scrolls the deck by its visible
+ * width minus one card, so the card at the edge stays in view */
+function scrollDeckByBar(direction) {
+    const ctl = document.getElementById('ctl');
+    if (ctl === null) return;
+    const card = ctl.querySelector('img.on');
+    const cardWidth = card === null ? 0 : card.getBoundingClientRect().width;
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    ctl.scrollBy({ left: direction * Math.max(ctl.clientWidth - cardWidth, cardWidth), behavior });
+}
+
 /* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
  * (observers have no click handler). Not while typing, in the menu or in an overlay. */
 function pickCardByKey(event) {

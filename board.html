@@ -136,9 +136,12 @@
         <div class="controls" id="ctl">
         </div>
 
-        <!-- B-69: more cards to the left / right (chevron bars, hints only, set by updateDeckRoom() in script.js) -->
-        <span class="deck-more deck-more-left" aria-hidden="true"><svg class="i"><use href="#i-back"/></svg></span>
-        <span class="deck-more deck-more-right" aria-hidden="true"><svg class="i"><use href="#i-next"/></svg></span>
+        <!-- B-69: more cards to the left / right (chevron bars, shown by updateDeckRoom(), a click scrolls
+             the deck: scrollDeckByBar() in script.js); keyboard users have the keys 1–9/0 and scrolling -->
+        <button type="button" class="deck-more deck-more-left" tabindex="-1" aria-label="Show previous cards"
+                onclick="scrollDeckByBar(-1)"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></button>
+        <button type="button" class="deck-more deck-more-right" tabindex="-1" aria-label="Show more cards"
+                onclick="scrollDeckByBar(1)"><svg class="i" aria-hidden="true"><use href="#i-next"/></svg></button>
 
         <!-- B-68: devices with a mouse: keys 1–9 and 0 pick the first ten cards (keys under the cards) -->
         <p class="deck-hint" aria-hidden="true">keys 1–9 pick a card</p>
