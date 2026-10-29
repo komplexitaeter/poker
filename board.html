@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.50" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.51" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.27" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.35" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.36" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -135,6 +135,17 @@
 
         <div class="controls" id="ctl">
         </div>
+
+        <!-- B-75, phones: one dot per deck card below the carousel (the ring = the card in the middle,
+             filled = picked); a bar instead when the dots do not fit. Display only (no tap target),
+             built by the carousel code in script.js. -->
+        <div class="deck-dots" id="deck_dots" aria-hidden="true">
+            <div class="deck-dots-row"></div>
+            <div class="deck-bar"><span class="deck-bar-pick" hidden></span><span class="deck-bar-thumb"></span></div>
+        </div>
+        <!-- B-75, phones: what you picked ("tap to pick a card" until then; players only), set by
+             carouselFrame() in script.js (textContent) -->
+        <p class="deck-pick" id="deck_pick" aria-live="polite"></p>
 
         <!-- B-69: more cards to the left / right (chevron bars, shown by updateDeckRoom(), a click scrolls
              the deck: scrollDeckByBar() in script.js); keyboard users have the keys 1–9/0 and scrolling -->

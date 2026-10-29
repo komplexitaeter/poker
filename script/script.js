@@ -151,6 +151,7 @@ function updateSelectedC(currKey) {
             e[i].classList.remove('selected');
         }
     }
+    scheduleCarousel(); // B-75: the dot of the picked card
 }
 
 function setC(e) {
@@ -207,6 +208,7 @@ function updateDeckKeys() {
         if (i < DECK_KEYS.length) img.nextElementSibling.textContent = DECK_KEYS[i];
     });
     updateDeckRoom();
+    syncCarousel(); // B-75
 }
 
 /* B-68: the hint "keys 1–9 pick a card" sits in the row of the keys; it is hidden (class
@@ -249,6 +251,217 @@ function scrollDeckByBar(direction) {
     ctl.scrollBy({ left: direction * Math.max(ctl.clientWidth - cardWidth, cardWidth), behavior });
 }
 
+/* B-75: phones (gPhoneQuery, below 800px): the deck is a carousel (style.css "Card deck"). The card
+ * in the middle is larger, the others smaller and paler (per frame, by their distance from the
+ * middle). Below the deck one dot per card (#deck_dots, display only), or a bar when they do not fit,
+ * and a line with the picked card (#deck_pick).
+ * Tap vs. swipe: a card is only picked by a real tap (short, hardly moved, not a touch that stops
+ * a running swipe); other clicks on the deck are dropped before they reach setC(). A picked card
+ * comes to the middle. A pull from the server never moves the deck; only a changed deck (cards
+ * switched on/off) or the breakpoint centers a card again (the one in the middle, else the picked,
+ * else the middle one). Haptics (navigator.vibrate, Android) only while the user swipes. */
+const gCarousel = {
+    on: false,         // carousel layout active (phones)
+    keys: '',          // the deck's cards when last laid out
+    currentKey: null,  // card in the middle
+    raf: 0,
+    press: null,       // pointer down on the deck
+    swiping: false,    // the user's finger moved the deck (until it comes to rest)
+    tapOk: false,      // the last press on the deck was a tap
+    moved: false,      // the deck moved since it last came to rest (settle afterwards)
+    restTimer: 0,
+    lastTick: 0,
+};
+
+function carouselCards() {
+    return Array.from(document.querySelectorAll('#ctl img.on'));
+}
+
+function carouselBehavior() {
+    return prefersReducedMotion() ? 'auto' : 'smooth';
+}
+
+/* brings a deck card (img) to the middle of the deck */
+function carouselCenter(img, instant) {
+    const ctl = document.getElementById('ctl');
+    const slot = img.parentElement;
+    ctl.scrollTo({
+        left: slot.offsetLeft + slot.offsetWidth / 2 - ctl.clientWidth / 2,
+        behavior: instant ? 'auto' : carouselBehavior()
+    });
+}
+
+/* layout: called when the deck may have changed (pull, card set, resize, breakpoint) */
+function syncCarousel(recenter = false) {
+    const ctl = document.getElementById('ctl');
+    const dots = document.getElementById('deck_dots');
+    if (ctl === null || dots === null) return;
+    if (!gPhoneQuery.matches) {
+        if (gCarousel.on) { // back to the desktop deck: no traces of the carousel
+            gCarousel.on = false;
+            gCarousel.keys = '';
+            ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; });
+            ctl.querySelectorAll('.ctl-slot.settle').forEach(slot => slot.classList.remove('settle'));
+        }
+        return;
+    }
+    gCarousel.on = true;
+    const cards = carouselCards();
+    const keys = cards.map(img => img.id).join(',');
+    if (keys !== gCarousel.keys) {
+        gCarousel.keys = keys;
+        const row = dots.querySelector('.deck-dots-row');
+        row.replaceChildren(...cards.map(img => {
+            const dot = document.createElement('span');
+            dot.className = 'deck-dot';
+            return dot;
+        }));
+        recenter = true;
+    }
+    // many cards: the dots get closer; below 5px per dot the bar takes their place
+    const room = dots.clientWidth - 32; // padding of .deck-dots
+    dots.classList.toggle('as-bar', cards.length > 0 && room / cards.length < 5);
+    if (recenter && cards.length > 0) {
+        const picked = gLastJson ? gLastJson.selected_card_key : null;
+        const target = cards.find(img => img.id === gCarousel.currentKey)
+            || cards.find(img => img.id === picked)
+            || cards[Math.floor((cards.length - 1) / 2)];
+        carouselCenter(target, true);
+    }
+    carouselFrame();
+}
+
+function scheduleCarousel() {
+    if (gCarousel.on && !gCarousel.raf) gCarousel.raf = requestAnimationFrame(carouselFrame);
+}
+
+/* per frame: size and fade by the distance from the middle, dots / bar */
+function carouselFrame() {
+    gCarousel.raf = 0;
+    if (!gCarousel.on) return;
+    const ctl = document.getElementById('ctl');
+    const dots = document.getElementById('deck_dots');
+    const cards = carouselCards();
+    if (cards.length === 0) return;
+    const mid = ctl.scrollLeft + ctl.clientWidth / 2;
+    const step = cards.length > 1
+        ? cards[1].parentElement.offsetLeft - cards[0].parentElement.offsetLeft : 1;
+    let best = 0;
+    let bestDist = Infinity;
+    cards.forEach((img, i) => {
+        const slot = img.parentElement;
+        const d = Math.abs(slot.offsetLeft + slot.offsetWidth / 2 - mid) / (step || 1); // in cards
+        if (d < bestDist) { bestDist = d; best = i; }
+        const scale = Math.max(0.75, 1.25 - 0.22 * d);
+        const opacity = img.classList.contains('selected') ? 1 : Math.max(0.5, 1 - 0.14 * d);
+        img.style.transform = 'scale(' + scale.toFixed(3) + ')';
+        img.style.opacity = opacity.toFixed(3);
+    });
+    const currentKey = cards[best].id;
+    if (currentKey !== gCarousel.currentKey) {
+        gCarousel.currentKey = currentKey;
+        if (gCarousel.swiping) carouselTick();
+    }
+    let pickedIndex = -1;
+    dots.querySelectorAll('.deck-dot').forEach((dot, i) => {
+        const picked = cards[i] !== undefined && cards[i].classList.contains('selected');
+        if (picked) pickedIndex = i;
+        dot.classList.toggle('current', i === best);
+        dot.classList.toggle('picked', picked);
+    });
+    // the line below the dots: what you picked (players only; observers have no line, style.css)
+    const line = document.getElementById('deck_pick');
+    const config = pickedIndex >= 0 ? getCardConfig(cards[pickedIndex].id) : null;
+    const text = config ? 'you picked ' + (config.symbol || config.description) : 'tap to pick a card';
+    if (line !== null && line.textContent !== text) line.textContent = text;
+    if (dots.classList.contains('as-bar')) {
+        const bar = dots.querySelector('.deck-bar');
+        const thumb = dots.querySelector('.deck-bar-thumb');
+        const pick = dots.querySelector('.deck-bar-pick');
+        const max = ctl.scrollWidth - ctl.clientWidth;
+        const frac = max > 0 ? ctl.scrollLeft / max : 0;
+        const thumbW = Math.max(18, bar.clientWidth / cards.length);
+        thumb.style.width = thumbW + 'px';
+        thumb.style.transform = 'translateX(' + (frac * (bar.clientWidth - thumbW)).toFixed(1) + 'px)';
+        pick.hidden = pickedIndex < 0;
+        if (pickedIndex >= 0) pick.style.left = (pickedIndex / Math.max(1, cards.length - 1) * 100) + '%';
+    }
+}
+
+/* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */
+function carouselTick() {
+    const now = performance.now();
+    if (now - gCarousel.lastTick < 35 || typeof navigator.vibrate !== 'function') return;
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+    gCarousel.lastTick = now;
+    navigator.vibrate(5);
+}
+
+/* the deck came to rest: the card in the middle settles with a small bounce */
+function carouselRest() {
+    const moved = gCarousel.moved;
+    gCarousel.swiping = false;
+    gCarousel.moved = false;
+    if (!moved || prefersReducedMotion()) return;
+    const img = document.getElementById(gCarousel.currentKey);
+    if (img === null) return;
+    const slot = img.parentElement;
+    slot.classList.remove('settle');
+    void slot.offsetWidth; // restart the animation
+    slot.classList.add('settle');
+}
+
+function initCarousel() {
+    const ctl = document.getElementById('ctl');
+    if (ctl === null) return;
+
+    ctl.addEventListener('scroll', () => {
+        if (!gCarousel.on) return;
+        if (gCarousel.press !== null) gCarousel.swiping = true;
+        gCarousel.moved = true;
+        scheduleCarousel();
+        clearTimeout(gCarousel.restTimer);
+        gCarousel.restTimer = setTimeout(carouselRest, 120); // no scrollend in iOS Safari yet
+    }, { passive: true });
+    ctl.addEventListener('animationend', event => event.target.classList.remove('settle'));
+
+    // tap vs. swipe: a press that starts while the user's swipe is still running only stops it
+    ctl.addEventListener('pointerdown', event => {
+        gCarousel.tapOk = false;
+        if (!gCarousel.on || !event.isPrimary) { gCarousel.press = null; return; }
+        gCarousel.press = { x: event.clientX, y: event.clientY, t: performance.now(), stops: gCarousel.swiping };
+    });
+    ctl.addEventListener('pointercancel', () => { // the browser took over (the finger swipes)
+        if (gCarousel.press !== null) gCarousel.swiping = true;
+        gCarousel.press = null;
+    });
+    ctl.addEventListener('pointerup', event => {
+        const p = gCarousel.press;
+        gCarousel.press = null;
+        if (p === null) return;
+        gCarousel.tapOk = !p.stops && performance.now() - p.t < 600
+            && Math.hypot(event.clientX - p.x, event.clientY - p.y) < 8;
+    });
+    // before setC() (on the card): drop clicks that were no tap; keyboard clicks (detail 0) count
+    ctl.addEventListener('click', event => {
+        if (!gCarousel.on) return;
+        const ok = event.detail === 0 || gCarousel.tapOk;
+        gCarousel.tapOk = false;
+        if (!ok) {
+            event.stopPropagation();
+            event.preventDefault();
+            return;
+        }
+        const img = event.target instanceof Element ? event.target.closest('img.on') : null;
+        if (img !== null) {
+            gCarousel.moved = true;
+            carouselCenter(img, false);
+        }
+    }, true);
+
+    gPhoneQuery.addEventListener('change', () => syncCarousel(true));
+}
+
 /* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
  * (observers have no click handler). Not while typing, in the menu or in an overlay. */
 function pickCardByKey(event) {
@@ -265,11 +478,14 @@ function pickCardByKey(event) {
     event.preventDefault();
     // B-69: a card outside the visible part of the deck comes into view, clear of the edge bars;
     // the first and the last card scroll the deck to its start / end (no bar left there)
+    // (phones: the carousel brings the clicked card to the middle itself, initCarousel(), B-75)
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     const ctl = img.closest('#ctl');
-    if (n === 0) ctl.scrollTo({ left: 0, behavior });
-    else if (n === cards.length - 1) ctl.scrollTo({ left: ctl.scrollWidth, behavior });
-    else img.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
+    if (!gCarousel.on) {
+        if (n === 0) ctl.scrollTo({ left: 0, behavior });
+        else if (n === cards.length - 1) ctl.scrollTo({ left: ctl.scrollWidth, behavior });
+        else img.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
+    }
     img.click();
 }
 
@@ -1373,10 +1589,12 @@ function handleResize() {
     void spread.offsetHeight;
     spread.classList.remove('no-anim');
     updateDeckRoom();
+    syncCarousel(true); // B-75: the card in the middle stays there
 }
 
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
+    initCarousel(); // B-75
     // B-69: the "<" / ">" bars follow the deck's scroll position; the wheel scrolls it sideways
     const ctl = document.getElementById('ctl');
     if (ctl !== null) {
