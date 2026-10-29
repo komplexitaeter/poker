@@ -1104,6 +1104,16 @@ es fehlt die Dokumentation. Kern also: kurze öffentliche Doku (Seite oder READM
 Anlege-Link `?tool=…&team=…&text=…`. Offen: Eine Änderung von außen erscheint bei offenen Boards erst beim nächsten
 `pull` (der `push` über poker-msg kommt heute nur vom Client) – reicht das, oder braucht es einen serverseitigen
 Push? Welche weiteren Endpunkte dokumentieren wir als „stabil“? Bezug zu B-52.
+Andreas (2026-10-29): Erst mit B-52 (Topics im Plural) zusammen durchdenken – eine öffentliche API ist sofort
+eine Abhängigkeit mehr. Signal an alle Clients siehe B-81.
+
+### B-81 Update-Signal vom Webserver an poker-msg
+Idee von Andreas (2026-10-29): Heute schickt nur der Browser nach einer Änderung `push` an poker-msg. Ändert der
+Server selbst etwas (z. B. B-80 per API, später Jobs), erfahren offene Boards nichts. Ein Kanal PHP-Webserver →
+poker-msg, über den PHP „Update Team-ID …“ meldet; poker-msg verteilt dann wie bisher `pull`. Varianten: MQTT o. ä.
+(eigener Broker), Redis Pub/Sub, oder schlicht ein zweiter Listener in poker-msg nur auf localhost (UDP/Unix-Socket
+im selben ReactPHP-Loop, ohne neuen Dienst). Offen: Brauchen wir Zustellgarantie/Queue, oder reicht „fire and forget“?
+
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
