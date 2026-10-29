@@ -1131,6 +1131,9 @@ Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics le
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
 Rundenhistorie wird heute schon geschrieben (`pok_roundstats_tbl`, `pok_roundstat_details_tbl`) und ließe sich je
 Topic rückwirkend anzeigen. Berührt Datenmodell/API (Ben). Erst im Mockup (Delia, B-51) zeigen, dann refinen.
+Gedanke Andreas (2026-10-29) zum Ergebnis je Topic: Ein Algorithmus schlägt einen Default vor; Tendenz erst einmal
+der höchste gelegte Wert (∞ zählt nicht – dann ist es zu groß und noch nicht final geschätzt, kein Eintrag). Das Team
+kann den Wert vor „Next Item“ selbst ändern. Details später, zusammen mit der Historisierung.
 
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
