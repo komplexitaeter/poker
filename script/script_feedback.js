@@ -203,11 +203,13 @@ function switchMenuLayout() {
     updateMenuExpanded();
 }
 
-/* B-74: true when the event did not happen in the menu, an overlay (QR, delete user, name), another dialog
- * or the toast. composedPath(): the target may be gone from the page by now (re-rendered by its handler). */
+/* B-74: true when the event did not happen in the menu, an overlay (QR, delete user, name), another dialog,
+ * the toast or the light/dark switch (Andreas: look at the open panel in the other mode). composedPath(): the
+ * target may be gone from the page by now (re-rendered by its handler). */
 function isOutsideMenu(event) {
     return !event.composedPath().some(el => el instanceof Element
-        && (el.id === 'menu' || el.id === 'toast' || el.tagName === 'DIALOG' || el.classList.contains('overlay')));
+        && (el.id === 'menu' || el.id === 'toast' || el.id === 'cmode_btn' || el.tagName === 'DIALOG'
+            || el.classList.contains('overlay')));
 }
 
 /* B-74: the last press (pointerdown) started outside the menu; a text selection dragged from the panel

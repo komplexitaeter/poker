@@ -476,6 +476,10 @@ test('large screen: a click outside the panel closes it, the click still counts 
   await alice.mouse.up();
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 
+  // the light/dark switch keeps it open (look at the panel in the other mode)
+  await alice.locator('#cmode_btn').click();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+
   // keyboard: Escape still closes it, the focus goes back to the button
   await alice.locator('#topic_txt').focus();
   await alice.keyboard.press('Escape');
