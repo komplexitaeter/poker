@@ -38,14 +38,14 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
 
   // picked: wait for the others, by name; below the status line
   await pickCard(alice, 'three01');
-  await expect(tip).toHaveText('Waiting for Bob and Cleo. The cards are revealed once everyone has voted.');
+  await expect(tip).toHaveText('Waiting for Bob and Cleo. Once everyone has voted, cards are revealed automatically.');
   await expect(tip.locator('b')).toHaveText(['Bob', 'Cleo']);
   expect(await below(alice, '#round_status', '#round_tip')).toBe(true);
 
   // more than three missing: just the number
   const [dan, eve] = await addPlayersViaApi(alice, url, ['Dan', 'Eve']);
   await alice.reload();
-  await expect(tip).toHaveText('Waiting for 4 players. The cards are revealed once everyone has voted.');
+  await expect(tip).toHaveText('Waiting for 4 players. Once everyone has voted, cards are revealed automatically.');
 
   // revealed, different cards: lowest and highest explain (infinity does not count), below the spread
   await setCard(alice, url, bob, 'three01');

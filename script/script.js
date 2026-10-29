@@ -1548,12 +1548,12 @@ function tipText(json, revealed) {
 
     if (!revealed) {
         if (json.player_type === 'PLAYER' && !json.selected_card_key) {
-            return ['Pick the card that fits best from your point of view. Once everyone has voted, you\'ll see the result.'];
+            return ['Pick the card that fits best from your point of view. Once everyone has voted, cards are revealed automatically.'];
         }
         const missing = players.filter(player => String(player.display_card_key).startsWith('prgrss'));
         if (missing.length === 0) return [];
         const who = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
-        return ['Waiting for ', ...who, '. The cards are revealed once everyone has voted.'];
+        return ['Waiting for ', ...who, '. Once everyone has voted, cards are revealed automatically.'];
     }
 
     // lowest and highest numeric card; coffee, ?, ! and infinity do not count
