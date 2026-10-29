@@ -1068,6 +1068,13 @@ die Symbole in allen Kartenbildern vertikal zentrieren (neu exportieren). Offen:
 (über der Karte, Länge/Ellipse, Anonym-Modus), alle Kartensets aus `cards.json` betroffen, Cache-Busting der Bilder,
 Auswirkung auf Kartengröße am Tisch (B-49). Beteiligt: Delia (Gestaltung, Bilder), Fred (Tisch-Rendering).
 
+### B-77 Karussell auf allen Touch-Geräten (auch iPad, schwebende Leiste)
+Andreas (2026-10-29): Auf dem iPad (≥ 800 px, Desktop-Layout) kommt bisher kein Karussell; die Karten der Leiste
+schrumpfen bis 26 px – mit dem Finger fummelig. Entscheidung: **Touch → immer Karussell**, unabhängig von der Breite,
+also auch in der schwebenden Leiste. Dazu: Abstufung an der Leistenbreite statt pro Karte, Karten auf Touch mind. ca.
+44 px, Leiste höher (Mittelkarte, Punkte, Hinweiszeile), Knopf/Timer gehen mit. Überzeugt es nicht, bleibt das iPad
+bei der normalen Leiste (Variante 1). Status: in Umsetzung (Delia).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
