@@ -8,7 +8,8 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
  * scrolls the deck that way. Keys 1–9 and 0 bring a hidden card into view.
  * B-75 (touch phones): the deck is a carousel instead: no bars, the card in the middle larger, dots below
  * (display only), a tap picks and centers a card, a swipe never picks. A narrow window with a mouse
- * keeps the deck row with the bars (Andreas, 2026-10-29).
+ * keeps the deck row with the bars (Andreas, 2026-10-29). B-77: touch at any width (tablets: the
+ * floating tray), the falloff relative to the tray's width.
  */
 const PHONE = { width: 390, height: 844 };
 const NARROW = { width: 1000, height: 800 }; // large screen layout, 46 cards overflow the tray
@@ -181,7 +182,7 @@ test('narrow window with a mouse: no carousel, the edge bars scroll the deck, ke
   await alice.context().close();
 });
 
-test('touch device: the carousel comes and goes with the width, no traces left on the deck row (B-75)', async ({ browser }) => {
+test('touch device: the carousel stays at any width, no traces left when a mouse takes over (B-75, B-77)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Switch');
   setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
@@ -191,14 +192,37 @@ test('touch device: the carousel comes and goes with the width, no traces left o
   await expect(alice.locator('#deck_dots .deck-dot')).toHaveCount(11);
   expect(await cards.nth(0).evaluate(img => img.style.transform)).not.toBe('');
 
+  // B-77: across 800px (large screen layout, the floating tray) touch keeps the carousel, a card in the middle
   await alice.setViewportSize({ width: 1000, height: 800 });
-  await expect(alice.locator('#deck_dots')).toBeHidden();
-  await expect.poll(() => cards.evaluateAll(imgs => imgs.every(i => i.style.transform === '' && i.style.opacity === ''))).toBe(true);
+  await expect(alice.locator('#deck_dots')).toBeVisible();
+  await expect(alice.locator('#deck_dots .deck-dot.current')).toHaveCount(1);
+  await expect(alice.locator('.deck-more-right')).toBeHidden();
+  expect(await offCenterOfCurrent(alice)).toBeLessThanOrEqual(1);
 
   await alice.setViewportSize(PHONE);
   await expect(alice.locator('#deck_dots')).toBeVisible();
   await expect(alice.locator('#deck_dots .deck-dot.current')).toHaveCount(1);
+  expect(await offCenterOfCurrent(alice)).toBeLessThanOrEqual(1);
+
+  // a mouse takes over (touch emulation off: hover / fine pointer): the deck row, no traces of the carousel
+  const cdp = await alice.context().newCDPSession(alice);
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await expect(alice.locator('#deck_dots')).toBeHidden();
+  await expect.poll(() => cards.evaluateAll(imgs => imgs.every(i => i.style.transform === '' && i.style.opacity === ''))).toBe(true);
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await expect(alice.locator('#deck_dots')).toBeVisible();
+  await expect(alice.locator('#deck_dots .deck-dot.current')).toHaveCount(1);
+  await cdp.detach();
   await alice.context().close();
+});
+
+/** distance of the card in the middle (its dot is the ring) from the middle of the deck, in px */
+const offCenterOfCurrent = (page: Page) => page.evaluate(() => {
+  const ctl = document.getElementById('ctl')!;
+  const i = Array.from(document.querySelectorAll('#deck_dots .deck-dot')).findIndex(d => d.classList.contains('current'));
+  const slot = (ctl.querySelectorAll('img.on')[i] as HTMLElement).parentElement!.getBoundingClientRect();
+  const deck = ctl.getBoundingClientRect();
+  return Math.abs(slot.left + slot.width / 2 - (deck.left + deck.width / 2));
 });
 
 /** a horizontal finger swipe over the deck (real touch events, the browser scrolls natively) */
@@ -338,3 +362,73 @@ test('phone deck: a tap on a card further out brings it exactly to the middle, n
   await expect(alice.locator('#ctl .settle')).toHaveCount(0);
   await alice.context().close();
 });
+
+/** B-77: the column's round button and the floating tray (large screens): the button ends a little above the tray */
+async function expectDockAligned(page: Page) {
+  const tray = (await page.locator('#down-container').boundingBox())!;
+  const btn = (await page.locator('#newroundbtn').boundingBox())!;
+  const lift = tray.y + tray.height - (btn.y + btn.height);
+  expect(lift).toBeGreaterThanOrEqual(12);
+  expect(lift).toBeLessThanOrEqual(28);
+  expect(btn.x).toBeGreaterThan(tray.x + tray.width); // in the column, right of the tray
+}
+
+for (const [name, viewport] of [['portrait', { width: 820, height: 1180 }], ['landscape', { width: 1180, height: 820 }]] as const) {
+  test(`tablet ${name}: the carousel in the floating tray, a tap picks and centers, the column's button aligned (B-77)`, async ({ browser }) => {
+    const alice = await newPlayer(browser, { viewport, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+    const url = await createTeam(alice, `Deck Tablet ${name}`);
+    setDeck(new URL(url).searchParams.get('t')!, ALL.slice(0, 17).filter(i => i !== 1));
+    await joinAsPlayer(alice, url, 'Alice');
+    const cards = alice.locator('#ctl img.on');
+    await expect(cards).toHaveCount(16);
+    const tray = alice.locator('#down-container');
+
+    // large screen layout (the column on the right), the deck a carousel: dots, the line, no edge bars, no key hint
+    await expect(alice.locator('#newroundbtn')).toBeVisible();
+    await expect(alice.locator('#deck_dots .deck-dot')).toHaveCount(16);
+    await expect(alice.locator('#deck_dots .deck-dot.current')).toHaveCount(1);
+    await expect(alice.locator('#deck_pick')).toHaveText('tap to pick a card');
+    await expect(alice.locator('.deck-more-left')).toBeHidden();
+    await expect(alice.locator('.deck-more-right')).toBeHidden();
+    await expect(alice.locator('.deck-hint')).toBeHidden();
+
+    // the cards stay a comfortable size: every card within half the tray at least 44px wide, the middle one larger
+    const widths = await alice.evaluate(() => {
+      const ctl = document.getElementById('ctl')!;
+      const deck = ctl.getBoundingClientRect();
+      const mid = deck.left + deck.width / 2;
+      return Array.from(ctl.querySelectorAll('img.on')).map(img => {
+        const r = img.getBoundingClientRect();
+        return { d: Math.abs(r.left + r.width / 2 - mid), w: r.width, half: deck.width / 2 };
+      });
+    });
+    const middle = widths.reduce((a, b) => (b.d < a.d ? b : a));
+    expect(middle.w).toBeGreaterThanOrEqual(60);
+    widths.filter(c => c !== middle && c.d < c.half / 2).forEach(c => {
+      expect(c.w).toBeGreaterThanOrEqual(44);
+      expect(c.w).toBeLessThan(middle.w);
+    });
+    await expectDockAligned(alice);
+
+    // a tap picks a card further out and brings it to the middle; the tray keeps its height
+    const height = (await tray.boundingBox())!.height;
+    const target = cards.nth(9);
+    await target.tap();
+    await expect(target).toHaveClass(/selected/);
+    await expect.poll(() => offCenterOfCurrent(alice)).toBeLessThanOrEqual(1);
+    await expect(alice.locator('#deck_dots .deck-dot').nth(9)).toHaveClass(/current/);
+    await expect(alice.locator('#deck_dots .deck-dot').nth(9)).toHaveClass(/picked/);
+    await expect(alice.locator('#deck_pick')).toHaveText(/^you picked \S+/);
+    expect((await tray.boundingBox())!.height).toBe(height);
+
+    // the timer comes: the button stays where it is
+    const btn = (await alice.locator('#newroundbtn').boundingBox())!;
+    execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
+      `update pok_teams_tbl set timer_visibility=1 where id='${new URL(url).searchParams.get('t')}'`]);
+    await alice.evaluate('updateDao(false)');
+    await expect(alice.locator('#timer')).toBeVisible();
+    expect(await alice.locator('#newroundbtn').boundingBox()).toEqual(btn);
+    await expectDockAligned(alice);
+    await alice.context().close();
+  });
+}
