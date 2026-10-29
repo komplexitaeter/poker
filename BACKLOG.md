@@ -1089,7 +1089,7 @@ für sich):
   see.“), keine Ansage, wer erklären soll. Sind unter den tatsächlich gewählten Karten Emoticons oder Ampel-Karten
   (neues Flag in `cards.json`), allgemein „Talk about the cards you chose.“ (Emoticons haben keine Range, Ampel nur 3
   Werte → sonst lange Namenslisten). Kontrollkarten (Kaffee, ?, !) bleiben dabei neutral. Sonst wie bisher niedrigste/
-  höchste Karte. Status: in Umsetzung (Fred).
+  höchste Karte. Status: auf `release` (#87). Ergänzt: ohne Zahlen-Spanne (nur ∞/✋) ebenfalls „Talk about the cards you chose.“
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
