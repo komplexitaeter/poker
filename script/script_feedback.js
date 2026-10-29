@@ -5,6 +5,9 @@ let gTopicChangePending = false;
  * table does not close it. Phones (breakpoint as in style.css): a modal bottom sheet (showModal()) that
  * starts at the index (#menu_btn) and has a back button. Openers carry data-open="<section>", the close
  * button data-close (one delegated click listener below).
+ * B-74: a click outside the side panel closes it (like Escape) and still does what it does there (pick a
+ * card, another header button switches the section). Not for clicks in overlays (QR, delete user, name)
+ * or on the toast.
  * Per section: the header button (aria-expanded), the field focused when the user opens it, analytics. */
 const gMenuSections = {
     index:         {btn: 'menu_btn'},
@@ -200,9 +203,24 @@ function switchMenuLayout() {
     updateMenuExpanded();
 }
 
+/* B-74: true when the event did not happen in the menu, an overlay (QR, delete user, name), another dialog
+ * or the toast. composedPath(): the target may be gone from the page by now (re-rendered by its handler). */
+function isOutsideMenu(event) {
+    return !event.composedPath().some(el => el instanceof Element
+        && (el.id === 'menu' || el.id === 'toast' || el.tagName === 'DIALOG' || el.classList.contains('overlay')));
+}
+
+/* B-74: the last press (pointerdown) started outside the menu; a text selection dragged from the panel
+ * out to the table ends in a click on a common ancestor and must not close it */
+let gMenuPressOutside = false;
+
 function initMenu() {
     let menu = getMenu();
     if (menu === null) return;
+
+    document.addEventListener('pointerdown', function (event) {
+        gMenuPressOutside = isOutsideMenu(event);
+    }, true);
 
     document.addEventListener('click', function (event) {
         let target = event.target;
@@ -231,6 +249,15 @@ function initMenu() {
             } else {
                 openMenu(sec, opener);
             }
+            return;
+        }
+
+        // B-74: large screens: a mouse click or tap outside the panel closes it; the click goes on to its
+        // target (handled above for header buttons). No programmatic focus (no ring after a mouse click).
+        if (menu.open && !menu.matches(':modal') && event.detail > 0 && gMenuPressOutside
+            && isOutsideMenu(event)) {
+            if (menu.contains(document.activeElement)) document.activeElement.blur();
+            closeMenu(false);
             return;
         }
 
