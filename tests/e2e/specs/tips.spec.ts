@@ -47,16 +47,16 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
   await alice.reload();
   await expect(tip).toHaveText('Waiting for 4 players. Once everyone has voted, cards are revealed automatically.');
 
-  // revealed, different cards: lowest and highest explain (infinity does not count), below the spread
+  // revealed, different cards: lowest and highest explain (infinity is the highest), below the spread
   await setCard(alice, url, bob, 'three01');
   await setCard(alice, url, cleo, 'eight01');
   await setCard(alice, url, dan, 'infin01');
   await setCard(alice, url, eve, 'eight01');
   await alice.reload();
   await expect(alice.locator('#round_status')).toHaveText('revealed');
-  await expect(tip).toHaveText('Let them explain: Alice, Bob (3) and Cleo, Eve (8)');
+  await expect(tip).toHaveText('Let them explain: Alice, Bob (3) and Dan (\u221e)');
   // as in the mockup: the names stand out, the rest is muted
-  await expect(tip.locator('b')).toHaveText(['Alice, Bob (3)', 'Cleo, Eve (8)']);
+  await expect(tip.locator('b')).toHaveText(['Alice, Bob (3)', 'Dan (\u221e)']);
   await expect(alice.locator('.side > #round_tip')).toBeVisible();
   expect(await below(alice, '#spread', '#round_tip')).toBe(true);
 
@@ -118,7 +118,10 @@ test('tip after the reveal: talk about traffic lights, also in a mixed choice; c
   await vote(['qstmrk1', 'xclam01', 'break01']);
   await expect(tip).toHaveText(`Let them explain: Alice (?), Bob (!). ${BREAK}`);
 
-  // no numbers to compare (infinity, veto): talk about them
+  // no numbers to compare (veto only): talk about them
+  await vote(['veto', 'veto', 'break01']);
+  await expect(tip).toHaveText(`${TALK} ${BREAK}`);
+  // the same number next to a veto: talk about them
   await vote(['infin01', 'veto', 'break01']);
   await expect(tip).toHaveText(`${TALK} ${BREAK}`);
 });
@@ -169,4 +172,26 @@ test('tip after the reveal: ? and ! explain too, coffee suggests a break (B-79)'
   await vote(Array(6).fill('break01'));
   await expect(tip).toHaveText(BREAK);
   await expect(tip.locator('b')).toHaveCount(0);
+});
+
+test('tip and spread range after the reveal: infinity counts as the highest value (B-79)', async ({ browser }) => {
+  const { alice, vote } = await teamWithDeck(browser, 'Tips Infinity', 'Fibonacci');
+  const tip = alice.locator('#round_tip');
+  const range = alice.locator('#spread_range');
+
+  // a spread up to infinity: lowest and infinity explain
+  await vote(['three01', 'eight01', 'infin01']);
+  await expect(tip).toHaveText('Let them explain: Alice (3) and Cleo (\u221e)');
+  await expect(tip.locator('b')).toHaveText(['Alice (3)', 'Cleo (\u221e)']);
+  await expect(range).toHaveText('3 \u2013 \u221e');
+
+  // the same number next to infinity: a real spread with names
+  await vote(['five001', 'five001', 'infin01']);
+  await expect(tip).toHaveText('Let them explain: Alice, Bob (5) and Cleo (\u221e)');
+  await expect(range).toHaveText('5 \u2013 \u221e');
+
+  // everyone infinity: agreement
+  await vote(['infin01', 'infin01', 'infin01']);
+  await expect(tip).toHaveText('Everyone agrees \u2013 start a new round.');
+  await expect(range).toHaveText('\u221e');
 });
