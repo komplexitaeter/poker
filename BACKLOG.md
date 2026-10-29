@@ -1042,7 +1042,7 @@ state“), vermutlich Race zwischen Klick und Neu-Rendern nach `pull`. Robust ma
 
 ### B-74 Overlay-Menü schließt bei Klick daneben
 Andreas (2026-10-29): Ist ein Overlay-Menü offen (Side-Panel), soll ein Klick irgendwo außerhalb es schließen. Status:
-in Umsetzung (Fred).
+auf `release` (#78).
 
 ### B-75 Kartenleiste auf dem Handy als Karussell
 Andreas (2026-10-29): Auf dem Handy statt Scrollleiste bzw. `<`/`>`-Leisten (B-69) ein Karussell – „ein Highlight für
@@ -1051,8 +1051,8 @@ Karte in der Mitte größer (alle Karten vertikal zentriert), Positionsanzeige a
 wählt sofort, Einrasten eine Karte pro Wisch (`scroll-snap-stop: always`), Haptik an (nur Android), kein Ton. Wischen
 und Wählen strikt getrennt (Wischen wählt nie, ein Tipp, der nur den Schwung stoppt, wählt nicht; „gewählt“ sieht anders
 aus als „in der Mitte“). Das Element sitzt immer unten am Bildschirm und rutscht nie unter den unteren Rand – die
-Unterkante am iPhone ist für System-Wischgesten empfindlich (Safe Area, Abstand zum Home-Indikator). Status: in
-Umsetzung (Delia).
+Unterkante am iPhone ist für System-Wischgesten empfindlich (Safe Area, Abstand zum Home-Indikator). Status: auf
+`release` (#81), Test auf dem iPhone (Staging) offen.
 Idee für später (Andreas/Kai, 2026-10-29, nur notiert): Karussell auch auf Tablets (Touch ab 800 px), wenn die Karten
 sonst unter eine bequeme Tippgröße (~44 px) schrumpfen würden; mit Maus nie Karussell.
 
