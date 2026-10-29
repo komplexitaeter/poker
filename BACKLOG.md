@@ -1053,6 +1053,10 @@ und Wählen strikt getrennt (Wischen wählt nie, ein Tipp, der nur den Schwung s
 aus als „in der Mitte“). Das Element sitzt immer unten am Bildschirm und rutscht nie unter den unteren Rand – die
 Unterkante am iPhone ist für System-Wischgesten empfindlich (Safe Area, Abstand zum Home-Indikator). Status: auf
 `release` (#81), Test auf dem iPhone (Staging) offen.
+Andreas (2026-10-29): Karussell nur auf Touch-Geräten (unter 800 px **und** `(hover: none) and (pointer: coarse)`);
+schmale Fenster mit Maus/Trackpad bekommen die normale Kartenleiste mit den `<`/`>`-Leisten aus B-69 (Mausrad, Tasten
+1–9/0). Zentrieren nach dem Antippen einer Randkarte mit eigenem rAF-Tween statt nativem Smooth-Scroll (ruckelte auf
+dem iPhone). Status: Branch `feature/B-75-touch-only`.
 Idee für später (Andreas/Kai, 2026-10-29, nur notiert): Karussell auch auf Tablets (Touch ab 800 px), wenn die Karten
 sonst unter eine bequeme Tippgröße (~44 px) schrumpfen würden; mit Maus nie Karussell.
 

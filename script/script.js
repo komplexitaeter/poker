@@ -20,6 +20,9 @@ let gTimerInterval = null;
 let gLastShowAvg = null;
 // B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard)
 const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+// B-75: the deck is a carousel on touch phones only (same query as style.css "Card deck");
+// a narrow window with a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
+const gCarouselQuery = window.matchMedia('(max-width: 799.98px) and (hover: none) and (pointer: coarse)');
 let gUserName = null;
 let gPromoInitiated = false;
 
@@ -255,7 +258,7 @@ function scrollDeckByBar(direction) {
     ctl.scrollBy({ left: direction * Math.max(ctl.clientWidth - cardWidth, cardWidth), behavior });
 }
 
-/* B-75: phones (gPhoneQuery, below 800px): the deck is a carousel (style.css "Card deck"). The card
+/* B-75: touch phones (gCarouselQuery: below 800px and touch): the deck is a carousel (style.css "Card deck"). The card
  * in the middle is larger, the others smaller and paler (per frame, by their distance from the
  * middle). Below the deck one dot per card (#deck_dots, display only), or a bar when they do not fit,
  * and a line with the picked card (#deck_pick).
@@ -265,14 +268,14 @@ function scrollDeckByBar(direction) {
  * switched on/off) or the breakpoint centers a card again (the one in the middle, else the picked,
  * else the middle one). Haptics (navigator.vibrate, Android) only while the user swipes. */
 const gCarousel = {
-    on: false,         // carousel layout active (phones)
+    on: false,         // carousel layout active (touch phones)
     keys: '',          // the deck's cards when last laid out
     currentKey: null,  // card in the middle
     raf: 0,
     press: null,       // pointer down on the deck
     swiping: false,    // the user's finger moved the deck (until it comes to rest)
     tapOk: false,      // the last press on the deck was a tap
-    steer: null,       // a tap brings a card to the middle: its scroll offset (snap off until at rest)
+    tween: 0,          // a tap brings a card to the middle: rAF id of the running tween (snap off meanwhile)
     restTimer: 0,
     lastTick: 0,
 };
@@ -281,33 +284,46 @@ function carouselCards() {
     return Array.from(document.querySelectorAll('#ctl img.on'));
 }
 
-function carouselBehavior() {
-    return prefersReducedMotion() ? 'auto' : 'smooth';
-}
-
-/* brings a deck card (img) to the middle of the deck. Smooth: scroll snapping is off meanwhile
- * (.steering, style.css), or iOS stops the scroll at a snap point on the way (scroll-snap-stop);
- * carouselRest() puts the deck exactly on the card and switches snapping on again. */
+/* brings a deck card (img) to the middle of the deck. Animated by an own tween of scrollLeft
+ * (easeOutCubic, CAROUSEL_TWEEN_MS) instead of the browser's smooth scroll, which is jerky on
+ * iPhones; scroll snapping is off meanwhile (.steering, style.css), or iOS stops at a snap point
+ * on the way (scroll-snap-stop). The last frame sets the exact position, then snapping is on
+ * again. Each tween frame also lays out the carousel (carouselFrame), so the scroll events it
+ * causes do no work of their own. A finger on the deck ends the tween (pointerdown). */
+const CAROUSEL_TWEEN_MS = 250;
 function carouselCenter(img, instant) {
     const ctl = document.getElementById('ctl');
     const slot = img.parentElement;
-    const left = slot.offsetLeft + slot.offsetWidth / 2 - ctl.clientWidth / 2;
-    const behavior = instant ? 'auto' : carouselBehavior();
-    if (behavior === 'auto') {
-        carouselSteerEnd(ctl);
-        ctl.scrollTo({ left, behavior });
+    const max = ctl.scrollWidth - ctl.clientWidth;
+    const to = Math.min(max, Math.max(0, slot.offsetLeft + slot.offsetWidth / 2 - ctl.clientWidth / 2));
+    carouselSteerEnd(ctl);
+    const from = ctl.scrollLeft;
+    if (instant || prefersReducedMotion() || Math.abs(to - from) < 0.5) {
+        ctl.scrollLeft = to;
         return;
     }
-    gCarousel.steer = left;
     ctl.classList.add('steering');
-    ctl.scrollTo({ left, behavior });
-    clearTimeout(gCarousel.restTimer);
-    gCarousel.restTimer = setTimeout(carouselRest, 200); // also when the deck does not move at all
+    const start = performance.now();
+    const step = now => {
+        const p = Math.min(1, (now - start) / CAROUSEL_TWEEN_MS);
+        const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+        ctl.scrollLeft = p < 1 ? from + (to - from) * eased : to;
+        if (gCarousel.raf) { cancelAnimationFrame(gCarousel.raf); gCarousel.raf = 0; } // done here
+        carouselFrame();
+        if (p < 1) {
+            gCarousel.tween = requestAnimationFrame(step);
+        } else {
+            gCarousel.tween = 0;
+            ctl.classList.remove('steering');
+        }
+    };
+    gCarousel.tween = requestAnimationFrame(step);
 }
 
-/* ends a steered scroll: snapping on again */
+/* ends a running tween (if any): snapping on again */
 function carouselSteerEnd(ctl) {
-    gCarousel.steer = null;
+    if (gCarousel.tween) cancelAnimationFrame(gCarousel.tween);
+    gCarousel.tween = 0;
     ctl.classList.remove('steering');
 }
 
@@ -316,8 +332,8 @@ function syncCarousel(recenter = false) {
     const ctl = document.getElementById('ctl');
     const dots = document.getElementById('deck_dots');
     if (ctl === null || dots === null) return;
-    if (!gPhoneQuery.matches) {
-        if (gCarousel.on) { // back to the desktop deck: no traces of the carousel
+    if (!gCarouselQuery.matches) {
+        if (gCarousel.on) { // back to the deck row (large screen, mouse / trackpad): no traces of the carousel
             gCarousel.on = false;
             gCarousel.keys = '';
             ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; img.style.pointerEvents = ''; });
@@ -430,14 +446,9 @@ function carouselTick() {
     navigator.vibrate(5);
 }
 
-/* the deck came to rest (no scroll for 120 ms); after a steered scroll it sits exactly on the card */
+/* the deck came to rest (no scroll for 120 ms) */
 function carouselRest() {
     gCarousel.swiping = false;
-    if (gCarousel.steer === null) return;
-    const ctl = document.getElementById('ctl');
-    const left = gCarousel.steer;
-    carouselSteerEnd(ctl);
-    if (Math.abs(ctl.scrollLeft - left) > 0.5) ctl.scrollTo({ left, behavior: 'auto' });
 }
 
 function initCarousel() {
@@ -445,7 +456,7 @@ function initCarousel() {
     if (ctl === null) return;
 
     ctl.addEventListener('scroll', () => {
-        if (!gCarousel.on) return;
+        if (!gCarousel.on || gCarousel.tween) return; // the tween lays out its frames itself
         if (gCarousel.press !== null) gCarousel.swiping = true;
         scheduleCarousel();
         clearTimeout(gCarousel.restTimer);
@@ -457,7 +468,7 @@ function initCarousel() {
         gCarousel.tapOk = false;
         gCarousel.lastDown = performance.now();
         if (!gCarousel.on || !event.isPrimary) { gCarousel.press = null; return; }
-        carouselSteerEnd(ctl); // the finger takes over: snapping on again
+        carouselSteerEnd(ctl); // the finger takes over: the tween stops, snapping on again
         gCarousel.press = { x: event.clientX, y: event.clientY, t: performance.now(), stops: gCarousel.swiping };
     });
     ctl.addEventListener('pointercancel', () => { // the browser took over (the finger swipes)
@@ -490,7 +501,11 @@ function initCarousel() {
         if (img !== null) carouselCenter(img, false);
     }, true);
 
-    gPhoneQuery.addEventListener('change', () => syncCarousel(true));
+    // carousel on / off at runtime (resize, a mouse plugged in): lay out the deck anew
+    gCarouselQuery.addEventListener('change', () => {
+        syncCarousel(true);
+        updateDeckRoom();
+    });
 }
 
 /* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
@@ -509,7 +524,7 @@ function pickCardByKey(event) {
     event.preventDefault();
     // B-69: a card outside the visible part of the deck comes into view, clear of the edge bars;
     // the first and the last card scroll the deck to its start / end (no bar left there)
-    // (phones: the carousel brings the clicked card to the middle itself, initCarousel(), B-75)
+    // (touch phones: the carousel brings the clicked card to the middle itself, initCarousel(), B-75)
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     const ctl = img.closest('#ctl');
     if (!gCarousel.on) {
@@ -1638,7 +1653,8 @@ function initDisplayHandling() {
     // B-69: the "<" / ">" bars follow the deck's scroll position; the wheel scrolls it sideways
     const ctl = document.getElementById('ctl');
     if (ctl !== null) {
-        ctl.addEventListener('scroll', updateDeckRoom, { passive: true });
+        // (not on the carousel: no bars there, and its frames stay light)
+        ctl.addEventListener('scroll', () => { if (!gCarousel.on) updateDeckRoom(); }, { passive: true });
         ctl.addEventListener('wheel', scrollDeckByWheel, { passive: false });
     }
     // B-68: a deck card image that loads late widens the deck; measure again (load does not bubble)
