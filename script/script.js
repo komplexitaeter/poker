@@ -18,6 +18,8 @@ let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
 let gLastShowAvg = null;
+// B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard)
+const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 let gUserName = null;
 let gPromoInitiated = false;
 
@@ -100,7 +102,9 @@ function playerTypeUpdate(playerType, name) {
                 setTimeout(function () {
                     document.getElementById('become_player_btn').focus();
                 }, 100);
-            } else {
+            } else if (!gTouchQuery.matches) {
+                // B-75: not on touch devices: iOS opens the keyboard only for a focus inside a tap,
+                // a focus here would only show the ring (the overlay focuses the field on a tap)
                 setTimeout(function () {
                     document.getElementById('nameinput').focus();
                 }, 100);
@@ -268,7 +272,7 @@ const gCarousel = {
     press: null,       // pointer down on the deck
     swiping: false,    // the user's finger moved the deck (until it comes to rest)
     tapOk: false,      // the last press on the deck was a tap
-    moved: false,      // the deck moved since it last came to rest (settle afterwards)
+    steer: null,       // a tap brings a card to the middle: its scroll offset (snap off until at rest)
     restTimer: 0,
     lastTick: 0,
 };
@@ -281,14 +285,30 @@ function carouselBehavior() {
     return prefersReducedMotion() ? 'auto' : 'smooth';
 }
 
-/* brings a deck card (img) to the middle of the deck */
+/* brings a deck card (img) to the middle of the deck. Smooth: scroll snapping is off meanwhile
+ * (.steering, style.css), or iOS stops the scroll at a snap point on the way (scroll-snap-stop);
+ * carouselRest() puts the deck exactly on the card and switches snapping on again. */
 function carouselCenter(img, instant) {
     const ctl = document.getElementById('ctl');
     const slot = img.parentElement;
-    ctl.scrollTo({
-        left: slot.offsetLeft + slot.offsetWidth / 2 - ctl.clientWidth / 2,
-        behavior: instant ? 'auto' : carouselBehavior()
-    });
+    const left = slot.offsetLeft + slot.offsetWidth / 2 - ctl.clientWidth / 2;
+    const behavior = instant ? 'auto' : carouselBehavior();
+    if (behavior === 'auto') {
+        carouselSteerEnd(ctl);
+        ctl.scrollTo({ left, behavior });
+        return;
+    }
+    gCarousel.steer = left;
+    ctl.classList.add('steering');
+    ctl.scrollTo({ left, behavior });
+    clearTimeout(gCarousel.restTimer);
+    gCarousel.restTimer = setTimeout(carouselRest, 200); // also when the deck does not move at all
+}
+
+/* ends a steered scroll: snapping on again */
+function carouselSteerEnd(ctl) {
+    gCarousel.steer = null;
+    ctl.classList.remove('steering');
 }
 
 /* layout: called when the deck may have changed (pull, card set, resize, breakpoint) */
@@ -301,7 +321,7 @@ function syncCarousel(recenter = false) {
             gCarousel.on = false;
             gCarousel.keys = '';
             ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; img.style.pointerEvents = ''; });
-            ctl.querySelectorAll('.ctl-slot.settle').forEach(slot => slot.classList.remove('settle'));
+            carouselSteerEnd(ctl);
         }
         return;
     }
@@ -410,18 +430,14 @@ function carouselTick() {
     navigator.vibrate(5);
 }
 
-/* the deck came to rest: the card in the middle settles with a small bounce */
+/* the deck came to rest (no scroll for 120 ms); after a steered scroll it sits exactly on the card */
 function carouselRest() {
-    const moved = gCarousel.moved;
     gCarousel.swiping = false;
-    gCarousel.moved = false;
-    if (!moved || prefersReducedMotion()) return;
-    const img = document.getElementById(gCarousel.currentKey);
-    if (img === null) return;
-    const slot = img.parentElement;
-    slot.classList.remove('settle');
-    void slot.offsetWidth; // restart the animation
-    slot.classList.add('settle');
+    if (gCarousel.steer === null) return;
+    const ctl = document.getElementById('ctl');
+    const left = gCarousel.steer;
+    carouselSteerEnd(ctl);
+    if (Math.abs(ctl.scrollLeft - left) > 0.5) ctl.scrollTo({ left, behavior: 'auto' });
 }
 
 function initCarousel() {
@@ -431,18 +447,17 @@ function initCarousel() {
     ctl.addEventListener('scroll', () => {
         if (!gCarousel.on) return;
         if (gCarousel.press !== null) gCarousel.swiping = true;
-        gCarousel.moved = true;
         scheduleCarousel();
         clearTimeout(gCarousel.restTimer);
         gCarousel.restTimer = setTimeout(carouselRest, 120); // no scrollend in iOS Safari yet
     }, { passive: true });
-    ctl.addEventListener('animationend', event => event.target.classList.remove('settle'));
 
     // tap vs. swipe: a press that starts while the user's swipe is still running only stops it
     ctl.addEventListener('pointerdown', event => {
         gCarousel.tapOk = false;
         gCarousel.lastDown = performance.now();
         if (!gCarousel.on || !event.isPrimary) { gCarousel.press = null; return; }
+        carouselSteerEnd(ctl); // the finger takes over: snapping on again
         gCarousel.press = { x: event.clientX, y: event.clientY, t: performance.now(), stops: gCarousel.swiping };
     });
     ctl.addEventListener('pointercancel', () => { // the browser took over (the finger swipes)
@@ -472,10 +487,7 @@ function initCarousel() {
             return;
         }
         const img = event.target instanceof Element ? event.target.closest('img.on') : null;
-        if (img !== null) {
-            gCarousel.moved = true;
-            carouselCenter(img, false);
-        }
+        if (img !== null) carouselCenter(img, false);
     }, true);
 
     gPhoneQuery.addEventListener('change', () => syncCarousel(true));
@@ -997,6 +1009,15 @@ function loadBoard() {
 
     document.getElementById('nameinput').addEventListener('input', function(event) {
         updateBecomeUserButtons(event.target);
+    });
+
+    // B-75: a tap on the name overlay (outside its buttons and links) focuses the name field;
+    // inside the tap, so iOS opens the keyboard too
+    document.getElementById('overlay_name_input').addEventListener('click', function(event) {
+        const nameinput = document.getElementById('nameinput');
+        if (event.target instanceof Element && event.target.closest('input, button, a')) return;
+        if (nameinput.classList.contains('display_none') || document.activeElement === nameinput) return;
+        nameinput.focus();
     });
 
     document.getElementById('nameinput').addEventListener('keydown', function(event) {
