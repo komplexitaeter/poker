@@ -1112,7 +1112,8 @@ Idee von Andreas (2026-10-29): Heute schickt nur der Browser nach einer Änderun
 Server selbst etwas (z. B. B-80 per API, später Jobs), erfahren offene Boards nichts. Ein Kanal PHP-Webserver →
 poker-msg, über den PHP „Update Team-ID …“ meldet; poker-msg verteilt dann wie bisher `pull`. Varianten: MQTT o. ä.
 (eigener Broker), Redis Pub/Sub, oder schlicht ein zweiter Listener in poker-msg nur auf localhost (UDP/Unix-Socket
-im selben ReactPHP-Loop, ohne neuen Dienst). Offen: Brauchen wir Zustellgarantie/Queue, oder reicht „fire and forget“?
+im selben ReactPHP-Loop, ohne neuen Dienst). Entschieden (Andreas, 2026-10-29): keine Zustellgarantie nötig – die gibt es beim `push` aus dem Browser auch nicht.
+Damit reicht „fire and forget“; Favorit ist der lokale Listener ohne neuen Dienst.
 
 
 ### B-52 Topics als Backlog-Items
