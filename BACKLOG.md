@@ -1126,6 +1126,18 @@ im selben ReactPHP-Loop, ohne neuen Dienst). Entschieden (Andreas, 2026-10-29): 
 Damit reicht „fire and forget“; Favorit ist der lokale Listener ohne neuen Dienst.
 
 
+### B-82 Board reagiert nach längerer Pause 5–10 s nicht (WebSocket)
+Beobachtung Andreas (2026-10-29): Kommt man nach einer Weile zu einem Tab zurück (anderes Fenster, Pause), reagiert das
+Board einige Sekunden nicht; in der Konsole ein `InvalidStateError` beim Senden über den WebSocket. Besteht auch live
+(Code in `initializeWSConnection`/`heartbeatWSConnection`/`pushDomChange` seit Rollout 1 unverändert).
+Ursache (Analyse Kai): Das eigene Board lädt nach einer Aktion nicht selbst neu, sondern wartet auf das `pull`-Echo von
+poker-msg. Ist die Verbindung im Hintergrund abgerissen (Schlaf, Netzwechsel, Server-Keepalive), geht `push` ins Leere
+bzw. wirft im Zustand CONNECTING. Der Heartbeat prüft nur alle 3 s per `setTimeout`, im Hintergrund gedrosselt; erst
+nach dem Neuaufbau (`onopen` → `updateDao`) kommt alles nach.
+Vorschlag (klein, Fred): `pushDomChange()` sendet nur bei OPEN, sonst Neuaufbau und `push` nach `onopen` nachholen;
+bei `visibilitychange` (sichtbar) und `online` sofort Verbindung prüfen und `updateDao` – nach langer Abwesenheit
+Verbindung vorsorglich neu aufbauen (kann „halb offen“ sein). E2E: Socket schließen, Karte legen → Board aktualisiert.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
