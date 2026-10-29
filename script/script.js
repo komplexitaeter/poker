@@ -1281,8 +1281,8 @@ function showQRCode(showIt) {
 /* B-67: timer instead of stopwatch. The server keeps the state per team (api/timer.php, dao.php):
  * visibility (on for everyone), mode STOPWATCH | TIMER, timebox (seconds), auto-restart and the
  * elapsed seconds (timer_time) with the status RUNNING | PAUSED (also before the first start).
- * STOPWATCH shows T+elapsed. TIMER shows T−rest (rest = timebox − elapsed) while rest > 0, then
- * T+ (over time, amber). Between two server updates the client counts on by itself (interval).
+ * STOPWATCH shows just the elapsed time (B-79: no T+). TIMER shows T−rest (rest = timebox − elapsed)
+ * while rest > 0, then T+ (over time, amber). Between two server updates the client counts on by itself (interval).
  * gTimer: the last server state, gTimerBaseTime: when it arrived. */
 let gTimer = null;
 
@@ -1364,7 +1364,7 @@ function renderTimer(elapsed) {
             label = 'time is up, ' + spokenTimerSeconds(-rest) + ' over';
         }
     } else {
-        text = 'T+' + formatTimerSeconds(elapsed);
+        text = formatTimerSeconds(elapsed);
         label = spokenTimerSeconds(elapsed) + ' elapsed';
     }
     let state = box.getAttribute('data-state');
@@ -1541,7 +1541,7 @@ function loadCardConfig() {
        - sort_order does not have to be unique, but it will help to maintain consistency
      */
 
-    const url = "./cards.json?v=2"; // bump when cards.json changes (Safari keeps it cached)
+    const url = "./cards.json?v=3"; // bump when cards.json changes (Safari keeps it cached)
     let jsonCardsConf = loadJSON(url);
     gCardsConfig = jsonCardsConf.cards;
     gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
@@ -1835,24 +1835,36 @@ function tipText(json, revealed) {
         return ['Waiting for ', ...who, '. Once everyone has voted, cards are revealed automatically.'];
     }
 
-    // lowest and highest numeric card; coffee, ?, ! and infinity do not count
-    const numeric = players
+    // B-79: in anonymous mode always a general, gentle line – nobody is asked to explain
+    if (json.anonymous_mode === 1) return ['Take the chance and talk about what you see.'];
+
+    // the cards actually chosen; control cards (coffee, ?, !) stay neutral
+    const chosen = players
         .map(player => ({ player, config: getCardConfig(player.display_card_key) }))
-        .filter(entry => entry.config && entry.config.numeric_value != null);
-    if (numeric.length === 0) return [];
+        .filter(entry => entry.config && !entry.config.flow_control);
+    if (chosen.length === 0) return [];
+    const talk = ['Talk about the cards you chose.'];
+    // B-79: emotions and traffic lights have no range (or just three values): talk instead of names
+    if (chosen.some(entry => entry.config.talk)) return talk;
+
+    // lowest and highest numeric card; infinity and veto do not count
+    const numeric = chosen.filter(entry => entry.config.numeric_value != null);
+    // no numbers at all (only infinity or veto): talk about them
+    if (numeric.length === 0) return talk;
     const values = numeric.map(entry => entry.config.numeric_value);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    if (min === max) return numeric.length === players.length ? ['Everyone agrees \u2013 start a new round.'] : [];
+    if (min === max) {
+        if (numeric.length === players.length) return ['Everyone agrees \u2013 start a new round.'];
+        // the same number next to infinity or veto: talk about them; next to control cards only: no tip
+        return chosen.length > numeric.length ? talk : [];
+    }
     const side = value => {
         const entries = numeric.filter(entry => entry.config.numeric_value === value);
         return { players: entries.map(entry => entry.player), label: entries[0].config.symbol || entries[0].config.description };
     };
     const low = side(min);
     const high = side(max);
-    if (json.anonymous_mode === 1) {
-        return ['Let them explain: lowest ', { name: '(' + low.label + ')' }, ' and highest ', { name: '(' + high.label + ')' }];
-    }
     return ['Let them explain: ', tipSide(low.players, low.label), ' and ', tipSide(high.players, high.label)];
 }
 

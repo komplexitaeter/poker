@@ -7,7 +7,7 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, teamWithTwoPlayers, open
  * on/off for everyone, mode Stopwatch | Timer, timebox (presets + other, Timer mode only) and
  * "Auto-start on new round". Every change is saved right away, the panel of everyone else follows.
  * The corner (bottom right; phones: the row above the deck) shows T−mm:ss / T+mm:ss above the round
- * button with play/pause and reset; past the timebox T+ in amber.
+ * button with play/pause and reset; past the timebox T+ in amber. B-79: the stopwatch shows just mm:ss.
  * SHOT_DIR (optional): screenshots desktop 1440 and phone 390.
  */
 
@@ -47,7 +47,7 @@ test('timer on in the panel: everyone sees it, the other panel follows (B-67)', 
   await radio(alice, 'tmr_visibility', '1').check();
   for (const page of [alice, bob]) {
     await expect(page.locator('#timer')).toBeVisible();
-    await expect(display(page)).toHaveText('T+00:00');
+    await expect(display(page)).toHaveText('00:00'); // B-79: stopwatch without T+
     await expect(page.locator('#timer')).toHaveAttribute('data-state', 'ready');
   }
   await expect(radio(bob, 'tmr_visibility', '1')).toBeChecked();
@@ -135,6 +135,34 @@ test('timer mode 5 min: T−05:00, start, pause, reset; time up in amber (B-67)'
   await expect(display(alice)).toHaveText(/^T\+00:0\d$/);
   await expect(alice.locator('#timer')).toHaveAttribute('data-over', 'true');
   await expect(display(alice)).toHaveCSS('color', 'rgb(255, 181, 71)'); // --warn (dark theme)
+  await alice.context().close();
+  await bob.context().close();
+});
+
+test('stopwatch shows just the elapsed time, no T+ and no amber (B-79)', async ({ browser }) => {
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Stopwatch Plain');
+  await openTimerPanel(alice);
+  await radio(alice, 'tmr_visibility', '1').check();
+  await expect(radio(alice, 'tmr_mode', 'STOPWATCH')).toBeChecked();
+  await alice.locator('#menu_close').click();
+  await expect(display(bob)).toHaveText('00:00');
+  await expect(display(bob)).toHaveAttribute('aria-label', 'Stopwatch: 0 s elapsed, not started');
+
+  await alice.getByRole('button', { name: 'Start timer' }).click();
+  await expect(bob.locator('#timer')).toHaveAttribute('data-state', 'running');
+  await expect(display(bob)).toHaveText(/^00:0\d$/);
+
+  // running for 3 min 12 s: 03:12, never amber (no timebox)
+  sql(`update pok_teams_tbl set timer_start_time = timestampadd(SECOND, -192, current_timestamp), timer_pause_time = null where id = '${teamId(url)}'`);
+  await alice.reload();
+  await expect(display(alice)).toHaveText(/^03:1\d$/);
+  await expect(alice.locator('#timer')).toHaveAttribute('data-over', 'false');
+
+  // the timer mode keeps its prefix (switching the mode resets the time)
+  await openTimerPanel(alice);
+  await radio(alice, 'tmr_mode', 'TIMER').check();
+  await alice.locator('#menu_close').click();
+  await expect(display(bob)).toHaveText('T−05:00');
   await alice.context().close();
   await bob.context().close();
 });
