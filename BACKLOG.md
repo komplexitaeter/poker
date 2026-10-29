@@ -1081,6 +1081,16 @@ Overlay mit Dreh-Icon bittet darum, das Gerät zu drehen – nur wenn (1) es ein
 Desktop), (2) es quer gehalten wird und (3) die Höhe so knapp ist, dass Querformat keinen Sinn ergibt. Tablets nicht.
 Status: auf `release` (#86), Test auf Geräten offen.
 
+### B-79 Vor Rollout 2: Stoppuhr ohne „T+“, Tipps je Kartenart und Anonym-Modus
+Andreas (2026-10-29), aus der Nutzer-Runde vor Rollout 2 (kein Toast, keine Erklärungen – der Menüpunkt `:timer` spricht
+für sich):
+- Stoppuhr-Modus zeigt die Zeit ohne `T+` (nur `03:12`); `T−`/`T+` nur im Timer-Modus.
+- Tipp nach dem Aufdecken (B-70): Anonym-Modus **immer** allgemein und sanft („Take the chance and talk about what you
+  see.“), keine Ansage, wer erklären soll. Sind unter den tatsächlich gewählten Karten Emoticons oder Ampel-Karten
+  (neues Flag in `cards.json`), allgemein „Talk about the cards you chose.“ (Emoticons haben keine Range, Ampel nur 3
+  Werte → sonst lange Namenslisten). Kontrollkarten (Kaffee, ?, !) bleiben dabei neutral. Sonst wie bisher niedrigste/
+  höchste Karte. Status: in Umsetzung (Fred).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
