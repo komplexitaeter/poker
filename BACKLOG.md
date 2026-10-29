@@ -1109,6 +1109,13 @@ eine Abhängigkeit mehr. Signal an alle Clients siehe B-81.
 Gedanke (2026-10-29): Richtung umdrehen – statt dass wir Jira & Co. anbinden (OAuth, Zugangsdaten speichern, je System
 ein Adapter), schicken andere Systeme Topics an uns (Jira Automation „Send web request“, Skripte, Zapier/n8n). Für uns
 nur ein Endpunkt plus Doku. Später ggf. der Rückweg (Schätzung zurück ins Ticket) als ausgehender Webhook.
+Skizze Andreas (2026-10-29), eigene öffentliche API (REST, OpenAPI/Swagger-Doku):
+- Hinweg: Topic anlegen mit Key (z. B. Ticket-Nr.) und Beschreibung (`add_topic`).
+- Rückweg: Ergebnis je Key abfragen (`get_topic_result`) plus Webhook als Benachrichtigung, wenn ein Ergebnis vorliegt.
+Ideen Kai: eigener Namensraum `/api/v1/…` getrennt von der internen App-API (die bleibt frei änderbar → keine neue
+Abhängigkeit); eigener widerrufbarer API-Key je Team statt Team-ID in der URL (URLs landen in Logs); Key je Team
+eindeutig (erneutes Anlegen aktualisiert); Webhook mit HMAC-Signatur; OpenAPI-Datei im Repo, Doku als statische Seite.
+Offen: Was ist „das Ergebnis“ (finaler Wert, alle Karten, Durchschnitt, Konsens)? Wer legt den finalen Wert fest?
 
 ### B-81 Update-Signal vom Webserver an poker-msg
 Idee von Andreas (2026-10-29): Heute schickt nur der Browser nach einer Änderung `push` an poker-msg. Ändert der
