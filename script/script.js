@@ -300,7 +300,7 @@ function syncCarousel(recenter = false) {
         if (gCarousel.on) { // back to the desktop deck: no traces of the carousel
             gCarousel.on = false;
             gCarousel.keys = '';
-            ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; });
+            ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; img.style.pointerEvents = ''; });
             ctl.querySelectorAll('.ctl-slot.settle').forEach(slot => slot.classList.remove('settle'));
         }
         return;
@@ -367,6 +367,8 @@ function carouselFrame() {
         const opacity = Math.max(img.classList.contains('selected') ? 0.85 : 0.12, 1 - 0.25 * d);
         img.style.transform = 'translateX(' + shift.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
         img.style.opacity = opacity.toFixed(3);
+        // far cards pile up faintly at the edges: not tappable, or a tap there would pick a card far away
+        img.style.pointerEvents = d > 3 ? 'none' : '';
     });
     const currentKey = cards[best].id;
     if (currentKey !== gCarousel.currentKey) {
