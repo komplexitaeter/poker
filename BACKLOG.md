@@ -1097,10 +1097,13 @@ Zahlen-Spanne nur „Let them explain: Maria (?), Jogi (!)“; bei Ampel/Emotico
 (?), Jogi (!) first.“ Hat jemand **☕** gewählt, kommt „Maybe take a short break.“ dazu (auch anonym); haben alle die
 Tasse genommen, steht nur dieser Satz. Status: auf `release` (#88).
 
-### B-80 Wunsch aus Ideas & Bugs: Topic per API setzen
-Feedback (2026-10-29, FEATURE): „Add API to allow setting the topic.“ Heute geht das nur beim Anlegen eines neuen Teams
-per Link (`?tool=…&team=…&text=…`, siehe `special-chars.spec.ts`), nicht für ein bestehendes Board von außen (z. B. aus
-Jira/Skripten). Offen: Use Case klären, Absicherung (heute nur geheime Team-ID), POST statt GET, Bezug zu B-52.
+### B-80 Wunsch aus Ideas & Bugs: Topic per API setzen → API dokumentieren
+Feedback (2026-10-29, FEATURE): „Add API to allow setting the topic.“ Andreas (2026-10-29): Die API gibt es faktisch
+schon (`POST /api/update_topic.php?t=<team-id>`, Formularfeld `topic`, max. 2000 Zeichen, Team-ID als Geheimnis);
+es fehlt die Dokumentation. Kern also: kurze öffentliche Doku (Seite oder README-Abschnitt), ggf. auch der
+Anlege-Link `?tool=…&team=…&text=…`. Offen: Eine Änderung von außen erscheint bei offenen Boards erst beim nächsten
+`pull` (der `push` über poker-msg kommt heute nur vom Client) – reicht das, oder braucht es einen serverseitigen
+Push? Welche weiteren Endpunkte dokumentieren wir als „stabil“? Bezug zu B-52.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
