@@ -65,13 +65,15 @@
     --deck-min: 26px;
 }
 
-/* phones: the deck is a carousel (B-75); the width of a card, the one in the middle 1.25 times
- * that: 58px at 390px, smaller in landscape (11vh) */
 @media (max-width: 799.98px) {
-    :root {
-        --deck-w: clamp(44px, min(15vw, 11vh), 72px);
-        --card-max: 110px; /* few players: no giant cards on a phone */
-    }
+    :root { --card-max: 110px; } /* few players: no giant cards on a phone */
+}
+
+/* touch phones: the deck is a carousel (B-75); the width of a card, the one in the middle 1.25
+ * times that: 58px at 390px, smaller in landscape (11vh). A narrow window with a mouse or a
+ * trackpad keeps the deck row with the "<" / ">" bars (B-69). */
+@media (max-width: 799.98px) and (hover: none) and (pointer: coarse) {
+    :root { --deck-w: clamp(44px, min(15vw, 11vh), 72px); }
 }
 
 @media (pointer: coarse) {
@@ -2071,21 +2073,22 @@ div#cbox {
     .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
 }
 
-/* B-75: the position dots and the "picked" line below the deck are for the phone carousel only */
+/* B-75: the position dots and the "picked" line below the deck are for the carousel (touch phones) only */
 .deck-dots,
 .deck-pick { display: none; }
 
-/* B-75, phones: the deck is a carousel. One card at a time snaps into the middle and is shown
+/* B-75, touch phones (Andreas, 2026-10-29: touch only; a narrow window with a mouse or a
+ * trackpad keeps the deck row with the "<" / ">" bars of B-69): the deck is a carousel. One card at a time snaps into the middle and is shown
  * larger (scale and fade per card set by the carousel code in script.js, around the vertical
  * middle, so all cards stay centered in the row); the first and the last card can reach the
  * middle (padding), never further (no overscroll into empty space). A tap picks the card (and
  * centers it), a swipe never does. The picked card keeps the accent frame of the deck; below the
  * deck one dot per card, display only (the ring is the card in the middle, filled = picked).
  * Many cards: the dots move closer together; when they no longer
- * fit, a thin bar takes their place (as-bar, set by script.js). The "<" / ">" bars (B-69) are
- * for large screens only. The tray stays at the bottom edge and keeps clear of the home
+ * fit, a thin bar takes their place (as-bar, set by script.js). No "<" / ">" bars (B-69) on the
+ * carousel. Same query as gCarouselQuery in script.js. The tray stays at the bottom edge and keeps clear of the home
  * indicator (safe area plus a little room), whose edge reacts to system swipes. */
-@media (max-width: 799.98px) {
+@media (max-width: 799.98px) and (hover: none) and (pointer: coarse) {
     .down-container {
         --deck-h: calc(var(--deck-w) * var(--card-ratio));
         --deck-grow: 1.25;                                   /* the card in the middle */

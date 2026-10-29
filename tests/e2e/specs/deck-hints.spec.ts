@@ -6,8 +6,9 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
  * B-69 (large screens): the deck has no scrollbar. When it overflows, a chevron bar shows at the
  * edge where more cards are hidden (more-left / more-right on #down-container); a click on it
  * scrolls the deck that way. Keys 1–9 and 0 bring a hidden card into view.
- * B-75 (phones): the deck is a carousel instead: no bars, the card in the middle larger, dots below
- * (display only), a tap picks and centers a card, a swipe never picks.
+ * B-75 (touch phones): the deck is a carousel instead: no bars, the card in the middle larger, dots below
+ * (display only), a tap picks and centers a card, a swipe never picks. A narrow window with a mouse
+ * keeps the deck row with the bars (Andreas, 2026-10-29).
  */
 const PHONE = { width: 390, height: 844 };
 const NARROW = { width: 1000, height: 800 }; // large screen layout, 46 cards overflow the tray
@@ -132,6 +133,74 @@ test('deck hints: a click on a bar scrolls the deck, no card is picked (B-69)', 
   await alice.context().close();
 });
 
+test('narrow window with a mouse: no carousel, the edge bars scroll the deck, keys pick (B-75, B-69)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: PHONE, reducedMotion: 'reduce' }); // no touch
+  const url = await createTeam(alice, 'Deck Narrow Mouse');
+  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await joinAsPlayer(alice, url, 'Alice');
+  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  const tray = alice.locator('#down-container');
+  const ctl = alice.locator('#ctl');
+  const scrollLeft = () => ctl.evaluate(el => el.scrollLeft);
+
+  // the deck row of B-69: no dots, no "picked" line, no snapping, all cards the same size
+  await expect(alice.locator('#deck_dots')).toBeHidden();
+  await expect(alice.locator('#deck_dots .deck-dot')).toHaveCount(0);
+  await expect(alice.locator('#deck_pick')).toBeHidden();
+  expect(await ctl.evaluate(el => getComputedStyle(el).scrollSnapType)).toBe('none');
+  const widths = await alice.locator('#ctl img.on').evaluateAll(imgs =>
+    imgs.slice(0, 5).map(i => Math.round(i.getBoundingClientRect().width)));
+  expect(new Set(widths).size).toBe(1);
+
+  // ">" visible and clickable: scrolls the deck, "<" shows up and scrolls back; nothing picked
+  await expect(tray).toHaveClass(/more-right/);
+  await expect(alice.locator('.deck-more-right')).toBeVisible();
+  await expect(alice.locator('.deck-more-left')).toBeHidden();
+  await alice.getByRole('button', { name: 'Show more cards' }).click();
+  await expect.poll(scrollLeft).toBeGreaterThan(0);
+  await expect(alice.locator('.deck-more-left')).toBeVisible();
+  await alice.getByRole('button', { name: 'Show previous cards' }).click();
+  await expect.poll(scrollLeft).toBe(0);
+  await expect(alice.locator('#ctl img.selected')).toHaveCount(0);
+
+  // the wheel scrolls sideways, a key picks a card and brings it into view
+  const deck = (await ctl.boundingBox())!;
+  await alice.mouse.move(deck.x + deck.width / 2, deck.y + deck.height / 2);
+  await alice.mouse.wheel(0, 200);
+  await expect.poll(scrollLeft).toBeGreaterThan(0);
+  await alice.keyboard.press('1');
+  await expect(alice.locator('#ctl img.on').nth(0)).toHaveClass(/selected/);
+  await expect.poll(scrollLeft).toBe(0);
+
+  // a click picks the card without moving the deck to the middle
+  const card = alice.locator('#ctl img.on').nth(3);
+  await card.click();
+  await expect(card).toHaveClass(/selected/);
+  await alice.waitForTimeout(300);
+  expect(await scrollLeft()).toBe(0);
+  await alice.context().close();
+});
+
+test('touch device: the carousel comes and goes with the width, no traces left on the deck row (B-75)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+  const url = await createTeam(alice, 'Deck Switch');
+  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await joinAsPlayer(alice, url, 'Alice');
+  const cards = alice.locator('#ctl img.on');
+  await expect(cards).toHaveCount(11);
+  await expect(alice.locator('#deck_dots .deck-dot')).toHaveCount(11);
+  expect(await cards.nth(0).evaluate(img => img.style.transform)).not.toBe('');
+
+  await alice.setViewportSize({ width: 1000, height: 800 });
+  await expect(alice.locator('#deck_dots')).toBeHidden();
+  await expect.poll(() => cards.evaluateAll(imgs => imgs.every(i => i.style.transform === '' && i.style.opacity === ''))).toBe(true);
+
+  await alice.setViewportSize(PHONE);
+  await expect(alice.locator('#deck_dots')).toBeVisible();
+  await expect(alice.locator('#deck_dots .deck-dot.current')).toHaveCount(1);
+  await alice.context().close();
+});
+
 /** a horizontal finger swipe over the deck (real touch events, the browser scrolls natively) */
 async function swipe(page: Page, x: number, y: number, dx: number) {
   const cdp = await page.context().newCDPSession(page);
@@ -253,6 +322,19 @@ test('phone deck: a tap on a card further out brings it exactly to the middle, n
   }
   expect(await ctl.evaluate(el => el.scrollLeft)).not.toBe(start);
   expect(await alice.evaluate(() => (window as any).__settle)).toBe(0);
+
+  // a finger on the deck stops the tween at once: snapping on again, the deck stays where it is
+  const [steering, afterDown] = await ctl.evaluate(el => {
+    (el.querySelectorAll('img.on')[9] as HTMLElement).click(); // starts the tween (keyboard-like click)
+    const steering = el.classList.contains('steering');
+    el.dispatchEvent(new PointerEvent('pointerdown', { isPrimary: true, bubbles: true }));
+    return [steering, el.classList.contains('steering')];
+  });
+  expect(steering).toBe(true);
+  expect(afterDown).toBe(false);
+  const stopped = await ctl.evaluate(el => el.scrollLeft);
+  await alice.waitForTimeout(400);
+  expect(Math.abs(await ctl.evaluate(el => el.scrollLeft) - stopped)).toBeLessThanOrEqual(1);
   await expect(alice.locator('#ctl .settle')).toHaveCount(0);
   await alice.context().close();
 });
