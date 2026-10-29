@@ -5,7 +5,8 @@
  * Board page grid (B-46): see "Board layout". Short landscape screens (max-height: 500px)
  * get the phone topic strip as well.
  * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens".
- * Menus (B-51): one panel, see "Menu panel". */
+ * Menus (B-51): one panel, see "Menu panel".
+ * Phones in landscape (B-78): a hint to turn the phone, see "Rotate hint". */
 
 /* ---------- Tokens ---------- */
 
@@ -26,6 +27,7 @@
     --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
     --z-scrim: 300;       /* QR code backdrop */
     --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
+    --z-rotate: 400;      /* B-78: "turn your phone upright" hint, above everything */
     /* shapes */
     --radius-s: 3px;      /* small tiles, tooltips */
     --radius-m: 4px;      /* fields, buttons, topnav buttons */
@@ -2990,4 +2992,71 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     0% { background-color: var(--background-color); }
     50% { background-color: var(--flash-red-background); }
     100% { background-color: var(--background-color); }
+}
+
+/* ---------- Rotate hint (B-78) ---------- */
+
+/* Phones held sideways: too short for the board, so a hint asks to turn the phone upright.
+ * Only on touch devices without hover (not desktops, not touch laptops), in landscape, and
+ * only when the screen is short (phones: 320-440px high; tablets from 744px never see it).
+ * Pure CSS: it vanishes as soon as the phone is turned back. "Continue anyway" sets
+ * html.rotate-ok (inline handler in board.html / init.html, kept for the session). */
+.rotate-hint { display: none; }
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+    html:not(.rotate-ok) .rotate-hint {
+        position: fixed;
+        inset: 0;
+        z-index: var(--z-rotate);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-3);
+        padding: var(--space-3) calc(var(--space-3) + env(safe-area-inset-right))
+            var(--space-3) calc(var(--space-3) + env(safe-area-inset-left));
+        /* the board stays visible, dimmed */
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px);
+        color: var(--text);
+        text-align: center;
+    }
+}
+
+.rotate-hint svg.i {
+    width: 64px;
+    height: 64px;
+    stroke-width: 1.5;
+    color: var(--accent);
+    animation: rotate-hint-turn 2.4s ease-in-out infinite;
+}
+
+.rotate-hint p {
+    margin: 0;
+    max-width: 30em;
+    font-size: var(--fs-l);
+}
+
+.rotate-hint .rotate-hint-skip {
+    background: none;
+    border: 0;
+    min-height: var(--tap);
+    padding: 0 var(--space-3);
+    color: var(--brand-pink);
+    font-family: inherit;
+    font-size: var(--fs-m);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* the phone lies sideways, turns upright, rests, and turns back */
+@keyframes rotate-hint-turn {
+    0%, 15% { transform: rotate(-90deg); }
+    45%, 85% { transform: rotate(0deg); }
+    100% { transform: rotate(-90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rotate-hint svg.i { animation: none; }
 }

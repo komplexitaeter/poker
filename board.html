@@ -7,7 +7,7 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.55" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.56" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -40,7 +40,17 @@
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><rect x="8" y="5" width="10" height="17" rx="2"/><path d="M13 18h.01"/><path d="M2.5 11A8.5 8.5 0 0 1 10 2"/><path d="M7.5 1.5 10 2l-.5 2.5"/></symbol>
 </svg>
+
+<!-- B-78: phones held sideways (style.css, "Rotate hint"); "Continue anyway" hides it for the session -->
+<div id="rotate_hint" class="rotate-hint" role="dialog" aria-labelledby="rotate_hint_msg">
+    <svg class="i" aria-hidden="true"><use href="#i-rotate"/></svg>
+    <p id="rotate_hint_msg">Turn your phone upright for the best view</p>
+    <button type="button" class="rotate-hint-skip" onclick="try { sessionStorage.setItem('rotateHintOff', '1'); } catch (e) {} document.documentElement.classList.add('rotate-ok');">Continue anyway</button>
+</div>
+<script>try { if (sessionStorage.getItem('rotateHintOff')) document.documentElement.classList.add('rotate-ok'); } catch (e) {}</script>
+
 <!-- B-46: page grid (style.css, "Board layout"): header / topic / table / card deck. -->
 <div class="container" onclick="void(0);">
 
