@@ -1878,48 +1878,59 @@ div#cbox {
     padding: 12px var(--space-3) 5px;
     overflow: auto hidden;
     /* B-69: no scrollbar (swipe, trackpad and wheel still scroll); the bars below show that
-     * there is more. A card brought into view by its key stays clear of the bars. */
+     * there is more. A card brought into view by its key stays clear of the bars (the first and
+     * the last card scroll the deck to its end, pickCardByKey() in script.js). */
     scrollbar-width: none;
     scroll-padding-inline: var(--deck-more-w);
 }
 
 .controls::-webkit-scrollbar { display: none; }
 
-/* B-69: a slim "<" / ">" bar at the edge of the deck where more cards are hidden (more-left,
- * more-right on .down-container, set by updateDeckRoom() in script.js). Hints only, not clickable:
- * the deck fades into its background under a small chevron. */
-.down-container { --deck-more-w: 22px; }
+/* B-69: a chevron bar at the edge of the deck where more cards are hidden (more-left, more-right on
+ * .down-container, set by updateDeckRoom() in script.js). Hints only, not clickable: a solid strip
+ * a shade off the tray (darker in light, lighter in dark mode) carries the chevron, then the deck
+ * fades into it. --deck-more-w is the whole bar, --deck-more-strip its solid part. */
+.down-container {
+    --deck-more-w: 34px;
+    --deck-more-strip: 22px;
+}
 
 .deck-more {
     position: absolute;
     top: 0;
     bottom: env(safe-area-inset-bottom);
     width: var(--deck-more-w);
+    box-sizing: border-box;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: var(--fs-l);
-    line-height: 1;
-    color: var(--muted);
+    color: var(--text);
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.15s;
 }
 
+.deck-more .i {
+    width: var(--deck-more-strip);
+    height: var(--deck-more-strip);
+    stroke-width: 2.5;
+}
+
 .deck-more-left {
     left: 0;
+    justify-content: flex-start;
     border-radius: inherit;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    background: linear-gradient(to right, var(--bg-2) 40%, transparent);
+    background: linear-gradient(to right, var(--bg-4) var(--deck-more-strip), transparent);
 }
 
 .deck-more-right {
     right: 0;
+    justify-content: flex-end;
     border-radius: inherit;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-    background: linear-gradient(to left, var(--bg-2) 40%, transparent);
+    background: linear-gradient(to left, var(--bg-4) var(--deck-more-strip), transparent);
 }
 
 .down-container.more-left .deck-more-left,
@@ -2376,13 +2387,33 @@ div#cbox {
 
     .round-tip {
         display: block;
+        position: relative;
         margin: var(--space-2) 0 0;
+        padding-left: 22px; /* room for the lightbulb */
         font-size: var(--fs-s);
         line-height: 1.25rem;
         text-align: left;
         color: var(--muted);
     }
     .round-tip b { font-weight: inherit; color: var(--text); }
+
+    /* a small lightbulb in front of the tip (line icon like the sprite in board.html, drawn as a
+     * mask in the muted text color), hanging left of the text; none while there is no tip. In CSS
+     * because updateTip() replaces the tip's children. */
+    .round-tip::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 2px;
+        width: 16px;
+        height: 16px;
+        background: currentColor;
+        -webkit-mask: var(--i-bulb) center / contain no-repeat;
+        mask: var(--i-bulb) center / contain no-repeat;
+        --i-bulb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4'/%3E%3Cpath d='M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z'/%3E%3C/svg%3E");
+    }
+
+    .round-tip:empty::before { display: none; }
 
     .side > #spread[hidden] + .round-tip {
         position: absolute;

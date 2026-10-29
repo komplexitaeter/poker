@@ -248,12 +248,17 @@ function pickCardByKey(event) {
     const menu = document.getElementById('menu');
     if (menu !== null && menu.open) return;
     if (document.querySelector('.overlay:not(.hidden), .overlay.visible') !== null) return; // name, delete user, QR
-    const img = document.querySelectorAll('#ctl img.on')[n];
+    const cards = document.querySelectorAll('#ctl img.on');
+    const img = cards[n];
     if (img === undefined) return;
     event.preventDefault();
-    // B-69: a card outside the visible part of the deck comes into view
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    img.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+    // B-69: a card outside the visible part of the deck comes into view, clear of the edge bars;
+    // the first and the last card scroll the deck to its start / end (no bar left there)
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const ctl = img.closest('#ctl');
+    if (n === 0) ctl.scrollTo({ left: 0, behavior });
+    else if (n === cards.length - 1) ctl.scrollTo({ left: ctl.scrollWidth, behavior });
+    else img.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
     img.click();
 }
 

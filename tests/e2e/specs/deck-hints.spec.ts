@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 
 /**
- * B-69: the deck has no scrollbar. When it overflows, a slim "<" / ">" bar (hints only, not
+ * B-69: the deck has no scrollbar. When it overflows, a chevron bar (hints only, not
  * clickable) shows at the edge where more cards are hidden (more-left / more-right on
  * #down-container). Keys 1–9 and 0 bring a hidden card into view.
  */
@@ -91,6 +91,8 @@ test('deck hints: a key brings a hidden card into view, the wheel scrolls sidewa
   await alice.keyboard.press('1');
   await expect.poll(visible).toBe(true);
   await expect(first).toHaveClass(/selected/);
+  // the first card scrolls the deck back to its start: no bar covers it
+  await expect.poll(() => ctl.evaluate(el => el.scrollLeft)).toBe(0);
   await expect(alice.locator('#down-container')).not.toHaveClass(/more-left/);
   await alice.context().close();
 });
