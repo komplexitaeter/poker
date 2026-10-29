@@ -1751,17 +1751,22 @@ function updateSide(json, glide = true) {
         col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
         grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
         const config = getCardConfig(col.getAttribute('data-card'));
-        if (n > 0 && config && config.numeric_value != null) chosen.push(col.querySelector('.spread-value').textContent);
+        const rank = cardRank(config);
+        if (n > 0 && rank !== null) chosen.push({ rank, text: col.querySelector('.spread-value').textContent });
     });
     if (grown.length > 0) {
         void bars.offsetHeight; // the new blocks start invisible (class "in"), then fade in
         grown.forEach(seg => seg.classList.remove('in'));
     }
 
-    // the range of the chosen numeric values, in deck order: "2 – 20", or "5" when all agree
+    // the range of the chosen numeric values (B-79: infinity as the top end): "2 – 20", "3 – ∞",
+    // or "5" when all agree
     let range = '';
     if (chosen.length > 0) {
-        range = chosen[0] === chosen[chosen.length - 1] ? chosen[0] : chosen[0] + ' – ' + chosen[chosen.length - 1];
+        chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
+        const low = chosen[0].text;
+        const high = chosen[chosen.length - 1].text;
+        range = low === high ? low : low + ' – ' + high;
     }
     const rangeElement = document.getElementById('spread_range');
     if (rangeElement.textContent !== range) rangeElement.textContent = range;
@@ -1820,6 +1825,15 @@ function tipSide(players, value) {
     return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : '') + ' (' + value + ')' };
 }
 
+/* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
+ * ("too big to estimate"), null for cards without a value (veto, control cards). Not for the
+ * average: infinity stays out of it. */
+function cardRank(config) {
+    if (!config) return null;
+    if (config.card_key === 'infin01' || config.description === 'infinity') return Infinity;
+    return config.numeric_value != null ? config.numeric_value : null;
+}
+
 /* the tip as a list of plain strings and highlighted { name } parts; [] for none */
 function tipText(json, revealed) {
     const players = json.players || [];
@@ -1873,22 +1887,22 @@ function tipText(json, revealed) {
     // B-79: emotions and traffic lights have no range (or just three values): talk instead of names
     if (chosen.some(entry => entry.config.talk)) return withBreak(talk);
 
-    // lowest and highest numeric card; infinity and veto do not count
-    const numeric = chosen.filter(entry => entry.config.numeric_value != null);
-    // no numbers at all (only infinity or veto): talk about them
+    // lowest and highest numeric card; B-79: infinity counts as the highest, veto does not count
+    const numeric = chosen.filter(entry => cardRank(entry.config) !== null);
+    // no numbers at all (only veto): talk about them
     if (numeric.length === 0) return withBreak(talk);
-    const values = numeric.map(entry => entry.config.numeric_value);
+    const values = numeric.map(entry => cardRank(entry.config));
     const min = Math.min(...values);
     const max = Math.max(...values);
     if (min === max) {
         if (numeric.length === players.length) return ['Everyone agrees \u2013 start a new round.'];
-        // the same number next to infinity or veto: talk about them
+        // the same number next to a veto: talk about them
         if (chosen.length > numeric.length) return withBreak(talk);
         // next to control cards only: ? and ! explain, otherwise no tip
         return withBreak(asking.length > 0 ? explain(asking) : []);
     }
     const side = value => {
-        const entries = numeric.filter(entry => entry.config.numeric_value === value);
+        const entries = numeric.filter(entry => cardRank(entry.config) === value);
         return tipSide(entries.map(entry => entry.player), entries[0].config.symbol || entries[0].config.description);
     };
     return withBreak(explain([side(min), side(max), ...asking]));
