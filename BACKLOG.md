@@ -1056,6 +1056,14 @@ Umsetzung (Delia).
 Idee für später (Andreas/Kai, 2026-10-29, nur notiert): Karussell auch auf Tablets (Touch ab 800 px), wenn die Karten
 sonst unter eine bequeme Tippgröße (~44 px) schrumpfen würden; mit Maus nie Karussell.
 
+### B-76 Kartenbilder: Name über die Karte, Symbole vertikal zentriert
+Andreas (2026-10-29), „zeitnah“: In den Kartenbildern (`src/c_*.png`, Quellen in `src/xcf/`) ist oben Platz für den
+Spielernamen reserviert, der gar nicht immer genutzt wird (Kartenleiste, Karussell B-75, Spread). Dadurch sitzen die
+Symbole nicht mittig – „etwas mittelhübsch“. Ziel: Den Namen aus der Karte heraus **über** die Karte bringen, danach
+die Symbole in allen Kartenbildern vertikal zentrieren (neu exportieren). Offen: Darstellung des Namens am Tisch
+(über der Karte, Länge/Ellipse, Anonym-Modus), alle Kartensets aus `cards.json` betroffen, Cache-Busting der Bilder,
+Auswirkung auf Kartengröße am Tisch (B-49). Beteiligt: Delia (Gestaltung, Bilder), Fred (Tisch-Rendering).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
