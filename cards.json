@@ -140,7 +140,8 @@
     "description": "green traffic light",
     "symbol": "🟢",
     "numeric_value": 1000,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 16,
@@ -149,7 +150,8 @@
     "description": "yellow traffic light",
     "symbol": "🟡",
     "numeric_value": 2000,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 17,
@@ -158,7 +160,8 @@
     "description": "red traffic light",
     "symbol": "🔴",
     "numeric_value": 3000,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 18,
@@ -167,7 +170,8 @@
     "description": "satisfied",
     "symbol": "🙂",
     "numeric_value": null,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 19,
@@ -176,7 +180,8 @@
     "description": "annoyed",
     "symbol": "😒",
     "numeric_value": null,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 20,
@@ -185,7 +190,8 @@
     "description": "sad",
     "symbol": "😢",
     "numeric_value": null,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 21,
@@ -194,7 +200,8 @@
     "description": "uninterested",
     "symbol": "😐",
     "numeric_value": null,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 22,
@@ -203,7 +210,8 @@
     "description": "angry",
     "symbol": "😡",
     "numeric_value": null,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 23,
@@ -212,7 +220,8 @@
     "description": "enthusiastic",
     "symbol": "🤩",
     "numeric_value": null,
-    "flow_control": false
+    "flow_control": false,
+    "talk": true
   },
   {
     "index": 24,
