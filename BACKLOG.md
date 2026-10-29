@@ -1137,6 +1137,9 @@ nach dem Neuaufbau (`onopen` → `updateDao`) kommt alles nach.
 Vorschlag (klein, Fred): `pushDomChange()` sendet nur bei OPEN, sonst Neuaufbau und `push` nach `onopen` nachholen;
 bei `visibilitychange` (sichtbar) und `online` sofort Verbindung prüfen und `updateDao` – nach langer Abwesenheit
 Verbindung vorsorglich neu aufbauen (kann „halb offen“ sein). E2E: Socket schließen, Karte legen → Board aktualisiert.
+Entschieden (Andreas, 2026-10-29): (1) Fehler beim Senden abfangen, Verbindung neu aufbauen und das `push` danach
+wiederholen – sonst geht es verloren und man muss nochmal klicken. (2) Wird der Tab wieder sichtbar, die Verbindung
+immer kappen und neu aufbauen (plus `updateDao`). Status: refined.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
