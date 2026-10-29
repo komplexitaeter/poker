@@ -1141,6 +1141,30 @@ Entschieden (Andreas, 2026-10-29): (1) Fehler beim Senden abfangen, Verbindung n
 wiederholen – sonst geht es verloren und man muss nochmal klicken. (2) Wird der Tab wieder sichtbar, die Verbindung
 immer kappen und neu aufbauen (plus `updateDao`). Status: refined.
 
+### B-83 Nächtlicher Statistik-Job blockiert `dao.php` (23:55 UTC)
+Befund (Logs Live, 2026-10-29): Jede Nacht 23:55–23:58 UTC hängen einzelne `dao.php`-Aufrufe 5–6 s (PHP-FPM-Slowlog);
+MySQL-Slowlog: `UPDATE pok_players_tbl SET last_callback_time …` mit Lock-Wartezeit Ø 46 s. Ursache:
+`pok_daily_team_stats_evt` (`db_jobs_pok.sql`, startet 23:55:32) ist ein `INSERT … SELECT` über `pok_players_tbl` und
+setzt unter REPEATABLE READ Lesesperren; er läuft Minuten, weil `pok_roundstats_tbl` keinen Index auf `team_id` hat.
+Vorschlag (Ben): Index `pok_roundstats_tbl (team_id, type_code, creation_date)` (online) und den Job mit
+`READ COMMITTED` laufen lassen (keine Lesesperren, Binlog ROW). Optional: Index auf `pok_active_user_stats.creation_date`
+für die Grafana-Abfragen (volle Scans, 3–4 s).
+
+### B-84 Schutz gegen Reload-Schleifen (nginx-Limit)
+Befund (2026-10-29): Ein einzelner Client in einem Firmennetz hat das Board 1¾ h lang ~5×/s neu geladen
+(~30.000 Board-Loads, ~150.000 Requests; Auslöser außerhalb unserer Seite, vermutlich eine eingebettete WebKit-Ansicht).
+Ziel: versehentliche Schleifen bremsen, ohne Teams hinter einer gemeinsamen Firmen-IP zu stören. Vorschlag:
+`limit_req` mit Schlüssel Team-ID (`$arg_t`) auf den Board-Aufruf (`/index.php`), z. B. 2 r/s, burst 20, Status 429;
+dazu `measure_event.php` je User-ID (`$arg_id`), z. B. 1 r/s, damit die Statistik sauber bleibt. Leerer Schlüssel
+wird nicht gezählt. Konfiguration für beide Server vorbereiten (Kai/Ben), Andreas spielt ein.
+In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
+
+### B-85 Topic mit Emoji führt zu HTTP 500
+Befund (Logs Live, 2026-10-29): 3× HTTP 500 in `api/update_topic.php` (Exception bei `execute()`), Firefox.
+Vermutete Ursache: `pok_teams_tbl` ist `utf8mb3`, 4-Byte-Zeichen (Emoji) im Topic lassen sich nicht speichern; das Topic
+geht verloren. Prüfen (lokal reproduzieren), dann Spalte `topic` (ggf. auch `pok_roundstats_tbl.topic`, Namen) auf
+`utf8mb4` umstellen. Bezug: technische Schuld „Zeichensätze gemischt“.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
