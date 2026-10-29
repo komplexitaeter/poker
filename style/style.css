@@ -65,10 +65,11 @@
     --deck-min: 26px;
 }
 
-/* phones: the deck scrolls sideways; 55px at 375px as before, smaller in landscape (12vh) */
+/* phones: the deck is a carousel (B-75); the width of a card, the one in the middle 1.25 times
+ * that: 58px at 390px, smaller in landscape (11vh) */
 @media (max-width: 799.98px) {
     :root {
-        --deck-w: clamp(44px, min(12vw + 10px, 12vh), 64px);
+        --deck-w: clamp(44px, min(15vw, 11vh), 72px);
         --card-max: 110px; /* few players: no giant cards on a phone */
     }
 }
@@ -177,6 +178,9 @@ body {
 
 /* board: the page grid fills the screen, only the table scrolls (B-46) */
 body:has(> .container) { overflow: hidden; }
+
+/* B-75: no rubber band of the whole page (iOS), the deck stays at the bottom edge */
+html:has(> body > .container) { overscroll-behavior: none; }
 
 /* form controls do not inherit the font by default */
 button,
@@ -1958,14 +1962,6 @@ div#cbox {
 
 .deck-more-right::before { right: 0; }
 
-/* phones: the tray spans the screen and has no corners; the strip sticks up into the screen with
- * a rounded outer top corner, and the fade runs along its top edge too */
-@media (max-width: 799px) {
-    .deck-more-left::before { border-top-left-radius: var(--radius-l); }
-    .deck-more-right::before { border-top-right-radius: var(--radius-l); }
-    .deck-more::before { box-shadow: 0 -4px 8px -2px var(--bg-4); }
-}
-
 .down-container.more-left .deck-more-left,
 .down-container.more-right .deck-more-right {
     visibility: visible;
@@ -2075,33 +2071,202 @@ div#cbox {
     .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
 }
 
-/* Small screens: the deck scrolls sideways, the selected card is a raised tab */
+/* B-75: the position dots and the "picked" line below the deck are for the phone carousel only */
+.deck-dots,
+.deck-pick { display: none; }
+
+/* B-75, phones: the deck is a carousel. One card at a time snaps into the middle and is shown
+ * larger (scale and fade per card set by the carousel code in script.js, around the vertical
+ * middle, so all cards stay centered in the row); the first and the last card can reach the
+ * middle (padding), never further (no overscroll into empty space). A tap picks the card (and
+ * centers it), a swipe never does. The picked card keeps the accent frame of the deck; below the
+ * deck one dot per card, display only (the ring is the card in the middle, filled = picked).
+ * Many cards: the dots move closer together; when they no longer
+ * fit, a thin bar takes their place (as-bar, set by script.js). The "<" / ">" bars (B-69) are
+ * for large screens only. The tray stays at the bottom edge and keeps clear of the home
+ * indicator (safe area plus a little room), whose edge reacts to system swipes. */
 @media (max-width: 799.98px) {
+    .down-container {
+        --deck-h: calc(var(--deck-w) * var(--card-ratio));
+        --deck-grow: 1.25;                                   /* the card in the middle */
+        --deck-room: calc(var(--deck-h) * (var(--deck-grow) - 1) / 2 + 4px); /* above and below */
+        padding-bottom: calc(var(--space-1) + env(safe-area-inset-bottom));
+    }
+
+    .deck-more,
+    .deck-hint { display: none; }
+
     .controls {
+        position: relative; /* offsetParent of the cards (script.js measures against it) */
         width: 100%;
-        padding: var(--space-1) 0;
+        gap: calc(var(--deck-w) * 0.2);
+        align-items: center;
+        padding: var(--deck-room) calc(50% - var(--deck-w) / 2);
+        scroll-padding-inline: 0;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: none;
+        touch-action: pan-x; /* a vertical drag on the deck does not move the page */
+        -webkit-overflow-scrolling: touch;
     }
 
-    .controls img {
+    .ctl-slot {
+        display: block;
+        flex: none;
+        width: var(--deck-w);
+        scroll-snap-align: center;
+        scroll-snap-stop: always; /* one card per swipe */
+    }
+
+    .ctl-slot.settle { animation: deck-settle 0.22s ease-out; }
+
+    .controls .ctl-slot > img {
+        display: block;
+        width: 100%;
         height: auto;
-        margin: 0 2px;
-        padding-bottom: 0;
-        /* transparent frame: selecting a card only colours it, the deck keeps its height */
-        border: 1px solid transparent;
-        border-bottom: none;
-        align-self: center;
+        aspect-ratio: 300 / 443;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-s);
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
         cursor: auto;
+        -webkit-touch-callout: none;
     }
 
-    .controls .ctl_hover { cursor: auto; }
+    .controls .ctl_hover:hover { border: 0; }
 
-    .controls .ctl_hover:hover { border-bottom: none; }
-
-    .controls .selected {
-        border: 1px solid var(--accent);
-        border-bottom: none;
+    /* picked: the accent frame of the deck (B-68 tab), the dot below is filled */
+    .controls .ctl-slot > img.selected {
         background-color: var(--secondary-background-color);
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
     }
+
+    .deck-dots {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 14px;
+        padding: 0 var(--space-3);
+        pointer-events: none; /* display only (Andreas: too small to tap) */
+    }
+
+    .deck-dots-row {
+        display: flex;
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* each dot as wide as there is room, at most 10px; the dot itself shrinks along */
+    .deck-dot {
+        flex: 0 1 10px;
+        min-width: 0;
+        height: 14px;
+        display: grid;
+        place-items: center;
+    }
+
+    .deck-dot::before {
+        content: "";
+        box-sizing: border-box;
+        width: min(5px, 80%);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        border: 1px solid var(--line-strong);
+        transition: width 0.15s;
+    }
+
+    .deck-dot.picked::before {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+
+    /* the card in the middle: a larger ring (picked too: an accent ring around the filled dot) */
+    .deck-dot.current::before {
+        width: min(9px, 100%);
+        border: 2px solid var(--text);
+    }
+
+    .deck-dot.current.picked::before {
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1.5px var(--bg-2);
+    }
+
+    .deck-bar { display: none; }
+
+    .deck-dots.as-bar .deck-dots-row { display: none; }
+
+    .deck-dots.as-bar .deck-bar {
+        display: block;
+        position: relative;
+        width: 60%;
+        height: 14px;
+    }
+
+    .deck-bar::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 3px;
+        margin-top: -1.5px;
+        border-radius: 2px;
+        background: var(--line);
+    }
+
+    .deck-bar-thumb {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        height: 5px;
+        margin-top: -2.5px;
+        border-radius: 3px;
+        background: var(--text);
+    }
+
+    .deck-bar-pick {
+        position: absolute;
+        top: 50%;
+        width: 3px;
+        height: 11px;
+        margin: -5.5px 0 0 -1.5px;
+        border-radius: 1px;
+        background: var(--accent);
+    }
+
+    .deck-bar-pick[hidden] { display: none; }
+
+    .down-container:has(.ctl_as_guest) .deck-dots { opacity: 0.6; } /* observers: like the grey deck */
+
+    /* what you picked, in the console voice: "> you picked 5"; players only */
+    .deck-pick {
+        display: block;
+        margin: 0;
+        padding: 0 var(--space-3);
+        font-size: var(--fs-xs);
+        line-height: 16px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .deck-pick::before { content: "> "; }
+
+    .down-container:has(.ctl_as_guest) .deck-pick { visibility: hidden; }
+}
+
+@keyframes deck-settle {
+    0% { transform: scale(0.97); }
+    55% { transform: scale(1.035); }
+    100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ctl-slot.settle { animation: none; }
+    .deck-dot::before { transition: none; }
 }
 
 /* ---------- Survey (markup from script_feedback.js) ---------- */
