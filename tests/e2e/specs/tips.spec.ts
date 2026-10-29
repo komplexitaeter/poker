@@ -74,17 +74,17 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
 });
 
 /** B-79: a board with the deck of a preset (mapping in cards.json), Alice joined, Bob and Cleo via the API */
-async function teamWithDeck(browser: Browser, team: string, preset: string) {
+async function teamWithDeck(browser: Browser, team: string, preset: string, others = ['Bob', 'Cleo']) {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   await alice.goto(`/?tool=e2e&team=${encodeURIComponent(team)}&preset=${encodeURIComponent(preset)}`);
   await alice.waitForURL(/\?t=/);
   const url = alice.url();
   await joinAsPlayer(alice, url, 'Alice');
-  const [bob, cleo] = await addPlayersViaApi(alice, url, ['Bob', 'Cleo']);
+  const ids = await addPlayersViaApi(alice, url, others);
   const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
-  // all three vote, then the board reloads (revealed)
+  // everyone votes (Alice first), then the board reloads (revealed)
   const vote = async (cards: string[]) => {
-    for (const [i, id] of [aliceId, bob, cleo].entries()) await setCard(alice, url, id, cards[i]);
+    for (const [i, id] of [aliceId, ...ids].entries()) await setCard(alice, url, id, cards[i]);
     await alice.reload();
     await expect(alice.locator('#round_status')).toHaveText('revealed');
   };
@@ -92,6 +92,7 @@ async function teamWithDeck(browser: Browser, team: string, preset: string) {
 }
 
 const TALK = 'Talk about the cards you chose.';
+const BREAK = 'Maybe take a short break.';
 
 test('tip after the reveal: talk about traffic lights, also in a mixed choice; control cards stay neutral (B-79)', async ({ browser }) => {
   const { alice, vote } = await teamWithDeck(browser, 'Tips Traffic', 'Traffic');
@@ -106,22 +107,27 @@ test('tip after the reveal: talk about traffic lights, also in a mixed choice; c
   await vote(['three01', 'eight01', 'red0001']);
   await expect(tip).toHaveText(TALK);
 
-  // control cards (coffee, ?, !) do not make it a talk: lowest and highest as before
+  // ? and ! are asked first
+  await vote(['green01', 'red0001', 'xclam01']);
+  await expect(tip).toHaveText('Talk about the cards you chose \u2013 Cleo (!) first.');
+  await expect(tip.locator('b')).toHaveText(['Cleo (!)']);
+
+  // control cards do not make it a talk: lowest and highest as before, coffee adds a break
   await vote(['three01', 'eight01', 'break01']);
-  await expect(tip).toHaveText('Let them explain: Alice (3) and Bob (8)');
+  await expect(tip).toHaveText(`Let them explain: Alice (3) and Bob (8). ${BREAK}`);
   await vote(['qstmrk1', 'xclam01', 'break01']);
-  await expect(tip).toHaveText('');
+  await expect(tip).toHaveText(`Let them explain: Alice (?), Bob (!). ${BREAK}`);
 
   // no numbers to compare (infinity, veto): talk about them
   await vote(['infin01', 'veto', 'break01']);
-  await expect(tip).toHaveText(TALK);
+  await expect(tip).toHaveText(`${TALK} ${BREAK}`);
 });
 
 test('tip after the reveal: talk about emotions (B-79)', async ({ browser }) => {
   const { alice, vote } = await teamWithDeck(browser, 'Tips Emotions', 'Emoticons');
   await expect(alice.locator('#ctl img#satis01')).toBeVisible(); // the Emotions deck
   await vote(['satis01', 'angry01', 'qstmrk1']);
-  await expect(alice.locator('#round_tip')).toHaveText(TALK);
+  await expect(alice.locator('#round_tip')).toHaveText('Talk about the cards you chose \u2013 Cleo (?) first.');
   await vote(['enthu01', 'enthu01', 'enthu01']);
   await expect(alice.locator('#round_tip')).toHaveText(TALK);
 });
@@ -132,9 +138,35 @@ test('tip after the reveal in anonymous mode: a general line, nobody named (B-79
   // no card on the table yet: anonymous mode starts right away
   expect((await alice.request.post(`/api/update_team.php?t=${encodeURIComponent(t)}&anonymous_request_toggle=1`)).ok()).toBeTruthy();
   const tip = alice.locator('#round_tip');
-  for (const cards of [['three01', 'eight01', 'infin01'], ['five001', 'five001', 'five001'], ['three01', 'green01', 'break01']] as const) {
+  for (const cards of [['three01', 'eight01', 'infin01'], ['five001', 'five001', 'five001'], ['three01', 'qstmrk1', 'xclam01']] as const) {
     await vote([...cards]);
     await expect(tip).toHaveText('Take the chance and talk about what you see.');
     await expect(tip.locator('b')).toHaveCount(0);
   }
+  // coffee: the break hint, still nobody named
+  await vote(['three01', 'qstmrk1', 'break01']);
+  await expect(tip).toHaveText(`Take the chance and talk about what you see. ${BREAK}`);
+  await expect(tip.locator('b')).toHaveCount(0);
+});
+
+test('tip after the reveal: ? and ! explain too, coffee suggests a break (B-79)', async ({ browser }) => {
+  const { alice, vote } = await teamWithDeck(browser, 'Tips Control', 'Fibonacci', ['Bob', 'Cleo', 'Dan', 'Eve', 'Finn']);
+  const tip = alice.locator('#round_tip');
+
+  // ? and ! appended to the spread, coffee adds a break
+  await vote(['three01', 'three01', 'eight01', 'qstmrk1', 'xclam01', 'break01']);
+  await expect(tip).toHaveText(`Let them explain: Alice, Bob (3), Cleo (8), Dan (?), Eve (!). ${BREAK}`);
+  await expect(tip.locator('b')).toHaveText(['Alice, Bob (3)', 'Cleo (8)', 'Dan (?)', 'Eve (!)']);
+
+  // no spread: only ? and ! explain (before "Everyone agrees"); more than two: "+n"
+  await vote(['five001', 'five001', 'five001', 'xclam01', 'five001', 'five001']);
+  await expect(tip).toHaveText('Let them explain: Dan (!)');
+  await vote(['qstmrk1', 'qstmrk1', 'qstmrk1', 'xclam01', 'five001', 'five001']);
+  await expect(tip).toHaveText('Let them explain: Alice, Bob +1 (?), Dan (!)');
+  await expect(tip.locator('b')).toHaveText(['Alice, Bob +1 (?)', 'Dan (!)']);
+
+  // everybody needs a break: only that
+  await vote(Array(6).fill('break01'));
+  await expect(tip).toHaveText(BREAK);
+  await expect(tip.locator('b')).toHaveCount(0);
 });
