@@ -886,7 +886,13 @@ heiß diskutiert; Philosophie der App ist „nah an der Physik“ – am Tisch k
 deshalb das (inzwischen dezentere) Wackeln als Hinweis; manchen reicht das nicht, Sperren finden wir aber ein blödes
 Feature. **Idee Andreas:** Ändert jemand nach dem Aufdecken seine Karte, liegen zwei Karten leicht versetzt
 übereinander; jeder kann nachschauen, was die ursprüngliche Karte war – transparent statt verboten. Refinement nötig
-(Darstellung, mehrfaches Ändern, Anonym-Modus, Daten: ursprüngliche Karte je Runde speichern → Ben). Öffentlich in der
+(Darstellung, mehrfaches Ändern, Anonym-Modus, Daten: ursprüngliche Karte je Runde speichern → Ben).
+**Erweiterung „Let them explain“ (Andreas, 2026-10-29, zusammen mit B-70):** Der Tipp nach dem Aufdecken bezieht sich
+immer auf die **ursprünglich aufgedeckten** Karten. Wer niedrigste/höchste Karte hatte, bleibt in „Let them explain“,
+auch wenn er danach ändert – man soll sich nicht durch Umlegen herausnehmen können (oft beobachtet, dann hört man die
+Gedanken nicht mehr). Änderungen werden angezeigt, z. B. aufgedeckt B:2 C:2 A:4 D:6 → „Let them explain: B, C (2),
+D (6)“; B ändert auf 3 → „Let them explain: B (2→3), C (2), D (6)“. Ggf. kommen neue Extremwerte dazu. Gleiche Datenbasis
+wie oben (ursprüngliche Karte je Runde speichern, Backend). Öffentlich in der
 Backlog-Liste (B-57)? – noch klären.
 
 ### B-59 Aufdecken, bevor alle gewählt haben
@@ -1032,6 +1038,10 @@ ohne Verhaltensänderung.
 ### B-73 Wackelnder Timer-E2E-Test
 Tessa/Delia (2026-10-28): `timer.spec.ts` schlug lokal vereinzelt fehl („Clicking the checkbox did not change its
 state“), vermutlich Race zwischen Klick und Neu-Rendern nach `pull`. Robust machen, bevor es in der CI rot wird.
+
+### B-74 Overlay-Menü schließt bei Klick daneben
+Andreas (2026-10-29): Ist ein Overlay-Menü offen (Side-Panel), soll ein Klick irgendwo außerhalb es schließen. Status:
+in Umsetzung (Fred).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
