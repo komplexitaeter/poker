@@ -1895,7 +1895,7 @@ function tipText(json, revealed) {
     const min = Math.min(...values);
     const max = Math.max(...values);
     if (min === max) {
-        if (numeric.length === players.length) return ['Everyone agrees \u2013 start a new round.'];
+        if (numeric.length === players.length) return ['Everyone agrees \u2013 on to the next topic.'];
         // the same number next to a veto: talk about them
         if (chosen.length > numeric.length) return withBreak(talk);
         // next to control cards only: ? and ! explain, otherwise no tip
