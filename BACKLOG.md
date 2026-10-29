@@ -1106,6 +1106,9 @@ Anlege-Link `?tool=…&team=…&text=…`. Offen: Eine Änderung von außen ersc
 Push? Welche weiteren Endpunkte dokumentieren wir als „stabil“? Bezug zu B-52.
 Andreas (2026-10-29): Erst mit B-52 (Topics im Plural) zusammen durchdenken – eine öffentliche API ist sofort
 eine Abhängigkeit mehr. Signal an alle Clients siehe B-81.
+Gedanke (2026-10-29): Richtung umdrehen – statt dass wir Jira & Co. anbinden (OAuth, Zugangsdaten speichern, je System
+ein Adapter), schicken andere Systeme Topics an uns (Jira Automation „Send web request“, Skripte, Zapier/n8n). Für uns
+nur ein Endpunkt plus Doku. Später ggf. der Rückweg (Schätzung zurück ins Ticket) als ausgehender Webhook.
 
 ### B-81 Update-Signal vom Webserver an poker-msg
 Idee von Andreas (2026-10-29): Heute schickt nur der Browser nach einer Änderung `push` an poker-msg. Ändert der
