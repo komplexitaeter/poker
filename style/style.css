@@ -69,11 +69,16 @@
     :root { --card-max: 110px; } /* few players: no giant cards on a phone */
 }
 
-/* touch phones: the deck is a carousel (B-75); the width of a card, the one in the middle 1.25
- * times that: 58px at 390px, smaller in landscape (11vh). A narrow window with a mouse or a
- * trackpad keeps the deck row with the "<" / ">" bars (B-69). */
+/* touch devices: the deck is a carousel (B-75, B-77 tablets too); the width of a card, the one in
+ * the middle 1.25 times that, never below 44px (a comfortable tap). Phones: 58px at 390px, smaller
+ * in landscape (11vh). Tablets (the floating tray): 64px, less on short screens (8vh). A mouse
+ * or a trackpad keeps the deck row with the "<" / ">" bars (B-69). */
 @media (max-width: 799.98px) and (hover: none) and (pointer: coarse) {
     :root { --deck-w: clamp(44px, min(15vw, 11vh), 72px); }
+}
+
+@media (min-width: 800px) and (hover: none) and (pointer: coarse) {
+    :root { --deck-w: clamp(44px, 8vh, 64px); }
 }
 
 @media (pointer: coarse) {
@@ -2073,12 +2078,12 @@ div#cbox {
     .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
 }
 
-/* B-75: the position dots and the "picked" line below the deck are for the carousel (touch phones) only */
+/* B-75: the position dots and the "picked" line below the deck are for the carousel (touch devices) only */
 .deck-dots,
 .deck-pick { display: none; }
 
-/* B-75, touch phones (Andreas, 2026-10-29: touch only; a narrow window with a mouse or a
- * trackpad keeps the deck row with the "<" / ">" bars of B-69): the deck is a carousel. One card at a time snaps into the middle and is shown
+/* B-75, touch devices (Andreas, 2026-10-29: touch only, B-77: at any width, tablets too; a window
+ * with a mouse or a trackpad keeps the deck row with the "<" / ">" bars of B-69): the deck is a carousel. One card at a time snaps into the middle and is shown
  * larger (scale and fade per card set by the carousel code in script.js, around the vertical
  * middle, so all cards stay centered in the row); the first and the last card can reach the
  * middle (padding), never further (no overscroll into empty space). A tap picks the card (and
@@ -2087,8 +2092,8 @@ div#cbox {
  * Many cards: the dots move closer together; when they no longer
  * fit, a thin bar takes their place (as-bar, set by script.js). No "<" / ">" bars (B-69) on the
  * carousel. Same query as gCarouselQuery in script.js. The tray stays at the bottom edge and keeps clear of the home
- * indicator (safe area plus a little room), whose edge reacts to system swipes. */
-@media (max-width: 799.98px) and (hover: none) and (pointer: coarse) {
+ * indicator (safe area plus a little room), whose edge reacts to system swipes. Large screens: see below. */
+@media (hover: none) and (pointer: coarse) {
     .down-container {
         --deck-h: calc(var(--deck-w) * var(--card-ratio));
         --deck-grow: 1.25;                                   /* the card in the middle */
@@ -2103,6 +2108,7 @@ div#cbox {
         position: relative; /* offsetParent of the cards (script.js measures against it) */
         width: 100%;
         gap: calc(var(--deck-w) * 0.2);
+        justify-content: flex-start; /* the padding centers the first card (not "safe center", B-68) */
         align-items: center;
         padding: var(--deck-room) calc(50% - var(--deck-w) / 2);
         scroll-padding-inline: 0;
@@ -2260,6 +2266,23 @@ div#cbox {
     .deck-pick::before { content: "> "; }
 
     .down-container:has(.ctl_as_guest) .deck-pick { visibility: hidden; }
+}
+
+/* B-77, tablets (touch, large screens): the carousel in the floating tray. A little more room above
+ * the card in the middle and below the "picked" line, so neither touches the tray's rounded edge (its
+ * margin already keeps clear of the safe area). The tray grows with it; the round button at the foot
+ * of the column still ends --dock-lift above the tray's bottom edge (same grid row). */
+@media (min-width: 800px) and (hover: none) and (pointer: coarse) {
+    .down-container { padding-bottom: var(--space-2); }
+
+    .controls { padding-top: calc(var(--deck-room) + 6px); }
+}
+
+/* short screens in this layout (phones in landscape, 800px and wider): the table keeps its room */
+@media (min-width: 800px) and (max-height: 500px) and (hover: none) and (pointer: coarse) {
+    .down-container { padding-bottom: var(--space-1); }
+
+    .controls { padding-top: var(--deck-room); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -20,9 +20,9 @@ let gTimerInterval = null;
 let gLastShowAvg = null;
 // B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard)
 const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
-// B-75: the deck is a carousel on touch phones only (same query as style.css "Card deck");
-// a narrow window with a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
-const gCarouselQuery = window.matchMedia('(max-width: 799.98px) and (hover: none) and (pointer: coarse)');
+// B-75/B-77: the deck is a carousel on every touch device, at any width (same query as style.css "Card deck");
+// a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
+const gCarouselQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 let gUserName = null;
 let gPromoInitiated = false;
 
@@ -258,9 +258,9 @@ function scrollDeckByBar(direction) {
     ctl.scrollBy({ left: direction * Math.max(ctl.clientWidth - cardWidth, cardWidth), behavior });
 }
 
-/* B-75: touch phones (gCarouselQuery: below 800px and touch): the deck is a carousel (style.css "Card deck"). The card
- * in the middle is larger, the others smaller and paler (per frame, by their distance from the
- * middle). Below the deck one dot per card (#deck_dots, display only), or a bar when they do not fit,
+/* B-75/B-77: touch devices (gCarouselQuery, phones and tablets): the deck is a carousel (style.css "Card deck"). The
+ * card in the middle is larger, the others smaller and paler (per frame, by their distance from the
+ * middle, relative to the deck's width). Below the deck one dot per card (#deck_dots, display only), or a bar when they do not fit,
  * and a line with the picked card (#deck_pick).
  * Tap vs. swipe: a card is only picked by a real tap (short, hardly moved, not a touch that stops
  * a running swipe); other clicks on the deck are dropped before they reach setC(). A picked card
@@ -268,7 +268,7 @@ function scrollDeckByBar(direction) {
  * switched on/off) or the breakpoint centers a card again (the one in the middle, else the picked,
  * else the middle one). Haptics (navigator.vibrate, Android) only while the user swipes. */
 const gCarousel = {
-    on: false,         // carousel layout active (touch phones)
+    on: false,         // carousel layout active (touch devices)
     keys: '',          // the deck's cards when last laid out
     currentKey: null,  // card in the middle
     raf: 0,
@@ -333,7 +333,7 @@ function syncCarousel(recenter = false) {
     const dots = document.getElementById('deck_dots');
     if (ctl === null || dots === null) return;
     if (!gCarouselQuery.matches) {
-        if (gCarousel.on) { // back to the deck row (large screen, mouse / trackpad): no traces of the carousel
+        if (gCarousel.on) { // back to the deck row (mouse / trackpad): no traces of the carousel
             gCarousel.on = false;
             gCarousel.keys = '';
             ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; img.style.pointerEvents = ''; });
@@ -372,12 +372,15 @@ function scheduleCarousel() {
 }
 
 /* per frame: size, position and fade by the distance from the middle (cover-flow like), dots / bar.
- * scale: 1.25 in the middle, times 0.7 per card further out (at least 0.3). The cards move toward
- * the middle by the width they lost, so the gaps shrink along with the cards (pos(d) = the integral
- * of the scaled step). Opacity falls with the distance; the picked card stays readable (0.85).
+ * B-77: the falloff is relative to the deck's width, not per card: u = distance from the middle / half
+ * the deck width (0 in the middle, 1 at the edge). scale: 1.25 in the middle, times CAROUSEL_EDGE at
+ * the edge (at least 0.3); so a wide tray (tablet) shows more large cards, a phone (390px, about 2.8
+ * cards per half) looks like B-75 (0.7 per card). The cards move toward the middle by the width they
+ * lost, so the gaps shrink along with the cards (pos = the integral of the scaled step). Opacity falls
+ * with u; the picked card stays readable (0.85).
  * Visual only (transform): the snap positions stay where the slots are; taps hit the drawn card. */
 const CAROUSEL_GROW = 1.25;
-const CAROUSEL_FALL = 0.7;
+const CAROUSEL_EDGE = 0.37; // scale factor at the edge of the deck (0.7 per card on a 390px phone)
 function carouselFrame() {
     gCarousel.raf = 0;
     if (!gCarousel.on) return;
@@ -386,25 +389,27 @@ function carouselFrame() {
     const cards = carouselCards();
     if (cards.length === 0) return;
     // reads first (layout), then the writes
-    const mid = ctl.scrollLeft + ctl.clientWidth / 2;
+    const half = Math.max(1, ctl.clientWidth / 2);
+    const mid = ctl.scrollLeft + half;
     const centers = cards.map(img => img.parentElement.offsetLeft + img.parentElement.offsetWidth / 2);
-    const step = cards.length > 1 ? centers[1] - centers[0] : 1;
-    const lnFall = Math.log(CAROUSEL_FALL);
+    const step = (cards.length > 1 ? centers[1] - centers[0] : 0) || 1;
+    const k = Math.log(CAROUSEL_EDGE) * step / half; // ln of the factor per card
     let best = 0;
     let bestDist = Infinity;
     cards.forEach((img, i) => {
-        const signed = (centers[i] - mid) / (step || 1); // in cards, < 0 left of the middle
+        const signed = (centers[i] - mid) / step; // in cards, < 0 left of the middle
         const d = Math.abs(signed);
+        const u = d * step / half;                // relative to the deck's width, 1 at its edge
         if (d < bestDist) { bestDist = d; best = i; }
-        const fall = Math.pow(CAROUSEL_FALL, d);
+        const fall = Math.exp(k * d);
         const scale = Math.max(0.3, CAROUSEL_GROW * fall);
-        const pos = step * CAROUSEL_GROW * (fall - 1) / lnFall; // where the card is drawn, in px
+        const pos = step * CAROUSEL_GROW * (fall - 1) / k; // where the card is drawn, in px
         const shift = Math.sign(signed) * pos - signed * step;
-        const opacity = Math.max(img.classList.contains('selected') ? 0.85 : 0.12, 1 - 0.25 * d);
+        const opacity = Math.max(img.classList.contains('selected') ? 0.85 : 0.12, 1 - 0.7 * u);
         img.style.transform = 'translateX(' + shift.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
         img.style.opacity = opacity.toFixed(3);
         // far cards pile up faintly at the edges: not tappable, or a tap there would pick a card far away
-        img.style.pointerEvents = d > 3 ? 'none' : '';
+        img.style.pointerEvents = u > 1.1 ? 'none' : '';
     });
     const currentKey = cards[best].id;
     if (currentKey !== gCarousel.currentKey) {
