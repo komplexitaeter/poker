@@ -1536,7 +1536,7 @@ function loadCardConfig() {
        - sort_order does not have to be unique, but it will help to maintain consistency
      */
 
-    const url = "./cards.json";
+    const url = "./cards.json?v=2"; // bump when cards.json changes (Safari keeps it cached)
     let jsonCardsConf = loadJSON(url);
     gCardsConfig = jsonCardsConf.cards;
     gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);

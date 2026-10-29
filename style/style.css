@@ -2526,6 +2526,8 @@ div#cbox {
     font-size: var(--fs-xs);
     line-height: 1.25rem;
     white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden; /* a long label must never run into its neighbours */
     color: var(--muted);
 }
 
