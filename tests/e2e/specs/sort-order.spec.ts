@@ -7,7 +7,7 @@ import { newPlayer, createTeam, joinAsPlayer, tableCard, pickCard, teamWithTwoPl
  * anonymous mode the server always arranges by card value, so the choice is disabled, shows
  * "Card value" whatever is stored, and a hint is shown. The stored value is kept.
  * B-51: the choice is a radio group (fieldset #cet_order_by) in the tab "Results" of the board
- * settings panel; the panel stays open while cards are picked.
+ * settings panel. B-74: picking a card (a click outside the panel) closes it.
  */
 const firstCard = (page: Page) => page.locator('#cbox .c').first();
 const cardId = (page: Page, name: string) => tableCard(page, name).getAttribute('id') as Promise<string>;
@@ -50,8 +50,8 @@ test('the menu setting arranges revealed cards by player name or by card value, 
   await expect(alice.locator('#order_by_div')).toHaveCount(0);
 
   // switching to "Card value" re-arranges the revealed cards right away, for everyone
-  // (B-51: picking a card leaves the panel open)
-  await expect(group).toBeVisible();
+  // (B-74: picking a card closed the panel)
+  await openResults(alice);
   await orderRadio(alice, 'SEQUENCE').check();
   await expect(firstCard(alice)).toHaveAttribute('id', bobId);
   await expect(firstCard(bob)).toHaveAttribute('id', bobId);

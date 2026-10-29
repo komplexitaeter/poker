@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.48" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.49" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.25" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.32" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.27" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.33" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -136,9 +136,9 @@
         <div class="controls" id="ctl">
         </div>
 
-        <!-- B-69: more cards to the left / right (hints only, set by updateDeckRoom() in script.js) -->
-        <span class="deck-more deck-more-left" aria-hidden="true">&lt;</span>
-        <span class="deck-more deck-more-right" aria-hidden="true">&gt;</span>
+        <!-- B-69: more cards to the left / right (chevron bars, hints only, set by updateDeckRoom() in script.js) -->
+        <span class="deck-more deck-more-left" aria-hidden="true"><svg class="i"><use href="#i-back"/></svg></span>
+        <span class="deck-more deck-more-right" aria-hidden="true"><svg class="i"><use href="#i-next"/></svg></span>
 
         <!-- B-68: devices with a mouse: keys 1–9 and 0 pick the first ten cards (keys under the cards) -->
         <p class="deck-hint" aria-hidden="true">keys 1–9 pick a card</p>
