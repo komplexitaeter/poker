@@ -4,8 +4,9 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, expectTableCard, teamWit
 /**
  * B-51: one menu (dialog#menu) with one section per area: Topic, Board settings, You, Feedback.
  * Large screens: the header buttons open their section directly in a side panel on the right, from
- * below the header down to the bottom edge (non-modal); a click on the table does not close it, the
- * button of the open section, the close button and Escape do, and the focus goes back to the button.
+ * below the header down to the bottom edge (non-modal); the button of the open section, the close button
+ * and Escape close it, and the focus goes back to the button. B-74: a click outside the panel (table,
+ * deck) closes it as well and still does what it does there; another header button switches the section.
  * Phones: the menu button opens the index as a modal bottom sheet; sections have a back button;
  * the backdrop closes it.
  * Board settings: tabs Deck | Results | Team, one panel visible at a time.
@@ -50,11 +51,6 @@ test('large screen: the side panel opens and closes by click and Escape, the foc
   }).toEqual([LARGE.width, LARGE.height]);
   const panel = (await menu(alice).boundingBox())!;
   expect(panel.y).toBeGreaterThanOrEqual(head.y + head.height - 1);
-
-  // a click on the table and a card from the deck do not close it
-  await alice.locator('#table').click({ position: { x: 20, y: 20 } });
-  await pickCard(alice, 'three01');
-  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 
   // another header button switches the section in place
   await csetBtn.click();
@@ -435,4 +431,54 @@ test('feedback from the start page panel: text sent URL-encoded, panel closes (B
   await expect(page.locator('dialog#menu[open]')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
+});
+
+test('large screen: a click outside the panel closes it, the click still counts (B-74)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: LARGE });
+  const url = await createTeam(alice, 'Menu Outside');
+  await joinAsPlayer(alice, url, 'Alice');
+  const topicBtn = alice.locator('#topic_btn');
+  const csetBtn = alice.locator('#cset_btn');
+
+  // a click on the table closes the panel, without a focus ring on the header button
+  await topicBtn.click();
+  await expect(alice.locator('#topic_txt')).toBeFocused();
+  await alice.locator('#table').click({ position: { x: 20, y: 20 } });
+  await expect(menu(alice)).not.toHaveAttribute('open');
+  await expect(topicBtn).toHaveAttribute('aria-expanded', 'false');
+  expect(await topicBtn.evaluate(el => el.matches(':focus-visible'))).toBe(false);
+
+  // another header button switches to its section (does not just close the panel)
+  await topicBtn.click();
+  await csetBtn.click();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+  await expect(alice.locator('#menu_title')).toHaveText('Board settings');
+  await expect(csetBtn).toHaveAttribute('aria-expanded', 'true');
+  await expect(topicBtn).toHaveAttribute('aria-expanded', 'false');
+
+  // clicks inside the panel keep it open
+  await tab(alice, 'Results').click();
+  await alice.locator('#menu_title').click();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+
+  // a card from the deck: the panel closes and the card is picked
+  await pickCard(alice, 'three01');
+  await expect(menu(alice)).not.toHaveAttribute('open');
+
+  // a text selection dragged from the panel out to the table does not close it
+  await topicBtn.click();
+  await alice.locator('#topic_txt').fill('drag me out');
+  const field = (await alice.locator('#topic_txt').boundingBox())!;
+  const table = (await alice.locator('#table').boundingBox())!;
+  await alice.mouse.move(field.x + 5, field.y + 5);
+  await alice.mouse.down();
+  await alice.mouse.move(table.x + 20, table.y + 20, { steps: 5 });
+  await alice.mouse.up();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+
+  // keyboard: Escape still closes it, the focus goes back to the button
+  await alice.locator('#topic_txt').focus();
+  await alice.keyboard.press('Escape');
+  await expect(menu(alice)).not.toHaveAttribute('open');
+  await expect(topicBtn).toBeFocused();
 });
