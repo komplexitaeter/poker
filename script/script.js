@@ -1835,37 +1835,63 @@ function tipText(json, revealed) {
         return ['Waiting for ', ...who, '. Once everyone has voted, cards are revealed automatically.'];
     }
 
+    // B-79: coffee adds a hint for a break (also in anonymous mode); ? and ! are asked first
+    const configs = players.map(player => ({ player, config: getCardConfig(player.display_card_key) }));
+    const pause = configs.some(entry => entry.config && entry.config.card_key === 'break01');
+    const withBreak = parts => {
+        if (!pause) return parts;
+        if (parts.length === 0) return ['Maybe take a short break.'];
+        const last = parts[parts.length - 1];
+        const done = typeof last === 'string' && last.endsWith('.');
+        return [...parts, done ? ' Maybe take a short break.' : '. Maybe take a short break.'];
+    };
+
     // B-79: in anonymous mode always a general, gentle line – nobody is asked to explain
-    if (json.anonymous_mode === 1) return ['Take the chance and talk about what you see.'];
+    if (json.anonymous_mode === 1) return withBreak(['Take the chance and talk about what you see.']);
+
+    // "Maria (?)", "Jogi, Paul +1 (!)" – one group per control card that asks for a word
+    const asking = ['qstmrk1', 'xclam01'].map(key => {
+        const entries = configs.filter(entry => entry.config && entry.config.card_key === key);
+        return entries.length === 0 ? null : tipSide(entries.map(entry => entry.player), entries[0].config.symbol);
+    }).filter(group => group !== null);
+    // groups joined by commas: "Let them explain: Alice (3), Bob (8), Maria (?)"
+    const explain = groups => {
+        const parts = ['Let them explain: '];
+        groups.forEach((group, i) => {
+            if (i > 0) parts.push(asking.length > 0 ? ', ' : ' and ');
+            parts.push(group);
+        });
+        return parts;
+    };
+    const talk = asking.length === 0
+        ? ['Talk about the cards you chose.']
+        : ['Talk about the cards you chose \u2013 ', ...explain(asking).slice(1), ' first.'];
 
     // the cards actually chosen; control cards (coffee, ?, !) stay neutral
-    const chosen = players
-        .map(player => ({ player, config: getCardConfig(player.display_card_key) }))
-        .filter(entry => entry.config && !entry.config.flow_control);
-    if (chosen.length === 0) return [];
-    const talk = ['Talk about the cards you chose.'];
+    const chosen = configs.filter(entry => entry.config && !entry.config.flow_control);
+    if (chosen.length === 0) return withBreak(asking.length > 0 ? explain(asking) : []);
     // B-79: emotions and traffic lights have no range (or just three values): talk instead of names
-    if (chosen.some(entry => entry.config.talk)) return talk;
+    if (chosen.some(entry => entry.config.talk)) return withBreak(talk);
 
     // lowest and highest numeric card; infinity and veto do not count
     const numeric = chosen.filter(entry => entry.config.numeric_value != null);
     // no numbers at all (only infinity or veto): talk about them
-    if (numeric.length === 0) return talk;
+    if (numeric.length === 0) return withBreak(talk);
     const values = numeric.map(entry => entry.config.numeric_value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     if (min === max) {
         if (numeric.length === players.length) return ['Everyone agrees \u2013 start a new round.'];
-        // the same number next to infinity or veto: talk about them; next to control cards only: no tip
-        return chosen.length > numeric.length ? talk : [];
+        // the same number next to infinity or veto: talk about them
+        if (chosen.length > numeric.length) return withBreak(talk);
+        // next to control cards only: ? and ! explain, otherwise no tip
+        return withBreak(asking.length > 0 ? explain(asking) : []);
     }
     const side = value => {
         const entries = numeric.filter(entry => entry.config.numeric_value === value);
-        return { players: entries.map(entry => entry.player), label: entries[0].config.symbol || entries[0].config.description };
+        return tipSide(entries.map(entry => entry.player), entries[0].config.symbol || entries[0].config.description);
     };
-    const low = side(min);
-    const high = side(max);
-    return ['Let them explain: ', tipSide(low.players, low.label), ' and ', tipSide(high.players, high.label)];
+    return withBreak(explain([side(min), side(max), ...asking]));
 }
 
 /* B-68: n blocks (one per vote) in a bar of the spread. New ones are added on top with the class
