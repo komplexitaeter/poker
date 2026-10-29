@@ -335,7 +335,13 @@ function scheduleCarousel() {
     if (gCarousel.on && !gCarousel.raf) gCarousel.raf = requestAnimationFrame(carouselFrame);
 }
 
-/* per frame: size and fade by the distance from the middle, dots / bar */
+/* per frame: size, position and fade by the distance from the middle (cover-flow like), dots / bar.
+ * scale: 1.25 in the middle, times 0.7 per card further out (at least 0.3). The cards move toward
+ * the middle by the width they lost, so the gaps shrink along with the cards (pos(d) = the integral
+ * of the scaled step). Opacity falls with the distance; the picked card stays readable (0.85).
+ * Visual only (transform): the snap positions stay where the slots are; taps hit the drawn card. */
+const CAROUSEL_GROW = 1.25;
+const CAROUSEL_FALL = 0.7;
 function carouselFrame() {
     gCarousel.raf = 0;
     if (!gCarousel.on) return;
@@ -343,18 +349,23 @@ function carouselFrame() {
     const dots = document.getElementById('deck_dots');
     const cards = carouselCards();
     if (cards.length === 0) return;
+    // reads first (layout), then the writes
     const mid = ctl.scrollLeft + ctl.clientWidth / 2;
-    const step = cards.length > 1
-        ? cards[1].parentElement.offsetLeft - cards[0].parentElement.offsetLeft : 1;
+    const centers = cards.map(img => img.parentElement.offsetLeft + img.parentElement.offsetWidth / 2);
+    const step = cards.length > 1 ? centers[1] - centers[0] : 1;
+    const lnFall = Math.log(CAROUSEL_FALL);
     let best = 0;
     let bestDist = Infinity;
     cards.forEach((img, i) => {
-        const slot = img.parentElement;
-        const d = Math.abs(slot.offsetLeft + slot.offsetWidth / 2 - mid) / (step || 1); // in cards
+        const signed = (centers[i] - mid) / (step || 1); // in cards, < 0 left of the middle
+        const d = Math.abs(signed);
         if (d < bestDist) { bestDist = d; best = i; }
-        const scale = Math.max(0.75, 1.25 - 0.22 * d);
-        const opacity = img.classList.contains('selected') ? 1 : Math.max(0.5, 1 - 0.14 * d);
-        img.style.transform = 'scale(' + scale.toFixed(3) + ')';
+        const fall = Math.pow(CAROUSEL_FALL, d);
+        const scale = Math.max(0.3, CAROUSEL_GROW * fall);
+        const pos = step * CAROUSEL_GROW * (fall - 1) / lnFall; // where the card is drawn, in px
+        const shift = Math.sign(signed) * pos - signed * step;
+        const opacity = Math.max(img.classList.contains('selected') ? 0.85 : 0.12, 1 - 0.25 * d);
+        img.style.transform = 'translateX(' + shift.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
         img.style.opacity = opacity.toFixed(3);
     });
     const currentKey = cards[best].id;
