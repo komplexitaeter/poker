@@ -3,9 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 
 /**
- * B-69: the deck has no scrollbar. When it overflows, a chevron bar (hints only, not
- * clickable) shows at the edge where more cards are hidden (more-left / more-right on
- * #down-container). Keys 1–9 and 0 bring a hidden card into view.
+ * B-69: the deck has no scrollbar. When it overflows, a chevron bar shows at the edge where
+ * more cards are hidden (more-left / more-right on #down-container); a click / tap on it scrolls
+ * the deck that way. Keys 1–9 and 0 bring a hidden card into view.
  */
 const PHONE = { width: 390, height: 844 };
 
@@ -42,7 +42,8 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
   await expect(tray).not.toHaveClass(/more-left/);
   await expect.poll(() => barOpacity(alice, 'right')).toBe('1');
   expect(await barOpacity(alice, 'left')).toBe('0');
-  expect(await alice.locator('.deck-more-right').evaluate(el => getComputedStyle(el).pointerEvents)).toBe('none');
+  // a hidden bar is not in the way (and not in the accessibility tree)
+  await expect(alice.locator('.deck-more-left')).toBeHidden();
 
   // in the middle: both
   await ctl.evaluate(el => { el.scrollLeft = 200; });
@@ -94,5 +95,36 @@ test('deck hints: a key brings a hidden card into view, the wheel scrolls sidewa
   // the first card scrolls the deck back to its start: no bar covers it
   await expect.poll(() => ctl.evaluate(el => el.scrollLeft)).toBe(0);
   await expect(alice.locator('#down-container')).not.toHaveClass(/more-left/);
+  await alice.context().close();
+});
+
+test('deck hints: a click on a bar scrolls the deck, no card is picked (B-69)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
+  const url = await createTeam(alice, 'Deck Bars');
+  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await joinAsPlayer(alice, url, 'Alice');
+  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  const tray = alice.locator('#down-container');
+  const ctl = alice.locator('#ctl');
+  const scrollLeft = () => ctl.evaluate(el => el.scrollLeft);
+  await expect(tray).toHaveClass(/more-right/);
+
+  // ">" scrolls right by about one visible width minus one card
+  const more = alice.getByRole('button', { name: 'Show more cards' });
+  await more.tap();
+  await expect.poll(scrollLeft).toBeGreaterThan(0);
+  const step = await scrollLeft();
+  const [width, card] = await ctl.evaluate(el =>
+    [el.clientWidth, el.querySelector('img.on')!.getBoundingClientRect().width]);
+  expect(Math.abs(step - (width - card))).toBeLessThan(2);
+  await expect(tray).toHaveClass(/more-left/);
+
+  // "<" scrolls back to the start
+  await alice.getByRole('button', { name: 'Show previous cards' }).click();
+  await expect.poll(scrollLeft).toBe(0);
+  await expect(tray).not.toHaveClass(/more-left/);
+
+  // the bars took the clicks: no card was picked
+  await expect(alice.locator('#ctl img.selected')).toHaveCount(0);
   await alice.context().close();
 });
