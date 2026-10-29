@@ -64,7 +64,7 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
   const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
   for (const id of [aliceId, bob, cleo, dan, eve]) await setCard(alice, url, id, 'five001');
   await alice.reload();
-  await expect(tip).toHaveText('Everyone agrees – start a new round.');
+  await expect(tip).toHaveText('Everyone agrees – on to the next topic.');
 
   // phones: no tip
   const phone = await newPlayer(browser, { viewport: PHONE });
@@ -192,6 +192,6 @@ test('tip and spread range after the reveal: infinity counts as the highest valu
 
   // everyone infinity: agreement
   await vote(['infin01', 'infin01', 'infin01']);
-  await expect(tip).toHaveText('Everyone agrees \u2013 start a new round.');
+  await expect(tip).toHaveText('Everyone agrees \u2013 on to the next topic.');
   await expect(range).toHaveText('\u221e');
 });
