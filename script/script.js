@@ -428,12 +428,17 @@ function initCarousel() {
     // tap vs. swipe: a press that starts while the user's swipe is still running only stops it
     ctl.addEventListener('pointerdown', event => {
         gCarousel.tapOk = false;
+        gCarousel.lastDown = performance.now();
         if (!gCarousel.on || !event.isPrimary) { gCarousel.press = null; return; }
         gCarousel.press = { x: event.clientX, y: event.clientY, t: performance.now(), stops: gCarousel.swiping };
     });
     ctl.addEventListener('pointercancel', () => { // the browser took over (the finger swipes)
         if (gCarousel.press !== null) gCarousel.swiping = true;
         gCarousel.press = null;
+        // a swipe that cannot move (first card to the left, last to the right) fires no scroll event:
+        // end the swipe anyway, or every later tap would count as stopping it
+        clearTimeout(gCarousel.restTimer);
+        gCarousel.restTimer = setTimeout(carouselRest, 120);
     });
     ctl.addEventListener('pointerup', event => {
         const p = gCarousel.press;
@@ -445,7 +450,8 @@ function initCarousel() {
     // before setC() (on the card): drop clicks that were no tap; keyboard clicks (detail 0) count
     ctl.addEventListener('click', event => {
         if (!gCarousel.on) return;
-        const ok = event.detail === 0 || gCarousel.tapOk;
+        // keyboard clicks (detail 0) and clicks without a press of their own (screen readers) count too
+        const ok = event.detail === 0 || gCarousel.tapOk || performance.now() - (gCarousel.lastDown || 0) > 1000;
         gCarousel.tapOk = false;
         if (!ok) {
             event.stopPropagation();

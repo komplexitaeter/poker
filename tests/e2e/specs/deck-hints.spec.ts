@@ -205,5 +205,14 @@ test('phone deck: a carousel with dots, a tap picks, a swipe does not, no edge b
   await alice.evaluate('updateDao(false)');
   await alice.waitForTimeout(500);
   expect(await ctl.evaluate(el => el.scrollLeft)).toBe(scrolled);
+
+  // a swipe that cannot move (left at the first card) does not lock the deck: the next tap still picks
+  await ctl.evaluate(el => { el.scrollLeft = 0; });
+  await expect.poll(middle).toBe(await cards.nth(0).getAttribute('id'));
+  await alice.waitForTimeout(300);
+  await swipe(alice, deck.x + deck.width / 2, deck.y + deck.height / 2, 120);
+  await alice.waitForTimeout(400);
+  await cards.nth(0).tap();
+  await expect(cards.nth(0)).toHaveClass(/selected/);
   await alice.context().close();
 });
