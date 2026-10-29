@@ -27,6 +27,27 @@ test('two players join and see each other', async ({ browser }) => {
   await expect(tableCard(bob, 'Bob')).toBeVisible();
 });
 
+test('name entry: focused on desktop, on touch phones only after a tap (B-75)', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Name Focus');
+  await expect(alice.locator('#overlay_name_input')).toHaveClass(/visible/);
+  await expect(alice.locator('#nameinput')).toBeFocused();
+
+  // iOS opens the keyboard only for a focus inside a tap: no focus (and no ring) on load
+  const bob = await newPlayer(browser, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await bob.goto(url);
+  const overlay = bob.locator('#overlay_name_input');
+  await expect(overlay).toHaveClass(/visible/);
+  await bob.waitForTimeout(500);
+  await expect(bob.locator('#nameinput')).not.toBeFocused();
+  // a tap anywhere on the overlay (here beside the field) focuses the field
+  await overlay.tap({ position: { x: 10, y: 10 } });
+  await expect(bob.locator('#nameinput')).toBeFocused();
+  await bob.locator('#nameinput').fill('Bob');
+  await bob.locator('#become_player_btn').tap();
+  await expect(overlay).toHaveClass(/hidden/);
+});
+
 test('a picked card is shown as hidden to the other player', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Pick Team');
 

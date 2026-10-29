@@ -216,3 +216,43 @@ test('phone deck: a carousel with dots, a tap picks, a swipe does not, no edge b
   await expect(cards.nth(0)).toHaveClass(/selected/);
   await alice.context().close();
 });
+
+test('phone deck: a tap on a card further out brings it exactly to the middle, no settle bounce (B-75)', async ({ browser }) => {
+  // smooth scrolling (no reduced motion): snapping is off on the way, the card lands centered
+  const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true });
+  const url = await createTeam(alice, 'Deck Carousel Tap');
+  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await joinAsPlayer(alice, url, 'Alice');
+  const cards = alice.locator('#ctl img.on');
+  await expect(cards).toHaveCount(11);
+  const ctl = alice.locator('#ctl');
+
+  // any "settle" class on the deck, ever
+  await ctl.evaluate(el => {
+    (window as any).__settle = 0;
+    new MutationObserver(list => list.forEach(m => {
+      if ((m.target as Element).classList.contains('settle')) (window as any).__settle++;
+    })).observe(el, { attributes: true, attributeFilter: ['class'], subtree: true });
+  });
+  // distance of a card's slot from the middle of the deck, in px
+  const offCenter = (i: number) => cards.nth(i).evaluate(img => {
+    const deck = img.closest('#ctl')!.getBoundingClientRect();
+    const slot = img.parentElement!.getBoundingClientRect();
+    return Math.abs(slot.left + slot.width / 2 - (deck.left + deck.width / 2));
+  });
+
+  const start = await ctl.evaluate(el => el.scrollLeft);
+  for (const i of [8, 9, 2]) { // two and more cards away from the middle, both directions
+    expect(await offCenter(i)).toBeGreaterThan(50);
+    await cards.nth(i).tap();
+    await expect(cards.nth(i)).toHaveClass(/selected/);
+    await expect.poll(() => offCenter(i)).toBeLessThanOrEqual(1);
+    await expect(ctl).not.toHaveClass(/steering/); // snapping is on again at rest
+    await alice.waitForTimeout(300);
+    expect(await offCenter(i)).toBeLessThanOrEqual(1); // and stays there
+  }
+  expect(await ctl.evaluate(el => el.scrollLeft)).not.toBe(start);
+  expect(await alice.evaluate(() => (window as any).__settle)).toBe(0);
+  await expect(alice.locator('#ctl .settle')).toHaveCount(0);
+  await alice.context().close();
+});

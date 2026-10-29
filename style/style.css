@@ -2109,6 +2109,9 @@ div#cbox {
         -webkit-overflow-scrolling: touch;
     }
 
+    /* a tap brings a card to the middle: no snapping on the way (script.js carouselCenter) */
+    .controls.steering { scroll-snap-type: none; }
+
     .ctl-slot {
         display: block;
         flex: none;
@@ -2116,8 +2119,6 @@ div#cbox {
         scroll-snap-align: center;
         scroll-snap-stop: always; /* one card per swipe */
     }
-
-    .ctl-slot.settle { animation: deck-settle 0.22s ease-out; }
 
     .controls .ctl-slot > img {
         display: block;
@@ -2258,14 +2259,7 @@ div#cbox {
     .down-container:has(.ctl_as_guest) .deck-pick { visibility: hidden; }
 }
 
-@keyframes deck-settle {
-    0% { transform: scale(0.97); }
-    55% { transform: scale(1.035); }
-    100% { transform: scale(1); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .ctl-slot.settle { animation: none; }
     .deck-dot::before { transition: none; }
 }
 
@@ -2723,6 +2717,14 @@ div#cbox {
 
 @media (max-width: 799.98px) {
     #nameinput { margin-top: 50px; }
+}
+
+/* B-75: touch devices get no focus without a tap: the field shows that it wants one */
+@media (hover: none) and (pointer: coarse) {
+    #nameinput {
+        min-height: var(--tap);
+        border-color: var(--bluish);
+    }
 }
 
 /* ---------- Promo tab ---------- */
