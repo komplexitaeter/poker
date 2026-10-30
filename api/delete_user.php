@@ -8,6 +8,18 @@ $id = get_id_param("id");
 if ($id === '') exit;
 $link = db_init();
 
+// B-81: the user is removed from all teams, so every board of these teams has to reload. Read the teams before the
+// DELETE, afterwards they are gone.
+$team_ids = array();
+$sql = $link->prepare("select distinct team_id from pok_players_tbl where id=?");
+$sql->bind_param('s', $id);
+$sql->execute();
+$result = $sql->get_result();
+while ($row = $result->fetch_row()) {
+    $team_ids[] = (string)$row[0];
+}
+$sql->close();
+
 $sql = $link->prepare("DELETE FROM pok_feedback_tbl WHERE id=?");
 $sql->bind_param('s', $id);
 $sql->execute();
@@ -38,3 +50,5 @@ $sql->execute();
 $sql->close();
 
 $link->close();
+
+notify_teams($team_ids);

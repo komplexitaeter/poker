@@ -35,3 +35,6 @@ if ($anonymous_request_toggle != null and $anonymous_request_toggle >= 0 and $an
 
 
 $link->close();
+
+// B-81: all boards of the team reload (only reached after the team check and a successful write)
+notify_team($t);

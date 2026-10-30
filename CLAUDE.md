@@ -22,6 +22,9 @@ Datenfluss bei einer Änderung am Board:
 
 1. Client ruft per `fetch` einen Endpunkt in `api/*.php` auf (GET-Parameter, auch für schreibende Aktionen).
 2. Danach sendet der Client `push` über den WebSocket (`/poker-msg`, von nginx auf `127.0.0.1:8443` weitergeleitet).
+   **Ab B-81:** Die API benachrichtigt poker-msg nach erfolgreichem Schreiben selbst per UDP (`pull:<team_id>` an
+   `127.0.0.1:8444`, `notify_team()` in `api/lib.php`); das `push` aus dem Browser entfällt, sobald das Frontend
+   umgestellt ist (bis dahin laufen beide Wege parallel, doppelte `pull` sind harmlos).
 3. `poker-msg` schickt allen Verbindungen mit derselben Team-Subscription (`subscribe:<team_id>`) ein `pull`.
 4. Die Clients laden daraufhin den Zustand neu (`api/dao.php`).
 
@@ -219,5 +222,9 @@ Regel: Reviewt wird immer von einem anderen Agenten als dem Autor.
 - Nach Änderungen an JS-Dateien die Versionsnummer im Script-Tag (`?v=…`) in `board.html`/`init.html` erhöhen.
   Nach Änderungen an `cards.json` die Versionsnummer in `loadCardConfig()` (`./cards.json?v=…`, `script/script.js`) erhöhen
   (Safari hält die Datei sonst im Cache).
+- Jeder schreibende Endpunkt mit Board-Effekt ruft am Ende `notify_team($t)` auf (B-81) – erst nach `require_team()`
+  und erfolgreichem Schreiben, nicht bei 400/403/frühem `exit`; betrifft das Schreiben mehrere Teams, `notify_teams()`.
+  `api/dao.php` benachrichtigt **nie** (jeder `pull` lädt `dao.php` → Endlosschleife). Port optional per
+  `_POKER_MSG_NOTIFY_PORT` in `config.php` (Default 8444, muss zu `POKER_MSG_NOTIFY_PORT` von poker-msg passen).
 - CI schlägt fehl, wenn ein Testlauf `PHP Deprecated` oder `PHP Warning` ins PHP-Log schreibt.
 - Frontend ohne Framework und ohne Build; neue Dateien direkt in `board.html`/`init.html` einbinden.

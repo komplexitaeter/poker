@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Starts a local copy of the poker app for the e2e tests:
-# nginx (port 8080) -> PHP-FPM for the app, /poker-msg -> poker-msg WebSocket server (127.0.0.1:8443),
+# nginx (port 8080) -> PHP-FPM for the app, /poker-msg -> poker-msg WebSocket server (127.0.0.1:8443,
+# notify channel udp 127.0.0.1:8444 for the API, B-81),
 # MySQL database created from db_schema_pok.sql plus the pending changes in db_schema_pok_inc.sql.
 #
 # Usage: tests/e2e/setup.sh start|stop
@@ -121,16 +122,23 @@ EOF
 
     # --- poker-msg
     local msg_dir="${POKER_MSG_DIR:-$E2E_DIR/poker-msg}"
-    if [[ -z "${POKER_MSG_DIR:-}" && ! -d "$msg_dir/.git" ]]; then
-        git clone -q --depth 1 -b "$POKER_MSG_REF" https://github.com/komplexitaeter/poker-msg "$msg_dir"
+    if [[ -z "${POKER_MSG_DIR:-}" ]]; then
+        if [[ ! -d "$msg_dir/.git" ]]; then
+            git clone -q --depth 1 -b "$POKER_MSG_REF" https://github.com/komplexitaeter/poker-msg "$msg_dir"
+        else
+            # our own clone from an earlier run: bring it to the current branch head (e.g. B-81 notify channel)
+            git -C "$msg_dir" fetch -q --depth 1 origin "$POKER_MSG_REF"
+            git -C "$msg_dir" reset -q --hard FETCH_HEAD
+        fi
     fi
-    if [[ ! -d "$msg_dir/vendor" ]]; then
-        composer install -q --no-interaction --working-dir="$msg_dir"
-    fi
+    # no-op if vendor/ matches composer.lock
+    composer install -q --no-interaction --working-dir="$msg_dir"
     POKER_MSG_KEEPALIVE="$POKER_MSG_KEEPALIVE" nohup php "$msg_dir/bin/msg-server.php" > "$E2E_DIR/logs/poker-msg.log" 2>&1 &
     echo $! > "$E2E_DIR/poker-msg.pid"
     wait_for "poker-msg" bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443'
-    log "poker-msg running on 127.0.0.1:8443"
+    # B-81: the API notifies poker-msg via UDP 127.0.0.1:8444 (default of both sides)
+    wait_for "poker-msg notify channel" grep -q 'Notify channel listening' "$E2E_DIR/logs/poker-msg.log"
+    log "poker-msg running on 127.0.0.1:8443 (notify udp 8444)"
 
     # --- php-fpm
     local fpm="${PHP_FPM:-$(compgen -c php-fpm | sort -r | head -1)}"
