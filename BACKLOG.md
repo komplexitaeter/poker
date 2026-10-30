@@ -1181,6 +1181,11 @@ dazu `measure_event.php` je User-ID (`$arg_id`), z. B. 1 r/s, damit die Statisti
 wird nicht gezählt. Konfiguration für beide Server vorbereiten (Kai/Ben), Andreas spielt ein.
 In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
 Zurückgestellt (Andreas, 2026-10-30): Risiko, mehr kaputt zu machen als zu reparieren; der Fall hat keinem User geschadet.
+Neu gedacht (Andreas, 2026-10-30): **nicht pro IP oder Team** (große, aktive Teams wären eine Erfolgsgeschichte, kein
+Missbrauch), sondern **nur `dao.php` pro User-ID** (`$arg_id`). Messung Live 2026-10-30 (alter Code, ohne B-81): normale
+User bis 16 Aufrufe/s und 116/min (mehrere Tabs, ungebündeltes `push`); die Schleife vom 29.10. lag bei ~10/s über 1¾ h.
+Unterschied ist die Dauer → großer Burst, niedrige Dauerrate, z. B. 3 r/s mit burst 60 (429 darüber). **Erst nach Rollout 2**
+mit demselben Befehl neu messen, dann Zahlen festlegen. Dazu B-94 (Neuladen einmal wiederholen).
 
 ### B-85 Topic mit Emoji führt zu HTTP 500
 **Schema live und auf Staging eingespielt 2026-10-30 (Live 36 s); Emojis live mit dem Code-Deploy von Rollout 2.**
