@@ -3077,7 +3077,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     align-items: center;
     justify-content: center;
     gap: var(--space-3);
-    padding: var(--space-3);
+    padding: var(--space-3) calc(var(--space-3) + env(safe-area-inset-right))
+        var(--space-3) calc(var(--space-3) + env(safe-area-inset-left));
     background: var(--bg); /* fallback without color-mix */
     background: color-mix(in srgb, var(--bg) 82%, transparent);
     -webkit-backdrop-filter: blur(2px);
@@ -3100,8 +3101,9 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     font-size: var(--fs-l);
 }
 
+/* counterclockwise, like the arrow of the symbol */
 @keyframes conn-hint-spin {
-    to { transform: rotate(360deg); }
+    to { transform: rotate(-360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -523,6 +523,7 @@ function pickCardByKey(event) {
     const menu = document.getElementById('menu');
     if (menu !== null && menu.open) return;
     if (document.querySelector('.overlay:not(.hidden), .overlay.visible') !== null) return; // name, delete user, QR
+    if (connHintVisible()) return; // B-86: no connection, the board cannot be used
     const cards = document.querySelectorAll('#ctl img.on');
     const img = cards[n];
     if (img === undefined) return;
@@ -1121,7 +1122,9 @@ function pullReceived() {
 }
 
 /* B-86: #conn_hint (board.html) shows up when the trouble lasts longer than CONN_HINT_DELAY_MS.
- * It takes the focus (role="alertdialog") and gives it back when the connection is there again. */
+ * It takes the focus (role="alertdialog"), the rest of the page is inert meanwhile; an open phone
+ * menu (modal, top layer, it would cover the hint) is closed. When the connection is there again
+ * the hint hides and gives the focus back. */
 function setConnTrouble(trouble) {
     if (trouble === gConnTrouble) return;
     gConnTrouble = trouble;
@@ -1134,14 +1137,30 @@ function setConnTrouble(trouble) {
     }
 }
 
+function connHintVisible() {
+    const hint = document.getElementById('conn_hint');
+    return hint !== null && !hint.hidden;
+}
+
+let gConnHintInert = [];   // the elements made inert while the hint is shown
+
 function showConnHint(show) {
     const hint = document.getElementById('conn_hint');
     if (hint === null || hint.hidden === !show) return;
     if (show) {
         gConnHintFocusBack = document.activeElement;
+        const menu = document.getElementById('menu');
+        if (menu !== null && menu.open && menu.matches(':modal')) {
+            if (typeof gMenuOpener !== 'undefined' && gMenuOpener !== null) gConnHintFocusBack = gMenuOpener;
+            closeMenu(false);
+        }
         hint.hidden = false;
         hint.focus({ preventScroll: true });
+        gConnHintInert = Array.from(document.body.children).filter(el => el !== hint && !el.inert);
+        gConnHintInert.forEach(el => { el.inert = true; });
     } else {
+        gConnHintInert.forEach(el => { el.inert = false; });
+        gConnHintInert = [];
         hint.hidden = true;
         const back = gConnHintFocusBack;
         gConnHintFocusBack = null;

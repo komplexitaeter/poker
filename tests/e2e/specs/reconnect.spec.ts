@@ -1,5 +1,5 @@
 import { test, expect, Page, WebSocketRoute } from '@playwright/test';
-import { teamWithTwoPlayers, pickCard, expectTableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, teamWithTwoPlayers, pickCard, expectTableCard } from './helpers';
 
 /**
  * B-82: a board whose WebSocket to poker-msg broke in the background sends its push again once a new
@@ -115,14 +115,61 @@ test('pull does not come: the reconnect hint covers the board until the connecti
 
 test('short break below the delay: no reconnect hint (B-86)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Reconnect Short');
+  // the board's timers run on a fake clock: the reconnect (300 ms) comes before the hint (1.2 s)
+  // no matter how slow the machine is
+  await alice.clock.install();
   const proxy = await withProxy(alice);
   await watchConnHint(alice);
 
   await proxy.current!.close();
+  await expect.poll(() => alice.evaluate('gConn.readyState')).toBe(3); // CLOSED
+  await alice.clock.runFor(400);
   await expect.poll(() => proxy.connections).toBe(2);
   await expect.poll(() => alice.evaluate('gConn.readyState')).toBe(1);
+  await alice.clock.runFor(2000); // well past the delay of the hint
 
+  await expect(alice.locator('#conn_hint')).toBeHidden();
+  expect(await alice.evaluate('window.connHintShown')).toBe(false);
   await pickCard(alice, 'three01');
   await expectTableCard(bob, 'Alice', 'done001');
-  expect(await alice.evaluate('window.connHintShown')).toBe(false);
+});
+
+test('phone with the menu open: the hint closes the menu sheet and gets the focus (B-86)', async ({ browser }) => {
+  const page = await newPlayer(browser, { viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+  const url = await createTeam(page, 'Reconnect Phone Menu');
+  await joinAsPlayer(page, url, 'Alice');
+  const proxy = await withProxy(page);
+
+  await page.locator('#menu_btn').click();
+  await expect(page.locator('dialog#menu')).toHaveAttribute('open');
+
+  proxy.refuse = true;
+  await proxy.current!.close();
+  const hint = page.locator('#conn_hint');
+  await expect(hint).toBeVisible();
+  await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
+  await expect(hint).toBeFocused();
+
+  proxy.refuse = false;
+  await expect(hint).toBeHidden();
+});
+
+test('while the hint is shown, keys do not pick cards and Tab stays out of the board (B-86)', async ({ browser }) => {
+  const { alice } = await teamWithTwoPlayers(browser, 'Reconnect Keys');
+  const proxy = await withProxy(alice);
+  const hint = alice.locator('#conn_hint');
+
+  proxy.refuse = true;
+  await proxy.current!.close();
+  await expect(hint).toBeVisible();
+  await expect(hint).toBeFocused();
+
+  await alice.keyboard.press('1');
+  await alice.keyboard.press('Tab');
+  expect(await alice.evaluate('document.activeElement.closest(".container") === null')).toBe(true);
+  await expect(alice.locator('#ctl img.selected')).toHaveCount(0);
+
+  proxy.refuse = false;
+  await expect(hint).toBeHidden();
+  await expect(alice.locator('#ctl img.selected')).toHaveCount(0);
 });

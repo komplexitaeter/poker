@@ -301,6 +301,7 @@ function initMenu() {
     });
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || menu.matches(':modal')) return;
+        if (typeof connHintVisible === 'function' && connHintVisible()) return; // B-86: the panel is inert
         event.preventDefault();
         closeMenu();
     });
