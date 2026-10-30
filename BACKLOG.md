@@ -1284,6 +1284,14 @@ Code-Prüfung (Kai, 2026-10-30) – Verwendungen von `last_callback_time`:
 Mit B-90 zusätzlich die Umfrage-Abfragen aus `getDao()` entfernen.
 **Verworfen (Andreas, 2026-10-30):** Die Ersparnis ist bei unserer Last zu klein; `last_callback_time` bleibt die echte letzte Rückmeldung (bei jedem Aufruf geschrieben). Umfrage-Abfragen ggf. mit B-90.
 
+### B-96 Tipps in der Spalte fürs Team abschaltbar
+Idee Andreas (2026-10-30), refined: Im Board-Menü unter **Board → Team** ein Schalter „Tips“ (Standard **an**), der die Tipps in
+`#round_tip` (B-70/B-79) für das **ganze Team** ein- oder ausschaltet. Nur diese Stelle – die Bedienhinweise „keys 1–9 …“ und
+„tap to pick a card“ bleiben. Hintergrund: Wir glauben zu wissen, was ein guter Hinweis ist, können aber falsch liegen.
+Umsetzung: Spalte in `pok_teams_tbl` (Default 1, online), Schreiben über die Team-API mit `notify_team()`, Feld in `dao.php`,
+Schalter im Menü, `updateTip()` blendet aus. Analytics-Event beim Umschalten, damit wir sehen, wie oft Teams sie abschalten.
+Status: refined, kommt mit Rollout 2.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
