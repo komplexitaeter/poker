@@ -310,3 +310,28 @@ prepare b85_stmt from @b85_sql;
 execute b85_stmt;
 deallocate prepare b85_stmt;
 set session sql_mode = @b85_sql_mode;
+
+/* B-96: team setting "Tips" (board menu Board -> Team): 1 = show the tips in #round_tip (B-70/B-79), 0 = hide them
+   for the whole team. Default 1: every existing and new team keeps the tips as before. Backwards compatible: old code
+   never reads or writes the column. Online: MySQL 8.0 adds a column at the end of the table instantly (metadata only,
+   no table copy). Deploy order: run this BEFORE deploying the new code (dao.php reads the column). */
+
+/* 1. check (read only): MySQL version (instant needs >= 8.0.12), row format (not COMPRESSED), column not there yet */
+select version(), row_format, table_rows, round((data_length + index_length) / 1048576) as mb
+  from information_schema.tables where table_schema = database() and table_name = 'pok_teams_tbl';
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'show_tips';
+
+/* 2. change: only if the column is missing (idempotent). If MySQL refuses algorithm = instant (ERROR 1845/1846),
+   replace it by "algorithm = inplace, lock = none" (online as well, rebuilds the table). The lock wait timeout makes
+   the ALTER give up after 5 s instead of queueing all dao.php calls behind a long query: just run it again. */
+set session lock_wait_timeout = 5;
+set @b96_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'show_tips') = 0,
+  'alter table pok_teams_tbl
+     add column show_tips tinyint not null default 1 comment ''1 = show tips in the round column (B-96)'',
+     algorithm = instant',
+  'select 1');
+prepare b96_stmt from @b96_sql;
+execute b96_stmt;
+deallocate prepare b96_stmt;

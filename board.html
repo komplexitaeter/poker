@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.59" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.60" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.31" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.51" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.32" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.52" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -276,6 +276,15 @@
                             <button type="button" id="cet_change_name" class="btn-box" onclick="updateTeamName()">Save</button>
                         </div>
                     </div>
+                    <!-- B-96: the tips in the column (#round_tip) for the whole team (show_tips, changeShowTips()) -->
+                    <fieldset class="f" id="cet_show_tips">
+                        <legend class="lab">Tips</legend>
+                        <div class="seg">
+                            <label><input type="radio" name="cet_show_tips" value="0" onchange="changeShowTips(this.value)"/><span>Off</span></label>
+                            <label><input type="radio" name="cet_show_tips" value="1" onchange="changeShowTips(this.value)"/><span>On</span></label>
+                        </div>
+                        <p class="hint">Short hints for everyone on what to do next (large screens).</p>
+                    </fieldset>
                 </div>
             </section>
 

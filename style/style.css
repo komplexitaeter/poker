@@ -2647,6 +2647,7 @@ div#cbox {
     }
 
     .round-tip:empty::before { display: none; }
+    .round-tip[hidden] { display: none; } /* B-96: team setting "Tips" off */
 
     .side > #spread[hidden] + .round-tip {
         position: absolute;
