@@ -18,15 +18,18 @@ Die Anwendung besteht aus zwei Repositories:
 | `komplexitaeter/poker` (dieses) | Web-App: HTML/CSS/JS-Frontend, PHP-API, MySQL-Schema | nginx + PHP 8.4-FPM |
 | `komplexitaeter/poker-msg` | WebSocket-Benachrichtigungsserver (Ratchet, `cboden/ratchet ^0.4`) | PHP-CLI unter supervisor, `127.0.0.1:8443`, Event-Loop über PHP-Erweiterung `ev` |
 
-Datenfluss bei einer Änderung am Board:
+Datenfluss bei einer Änderung am Board (seit B-81):
 
-1. Client ruft per `fetch` einen Endpunkt in `api/*.php` auf (GET-Parameter, auch für schreibende Aktionen).
-2. Danach sendet der Client `push` über den WebSocket (`/poker-msg`, von nginx auf `127.0.0.1:8443` weitergeleitet).
-   **Ab B-81:** Die API benachrichtigt poker-msg nach erfolgreichem Schreiben selbst per UDP (`pull:<team_id>` an
-   `127.0.0.1:8444`, `notify_team()` in `api/lib.php`); das `push` aus dem Browser entfällt, sobald das Frontend
-   umgestellt ist (bis dahin laufen beide Wege parallel, doppelte `pull` sind harmlos).
-3. `poker-msg` schickt allen Verbindungen mit derselben Team-Subscription (`subscribe:<team_id>`) ein `pull`.
-4. Die Clients laden daraufhin den Zustand neu (`api/dao.php`).
+1. Client ruft per `fetch` einen Endpunkt in `api/*.php` auf (GET-Parameter, auch für schreibende Aktionen;
+   `apiWrite()` in `script/script.js`).
+2. Die API benachrichtigt nach erfolgreichem Schreiben selbst poker-msg per UDP (`pull:<team_id>` an
+   `127.0.0.1:8444`, `notify_team()` in `api/lib.php`). Der Browser sendet **kein** `push` mehr; die WebSocket-Verbindung
+   (`/poker-msg`, von nginx auf `127.0.0.1:8443` weitergeleitet) dient nur zum Empfangen.
+3. `poker-msg` schickt allen Verbindungen mit derselben Team-Subscription (`subscribe:<team_id>`) ein `pull`
+   (Pulls je Team in 100-ms-Fenstern zusammengefasst) und jeder Verbindung alle 30 s ein `hb`.
+4. Die Clients laden daraufhin den Zustand neu (`api/dao.php`). Der Schreiber lädt nach der API-Antwort zusätzlich
+   selbst (auch bei HTTP-Fehler); `updateDao()` verwirft Antworten, die älter als der angezeigte Stand sind (B-92).
+   Kommt 40 s lang weder `hb` noch `pull`, baut das Board die Verbindung neu auf (B-81, B-82).
 
 `poker-msg` kennt keine Daten und keine Datenbank; es verteilt nur „pull“-Signale pro Team. Zustand liegt komplett in MySQL.
 

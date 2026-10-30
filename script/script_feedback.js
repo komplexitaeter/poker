@@ -336,7 +336,7 @@ function updateJediBtn() {
 
 function pushJediBtn(showAvg) {
     let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function toggleSurvey(forceSurvey){
@@ -639,15 +639,8 @@ function save_topic(){
     let topic = document.getElementById('topic_txt').value;
 
     const url = './api/update_topic.php?t='+t;
-    let httpRequest = new XMLHttpRequest();
-
-    httpRequest.open("POST", url, true);
-    httpRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    // notify the other boards only once the topic is saved, otherwise they reload the old one
-    httpRequest.onload = () => pushDomChange();
-    httpRequest.send(
-        "topic=" + encodeURIComponent(topic)
-    );
+    // the topic goes in the POST body (form encoded), not in the URL
+    apiWrite(url, { body: new URLSearchParams({ topic: topic }) });
 
     closeMenu();
 
@@ -677,7 +670,7 @@ function toggleCSet(e) {
 
 function updateCardset(cardSetDec) {
     let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function preSet() {
@@ -716,19 +709,13 @@ function preSet() {
 // B-51: called by the radio group with SEQUENCE or NAME
 function changeSortOrder(resultsOrder) {
     const url = './api/update_results_order.php?t='+t+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
-    let httpRequest = new XMLHttpRequest();
-    httpRequest.open("POST", url, false);
-    httpRequest.send();
-    pushDomChange();
+    apiWrite(url);
 }
 
 // B-51: called by the radio group with 0 (show names) or 1 (anonymous)
 function changeAnonymity(anonymous) {
     const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
-    let httpRequest = new XMLHttpRequest();
-    httpRequest.open("POST", url, false);
-    httpRequest.send();
-    pushDomChange();
+    apiWrite(url);
 }
 
 function onChangeTeamNameInput() {
@@ -749,7 +736,7 @@ function updateTeamName() {
     document.getElementById('cet_change_name').disabled = true;
 
     let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function updateUserName() {
@@ -758,7 +745,7 @@ function updateUserName() {
     document.getElementById('cet_change_user').disabled = true;
 
     let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 // B-51: called by the radio group with PLAYER or OBSERVER
@@ -766,5 +753,5 @@ function toggleUserType(playerType) {
     if (playerType !== 'OBSERVER') playerType = 'PLAYER';
 
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
