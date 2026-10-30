@@ -1248,6 +1248,12 @@ Vorschlag (Fred): jede Anfrage nummerieren, Antworten mit kleinerer Nummer als d
 (erwartet heute die Anzeige der älteren Antwort). Gut zusammen mit B-81 umsetzbar. Nebenbei: `fetch` hat kein Timeout
 (`AbortSignal.timeout`), ein hängender `timer.php`-Request blockiert sonst die Timer-Übernahme.
 
+### B-93 poker-msg: Browser-`push` entfernen (nach B-81)
+Fund Sina (2026-10-30, Review B-81): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an. Wer eine Team-ID kennt,
+kann damit ohne API-Aufruf beliebig viele Pulls an alle Boards des Teams auslösen. Nach dem Deploy von B-81 sendet kein
+Client mehr `push` (alte offene Tabs ein paar Tage abwarten): `push` in poker-msg entfernen oder über dieselbe Drosselung wie
+`onNotify` leiten. Nebenbei: `api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE (Kosmetik).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
