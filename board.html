@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.58" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.59" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.28" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.47" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.29" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.48" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -50,6 +50,12 @@
     <button type="button" class="rotate-hint-skip" onclick="try { sessionStorage.setItem('rotateHintOff', '1'); } catch (e) {} document.documentElement.classList.add('rotate-ok');">Continue anyway</button>
 </div>
 <script>try { if (sessionStorage.getItem('rotateHintOff')) document.documentElement.classList.add('rotate-ok'); } catch (e) {}</script>
+
+<!-- B-86: no connection to the server (script.js, showConnHint); not dismissable, vanishes when it is back -->
+<div id="conn_hint" class="conn-hint" role="alertdialog" aria-modal="true" aria-labelledby="conn_hint_msg" tabindex="-1" hidden>
+    <svg class="i" aria-hidden="true"><use href="#i-reset"/></svg>
+    <p id="conn_hint_msg">Reconnecting to the server …</p>
+</div>
 
 <!-- B-46: page grid (style.css, "Board layout"): header / topic / table / card deck. -->
 <div class="container" onclick="void(0);">
