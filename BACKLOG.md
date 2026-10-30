@@ -1171,6 +1171,7 @@ In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
 Zurückgestellt (Andreas, 2026-10-30): Risiko, mehr kaputt zu machen als zu reparieren; der Fall hat keinem User geschadet.
 
 ### B-85 Topic mit Emoji führt zu HTTP 500
+**Schema live und auf Staging eingespielt 2026-10-30 (Live 36 s); Emojis live mit dem Code-Deploy von Rollout 2.**
 **Status: auf `release` (2026-10-30, komplexitaeter/poker#95), kommt mit Rollout 2.**
 Befund (Logs Live, 2026-10-29): 3× HTTP 500 in `api/update_topic.php` (Exception bei `execute()`), Firefox.
 Vermutete Ursache: `pok_teams_tbl` ist `utf8mb3`, 4-Byte-Zeichen (Emoji) im Topic lassen sich nicht speichern; das Topic
