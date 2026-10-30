@@ -4,7 +4,7 @@ require './lib.php';
 
 set_header('json');
 
-$id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
+$id = get_id_param("id");
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
 $data_obj = getDao($t, $id);

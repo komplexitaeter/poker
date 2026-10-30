@@ -3,7 +3,7 @@ require '../config.php';
 require './lib.php';
 require_post();
 
-$id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
+$id = get_id_param("id");
 $link = db_init();
 
 $sql = $link->prepare("DELETE FROM pok_feedback_tbl WHERE id=?");

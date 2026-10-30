@@ -5,7 +5,7 @@ require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
-$id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
+$id = get_id_param("id");
 $name = get_text_param("name", 15);
 $type = get_text_param("type", 10);
 

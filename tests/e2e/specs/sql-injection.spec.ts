@@ -72,3 +72,62 @@ test('a player name with quotes round-trips through getDao unchanged', async ({ 
   expect(body.name).toBe(playerName);
   expect(body.players.map((p: { name: string }) => p.name)).toContain(playerName);
 });
+
+// B-88: player/user ids (SID) are 16 characters A-Z0-9 at most. A manipulated id (emoji, cut multibyte sequence,
+// HTML special characters, too long) must behave like an unknown id: no 500, no PHP fatal or warning (CI checks
+// the PHP log), no data change for the real player. Same for the card key, event code and promo team id.
+const BAD_IDS = [
+  '😀😀😀😀',                 // 16 bytes of 4-byte characters
+  'AB😀CDEFGHIJ😀',           // the old byte cut at 16 split the last emoji (invalid UTF-8)
+  `<x>'"&;%00ABCDEF`,
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ', // longer than 16
+];
+
+test('a manipulated player id behaves like an unknown id and never returns a 500 (B-88)', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Id Team');
+  await joinAsPlayer(alice, url, 'Alice');
+  const aliceSid = await sid(alice);
+  const t = encodeURIComponent(teamId(url));
+
+  for (const bad of BAD_IDS) {
+    const id = encodeURIComponent(bad);
+    const reads = [
+      `./api/dao.php?id=${id}&t=${t}`,
+      `./api/get_user.php?id=${id}`,
+      `./api/get_survey.php?id=${id}`,
+      `./api/get_roadmap.php?id=${id}`,
+    ];
+    for (const r of reads) {
+      const res = await alice.request.get(r);
+      expect(res.status(), `GET ${r}`).toBeLessThan(500);
+      expect(await res.text(), `GET ${r}`).not.toContain('Fatal');
+    }
+    const writes = [
+      `./api/name.php?id=${id}&type=player&name=Mallory&t=${t}`,
+      `./api/setc.php?id=${id}&cardkey=three01&t=${t}`,
+      `./api/setc.php?id=${aliceSid}&cardkey=${id}&t=${t}`,
+      `./api/update_user.php?id=${id}&color_mode=light`,
+      `./api/measure_event.php?id=${id}&event_code=E2E&display_type=e2e`,
+      `./api/measure_event.php?id=${aliceSid}&event_code=${id}&display_type=${id}`,
+      `./api/feedback.php?id=${id}&stars=5&type=OTHER&text=b88`,
+      `./api/vote_roadmap.php?id=${id}&item=1&reaction=UP`,
+      `./api/get_promo.php?player_id=${id}&team_id=${t}&display_type=e2e`,
+      `./api/get_promo.php?player_id=${aliceSid}&team_id=${id}&display_type=e2e`,
+      `./api/delete_user.php?id=${id}`,
+    ];
+    for (const w of writes) {
+      const res = await alice.request.post(w);
+      expect(res.status(), `POST ${w}`).toBeLessThan(500);
+      expect(await res.text(), `POST ${w}`).not.toContain('Fatal');
+    }
+  }
+
+  // Alice is untouched: still the only player, without a card; no "Mallory" joined.
+  const res = await alice.request.get(`./api/dao.php?id=${aliceSid}&t=${t}`);
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(body.name).toBe('Alice');
+  expect(body.selected_card_key).toBeNull();
+  expect(body.players.map((p: { name: string }) => p.name)).toEqual(['Alice']);
+});
