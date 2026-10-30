@@ -1183,6 +1183,27 @@ wegklickbar** (die App ist in dem Zustand nicht nutzbar); verschwindet von selbs
 API-Aufrufe (`fetch`) einbeziehen? Gestaltung Delia, Logik Fred; zusammen mit B-82 umsetzen.
 Test (2026-10-30): Playwright `page.routeWebSocket()` (ab 1.48, wir haben 1.56) – Verbindung im Test schließen, verzögern oder Nachrichten verschlucken, ohne poker-msg zu ändern.
 
+### B-87 Minütlicher Statistik-Job sperrt `pok_players_tbl` kurz
+Fund Ben (2026-10-30, bei B-83): `pok_active_users_evt` (`db_jobs_pok.sql`, jede Minute) liest `pok_players_tbl` komplett
+per `INSERT … SELECT` unter REPEATABLE READ und setzt dabei Lesesperren – kurze Wartezeiten für `dao.php` jede Minute.
+Gleicher Fix wie B-83: `set session transaction_isolation = 'READ-COMMITTED'` im Event-Body (binlog_format ROW prüfen).
+
+### B-88 ID-Parameter auf ihr Format prüfen
+Fund Sina (2026-10-30, Review B-85): `id` wird mit `FILTER_SANITIZE_FULL_SPECIAL_CHARS` gelesen, das Nicht-ASCII durchlässt
+(`dao.php`, `setc.php`, `name.php`, `get_user.php`, `update_user.php`, `delete_user.php`, `get_survey.php`). Seit der
+utf8mb4-Verbindung (B-85) ergibt ein manipuliertes Emoji in `id` HTTP 500 und einen `PHP Fatal` im Log statt 0 Treffer.
+Nur bei handgemachten Requests, kein Datenzugriff. Vorschlag: `get_id_param()` in `api/lib.php` mit
+`preg_match('/^[A-Za-z0-9_-]{1,16}$/', …)`, sonst `''`.
+
+### B-89 Kleinkram aus den Reviews (JS)
+- `script/script_feedback.js` (`initMenu`): `querySelectorAll('section.menu_sec:has([role="tablist"])')` wirft in Browsern
+  ohne `:has()` (Firefox < 121, iOS < 15.4) und bricht `initMenu()` ab (Tabs, Escape, Layout-Wechsel). Fix: `:has()`
+  weglassen, die Handler steigen ohne Tab ohnehin aus (Fred). Ähnlich `menu.matches(':modal')` (erst beim Klick).
+- `script/script_feedback.js`: Umfrage-Optionen (`vote_option.text`) per String in `innerHTML` – auf `textContent`
+  umstellen (Daten nur vom Admin, geringes Risiko; Sina).
+- `gTouchQuery`/`gCarouselQuery` doppelt (Fred).
+- Hinweis: `db_schema_pok_inc.sql` ist als Ganzes nicht idempotent (früher Block `fb_id`); immer nur neue Blöcke einspielen.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
