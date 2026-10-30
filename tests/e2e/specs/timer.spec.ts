@@ -333,3 +333,40 @@ test('a new timebox resets a running timer for everyone (B-67 feedback)', async 
   await alice.context().close();
   await bob.context().close();
 });
+
+test('an own change is not undone by an older board state (B-73)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Timer Stale State');
+  await openTimerPanel(alice);
+  await openTimerPanel(bob);
+  await radio(alice, 'tmr_visibility', '1').check();
+  await expect(display(alice)).toHaveText('00:00');
+
+  // a board state read before Alice's next change arrives only after it (a busy server or network);
+  // it is marked (player name) so the test sees when Alice's board has taken it
+  let release!: () => void;
+  const released = new Promise<void>(resolve => { release = resolve; });
+  let read!: () => void;
+  const stateRead = new Promise<void>(resolve => { read = resolve; });
+  let hold = true;
+  await alice.route('**/api/dao.php*', async route => {
+    if (!hold) return route.continue();
+    hold = false;
+    const response = await route.fetch();
+    const json = await response.json();
+    expect(json.timer_mode).toBe('STOPWATCH');
+    read();
+    await released;
+    await route.fulfill({ response, json: { ...json, name: 'Alice (older state)' } });
+  });
+  await radio(bob, 'tmr_auto_restart', '1').check(); // Bob's push makes Alice's board ask for the state
+  await stateRead;
+
+  await radio(alice, 'tmr_mode', 'TIMER').check();
+  await expect(display(alice)).toHaveText('T−05:00'); // the pull for her own change came
+  release();
+  await expect(alice.locator('#prompt_user')).toHaveText('Alice (older state)');
+  await expect(radio(alice, 'tmr_mode', 'TIMER')).toBeChecked();
+  await expect(display(alice)).toHaveText('T−05:00');
+  await alice.context().close();
+  await bob.context().close();
+});
