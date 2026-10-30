@@ -543,6 +543,9 @@ function pickCardByKey(event) {
 
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
+    // B-73: the timer part of an answer counts only when no own timer change was under way or
+    // finished meanwhile (see timerStateFresh)
+    const timerWrite = gTimerWrites === 0 ? gTimerWriteGen : -1;
 
     fetch(url)
         .then((response) => {
@@ -551,7 +554,7 @@ function updateDao(isOnLoad) {
         .then((myJson) => {
 
             gLastJson = myJson;
-            updateDom(myJson, isOnLoad)
+            updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
             gJsonBefore = myJson;
 
             // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
@@ -827,7 +830,7 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
     return cardsHaveBeenAdded;
 }
 
-function updateDom(myJson, isOnLoad) {
+function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     if (myJson === 0) return;
 
@@ -919,7 +922,7 @@ function updateDom(myJson, isOnLoad) {
 
 
     controlsDsp(myJson.player_type);
-    updateTimer(myJson);
+    if (timerFresh) updateTimer(myJson);
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
@@ -1443,6 +1446,19 @@ function showQRCode(showIt) {
  * gTimer: the last server state, gTimerBaseTime: when it arrived. */
 let gTimer = null;
 
+/* B-73: an own timer change (a radio in the panel) is shown right away; a board state that was read
+ * before the change reached the server would set the panel back (the radio jumps back until the next
+ * pull, or for good when the older answer comes last). So the timer part of a board state is only
+ * taken when no own change was under way while it was asked for and answered. The pull for the own
+ * push (or updateDao after a failed change) asks again afterwards and brings the new state. */
+let gTimerWrites = 0;     // own timer changes under way
+let gTimerWriteGen = 0;   // own timer changes finished so far
+
+/* writeGen: gTimerWriteGen when updateDao asked, -1 if a change was under way then */
+function timerStateFresh(writeGen) {
+    return writeGen === gTimerWriteGen && gTimerWrites === 0;
+}
+
 const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
 
 function updateTimer(json) {
@@ -1559,9 +1575,14 @@ function updateTimerConfig(force = false) {
 function timerAction(action, value = null) {
     let url = './api/timer.php?t=' + encodeURIComponent(t) + '&action=' + action
         + (value === null ? '' : '&value=' + encodeURIComponent(value));
+    gTimerWrites++;
     return fetch(url, { method: 'POST' }).then(response => {
         if (!response.ok) throw new Error('timer.php ' + response.status);
         pushDomChange();
+    }).finally(() => {
+        // before the callers' catch (updateDao): that answer has to count again
+        gTimerWrites--;
+        gTimerWriteGen++;
     });
 }
 
