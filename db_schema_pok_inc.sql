@@ -299,8 +299,9 @@ deallocate prepare b85_stmt;
    for this one ALTER, restored right after. */
 set @b85_sql_mode = @@session.sql_mode;
 set session sql_mode = 'NO_ENGINE_SUBSTITUTION';
-set @b85_sql = if((select character_set_name from information_schema.columns
-                    where table_schema = database() and table_name = 'pok_daily_teams_stats' and column_name = 'name') = 'utf8mb4',
+set @b85_sql = if(coalesce((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_daily_teams_stats' and column_name = 'name'),
+                  'utf8mb4') = 'utf8mb4', /* staging has no statistics tables: nothing to do there */
   'select 1',
   'alter table pok_daily_teams_stats
      modify name varchar(80) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
