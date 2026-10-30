@@ -1138,6 +1138,9 @@ Dimensionen). Stattdessen **Heartbeat**: poker-msg schickt jeder Verbindung alle
 sich, wann zuletzt etwas ankam (`hb` oder `pull`), und baut nach ~40 s Stille neu auf (+ `updateDao`). Fängt halb offene
 Verbindungen passiver Zuschauer ab. Der Schreiber lädt nach erfolgreicher API-Antwort zusätzlich selbst. Der Heartbeat kann
 später Basis für die Anzeige der Client-Verbindung sein (vgl. B-71 Präsenz).
+Hinweis Fred (2026-10-30, Review B-73): Die Zähler der eigenen Timer-Änderungen (`gTimerWrites`, B-73) müssen
+zurückgesetzt sein, **bevor** der Schreiber nach der API-Antwort selbst `updateDao()` aufruft – sonst wird dieses Laden
+(und ein vorab angekommener `pull`) verworfen und der Timer bleibt bis zum nächsten fremden `pull` stehen.
 
 
 ### B-82 Board reagiert nach längerer Pause 5–10 s nicht (WebSocket)
@@ -1236,6 +1239,14 @@ Fund Sina (2026-10-30), Gedanke Andreas (2026-10-30):
   liefert für andere Spieler nur Name, `mkey` und Karte – erfüllt. Alle übrigen Antworten (Roadmap, Survey, Promo,
   Statistik) einmal daraufhin prüfen (Sina) und den Grundsatz in CLAUDE.md aufnehmen.
 - REST-Verben (`DELETE`) erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
+
+### B-92 Ältere dao-Antworten verwerfen (Sequenznummer)
+Fund Tessa (2026-10-30, B-73): `updateDao()` schützt nicht gegen die Reihenfolge der Antworten. Kommt eine ältere
+Antwort zuletzt an, überschreibt sie das ganze Board (Karten, Thema, Einstellungen) bis zum nächsten `pull`.
+Vorschlag (Fred): jede Anfrage nummerieren, Antworten mit kleinerer Nummer als die zuletzt übernommene verwerfen
+(~10 Zeilen). Ergänzt B-73 (eigene, noch nicht bestätigte Änderungen), ersetzt es nicht. Den B-73-Test dabei anpassen
+(erwartet heute die Anzeige der älteren Antwort). Gut zusammen mit B-81 umsetzbar. Nebenbei: `fetch` hat kein Timeout
+(`AbortSignal.timeout`), ein hängender `timer.php`-Request blockiert sonst die Timer-Übernahme.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
