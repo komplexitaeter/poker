@@ -1265,6 +1265,19 @@ Fund Tessa (2026-10-30, Review B-81): `updateDao()` hat kein `.catch`. Schlägt 
 kurzer Pause erneut versuchen. Außerdem `docs/b81-server-notify.md` auf den umgesetzten Heartbeat-Wächter nachziehen
 (beschreibt noch `expectPull`).
 
+### B-95 `last_callback_time` höchstens einmal pro Minute schreiben
+Idee Andreas (2026-10-30): `dao.php` schreibt bei jedem Aufruf `last_callback_time` (seit B-81 ~17 % mehr Aufrufe).
+Nur schreiben, wenn der gespeicherte Wert älter als 60 s ist: `UPDATE … SET last_callback_time = current_timestamp
+WHERE id = ? AND team_id = ? AND last_callback_time < current_timestamp - interval 60 second` (trifft sonst 0 Zeilen →
+kein Schreiben, kein Index-Update). Sekundengenauen Zeitstempel des ersten Aufrufs behalten statt auf die Minute zu kürzen.
+Code-Prüfung (Kai, 2026-10-30) – Verwendungen von `last_callback_time`:
+- `stats.php` Live-Tab: aktiv in den letzten 60 Minuten → unkritisch.
+- `api/newround.php`: Spieler löschen nach 2 Monaten Inaktivität; Rundendetails nur für in 24 h aktive Spieler → unkritisch.
+- `db_jobs_pok.sql` Tagesjob (24 h) und Minutenjob `last_day`/`last_hour`/`last_half_hour`/`last_ten_minutes` → unkritisch.
+- Minutenjob `last_minute` (`timestampdiff(minute, …) < 1`) → zählt künftig weniger (Wert bis ~60 s alt). Betrifft nur
+  diese eine Grafana-Kennzahl. Abkürzen auf die volle Minute würde sie noch stärker verfälschen, daher nicht kürzen.
+Mit B-90 zusätzlich die Umfrage-Abfragen aus `getDao()` entfernen.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
