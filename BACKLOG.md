@@ -1131,6 +1131,7 @@ bei abgerissener Verbindung (Teil von B-82 erledigt sich), externe Aufrufe (B-80
 eine Stelle statt ~15 `pushDomChange()`-Aufrufe. Zu klären: Übergang (Browser-`push` vorübergehend parallel, doppeltes
 `pull` ist harmlos), Reihenfolge der Deployments (erst poker-msg, dann App), Verhalten wenn poker-msg nicht läuft
 (API bleibt erfolgreich, Senden nicht blockierend).
+Analyse (2026-10-30): `docs/b81-server-notify.md` – 14 pushes, 11 schreibende Endpunkte mit Board-Effekt, `delete_user` betrifft alle Teams des Users (heute Bug), `dao.php` darf nie benachrichtigen; UDP 127.0.0.1 als Kanal; Aufwand gesamt M, zwei PRs (poker-msg, dann poker).
 
 
 ### B-82 Board reagiert nach längerer Pause 5–10 s nicht (WebSocket)
