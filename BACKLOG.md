@@ -1218,6 +1218,12 @@ Nur bei handgemachten Requests, kein Datenzugriff. Vorschlag: `get_id_param()` i
 - `gTouchQuery`/`gCarouselQuery` doppelt (Fred).
 - Hinweis: `db_schema_pok_inc.sql` ist als Ganzes nicht idempotent (früher Block `fb_id`); immer nur neue Blöcke einspielen.
 
+### B-90 Umfrage reparieren oder entfernen
+Fund Fred (2026-10-30, bei B-89): Die In-App-Umfrage ist praktisch tot. `api/get_survey.php` bindet die User-ID mit
+`bind_param('i', …)`, User-IDs sind aber alphanumerisch → 0 → findet niemanden; `get_survey_id()` in `api/lib.php` vergibt
+eine Umfrage nur bei `approx_team_age < -110`, also nie. Zusätzlich geht `survey_intro` per `innerHTML` raus (Admin-Text).
+Frage an das Team: Umfragen noch gewollt? Dann reparieren, sonst Code, Tabellen-Nutzung und CSS entfernen.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
