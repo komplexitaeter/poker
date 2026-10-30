@@ -86,7 +86,7 @@ test('the "Tips" switch hides and shows the tip on every board of the team (B-96
   // default on, with a short hint
   await openTeamTab(alice);
   await expect(tipsRadio(alice, '1')).toBeChecked();
-  await expect(alice.locator('#cet_show_tips .hint')).toHaveText('Short suggestions in the side column what to do next.');
+  await expect(alice.locator('#cet_show_tips .hint')).toHaveText('Short hints for everyone on what to do next (large screens).');
 
   // off: gone on both boards, without a reload; the deck hint stays
   await tipsRadio(alice, '0').check();
