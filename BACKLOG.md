@@ -1165,6 +1165,7 @@ Ziel: versehentliche Schleifen bremsen, ohne Teams hinter einer gemeinsamen Firm
 dazu `measure_event.php` je User-ID (`$arg_id`), z. B. 1 r/s, damit die Statistik sauber bleibt. Leerer Schlüssel
 wird nicht gezählt. Konfiguration für beide Server vorbereiten (Kai/Ben), Andreas spielt ein.
 In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
+Zurückgestellt (Andreas, 2026-10-30): Risiko, mehr kaputt zu machen als zu reparieren; der Fall hat keinem User geschadet.
 
 ### B-85 Topic mit Emoji führt zu HTTP 500
 Befund (Logs Live, 2026-10-29): 3× HTTP 500 in `api/update_topic.php` (Exception bei `execute()`), Firefox.
@@ -1180,6 +1181,7 @@ sich nicht aufbauen. Anzeige: ein Overlay wie der Rotate-Hinweis (B-78), z. B. �
 wegklickbar** (die App ist in dem Zustand nicht nutzbar); verschwindet von selbst, sobald die Verbindung wieder steht
 (dann `updateDao`). Offen: kurze Verzögerung vor dem Einblenden gegen Flackern bei kurzen Aussetzern; auch fehlgeschlagene
 API-Aufrufe (`fetch`) einbeziehen? Gestaltung Delia, Logik Fred; zusammen mit B-82 umsetzen.
+Test (2026-10-30): Playwright `page.routeWebSocket()` (ab 1.48, wir haben 1.56) – Verbindung im Test schließen, verzögern oder Nachrichten verschlucken, ohne poker-msg zu ändern.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
