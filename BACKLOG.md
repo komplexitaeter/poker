@@ -1277,6 +1277,7 @@ Code-Prüfung (Kai, 2026-10-30) – Verwendungen von `last_callback_time`:
 - Minutenjob `last_minute` (`timestampdiff(minute, …) < 1`) → zählt künftig weniger (Wert bis ~60 s alt). Betrifft nur
   diese eine Grafana-Kennzahl. Abkürzen auf die volle Minute würde sie noch stärker verfälschen, daher nicht kürzen.
 Mit B-90 zusätzlich die Umfrage-Abfragen aus `getDao()` entfernen.
+**Verworfen (Andreas, 2026-10-30):** Die Ersparnis ist bei unserer Last zu klein; `last_callback_time` bleibt die echte letzte Rückmeldung (bei jedem Aufruf geschrieben). Umfrage-Abfragen ggf. mit B-90.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
