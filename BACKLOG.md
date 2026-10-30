@@ -1150,6 +1150,7 @@ wiederholen – sonst geht es verloren und man muss nochmal klicken. (2) Wird de
 immer kappen und neu aufbauen (plus `updateDao`). Status: refined.
 
 ### B-83 Nächtlicher Statistik-Job blockiert `dao.php` (23:55 UTC)
+**Live eingespielt 2026-10-30 (Index + Event).**
 **Status: auf `release` (2026-10-30, komplexitaeter/poker#94), kommt mit Rollout 2.**
 Befund (Logs Live, 2026-10-29): Jede Nacht 23:55–23:58 UTC hängen einzelne `dao.php`-Aufrufe 5–6 s (PHP-FPM-Slowlog);
 MySQL-Slowlog: `UPDATE pok_players_tbl SET last_callback_time …` mit Lock-Wartezeit Ø 46 s. Ursache:
@@ -1188,6 +1189,7 @@ API-Aufrufe (`fetch`) einbeziehen? Gestaltung Delia, Logik Fred; zusammen mit B-
 Test (2026-10-30): Playwright `page.routeWebSocket()` (ab 1.48, wir haben 1.56) – Verbindung im Test schließen, verzögern oder Nachrichten verschlucken, ohne poker-msg zu ändern.
 
 ### B-87 Minütlicher Statistik-Job sperrt `pok_players_tbl` kurz
+**Status: auf `release` (komplexitaeter/poker#96) und live eingespielt 2026-10-30.**
 Fund Ben (2026-10-30, bei B-83): `pok_active_users_evt` (`db_jobs_pok.sql`, jede Minute) liest `pok_players_tbl` komplett
 per `INSERT … SELECT` unter REPEATABLE READ und setzt dabei Lesesperren – kurze Wartezeiten für `dao.php` jede Minute.
 Gleicher Fix wie B-83: `set session transaction_isolation = 'READ-COMMITTED'` im Event-Body (binlog_format ROW prüfen).
