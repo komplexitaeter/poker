@@ -266,6 +266,7 @@ function getDao($t, $id) {
     $players=array();
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
+    $show_tips = 1;
     $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
@@ -300,6 +301,7 @@ function getDao($t, $id) {
                   ,t.show_avg
                   ,t.anonymous_mode
                   ,t.anonymous_request_toggle
+                  ,t.show_tips
                   ,t.needs_setup
             FROM pok_teams_tbl as t
              WHERE t.id = ?");
@@ -320,6 +322,7 @@ function getDao($t, $id) {
         $show_avg = (int)$obj->show_avg;
         $anonymous_mode = (int)$obj->anonymous_mode;
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
+        $show_tips = (int)$obj->show_tips;
         $needs_setup = (bool)$obj->needs_setup;
     }
 
@@ -462,6 +465,7 @@ function getDao($t, $id) {
         "show_avg"=>$show_avg,
         "anonymous_mode"=>$anonymous_mode,
         "anonymous_request_toggle"=>$anonymous_request_toggle,
+        "show_tips"=>$show_tips, // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
         "needs_setup"=>$needs_setup,
         "selected_card_key"=>$card_key,
         "player_type"=>$player_type,

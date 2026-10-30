@@ -29,6 +29,7 @@ export interface myJsonType {
     one_ore_more_player_ready: boolean;
     anonymous_mode: boolean;
     anonymous_request_toggle: boolean;
+    show_tips: number; // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
     needs_setup: boolean;
     needs_celebration: boolean;
     players_count: number;
