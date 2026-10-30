@@ -44,7 +44,7 @@
 </svg>
 
 <!-- B-78: phones held sideways (style.css, "Rotate hint"); "Continue anyway" hides it for the session -->
-<div id="rotate_hint" class="rotate-hint" role="dialog" aria-labelledby="rotate_hint_msg">
+<div id="rotate_hint" class="rotate-hint" role="dialog" aria-modal="true" aria-labelledby="rotate_hint_msg">
     <svg class="i" aria-hidden="true"><use href="#i-rotate"/></svg>
     <p id="rotate_hint_msg">Turn your phone upright for the best view</p>
     <button type="button" class="rotate-hint-skip" onclick="try { sessionStorage.setItem('rotateHintOff', '1'); } catch (e) {} document.documentElement.classList.add('rotate-ok');">Continue anyway</button>
