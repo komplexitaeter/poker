@@ -1290,7 +1290,7 @@ Idee Andreas (2026-10-30), refined: Im Board-Menü unter **Board → Team** ein 
 „tap to pick a card“ bleiben. Hintergrund: Wir glauben zu wissen, was ein guter Hinweis ist, können aber falsch liegen.
 Umsetzung: Spalte in `pok_teams_tbl` (Default 1, online), Schreiben über die Team-API mit `notify_team()`, Feld in `dao.php`,
 Schalter im Menü, `updateTip()` blendet aus. Analytics-Event beim Umschalten, damit wir sehen, wie oft Teams sie abschalten.
-Status: refined, kommt mit Rollout 2.
+**Status: auf `release` (komplexitaeter/poker#102), kommt mit Rollout 2. SQL-Block B-96 vor dem App-Deploy einspielen.**
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
