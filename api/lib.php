@@ -1,9 +1,9 @@
 <?php
 /*
- * $charset: 'utf8' (= utf8mb3) for the old tables; 'utf8mb4' where texts may contain emojis
- * (pok_feedback_tbl and the roadmap tables, B-57).
+ * Connects with utf8mb4 (B-85), so emojis in names and topics reach the utf8mb4 columns unchanged. Reading the
+ * remaining utf8mb3 columns works the same. $charset only for special cases.
  */
-function db_init(string $charset = 'utf8') {
+function db_init(string $charset = 'utf8mb4') {
     $link = mysqli_init();
     mysqli_real_connect(
         $link,
