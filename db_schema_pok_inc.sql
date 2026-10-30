@@ -193,3 +193,89 @@ set @b67_sql = if((select count(1) from information_schema.columns
 prepare b67_stmt from @b67_sql;
 execute b67_stmt;
 deallocate prepare b67_stmt;
+
+/* B-85: emojis (4-byte UTF-8) in topics and names failed with HTTP 500 ("Incorrect string value"): the columns were
+   utf8mb3 and the app connected with utf8 (= utf8mb3). The free-text columns become utf8mb4; db_init() in
+   api/lib.php connects with utf8mb4 (works with the old columns too, so code and schema can be deployed in any order;
+   until this has run, emojis still fail as before). Only the free-text columns change: id/team_id stay utf8mb3, so
+   joins and indexes on them behave as before. None of the changed columns is indexed. Lossless (utf8mb4 is a
+   superset of utf8mb3). Collation utf8mb4_0900_ai_ci as for the other utf8mb4 tables (B-57); case- and
+   accent-insensitive like utf8mb3_general_ci, so ORDER BY p.name (player list) stays practically the same.
+   pok_roundstats_tbl and pok_roundstat_details_tbl get the copies of topic and player names on every new round,
+   pok_daily_teams_stats the team name (nightly job, db_jobs_pok.sql): without them a new round or the whole nightly
+   job would fail as soon as a name or topic contains an emoji.
+   NOT online: MySQL changes a column charset only with algorithm = copy, i.e. the table is rebuilt and writes to it
+   wait until the ALTER is done (reads keep working). Duration grows with the table size (see step 1); local test:
+   11 s for pok_roundstats_tbl with 1 million rows, 3 s for pok_players_tbl with 150,000 rows. Run on a weekend, one table at a time, not between 23:50 and 0:10 (nightly job). */
+
+/* 1. check (read only): sizes and current charsets (all utf8mb3 before, all utf8mb4 after) */
+select table_name, table_rows, round((data_length + index_length) / 1048576) as mb from information_schema.tables
+ where table_schema = database()
+   and table_name in ('pok_teams_tbl', 'pok_players_tbl', 'pok_roundstats_tbl', 'pok_roundstat_details_tbl',
+                      'pok_daily_teams_stats');
+select table_name, column_name, character_set_name, collation_name from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'name'), ('pok_teams_tbl', 'topic'), ('pok_players_tbl', 'name'),
+        ('pok_roundstats_tbl', 'topic'), ('pok_roundstat_details_tbl', 'name'), ('pok_daily_teams_stats', 'name'));
+
+/* 2. change: each ALTER only if the column is not utf8mb4 yet (idempotent). Same column definitions as before, only
+   the charset changes. The lock wait timeout makes an ALTER give up after 5 s instead of queueing all writes behind
+   a long query: just run it again. */
+set session lock_wait_timeout = 5;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'topic') = 'utf8mb4',
+  'select 1',
+  'alter table pok_teams_tbl
+     modify name varchar(80) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     modify topic varchar(2000) character set utf8mb4 collate utf8mb4_0900_ai_ci default null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'name') = 'utf8mb4',
+  'select 1',
+  'alter table pok_players_tbl
+     modify name varchar(50) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl' and column_name = 'topic') = 'utf8mb4',
+  'select 1',
+  'alter table pok_roundstats_tbl
+     modify topic varchar(2000) character set utf8mb4 collate utf8mb4_0900_ai_ci default null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstat_details_tbl' and column_name = 'name') = 'utf8mb4',
+  'select 1',
+  'alter table pok_roundstat_details_tbl
+     modify name varchar(50) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+/* pok_daily_teams_stats.team_creation_date has the default '0000-00-00 00:00:00' (as on live), which the strict
+   sql_mode rejects when the table is rebuilt ("Invalid default value"): sql_mode without strict/zero-date checks
+   for this one ALTER, restored right after. */
+set @b85_sql_mode = @@session.sql_mode;
+set session sql_mode = 'NO_ENGINE_SUBSTITUTION';
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_daily_teams_stats' and column_name = 'name') = 'utf8mb4',
+  'select 1',
+  'alter table pok_daily_teams_stats
+     modify name varchar(80) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+set session sql_mode = @b85_sql_mode;
