@@ -1124,6 +1124,13 @@ poker-msg, über den PHP „Update Team-ID …“ meldet; poker-msg verteilt dan
 (eigener Broker), Redis Pub/Sub, oder schlicht ein zweiter Listener in poker-msg nur auf localhost (UDP/Unix-Socket
 im selben ReactPHP-Loop, ohne neuen Dienst). Entschieden (Andreas, 2026-10-29): keine Zustellgarantie nötig – die gibt es beim `push` aus dem Browser auch nicht.
 Damit reicht „fire and forget“; Favorit ist der lokale Listener ohne neuen Dienst.
+Erweiterung (Andreas, 2026-10-30): Den Kanal zum **Standardweg für alle schreibenden APIs** machen. Heute: JS ruft die
+API auf, danach schickt JS `push` an poker-msg. Neu: Die API meldet nach erfolgreichem Schreiben selbst an poker-msg,
+das `pull` an alle (inkl. Schreiber) schickt; das `push` aus dem Browser entfällt. Vorteile: kein verlorenes `push`
+bei abgerissener Verbindung (Teil von B-82 erledigt sich), externe Aufrufe (B-80) aktualisieren Boards automatisch,
+eine Stelle statt ~15 `pushDomChange()`-Aufrufe. Zu klären: Übergang (Browser-`push` vorübergehend parallel, doppeltes
+`pull` ist harmlos), Reihenfolge der Deployments (erst poker-msg, dann App), Verhalten wenn poker-msg nicht läuft
+(API bleibt erfolgreich, Senden nicht blockierend).
 
 
 ### B-82 Board reagiert nach längerer Pause 5–10 s nicht (WebSocket)
