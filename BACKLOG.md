@@ -1038,6 +1038,7 @@ Daten. Vorschlag: eine `relayout()`-Funktion mit einem Observer, Spread direkt a
 ohne Verhaltensänderung.
 
 ### B-73 Wackelnder Timer-E2E-Test
+**Status: auf `release` (komplexitaeter/poker#100) – echter App-Fehler (ältere dao-Antwort setzte Timer-Radio zurück).**
 Tessa/Delia (2026-10-28): `timer.spec.ts` schlug lokal vereinzelt fehl („Clicking the checkbox did not change its
 state“), vermutlich Race zwischen Klick und Neu-Rendern nach `pull`. Robust machen, bevor es in der CI rot wird.
 
@@ -1119,6 +1120,7 @@ eindeutig (erneutes Anlegen aktualisiert); Webhook mit HMAC-Signatur; OpenAPI-Da
 Offen: Was ist „das Ergebnis“ (finaler Wert, alle Karten, Durchschnitt, Konsens)? Wer legt den finalen Wert fest?
 
 ### B-81 Update-Signal vom Webserver an poker-msg
+**Status: auf `release` (2026-10-30, komplexitaeter/poker-msg#3 + komplexitaeter/poker#101), kommt mit Rollout 2. poker-msg muss vor der App deployt werden (Staging erledigt).**
 Idee von Andreas (2026-10-29): Heute schickt nur der Browser nach einer Änderung `push` an poker-msg. Ändert der
 Server selbst etwas (z. B. B-80 per API, später Jobs), erfahren offene Boards nichts. Ein Kanal PHP-Webserver →
 poker-msg, über den PHP „Update Team-ID …“ meldet; poker-msg verteilt dann wie bisher `pull`. Varianten: MQTT o. ä.
@@ -1206,6 +1208,7 @@ per `INSERT … SELECT` unter REPEATABLE READ und setzt dabei Lesesperren – ku
 Gleicher Fix wie B-83: `set session transaction_isolation = 'READ-COMMITTED'` im Event-Body (binlog_format ROW prüfen).
 
 ### B-88 ID-Parameter auf ihr Format prüfen
+**Status: auf `release` (komplexitaeter/poker#99).**
 Fund Sina (2026-10-30, Review B-85): `id` wird mit `FILTER_SANITIZE_FULL_SPECIAL_CHARS` gelesen, das Nicht-ASCII durchlässt
 (`dao.php`, `setc.php`, `name.php`, `get_user.php`, `update_user.php`, `delete_user.php`, `get_survey.php`). Seit der
 utf8mb4-Verbindung (B-85) ergibt ein manipuliertes Emoji in `id` HTTP 500 und einen `PHP Fatal` im Log statt 0 Treffer.
@@ -1213,6 +1216,7 @@ Nur bei handgemachten Requests, kein Datenzugriff. Vorschlag: `get_id_param()` i
 `preg_match('/^[A-Za-z0-9_-]{1,16}$/', …)`, sonst `''`.
 
 ### B-89 Kleinkram aus den Reviews (JS)
+**Status: auf `release` (komplexitaeter/poker#98).**
 - `script/script_feedback.js` (`initMenu`): `querySelectorAll('section.menu_sec:has([role="tablist"])')` wirft in Browsern
   ohne `:has()` (Firefox < 121, iOS < 15.4) und bricht `initMenu()` ab (Tabs, Escape, Layout-Wechsel). Fix: `:has()`
   weglassen, die Handler steigen ohne Tab ohnehin aus (Fred). Ähnlich `menu.matches(':modal')` (erst beim Klick).
@@ -1241,6 +1245,7 @@ Fund Sina (2026-10-30), Gedanke Andreas (2026-10-30):
 - REST-Verben (`DELETE`) erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
 
 ### B-92 Ältere dao-Antworten verwerfen (Sequenznummer)
+**Status: auf `release` mit B-81 (komplexitaeter/poker#101).**
 Fund Tessa (2026-10-30, B-73): `updateDao()` schützt nicht gegen die Reihenfolge der Antworten. Kommt eine ältere
 Antwort zuletzt an, überschreibt sie das ganze Board (Karten, Thema, Einstellungen) bis zum nächsten `pull`.
 Vorschlag (Fred): jede Anfrage nummerieren, Antworten mit kleinerer Nummer als die zuletzt übernommene verwerfen
@@ -1253,6 +1258,12 @@ Fund Sina (2026-10-30, Review B-81): poker-msg nimmt `push` per WebSocket weiter
 kann damit ohne API-Aufruf beliebig viele Pulls an alle Boards des Teams auslösen. Nach dem Deploy von B-81 sendet kein
 Client mehr `push` (alte offene Tabs ein paar Tage abwarten): `push` in poker-msg entfernen oder über dieselbe Drosselung wie
 `onNotify` leiten. Nebenbei: `api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE (Kosmetik).
+
+### B-94 Neuladen nach Fehlschlag wiederholen
+Fund Tessa (2026-10-30, Review B-81): `updateDao()` hat kein `.catch`. Schlägt das Neuladen nach dem eigenen Schreiben fehl
+(Netz, 500), bleibt das Board bis zum nächsten `pull` bzw. Neuaufbau (bis 40 s) auf altem Stand. Vorschlag: einmal nach
+kurzer Pause erneut versuchen. Außerdem `docs/b81-server-notify.md` auf den umgesetzten Heartbeat-Wächter nachziehen
+(beschreibt noch `expectPull`).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
