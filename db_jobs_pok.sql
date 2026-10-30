@@ -1,5 +1,5 @@
 -- MySQL event jobs of pok_db (B-08)
--- Exported from Live on 2026-10-23 (mysqldump --events), bodies unchanged.
+-- Exported from Live on 2026-10-23 (mysqldump --events), bodies unchanged except pok_daily_team_stats_evt (B-83).
 -- They fill the statistics tables read by the external Grafana; the app itself does not use them.
 -- Requires event_scheduler = ON. Re-create with: mysql pok_db < db_jobs_pok.sql
 -- (CREATE ... DEFINER needs a user with SET_USER_ID/SUPER; the definers exist on Live.)
@@ -38,11 +38,19 @@ WHERE last_callback_time > timestampadd(SECOND, -900, CURRENT_TIMESTAMP);;
 -- related_teams_cnt: number of other teams that share a user id with this team. Some teams reuse their link,
 -- others create a new team (link) for every session; shared user ids are the best available hint that
 -- such teams belong together (imprecise: e.g. Scrum Masters or coaches join several teams).
+-- B-83: READ COMMITTED, so the select part is a consistent (non-locking) read. Under the default REPEATABLE READ,
+-- INSERT ... SELECT sets shared locks on every row it reads in pok_players_tbl, pok_teams_tbl and
+-- pok_roundstats_tbl until it ends, and dao.php (UPDATE pok_players_tbl SET last_callback_time ...) had to wait.
+-- Needs binlog_format ROW or MIXED (MySQL 8 default: ROW). Same result: one statement, one snapshot.
+-- The index on pok_roundstats_tbl (team_id, type_code, creation_date) keeps it short (db_schema_pok_inc.sql, B-83).
+-- Each event run has its own session, the SET does not affect other connections.
 DROP EVENT IF EXISTS `pok_daily_team_stats_evt`;;
 CREATE DEFINER=`pok_admin`@`localhost` EVENT `pok_daily_team_stats_evt`
 ON SCHEDULE EVERY 1 DAY STARTS '2023-01-17 23:55:32'
 ON COMPLETION NOT PRESERVE ENABLE
-DO insert into  pok_daily_teams_stats
+DO BEGIN
+set session transaction_isolation = 'READ-COMMITTED';
+insert into  pok_daily_teams_stats
 select date(CURRENT_TIMESTAMP), x.*, case when x.active_players > 2 then 'RECURRING' else 'EXPLORING' end team_type,
 (SELECT count(distinct p2.team_id)
   FROM pok_players_tbl p1, pok_players_tbl p2 where p1.team_id =x.id
@@ -62,6 +70,7 @@ SELECT t.id, t.name
 SELECT DISTINCT team_id
  FROM pok_players_tbl
 WHERE last_callback_time > timestampadd(DAY, -1, CURRENT_TIMESTAMP)
-    )  ) as x  where x.team_age < 1 or x.active_players > 2;;
+    )  ) as x  where x.team_age < 1 or x.active_players > 2;
+END;;
 
 DELIMITER ;

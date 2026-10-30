@@ -194,6 +194,36 @@ prepare b67_stmt from @b67_sql;
 execute b67_stmt;
 deallocate prepare b67_stmt;
 
+/* B-83: the nightly pok_daily_team_stats_evt (db_jobs_pok.sql, 23:55) ran for minutes and blocked dao.php
+   (UPDATE pok_players_tbl ... last_callback_time waited for its shared locks). Its correlated subqueries
+   rounds_ever_played / rounds_played_last24h look up pok_roundstats_tbl per team, but there was no index with
+   team_id: each active team caused a scan over all NEW_ROUND rows. This index serves both subqueries from the index
+   alone (team_id = ?, type_code = 'NEW_ROUND', creation_date > ...). The second half of the fix is in
+   db_jobs_pok.sql (the event reads with READ COMMITTED, i.e. without shared locks); re-create the event after this.
+   Online DDL (in place, no lock): the app keeps running. Cost: one more index entry per new round (rare). */
+
+/* 1. check (read only): table size, plan of the subquery (key type_code_creation_date, many rows), index not there yet */
+select table_rows, round((data_length + index_length) / 1048576) as mb from information_schema.tables
+ where table_schema = database() and table_name = 'pok_roundstats_tbl';
+explain select count(1) from pok_roundstats_tbl r
+ where r.team_id = 'x' and r.type_code = 'NEW_ROUND' and r.creation_date > timestampadd(DAY, -1, CURRENT_TIMESTAMP);
+select index_name from information_schema.statistics
+ where table_schema = database() and table_name = 'pok_roundstats_tbl' and index_name = 'team_id_type_code_creation_date';
+
+/* 2. change: only if the index is missing (idempotent). Evening or weekend, not between 23:50 and 0:10 (the job).
+   The lock wait timeout makes the ALTER give up after 5 s instead of queueing the writes behind a long query: just
+   run it again. */
+set session lock_wait_timeout = 5;
+set @b83_sql = if((select count(1) from information_schema.statistics
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl'
+                      and index_name = 'team_id_type_code_creation_date') = 0,
+  'alter table pok_roundstats_tbl add index team_id_type_code_creation_date (team_id, type_code, creation_date),
+     algorithm = inplace, lock = none',
+  'select 1');
+prepare b83_stmt from @b83_sql;
+execute b83_stmt;
+deallocate prepare b83_stmt;
+
 /* B-85: emojis (4-byte UTF-8) in topics and names failed with HTTP 500 ("Incorrect string value"): the columns were
    utf8mb3 and the app connected with utf8 (= utf8mb3). The free-text columns become utf8mb4; db_init() in
    api/lib.php connects with utf8mb4 (works with the old columns too, so code and schema can be deployed in any order;
