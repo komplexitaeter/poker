@@ -1015,6 +1015,7 @@ Desktop, Phones später. „Da kommt später noch mehr hin.“ Form wie im Mocku
 **Emil (20)**“. Status: auf `release` (#76), Test auf Staging offen.
 
 ### B-71 Löschen von Spielern auf Touch-Geräten
+Hinweis (2026-10-30): Der `hb`-Heartbeat aus B-81 könnte die Basis für Präsenz/Verbindungsanzeige sein.
 Andreas (2026-10-28): Auf dem Handy trägt jede Spielerkarte dauerhaft einen Mülleimer – unruhig, wirkt für Neue riskant.
 Lieber mit den vorhandenen Karten arbeiten statt eines eigenen Menüs (vgl. B-56). Langes Drücken ist kaum zu erraten,
 Antippen zum Ein-/Ausblenden der Kontext-Icons muss man auch erst herausfinden. Offen: Lösung (Vorschlag Kai: Mülleimer
@@ -1131,6 +1132,12 @@ bei abgerissener Verbindung (Teil von B-82 erledigt sich), externe Aufrufe (B-80
 eine Stelle statt ~15 `pushDomChange()`-Aufrufe. Zu klären: Übergang (Browser-`push` vorübergehend parallel, doppeltes
 `pull` ist harmlos), Reihenfolge der Deployments (erst poker-msg, dann App), Verhalten wenn poker-msg nicht läuft
 (API bleibt erfolgreich, Senden nicht blockierend).
+Analyse (2026-10-30): `docs/b81-server-notify.md` – 14 pushes, 11 schreibende Endpunkte mit Board-Effekt, `delete_user` betrifft alle Teams des Users (heute Bug), `dao.php` darf nie benachrichtigen; UDP 127.0.0.1 als Kanal; Aufwand gesamt M, zwei PRs (poker-msg, dann poker).
+Entschieden (Andreas, 2026-10-30): **kommt mit Rollout 2**, ohne Doppelweg. Kein Polling als Sicherheitsnetz (verliert auf allen
+Dimensionen). Stattdessen **Heartbeat**: poker-msg schickt jeder Verbindung alle 30 s eine Textnachricht `hb`; das Board merkt
+sich, wann zuletzt etwas ankam (`hb` oder `pull`), und baut nach ~40 s Stille neu auf (+ `updateDao`). Fängt halb offene
+Verbindungen passiver Zuschauer ab. Der Schreiber lädt nach erfolgreicher API-Antwort zusätzlich selbst. Der Heartbeat kann
+später Basis für die Anzeige der Client-Verbindung sein (vgl. B-71 Präsenz).
 
 
 ### B-82 Board reagiert nach längerer Pause 5–10 s nicht (WebSocket)
@@ -1210,6 +1217,13 @@ Nur bei handgemachten Requests, kein Datenzugriff. Vorschlag: `get_id_param()` i
   umstellen (Daten nur vom Admin, geringes Risiko; Sina).
 - `gTouchQuery`/`gCarouselQuery` doppelt (Fred).
 - Hinweis: `db_schema_pok_inc.sql` ist als Ganzes nicht idempotent (früher Block `fb_id`); immer nur neue Blöcke einspielen.
+
+### B-90 Umfrage reparieren oder entfernen
+Fund Fred (2026-10-30, bei B-89): Die In-App-Umfrage ist praktisch tot. `api/get_survey.php` bindet die User-ID mit
+`bind_param('i', …)`, User-IDs sind aber alphanumerisch → 0 → findet niemanden; `get_survey_id()` in `api/lib.php` vergibt
+eine Umfrage nur bei `approx_team_age < -110`, also nie. Zusätzlich geht `survey_intro` per `innerHTML` raus (Admin-Text).
+Frage an das Team: Umfragen noch gewollt? Dann reparieren, sonst Code, Tabellen-Nutzung und CSS entfernen.
+Bei Reparatur zusätzlich (Sina): `survey_intro` nicht per `innerHTML` (Text oder Markdown über remarkable ohne HTML); `fillResultsBars()` adressiert Balken per `vote_option.id - 1` → TypeError bei nicht lückenlosen IDs, besser per Element-ID.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
