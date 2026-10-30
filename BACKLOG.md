@@ -1225,6 +1225,18 @@ eine Umfrage nur bei `approx_team_age < -110`, also nie. Zusätzlich geht `surve
 Frage an das Team: Umfragen noch gewollt? Dann reparieren, sonst Code, Tabellen-Nutzung und CSS entfernen.
 Bei Reparatur zusätzlich (Sina): `survey_intro` nicht per `innerHTML` (Text oder Markdown über remarkable ohne HTML); `fillResultsBars()` adressiert Balken per `vote_option.id - 1` → TypeError bei nicht lückenlosen IDs, besser per Element-ID.
 
+### B-91 Entfernen und Löschen nur mit Berechtigung
+Fund Sina (2026-10-30), Gedanke Andreas (2026-10-30):
+- **Anderen Spieler vom Board entfernen** (`api/delete.php`, heute nur `t` + `mkey`): künftig muss der Aufrufer
+  zusätzlich seine eigene User-ID schicken, und er darf nur entfernen, wenn er selbst (nicht entfernter) Mitglied dieses
+  Teams ist. Ziel bleibt der `mkey` des anderen Spielers.
+- **Eigenen User löschen** (`api/delete_user.php`, nur `id`): löscht team-übergreifend. Bleibt auf die eigene ID
+  beschränkt (sie ist das Geheimnis); prüfen, ob ein Bestätigungs-Merkmal sinnvoll ist.
+- **Grundsatz:** Ein Client sieht nur seine eigene User-ID; andere Spieler nur über den `mkey`. Stand heute: `dao.php`
+  liefert für andere Spieler nur Name, `mkey` und Karte – erfüllt. Alle übrigen Antworten (Roadmap, Survey, Promo,
+  Statistik) einmal daraufhin prüfen (Sina) und den Grundsatz in CLAUDE.md aufnehmen.
+- REST-Verben (`DELETE`) erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
