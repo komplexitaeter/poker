@@ -6,6 +6,8 @@ require_post();
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
 $id = get_id_param("id");
+// a missing or manipulated id must not create a player with an empty id (B-88), SIDs have 16 characters
+if (strlen($id) < 10) exit;
 $name = get_text_param("name", 15);
 $type = get_text_param("type", 10);
 

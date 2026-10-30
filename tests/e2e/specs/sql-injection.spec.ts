@@ -114,7 +114,6 @@ test('a manipulated player id behaves like an unknown id and never returns a 500
       `./api/vote_roadmap.php?id=${id}&item=1&reaction=UP`,
       `./api/get_promo.php?player_id=${id}&team_id=${t}&display_type=e2e`,
       `./api/get_promo.php?player_id=${aliceSid}&team_id=${id}&display_type=e2e`,
-      `./api/delete_user.php?id=${id}`,
     ];
     for (const w of writes) {
       const res = await alice.request.post(w);
@@ -123,11 +122,21 @@ test('a manipulated player id behaves like an unknown id and never returns a 500
     }
   }
 
-  // Alice is untouched: still the only player, without a card; no "Mallory" joined.
-  const res = await alice.request.get(`./api/dao.php?id=${aliceSid}&t=${t}`);
-  expect(res.status()).toBe(200);
-  const body = await res.json();
-  expect(body.name).toBe('Alice');
-  expect(body.selected_card_key).toBeNull();
-  expect(body.players.map((p: { name: string }) => p.name)).toEqual(['Alice']);
+  // Alice is untouched: still the only player, without a card; no "Mallory" joined (name.php must not create a
+  // player with an empty id). Checked before delete_user.php runs, which would remove such a row again.
+  const expectOnlyAlice = async () => {
+    const res = await alice.request.get(`./api/dao.php?id=${aliceSid}&t=${t}`);
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.name).toBe('Alice');
+    expect(body.selected_card_key).toBeNull();
+    expect(body.players.map((p: { name: string }) => p.name)).toEqual(['Alice']);
+  };
+  await expectOnlyAlice();
+
+  for (const bad of BAD_IDS) {
+    const res = await alice.request.post(`./api/delete_user.php?id=${encodeURIComponent(bad)}`);
+    expect(res.status(), `delete_user.php id=${bad}`).toBeLessThan(500);
+  }
+  await expectOnlyAlice();
 });

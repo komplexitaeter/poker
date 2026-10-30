@@ -4,6 +4,8 @@ require './lib.php';
 require_post();
 
 $id = get_id_param("id");
+// no feedback without a valid id (B-88); the client always sends its SID
+if ($id === '') exit;
 $stars = (int)filter_input(INPUT_GET, "stars", FILTER_SANITIZE_NUMBER_INT );
 // Store feedback text raw (trim + length limit only); escaping happens on output (B-02).
 $text = get_text_param("text", 1800);

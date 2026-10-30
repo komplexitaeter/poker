@@ -4,6 +4,8 @@ require './lib.php';
 require_post();
 
 $id = get_id_param("id");
+// a missing or manipulated id must not delete the rows with an empty id of all teams (B-88)
+if ($id === '') exit;
 $link = db_init();
 
 $sql = $link->prepare("DELETE FROM pok_feedback_tbl WHERE id=?");
