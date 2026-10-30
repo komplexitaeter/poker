@@ -25,7 +25,8 @@ test('survey options are rendered as text, a vote shows the results (B-89)', asy
     return route.fulfill({ body: '' });
   });
 
-  await alice.evaluate(() => { (window as any).gSurvey = 'LOUD'; (window as any).generateSurveyContents(); });
+  // gSurvey is a top-level let (not on window): set it in the page's global scope
+  await alice.evaluate("gSurvey = 'LOUD'; generateSurveyContents();");
   const options = alice.locator('#vote_options button.vote_option');
   await expect(options).toHaveText([evil, 'Great & <b>simple</b>']);
   await expect(alice.locator('#survey-content img, #survey-content b')).toHaveCount(0);
