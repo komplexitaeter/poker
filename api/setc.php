@@ -24,3 +24,6 @@ if (strlen($cardkey)>0) {
 
 $sql->execute();
 $link->close();
+
+// B-81: all boards of the team reload (only reached after the team check and a successful write)
+notify_team($t);

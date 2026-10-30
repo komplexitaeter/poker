@@ -105,6 +105,36 @@ function require_post() {
 }
 
 /*
+ * B-81: tells poker-msg that the board of $team_id changed; poker-msg then sends "pull" to every board of that team
+ * (including the writer). One UDP datagram "pull:<team_id>" to 127.0.0.1, port _POKER_MSG_NOTIFY_PORT (config.php,
+ * default 8444). Fire and forget: no answer, no delivery guarantee, never blocks, never fails the request and never
+ * writes a PHP warning (if poker-msg is not running, the datagram is simply lost).
+ *
+ * Every writing endpoint with an effect on the board calls this at the end, after the team check and the successful
+ * write (not on 400/403/early exit). dao.php must NEVER call it: pull -> dao.php -> notify -> pull would loop forever.
+ */
+function notify_team(string $team_id): void {
+    if ($team_id === '') return;
+    $port = defined('_POKER_MSG_NOTIFY_PORT') ? (int)constant('_POKER_MSG_NOTIFY_PORT') : 8444;
+    try {
+        $sock = @stream_socket_client('udp://127.0.0.1:' . $port, $errno, $errstr, 0.05);
+        if ($sock === false) return;
+        @stream_set_blocking($sock, false);
+        @fwrite($sock, 'pull:' . $team_id);
+        @fclose($sock);
+    } catch (\Throwable $e) {
+        // never let the notification break a successful write
+    }
+}
+
+/* B-81: notify_team() for several teams, each team once (e.g. delete_user.php: all teams of the user). */
+function notify_teams(array $team_ids): void {
+    foreach (array_unique(array_map('strval', $team_ids)) as $team_id) {
+        notify_team($team_id);
+    }
+}
+
+/*
  * Maps a stored pok_teams_tbl.results_order to the values the app still knows (B-42): NAME or SEQUENCE.
  * Legacy CHOOSE:* values (the removed in-game choice; live data only ever had CHOOSE:SEQUENCE) and anything
  * unexpected become SEQUENCE, the default for new teams.

@@ -63,7 +63,7 @@ function getBrowserWidth(){
 
 function newRound() {
     let url = './api/newround.php?t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function playerTypeUpdate(playerType, name) {
@@ -144,7 +144,7 @@ function controlsDsp(playerType) {
 
 function deletePlayer(e) {
     let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function updateSelectedC(currKey) {
@@ -171,7 +171,7 @@ function setC(e) {
     else
         url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + t;
 
-    if (url !== null) fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    if (url !== null) apiWrite(url);
 }
 
 function toggleC(cardId, flag) {
@@ -540,8 +540,15 @@ function pickCardByKey(event) {
     img.click();
 }
 
+/* B-92: every board state asked for gets a number; an answer older than the one shown last is
+ * dropped (answers may come in any order). The answer on load is always taken: it sets up the page
+ * and asks again right away. */
+let gDaoSeq = 0;        // board states asked for so far
+let gDaoShownSeq = 0;   // number of the board state shown last
+
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
+    const seq = ++gDaoSeq;
     // B-73: the timer part of an answer counts only when no own timer change was under way or
     // finished meanwhile (see timerStateFresh)
     const timerWrite = gTimerWrites === 0 ? gTimerWriteGen : -1;
@@ -551,6 +558,9 @@ function updateDao(isOnLoad) {
             return response.json();
         })
         .then((myJson) => {
+
+            if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
+            gDaoShownSeq = Math.max(gDaoShownSeq, seq);
 
             gLastJson = myJson;
             updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
@@ -973,21 +983,24 @@ function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
     }
 }
 
-/* ---------- Connection to poker-msg (B-82, B-86) ----------
- * After a change the board does not reload itself: it sends 'push' and poker-msg answers every board
- * of the team (the sender too) with 'pull', which calls updateDao(). A connection that broke in the
- * background (sleep, network change, server keepalive) is rebuilt and a pending push is sent again
- * once it is open (B-82). While the connection is down, or the pull for our own push does not come,
- * #conn_hint covers the board after a short delay and vanishes by itself when it is back (B-86). */
+/* ---------- Connection to poker-msg (B-81, B-82, B-86) ----------
+ * The connection only receives: after 'subscribe' poker-msg sends 'pull' whenever the team changed
+ * (the API notifies it after every write, B-81) and 'hb' to every connection every 30 s. The board
+ * never sends 'push'; after an own write it loads the board itself (afterWrite), so the own board
+ * never depends on the signal. A connection that is closed, or silent for longer than HB_TIMEOUT_MS
+ * (half open: sleep, network change, proxies), is rebuilt; its onopen calls updateDao (B-82).
+ * While the connection is down #conn_hint covers the board after a short delay and vanishes by
+ * itself when it is back (B-86). */
 const WS_RECONNECT_MS = 300;       // reconnect after an open connection closed
 const WS_RETRY_MS = 2000;          // try again after a connection could not be opened
-const PULL_TIMEOUT_MS = 1000;      // B-86: the pull for our own push is overdue after this
+const WS_CHECK_MS = 3000;          // how often the connection is checked
+const HB_TIMEOUT_MS = 40000;       // B-81: no 'hb' or 'pull' for this long: the connection is dead
 const CONN_HINT_DELAY_MS = 1200;   // B-86: show the hint only when the trouble lasts longer (no flicker)
+const WRITE_TIMEOUT_MS = 15000;    // B-92: a writing API call that hangs longer is given up
 
-let gWsTimer = null;          // heartbeat / reconnect timer, only one at a time
-let gPushPending = false;     // B-82: a push waits for an open connection
-let gPullTimer = null;        // B-86: waiting for the pull after our push
-let gConnTrouble = false;     // B-86: connection closed or a pull overdue
+let gWsTimer = null;          // check / reconnect timer, only one at a time
+let gWsLastMsgAt = 0;         // B-81: when the current connection opened or last received something
+let gConnTrouble = false;     // B-86: connection closed or silent
 let gConnHintTimer = null;
 let gConnHintFocusBack = null;
 
@@ -995,71 +1008,64 @@ function initializeWSConnection(teamId) {
 
     console.log("initializeWSConnection");
 
-    // Überprüfen, ob eine bestehende Verbindung existiert und offen ist
+    // close an existing connection that is open or still opening
     if (gConn && (gConn.readyState === WebSocket.OPEN || gConn.readyState === WebSocket.CONNECTING)) {
-        // Bestehende Verbindung schließen
         gConn.close();
     }
 
     let wsProtocol = 'wss://';
     if (window.location.protocol.includes('http:')) wsProtocol = 'ws://';
 
-    // B-82: a push whose pull has not come yet may be lost with the old connection: send it again
-    if (gPullTimer !== null) {
-        clearTimeout(gPullTimer);
-        gPullTimer = null;
-        gPushPending = true;
-    }
-
     const conn = new WebSocket(wsProtocol+window.location.host+'/poker-msg');
     gConn = conn;
+    gWsLastMsgAt = Date.now();
     setConnTrouble(true); // until it is open
 
     conn.onmessage = function(e){
         if (conn !== gConn) return;
-        if (e.data.includes('pull')) {
-            pullReceived();
-            updateDao(false);
-        }
+        gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
+        if (e.data.includes('pull')) updateDao(false);
     };
 
     let wasOpen = false;
     conn.onopen = () => {
         if (conn !== gConn) return;
         wasOpen = true;
+        gWsLastMsgAt = Date.now();
         conn.send('subscribe: '+teamId);
-        if (gPushPending) {
-            sendPush(); // B-82: the push that failed before; trouble ends with its pull
-        } else {
-            setConnTrouble(false);
-        }
+        setConnTrouble(false);
         updateDao(false);
     };
 
     conn.onclose = () => {
         if (conn !== gConn) return; // replaced on purpose
         setConnTrouble(true);
-        scheduleWSHeartbeat(wasOpen ? WS_RECONNECT_MS : WS_RETRY_MS);
+        scheduleWSCheck(wasOpen ? WS_RECONNECT_MS : WS_RETRY_MS);
     };
 
-    scheduleWSHeartbeat(10000);
+    scheduleWSCheck(10000);
 }
 
-function scheduleWSHeartbeat(ms) {
+function scheduleWSCheck(ms) {
     clearTimeout(gWsTimer);
-    gWsTimer = setTimeout(heartbeatWSConnection, ms);
+    gWsTimer = setTimeout(checkWSConnection, ms);
 }
 
-function heartbeatWSConnection() {
+/* B-81: true when the connection is open and something came within HB_TIMEOUT_MS */
+function wsConnectionAlive() {
+    return gConn.readyState === WebSocket.OPEN && Date.now() - gWsLastMsgAt <= HB_TIMEOUT_MS;
+}
 
-    //console.log("heartbeatWSConnection");
-
-    if (gConn && gConn.readyState !== WebSocket.OPEN) {
+function checkWSConnection() {
+    if (gConn.readyState === WebSocket.CONNECTING) {
+        // still opening after 10 s: start over
+        if (Date.now() - gWsLastMsgAt > 10000) initializeWSConnection(t);
+        else scheduleWSCheck(WS_CHECK_MS);
+    } else if (!wsConnectionAlive()) {
         initializeWSConnection(t);
     } else {
-        scheduleWSHeartbeat(3000);
+        scheduleWSCheck(WS_CHECK_MS);
     }
-
 }
 
 /* B-82: back to the tab, back online or back from the page cache: the connection may be dead or
@@ -1079,48 +1085,37 @@ function initWSReconnect() {
     });
 }
 
-function pushDomChange() {
-    if (gConn === null) return; // no board on this page (start page)
-    sendPush();
-}
-
-/* B-82: sends 'push'; when the connection is not open (or sending throws), the push is kept and
- * sent again in onopen of a new connection. B-81 will drop this: the API notifies poker-msg itself. */
-function sendPush() {
-    if (gConn.readyState === WebSocket.OPEN) {
-        try {
-            gConn.send('push');
-            gPushPending = false;
-            expectPull();
-            return;
-        } catch (e) {
-            console.log('push failed', e);
-        }
+/* B-81: a writing API call (POST). Never rejects: resolves with the response, or null when the
+ * request failed or took longer than WRITE_TIMEOUT_MS. Afterwards (success or not) beforeReload
+ * runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
+function apiWrite(url, init = {}, beforeReload = null) {
+    const options = Object.assign({ method: 'POST' }, init);
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
     }
-    gPushPending = true;
-    setConnTrouble(true);
-    if (gConn.readyState !== WebSocket.CONNECTING) initializeWSConnection(t);
+    let request;
+    try {
+        request = fetch(url, options);
+    } catch (e) {
+        request = Promise.reject(e);
+    }
+    return request.catch(error => {
+        console.log('write failed', url, error);
+        return null;
+    }).then(response => {
+        if (beforeReload !== null) beforeReload();
+        afterWrite();
+        return response;
+    });
 }
 
-/* B-86: after a write the pull from poker-msg has to come within PULL_TIMEOUT_MS, otherwise the
- * connection counts as broken: rebuild it and send the push again. With B-81 this is called after
- * a writing API call instead of after the push. */
-function expectPull() {
-    if (gPullTimer !== null) return;
-    gPullTimer = setTimeout(() => {
-        gPullTimer = null;
-        gPushPending = true;
-        setConnTrouble(true);
-        // open but silent (half open) or closed: build a new one; a new one sends the push in onopen
-        if (gConn.readyState !== WebSocket.CONNECTING) initializeWSConnection(t);
-    }, PULL_TIMEOUT_MS);
-}
-
-function pullReceived() {
-    clearTimeout(gPullTimer);
-    gPullTimer = null;
-    gPushPending = false;
-    setConnTrouble(false);
+/* B-81: after an own write: load the board, and do not wait for a dead connection to be found */
+function afterWrite() {
+    if (gConn === null) return; // no board on this page (start page)
+    if (gConn.readyState !== WebSocket.CONNECTING && !wsConnectionAlive()) {
+        initializeWSConnection(t); // its onopen loads the board again
+    }
+    updateDao(false);
 }
 
 /* B-86: #conn_hint (board.html) shows up when the trouble lasts longer than CONN_HINT_DELAY_MS.
@@ -1296,9 +1291,7 @@ function becomeUser(type) {
     let name = document.getElementById("nameinput").value;
     if (name.length > 0) {
         let url = './api/name.php?id=' + localStorage.getItem('SID') + '&type=' + type + '&name=' + encodeURIComponent(name) + '&t=' + t;
-        fetch(url, { method: 'POST' }).then(() => {
-            pushDomChange();
-        });
+        apiWrite(url);
     }
 }
 
@@ -1448,8 +1441,8 @@ let gTimer = null;
 /* B-73: an own timer change (a radio in the panel) is shown right away; a board state that was read
  * before the change reached the server would set the panel back (the radio jumps back until the next
  * pull, or for good when the older answer comes last). So the timer part of a board state is only
- * taken when no own change was under way while it was asked for and answered. The pull for the own
- * push (or updateDao after a failed change) asks again afterwards and brings the new state. */
+ * taken when no own change was under way while it was asked for and answered. After the change the
+ * board loads itself (apiWrite, after the counters are back) and gets the new state. */
 let gTimerWrites = 0;     // own timer changes under way
 let gTimerWriteGen = 0;   // own timer changes finished so far
 
@@ -1575,13 +1568,13 @@ function timerAction(action, value = null) {
     let url = './api/timer.php?t=' + encodeURIComponent(t) + '&action=' + action
         + (value === null ? '' : '&value=' + encodeURIComponent(value));
     gTimerWrites++;
-    return fetch(url, { method: 'POST' }).then(response => {
-        if (!response.ok) throw new Error('timer.php ' + response.status);
-        pushDomChange();
-    }).finally(() => {
-        // before the callers' catch (updateDao): that answer has to count again
+    // B-73: the counters are back before the board loads itself after the write (apiWrite),
+    // otherwise the timer part of that answer would be dropped
+    return apiWrite(url, {}, () => {
         gTimerWrites--;
         gTimerWriteGen++;
+    }).then(response => {
+        if (response === null || !response.ok) throw new Error('timer.php ' + (response ? response.status : 'failed'));
     });
 }
 
@@ -1589,12 +1582,12 @@ function setTimerVisibility(value) {
     // B-46: confirm the own change with a toast (others just see the timer appear)
     timerAction('set_visibility', value).then(() => {
         showToast(value === '1' ? 'Timer on – everyone on the board sees it' : 'Timer off');
-    }).catch(() => updateDao(false));
+    }).catch(() => {}); // the board loaded itself (apiWrite)
     measureEvent("TOGGLE_TIMER");
 }
 
 function setTimerMode(value) {
-    timerAction('set_mode', value).catch(() => updateDao(false));
+    timerAction('set_mode', value).catch(() => {}); // the board loaded itself (apiWrite)
 }
 
 function setTimerTimebox(minutes) {
@@ -1602,7 +1595,7 @@ function setTimerTimebox(minutes) {
     other.value = '';
     other.closest('.tmr-other').setAttribute('data-set', 'false');
     showTimerOtherError(false);
-    timerAction('set_timebox', minutes).catch(() => updateDao(false));
+    timerAction('set_timebox', minutes).catch(() => {}); // the board loaded itself (apiWrite)
 }
 
 /* "other: __ min" (whole minutes 1..240), a plain text field (no number field: Safari and Chrome
@@ -1657,24 +1650,24 @@ function saveTimerOther(showError) {
     gTimer.timebox = minutes * 60;
     gTimerTime = 0;
     gTimerBaseTime = new Date();
-    timerAction('set_timebox', String(minutes)).catch(() => updateDao(false));
+    timerAction('set_timebox', String(minutes)).catch(() => {}); // the board loaded itself (apiWrite)
     return true;
 }
 
 function setTimerAutoRestart(value) {
-    timerAction('set_auto_restart', value).catch(() => updateDao(false));
+    timerAction('set_auto_restart', value).catch(() => {}); // the board loaded itself (apiWrite)
 }
 
 function timerStart() {
-    timerAction('start').catch(() => updateDao(false));
+    timerAction('start').catch(() => {}); // the board loaded itself (apiWrite)
 }
 
 function timerPause() {
-    timerAction('pause').catch(() => updateDao(false));
+    timerAction('pause').catch(() => {}); // the board loaded itself (apiWrite)
 }
 
 function timerReset() {
-    timerAction('reset').catch(() => updateDao(false));
+    timerAction('reset').catch(() => {}); // the board loaded itself (apiWrite)
 }
 
 
@@ -2235,10 +2228,10 @@ function showDeleteUserOverlay(openIt=true) {
 
 function deleteUser() {
     let url = './api/delete_user.php?id=' + sid;
+    // B-81: the API tells the boards of all the user's teams; this page is left, so no reload here
     fetch(url, { method: 'POST' }).then(()=>{
         localStorage.clear();
         sid = '-1';
-        pushDomChange();
         document.location = 'about:blank';
     });
 }

@@ -111,6 +111,9 @@ if ($action=='set_auto_restart') {
 
 $link->close();
 
+// B-81: all boards of the team reload (not reached on 403/400; an unknown action changes nothing, a pull is harmless)
+notify_team($t);
+
 function bad_request($link) {
     $link->close();
     http_response_code(400);

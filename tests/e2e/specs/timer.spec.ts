@@ -334,7 +334,7 @@ test('a new timebox resets a running timer for everyone (B-67 feedback)', async 
   await bob.context().close();
 });
 
-test('an own change is not undone by an older board state (B-73)', async ({ browser }) => {
+test('an own change is not undone by an older board state (B-73, B-92)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Timer Stale State');
   await openTimerPanel(alice);
   await openTimerPanel(bob);
@@ -348,6 +348,8 @@ test('an own change is not undone by an older board state (B-73)', async ({ brow
   let read!: () => void;
   const stateRead = new Promise<void>(resolve => { read = resolve; });
   let hold = true;
+  let delivered!: () => void;
+  const stateDelivered = new Promise<void>(resolve => { delivered = resolve; });
   await alice.route('**/api/dao.php*', async route => {
     if (!hold) return route.continue();
     hold = false;
@@ -357,14 +359,18 @@ test('an own change is not undone by an older board state (B-73)', async ({ brow
     read();
     await released;
     await route.fulfill({ response, json: { ...json, name: 'Alice (older state)' } });
+    delivered();
   });
-  await radio(bob, 'tmr_auto_restart', '1').check(); // Bob's push makes Alice's board ask for the state
+  await radio(bob, 'tmr_auto_restart', '1').check(); // Bob's change makes Alice's board ask for the state
   await stateRead;
 
   await radio(alice, 'tmr_mode', 'TIMER').check();
-  await expect(display(alice)).toHaveText('T−05:00'); // the pull for her own change came
+  await expect(display(alice)).toHaveText('T−05:00'); // her board loaded the state after her own change
   release();
-  await expect(alice.locator('#prompt_user')).toHaveText('Alice (older state)');
+  await stateDelivered;
+  // B-92: the older answer comes last and is dropped as a whole (it would show the marked name)
+  await alice.evaluate(() => new Promise(resolve => setTimeout(resolve, 300)));
+  await expect(alice.locator('#prompt_user')).toHaveText('Alice');
   await expect(radio(alice, 'tmr_mode', 'TIMER')).toBeChecked();
   await expect(display(alice)).toHaveText('T−05:00');
   await alice.context().close();

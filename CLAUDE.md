@@ -18,12 +18,18 @@ Die Anwendung besteht aus zwei Repositories:
 | `komplexitaeter/poker` (dieses) | Web-App: HTML/CSS/JS-Frontend, PHP-API, MySQL-Schema | nginx + PHP 8.4-FPM |
 | `komplexitaeter/poker-msg` | WebSocket-Benachrichtigungsserver (Ratchet, `cboden/ratchet ^0.4`) | PHP-CLI unter supervisor, `127.0.0.1:8443`, Event-Loop über PHP-Erweiterung `ev` |
 
-Datenfluss bei einer Änderung am Board:
+Datenfluss bei einer Änderung am Board (seit B-81):
 
-1. Client ruft per `fetch` einen Endpunkt in `api/*.php` auf (GET-Parameter, auch für schreibende Aktionen).
-2. Danach sendet der Client `push` über den WebSocket (`/poker-msg`, von nginx auf `127.0.0.1:8443` weitergeleitet).
-3. `poker-msg` schickt allen Verbindungen mit derselben Team-Subscription (`subscribe:<team_id>`) ein `pull`.
-4. Die Clients laden daraufhin den Zustand neu (`api/dao.php`).
+1. Client ruft per `fetch` einen Endpunkt in `api/*.php` auf (GET-Parameter, auch für schreibende Aktionen;
+   `apiWrite()` in `script/script.js`).
+2. Die API benachrichtigt nach erfolgreichem Schreiben selbst poker-msg per UDP (`pull:<team_id>` an
+   `127.0.0.1:8444`, `notify_team()` in `api/lib.php`). Der Browser sendet **kein** `push` mehr; die WebSocket-Verbindung
+   (`/poker-msg`, von nginx auf `127.0.0.1:8443` weitergeleitet) dient nur zum Empfangen.
+3. `poker-msg` schickt allen Verbindungen mit derselben Team-Subscription (`subscribe:<team_id>`) ein `pull`
+   (Pulls je Team in 100-ms-Fenstern zusammengefasst) und jeder Verbindung alle 30 s ein `hb`.
+4. Die Clients laden daraufhin den Zustand neu (`api/dao.php`). Der Schreiber lädt nach der API-Antwort zusätzlich
+   selbst (auch bei HTTP-Fehler); `updateDao()` verwirft Antworten, die älter als der angezeigte Stand sind (B-92).
+   Kommt 40 s lang weder `hb` noch `pull`, baut das Board die Verbindung neu auf (B-81, B-82).
 
 `poker-msg` kennt keine Daten und keine Datenbank; es verteilt nur „pull“-Signale pro Team. Zustand liegt komplett in MySQL.
 
@@ -219,5 +225,9 @@ Regel: Reviewt wird immer von einem anderen Agenten als dem Autor.
 - Nach Änderungen an JS-Dateien die Versionsnummer im Script-Tag (`?v=…`) in `board.html`/`init.html` erhöhen.
   Nach Änderungen an `cards.json` die Versionsnummer in `loadCardConfig()` (`./cards.json?v=…`, `script/script.js`) erhöhen
   (Safari hält die Datei sonst im Cache).
+- Jeder schreibende Endpunkt mit Board-Effekt ruft am Ende `notify_team($t)` auf (B-81) – erst nach `require_team()`
+  und erfolgreichem Schreiben, nicht bei 400/403/frühem `exit`; betrifft das Schreiben mehrere Teams, `notify_teams()`.
+  `api/dao.php` benachrichtigt **nie** (jeder `pull` lädt `dao.php` → Endlosschleife). Port optional per
+  `_POKER_MSG_NOTIFY_PORT` in `config.php` (Default 8444, muss zu `POKER_MSG_NOTIFY_PORT` von poker-msg passen).
 - CI schlägt fehl, wenn ein Testlauf `PHP Deprecated` oder `PHP Warning` ins PHP-Log schreibt.
 - Frontend ohne Framework und ohne Build; neue Dateien direkt in `board.html`/`init.html` einbinden.

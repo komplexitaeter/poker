@@ -17,4 +17,7 @@ if (strlen($mkey)>0) {
     $sql->execute();
     $link->close();
 
+    // B-81: all boards of the team reload (only with mkey, after the team check)
+    notify_team($t);
+
 }
