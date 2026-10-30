@@ -935,6 +935,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
+    checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
 
     activateJediMode(myJson.show_avg);
     updateJediBtn();
@@ -1967,7 +1968,10 @@ function updateSide(json, glide = true) {
 function updateTip(json, revealed) {
     const tip = document.getElementById('round_tip');
     if (tip === null) return;
-    const parts = tipText(json, revealed);
+    // B-96: team setting "Tips" off: no tip and no room for it (hidden, style.css)
+    const off = json.show_tips === 0;
+    tip.hidden = off;
+    const parts = off ? [] : tipText(json, revealed);
     const key = JSON.stringify(parts);
     if (tip.dataset.key === key) return;
     tip.dataset.key = key;

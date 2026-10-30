@@ -718,6 +718,13 @@ function changeAnonymity(anonymous) {
     apiWrite(url);
 }
 
+// B-96: called by the radio group with 0 (tips off) or 1 (tips on), for the whole team
+function changeShowTips(showTips) {
+    const on = showTips === '1';
+    measureEvent(on ? 'TIPS_ON' : 'TIPS_OFF');
+    apiWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
+}
+
 function onChangeTeamNameInput() {
     document.getElementById('cet_change_name').disabled = document.getElementById('cet_team_name').value
         === document.getElementById('team_name').innerText
