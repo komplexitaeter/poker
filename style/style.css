@@ -155,7 +155,6 @@ body.light-theme {
     --light-border-color: var(--line-strong);
     --text-color: var(--text);
     --primary-border-color: var(--line-strong);
-    --secondary-border-color: var(--line);
     --switch-color: var(--muted);
     --box-disabled: var(--disabled);
     --bluish: var(--accent);
@@ -738,8 +737,7 @@ textarea.field {
 .icon-btn:hover { border-color: var(--line-strong); }
 
 /* open menu section (aria-expanded, set by the menu script) */
-.icon-btn[aria-expanded=true],
-.topnav_btn_on {
+.icon-btn[aria-expanded=true] {
     border-color: var(--accent);
     color: var(--accent);
 }
@@ -2076,7 +2074,9 @@ div#cbox {
     }
 
     .ctl_as_guest .ctl-key,
-    .down-container.hint-off .deck-hint,
+    .down-container.hint-off .deck-hint { visibility: hidden; }
+
+    /* separate rule: browsers without :has() drop a whole selector list that contains it */
     .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
 }
 
@@ -2325,8 +2325,9 @@ div#cbox {
 
 #survey-button:hover { opacity: 0.7; }
 
-/* above the dock it floats: rounded at the bottom too (open: the content's corners) */
-.survey-container:has(#survey-content.survey-closed) #survey-button,
+/* above the dock it floats: rounded at the bottom too (open: the content's corners).
+ * Two rules: browsers without :has() drop a whole selector list that contains it. */
+.survey-container:has(#survey-content.survey-closed) #survey-button { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
 .survey-container #survey-content.survey-open { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
 
 #survey-button .arrow { margin-left: var(--space-3); }
