@@ -18,11 +18,10 @@ let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
 let gLastShowAvg = null;
-// B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard)
-const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
-// B-75/B-77: the deck is a carousel on every touch device, at any width (same query as style.css "Card deck");
+// B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard).
+// B-75/B-77: on these the deck is a carousel at any width (same query as style.css "Card deck");
 // a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
-const gCarouselQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 let gUserName = null;
 let gPromoInitiated = false;
 
@@ -258,7 +257,7 @@ function scrollDeckByBar(direction) {
     ctl.scrollBy({ left: direction * Math.max(ctl.clientWidth - cardWidth, cardWidth), behavior });
 }
 
-/* B-75/B-77: touch devices (gCarouselQuery, phones and tablets): the deck is a carousel (style.css "Card deck"). The
+/* B-75/B-77: touch devices (gTouchQuery, phones and tablets): the deck is a carousel (style.css "Card deck"). The
  * card in the middle is larger, the others smaller and paler (per frame, by their distance from the
  * middle, relative to the deck's width). Below the deck one dot per card (#deck_dots, display only), or a bar when they do not fit,
  * and a line with the picked card (#deck_pick).
@@ -332,7 +331,7 @@ function syncCarousel(recenter = false) {
     const ctl = document.getElementById('ctl');
     const dots = document.getElementById('deck_dots');
     if (ctl === null || dots === null) return;
-    if (!gCarouselQuery.matches) {
+    if (!gTouchQuery.matches) {
         if (gCarousel.on) { // back to the deck row (mouse / trackpad): no traces of the carousel
             gCarousel.on = false;
             gCarousel.keys = '';
@@ -507,7 +506,7 @@ function initCarousel() {
     }, true);
 
     // carousel on / off at runtime (resize, a mouse plugged in): lay out the deck anew
-    gCarouselQuery.addEventListener('change', () => {
+    gTouchQuery.addEventListener('change', () => {
         syncCarousel(true);
         updateDeckRoom();
     });
@@ -1150,7 +1149,7 @@ function showConnHint(show) {
     if (show) {
         gConnHintFocusBack = document.activeElement;
         const menu = document.getElementById('menu');
-        if (menu !== null && menu.open && menu.matches(':modal')) {
+        if (isModalOpen(menu)) {
             if (typeof gMenuOpener !== 'undefined' && gMenuOpener !== null) gConnHintFocusBack = gMenuOpener;
             closeMenu(false);
         }
@@ -1385,7 +1384,7 @@ function showToast(text) {
     // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
     // (closeMenu() puts it back)
     let menu = document.getElementById('menu');
-    let host = (menu !== null && menu.open && menu.matches(':modal')) ? menu : document.body;
+    let host = isModalOpen(menu) ? menu : document.body;
     if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');

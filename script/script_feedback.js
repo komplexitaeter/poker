@@ -24,6 +24,23 @@ function getMenu() {
     return document.getElementById('menu');
 }
 
+/* B-89: opens the menu dialog as the phone sheet (modal) or the panel; the flag is for isModalOpen() */
+function showMenuDialog(menu, modal) {
+    menu.dataset.modal = modal ? '1' : '0';
+    if (modal) menu.showModal(); else menu.show();
+}
+
+/* B-89: true when the dialog is open and modal. ':modal' throws in browsers without it (Safari < 15.6,
+ * Firefox < 103); there the flag set by showMenuDialog() decides. */
+function isModalOpen(dialog) {
+    if (dialog === null || !dialog.open) return false;
+    try {
+        return dialog.matches(':modal');
+    } catch (e) {
+        return dialog.dataset.modal === '1';
+    }
+}
+
 /* the section shown in the open menu, or null when it is closed */
 function openMenuSection() {
     let menu = getMenu();
@@ -101,7 +118,7 @@ function openMenu(sec, opener = null, focusField = true) {
 
     if (!menu.open) {
         gMenuOpener = opener;
-        if (gPhoneQuery.matches) menu.showModal(); else menu.show();
+        showMenuDialog(menu, gPhoneQuery.matches);
     } else if (opener !== null && !menu.contains(opener)) {
         gMenuOpener = opener; // another header button while the panel is open
     }
@@ -189,14 +206,14 @@ function switchMenuLayout() {
         closeMenu(false);
         return;
     }
-    if (menu.matches(':modal') === gPhoneQuery.matches) return;
+    if (isModalOpen(menu) === gPhoneQuery.matches) return;
 
     let focused = menu.contains(document.activeElement) ? document.activeElement : null;
     let toast = document.getElementById('toast');
     if (toast !== null && menu.contains(toast)) document.body.appendChild(toast);
     let opener = gMenuOpener;
     menu.close();
-    if (gPhoneQuery.matches) menu.showModal(); else menu.show();
+    showMenuDialog(menu, gPhoneQuery.matches);
     gMenuOpener = opener;
     if (focused !== null && focused.isConnected) focused.focus({preventScroll: true});
     else if (menu.contains(document.activeElement)) document.activeElement.blur();
@@ -256,7 +273,7 @@ function initMenu() {
 
         // B-74: large screens: a mouse click or tap outside the panel closes it; the click goes on to its
         // target (handled above for header buttons). No programmatic focus (no ring after a mouse click).
-        if (menu.open && !menu.matches(':modal') && event.detail > 0 && gMenuPressOutside
+        if (menu.open && !isModalOpen(menu) && event.detail > 0 && gMenuPressOutside
             && isOutsideMenu(event)) {
             if (menu.contains(document.activeElement)) document.activeElement.blur();
             closeMenu(false);
@@ -264,7 +281,7 @@ function initMenu() {
         }
 
         // phones: a tap on the backdrop (the dialog itself, outside its box) closes the sheet
-        if (target === menu && menu.matches(':modal')) {
+        if (target === menu && isModalOpen(menu)) {
             let r = menu.getBoundingClientRect();
             if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) {
                 closeMenu();
@@ -273,8 +290,9 @@ function initMenu() {
     });
 
     // tabs in menu sections (board settings, feedback): click, arrow keys, Home and End
-    // (focus follows the selection)
-    menu.querySelectorAll('section.menu_sec:has([role="tablist"])').forEach(box => {
+    // (focus follows the selection). All sections (B-89: no ':has()', it throws in older browsers);
+    // the handlers do nothing outside a tab.
+    menu.querySelectorAll('section.menu_sec').forEach(box => {
         box.addEventListener('click', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
             if (tab !== null) showMenuTab(box, tab.getAttribute('data-tab'));
@@ -300,7 +318,7 @@ function initMenu() {
         closeMenu();
     });
     document.addEventListener('keydown', function (event) {
-        if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || menu.matches(':modal')) return;
+        if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || isModalOpen(menu)) return;
         if (typeof connHintVisible === 'function' && connHintVisible()) return; // B-86: the panel is inert
         event.preventDefault();
         closeMenu();
@@ -359,35 +377,55 @@ function toggleSurvey(forceSurvey){
 function generateSurveyContents(){
 
     let url = './api/get_survey.php?id=' + localStorage.getItem('SID');
-    let htmlStr = '';
     fetch(url)
         .then((response) => {
             return response.json();
         })
         .then((myJson) => {
 
-            htmlStr += '<div id="survey_intro">' + myJson.survey_intro+ '</div>';
+            // B-89: vote options as DOM with textContent; the intro stays HTML (written by us in the database)
+            let content = document.getElementById("survey-content");
+            let intro = document.createElement('div');
+            intro.id = 'survey_intro';
+            intro.innerHTML = myJson.survey_intro;
+            content.replaceChildren(intro);
 
             if(gSurvey === "LOUD" || gSurvey === "SILENT") {
-                htmlStr += '<div id="vote_options">';
+                let options = document.createElement('div');
+                options.id = 'vote_options';
                 myJson.vote_options.forEach(vote_option => {
-                    htmlStr += '<button id="vote_option_' + vote_option.id + '" value="' + vote_option.id + '" class="vote_option" onclick="vote('+vote_option.id+')">' + vote_option.text + '</button>';
+                    let btn = document.createElement('button');
+                    btn.id = 'vote_option_' + vote_option.id;
+                    btn.value = vote_option.id;
+                    btn.className = 'vote_option';
+                    btn.textContent = vote_option.text;
+                    btn.addEventListener('click', () => vote(vote_option.id));
+                    options.appendChild(btn);
                 });
-                htmlStr += '</div>';
+                content.appendChild(options);
             }
             if (gSurvey === "VOTED") {
-                htmlStr += '<div id="vote_results">';
-
+                let results = document.createElement('div');
+                results.id = 'vote_results';
                 myJson.vote_options.forEach(vote_option => {
-                    htmlStr += '<div class="vote_results_bar">' +
-                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '" style="width:0;background:transparent;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
-
+                    let bar = document.createElement('div');
+                    bar.className = 'vote_results_bar';
+                    let value = document.createElement('span');
+                    value.className = 'vote_results_bar_value';
+                    value.id = 'vote_option_results_' + vote_option.id;
+                    value.style.width = '0';
+                    value.style.background = 'transparent';
+                    value.textContent = vote_option.text + ' (' + vote_option.votes_percentage + '%)';
+                    bar.appendChild(value);
+                    results.appendChild(bar);
                 });
-                htmlStr += '</div>';
+                content.appendChild(results);
             }
 
-            htmlStr+= '<div id="vote_count">'+myJson.votes_count+' votes</div>';
-            document.getElementById("survey-content").innerHTML = htmlStr;
+            let count = document.createElement('div');
+            count.id = 'vote_count';
+            count.textContent = myJson.votes_count + ' votes';
+            content.appendChild(count);
 
             if(gSurvey === "VOTED") {
                 let interval = 25;
