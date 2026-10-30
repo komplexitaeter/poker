@@ -1165,6 +1165,15 @@ Vermutete Ursache: `pok_teams_tbl` ist `utf8mb3`, 4-Byte-Zeichen (Emoji) im Topi
 geht verloren. Prüfen (lokal reproduzieren), dann Spalte `topic` (ggf. auch `pok_roundstats_tbl.topic`, Namen) auf
 `utf8mb4` umstellen. Bezug: technische Schuld „Zeichensätze gemischt“.
 
+### B-86 Verbindungsstatus anzeigen, wenn das Board hängt
+Idee Andreas (2026-10-30), unabhängig von B-82: Dem User zeigen, wenn die Verbindung zum Server gerade fehlt – vor allem,
+wenn er klickt und sich nichts ändert. Erkennung: (1) Nach einem `push` erwartet der Client das eigene `pull`-Echo von
+poker-msg; kommt es nicht innerhalb von ~1 s, gilt die Verbindung als gestört. (2) WebSocket ist nicht offen bzw. lässt
+sich nicht aufbauen. Anzeige: ein Overlay wie der Rotate-Hinweis (B-78), z. B. „Reconnecting to the server …“, **nicht
+wegklickbar** (die App ist in dem Zustand nicht nutzbar); verschwindet von selbst, sobald die Verbindung wieder steht
+(dann `updateDao`). Offen: kurze Verzögerung vor dem Einblenden gegen Flackern bei kurzen Aussetzern; auch fehlgeschlagene
+API-Aufrufe (`fetch`) einbeziehen? Gestaltung Delia, Logik Fred; zusammen mit B-82 umsetzen.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
