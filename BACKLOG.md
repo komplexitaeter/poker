@@ -112,7 +112,7 @@ Abgeschlossen:
 | B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt |
 | B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
 | B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
-| B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | refined |
+| B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | auf release (#93) |
 | B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt |
 | B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | in B-36 aufgegangen |
 | B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
@@ -1134,6 +1134,7 @@ eine Stelle statt ~15 `pushDomChange()`-Aufrufe. Zu klären: Übergang (Browser-
 
 
 ### B-82 Board reagiert nach längerer Pause 5–10 s nicht (WebSocket)
+**Status: auf `release` (2026-10-30, komplexitaeter/poker#92), kommt mit Rollout 2.**
 Beobachtung Andreas (2026-10-29): Kommt man nach einer Weile zu einem Tab zurück (anderes Fenster, Pause), reagiert das
 Board einige Sekunden nicht; in der Konsole ein `InvalidStateError` beim Senden über den WebSocket. Besteht auch live
 (Code in `initializeWSConnection`/`heartbeatWSConnection`/`pushDomChange` seit Rollout 1 unverändert).
@@ -1149,6 +1150,7 @@ wiederholen – sonst geht es verloren und man muss nochmal klicken. (2) Wird de
 immer kappen und neu aufbauen (plus `updateDao`). Status: refined.
 
 ### B-83 Nächtlicher Statistik-Job blockiert `dao.php` (23:55 UTC)
+**Status: auf `release` (2026-10-30, komplexitaeter/poker#94), kommt mit Rollout 2.**
 Befund (Logs Live, 2026-10-29): Jede Nacht 23:55–23:58 UTC hängen einzelne `dao.php`-Aufrufe 5–6 s (PHP-FPM-Slowlog);
 MySQL-Slowlog: `UPDATE pok_players_tbl SET last_callback_time …` mit Lock-Wartezeit Ø 46 s. Ursache:
 `pok_daily_team_stats_evt` (`db_jobs_pok.sql`, startet 23:55:32) ist ein `INSERT … SELECT` über `pok_players_tbl` und
@@ -1168,12 +1170,14 @@ In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
 Zurückgestellt (Andreas, 2026-10-30): Risiko, mehr kaputt zu machen als zu reparieren; der Fall hat keinem User geschadet.
 
 ### B-85 Topic mit Emoji führt zu HTTP 500
+**Status: auf `release` (2026-10-30, komplexitaeter/poker#95), kommt mit Rollout 2.**
 Befund (Logs Live, 2026-10-29): 3× HTTP 500 in `api/update_topic.php` (Exception bei `execute()`), Firefox.
 Vermutete Ursache: `pok_teams_tbl` ist `utf8mb3`, 4-Byte-Zeichen (Emoji) im Topic lassen sich nicht speichern; das Topic
 geht verloren. Prüfen (lokal reproduzieren), dann Spalte `topic` (ggf. auch `pok_roundstats_tbl.topic`, Namen) auf
 `utf8mb4` umstellen. Bezug: technische Schuld „Zeichensätze gemischt“.
 
 ### B-86 Verbindungsstatus anzeigen, wenn das Board hängt
+**Status: auf `release` (2026-10-30, komplexitaeter/poker#92), kommt mit Rollout 2.**
 Idee Andreas (2026-10-30), unabhängig von B-82: Dem User zeigen, wenn die Verbindung zum Server gerade fehlt – vor allem,
 wenn er klickt und sich nichts ändert. Erkennung: (1) Nach einem `push` erwartet der Client das eigene `pull`-Echo von
 poker-msg; kommt es nicht innerhalb von ~1 s, gilt die Verbindung als gestört. (2) WebSocket ist nicht offen bzw. lässt
