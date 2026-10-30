@@ -27,6 +27,17 @@ function get_text_param(string $name, int $max_length): string {
 }
 
 /*
+ * Reads an id-like GET parameter (B-88): the value only if it consists of 1 to $max_length characters
+ * A-Z, a-z, 0-9, '_' or '-', otherwise ''. Player/user ids (SID) are 16 characters A-Z0-9 at most
+ * (script.js), '-1' marks a deleted user. A manipulated id (emoji, HTML characters, too long) thus behaves
+ * like an unknown id and never reaches MySQL as a string the utf8mb3 columns cannot hold (HTTP 500).
+ */
+function get_id_param(string $name, int $max_length = 16): string {
+    $value = filter_input(INPUT_GET, $name);
+    return is_string($value) && preg_match('/^[A-Za-z0-9_-]{1,' . $max_length . '}$/D', $value) ? $value : '';
+}
+
+/*
  * Cuts a UTF-8 string after $max_length characters (not bytes, so umlauts are never split
  * and the limit matches the varchar length). Invalid UTF-8 results in ''. Works without mbstring.
  */
