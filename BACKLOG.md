@@ -1223,6 +1223,7 @@ Fund Fred (2026-10-30, bei B-89): Die In-App-Umfrage ist praktisch tot. `api/get
 `bind_param('i', …)`, User-IDs sind aber alphanumerisch → 0 → findet niemanden; `get_survey_id()` in `api/lib.php` vergibt
 eine Umfrage nur bei `approx_team_age < -110`, also nie. Zusätzlich geht `survey_intro` per `innerHTML` raus (Admin-Text).
 Frage an das Team: Umfragen noch gewollt? Dann reparieren, sonst Code, Tabellen-Nutzung und CSS entfernen.
+Bei Reparatur zusätzlich (Sina): `survey_intro` nicht per `innerHTML` (Text oder Markdown über remarkable ohne HTML); `fillResultsBars()` adressiert Balken per `vote_option.id - 1` → TypeError bei nicht lückenlosen IDs, besser per Element-ID.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
