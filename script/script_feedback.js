@@ -208,7 +208,7 @@ function switchMenuLayout() {
  * target may be gone from the page by now (re-rendered by its handler). */
 function isOutsideMenu(event) {
     return !event.composedPath().some(el => el instanceof Element
-        && (el.id === 'menu' || el.id === 'toast' || el.id === 'cmode_btn' || el.id === 'rotate_hint' || el.tagName === 'DIALOG'
+        && (el.id === 'menu' || el.id === 'toast' || el.id === 'cmode_btn' || el.id === 'rotate_hint' || el.id === 'conn_hint' || el.tagName === 'DIALOG'
             || el.classList.contains('overlay')));
 }
 

@@ -28,6 +28,7 @@
     --z-scrim: 300;       /* QR code backdrop */
     --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
     --z-rotate: 400;      /* B-78: "turn your phone upright" hint, above everything */
+    --z-conn: 410;        /* B-86: "reconnecting" hint, the board cannot be used meanwhile */
     /* shapes */
     --radius-s: 3px;      /* small tiles, tooltips */
     --radius-m: 4px;      /* fields, buttons, topnav buttons */
@@ -3060,4 +3061,48 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 @media (prefers-reduced-motion: reduce) {
     .rotate-hint svg.i { animation: none; }
+}
+
+/* ---------- Connection hint (B-86) ---------- */
+
+/* No connection to the server: covers the board like the rotate hint (dimmed, not dismissable).
+ * script.js (showConnHint) shows it after a short delay and hides it when the connection is back. */
+.conn-hint:not([hidden]) {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-conn);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--bg); /* fallback without color-mix */
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    color: var(--text);
+    text-align: center;
+    outline: none; /* gets the focus for screen readers, nothing to operate */
+}
+
+.conn-hint svg.i {
+    width: 48px;
+    height: 48px;
+    stroke-width: 1.5;
+    color: var(--accent);
+    animation: conn-hint-spin 1.6s linear infinite;
+}
+
+.conn-hint p {
+    margin: 0;
+    font-size: var(--fs-l);
+}
+
+@keyframes conn-hint-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .conn-hint svg.i { animation: none; }
 }

@@ -970,6 +970,24 @@ function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
     }
 }
 
+/* ---------- Connection to poker-msg (B-82, B-86) ----------
+ * After a change the board does not reload itself: it sends 'push' and poker-msg answers every board
+ * of the team (the sender too) with 'pull', which calls updateDao(). A connection that broke in the
+ * background (sleep, network change, server keepalive) is rebuilt and a pending push is sent again
+ * once it is open (B-82). While the connection is down, or the pull for our own push does not come,
+ * #conn_hint covers the board after a short delay and vanishes by itself when it is back (B-86). */
+const WS_RECONNECT_MS = 300;       // reconnect after an open connection closed
+const WS_RETRY_MS = 2000;          // try again after a connection could not be opened
+const PULL_TIMEOUT_MS = 1000;      // B-86: the pull for our own push is overdue after this
+const CONN_HINT_DELAY_MS = 1200;   // B-86: show the hint only when the trouble lasts longer (no flicker)
+
+let gWsTimer = null;          // heartbeat / reconnect timer, only one at a time
+let gPushPending = false;     // B-82: a push waits for an open connection
+let gPullTimer = null;        // B-86: waiting for the pull after our push
+let gConnTrouble = false;     // B-86: connection closed or a pull overdue
+let gConnHintTimer = null;
+let gConnHintFocusBack = null;
+
 function initializeWSConnection(teamId) {
 
     console.log("initializeWSConnection");
@@ -983,19 +1001,50 @@ function initializeWSConnection(teamId) {
     let wsProtocol = 'wss://';
     if (window.location.protocol.includes('http:')) wsProtocol = 'ws://';
 
-    gConn = new WebSocket(wsProtocol+window.location.host+'/poker-msg');
-    gConn.onmessage = function(e){
-        if (e.data.includes('pull')) updateDao(false);
-    };
-
-    gConn.onopen = () => {
-        gConn.send('subscribe: '+teamId);
-        updateDao(false);
+    // B-82: a push whose pull has not come yet may be lost with the old connection: send it again
+    if (gPullTimer !== null) {
+        clearTimeout(gPullTimer);
+        gPullTimer = null;
+        gPushPending = true;
     }
 
-    setTimeout(function () {
-        heartbeatWSConnection();
-    }, 10000);
+    const conn = new WebSocket(wsProtocol+window.location.host+'/poker-msg');
+    gConn = conn;
+    setConnTrouble(true); // until it is open
+
+    conn.onmessage = function(e){
+        if (conn !== gConn) return;
+        if (e.data.includes('pull')) {
+            pullReceived();
+            updateDao(false);
+        }
+    };
+
+    let wasOpen = false;
+    conn.onopen = () => {
+        if (conn !== gConn) return;
+        wasOpen = true;
+        conn.send('subscribe: '+teamId);
+        if (gPushPending) {
+            sendPush(); // B-82: the push that failed before; trouble ends with its pull
+        } else {
+            setConnTrouble(false);
+        }
+        updateDao(false);
+    };
+
+    conn.onclose = () => {
+        if (conn !== gConn) return; // replaced on purpose
+        setConnTrouble(true);
+        scheduleWSHeartbeat(wasOpen ? WS_RECONNECT_MS : WS_RETRY_MS);
+    };
+
+    scheduleWSHeartbeat(10000);
+}
+
+function scheduleWSHeartbeat(ms) {
+    clearTimeout(gWsTimer);
+    gWsTimer = setTimeout(heartbeatWSConnection, ms);
 }
 
 function heartbeatWSConnection() {
@@ -1005,15 +1054,103 @@ function heartbeatWSConnection() {
     if (gConn && gConn.readyState !== WebSocket.OPEN) {
         initializeWSConnection(t);
     } else {
-        setTimeout(function () {
-            heartbeatWSConnection();
-        }, 3000);
+        scheduleWSHeartbeat(3000);
     }
 
 }
 
+/* B-82: back to the tab, back online or back from the page cache: the connection may be dead or
+ * half open without an error, so always build a new one (its onopen calls updateDao). */
+function reconnectWSConnection() {
+    if (gConn === null) return; // no board on this page
+    initializeWSConnection(t);
+}
+
+function initWSReconnect() {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reconnectWSConnection();
+    });
+    window.addEventListener('online', reconnectWSConnection);
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) reconnectWSConnection();
+    });
+}
+
 function pushDomChange() {
-    gConn.send('push');
+    if (gConn === null) return; // no board on this page (start page)
+    sendPush();
+}
+
+/* B-82: sends 'push'; when the connection is not open (or sending throws), the push is kept and
+ * sent again in onopen of a new connection. B-81 will drop this: the API notifies poker-msg itself. */
+function sendPush() {
+    if (gConn.readyState === WebSocket.OPEN) {
+        try {
+            gConn.send('push');
+            gPushPending = false;
+            expectPull();
+            return;
+        } catch (e) {
+            console.log('push failed', e);
+        }
+    }
+    gPushPending = true;
+    setConnTrouble(true);
+    if (gConn.readyState !== WebSocket.CONNECTING) initializeWSConnection(t);
+}
+
+/* B-86: after a write the pull from poker-msg has to come within PULL_TIMEOUT_MS, otherwise the
+ * connection counts as broken: rebuild it and send the push again. With B-81 this is called after
+ * a writing API call instead of after the push. */
+function expectPull() {
+    if (gPullTimer !== null) return;
+    gPullTimer = setTimeout(() => {
+        gPullTimer = null;
+        gPushPending = true;
+        setConnTrouble(true);
+        // open but silent (half open) or closed: build a new one; a new one sends the push in onopen
+        if (gConn.readyState !== WebSocket.CONNECTING) initializeWSConnection(t);
+    }, PULL_TIMEOUT_MS);
+}
+
+function pullReceived() {
+    clearTimeout(gPullTimer);
+    gPullTimer = null;
+    gPushPending = false;
+    setConnTrouble(false);
+}
+
+/* B-86: #conn_hint (board.html) shows up when the trouble lasts longer than CONN_HINT_DELAY_MS.
+ * It takes the focus (role="alertdialog") and gives it back when the connection is there again. */
+function setConnTrouble(trouble) {
+    if (trouble === gConnTrouble) return;
+    gConnTrouble = trouble;
+    clearTimeout(gConnHintTimer);
+    gConnHintTimer = null;
+    if (trouble) {
+        gConnHintTimer = setTimeout(() => showConnHint(true), CONN_HINT_DELAY_MS);
+    } else {
+        showConnHint(false);
+    }
+}
+
+function showConnHint(show) {
+    const hint = document.getElementById('conn_hint');
+    if (hint === null || hint.hidden === !show) return;
+    if (show) {
+        gConnHintFocusBack = document.activeElement;
+        hint.hidden = false;
+        hint.focus({ preventScroll: true });
+    } else {
+        hint.hidden = true;
+        const back = gConnHintFocusBack;
+        gConnHintFocusBack = null;
+        if (document.activeElement === hint || document.activeElement === document.body) {
+            if (back instanceof HTMLElement && back !== document.body && back.isConnected) {
+                back.focus({ preventScroll: true });
+            }
+        }
+    }
 }
 
 function loadBoard() {
@@ -1024,6 +1161,7 @@ function loadBoard() {
     updateDao(true);
     generateQRCode(window.location.href);
     initializeWSConnection(t);
+    initWSReconnect();
     initDisplayHandling();
     measureEvent("BOARD_ON_LOAD");
 
