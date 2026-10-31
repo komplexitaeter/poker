@@ -1314,6 +1314,20 @@ Live-Daten (letzte 30 Tage, Abfrage 2026-10-31): ~1.180 Runden/150 Teams mit dem
 fast alle Decks sind **Fibonacci-Varianten** (Unterschiede: 0, ½, 20/40/100, ∞; „echte“ Fibonacci 21/34/55 bei ~25 Teams)
 **plus Kontrollkarten**. Gemischte Gruppen (Fibonacci + Emotionen/Sterne/4-7-10) nur bei einzelnen Teams. Gelegte Karten:
 3/5/2 je 7–9 Tsd., ☕ 1.907, ? 513, veto 117, ! 28; T-Shirt ~800, Sterne ~270, Emotionen ~55, Ampel 7.
+Entscheidungen Andreas zum Deck-Menü (2026-10-31, Mock-up „Deck-Menü R3“):
+- **Datenmodell:** Setgruppe 1:N Karte (jede Karte gehört zu genau einer Setgruppe; Heading/Description/Farbe hängen an der
+  Karte im Set). Symbol 1:N Karte (ein Symbol in mehreren Sets nutzbar, aber höchstens einmal je Deck).
+- **Menü:** Variante C (erst Gruppe, dann Variante/Steuerkarten/Karten) mit Karten-Fächern aus B. „Eigenes Set definieren“
+  als Vollbild-Overlay mit explizitem **Save**/Cancel (das Team sieht Änderungen erst nach Save).
+- **Migration:** `cardset_flags`, die genau einer Gruppe/Variante (+ Steuerkarten) entsprechen, werden übernommen; alle
+  anderen fallen auf den Standard zurück.
+- **Standard** für neue Teams und Rückfall: Fibonacci Classic + Steuerkarten.
+- **Steuerkarten** (☕ ? ! ✋) gelten **pro Team**, unabhängig vom Set; immer Stil `plain`. ✋ veto (Steuerkarte) und
+  J.U.D.G.E. „6 veto“ sind verschiedene Karten. „!“ heißt **important**; Texte: need a break / question / important / veto.
+- **Eigene Sets:** bis zu 5 je Team (Limit konfigurierbar, siehe B-100), bis zu 16 Karten je Set (ohne Steuerkarten);
+  Wert statt Symbol nur **Text** (≤ 6 Zeichen, keine Emoji).
+- **Deck-Wechsel bzw. Save eines geänderten Sets während einer Runde:** Hinweis, dann neue Runde.
+- **„Arrange revealed cards by“** bleibt in Settings → Results (gilt fürs Board, unabhängig vom Deck).
 
 ### B-99 Rollout 3: Karten neu (gerendert, Skizzen-Stil, Rich-Sets)
 Ergebnis der Mock-up-Runden 2026-10-31 (Delia; Artifacts „Karten R3“ und „Karten im Board“), Entscheidungen Andreas:
@@ -1323,8 +1337,8 @@ Ergebnis der Mock-up-Runden 2026-10-31 (Delia; Artifacts „Karten R3“ und „
 - **Namensschild über der Karte** (B-76), ohne Unterstrich.
 - **Drei Ebenen** je Karte: Symbol – Heading* – Description* (* optional). Tisch (aufgedeckt) zeigt alle vorhandenen Ebenen
   und nutzt den Platz; Deck/Controls zeigen Symbol (kleiner, wenn Heading) + Heading; Description im Deck über eine
-  Info-Zeile (Desktop: Hover/Fokus) bzw. die Hinweiszeile unter den Punkten (Touch: Karte in der Mitte). Großansicht per
-  Tippen am Tisch. Description in Sans, Rest Mono. Längen: Wert ≤ 6, Heading ≤ 16, Description ≤ 160.
+  Info-Zeile (Desktop: Hover/Fokus) bzw. die Hinweiszeile unter den Punkten (Touch: Karte in der Mitte). Keine
+  Großansicht beim Tippen am Tisch (entfällt, Andreas 2026-10-31). Description in Sans, Rest Mono. Längen: Wert ≤ 6, Heading ≤ 16, Description ≤ 160.
 - **Stil je Set** (Set-Attribut `style`, kein freies CSS): Fibonacci `plain`; J.U.D.G.E. `inverted` (Zahl invertiert, Heading
   im Strich-Punkt-Rahmen); Delegation eigener Stil (Heading invertiert), **Texte exakt vom Original** (passt laut Andreas zur
   EULA von Management 3.0), nicht deren Layout.
@@ -1338,7 +1352,21 @@ Ergebnis der Mock-up-Runden 2026-10-31 (Delia; Artifacts „Karten R3“ und „
   Sets/Werte (B-61) können Symbole aus der Bibliothek wählen statt Bilder hochzuladen. Bibliothek wächst durch neue
   Symbole im Generator; bei Bedarf Sprite je Set-Gruppe aufteilen.
 - Umsetzung braucht Ben (Kartendaten/Sets/Stile, eigene Werte je Team) und Fred (Rendering statt `<img>`, Info-Zeile,
-  Großansicht, Karussell) und Delia (Motive, Stile). Planung gemeinsam vor Start; R3 hat noch Wochen Zeit.
+  Karussell) und Delia (Motive, Stile). Planung gemeinsam vor Start; R3 hat noch Wochen Zeit.
+
+Entscheidungen Andreas zum Kartenkatalog (2026-10-31):
+- J.U.D.G.E.: Strich-Punkt-Box des Headings immer kartenbreit (mit Rand links/rechts).
+- Sterne: fünf Sterne (vergeben gefüllt, sonst leer) + Heading „3 stars“. T-Shirt: Buchstaben im Skizzen-Stil.
+- Ampel: Headings **green light / yellow light / red light**, Descriptions wie vorgeschlagen.
+- Emotionen: Gesicht als Symbol, **kein Heading**; das heutige Wort (satisfied, annoyed …) ist die Description. Gesichter
+  passen vorerst.
+- Statuskarten: „ready“ = Haken, „thinking“ = **Denkblase mit drei Punkten**, „thinking anonym“ behält das
+  Anonymous-Masken-Motiv (im Skizzen-Stil).
+- Gelbtöne: **dunkle Schrift auf hellen Farben** (Token je Farbe für die Schriftfarbe).
+
+### B-100 Idee: eigene Kartensets als Bezahlfunktion
+Idee Andreas (2026-10-31): Eigene Sets (B-98) eventuell später hinter eine Paywall. Für R3 nicht geplant; das Limit (5 Sets
+je Team) wird deshalb konfigurierbar gebaut. Offen: ob überhaupt, Modell, Abrechnung.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
