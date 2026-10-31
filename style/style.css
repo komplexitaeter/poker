@@ -1657,15 +1657,15 @@ div#cbox {
 
 /* B-104: a card changed after the reveal: both cards in the place of one table card (Andreas): each --stack-s of
  * it, the original of the reveal behind in the upper left (turned slightly, dimmed), the current card in front in
- * the lower right. Name tag, next card and delete icon stay clear. The visible upper rim of the original shows
- * its value like the corner index of a playing card (.pc-corner, cardSmall() in cards.js). */
+ * the lower right. Name tag, next card and delete icon stay clear. The upper left corner of the original always
+ * shows its value like the corner index of a playing card (.pc-corner, cardSmall() in cards.js). */
 .c.is-changed {
     --stack-s: 0.88;
     --stack-w: calc(var(--card-w) * var(--stack-s));
     --stack-dx: calc(var(--card-w) - var(--stack-w));
     --stack-dy: calc(var(--stack-dx) * var(--card-ratio));
     /* the index: as high as the visible rim allows, readable from the next seat */
-    --stack-index: clamp(10px, var(--card-w) * 0.12, 18px);
+    --stack-index: clamp(11px, var(--card-w) * 0.12, 18px);
     /* a column of flex items: the margin of the name tag does not collapse into the offset of the current card */
     display: inline-flex;
     flex-direction: column;
@@ -1684,28 +1684,42 @@ div#cbox {
     transform: rotate(-2deg);
     filter: saturate(0.6);
 }
-.c .pc-orig > :not(.pc-corner) { opacity: 0.45; }
+.c .pc-orig > * { opacity: 0.45; }
+/* the corner index of the original: a small tag of its own above the whole stack, in the upper left corner of the
+ * original (Andreas: always visible and readable, also mini symbols and small cards on phones) */
 .c .pc-corner {
     position: absolute;
-    top: max(3px, calc(var(--card-w) * 0.045));
-    left: calc(var(--card-w) * 0.05);
-    height: calc(var(--stack-dy) - max(3px, var(--card-w) * 0.045));
+    z-index: 2;
+    top: calc(var(--card-name-h) + max(2px, var(--card-w) * 0.03));
+    left: max(1px, var(--card-w) * 0.025);
     display: flex;
     align-items: center;
+    min-height: 1.3em;
+    padding: 0 0.25em;
+    box-sizing: border-box;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    background: var(--cardc-face);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    transform: rotate(-2deg);
     font-size: var(--stack-index);
     font-weight: 700;
     line-height: 1;
     color: var(--text);
     white-space: nowrap;
+    pointer-events: none;
 }
-.c .pc-corner .mini.sm-draw,
-.c .pc-corner .mini.sm-inv { height: 1.25em; margin: 0; vertical-align: middle; }
+/* picture symbols (faces, traffic lights, stars, control cards) a bit larger: their drawing is slimmer than a digit */
+.c .pc-corner .mini.sm-draw { height: 1.7em; margin: -0.15em -0.1em; vertical-align: middle; }
+.c .pc-corner .mini.sm-inv { height: 1.3em; margin: 0; vertical-align: middle; }
+.c .pc-corner-in { animation: fade-in 0.6s; }
 .c .pc-orig-in { animation: card-orig-in 0.5s ease-out; }
 @keyframes card-orig-in {
     from { transform: translate(var(--stack-dx), var(--stack-dy)); filter: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .c .pc-orig-in { animation: none; }
+    .c .pc-orig-in,
+    .c .pc-corner-in { animation: none; }
 }
 
 /* touch devices cannot hover: the delete icon on every card, no sticky hover color

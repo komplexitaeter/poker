@@ -171,9 +171,9 @@ test('the table shows a changed card as a stack of original and current card', a
   expect(back.y).toBeGreaterThanOrEqual(name.y + name.height - 4);
   expect(Math.abs(top.x + top.width - (card.x + card.width))).toBeLessThan(1.5);
   expect(Math.abs(top.y + top.height - (card.y + card.height))).toBeLessThan(1.5);
-  // the original value as corner index in the visible rim
-  await expect(backFace(page, 'Bob').locator('.pc-corner')).toHaveText('5');
-  await expect(backFace(page, 'Bob').locator('.pc-corner')).toBeVisible();
+  // the original value as corner index in its upper left corner
+  await expect(tableCard(page, 'Bob').locator('.pc-corner')).toHaveText('5');
+  await expect(tableCard(page, 'Bob').locator('.pc-corner')).toBeVisible();
 
   // back to the original: no stack
   await setCard(page, t, bob, 'five001');
@@ -197,4 +197,81 @@ test('the table shows a changed card as a stack of original and current card', a
   await expect(page.locator('#cbox .c[data-card="two0001"]')).toHaveCount(0);
   await expect(page.locator('#cbox .pc-orig')).toHaveCount(0);
   await expect(page.locator('#cbox .c[data-original]')).toHaveCount(0);
+});
+
+/** the corner index of the original: visible, on top (not covered), inside the upper left of the original */
+async function expectCorner(page: Page, card: ReturnType<typeof tableCard>) {
+  const corner = card.locator('.pc-corner');
+  await expect(corner).toBeVisible();
+  const { box, back, hit } = await card.evaluate((c) => {
+    const r = (e: Element) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; };
+    const el = c.querySelector('.pc-corner')!;
+    const b = el.getBoundingClientRect();
+    (el as HTMLElement).style.pointerEvents = 'auto'; // it lets clicks through: hit-test it for this check only
+    const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+    (el as HTMLElement).style.pointerEvents = '';
+    return { box: r(el), back: r(c.querySelector('.pc-orig')!), hit: top !== null && el.contains(top) };
+  });
+  expect(hit).toBe(true); // nothing covers it
+  expect(box.height).toBeGreaterThanOrEqual(12); // readable
+  expect(box.x).toBeGreaterThanOrEqual(back.x - 2);
+  expect(box.y).toBeGreaterThanOrEqual(back.y - 2);
+  expect(box.x + box.width / 2).toBeLessThan(back.x + back.width / 2);
+  expect(box.y + box.height / 2).toBeLessThan(back.y + back.height / 3);
+}
+
+for (const [label, viewport] of [['desktop', { width: 1280, height: 900 }], ['phone', { width: 375, height: 667 }]] as const) {
+  test(`the original always shows its value in its upper left corner (${label})`, async ({ browser }) => {
+    const page = await newPlayer(browser, { viewport, hasTouch: label === 'phone', isMobile: label === 'phone' });
+    const url = await createTeam(page, 'Card Changed Corner');
+    const t = teamIdOf(url);
+    await joinAsPlayer(page, url, 'Alice');
+    const names = ['Digit', 'Picture', 'Control', 'Judge'];
+    const ids = await addPlayersViaApi(page, url, names);
+    sql(`update pok_players_tbl set player_type = 'OBSERVER' where team_id = '${t}' and id not in (${ids.map((id) => `'${id}'`).join(',')})`);
+    // current card, original of the reveal: a digit, a picture card, a control card and a J.U.D.G.E. card
+    const pairs = [['thrtn01', 'five001'], ['eight01', 'satis01'], ['three01', 'break01'], ['two0001', 'jdg4']];
+    ids.forEach((id, i) =>
+      sql(`update pok_players_tbl set card_key = '${pairs[i][0]}', original_card_key = '${pairs[i][1]}' where id = '${id}' and team_id = '${t}'`));
+    await page.reload();
+
+    await expect(tableCard(page, 'Digit').locator('.pc-corner')).toHaveText('5');
+    await expect(tableCard(page, 'Picture').locator('.pc-corner .sm-draw use')).toHaveAttribute('href', /#s-face-satisfied$/);
+    await expect(tableCard(page, 'Control').locator('.pc-corner .sm-draw use')).toHaveAttribute('href', /#s-coffee$/);
+    await expect(tableCard(page, 'Judge').locator('.pc-corner .sm-inv')).toHaveCount(1);
+    for (const name of names) await expectCorner(page, tableCard(page, name));
+
+    // back to the original: the corner goes with the stack
+    await setCard(page, t, ids[0], 'five001');
+    await expect(tableCard(page, 'Digit').locator('.pc-corner')).toHaveCount(0);
+  });
+}
+
+test('let them explain: an extreme of the reveal stays named, a new extreme joins (B-104)', async ({ browser }) => {
+  const page = await newPlayer(browser, { viewport: { width: 1400, height: 800 } });
+  const url = await createTeam(page, 'Card Changed Tip');
+  await joinAsPlayer(page, url, 'Alice');
+  const t = teamIdOf(url);
+  const alice = await page.evaluate(() => localStorage.getItem('SID') ?? '');
+  const [bob, carol, dan] = await addPlayersViaApi(page, url, ['Bob', 'Carol', 'Dan']);
+  await page.reload();
+  const tip = page.locator('#round_tip');
+
+  await setCard(page, t, alice, 'five001');
+  await setCard(page, t, bob, 'three01');
+  await setCard(page, t, carol, 'eight01');
+  await setCard(page, t, dan, 'thrtn01');
+  await expect(tip).toHaveText('Let them explain: Bob (3) and Dan (13)');
+
+  // Dan moves to the middle: he stays named (with both values), Carol is the highest now
+  await setCard(page, t, dan, 'five001');
+  await expect(tip).toHaveText('Let them explain: Bob (3), Dan (13\u21925) and Carol (8)');
+
+  // Alice moves to a new extreme: she joins, Bob stays
+  await setCard(page, t, alice, 'one0001');
+  await expect(tip).toHaveText('Let them explain: Alice (5\u21921), Bob (3), Dan (13\u21925) and Carol (8)');
+
+  // everyone agrees by the current cards
+  for (const id of [alice, bob, carol, dan]) await setCard(page, t, id, 'eight01');
+  await expect(tip).toHaveText('Everyone agrees \u2013 on to the next topic.');
 });

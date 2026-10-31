@@ -1417,7 +1417,12 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Wer **nach dem Aufdecken** s
 - Änderungen vor dem Aufdecken zählen nicht.
 - Mehrere Änderungen: nur **Original + aktuell** (keine Zwischenstände).
 - Zurück auf die Originalkarte: **kein Stapel** mehr.
-- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte.
+- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte. Ausnahme „Let them explain“ (Andreas,
+  2026-10-31): Genannt werden die Extremwerte der Karten beim Aufdecken (Original, sonst aktuell) **und** der aktuellen
+  Karten – wer beim Aufdecken ein Extrem war, bleibt drin, wer neu auf ein Extrem wechselt, kommt dazu; Anzeige
+  „Name (5→8)“. „Everyone agrees“ nur nach aktuellen Karten; J.U.D.G.E. (B-101) nur aktuelle Karten.
+- Die Originalkarte zeigt **immer** oben links ihren Wert bzw. ihr Mini-Symbol (Andreas, 2026-10-31), auch Bild- und
+  Steuerkarten, J.U.D.G.E. und kleine Karten auf dem Phone.
 - **Statistik:** Originalkarte wird gespeichert (additive Spalte, Snapshot der Runde) – auswertbar, wie oft Teams nach
   der Diskussion umschwenken.
 - Anonym-Modus: Stapel ebenfalls (Namen sind dort ohnehin verborgen). Neue Runde: Original wird gelöscht.
