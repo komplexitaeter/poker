@@ -135,6 +135,18 @@ function notify_teams(array $team_ids): void {
 }
 
 /*
+ * B-102: system card "joined in". api/name.php sets it instead of the former automatic coffee cup (break01) when a
+ * player joins (or an observer becomes a player) while the cards are revealed, i.e. every PLAYER of the team has a
+ * card down. It keeps the round revealed (counts as "has a card down", ready_players_count) but is NO vote: it is in
+ * no set/deck, cannot be picked (setc.php answers 400), does not count for the celebration (needs_celebration) and
+ * must be left out of histogram, spread, average and tips in the frontend. dao.php delivers it as display_card_key
+ * 'late001' once the cards are revealed; sort_players_by_sequence() puts it last (unknown to the card files).
+ * The round snapshot (pok_roundstat_details_tbl) stores it as its own key, so break01 statistics stay clean.
+ * Frontend (Fred): key 'late001', symbol 's-late' (Delia), label "joined in", also in anonymous mode.
+ */
+const LATE_CARD_KEY = 'late001';
+
+/*
  * Maps a stored pok_teams_tbl.results_order to the values the app still knows (B-42): NAME or SEQUENCE.
  * Legacy CHOOSE:* values (the removed in-game choice; live data only ever had CHOOSE:SEQUENCE) and anything
  * unexpected become SEQUENCE, the default for new teams.
@@ -427,10 +439,10 @@ function store_team_deck($link, string $t, array $deck, array $catalog, bool $se
     $sql->execute();
 }
 
-/* B-98 S2: true if at least one player of the team has a card down */
+/* B-98 S2: true if at least one player of the team has a card down (B-102: cards of observers, e.g. late001, do not count) */
 function team_has_cards_down($link, string $t): bool
 {
-    $sql = $link->prepare("select count(card_key) cnt from pok_players_tbl where team_id = ?");
+    $sql = $link->prepare("select count(card_key) cnt from pok_players_tbl where team_id = ? and player_type = 'PLAYER'");
     $sql->bind_param('s', $t);
     $sql->execute();
     $row = $sql->get_result()->fetch_object();
@@ -628,6 +640,7 @@ function getDao($t, $id) {
     $needs_celebration = true;
     $players_count = 0;
     $ready_players_count = 0;
+    $voters_count = 0; // B-102: players with a real card (not LATE_CARD_KEY), for needs_celebration
 
     if ($id === null || strlen($id) < 10) die();
 
@@ -744,15 +757,19 @@ function getDao($t, $id) {
                 }
 
 
-                if ($players_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;
-                $previous_card = $obj->card_key;
+                /* B-102: the "joined in" card is no vote, so it neither breaks nor makes a consensus */
+                if ($obj->card_key !== LATE_CARD_KEY) {
+                    $voters_count++;
+                    if ($voters_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;
+                    $previous_card = $obj->card_key;
+                }
 
 
                 $objs[] = $obj;
             }
         }
 
-        if ($players_count<2) $needs_celebration = false;
+        if ($voters_count<2) $needs_celebration = false;
     }
 
 

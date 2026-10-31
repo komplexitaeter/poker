@@ -68,11 +68,13 @@ const CARD_VALUE_LOOK = {
 /* names for screen readers where the value is no word */
 const CARD_VALUE_NAMES = { '½': 'one half', '∞': 'infinity' };
 
-/* status cards on the table (no value shown yet) */
+/* status cards on the table (no value shown yet; B-102: late001 joined in after the reveal) */
 const STATUS_CARDS = {
     done001: { key: 'done001', status: true, symbol: 's-check', color: 'vdone', caption: 'ready', aria: 'card played' },
     prgrss1: { key: 'prgrss1', status: true, symbol: 's-thought', color: 'vthink', caption: 'thinking', aria: 'thinking, no card yet' },
     prgrss2: { key: 'prgrss2', status: true, symbol: 's-mask', color: 'vthink', caption: 'thinking', aria: 'thinking, no card yet' },
+    // B-102: the system card of a player who joined after the reveal (no vote, in no deck); calm grey
+    late001: { key: 'late001', status: true, symbol: 's-late', color: 'grey', caption: 'joined in', aria: 'joined in, no card yet' },
 };
 
 /* the symbol id (or null: the value is shown as text) and the colour token of a card */
