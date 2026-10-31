@@ -1781,17 +1781,33 @@ div#cbox {
 
 .pc.has-info:not(.has-head) .txt { font-size: clamp(10px, var(--card-w) * 0.1, 14px); color: var(--text); }
 
-/* B-99 D4: a deck whose descriptions are all short (control cards, traffic lights, emotions, Delegation;
- * short-texts on #cbox, set by setDeck() in script.js): every card with texts gets the same larger symbol,
- * a little lower, so the block sits nearer the middle and the symbols stay level side by side. Decks with
- * long texts (J.U.D.G.E.) and small cards (phones, many players: the text is relatively large) keep the
- * layout above. */
-#cbox.short-texts .c { container-type: inline-size; } /* .c is --card-w wide anyway */
+/* B-99 D4/D5: the table cards of a deck share one layout, chosen by the deck's longest text (#cbox
+ * data-text-size, set by setDeck() in script.js), so the symbols stay level side by side:
+ *   none   (Fibonacci): the symbol alone, see above
+ *   word   (emotions, stars): one short word – the symbol large (about 57 % of the card from 120 px), the
+ *          word in the lower quarter; the control cards show their heading only (the description stays in the aria-label)
+ *   short  (traffic lights, Delegation): descriptions up to 60 characters – a larger symbol from 120 px
+ *   long   (J.U.D.G.E.): the layout above */
+#cbox[data-text-size="word"] .pc.is-ctl .txt { display: none; }
+
+#cbox[data-text-size="word"] .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.1); }
+
+#cbox[data-text-size="word"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.72); }
+
+/* the word in the middle of the room below the symbol (lower quarter of the card) */
+#cbox[data-text-size="word"] .pc :is(.ttl, .txt) { margin-block: auto; }
+
+#cbox:is([data-text-size="word"], [data-text-size="short"]) .c { container-type: inline-size; } /* .c is --card-w wide anyway */
+
+/* small cards: room for a word or heading on two lines; from 120 px the symbol takes its full size */
+#cbox[data-text-size="word"] .pc .hd-badge { padding-inline: 0.5em; }
 
 @container (min-width: 120px) {
-    #cbox.short-texts .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.16); }
+    #cbox[data-text-size="word"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.84); }
 
-    #cbox.short-texts .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.16); }
+
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
 }
 
 /* touch: the delete icon sits on the lower right corner; the caption keeps clear of it */
@@ -1889,12 +1905,20 @@ div#cbox {
     padding: 0.3em 0.6em;
     box-sizing: border-box;
     background: var(--a);
-    color: var(--on);
+    /* B-99 D5: white with a dark ink outline on every band colour, like the J.U.D.G.E. values (instead of
+     * dark or light text per colour); text-shadow outline: crisp at small sizes, works in every browser */
+    color: var(--on-inv);
+    text-shadow:
+        1px 0 0 var(--inv-o), -1px 0 0 var(--inv-o), 0 1px 0 var(--inv-o), 0 -1px 0 var(--inv-o),
+        1px 1px 0 var(--inv-o), -1px 1px 0 var(--inv-o), 1px -1px 0 var(--inv-o), -1px -1px 0 var(--inv-o);
 }
 
 .dkc.sty-banner .dh { border-radius: 3px; background: var(--a); }
 
-.dkc.sty-banner .hd-banner { padding: 1px 0; }
+/* the outlined letters a little apart and clear of the band's edges */
+.dkc.sty-banner .dh { letter-spacing: 0.01em; }
+
+.dkc.sty-banner .hd-banner { padding: 2px 0; }
 
 /* inverted (J.U.D.G.E.): the value on the square, the heading in a dash-dot frame as wide as the card */
 .pc.sty-inverted .mot { flex: 0 0 calc(var(--card-w) * 0.44); }
@@ -1919,12 +1943,8 @@ div#cbox {
 
 .hd-inverted { position: relative; }
 
-.dkc.sty-inverted .dh { left: 2px; right: 2px; bottom: 2px; padding: 2px 1px; }
-
-/* B-99 D4, deck: a slimmer frame and a slightly smaller square, so a two-line heading keeps its room */
-.dkc.sty-inverted .hd-frame rect { stroke-width: 1; stroke-dasharray: 4 2 1 2; }
-
-.dkc.sty-inverted.has-head .mot { top: 5%; height: 54%; }
+/* B-99 D5, deck: no frame around the heading (the table keeps it); the heading sits like the control cards' */
+.dkc .hd-frame { display: none; }
 
 /* a deck card shrunk below ~38 px (narrow tray, B-68); after all .dkc rules so it wins: the symbol alone, like in a deck without texts */
 @container (max-width: 37.98px) {
@@ -1933,9 +1953,7 @@ div#cbox {
     .dkc .mot,
     .dkc .tv,
     .dkc.has-head .mot,
-    .dkc.has-head .tv,
-    .dkc.sty-inverted.has-head .mot,
-    .dkc.sty-inverted.has-head .tv { top: 10%; height: 84%; }
+    .dkc.has-head .tv { top: 10%; height: 84%; }
 }
 
 /* ---------- New round button, timer (.dock, B-66/B-67/B-68) ---------- */
