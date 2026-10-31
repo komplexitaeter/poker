@@ -30,7 +30,7 @@ const geometry = (page: Page) => page.evaluate(() => {
   const t = table.getBoundingClientRect();
   const cards = Array.from(document.querySelectorAll('#cbox .c'));
   const rects = cards.map(card => card.getBoundingClientRect());
-  const bottoms = cards.map(card => Math.max(...Array.from(card.querySelectorAll('.card_image, .delete'))
+  const bottoms = cards.map(card => Math.max(...Array.from(card.querySelectorAll('.pc, .delete'))
     .map(img => img.getBoundingClientRect().bottom), card.getBoundingClientRect().bottom));
   return {
     cardsBottom: Math.max(...bottoms),
@@ -168,9 +168,9 @@ test('a long name stays inside the card and ends with an ellipsis (B-49)', async
     expect(m.inside).toBe(true);
     expect(m.overflow).toBe('hidden');
     expect(m.ellipsis).toBe('ellipsis');
-    // a visible margin left and right of the text
-    expect(m.textLeft).toBeGreaterThanOrEqual(0.09 * m.width);
-    expect(m.textRight).toBeGreaterThanOrEqual(0.09 * m.width);
+    // a visible margin left and right of the text (B-99: the name tag above the card, its padding)
+    expect(m.textLeft).toBeGreaterThanOrEqual(5);
+    expect(m.textRight).toBeGreaterThanOrEqual(5);
     await shot(page, `name-${viewport.width}`);
   }
 });

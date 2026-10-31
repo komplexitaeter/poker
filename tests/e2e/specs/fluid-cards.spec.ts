@@ -51,10 +51,10 @@ const tableOverflow = (page: Page) => page.evaluate(() => {
 
 // --card-min 64px: measured maximum without scrolling (touch, after a vote); B-68: while voting there is
 // no strip above the deck on phones (no status line), 15 at 375x667 (a 4th row of 5 misses by a few
-// pixels), 25 at 393x852
+// pixels); B-99: the name tag above the card (--card-name-h) costs a row at 393x852: 20 (was 25)
 for (const { viewport, players } of [
   { viewport: PHONE, players: 15 },
-  { viewport: { width: 393, height: 852 }, players: 25 },
+  { viewport: { width: 393, height: 852 }, players: 20 },
 ]) {
   test(`phone ${viewport.width}x${viewport.height}: ${players} players fit on the table without scrolling (B-49)`, async ({ browser }) => {
     const alice = await phoneTable(browser, viewport, players - 1, 'Fluid Phone');
@@ -87,10 +87,10 @@ test('large screen: few players get large cards (B-49)', async ({ browser }) => 
   await joinAsPlayer(alice, url, 'Alice');
   await expect(alice.locator('#cbox .c')).toHaveCount(3);
   await expect.poll(() => cardWidth(alice, 'Alice')).toBeGreaterThan(100);
-  // the whole card scales: image and gap (layout values, a glide of the join may still run)
+  // the whole card scales: face and gap (layout values, a glide of the join may still run)
   const { gap, image, width } = await alice.evaluate(() => {
     const cards = Array.from(document.querySelectorAll<HTMLElement>('#cbox .c'));
-    const img = cards[0].querySelector<HTMLElement>('.card_image')!;
+    const img = cards[0].querySelector<HTMLElement>('.pc')!;
     return {
       gap: cards[1].offsetLeft - (cards[0].offsetLeft + cards[0].offsetWidth),
       image: img.offsetHeight / img.offsetWidth,
