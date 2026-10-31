@@ -1681,9 +1681,9 @@ div#cbox {
     z-index: 1;
     margin: var(--stack-dy) 0 0 var(--stack-dx);
     /* lifts the current card off the original: a short shadow on its upper and left edge only (Andreas) */
-    box-shadow: -3px -3px 5px -1px rgb(0 0 0 / 0.55);
+    box-shadow: -5px -5px 8px -2px rgb(0 0 0 / 0.9);
 }
-body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -3px -3px 5px -1px rgb(0 0 0 / 0.22); }
+body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2px rgb(0 0 0 / 0.4); }
 .c .delete { z-index: 2; }
 .c .pc-orig {
     position: absolute;
