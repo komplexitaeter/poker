@@ -137,7 +137,11 @@ test('the table shows a changed card as a stack of original and current card', a
   await setCard(page, t, carol, 'eight01');
   await expectTableCard(page, 'Bob', 'five001');
   await expect(backFace(page, 'Bob')).toHaveCount(0);
-  const before = await tableCard(page, 'Bob').boundingBox();
+  const size = async () => {
+    const card = (await tableCard(page, 'Bob').boundingBox())!;
+    return [card.width, card.height, (await page.locator('#cbox').boundingBox())!.height].map(Math.round);
+  };
+  const before = await size();
 
   // Bob changes after the reveal: 5 lies behind 13
   await setCard(page, t, bob, 'thrtn01');
@@ -149,13 +153,14 @@ test('the table shows a changed card as a stack of original and current card', a
   await expect(topFace(page, 'Bob').locator('use')).toHaveAttribute('href', /#s-13$/);
   await expect(topFace(page, 'Bob')).toHaveAttribute('aria-label', '13, changed from 5 to 13');
   await expect(backFace(page, 'Carol')).toHaveCount(0);
-  // the original peeks out to the upper left, the card itself keeps its place and size
+  // the original peeks out to the upper left, the card and the table keep their size (the cards are sorted by
+  // value after the reveal, so Bob's card may move)
   await expect(backFace(page, 'Bob')).not.toHaveClass(/pc-orig-in/); // slide-in finished
   const back = (await backFace(page, 'Bob').boundingBox())!;
   const top = (await topFace(page, 'Bob').boundingBox())!;
   expect(back.x).toBeLessThan(top.x - 3);
   expect(back.y).toBeLessThan(top.y);
-  expect(await tableCard(page, 'Bob').boundingBox()).toEqual(before);
+  expect(await size()).toEqual(before);
 
   // back to the original: no stack
   await setCard(page, t, bob, 'five001');
