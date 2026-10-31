@@ -89,8 +89,13 @@ test('picture symbols: headings and descriptions on the table, mini symbols in t
 
   const spreadValue = alice.locator('#spread_bars [data-card="green01"] .spread-value');
   await expect(spreadValue.locator('.mini use')).toHaveAttribute('href', /#s-light-green$/);
-  await expect(spreadValue).toHaveAttribute('title', 'green light');
-  await expect(alice.locator('#spread_range')).toHaveText('🟢 – 🔴');
+  await expect(spreadValue.locator('.mini')).toHaveAttribute('title', 'green light');
+  // the range: both ends as mini symbols (B-99 F6, no system emoji)
+  const range = alice.locator('#spread_range');
+  await expect(range.locator('.mini use')).toHaveCount(2);
+  await expect(range.locator('.mini use').first()).toHaveAttribute('href', /#s-light-green$/);
+  await expect(range.locator('.mini use').last()).toHaveAttribute('href', /#s-light-red$/);
+  await expect(range).toHaveText('green light – red light'); // the names for screen readers
 });
 
 test('the info line shows heading and description on hover and keyboard focus; arrows move in the deck', async ({ browser }) => {
@@ -106,7 +111,8 @@ test('the info line shows heading and description on hover and keyboard focus; a
   await expect(info).toBeHidden();
   await deckCard(alice, 'break01').hover();
   await expect(info).toBeVisible();
-  await expect(info).toHaveText('☕need a break — I need a short break before we go on.');
+  await expect(info).toHaveText('need a break — I need a short break before we go on.');
+  await expect(info.locator('.deck-info-value .mini use')).toHaveAttribute('href', /#s-coffee$/); // no emoji (F6)
   await alice.mouse.move(5, 5);
   await expect(info).toBeHidden();
 
@@ -134,8 +140,8 @@ test('touch: the hint line names the control card in the middle of the carousel'
   const line = alice.locator('#deck_pick');
   await expect(line).toHaveText('tap to pick a card');
   await deckCard(alice, 'break01').evaluate(el => el.parentElement!.scrollIntoView({ inline: 'center' }));
-  await expect(line).toHaveText('tap to pick ☕ · need a break');
-  await expect(line.locator('b')).toHaveText('☕ · need a break');
+  await expect(line).toHaveText('tap to pick · need a break');
+  await expect(line.locator('b .mini use')).toHaveAttribute('href', /#s-coffee$/); // no emoji (F6)
 });
 
 test('the card colours follow light and dark mode', async ({ browser }) => {
@@ -148,4 +154,54 @@ test('the card colours follow light and dark mode', async ({ browser }) => {
   await alice.locator('#cmode_btn').click();
   await expect(alice.locator('body')).toHaveClass(/light-theme/);
   await expect.poll(colours).not.toBe(dark);
+});
+
+/* B-99 (F6): small places show each value per symbol as mono text or as a mini symbol, never as a system emoji */
+const EMOJI = /\p{Extended_Pictographic}/u;
+
+test('spread labels: numbers as text, faces, coffee and hand as mini symbols, no emoji', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Small Symbols');
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await joinAsPlayer(alice, url, 'Alice');
+
+  await setTeamDeck(alice, url, 'emotions', null, ['break01', 'qstmrk1', 'xclam01', 'veto']);
+  await expect(deckCards(alice)).toHaveCount(10);
+  const value = (key: string) => alice.locator(`#spread_bars [data-card="${key}"] .spread-value`);
+  for (const [key, symbol] of [['sad0001', 's-face-sad'], ['break01', 's-coffee'], ['veto', 's-hand']]) {
+    await expect(value(key).locator('.mini use')).toHaveAttribute('href', new RegExp(`#${symbol}$`));
+    await expect(value(key).locator('.sm-text')).toHaveCount(0);
+  }
+  await expect(value('qstmrk1').locator('.sm-text')).toHaveText('?');
+  await expect(value('xclam01').locator('.sm-text')).toHaveText('!');
+  const labels = await alice.locator('#spread_bars .spread-value').allTextContents();
+  expect(labels.filter(text => EMOJI.test(text))).toEqual([]);
+
+  // J.U.D.G.E.: the tip names the hand as a mini symbol, "Hear the veto: Bob (✋)" without the emoji
+  await setTeamDeck(alice, url, 'judge', null, ['break01', 'veto']);
+  await expect(value('jdg3').locator('.sm-text')).toHaveText('3');
+  await setCard(alice, url, bob, 'veto');
+  await pickCard(alice, 'jdg1');
+  await expect(alice.locator('#round_tip b .mini use')).toHaveAttribute('href', /#s-hand$/);
+  expect(EMOJI.test(await alice.locator('aside.side').textContent() ?? '')).toBe(false);
+
+  await setTeamDeck(alice, url, 'fib-classic', null, ['break01', 'veto']);
+  await expect(value('five001').locator('.sm-text')).toHaveText('5');
+  await expect(value('1pnt501').locator('.sm-text')).toHaveText('½');
+  await expect(value('infin01').locator('.sm-text')).toHaveText('∞');
+  await expect(value('five001').locator('.mini')).toHaveCount(0);
+  await expect(value('break01').locator('.mini use')).toHaveAttribute('href', /#s-coffee$/);
+});
+
+test('info line: a face as mini symbol, no emoji', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Small Info');
+  await joinAsPlayer(alice, url, 'Alice');
+  await setTeamDeck(alice, url, 'emotions', null, ['break01']);
+  await expect(deckCards(alice)).toHaveCount(7);
+  const info = alice.locator('#deck_info');
+  await deckCard(alice, 'sad0001').hover();
+  await expect(info).toBeVisible();
+  await expect(info.locator('.deck-info-value .mini use')).toHaveAttribute('href', /#s-face-sad$/);
+  expect(EMOJI.test(await info.textContent() ?? '')).toBe(false);
 });

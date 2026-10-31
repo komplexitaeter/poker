@@ -26,6 +26,24 @@ const CARD_SYMBOLS = new Set([
     's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-mask', 's-frame-inv',
 ]);
 
+/* B-99 (F6): how each symbol is shown small (spread labels, info line, carousel hint line, "you picked", tips).
+ * Every symbol of CARD_SYMBOLS is in exactly one of the two sets (tests/e2e/specs/card-catalog.spec.ts):
+ *   text     the value as mono text (digits, ½, ∞, 100, XXS–XXL, ?, !)
+ *   drawing  a mini symbol from the sprite (faces, traffic lights, stars, coffee, hand, status symbols)
+ * Never a system emoji. A card without a library symbol (a custom text value) is always text. */
+const CARD_SMALL_TEXT = new Set([
+    's-0', 's-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7', 's-8', 's-9', 's-10', 's-13', 's-20', 's-21', 's-34',
+    's-40', 's-55', 's-100', 's-half', 's-inf',
+    's-xxs', 's-xs', 's-s', 's-m', 's-l', 's-xl', 's-xxl',
+    's-question', 's-exclam',
+]);
+const CARD_SMALL_DRAWING = new Set([
+    's-light-green', 's-light-yellow', 's-light-red',
+    's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
+    's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
+    's-coffee', 's-hand', 's-check', 's-thought', 's-mask', 's-frame-inv',
+]);
+
 /* the colour tokens of style/cards.css (catalogue and palette) */
 const CARD_COLORS = new Set([
     'v0', 'vh', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v13', 'v20', 'v21', 'v34', 'v40', 'v55',
@@ -83,9 +101,27 @@ function cardLook(card) {
     };
 }
 
-/* picture symbols (traffic lights, faces, stars): the spread shows them small, the text goes to the tooltip */
-function isPictureSymbol(symbol) {
-    return typeof symbol === 'string' && /^s-(light|face|stars)-/.test(symbol);
+/* B-99 (F6): 'drawing' (a mini symbol) or 'text' (the value as mono text) for small places */
+function cardSmallKind(card) {
+    const symbol = card.status === true ? card.symbol : cardLook(card).symbol;
+    return symbol !== null && CARD_SMALL_DRAWING.has(symbol) ? 'drawing' : 'text';
+}
+
+/* the value of a card for small places: span.sm-text (mono text) or span.mini with the symbol (named: plus its
+ * name for screen readers and as tooltip; not where its heading follows anyway). A text that is a system emoji
+ * (a legacy card without a library symbol) never shows: its name instead. */
+function cardSmall(card, named = true) {
+    if (cardSmallKind(card) === 'drawing') {
+        const face = cardFace(card, 'mini');
+        face.classList.add('sm-draw');
+        if (named) {
+            face.appendChild(textElement('span', 'sr-only', cardName(card)));
+            face.title = cardName(card);
+        }
+        return face;
+    }
+    const text = String(card.text || card.label || card.key);
+    return textElement('span', 'sm-text', /\p{Extended_Pictographic}/u.test(text) ? cardName(card) : text);
 }
 
 /* the name of a card for screen readers: the value (a word for ½, ∞), else heading / description */
