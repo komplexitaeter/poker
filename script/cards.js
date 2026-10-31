@@ -12,7 +12,7 @@
  * Only createElement / textContent / setAttribute; symbol ids and colour tokens only from the whitelists
  * below (never free text in href, class or style). No innerHTML here. */
 
-const CARDS_SPRITE = 'src/cards.svg?v=1'; // bump with the sprite (tools/cards/gen_symbols.py)
+const CARDS_SPRITE = 'src/cards.svg?v=2'; // bump with the sprite (tools/cards/gen_symbols.py)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /* the symbols of the sprite (tools/cards/README.md) */
@@ -124,7 +124,7 @@ function cardSymbolSvg(look, inverted) {
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
     if (inverted) {
-        // J.U.D.G.E.: the value in paper colour on a hatched coloured square (tools/cards/README.md)
+        // J.U.D.G.E.: the value in dark ink with a light outline on the coloured square (tools/cards/README.md)
         svg.setAttribute('viewBox', '0 0 100 100');
         const frame = useSymbol('s-frame-inv');
         frame.setAttribute('class', 'inv-frame');
