@@ -613,6 +613,14 @@ textarea.field {
     width: auto;
 }
 
+/* the mark alone (src/brand_icon_*.svg, same height and position as the mark in the full logo);
+ * only shown on phones (board), see below. display:none also hides it from screen readers. */
+#brand_icon {
+    display: none;
+    height: 20px;
+    width: 20px;
+}
+
 /* B-51: the team name with a softly pulsing text cursor. The cursor carries the player's name as a
  * small tag, like the name flags on cursors in shared documents: "you are here, in this team".
  * A text cursor is familiar to everybody (no "~$", no "@", no blinking block). Click copies the link. */
@@ -866,11 +874,8 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     .you-tag,
     .team-name .caret { display: none; }
 
-    .container #brand {
-        width: 20px;
-        object-fit: cover;
-        object-position: left center;
-    }
+    .container #brand { display: none; }
+    .container #brand_icon { display: block; }
 }
 
 /* ---------- Start page header ---------- */

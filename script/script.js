@@ -1323,13 +1323,16 @@ function measureEvent(eventCode) {
 function setColor() {
     // the color mode button (#cmode_btn) shows moon/sun via CSS (body.light-theme)
     let brandImg = document.getElementById("brand");
+    let brandIcon = document.getElementById("brand_icon"); // board only (phones show the mark alone)
     checkRadio('cet_color_mode', gColorMode === "dark" ? 'dark' : 'light');
 
     if (gColorMode === "dark") {
         brandImg.src = "./src/brand_dark.svg?v=2";
+        if (brandIcon) brandIcon.src = "./src/brand_icon_dark.svg?v=1";
         document.body.classList.remove('light-theme');
     } else {
         brandImg.src = "./src/brand_light.svg?v=2";
+        if (brandIcon) brandIcon.src = "./src/brand_icon_light.svg?v=1";
         document.body.classList.add('light-theme');
     }
 }
