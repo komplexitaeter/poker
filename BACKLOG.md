@@ -1292,6 +1292,11 @@ Umsetzung: Spalte in `pok_teams_tbl` (Default 1, online), Schreiben über die Te
 Schalter im Menü, `updateTip()` blendet aus. Analytics-Event beim Umschalten, damit wir sehen, wie oft Teams sie abschalten.
 **Status: auf `release` (komplexitaeter/poker#102), kommt mit Rollout 2. SQL-Block B-96 vor dem App-Deploy einspielen.**
 
+### B-97 Logo-SVGs verkleinern, Logo nicht doppelt laden
+Funde Fred/Delia (2026-10-31, Brand-Icon): `brand_*.svg` und `brand_icon_*.svg` sind je ~130 KB (sehr viele Pfade) – für ein
+20-px-Zeichen bzw. ein 24-px-Logo viel zu groß; mit svgo o. ä. verkleinern (Delia). Außerdem lädt das helle Theme zuerst die
+dunkle Datei (Default im HTML) und dann die helle über `setColor()`, und `setColor()` setzt `src` bei jedem Update neu.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
