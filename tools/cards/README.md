@@ -58,7 +58,7 @@ light disc with dark ink in both themes (a `<g>` in the symbol maps `--sym-*` to
 The status symbols `s-check` and `s-thought` are calm in the same way (D7): a light body `--sym-calm` with dark ink
 (`--sym-face-ink`), the hatching (`--sym-calm-hatch`) only in a thin band at the lower right edge. `s-coffee` is a
 latte glass: the coffee hatched, milk and foam light (`--sym-milk`, warmer in the dark theme), kept apart from the
-outline by a thin rim in paper colour. `s-late` (joined late, B-102) is calm too: an open door with an arrow going in;
+outline by a thin rim in paper colour. `s-late` (joined late, B-102) is calm too: an open door;
 frame and floor in the theme ink (`--cardc-ink`).
 
 ## Symbol ids (53)
