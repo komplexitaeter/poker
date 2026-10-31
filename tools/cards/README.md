@@ -42,9 +42,16 @@ Inverted style (J.U.D.G.E.): frame plus value symbol, see the preview:
   <use href="src/cards.svg#s-frame-inv" style="--sym-tint: currentColor;
        --sym-hatch: color-mix(in srgb, var(--cardc-ink) 18%, currentColor)"/>
   <use href="src/cards.svg#s-3" x="10" y=".4" width="80" height="96"
-       style="--sym-ink: var(--inv-o); --sym-tint: var(--on-c-j3); --sym-hatch: transparent"/>
+       style="--sym-ink: var(--inv-o); --sym-tint: var(--on-inv); --sym-hatch: transparent"/>
 </svg>
 ```
+
+The value symbol is always dark ink (`--on-inv`) with a light outline (`--inv-o`); the generator lightens
+the `j…` square colours until dark ink reaches 3.5:1 on them.
+
+Further symbol defaults: `--sym-strong` / `--sym-hatch-strong` (filled stars), `--sym-faint` (empty stars:
+faint outline only), `--sym-hood` / `--sym-bubble` (`s-mask`: black hood, grey thought bubble). Faces are
+hatched only in a thin crescent at the edge; the laughing mouth of `s-face-enthusiastic` is paper.
 
 ## Symbol ids (50)
 

@@ -56,12 +56,17 @@ DIG = {
     "mug": '<path d="M22 52h46v30c0 14-10 22-23 22s-23-8-23-22z"/>',
     "hand": '<path d="M36 106c-8-6-14-16-17-28l-7-18c-2-7 7-11 11-4l7 12V32c0-7 10-7 10 0v24V22c0-7 10-7 10 0v32V24c0-7 10-7 10 0v32V34c0-7 10-7 10 0v40c0 18-6 28-14 32z"/>',
     "face": '<circle cx="50" cy="62" r="37"/>',
+    "emouth": '<path d="M30 68h40c0 14-9 21-20 21s-20-7-20-21z"/>',
     "house": '<path d="M36 12h28c7 0 11 4 11 11v78c0 7-4 11-11 11H36c-7 0-11-4-11-11V23c0-7 4-11 11-11z"/>',
     "lamp": '<circle cx="0" cy="0" r="11"/>',
     "cloud": '<path d="M22 60a12 12 0 0 1 4-20a14 14 0 0 1 22-12a14 14 0 0 1 24 2a12 12 0 0 1 10 22a12 12 0 0 1-12 16a14 14 0 0 1-24 2a12 12 0 0 1-24-10z"/>',
     "bub1": '<circle cx="31" cy="87" r="7"/>',
     "bub2": '<circle cx="21" cy="102" r="4"/>',
     "gfmask": '<path d="M50 12c22 0 35 14 35 38 0 26-15 46-35 58-20-12-35-32-35-58 0-24 13-38 35-38z"/>',
+    # Anonymous mode (s-mask): black hood with a white Guy Fawkes mask, a small thought bubble with gears.
+    "hood": '<path d="M50 50c-16 0-25 12-26 30-1 8-3 14-8 19-5 4-7 9-7 14v2h82v-2c0-5-2-10-7-14-5-5-7-11-8-19-1-18-10-30-26-30z"/>',
+    "fmask": '<path d="M50 60c-10 0-16 6-16 17 0 14 7 25 16 30 9-5 16-16 16-30 0-11-6-17-16-17z"/>',
+    "face_in": '<circle cx="46" cy="58" r="32"/>',   # face minus this = crescent of hatching at the lower right
     "square": '<path d="M15 6h70c5 0 9 4 9 9v70c0 5-4 9-9 9H15c-5 0-9-4-9-9V15c0-5 4-9 9-9z"/>',
 }
 
@@ -82,20 +87,52 @@ def _star(r=18.5, ri=8.2):
 DIG["star"] = _star()
 
 
+def _gear(cx, cy, r=6.6, ri=4.6, teeth=8):
+    pts = []
+    for i in range(teeth * 4):
+        a = 2 * math.pi * i / (teeth * 4)
+        rr = r if i % 4 in (1, 2) else ri
+        pts.append(f"{n(cx + rr * math.cos(a))} {n(cy + rr * math.sin(a))}")
+    return '<path d="M' + "L".join(pts) + 'z"/>'
+
+
+DIG["gear1"] = _gear(51, 28, 8, 5.6)
+DIG["gear2"] = _gear(70, 25, 8, 5.6)
+
+
+# Short fallbacks only; the real defaults (theme colours, tint) come from style/cards.css.
+INK = "var(--sym-ink,#1d2027)"
+FACEC = "var(--sym-face,#fbfaf5)"
+TINT = "var(--sym-tint,#fbfaf5)"
+HATCH = "var(--sym-hatch,currentColor)"
+STRONG = "var(--sym-strong,currentColor)"                                  # filled stars: full value colour
+HATCH_STRONG = "var(--sym-hatch-strong,currentColor)"
+FAINT = "var(--sym-faint,#b9bcc4)"                                         # empty stars: faint outline
+
+
 def L(ref, t="", s=1.0, w=W):    # thick centre line: outline, shadow, tint, hatching
     return ("L", ref, t, s, w)
 
 
-def S(ref, t="", s=1.0):          # filled, hatched shape in the value colour
-    return ("S", ref, t, s)
+def S(ref, t="", s=1.0, fill=None, hatch=None, hw=None, rim=None):
+    """filled, hatched shape in the value colour; rim = DIG ref cut out of the hatching (hatch only at the edge)"""
+    return ("S", ref, t, s, fill, hatch, hw, rim)
 
 
 def E(ref, t="", s=1.0):          # empty shape: paper fill, ink outline
     return ("E", ref, t, s)
 
 
-def T(d, w=2 * O):                # ink line (details)
-    return ("T", d, w)
+def G(ref, t=""):                 # ghost shape: thin, faint outline only (empty stars)
+    return ("G", ref, t)
+
+
+def P(ref, t="", fill=None, stroke=None, w=2 * O):   # plain filled shape, fixed colours, no hatching
+    return ("P", ref, t, fill, stroke, w)
+
+
+def T(d, w=2 * O, color=None):    # ink line (details)
+    return ("T", d, w, color)
 
 
 def row(refs):
@@ -111,7 +148,8 @@ def row(refs):
 
 def stars(k):
     pos = [(29, 30), (71, 30), (50, 62), (29, 94), (71, 94)]
-    return [(S if i < k else E)("star", f"translate({x} {y})") for i, (x, y) in enumerate(pos)]
+    return [S("star", f"translate({x} {y})", fill=STRONG, hatch=HATCH_STRONG) if i < k else G("star", f"translate({x} {y})")
+            for i, (x, y) in enumerate(pos)]
 
 
 def ampel(lit):
@@ -129,7 +167,7 @@ FACE = {
     "uninterested": [T("M32 55h11M57 55h11", 4.5), T("M36 80h28", 4.5)],
     "angry": [T("M29 44l15 7M71 44l-15 7", 4.5), T("M38 58v4M62 58v4", 5), T("M35 86c6-9 24-9 30 0", 4.5)],
     "enthusiastic": [T("M37 44v14M30 51h14M32 46l10 10M42 46l-10 10M63 44v14M56 51h14M58 46l10 10M68 46l-10 10", 2.8),
-                     T("M30 68h40c0 14-9 21-20 21s-20-7-20-21z", 3.6)],
+                     P("emouth", w=3.6)],   # laughing mouth: paper, never hatched
 }
 
 # Symbol id -> (motif layers, title). Ids "s-0", "s-1", "s-coffee" … as agreed with Ben (cards.json v2).
@@ -151,7 +189,8 @@ for v, refs in (("xxs", ["lX", "lX", "lS"]), ("xs", ["lX", "lS"]), ("s", ["lS"])
 for c in ("green", "yellow", "red"):
     SYM[f"s-light-{c}"] = (ampel(c), f"{c} light")
 for f, feats in FACE.items():
-    SYM[f"s-face-{f}"] = ([S("face")] + feats, f"{f} face")
+    # hatching only hinted: a thin crescent at the lower right, so the expression stays calm and clear
+    SYM[f"s-face-{f}"] = ([S("face", hw=1.1, rim="face_in")] + feats, f"{f} face")
 for k in range(6):
     SYM[f"s-stars-{k}"] = (stars(k), f"{k} of 5 stars")
 SYM["s-coffee"] = ([S("mug", "translate(0 4)"), T("M68 64c15 0 15 22 0 22"), T("M46 46c-4-5 4-9 0-15M58 46c-4-5 4-9 0-15")], "coffee cup")
@@ -161,13 +200,21 @@ SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "rais
 SYM["s-check"] = (row(["dchk"]), "check mark")
 SYM["s-thought"] = ([S("cloud", "translate(6 7)"), S("bub1", "translate(6 7)"), S("bub2", "translate(6 7)"),
                      T("M42 55h.1M56 55h.1M70 55h.1", 9)], "thought bubble")
-SYM["s-mask"] = ([S("gfmask"),
-                  T("M24 45c6-8 15-9 22-5M76 45c-6-8-15-9-22-5", 3),          # raised brows
-                  T("M29 55c5-4 11-4 16 0M71 55c-5-4-11-4-16 0", 4.4),        # slit eyes
-                  T("M50 52v17c-2 3-6 3-8 1", 2.8),                            # nose
-                  T("M50 77c-7-5-15-5-21 0-4 3-8 0-7-5M50 77c7-5 15-5 21 0 4 3 8 0 7-5", 3.6),  # curled moustache
-                  T("M39 85c6 4 16 4 22 0", 2.6),                              # smile
-                  T("M47 90l3 13 3-13", 2.6)], "anonymous mask")              # goatee
+# Anonymous mode: high contrast like the old picture - black hood (light outline in the dark theme), white mask.
+MASK_INK = "#1d2027"
+SYM["s-mask"] = ([P("cloud", "translate(14.7 -15.5) scale(.84)", "var(--sym-bubble,#7d8592)", INK, 2.4),
+                  P("bub1", "translate(6.3 -16.9) scale(.7)", "var(--sym-bubble,#7d8592)", INK, 2),
+                  P("bub2", "translate(5.9 -9.75) scale(.625)", "var(--sym-bubble,#7d8592)", INK, 1.8),
+                  P("gear1", "", "currentColor", MASK_INK, 1.6), P("gear2", "", "currentColor", MASK_INK, 1.6),
+                  T("M51 28h.1M70 25h.1", 4, MASK_INK),
+                  P("hood", "", "var(--sym-hood,#0b0c0f)", INK, 2.6),
+                  P("fmask", "", "#ffffff", MASK_INK, 2.2),
+                  T("M38 74c3-3 7-3 10-1M62 74c-3-3-7-3-10-1", 2.4, MASK_INK),     # raised brows
+                  T("M40 79c2-2 5-2 7 0M60 79c-2-2-5-2-7 0", 3, MASK_INK),          # slit eyes
+                  T("M50 78v9c-1 2-3 2-4 1", 1.8, MASK_INK),                        # nose
+                  T("M50 92c-4-3-8-3-11 0-2 2-5 0-4-3M50 92c4-3 8-3 11 0 2 2 5 0 4-3", 2.6, MASK_INK),  # moustache
+                  T("M44 97c3 2 9 2 12 0", 1.8, MASK_INK),                          # smile
+                  T("M48.5 99l1.5 6 1.5-6", 1.8, MASK_INK)], "anonymous mask")              # goatee
 # Frame of the "inverted" style (J.U.D.G.E.): hatched, coloured rounded square, 100 x 100.
 # The value symbol goes on top at x=10 y=.4 width=80 height=96 (see README).
 SYM["s-frame-inv"] = ([S("square")], "frame")
@@ -499,6 +546,10 @@ class Raster:
             for k in range(0, len(xs) - 1, 2):
                 self.span(row, xs[k], xs[k + 1])
 
+    def cut(self, other):
+        """remove the cells set in other"""
+        self.b = bytearray(a & (b ^ 1) for a, b in zip(self.b, other.b))
+
     def get(self, x, y):
         c, r = int((x - X0) * RES), int((y - Y0) * RES)
         return 0 <= c < self.w and 0 <= r < self.h and self.b[r * self.w + c]
@@ -548,11 +599,6 @@ def bbox_of(subs, pad):
 
 
 # ------------------------------------------------------------------ SVG output
-# Short fallbacks only; the real defaults (theme colours, tint) come from style/cards.css.
-INK = "var(--sym-ink,#1d2027)"
-FACEC = "var(--sym-face,#fbfaf5)"
-TINT = "var(--sym-tint,#fbfaf5)"
-HATCH = "var(--sym-hatch,currentColor)"
 SHADOW = 'transform="translate(.9 .7)"'
 SHIFT = (.9, .7)  # the second, shifted outline of the mock-ups
 
@@ -579,22 +625,34 @@ def layers(item):
                 el(d, f"stroke:{TINT}", wa),
                 el(h, f"stroke:{HATCH}", HATCH_W, ' stroke-linecap="butt"')]
     if kind == "S":
-        _, ref, t, _ = item
+        _, ref, t, _, fill, hatch, hw, rim = item
         subs, _ = shape(ref, t)
         d = d_of(outline_polys(subs))
         r = Raster()
         r.fill(subs)
+        if rim:
+            inner = Raster()
+            inner.fill(shape(rim, t)[0])
+            r.cut(inner)
         h = d_of(hatch_polys(r, bbox_of(subs, 1)))
-        return [el(d, f"fill:{TINT};stroke:{INK}", 2 * O),
-                el(h, f"stroke:{HATCH}", HATCH_W, ' stroke-linecap="butt"'),
+        return [el(d, f"fill:{fill or TINT};stroke:{INK}", 2 * O),
+                el(h, f"stroke:{hatch or HATCH}", hw or HATCH_W, ' stroke-linecap="butt"'),
                 el(d, f"stroke:{INK}", 2 * O, " " + SHADOW)]
+    if kind == "G":
+        _, ref, t = item
+        subs, _ = shape(ref, t)
+        return [el(d_of(outline_polys(subs)), f"stroke:{FAINT}", 2.2)]
+    if kind == "P":
+        _, ref, t, fill, stroke, w = item
+        subs, _ = shape(ref, t)
+        return [el(d_of(outline_polys(subs)), f"fill:{fill or FACEC};stroke:{stroke or INK}", w)]
     if kind == "E":
         _, ref, t, _ = item
         subs, _ = shape(ref, t)
         return [el(d_of(outline_polys(subs)), f"fill:{FACEC};stroke:{INK}", 1.6 * O)]
     if kind == "T":
         subs = path_subpaths(item[1])
-        return [el(d_of(outline_polys(subs)), f"stroke:{INK}", item[2])]
+        return [el(d_of(outline_polys(subs)), f"stroke:{item[3] or INK}", item[2])]
     raise ValueError(kind)
 
 
@@ -732,6 +790,24 @@ def on_of(hexs):
     return INK_LIGHT if contrast(hexs, INK_LIGHT) >= contrast(hexs, INK_DARK) else INK_DARK
 
 
+def lift(hexs, target=3.5):
+    """lighten a colour (same hue) until dark ink on it reaches the target contrast"""
+    r, g, b = (int(hexs[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    out = hexs
+    while contrast(out, INK_DARK) < target and l < 1:
+        l = min(1, l + .005)
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        out = "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
+    return out
+
+
+# Inverted style (J.U.D.G.E.): the value symbol is always dark ink with a light outline, so the square
+# colours are lightened where needed until dark ink reads well on them (WCAG >= 3.5:1, large text needs 3:1).
+for _k in ("j0", "j1", "j2", "j3", "j4", "j5", "j6"):
+    COL[_k] = tuple(lift(c) for c in COL[_k])
+
+
 def tokens(group, idx):
     rows = []
     for k, v in group.items():
@@ -753,12 +829,17 @@ def build_css():
 body {{
     --cardc-face: #1b1f27;   /* card paper */
     --cardc-ink: #d9dee8;    /* outlines, text */
-    --on-inv: #ffffff;      /* inverted style: symbol on the coloured square */
-    --inv-o: #1d2027;       /* inverted style: outline of that symbol */
+    --on-inv: #1d2027;      /* inverted style: symbol on the coloured square (always dark ink) */
+    --inv-o: #fbfaf5;       /* inverted style: light outline of that symbol */
     --sym-ink: var(--cardc-ink);
     --sym-face: var(--cardc-face);
     /* currentColor resolves where the symbol is used: 22 % of the value colour on the paper */
     --sym-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
+    --sym-strong: currentColor;   /* filled stars */
+    --sym-hatch-strong: color-mix(in srgb, #1d2027 28%, currentColor);
+    --sym-faint: color-mix(in srgb, var(--cardc-ink) 40%, var(--cardc-face));   /* empty stars */
+    --sym-hood: #0b0c0f;          /* s-mask: hood, black in both themes (outline in --sym-ink) */
+    --sym-bubble: #7d8592;        /* s-mask: thought bubble */
 
     /* catalogue */
 {tokens(COL, 1)}
@@ -810,7 +891,7 @@ def build_preview():
         f'<use href="../../src/cards.svg#s-frame-inv" style="--sym-tint:currentColor;'
         f'--sym-hatch:color-mix(in srgb,var(--cardc-ink) 18%,currentColor)"/>'
         f'<use href="../../src/cards.svg#s-{k}" x="10" y=".4" width="80" height="96" style="--sym-ink:var(--inv-o);'
-        f'--sym-tint:var(--on-c-j{k});--sym-hatch:transparent"/>'
+        f'--sym-tint:var(--on-inv);--sym-hatch:transparent"/>'
         f'</svg></div><figcaption><code>s-frame-inv + s-{k}</code><br>--c-j{k}</figcaption></figure>' for k in range(7))
     chips = "".join(f'<span class="chip" style="background:var(--c-{k});color:var(--on-c-{k})">{k}</span>' for k in list(COL) + list(PALETTE))
     pal = "".join(f'<figure class="t" style="color:var(--c-{k})"><div class="deck">{use("s-stars-3")}</div>'

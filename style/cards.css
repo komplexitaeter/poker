@@ -11,12 +11,17 @@
 body {
     --cardc-face: #1b1f27;   /* card paper */
     --cardc-ink: #d9dee8;    /* outlines, text */
-    --on-inv: #ffffff;      /* inverted style: symbol on the coloured square */
-    --inv-o: #1d2027;       /* inverted style: outline of that symbol */
+    --on-inv: #1d2027;      /* inverted style: symbol on the coloured square (always dark ink) */
+    --inv-o: #fbfaf5;       /* inverted style: light outline of that symbol */
     --sym-ink: var(--cardc-ink);
     --sym-face: var(--cardc-face);
     /* currentColor resolves where the symbol is used: 22 % of the value colour on the paper */
     --sym-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
+    --sym-strong: currentColor;   /* filled stars */
+    --sym-hatch-strong: color-mix(in srgb, #1d2027 28%, currentColor);
+    --sym-faint: color-mix(in srgb, var(--cardc-ink) 40%, var(--cardc-face));   /* empty stars */
+    --sym-hood: #0b0c0f;          /* s-mask: hood, black in both themes (outline in --sym-ink) */
+    --sym-bubble: #7d8592;        /* s-mask: thought bubble */
 
     /* catalogue */
     --c-v0: #4d8cff; --on-c-v0: #1d2027;
@@ -62,7 +67,7 @@ body {
     --c-eenthu: #8dce6e; --on-c-eenthu: #1d2027;
     --c-star: #edd04f; --on-c-star: #1d2027;
     --c-vveto: #ed714f; --on-c-vveto: #1d2027;
-    --c-j0: #3a7b9c; --on-c-j0: #ffffff;
+    --c-j0: #3b7c9e; --on-c-j0: #ffffff;
     --c-j1: #55b08f; --on-c-j1: #1d2027;
     --c-j2: #94c044; --on-c-j2: #1d2027;
     --c-j3: #c45578; --on-c-j3: #ffffff;
@@ -142,13 +147,13 @@ body.light-theme {
     --c-eenthu: #62b83a; --on-c-eenthu: #1d2027;
     --c-star: #f0cf3a; --on-c-star: #1d2027;
     --c-vveto: #ef5a32; --on-c-vveto: #1d2027;
-    --c-j0: #265873; --on-c-j0: #ffffff;
+    --c-j0: #367da3; --on-c-j0: #ffffff;
     --c-j1: #4fa587; --on-c-j1: #1d2027;
     --c-j2: #8fbc3b; --on-c-j2: #1d2027;
-    --c-j3: #b54467; --on-c-j3: #ffffff;
+    --c-j3: #bd5072; --on-c-j3: #ffffff;
     --c-j4: #be5a40; --on-c-j4: #ffffff;
     --c-j5: #ded65f; --on-c-j5: #1d2027;
-    --c-j6: #b23b41; --on-c-j6: #ffffff;
+    --c-j6: #c44d53; --on-c-j6: #ffffff;
     --c-g1: #b23b41; --on-c-g1: #ffffff;
     --c-g2: #d0702c; --on-c-g2: #1d2027;
     --c-g3: #d9a300; --on-c-g3: #1d2027;
