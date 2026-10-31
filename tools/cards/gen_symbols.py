@@ -43,7 +43,8 @@ DIG = {
     "d6": '<path d="M68 30c-6-6-12-8-18-8-16 0-24 18-24 40 0 24 8 40 24 40 13 0 22-9 22-22s-9-21-21-21c-11 0-19 7-25 15"/>',
     "d7": '<path d="M28 26h44c-14 22-22 46-24 76"/>',
     "d8": '<circle cx="50" cy="46" r="14"/><circle cx="50" cy="82" r="18"/>',
-    "d9": '<path d="M74 46c-6 8-14 15-25 15-12 0-21-9-21-20s9-19 22-19c16 0 24 16 24 38 0 26-10 42-28 42-7 0-13-3-17-7"/>',
+    # D8: the open end starts on the stem (not 1-2 units right of it), so the outline has no bump there
+    "d9": '<path d="M72.6 47c-5.6 8-13.6 14-23.6 14-12 0-21-9-21-20s9-19 22-19c16 0 24 16 24 38 0 26-10 42-28 42-7 0-13-3-17-7"/>',
     "dinf": '<path d="M50 62c-10-12-18-18-26-18a18 18 0 0 0 0 36c8 0 16-6 26-18s18-18 26-18a18 18 0 0 1 0 36c-8 0-16-6-26-18z"/>',
     "dq": '<path d="M30 40c0-14 10-22 22-22 12 0 20 8 20 19 0 16-20 18-20 36v4M52 99h.1"/>',
     "dx": '<path d="M50 22v54M50 99h.1"/>',
@@ -55,7 +56,8 @@ DIG = {
     "lL": '<path d="M34 24v78h38"/>',
     # latte glass (B-99 D7): tall, slightly tapered; "foam" covers the milk and foam on top (no hatching there)
     "glass": '<path d="M28 38h42l-4 63c0 4-2 6-6 6H38c-4 0-6-2-6-6z"/>',
-    "milk": '<path d="M28.5 38.5h41l-1.6 25.5c-6 3-12-3-18 0s-12 3-18 0z"/>',
+    # D8: the milk a few units inside the glass: a dark gap keeps the light foam apart from the (light) outline
+    "milk": '<path d="M32.4 42.2h33.4l-1.2 21.3c-5.4 2.8-10.8-2.4-16.2 .4s-11.2 2.6-16.6 .1z"/>',
     "foam": '<path d="M10 20h80v44H10z"/>',
     "hand": '<path d="M36 106c-8-6-14-16-17-28l-7-18c-2-7 7-11 11-4l7 12V32c0-7 10-7 10 0v24V22c0-7 10-7 10 0v32V24c0-7 10-7 10 0v32V34c0-7 10-7 10 0v40c0 18-6 28-14 32z"/>',
     "face": '<circle cx="50" cy="62" r="37"/>',
@@ -70,6 +72,10 @@ DIG = {
     "hood": '<path d="M50 50c-16 0-25 12-26 30-1 8-3 14-8 19-5 4-7 9-7 14v2h82v-2c0-5-2-10-7-14-5-5-7-11-8-19-1-18-10-30-26-30z"/>',
     "fmask": '<path d="M50 60c-10 0-16 6-16 17 0 14 7 25 16 30 9-5 16-16 16-30 0-11-6-17-16-17z"/>',
     "face_in": '<circle cx="46" cy="58" r="32"/>',   # face minus this = crescent of hatching at the lower right
+    # joined late (B-102): an open door (frame, leaf hinged on the left) and an arrow going in
+    "door": '<path d="M30 22h42v84H30z"/>',
+    "leaf": '<path d="M30 22l22 9v83l-22-8z"/>',
+    "arrow": '<path d="M92 66H60M70 56L60 66l10 10"/>',
     "square": '<path d="M15 6h70c5 0 9 4 9 9v70c0 5-4 9-9 9H15c-5 0-9-4-9-9V15c0-5 4-9 9-9z"/>',
 }
 
@@ -183,8 +189,12 @@ SYM["s-8"] = ([L("d8", "translate(-8 -11) scale(1.16)", 1.16, W / 1.16)], "8")
 SYM["s-10"] = (row(["d1", "d0"]), "10")
 SYM["s-13"] = ([L("d1", "translate(2 23.6) scale(.62)", .62, 11 / .62), L("d3", "translate(37 23.6) scale(.62)", .62, 11 / .62)], "13")
 for v, refs in (("20", ["d2", "d0"]), ("21", ["d2", "d1"]), ("34", ["d3", "d4"]), ("40", ["d4", "d0"]),
-                ("55", ["d5", "d5"]), ("60", ["d6", "d0"]), ("89", ["d8", "d9"]), ("100", ["d1", "d0", "d0"])):
+                ("55", ["d5", "d5"]), ("60", ["d6", "d0"]), ("100", ["d1", "d0", "d0"])):
     SYM[f"s-{v}"] = (row(refs), v)
+# 89 (D8): the 8 is drawn shorter than the other digits; like s-8 it is enlarged by 1.16 (towards its foot), the
+# wide 9 a little smaller (.97), so both match the digit height of 13, 21, 34, 55. Placed like row(): x 31 / 69.
+SYM["s-89"] = ([L("d8", "translate(-4.96 14.74) scale(.7192)", .7192, 11 / .7192),
+                L("d9", "translate(38.95 24.71) scale(.6014)", .6014, 11 / .6014)], "89")
 SYM["s-half"] = ([L("d1", "translate(4 4) scale(.5)", .5, 20), L("dsl", "", 1, 10), L("d2", "translate(46 52) scale(.5)", .5, 20)], "one half")
 # The infinity glyph is wider than the digits: scaled down around the centre (50 62), line width kept.
 SYM["s-inf"] = ([L("dinf", "translate(8 9.92) scale(.84)", .84, W / .84)], "infinity")
@@ -211,23 +221,34 @@ for k in range(6):
 # The coffee below is hatched, milk and foam on top stay calm (tint only); the steam says "hot, pause".
 GLASS = re.search(r'd="([^"]+)"', DIG["glass"]).group(1)
 SYM["s-coffee"] = ([S("glass", rim="foam"),
-                    P("milk", "", "var(--sym-milk,#fbfaf5)", "none", 0),         # milk and foam: light in both themes
+                    P("milk", "", "var(--sym-milk,#fbfaf5)", FACEC, 1.8),        # milk and foam: light in both themes,
+                    #   rimmed in paper colour (D8: a dark gap to the light outline in the dark theme)
                     T(GLASS),                                                       # glass outline again, over the milk
                     T("M30.5 64c6-3 12 3 18 0s12-3 18 0"),                          # coffee / milk line
-                    T("M68 49h5c6 0 9 4 9 10v13c0 6-3 10-9 10h-8"),                 # handle, outer
-                    T("M68 57h3c2 0 3 1 3 3v11c0 2-1 3-3 3h-4"),                    # handle, inner
+                    # handle: both lines end on the outside of the glass outline (D8), not inside the glass
+                    T("M71 49h2c6 0 9 4 9 10v13c0 6-3 10-9 10h-4.2"),               # handle, outer
+                    T("M70.5 57h.5c2 0 3 1 3 3v11c0 2-1 3-3 3h-1.6"),               # handle, inner
                     T("M43 32c-4-5 4-10 0-16M55 32c-4-5 4-10 0-16")], "latte glass")
 SYM["s-question"] = (row(["dq"]), "question mark")
 SYM["s-exclam"] = (row(["dx"]), "exclamation mark")
 SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "raised hand")
 # Status cards (B-99 D7): calm like the faces - a light body, the hatching only hinted at the lower right edge.
 SYM["s-check"] = ([L("dchk", calm=True)], "check mark")
-THOUGHT = "translate(6 7)"
-SYM["s-thought"] = ([S("cloud", THOUGHT, hw=1.1, rim=("cloud", "translate(9.2 8.6) scale(.93)")),
-                     S("bub1", THOUGHT, hw=1.1, rim=("bub1", "translate(5.9 6.6) scale(.86)")),
+# D8: the bubble 6 units higher (it sat low on the status card), the hatched band at the edge a bit wider again
+THOUGHT = "translate(4 1)"
+SYM["s-thought"] = ([S("cloud", THOUGHT, hw=1.25, rim=("cloud", "translate(7 3.2) scale(.89)")),
+                     S("bub1", THOUGHT, hw=1.25, rim=("bub1", "translate(3.9 .6) scale(.86)")),
                      P("bub2", THOUGHT, TINT),
                      T("M42 55h.1M56 55h.1M70 55h.1", 9)], "thought bubble")
-for _sid in ("s-check", "s-thought"):
+# Joined late (B-102): calm like the other status symbols - an open door, a light leaf with the hatching at its edge,
+# an arrow going in; no figure (reads at mini size too).
+DOOR_INK = "var(--cardc-ink,#1d2027)"   # frame and floor in the theme ink (the calm group's ink is dark in both themes)
+SYM["s-late"] = ([T(re.search(r'd="([^"]+)"', DIG["door"]).group(1), color=DOOR_INK),   # door frame
+                  T("M20 106h62", color=DOOR_INK),                                  # floor
+                  S("leaf", hw=1.25, rim=("leaf", "translate(1.6 4.4) scale(.9)")),
+                  T("M46 70h.1", 6),                                                # door knob
+                  L("arrow", w=9, calm=True)], "open door, joined late")
+for _sid in ("s-check", "s-thought", "s-late"):
     GROUP_STYLE[_sid] = "--sym-ink:var(--sym-face-ink,#1d2027);--sym-tint:var(--sym-calm,#fbfaf5);--sym-hatch:var(--sym-calm-hatch,currentColor)"
 # Anonymous mode: high contrast like the old picture - black hood (light outline in the dark theme), white mask.
 MASK_INK = "#1d2027"
@@ -878,7 +899,8 @@ body {{
     /* calm status symbols (s-check, s-thought): a light body, the hatching only at the edge */
     --sym-calm: color-mix(in srgb, currentColor 55%, #fffbe8);
     --sym-calm-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
-    --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);   /* s-coffee: milk and foam of the latte */
+    /* s-coffee: milk and foam of the latte; in the dark theme a warmer latte tone, so it is not the light outline */
+    --sym-milk: color-mix(in srgb, currentColor 58%, #f4ead4);
 
     /* catalogue */
 {tokens(COL, 1)}
@@ -894,6 +916,7 @@ body.light-theme {{
     --sym-face-mid: color-mix(in srgb, currentColor 30%, #fbfaf5);
     --sym-face-neg: color-mix(in srgb, currentColor 28%, #f1efea);
     --sym-calm: color-mix(in srgb, currentColor 38%, #fffbe8);
+    --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);
 
     /* catalogue */
 {tokens(COL, 0)}
@@ -907,7 +930,7 @@ body.light-theme {{
 # ------------------------------------------------------------------ preview (developers only)
 # symbol -> catalogue colour of the card that uses it today
 SYM_COLOUR = {"s-half": "vh", "s-inf": "vinf", "s-coffee": "vbrk", "s-question": "vq", "s-exclam": "vx",
-              "s-hand": "vveto", "s-check": "vdone", "s-thought": "vthink", "s-mask": "vthink", "s-frame-inv": "j3"}
+              "s-hand": "vveto", "s-check": "vdone", "s-thought": "vthink", "s-late": "v8", "s-mask": "vthink", "s-frame-inv": "j3"}
 for _v in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "13", "20", "21", "34", "40", "55", "60", "89", "100"):
     SYM_COLOUR[f"s-{_v}"] = {"20": "v20", "40": "v40"}.get(_v, f"v{_v}")
 SYM_COLOUR.update({"s-xxs": "tXXS", "s-xs": "tXS", "s-s": "tS", "s-m": "tM", "s-l": "tL", "s-xl": "tXL", "s-xxl": "tXXL",

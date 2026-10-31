@@ -209,7 +209,7 @@ test('while the hint is shown, keys do not pick cards and Tab stays out of the b
   await expect(hint).toBeVisible();
   await expect(hint).toBeFocused();
 
-  await alice.keyboard.press('1');
+  await alice.keyboard.press('KeyQ');
   await alice.keyboard.press('Tab');
   expect(await alice.evaluate('document.activeElement.closest(".container") === null')).toBe(true);
   await expect(selectedDeckCards(alice)).toHaveCount(0);

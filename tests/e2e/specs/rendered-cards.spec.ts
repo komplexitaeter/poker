@@ -51,8 +51,8 @@ test('table and deck cards are rendered with a symbol and an accessible name', a
   await expect(five).toHaveAttribute('aria-pressed', 'true');
   await setCard(alice, url, carol, 'break01');
 
-  // revealed: the value's symbol and name; F7: the control card in a Fibonacci deck shows symbol + heading
-  // (no description; the numbers keep the layout "none")
+  // revealed: the value's symbol and name; F8 (Andreas): the control card in a Fibonacci deck shows symbol, heading
+  // and description (the numbers keep the layout "none")
   await expect(alice.locator('#cbox')).toHaveAttribute('data-text-size', 'none');
   await expect(tableCard(alice, 'Alice').locator('.pc[role="img"]')).toHaveAttribute('aria-label', '5');
   await expect(tableCard(alice, 'Bob').locator('.pc use')).toHaveAttribute('href', /#s-3$/);
@@ -61,8 +61,8 @@ test('table and deck cards are rendered with a symbol and an accessible name', a
   await expect(coffee).toHaveAttribute('aria-label', 'need a break. I need a short break before we go on.');
   await expect(coffee.locator('use')).toHaveAttribute('href', /#s-coffee$/);
   await expect(coffee.locator('.ttl')).toHaveText('need a break');
-  await expect(coffee.locator('.txt')).toHaveCount(0);
-  await expect(coffee).toHaveClass(/one-text/);
+  await expect(coffee.locator('.txt')).toHaveText('I need a short break before we go on.');
+  await expect(coffee).not.toHaveClass(/one-text/);
 });
 
 test('a card without a symbol shows its value as text', async ({ browser }) => {
@@ -193,7 +193,7 @@ test('spread labels: numbers as text, faces, coffee and hand as mini symbols, no
 
   // J.U.D.G.E.: the tip names the hand as a mini symbol, "Hear the veto: Bob (✋)" without the emoji
   await setTeamDeck(alice, url, 'judge', null, ['break01', 'veto']);
-  await expect(value('jdg3').locator('.sm-text')).toHaveText('3');
+  await expect(value('jdg3').locator('.mini.sm-inv')).toHaveText('3'); // F8: the inverted mini square
   await setCard(alice, url, bob, 'veto');
   await pickCard(alice, 'jdg1');
   await expect(alice.locator('#round_tip b .mini use')).toHaveAttribute('href', /#s-hand$/);
@@ -244,9 +244,9 @@ test('one text on a card: bold like a heading on the table (emotions, stars), no
   await expect(uninterested.locator('.txt')).toHaveCSS('font-weight', '700');
   const font = (sel: string) => alice.locator(sel).first().evaluate(el => getComputedStyle(el).fontFamily);
   expect(await uninterested.locator('.txt').evaluate(el => getComputedStyle(el).fontFamily)).toBe(await font('body'));
-  // the control card in a one-word deck: its heading only, bold as well
+  // F8: the control card in a one-word deck: heading and description (the description thin, not one-text)
   const coffee = tableCard(alice, 'Carol').locator('.pc');
   await expect(coffee.locator('.ttl')).toHaveText('need a break');
-  await expect(coffee.locator('.txt')).toHaveCount(0);
-  await expect(coffee).toHaveClass(/one-text/);
+  await expect(coffee.locator('.txt')).toHaveText('I need a short break before we go on.');
+  await expect(coffee).not.toHaveClass(/one-text/);
 });

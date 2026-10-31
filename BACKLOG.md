@@ -1394,14 +1394,14 @@ keine offenen Fragen gibt.**
 - Anonym-Modus: ohne Namen. Tipps abschaltbar wie bisher (B-96).
 Offen/später: ob Delegation, Ampel, Emotionen ebenfalls eigene Tipp-Regeln brauchen.
 
-### B-102 Systemkarte „joined late“ statt automatischer ☕
+### B-102 Systemkarte „joined in“ statt automatischer ☕
 Status: refined (Andreas, 2026-10-31), Teil von R3. Wer bei schon aufgedeckten Karten beitritt oder vom Beobachter zum
 Spieler wechselt, bekam bisher automatisch ☕ (`break01`), damit die Karten nicht wieder zugedeckt werden. Probleme: nie
 gewählt, ggf. nicht im Set, löst den Pausen-Tipp aus, verfälscht die ☕-Statistik.
 - Neue **Systemkarte** mit eigenem Key (≤ 7 Zeichen), in keinem Set/Deck, nicht wählbar; der Server setzt sie statt `break01`.
 - Zählt als „hat gelegt“ (Runde bleibt aufgedeckt), ist aber **keine Stimme**: nicht in Histogramm, Spannweite,
   Durchschnitt, Tipps; kein Pausen-Tipp.
-- Am Tisch eigenes ruhiges Symbol (z. B. Tür mit Pfeil oder Uhr, keine Strichmännchen) + „joined late“; auch im Anonym-Modus.
+- Am Tisch eigenes ruhiges Symbol (z. B. Tür mit Pfeil oder Uhr, keine Strichmännchen) + „joined in“ (Andreas: weniger vorwurfsvoll als „joined late“); auch im Anonym-Modus.
 - Wer will, legt noch eine echte Karte – sie ersetzt die Systemkarte. Neue Runde: verschwindet wie alle Karten.
 - Statistik: eigener Key, damit ☕-Zahlen künftig sauber sind (und man sieht, wie oft jemand später kommt).
 
