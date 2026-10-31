@@ -82,8 +82,12 @@ async function teamWithDeck(browser: Browser, team: string, preset: string, othe
   await joinAsPlayer(alice, url, 'Alice');
   const ids = await addPlayersViaApi(alice, url, others);
   const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
-  // everyone votes (Alice first), then the board reloads (revealed)
+  // everyone votes (Alice first) in a new round, then the board reloads (revealed). A new round each time: a card
+  // changed after the reveal keeps its player among the extremes of the reveal (B-104, card-changed.spec.ts)
+  const t = new URL(url).searchParams.get('t') ?? '';
   const vote = async (cards: string[]) => {
+    const res = await alice.request.post(`/api/newround.php?${new URLSearchParams({ t, id: aliceId }).toString()}`);
+    expect(res.ok()).toBeTruthy();
     for (const [i, id] of [aliceId, ...ids].entries()) await setCard(alice, url, id, cards[i]);
     await alice.reload();
     await expect(alice.locator('#round_status')).toHaveText('revealed');

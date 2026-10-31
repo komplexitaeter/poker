@@ -979,6 +979,8 @@ function setTableCardOriginal(cardDiv, key, animate) {
     if (original === null) {
         cardDiv.removeAttribute('data-original');
         cardDiv.classList.remove('is-changed');
+        const corner = cardDiv.querySelector('.pc-corner');
+        if (corner !== null) corner.remove();
         if (back !== null) {
             back.remove();
             top.setAttribute('aria-label', cardAriaLabel(tableCardModel(current), true));
@@ -991,17 +993,24 @@ function setTableCardOriginal(cardDiv, key, animate) {
         face.removeAttribute('role');
         face.removeAttribute('aria-label');
         face.setAttribute('aria-hidden', 'true');
-        // its value in the visible upper rim, like the corner index of a playing card
+        // its value in its upper left corner, like the corner index of a playing card. Andreas: always visible and
+        // readable, for every card (also mini symbols, small cards on phones): a small tag of its own above the
+        // whole stack (not inside the dimmed original, whose visible rim is only a few pixels on small cards)
         const corner = document.createElement('span');
         corner.className = 'pc-corner';
+        corner.setAttribute('aria-hidden', 'true');
         corner.appendChild(cardSmall(tableCardModel(original), false));
-        face.appendChild(corner);
         if (back === null && animate && oldOriginal === null) {
             face.classList.add('pc-orig-in'); // once: moving the card would restart it
             face.addEventListener('animationend', () => face.classList.remove('pc-orig-in'), { once: true });
+            corner.classList.add('pc-corner-in');
+            corner.addEventListener('animationend', () => corner.classList.remove('pc-corner-in'), { once: true });
         }
         if (back === null) cardDiv.insertBefore(face, top);
         else back.replaceWith(face);
+        const oldCorner = cardDiv.querySelector('.pc-corner');
+        if (oldCorner === null) cardDiv.insertBefore(corner, top);
+        else oldCorner.replaceWith(corner);
         back = face;
     }
     cardDiv.setAttribute('data-original', original);
@@ -2283,7 +2292,10 @@ function updateTip(json, revealed) {
         if (card !== undefined) {
             const value = document.createElement('span');
             value.className = 'tip-value';
-            value.append('(', cardSmall(card), ')');
+            // B-104: a changed card shows both values, "(5→8)"
+            const from = part.from !== undefined ? cardByKey(part.from) : undefined;
+            if (from !== undefined) value.append('(', cardSmall(from), '\u2192', cardSmall(card), ')');
+            else value.append('(', cardSmall(card), ')');
             b.append('\u00a0', value);
         }
         return b;
@@ -2357,7 +2369,7 @@ function tipText(json, revealed) {
     const explain = groups => {
         const parts = ['Let them explain: '];
         groups.forEach((group, i) => {
-            if (i > 0) parts.push(asking.length > 0 ? ', ' : ' and ');
+            if (i > 0) parts.push(asking.length > 0 || i < groups.length - 1 ? ', ' : ' and ');
             parts.push(group);
         });
         return parts;
@@ -2386,11 +2398,43 @@ function tipText(json, revealed) {
         // next to control cards only: ? and ! explain, otherwise no tip
         return withBreak(asking.length > 0 ? explain(asking) : []);
     }
-    const side = value => {
-        const entries = numeric.filter(entry => cardRank(entry.config) === value);
-        return tipSide(entries.map(entry => entry.player), entries[0].config);
+    return withBreak(explain([...extremeGroups(configs, min, max), ...asking]));
+}
+
+/* B-104 (Andreas): who is asked to explain the lowest and highest card. Nobody leaves the list by changing the card
+ * after the reveal, but a change can add someone: the extremes of the cards of the reveal (original_card_key, else
+ * the current card) and of the current cards (min/max). One group per side and card ("Dan (3)"); a changed card
+ * shows both values ("Bob (5→8)"). The current card decides the side, else the card of the reveal. */
+function extremeGroups(configs, min, max) {
+    const rankOf = config => config && !config.control ? cardRank(config) : null;
+    const entries = configs.map(entry => {
+        const key = entry.player.original_card_key;
+        const original = key !== null && key !== undefined && String(key) !== String(entry.player.display_card_key)
+            ? cardByKey(String(key)) : undefined;
+        return { ...entry, original, now: rankOf(entry.config), then: original !== undefined ? rankOf(original) : rankOf(entry.config) };
+    });
+    const thens = entries.map(entry => entry.then).filter(value => value !== null);
+    const minThen = Math.min(...thens);
+    const maxThen = Math.max(...thens);
+    const sideOf = entry => entry.now === min ? 'low' : entry.now === max ? 'high'
+        : entry.then === minThen ? 'low' : entry.then === maxThen ? 'high' : null;
+    const groupsOf = side => {
+        const groups = new Map();
+        entries.filter(entry => entry.config && sideOf(entry) === side).forEach(entry => {
+            const id = (entry.original ? entry.original.key : '') + '>' + entry.config.key;
+            if (!groups.has(id)) groups.set(id, []);
+            groups.get(id).push(entry);
+        });
+        // from low to high like the spread (by the current card, without a value by the card of the reveal)
+        const rank = entry => entry.now !== null ? entry.now : entry.then;
+        const list = [...groups.values()].sort((a, b) => (rank(a[0]) - rank(b[0])) || 0); // ∞ - ∞: keep the order
+        return list.map(group => {
+            const part = tipSide(group.map(entry => entry.player), group[0].config);
+            if (group[0].original !== undefined) part.from = group[0].original.key;
+            return part;
+        });
     };
-    return withBreak(explain([side(min), side(max), ...asking]));
+    return [...groupsOf('low'), ...groupsOf('high')];
 }
 
 /* B-101: the team's deck is the J.U.D.G.E. group (dao deck.group, else the cards of the deck) */
