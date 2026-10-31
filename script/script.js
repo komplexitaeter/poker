@@ -235,8 +235,8 @@ function deckElement(card) {
 }
 
 /* B-99 (F2): the deck shows texts (headings / descriptions) when one of its cards (not a control card) has
- * some. F7 (Andreas): the control cards show their heading in every set (Fibonacci too), on the table and in
- * the deck; the info line explains them. */
+ * some. F7 (Andreas): the control cards show their heading in every set (Fibonacci too) in the deck, the info
+ * line explains them; F8: on the table they show heading and description in every set. */
 let gDeckTexts = false;
 /* the layout level of the table cards (deckTextSize) */
 let gDeckTextSize = 'none';
@@ -247,8 +247,7 @@ const DECK_SHORT_INFO = 60;
 const DECK_WORD_TEXT = 16;
 
 /* D5: how much text the cards of a deck carry; the table cards of a deck share one layout (style.css,
- * #cbox[data-text-size]): none (Fibonacci), word (one short word: emotions, stars; the control cards then
- * show their heading only), short (descriptions up to DECK_SHORT_INFO: traffic lights, Delegation),
+ * #cbox[data-text-size]): none (Fibonacci), word (one short word: emotions, stars), short (descriptions up to DECK_SHORT_INFO: traffic lights, Delegation),
  * long (J.U.D.G.E.) */
 function deckTextSize(deck) {
     if (!deckHasTexts(deck)) return 'none';
@@ -261,13 +260,6 @@ function deckTextSize(deck) {
 
 function deckHasTexts(deck) {
     return deck.cards.some(card => !card.controlCard && (card.heading || card.info));
-}
-
-/* the texts of a table card (cardFace): a control card shows its heading only where the deck's cards carry
- * no or one-word texts (none, word: symbol + heading like the word layout), else heading and description */
-function cardShowsTexts(card) {
-    if (!card.controlCard) return true;
-    return gDeckTextSize === 'none' || gDeckTextSize === 'word' ? 'heading' : true;
 }
 
 /* B-99 (F2): the info line above the tray (devices with a mouse: pointing at a card; keyboard: focus) shows
@@ -288,15 +280,18 @@ function showDeckInfo(element) {
     const look = cardLook(card);
     setCardColor(chip, look.color);
     chip.appendChild(cardSmall(card, !card.heading)); // B-99 (F6): mono text or mini symbol, no system emoji
-    const parts = [chip];
+    // F8 (Andreas): left the chip, right the text, left-aligned: a second line starts below the first one's start
+    const text = document.createElement('span');
+    text.className = 'deck-info-text';
     if (card.heading) {
         const heading = document.createElement('b');
         heading.textContent = card.heading;
-        parts.push(heading);
+        text.appendChild(heading);
     }
     // F7: a description alone (emotions) reads like a heading
-    if (card.info && card.heading) parts.push(document.createTextNode(' — ' + card.info));
-    else if (card.info) parts.push(Object.assign(document.createElement('b'), { textContent: card.info }));
+    if (card.info && card.heading) text.appendChild(document.createTextNode(' — ' + card.info));
+    else if (card.info) text.appendChild(Object.assign(document.createElement('b'), { textContent: card.info }));
+    const parts = [chip, text];
     line.replaceChildren(...parts);
     line.hidden = false;
 }
@@ -370,20 +365,66 @@ function setTeamDeck(json) {
     updateDeckKeys();
 }
 
-/* B-68: keys 1–9 and 0 pick the first ten cards of the deck (in deck order) */
-const DECK_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+/* B-68, F8 (B-99 planning, Andreas): the letter rows pick the cards from left to right, in deck order:
+ * Q W E R T Z U I O P, then A S D F G H J K L, then Y X C V B N M (26 cards, control cards included).
+ * The physical key counts (event.code), so QWERTZ, QWERTY and AZERTY pick the same card with the same finger. */
+const DECK_KEY_CODES = [
+    'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP',
+    'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL',
+    'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM',
+];
+
+/* the label under a card: the character of the key in the user's layout. navigator.keyboard.getLayoutMap()
+ * tells it (Chromium); where it is missing (Firefox, Safari) the labels follow QWERTZ: most teams on the
+ * board work with German keyboards (komplexitaeter.de), and for QWERTY only Y and Z swap places. */
+const DECK_KEY_LABELS_QWERTZ = {
+    KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyT: 'T', KeyY: 'Z', KeyU: 'U', KeyI: 'I', KeyO: 'O', KeyP: 'P',
+    KeyA: 'A', KeyS: 'S', KeyD: 'D', KeyF: 'F', KeyG: 'G', KeyH: 'H', KeyJ: 'J', KeyK: 'K', KeyL: 'L',
+    KeyZ: 'Y', KeyX: 'X', KeyC: 'C', KeyV: 'V', KeyB: 'B', KeyN: 'N', KeyM: 'M',
+};
+let gDeckKeyLabels = DECK_KEY_LABELS_QWERTZ;
+
+function deckKeyLabel(code) {
+    return gDeckKeyLabels[code] || DECK_KEY_LABELS_QWERTZ[code];
+}
+
+/* reads the layout (again: on load and when the window gets the focus back, the user may have switched it) */
+function loadDeckKeyLayout() {
+    const keyboard = navigator.keyboard;
+    if (!keyboard || typeof keyboard.getLayoutMap !== 'function') return;
+    keyboard.getLayoutMap().then(map => {
+        const labels = {};
+        DECK_KEY_CODES.forEach(code => {
+            const char = map.get(code);
+            // one printable character only; anything else keeps the QWERTZ label
+            labels[code] = typeof char === 'string' && [...char].length === 1 && char.trim() !== ''
+                ? char.toUpperCase() : DECK_KEY_LABELS_QWERTZ[code];
+        });
+        if (DECK_KEY_CODES.every(code => labels[code] === gDeckKeyLabels[code])) return;
+        gDeckKeyLabels = labels;
+        updateDeckKeys();
+    }).catch(() => {}); // e.g. not allowed in a frame: QWERTZ
+}
 
 function updateDeckKeys() {
     gDeckElements.forEach(({ keyLabel }) => { keyLabel.textContent = ''; });
     gDeck.cards.forEach((card, i) => {
         const entry = gDeckElements.get(card.key);
-        if (entry !== undefined && i < DECK_KEYS.length) entry.keyLabel.textContent = DECK_KEYS[i];
+        if (entry !== undefined && i < DECK_KEY_CODES.length) entry.keyLabel.textContent = deckKeyLabel(DECK_KEY_CODES[i]);
     });
+    // the hint names the first and the last key in use: "keys Q–P pick a card"
+    const hint = document.querySelector('.deck-hint');
+    const used = Math.min(gDeck.cards.length, DECK_KEY_CODES.length);
+    if (hint !== null && used > 0) {
+        const first = deckKeyLabel(DECK_KEY_CODES[0]);
+        hint.textContent = used === 1 ? 'key ' + first + ' picks the card'
+            : 'keys ' + first + '–' + deckKeyLabel(DECK_KEY_CODES[used - 1]) + ' pick a card';
+    }
     updateDeckRoom();
     syncCarousel(); // B-75
 }
 
-/* B-68: the hint "keys 1–9 pick a card" sits in the row of the keys; it is hidden (class
+/* B-68: the hint "keys Q–P pick a card" sits in the row of the keys; it is hidden (class
  * hint-off) when the deck scrolls or its last key does not stay clear of it, so the tray keeps its
  * height. Only where the keys show (style.css "Card deck"). */
 function updateDeckRoom() {
@@ -391,7 +432,7 @@ function updateDeckRoom() {
     const ctl = document.getElementById('ctl');
     const hint = container === null ? null : container.querySelector('.deck-hint');
     if (ctl === null || container === null) return;
-    const keyed = gDeck.cards.slice(0, DECK_KEYS.length);
+    const keyed = gDeck.cards.slice(0, DECK_KEY_CODES.length);
     const lastKey = keyed.length > 0 ? gDeckElements.get(keyed[keyed.length - 1].key).keyLabel : null;
     const fits = hint !== null && ctl.scrollWidth <= ctl.clientWidth + 1
         && (lastKey === null || lastKey.getBoundingClientRect().right + 8 <= hint.getBoundingClientRect().left);
@@ -632,7 +673,11 @@ function setDeckPickLine(line, middle, picked) {
     }
     if (line.getAttribute('data-shows') === key) return; // only on a change (per frame while swiping)
     line.setAttribute('data-shows', key);
-    line.replaceChildren(...parts());
+    // F8: one block in the middle, its text left-aligned (a description below starts under the first line's start)
+    const body = document.createElement('span');
+    body.className = 'deck-pick-body';
+    body.append(...parts());
+    line.replaceChildren(body);
 }
 
 /* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */
@@ -706,11 +751,13 @@ function initCarousel() {
     });
 }
 
-/* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
- * (observers have no click handler). Not while typing, in the menu or in an overlay. */
+/* B-68, F8: a letter key (DECK_KEY_CODES, physical position) picks (or, on the picked card, takes back) a card
+ * like a click, players only (observers have no click handler). Not with a modifier (browser and system
+ * shortcuts, Shift, AltGr), not while typing, in the menu or in an overlay. */
 function pickCardByKey(event) {
-    const n = DECK_KEYS.indexOf(event.key);
-    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    const n = DECK_KEY_CODES.indexOf(event.code);
+    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    if (event.isComposing) return; // an input method is composing a character
     const target = event.target;
     if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog')) return;
     const menu = document.getElementById('menu');
@@ -907,7 +954,9 @@ function tableCardModel(key) {
 function setTableCardFace(cardDiv, key) {
     cardDiv.setAttribute('data-card', key);
     const card = tableCardModel(key);
-    const face = cardFace(card, 'table', card.status === true || cardShowsTexts(card));
+    // F8 (Andreas): every card on the table shows all its texts; control cards heading and description in
+    // every set (small cards shorten the description, style.css "Rendered cards")
+    const face = cardFace(card, 'table', true);
     const old = cardDiv.querySelector('.pc');
     if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.delete'));
     else old.replaceWith(face);
@@ -2010,6 +2059,8 @@ function handleResize() {
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
     initCarousel(); // B-75
+    loadDeckKeyLayout(); // F8
+    window.addEventListener('focus', loadDeckKeyLayout);
     // B-69: the "<" / ">" bars follow the deck's scroll position; the wheel scrolls it sideways
     const ctl = document.getElementById('ctl');
     if (ctl !== null) {
