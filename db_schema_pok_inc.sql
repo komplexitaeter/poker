@@ -423,3 +423,28 @@ create table if not exists pok_custom_cards_tbl (
   unique key ux_custom_cards_key (card_key),
   key ix_custom_cards_set (set_id, active)
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
+
+/* B-98 S2: round snapshot of the whole deck. From the new deck menu on, cardset_flags no longer describes the deck
+   (single cards on/off, control cards, later custom sets), so pok_roundstats_tbl additionally keeps deck_cards and
+   deck_controls of the round next to deck_id (written by start_new_round() in api/lib.php). Additive, instant,
+   idempotent (run it again any time), BEFORE deploying the code (newround.php writes the columns).
+   Run only this block: sed -n '/^\/\* B-98 S2:/,/^\/\* end B-98 S2/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type from information_schema.columns
+ where table_schema = database() and table_name = 'pok_roundstats_tbl'
+   and column_name in ('deck_id', 'deck_cards', 'deck_controls');
+
+set session lock_wait_timeout = 5;
+set @b98s2_sql = if((select count(1) from information_schema.columns
+                      where table_schema = database() and table_name = 'pok_roundstats_tbl'
+                        and column_name = 'deck_cards') = 0,
+  'alter table pok_roundstats_tbl
+     add column deck_cards varchar(200) character set ascii collate ascii_bin null
+       comment ''B-98: active card keys of the round if single cards were off; null = all cards of the variant'',
+     add column deck_controls varchar(40) character set ascii collate ascii_bin null
+       comment ''B-98: active control card keys of the round (comma list)'',
+     algorithm = instant',
+  'select 1');
+prepare b98s2_stmt from @b98s2_sql;
+execute b98s2_stmt;
+deallocate prepare b98s2_stmt;
+/* end B-98 S2 */
