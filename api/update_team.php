@@ -6,6 +6,9 @@ require_post();
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 $name = get_text_param("name", 30);
 $anonymous_request_toggle = filter_input(INPUT_GET, "anonymous_request_toggle", FILTER_SANITIZE_NUMBER_INT );
+// B-96: team setting "Tips", exactly "0" or "1"; anything else is ignored
+$show_tips_param = $_GET['show_tips'] ?? null;
+$show_tips = ($show_tips_param === '0' || $show_tips_param === '1') ? (int)$show_tips_param : null;
 
 $link = db_init();
 require_team($t, $link);
@@ -33,5 +36,15 @@ if ($anonymous_request_toggle != null and $anonymous_request_toggle >= 0 and $an
     $sql->execute();
 }
 
+if ($show_tips !== null) {
+    $sql = $link->prepare("update pok_teams_tbl t
+                              set t.show_tips=?
+                            where t.id=?");
+    $sql->bind_param('is', $show_tips, $t);
+    $sql->execute();
+}
 
 $link->close();
+
+// B-81: all boards of the team reload (only reached after the team check and a successful write)
+notify_team($t);

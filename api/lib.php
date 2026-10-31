@@ -1,9 +1,9 @@
 <?php
 /*
- * $charset: 'utf8' (= utf8mb3) for the old tables; 'utf8mb4' where texts may contain emojis
- * (pok_feedback_tbl and the roadmap tables, B-57).
+ * Connects with utf8mb4 (B-85), so emojis in names and topics reach the utf8mb4 columns unchanged. Reading the
+ * remaining utf8mb3 columns works the same. $charset only for special cases.
  */
-function db_init(string $charset = 'utf8') {
+function db_init(string $charset = 'utf8mb4') {
     $link = mysqli_init();
     mysqli_real_connect(
         $link,
@@ -24,6 +24,17 @@ function db_init(string $charset = 'utf8') {
  */
 function get_text_param(string $name, int $max_length): string {
     return cut_text(trim((string)filter_input(INPUT_GET, $name)), $max_length);
+}
+
+/*
+ * Reads an id-like GET parameter (B-88): the value only if it consists of 1 to $max_length characters
+ * A-Z, a-z, 0-9, '_' or '-', otherwise ''. Player/user ids (SID) are 16 characters A-Z0-9 at most
+ * (script.js), '-1' marks a deleted user. A manipulated id (emoji, HTML characters, too long) thus behaves
+ * like an unknown id and never reaches MySQL as a string the utf8mb3 columns cannot hold (HTTP 500).
+ */
+function get_id_param(string $name, int $max_length = 16): string {
+    $value = filter_input(INPUT_GET, $name);
+    return is_string($value) && preg_match('/^[A-Za-z0-9_-]{1,' . $max_length . '}$/D', $value) ? $value : '';
 }
 
 /*
@@ -90,6 +101,36 @@ function require_post() {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         exit;
+    }
+}
+
+/*
+ * B-81: tells poker-msg that the board of $team_id changed; poker-msg then sends "pull" to every board of that team
+ * (including the writer). One UDP datagram "pull:<team_id>" to 127.0.0.1, port _POKER_MSG_NOTIFY_PORT (config.php,
+ * default 8444). Fire and forget: no answer, no delivery guarantee, never blocks, never fails the request and never
+ * writes a PHP warning (if poker-msg is not running, the datagram is simply lost).
+ *
+ * Every writing endpoint with an effect on the board calls this at the end, after the team check and the successful
+ * write (not on 400/403/early exit). dao.php must NEVER call it: pull -> dao.php -> notify -> pull would loop forever.
+ */
+function notify_team(string $team_id): void {
+    if ($team_id === '') return;
+    $port = defined('_POKER_MSG_NOTIFY_PORT') ? (int)constant('_POKER_MSG_NOTIFY_PORT') : 8444;
+    try {
+        $sock = @stream_socket_client('udp://127.0.0.1:' . $port, $errno, $errstr, 0.05);
+        if ($sock === false) return;
+        @stream_set_blocking($sock, false);
+        @fwrite($sock, 'pull:' . $team_id);
+        @fclose($sock);
+    } catch (\Throwable $e) {
+        // never let the notification break a successful write
+    }
+}
+
+/* B-81: notify_team() for several teams, each team once (e.g. delete_user.php: all teams of the user). */
+function notify_teams(array $team_ids): void {
+    foreach (array_unique(array_map('strval', $team_ids)) as $team_id) {
+        notify_team($team_id);
     }
 }
 
@@ -209,6 +250,9 @@ function getDao($t, $id) {
     $timer_time = null;
     $timer_status = null;
     $timer_visibility = 0;
+    $timer_mode = 'STOPWATCH';
+    $timer_timebox = 300;
+    $timer_auto_restart = 0;
     $card_key = '';
     $player_type = null;
     $cardset_flags = null;
@@ -222,6 +266,7 @@ function getDao($t, $id) {
     $players=array();
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
+    $show_tips = 1;
     $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
@@ -248,11 +293,15 @@ function getDao($t, $id) {
                                 ,ifnull(t.timer_start_time, current_timestamp)
                                 ,ifnull(t.timer_pause_time, current_timestamp)) timer_time
                   ,t.timer_visibility
+                  ,t.timer_mode
+                  ,t.timer_timebox
+                  ,t.timer_auto_restart
                   ,t.topic
                   ,t.results_order
                   ,t.show_avg
                   ,t.anonymous_mode
                   ,t.anonymous_request_toggle
+                  ,t.show_tips
                   ,t.needs_setup
             FROM pok_teams_tbl as t
              WHERE t.id = ?");
@@ -264,12 +313,16 @@ function getDao($t, $id) {
         $timer_status = $obj->timer_status;
         $timer_time = $obj->timer_time;
         $timer_visibility = $obj->timer_visibility;
+        $timer_mode = $obj->timer_mode;
+        $timer_timebox = $obj->timer_timebox;
+        $timer_auto_restart = $obj->timer_auto_restart;
         $topic = $obj->topic;
         /* B-42: CHOOSE:* (in-game choice, removed) is treated as SEQUENCE until the data update has run */
         $results_order = normalize_results_order($obj->results_order);
         $show_avg = (int)$obj->show_avg;
         $anonymous_mode = (int)$obj->anonymous_mode;
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
+        $show_tips = (int)$obj->show_tips;
         $needs_setup = (bool)$obj->needs_setup;
     }
 
@@ -405,10 +458,14 @@ function getDao($t, $id) {
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
         "timer_visibility"=>(Int)$timer_visibility,
+        "timer_mode"=>(String)$timer_mode, // B-67: STOPWATCH | TIMER
+        "timer_timebox"=>(Int)$timer_timebox, // B-67: seconds, only used in TIMER mode
+        "timer_auto_restart"=>(Int)$timer_auto_restart, // B-67: 1 = new/cancelled round restarts the timer
         "results_order"=>$results_order,
         "show_avg"=>$show_avg,
         "anonymous_mode"=>$anonymous_mode,
         "anonymous_request_toggle"=>$anonymous_request_toggle,
+        "show_tips"=>$show_tips, // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
         "needs_setup"=>$needs_setup,
         "selected_card_key"=>$card_key,
         "player_type"=>$player_type,

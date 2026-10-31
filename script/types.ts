@@ -19,6 +19,9 @@ export interface myJsonType {
     timer_status: string;
     timer_time: number;
     timer_visibility: number;
+    timer_mode: string; // B-67: 'STOPWATCH' | 'TIMER'
+    timer_timebox: number; // B-67: seconds; TIMER shows T- (timebox - timer_time) until 0, then T+
+    timer_auto_restart: number; // B-67: 1 = New round / Cancel round restart the timer
     results_order: string;
     show_avg: string;
     selected_card_key: string;
@@ -26,6 +29,7 @@ export interface myJsonType {
     one_ore_more_player_ready: boolean;
     anonymous_mode: boolean;
     anonymous_request_toggle: boolean;
+    show_tips: number; // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
     needs_setup: boolean;
     needs_celebration: boolean;
     players_count: number;

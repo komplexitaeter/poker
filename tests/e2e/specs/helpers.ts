@@ -1,4 +1,18 @@
-import { Browser, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+import { test, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+
+/**
+ * Contexts from newPlayer() are not closed by Playwright, and most specs do not close them either. A worker
+ * runs many tests with one browser, so it piled up dozens of live boards (WebSocket, pulls, CSS animations)
+ * until every action of the late specs took seconds (B-67: timer.spec.ts timed out in CI with 60+ open
+ * pages). The first newPlayer() of a test therefore closes the contexts left over from earlier tests.
+ */
+let playerContexts: { testId: string; context: BrowserContext }[] = [];
+
+async function closeContextsOfEarlierTests(testId: string): Promise<void> {
+  const old = playerContexts.filter(entry => entry.testId !== testId);
+  playerContexts = playerContexts.filter(entry => entry.testId === testId);
+  await Promise.all(old.map(entry => entry.context.close().catch(() => undefined)));
+}
 
 /**
  * Every third-party library the board needs (remarkable, qr-code-styling, js-confetti) is now
@@ -7,7 +21,10 @@ import { Browser, BrowserContextOptions, Page, Locator, expect } from '@playwrig
  * This also covers production analytics (plausible.io), which must stay blocked.
  */
 export async function newPlayer(browser: Browser, options: BrowserContextOptions = {}): Promise<Page> {
+  const testId = test.info().testId;
+  await closeContextsOfEarlierTests(testId);
   const context = await browser.newContext(options);
+  playerContexts.push({ testId, context });
   await context.route(/^https?:\/\//, route => {
     const host = new URL(route.request().url()).hostname;
     if (host === '127.0.0.1' || host === 'localhost') return route.continue();
@@ -38,14 +55,17 @@ export async function joinAsPlayer(page: Page, boardUrl: string, name: string): 
  * Adds players to a team straight through the API (no browser context per player), for tests
  * that need many cards on the table. The page showing the board has to reload afterwards.
  */
-export async function addPlayersViaApi(page: Page, boardUrl: string, names: string[]): Promise<void> {
+export async function addPlayersViaApi(page: Page, boardUrl: string, names: string[]): Promise<string[]> {
   const t = new URL(boardUrl).searchParams.get('t') ?? '';
+  const ids: string[] = [];
   for (const [i, name] of names.entries()) {
     const id = `E2EAPI${Date.now().toString(36)}${i}`.slice(0, 16).toUpperCase();
     const res = await page.request.post(
       `/api/name.php?id=${id}&type=player&name=${encodeURIComponent(name)}&t=${encodeURIComponent(t)}`);
     expect(res.ok()).toBeTruthy();
+    ids.push(id);
   }
+  return ids; // the player ids (e.g. for api/setc.php)
 }
 
 /** The card of a player on the table. */
@@ -90,4 +110,25 @@ export async function gotoStats(page: Page, path = '/stats.php'): Promise<void> 
   await login.locator('input[name=password]').fill(STATS_PASSWORD);
   await login.getByRole('button', { name: 'Log in' }).click();
   await expect(page.locator('form.logout')).toBeVisible();
+}
+
+/** B-67: opens the timer panel (large screens: the header button, phones: via the menu index). */
+export async function openTimerPanel(page: Page): Promise<void> {
+  if (await page.locator('#timer_btn').isVisible()) {
+    await page.locator('#timer_btn').click();
+  } else {
+    await page.locator('#menu_btn').click();
+    await page.locator('#menu_index [data-open="timer"]').click();
+  }
+  await expect(page.locator('#timer_box')).toBeVisible();
+}
+
+/** B-67: switches the timer on or off for the whole board in the timer panel and closes the menu again. */
+export async function setTimer(page: Page, on: boolean): Promise<void> {
+  await openTimerPanel(page);
+  await page.locator(`input[name=tmr_visibility][value="${on ? 1 : 0}"]`).check();
+  if (on) await expect(page.locator('#timer')).toBeVisible();
+  else await expect(page.locator('#timer')).toBeHidden();
+  await page.locator('#menu_close').click();
+  await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
 }

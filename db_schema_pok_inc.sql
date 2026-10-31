@@ -161,3 +161,177 @@ set @b64_sql = if((select count(1) from information_schema.statistics
 prepare b64_stmt from @b64_sql;
 execute b64_stmt;
 deallocate prepare b64_stmt;
+
+/* B-67: timer instead of stopwatch. Per team: mode STOPWATCH (counts up, as before) or TIMER (counts down from the
+   timebox to 0, then on into T+), timebox in seconds (default 5 min, only used in TIMER mode) and "auto-start on new
+   round" (New round / Cancel round restart a visible timer). The defaults are the migration: every team keeps working
+   exactly as before (stopwatch, no auto-start). Backwards compatible: old code never reads or writes the new columns.
+   Online: MySQL 8.0 adds columns at the end of the table instantly (metadata only, no table copy, no row rewrite),
+   so the size of pok_teams_tbl does not matter. Deploy order: run this BEFORE deploying the new code (dao.php reads
+   the columns). */
+
+/* 1. check (read only): table size, MySQL version (instant needs >= 8.0.12), row format (not COMPRESSED),
+   new columns not there yet */
+select version(), row_format, table_rows, round((data_length + index_length) / 1048576) as mb
+  from information_schema.tables where table_schema = database() and table_name = 'pok_teams_tbl';
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl'
+   and column_name in ('timer_mode', 'timer_timebox', 'timer_auto_restart');
+
+/* 2. change: only if the columns are missing (idempotent). If MySQL refuses algorithm = instant (ERROR 1845/1846),
+   replace it by "algorithm = inplace, lock = none" (online as well, rebuilds the table). The lock wait timeout makes
+   the ALTER give up after 5 s instead of queueing all dao.php calls behind a long query: just run it again. */
+set session lock_wait_timeout = 5;
+set @b67_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'timer_mode') = 0,
+  'alter table pok_teams_tbl
+     add column timer_mode varchar(10) not null default ''STOPWATCH'' comment ''STOPWATCH, TIMER'',
+     add column timer_timebox int not null default 300 comment ''seconds, TIMER mode only'',
+     add column timer_auto_restart tinyint not null default 0 comment ''1 = new/cancelled round restarts the timer'',
+     algorithm = instant',
+  'select 1');
+prepare b67_stmt from @b67_sql;
+execute b67_stmt;
+deallocate prepare b67_stmt;
+
+/* B-83: the nightly pok_daily_team_stats_evt (db_jobs_pok.sql, 23:55) ran for minutes and blocked dao.php
+   (UPDATE pok_players_tbl ... last_callback_time waited for its shared locks). Its correlated subqueries
+   rounds_ever_played / rounds_played_last24h look up pok_roundstats_tbl per team, but there was no index with
+   team_id: each active team caused a scan over all NEW_ROUND rows. This index serves both subqueries from the index
+   alone (team_id = ?, type_code = 'NEW_ROUND', creation_date > ...). The second half of the fix is in
+   db_jobs_pok.sql (the event reads with READ COMMITTED, i.e. without shared locks); re-create the event after this.
+   Online DDL (in place, no lock): the app keeps running. Cost: one more index entry per new round (rare). */
+
+/* 1. check (read only): table size, plan of the subquery (key type_code_creation_date, many rows), index not there yet */
+select table_rows, round((data_length + index_length) / 1048576) as mb from information_schema.tables
+ where table_schema = database() and table_name = 'pok_roundstats_tbl';
+explain select count(1) from pok_roundstats_tbl r
+ where r.team_id = 'x' and r.type_code = 'NEW_ROUND' and r.creation_date > timestampadd(DAY, -1, CURRENT_TIMESTAMP);
+select index_name from information_schema.statistics
+ where table_schema = database() and table_name = 'pok_roundstats_tbl' and index_name = 'team_id_type_code_creation_date';
+
+/* 2. change: only if the index is missing (idempotent). Evening or weekend, not between 23:50 and 0:10 (the job).
+   The lock wait timeout makes the ALTER give up after 5 s instead of queueing the writes behind a long query: just
+   run it again. */
+set session lock_wait_timeout = 5;
+set @b83_sql = if((select count(1) from information_schema.statistics
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl'
+                      and index_name = 'team_id_type_code_creation_date') = 0,
+  'alter table pok_roundstats_tbl add index team_id_type_code_creation_date (team_id, type_code, creation_date),
+     algorithm = inplace, lock = none',
+  'select 1');
+prepare b83_stmt from @b83_sql;
+execute b83_stmt;
+deallocate prepare b83_stmt;
+
+/* B-85: emojis (4-byte UTF-8) in topics and names failed with HTTP 500 ("Incorrect string value"): the columns were
+   utf8mb3 and the app connected with utf8 (= utf8mb3). The free-text columns become utf8mb4; db_init() in
+   api/lib.php connects with utf8mb4 (works with the old columns too, so code and schema can be deployed in any order;
+   until this has run, emojis still fail as before). Only the free-text columns change: id/team_id stay utf8mb3, so
+   joins and indexes on them behave as before. None of the changed columns is indexed. Lossless (utf8mb4 is a
+   superset of utf8mb3). Collation utf8mb4_0900_ai_ci as for the other utf8mb4 tables (B-57); case- and
+   accent-insensitive like utf8mb3_general_ci, so ORDER BY p.name (player list) stays practically the same.
+   pok_roundstats_tbl and pok_roundstat_details_tbl get the copies of topic and player names on every new round,
+   pok_daily_teams_stats the team name (nightly job, db_jobs_pok.sql): without them a new round or the whole nightly
+   job would fail as soon as a name or topic contains an emoji.
+   NOT online: MySQL changes a column charset only with algorithm = copy, i.e. the table is rebuilt and writes to it
+   wait until the ALTER is done (reads keep working). Duration grows with the table size (see step 1); local test:
+   11 s for pok_roundstats_tbl with 1 million rows, 3 s for pok_players_tbl with 150,000 rows. Run on a weekend, one table at a time, not between 23:50 and 0:10 (nightly job). */
+
+/* 1. check (read only): sizes and current charsets (all utf8mb3 before, all utf8mb4 after) */
+select table_name, table_rows, round((data_length + index_length) / 1048576) as mb from information_schema.tables
+ where table_schema = database()
+   and table_name in ('pok_teams_tbl', 'pok_players_tbl', 'pok_roundstats_tbl', 'pok_roundstat_details_tbl',
+                      'pok_daily_teams_stats');
+select table_name, column_name, character_set_name, collation_name from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'name'), ('pok_teams_tbl', 'topic'), ('pok_players_tbl', 'name'),
+        ('pok_roundstats_tbl', 'topic'), ('pok_roundstat_details_tbl', 'name'), ('pok_daily_teams_stats', 'name'));
+
+/* 2. change: each ALTER only if the column is not utf8mb4 yet (idempotent). Same column definitions as before, only
+   the charset changes. The lock wait timeout makes an ALTER give up after 5 s instead of queueing all writes behind
+   a long query: just run it again. */
+set session lock_wait_timeout = 5;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'topic') = 'utf8mb4',
+  'select 1',
+  'alter table pok_teams_tbl
+     modify name varchar(80) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     modify topic varchar(2000) character set utf8mb4 collate utf8mb4_0900_ai_ci default null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'name') = 'utf8mb4',
+  'select 1',
+  'alter table pok_players_tbl
+     modify name varchar(50) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl' and column_name = 'topic') = 'utf8mb4',
+  'select 1',
+  'alter table pok_roundstats_tbl
+     modify topic varchar(2000) character set utf8mb4 collate utf8mb4_0900_ai_ci default null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+set @b85_sql = if((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstat_details_tbl' and column_name = 'name') = 'utf8mb4',
+  'select 1',
+  'alter table pok_roundstat_details_tbl
+     modify name varchar(50) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+
+/* pok_daily_teams_stats.team_creation_date has the default '0000-00-00 00:00:00' (as on live), which the strict
+   sql_mode rejects when the table is rebuilt ("Invalid default value"): sql_mode without strict/zero-date checks
+   for this one ALTER, restored right after. */
+set @b85_sql_mode = @@session.sql_mode;
+set session sql_mode = 'NO_ENGINE_SUBSTITUTION';
+set @b85_sql = if(coalesce((select character_set_name from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_daily_teams_stats' and column_name = 'name'),
+                  'utf8mb4') = 'utf8mb4', /* staging has no statistics tables: nothing to do there */
+  'select 1',
+  'alter table pok_daily_teams_stats
+     modify name varchar(80) character set utf8mb4 collate utf8mb4_0900_ai_ci not null,
+     algorithm = copy');
+prepare b85_stmt from @b85_sql;
+execute b85_stmt;
+deallocate prepare b85_stmt;
+set session sql_mode = @b85_sql_mode;
+
+/* B-96: team setting "Tips" (board menu Board -> Team): 1 = show the tips in #round_tip (B-70/B-79), 0 = hide them
+   for the whole team. Default 1: every existing and new team keeps the tips as before. Backwards compatible: old code
+   never reads or writes the column. Online: MySQL 8.0 adds a column at the end of the table instantly (metadata only,
+   no table copy). Deploy order: run this BEFORE deploying the new code (dao.php reads the column). */
+
+/* 1. check (read only): MySQL version (instant needs >= 8.0.12), row format (not COMPRESSED), column not there yet */
+select version(), row_format, table_rows, round((data_length + index_length) / 1048576) as mb
+  from information_schema.tables where table_schema = database() and table_name = 'pok_teams_tbl';
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'show_tips';
+
+/* 2. change: only if the column is missing (idempotent). If MySQL refuses algorithm = instant (ERROR 1845/1846),
+   replace it by "algorithm = inplace, lock = none" (online as well, rebuilds the table). The lock wait timeout makes
+   the ALTER give up after 5 s instead of queueing all dao.php calls behind a long query: just run it again. */
+set session lock_wait_timeout = 5;
+set @b96_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'show_tips') = 0,
+  'alter table pok_teams_tbl
+     add column show_tips tinyint not null default 1 comment ''1 = show tips in the round column (B-96)'',
+     algorithm = instant',
+  'select 1');
+prepare b96_stmt from @b96_sql;
+execute b96_stmt;
+deallocate prepare b96_stmt;

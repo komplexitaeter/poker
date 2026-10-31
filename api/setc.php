@@ -5,8 +5,10 @@ require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
-$id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
-$cardkey = substr(filter_input(INPUT_GET, "cardkey", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,7);
+$id = get_id_param("id");
+// card keys are up to 7 characters a-z0-9 (cards.json); a manipulated key changes nothing (B-88)
+$cardkey = get_id_param("cardkey", 7);
+if ($cardkey === '' && (string)filter_input(INPUT_GET, "cardkey") !== '') exit;
 
 
 $link = db_init();
@@ -22,3 +24,6 @@ if (strlen($cardkey)>0) {
 
 $sql->execute();
 $link->close();
+
+// B-81: all boards of the team reload (only reached after the team check and a successful write)
+notify_team($t);

@@ -7,12 +7,12 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.35" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.61" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.24" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.19" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.32" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.53" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -36,13 +36,32 @@
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
     <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><rect x="8" y="5" width="10" height="17" rx="2"/><path d="M13 18h.01"/><path d="M2.5 11A8.5 8.5 0 0 1 10 2"/><path d="M7.5 1.5 10 2l-.5 2.5"/></symbol>
 </svg>
+
+<!-- B-78: phones held sideways (style.css, "Rotate hint"); "Continue anyway" hides it for the session -->
+<div id="rotate_hint" class="rotate-hint" role="dialog" aria-modal="true" aria-labelledby="rotate_hint_msg">
+    <svg class="i" aria-hidden="true"><use href="#i-rotate"/></svg>
+    <p id="rotate_hint_msg">Turn your phone upright for the best view</p>
+    <button type="button" class="rotate-hint-skip" onclick="try { sessionStorage.setItem('rotateHintOff', '1'); } catch (e) {} document.documentElement.classList.add('rotate-ok');">Continue anyway</button>
+</div>
+<script>try { if (sessionStorage.getItem('rotateHintOff')) document.documentElement.classList.add('rotate-ok'); } catch (e) {}</script>
+
+<!-- B-86: no connection to the server (script.js, showConnHint); not dismissable, vanishes when it is back -->
+<div id="conn_hint" class="conn-hint" role="alertdialog" aria-modal="true" aria-labelledby="conn_hint_msg" tabindex="-1" hidden>
+    <svg class="i" aria-hidden="true"><use href="#i-reset"/></svg>
+    <p id="conn_hint_msg">Reconnecting to the server …</p>
+</div>
+
 <!-- B-46: page grid (style.css, "Board layout"): header / topic / table / card deck. -->
 <div class="container" onclick="void(0);">
 
     <header class="head">
-        <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg?v=2" alt="Komplexitäter tools"/></a>
+        <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg?v=2" alt="Komplexitäter tools" loading="lazy"/><img id="brand_icon" src="src/brand_icon_dark.svg?v=1" alt="Komplexitäter tools" loading="lazy"/></a>
 
         <!-- team name with a softly pulsing text cursor; the cursor carries the player's name as a small
              tag (like the name flags of cursors in shared documents). Click copies the board link.
@@ -56,13 +75,11 @@
 
         <span class="head-fill"></span>
 
-        <!-- stopwatch: a direct on/off switch for everyone on the board (aria-pressed set by script.js) -->
-        <button type="button" id="stopwatch_btn" class="icon-btn sw-btn" aria-pressed="false" aria-label="Stopwatch" onclick="switchStopwatchVisiblity()"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">Stopwatch</span><span class="sw-state" aria-hidden="true"></span></button>
-
         <!-- B-51 large screens: each button opens its section of the menu panel (#menu) directly
              (data-open); same order and names as the phone menu index -->
         <nav class="topnav-bar" aria-label="Board menu">
             <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
+            <button type="button" id="timer_btn" class="icon-btn" data-open="timer" aria-label="Timer" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">timer</span></button>
             <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span class="lbl">board</span></button>
             <button type="button" id="user_settings_btn" class="icon-btn" data-open="user_settings" aria-label="You" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl">you</span></button>
             <button type="button" id="feedback_btn" class="icon-btn" data-open="feedback" aria-label="Feedback" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lbl">feedback</span></button>
@@ -73,8 +90,15 @@
         <button type="button" id="menu_btn" class="icon-btn menu-btn" data-open="index" aria-label="Menu" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
     </header>
 
-    <!-- topic: a full-width strip above the table, only while a topic is set (large screens: long
-         topics scroll inside it; phones: one line that unfolds with the arrow button) -->
+    <!-- B-68: the column (large screens: on the right, always there, as wide as the menu panel;
+         phones: a strip right above the deck). From the top: where the round is (#round_status, set
+         by updateSide() in script.js; large screens only), the topic (.topic-bar, placed in the column
+         by style.css; phones: a strip below the header), the spread (#spread: its room is always
+         kept on large screens, shown once the cards are revealed) and at the foot the round actions (.dock). -->
+    <p id="round_status" class="round-status"></p>
+
+    <!-- topic: in the column on large screens (long topics scroll inside it); phones: one line
+         below the header that unfolds with the arrow button. Only while a topic is set. -->
     <section class="topic-bar" data-expanded="false" aria-label="Topic">
         <h2 class="topic-label">topic</h2>
         <div id="topic" class="display_none" data-hash="0" onclick="toggleTopic(event)"></div>
@@ -82,29 +106,72 @@
         <button type="button" class="icon-btn topic-edit" data-open="topic" aria-controls="menu" aria-label="Edit topic"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
     </section>
 
-    <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide).
-         The round actions follow the cards and stick to the bottom edge when the table scrolls;
-         phones: a dock right above the deck. -->
-    <main class="table" id="table">
-        <div id="cbox"></div>
+    <!-- the spread: one stacked bar per deck card (one segment per vote, the count above, the card's
+         value below), the range of the chosen values and the average pointer (board setting show_avg) -->
+    <aside class="side" aria-label="Round result">
+        <section id="spread" class="spread" hidden>
+            <div class="spread-head">
+                <h2 class="side-label">spread</h2>
+                <span id="spread_range" class="spread-range"></span>
+            </div>
+            <div class="spread-chart">
+                <div id="spread_bars" class="spread-bars"></div>
+                <img id="spread_index" class="spread-index hidden" src="src/index.png" alt="" />
+            </div>
+        </section>
+        <!-- B-70: what to do now (set by updateTip() in script.js; large screens only). Before the
+             reveal at the top of the spread's (kept) room, then below the spread; nothing moves. -->
+        <p id="round_tip" class="round-tip"></p>
+    </aside>
 
-        <div class="dock">
-            <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" />
-
-            <div id="stopwatch" class="stopwatch_control">
-                <img id="stopwatch_start" src="./src/play_stopwatch.png" class="" onclick="stopwatchStart()" alt="start"/>
-                <img id="stopwatch_pause" src="./src/pause_stopwatch.png" class="display_none" onclick="stopwatchPause()" alt="pause"/>
-                <label for="stopwatch_timer"></label>
-                <input id="stopwatch_timer" type="text" size="8" maxlength="8" placeholder="00:00:00"/>
-                <img id="stopwatch_reset" src="./src/reset_stopwatch.png" class="" onclick="stopwatchReset()" alt="reset"/>
+    <!-- B-66/B-67/B-68: round actions at the foot of the column. Large screens: the timer above the
+         round button; phones: one row right above the deck (timer left, button right).
+         #timer is shown while the timer is on (timer_visibility); its room is kept while it is off,
+         so the button never moves. data-state: ready | running | paused, data-over="true" once a
+         TIMER has run past its timebox (T+ in amber).
+         Display and aria-label are set by updateTimer() in script.js. -->
+    <div class="dock">
+        <div id="timer" class="timer display_none" role="group" aria-label="Timer" data-state="ready" data-over="false">
+            <span id="timer_display" class="timer-display" role="timer" aria-label="Timer">T+00:00</span>
+            <div class="timer-actions">
+                <button type="button" id="timer_start" class="icon-btn timer-btn" onclick="timerStart()" aria-label="Start timer"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg></button>
+                <button type="button" id="timer_pause" class="icon-btn timer-btn" onclick="timerPause()" aria-label="Pause timer" hidden><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg></button>
+                <button type="button" id="timer_reset" class="icon-btn timer-btn" onclick="timerReset()" aria-label="Reset timer"><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg></button>
             </div>
         </div>
+        <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" disabled />
+    </div>
+
+    <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide) -->
+    <main class="table" id="table">
+        <div id="cbox"></div>
     </main>
 
     <div class="down-container" id="down-container">
 
         <div class="controls" id="ctl">
         </div>
+
+        <!-- B-75, touch phones: one dot per deck card below the carousel (the ring = the card in the middle,
+             filled = picked); a bar instead when the dots do not fit. Display only (no tap target),
+             built by the carousel code in script.js. -->
+        <div class="deck-dots" id="deck_dots" aria-hidden="true">
+            <div class="deck-dots-row"></div>
+            <div class="deck-bar"><span class="deck-bar-pick" hidden></span><span class="deck-bar-thumb"></span></div>
+        </div>
+        <!-- B-75, touch phones: what you picked ("tap to pick a card" until then; players only), set by
+             carouselFrame() in script.js (textContent) -->
+        <p class="deck-pick" id="deck_pick" aria-live="polite"></p>
+
+        <!-- B-69: more cards to the left / right (chevron bars, shown by updateDeckRoom(), a click scrolls
+             the deck: scrollDeckByBar() in script.js); keyboard users have the keys 1–9/0 and scrolling -->
+        <button type="button" class="deck-more deck-more-left" tabindex="-1" aria-label="Show previous cards"
+                onclick="scrollDeckByBar(-1)"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></button>
+        <button type="button" class="deck-more deck-more-right" tabindex="-1" aria-label="Show more cards"
+                onclick="scrollDeckByBar(1)"><svg class="i" aria-hidden="true"><use href="#i-next"/></svg></button>
+
+        <!-- B-68: devices with a mouse: keys 1–9 and 0 pick the first ten cards (keys under the cards) -->
+        <p class="deck-hint" aria-hidden="true">keys 1–9 pick a card</p>
 
         <footer class="survey-container" id="survey-container">
             <button id="survey-button" onclick="toggleSurvey()">Survey<i id="survey-arrow" class="arrow up"></i></button>
@@ -119,7 +186,7 @@
          large screens = side panel on the right, from below the header down to the bottom edge
          (non-modal, covers topic, table and deck); phones = bottom sheet over a backdrop (modal).
          Shown with the dialog's open attribute; inside, exactly one section is visible (hidden).
-         Openers carry data-open="<section>" (index, topic, cset, user_settings, feedback),
+         Openers carry data-open="<section>" (index, topic, cset, timer, user_settings, feedback),
          the close button data-close. Field ids are the same as before (cet_*, topic_txt, ...). -->
     <dialog id="menu" class="menu" aria-labelledby="menu_title">
         <header class="m-head">
@@ -135,6 +202,7 @@
             <section id="menu_index" class="menu_sec" data-sec="index" data-title="Menu" hidden>
                 <ul class="m-index">
                     <li><button type="button" data-open="topic"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span><b>Topic</b><small>What you are estimating</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="timer"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span><b>Timer</b><small>Stopwatch or timebox for everyone</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="user_settings"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span><b>You</b><small>Name, role, appearance</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
@@ -197,7 +265,7 @@
                             <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
                             <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span><svg class="i i-lock" aria-hidden="true"><use href="#i-lock"/></svg>Show</span></label>
                         </div>
-                        <p class="hint">Join the dark side: a pointer on the deck shows the average.</p>
+                        <p class="hint">Join the dark side: a pointer under the spread shows the average.</p>
                     </fieldset>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
@@ -208,7 +276,64 @@
                             <button type="button" id="cet_change_name" class="btn-box" onclick="updateTeamName()">Save</button>
                         </div>
                     </div>
+                    <!-- B-96: the tips in the column (#round_tip) for the whole team (show_tips, changeShowTips()) -->
+                    <fieldset class="f" id="cet_show_tips">
+                        <legend class="lab">Tips</legend>
+                        <div class="seg">
+                            <label><input type="radio" name="cet_show_tips" value="0" onchange="changeShowTips(this.value)"/><span>Off</span></label>
+                            <label><input type="radio" name="cet_show_tips" value="1" onchange="changeShowTips(this.value)"/><span>On</span></label>
+                        </div>
+                        <p class="hint">Short hints for everyone on what to do next (large screens).</p>
+                    </fieldset>
                 </div>
+            </section>
+
+            <!-- B-67: the timer for the whole board. Every change is saved right away (api/timer.php) and the
+                 fields follow the server state (updateTimerConfig() in script.js), also when someone else
+                 changes it. The timebox is only shown in Timer mode. -->
+            <section id="timer_box" class="menu_sec" data-sec="timer" data-title="Timer" hidden>
+                <fieldset class="f" id="tmr_visibility">
+                    <legend class="lab">Timer for everyone on the board</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="tmr_visibility" value="0" onchange="setTimerVisibility(this.value)"/><span>Off</span></label>
+                        <label><input type="radio" name="tmr_visibility" value="1" onchange="setTimerVisibility(this.value)"/><span>On</span></label>
+                    </div>
+                    <p class="hint">Shown to everyone at the round button, with play/pause and reset.</p>
+                </fieldset>
+                <fieldset class="f" id="tmr_mode">
+                    <legend class="lab">Mode</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="tmr_mode" value="STOPWATCH" onchange="setTimerMode(this.value)"/><span>Stopwatch</span></label>
+                        <label><input type="radio" name="tmr_mode" value="TIMER" onchange="setTimerMode(this.value)"/><span>Timer</span></label>
+                    </div>
+                    <p class="hint">Stopwatch counts up. Timer counts down to zero, then on as T+ in amber.</p>
+                </fieldset>
+                <fieldset class="f" id="tmr_timebox" hidden>
+                    <legend class="lab">Timebox (minutes)</legend>
+                    <div class="seg tmr-presets">
+                        <label><input type="radio" name="tmr_timebox" value="3" onchange="setTimerTimebox(this.value)"/><span>3</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="5" onchange="setTimerTimebox(this.value)"/><span>5</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="10" onchange="setTimerTimebox(this.value)"/><span>10</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="15" onchange="setTimerTimebox(this.value)"/><span>15</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="30" onchange="setTimerTimebox(this.value)"/><span>30</span></label>
+                        <label><input type="radio" name="tmr_timebox" value="60" onchange="setTimerTimebox(this.value)"/><span>60</span></label>
+                    </div>
+                    <div class="row tmr-other" data-set="false">
+                        <label for="tmr_other" class="lab">other:</label>
+                        <input class="field" id="tmr_other" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="1–240" aria-describedby="tmr_other_hint" onkeydown="timerOtherKeydown(event)" onblur="timerOtherBlur()" oninput="showTimerOtherError(false)"/>
+                        <span aria-hidden="true">min</span>
+                    </div>
+                    <p id="tmr_other_hint" class="sr-only">1 to 240 minutes.</p>
+                    <p id="tmr_other_error" class="hint tmr-other-error" role="status" hidden>Please enter 1 to 240 minutes.</p>
+                </fieldset>
+                <fieldset class="f" id="tmr_auto_restart">
+                    <legend class="lab">Auto-start on new round</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="tmr_auto_restart" value="0" onchange="setTimerAutoRestart(this.value)"/><span>Off</span></label>
+                        <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>On</span></label>
+                    </div>
+                    <p class="hint">New round and Cancel round reset it and start it.</p>
+                </fieldset>
             </section>
 
             <section id="user_settings_box" class="menu_sec" data-sec="user_settings" data-title="You" hidden>
@@ -296,7 +421,6 @@
     </dialog>
 
 </div>
-<img id="index" src="src/index.png" title="average result" alt="average result" />
 
 <!-- short messages, e.g. "Board link copied" (showToast in script.js) -->
 <div id="toast" class="toast" role="status" aria-live="polite"></div>

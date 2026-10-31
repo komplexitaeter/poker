@@ -59,6 +59,17 @@ $sql = $link->prepare( "update pok_teams_tbl t
 $sql->bind_param('s', $t);
 $sql->execute();
 
+/* B-67: with "auto-start on new round" a visible timer restarts at 0 (TIMER mode: at T-timebox) and runs.
+   Applies to NEW_ROUND and CANCEL_ROUND; otherwise the timer stays untouched. */
+$sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_start_time = current_timestamp
+                                        ,t.timer_pause_time = null
+                                   where t.id=?
+                                     and t.timer_visibility = 1
+                                     and t.timer_auto_restart = 1");
+$sql->bind_param('s', $t);
+$sql->execute();
+
 $sql = $link->prepare( "update pok_players_tbl p
                                      set card_key = null
                                    where p.team_id=?");
@@ -66,3 +77,6 @@ $sql->bind_param('s', $t);
 $sql->execute();
 
 $link->close();
+
+// B-81: all boards of the team reload (only reached after the team check and a successful write)
+notify_team($t);

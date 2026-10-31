@@ -31,7 +31,6 @@ async function aliceInOpenRound(page: Page, teamName: string) {
   await addPlayersViaApi(page, url, ['Bob']);
   await joinAsPlayer(page, url, 'Alice');
   await pickCard(page, 'three01');
-  await expect(page.locator('#ctl')).not.toHaveClass(/show_card_stats/);
 }
 
 const legacyClassCount = (page: Page) =>
@@ -54,7 +53,7 @@ async function expectLargeLayout(page: Page) {
   await expect(page.locator('#topic_btn')).toBeVisible();
   await expect(page.locator('#cset_btn')).toBeVisible();
   await expect(page.locator('#newroundbtn')).toBeVisible();
-  await expect(page.locator('#ctl')).toHaveCSS('height', '90px');
+  await expect(page.locator('#ctl img.on').first()).toHaveCSS('width', '45px');
   // B-49: two players on a large table: the cards use the room up to --card-max (150px)
   await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(150);
 }
@@ -76,9 +75,8 @@ test('small screen: burger menu holds the topnav, New Round stays in the dock (B
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
   const index = alice.locator('#menu_index');
   await expect(index).toBeVisible();
-  for (const name of ['Topic', 'Board settings', 'You', 'Feedback']) {
-    await expect(index.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible();
-  }
+  // B-67 (Andreas): timer before board, as in the header
+  await expect(index.locator('.m-index b')).toHaveText(['Topic', 'Timer', 'Board settings', 'You', 'Feedback']);
 
   // close it again
   await closeMenu(alice).click();
