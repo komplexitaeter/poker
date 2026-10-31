@@ -12,7 +12,7 @@
  * Only createElement / textContent / setAttribute; symbol ids and colour tokens only from the whitelists
  * below (never free text in href, class or style). No innerHTML here. */
 
-const CARDS_SPRITE = 'src/cards.svg?v=7'; // bump with the sprite (tools/cards/gen_symbols.py)
+const CARDS_SPRITE = 'src/cards.svg?v=8'; // bump with the sprite (tools/cards/gen_symbols.py)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /* the symbols of the sprite (tools/cards/README.md) */
@@ -71,8 +71,8 @@ const CARD_VALUE_NAMES = { '½': 'one half', '∞': 'infinity' };
 /* status cards on the table (no value shown yet) */
 const STATUS_CARDS = {
     done001: { key: 'done001', status: true, symbol: 's-check', color: 'vdone', caption: 'ready', aria: 'card played' },
-    prgrss1: { key: 'prgrss1', status: true, symbol: 's-thought', color: 'vthink', caption: 'thinking …', aria: 'thinking, no card yet' },
-    prgrss2: { key: 'prgrss2', status: true, symbol: 's-mask', color: 'vthink', caption: 'thinking …', aria: 'thinking, no card yet' },
+    prgrss1: { key: 'prgrss1', status: true, symbol: 's-thought', color: 'vthink', caption: 'thinking', aria: 'thinking, no card yet' },
+    prgrss2: { key: 'prgrss2', status: true, symbol: 's-mask', color: 'vthink', caption: 'thinking', aria: 'thinking, no card yet' },
 };
 
 /* the symbol id (or null: the value is shown as text) and the colour token of a card */
