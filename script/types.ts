@@ -35,6 +35,16 @@ export interface myJsonType {
     players_count: number;
     ready_players_count: number;
     players: Player[];
+    deck: Deck | null; // R3 (B-98): null without card_catalog.json on the server (fallback: cardset_flags)
+}
+
+/* R3 (B-98): the team's deck from card_catalog.json (dao.php, api/update_deck.php) */
+interface Deck {
+    id: string | null;  // variant id, e.g. 'fib-classic' (null: unknown variant)
+    group: string | null; // set group id, e.g. 'fib'
+    cards: string[];    // card keys of the group, in the group's order
+    controls: string[]; // control card keys (per team)
+    rev: number;        // deck_rev, changes with every change of the deck
 }
 
 interface Preset {

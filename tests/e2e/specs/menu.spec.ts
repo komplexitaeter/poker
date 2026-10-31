@@ -59,7 +59,7 @@ test('large screen: the side panel opens and closes by click and Escape, the foc
   await expect(alice.locator('#topic_box')).toBeHidden();
   await expect(csetBtn).toHaveAttribute('aria-expanded', 'true');
   await expect(topicBtn).toHaveAttribute('aria-expanded', 'false');
-  await expect(alice.locator('#cet_pre')).toBeFocused();
+  await expect(alice.locator('#deck_change')).toBeFocused();
   expect((await menu(alice).boundingBox())!.x).toBe(panel.x); // the panel does not move
   await expect.poll(() => measured).toContain('OPEN_SETUP_BOX');
 
@@ -172,7 +172,7 @@ test('phone: index, section, back, close; the backdrop closes the sheet (B-51)',
   await expect(alice.locator('#cset_box')).toBeVisible();
   await expect(index).toBeHidden();
   await expect(back).toBeVisible();
-  await expect(alice.locator('#cet_pre')).toBeFocused();
+  await expect(alice.locator('#deck_change')).toBeFocused();
 
   // back to the index, the focus on the entry we came from
   await back.click();
@@ -316,7 +316,7 @@ test('board settings: tabs Deck | Results | Team by click and arrow keys, card s
   await tab(alice, 'Results').click();
   await expectTab('Results');
   await expect(alice.locator('#cet_order_by')).toBeVisible();
-  await expect(alice.locator('#cet_pre')).toBeHidden();
+  await expect(alice.locator('#deck_change')).toBeHidden();
   await tab(alice, 'Team').click();
   await expectTab('Team');
   await expect(alice.locator('#cet_team_name')).toHaveValue('Menu Tabs');
@@ -339,13 +339,13 @@ test('board settings: tabs Deck | Results | Team by click and arrow keys, card s
   await expect(menu(alice)).not.toHaveAttribute('open');
   await alice.locator('#cset_btn').click();
   await expectTab('Deck');
-  await expect(alice.locator('#cet_pre')).toBeFocused();
+  await expect(alice.locator('#deck_change')).toBeFocused();
 
-  // deck: a card thumbnail switches the card off in the deck
-  const three = alice.locator('#_three01');
-  await expect(three).toHaveClass(/cs_c_on/);
+  // deck: a card of the set switches the card off in the deck (R3 F5)
+  const three = alice.locator('#deck_cards [data-card="three01"]');
+  await expect(three).toHaveAttribute('aria-pressed', 'true');
   await three.click();
-  await expect(three).not.toHaveClass(/cs_c_on/);
+  await expect(three).toHaveAttribute('aria-pressed', 'false');
   await expect(deckCard(alice, 'three01')).toHaveCount(0);
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 });

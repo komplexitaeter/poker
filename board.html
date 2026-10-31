@@ -8,14 +8,15 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=3" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=1.64" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.65" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.32" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.33" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.2" type="text/javascript"></script>
-    <script defer src="script/deck.js?v=1.1" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.56" type="text/javascript"></script>
+    <script defer src="script/deck.js?v=1.2" type="text/javascript"></script>
+    <script defer src="script/script_deck.js?v=1.1" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.57" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -238,16 +239,8 @@
                     <button type="button" role="tab" id="cset_tab_team" data-tab="team" aria-selected="false" aria-controls="cset_panel_team" tabindex="-1">Team</button>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
-                    <div class="f">
-                        <label for="cet_pre" class="lab">Card set</label>
-                        <select id="cet_pre" onchange="preSet();" class="field">
-                            <option value="0" selected>Select a preset ...</option>
-                        </select>
-                    </div>
-                    <div class="f">
-                        <span class="lab" id="cards_thumbs_lab">Cards in the deck (tap to switch off or on)</span>
-                        <div id="cards_thumbs" role="group" aria-labelledby="cards_thumbs_lab"></div>
-                    </div>
+                    <!-- R3 F5 (B-98): the deck menu, built by script_deck.js (overview / list of card sets) -->
+                    <div id="deck_menu" class="dm"></div>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
                     <fieldset class="f" id="cet_anonymous">

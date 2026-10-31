@@ -1,19 +1,17 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCards, pickCard, tableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCards, pickCard, tableCard, setTeamDeck } from './helpers';
 
 /* B-99 (R3, F2/F3): cards are rendered (script/cards.js, symbols from src/cards.svg) instead of images. */
 
-const flags = (on: number[]) => Array.from({ length: 46 }, (_, i) => (on.includes(i) ? '1' : '0')).join('');
-const FIB_WITH_CONTROLS = [0, 1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 24, 43]; // Fibonacci + ☕ ?
-const PICTURES = [15, 16, 17, 18, 32, 37, 24];                               // traffic lights, a face, stars, ☕
+const FIB_WITH_CONTROLS = { deck: 'fib-classic', controls: ['break01', 'qstmrk1'], length: 14 }; // Fibonacci + ☕ ?
+const PICTURES = { deck: 'traffic', controls: ['break01'], length: 4 };                          // traffic lights, ☕
 
 function teamParam(url: string): string {
   return encodeURIComponent(new URL(url).searchParams.get('t')!);
 }
 
-async function setDeck(page: Page, url: string, indexes: number[]): Promise<void> {
-  const res = await page.request.post(`/api/update_cardset.php?t=${teamParam(url)}&cardset_flags=${flags(indexes)}`);
-  expect(res.ok()).toBeTruthy();
+async function setDeck(page: Page, url: string, deck: { deck: string, controls: string[] }): Promise<void> {
+  await setTeamDeck(page, url, deck.deck, null, deck.controls);
 }
 
 async function setCard(page: Page, url: string, id: string, key: string): Promise<void> {

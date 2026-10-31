@@ -8,8 +8,8 @@ let gColorMode = "dark";
 let gScreenWidth = null;
 let gDisplayType = null;
 let gTopic = null;
-let gCardsConfig = null;   // cards.json (v1) as loaded; only the deck tab of the menu still uses it
-let gCardsPresets = null;
+let gCardsConfig = null;   // cards.json (v1) as loaded; only for the fallback deck (cardset_flags)
+let gCatalogV2 = null;     // card_catalog.json (v2, B-98): groups, variants, control cards (deck menu, script_deck.js)
 // B-99 (F1): the card model (script/deck.js). The catalog: all cards in deck order; the deck: the team's cards
 let gCardCatalog = [];
 let gCardByKey = new Map();
@@ -331,21 +331,12 @@ function setDeck(deck) {
     if (textsChanged) refreshTableFaces();
 }
 
-/* the deck tab of the menu (until R3 F5): a thumbnail per card, marked when the card is in the deck */
-function updateDeckThumbs() {
-    gCardCatalog.forEach(({ card }) => {
-        const thumb = document.getElementById('_' + card.key);
-        if (thumb !== null) thumb.classList.toggle('cs_c_on', deckHas(card.key));
-    });
-}
-
-function setCSet(cSet) {
-    let str = String(cSet || '').padEnd(gCardsConfig.length, '0');
-
-    localStorage.setItem('cSet', str);
-
-    setDeck(deckFromLegacy(gCardCatalog, str));
-    updateDeckThumbs();
+/* R3 F4: the team's deck from dao ("deck", card data from card_catalog.json); without it (catalog missing or
+ * broken on the server) the old way from cardset_flags and cards.json (adapter in deck.js) */
+function setTeamDeck(json) {
+    const deck = deckFromServer(json.deck, gCardByKey)
+        || deckFromLegacy(gCardCatalog, String(json.cardset_flags || '').padEnd(gCardsConfig.length, '0'));
+    setDeck(deck);
     updateDeckKeys();
 }
 
@@ -1101,7 +1092,8 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     }
 
-    setCSet(myJson.cardset_flags);
+    setTeamDeck(myJson);
+    updateDeckMenu(myJson); // R3 F5 (script_deck.js)
 
     if (!isOnLoad) {
         if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
@@ -1894,13 +1886,9 @@ function updateAnonymityConfig(anonymousRequestToggle) {
 
 
 function loadCardConfig() {
-    /* - load card config from cards.json to create all the html needed
-       - to add new cards to the config, put them at the end of the json file
-       - increment the index attribute so that all cards get a unique int index,
-         starting by 0
-       - only change index values of existing cards, if you really know what you are doing!!!
-       - to chang the order of the cards just use the attribute sort_order
-       - sort_order does not have to be unique, but it will help to maintain consistency
+    /* - cards.json (v1): the old card list, only for the fallback deck from cardset_flags (deck.js, adapter)
+       - card_catalog.json (v2, B-98): groups, variants, control cards and the card texts; the deck of the
+         team comes from dao ("deck") and refers to these cards (R3 F4)
      */
 
     const url = "./cards.json?v=3"; // bump when cards.json changes (Safari keeps it cached)
@@ -1908,41 +1896,20 @@ function loadCardConfig() {
     gCardsConfig = jsonCardsConf.cards;
     gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
 
-    gCardsPresets = jsonCardsConf.presets;
-
     // B-99 (F1): the card model (deck.js); the tray shows the team's deck once the board state is there.
-    // F2: values, headings, descriptions, groups and styles from card_catalog.json (v2); without it the
-    // cards still show (value as text, no texts)
+    // F2/F4: values, headings, descriptions, groups and styles from card_catalog.json (v2); without it the
+    // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
         catalogV2 = loadJSON('./card_catalog.json?v=2'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
+    gCatalogV2 = catalogV2 && typeof catalogV2 === 'object' ? catalogV2 : null;
     gCardCatalog = catalogFromLegacy(gCardsConfig, catalogV2Index(catalogV2));
+    // the catalog v2 cards win; v1 cards only for keys v2 does not know
     gCardByKey = new Map(gCardCatalog.map(entry => [entry.card.key, entry.card]));
-
-    let cardsThumbs = document.getElementById("cards_thumbs");
-
-    gCardsConfig.forEach(card => {
-        let thumbElement = document.createElement("img");
-        thumbElement.id = "_" + card.card_key;
-        thumbElement.src = "src/c_" + card.card_key + ".png";
-        thumbElement.setAttribute("data-card_key", card.card_key);
-        thumbElement.classList.add("cs_c");
-        thumbElement.alt = card.description;
-        thumbElement.addEventListener("click", toggleCSet);
-        cardsThumbs.appendChild(thumbElement);
-    });
-
-    let cetPre = document.getElementById("cet_pre");
-
-    gCardsPresets.forEach(preSet => {
-        let option = document.createElement("option");
-        option.value = preSet.id.toString();
-        option.textContent = preSet.description;
-        cetPre.appendChild(option);
-    });
+    catalogV2Cards(catalogV2).forEach((card, key) => gCardByKey.set(key, card));
 }
 
 

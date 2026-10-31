@@ -5,7 +5,7 @@
  * POST, parameters in the query: t, deck, cards.
  * - 400: unknown variant, a card that is not in the variant's group, no card at all, malformed list.
  * - If the deck changes while at least one card is down, a new round starts in the same request (snapshot with the
- *   old deck, then all cards up); the client asks before. Unchanged deck: no new round, no deck_rev change.
+ *   old deck, then all cards up); the client shows a hint before. Unchanged deck: no new round, no deck_rev change.
  * - Two parallel changes run one after the other (row lock), the second one never starts a second round.
  * Answer (JSON): {deck: {id, group, cards, controls, rev}, changed: bool, new_round: bool}
  */
