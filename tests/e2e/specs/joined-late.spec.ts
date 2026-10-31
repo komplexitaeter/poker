@@ -46,13 +46,20 @@ test('joining or becoming a player after the reveal gives late001, the round sta
   // a new player joins after the reveal
   const dave = sid('D');
   expect((await post(page, 'name.php', { t, id: dave, name: 'Dave', type: 'player' })).ok()).toBeTruthy();
-  // an observer joins (no card) and then becomes a player
+  // an observer joins after the reveal: late001 as well, but no player and no vote
   const erin = sid('E');
   expect((await post(page, 'name.php', { t, id: erin, name: 'Erin', type: 'observer' })).ok()).toBeTruthy();
-  expect(sql(`select ifnull(card_key, 'NULL') from pok_players_tbl where id = '${erin}' and team_id = '${t}'`)).toBe('NULL');
+  expect(sql(`select card_key from pok_players_tbl where id = '${erin}' and team_id = '${t}'`)).toBe('late001');
+  let state = await dao(page, t, erin);
+  expect(state.player_type).toBe('OBSERVER');
+  expect(state.players_count).toBe(3);
+  expect(state.ready_players_count).toBe(3);
+  expect(state.players.map((p: { name: string }) => p.name)).toEqual(['Bob', 'Carol', 'Dave']);
+  // ... then becomes a player: keeps late001, the round stays revealed
   expect((await post(page, 'name.php', { t, id: erin, name: 'Erin', type: 'player' })).ok()).toBeTruthy();
+  expect(sql(`select card_key from pok_players_tbl where id = '${erin}' and team_id = '${t}'`)).toBe('late001');
 
-  let state = await dao(page, t, dave);
+  state = await dao(page, t, dave);
   expect(state.all_players_ready).toBe(true);
   expect(state.selected_card_key).toBe('late001');
   expect(state.ready_players_count).toBe(4);

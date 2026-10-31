@@ -76,10 +76,11 @@ else {
     $result = $sql->get_result();
     $obj = $result->fetch_object();
 
-    /* B-102: same condition for a new user: joining as a player while every PLAYER has a card down (cards revealed)
-       gives the system card LATE_CARD_KEY instead of break01. Observers get no card (before B-102 they got break01
-       too, which only blurred the statistics); becoming a player later sets the card via the branch above. */
-    if ($obj->all_players_ready == 0 || $type !== 'PLAYER') {
+    /* B-102: same condition for a new user (player or observer, decision Andreas 2026-10-31): joining while every
+       PLAYER has a card down (cards revealed) gives the system card LATE_CARD_KEY instead of break01. An observer
+       keeps it when becoming a player later (the branch above keeps a card already down). Cards of observers never
+       count: getDao(), the round snapshot type and stats only look at PLAYER rows. */
+    if ($obj->all_players_ready == 0) {
         $sql = $link->prepare( "INSERT INTO pok_players_tbl (id, team_id, name, player_type) VALUES (?, ?, ?, ?)");
         $sql->bind_param('ssss', $id, $t, $name, $type);
     } else {

@@ -439,10 +439,10 @@ function store_team_deck($link, string $t, array $deck, array $catalog, bool $se
     $sql->execute();
 }
 
-/* B-98 S2: true if at least one player of the team has a card down */
+/* B-98 S2: true if at least one player of the team has a card down (B-102: cards of observers, e.g. late001, do not count) */
 function team_has_cards_down($link, string $t): bool
 {
-    $sql = $link->prepare("select count(card_key) cnt from pok_players_tbl where team_id = ?");
+    $sql = $link->prepare("select count(card_key) cnt from pok_players_tbl where team_id = ? and player_type = 'PLAYER'");
     $sql->bind_param('s', $t);
     $sql->execute();
     $row = $sql->get_result()->fetch_object();
