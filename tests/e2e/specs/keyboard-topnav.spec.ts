@@ -47,7 +47,7 @@ test('keyboard: topic box opens with Enter, Escape closes it, timer panel by key
   await expect(alice.locator('#overlay_delete_user')).not.toHaveClass(/hidden/);
   // a key does not pick a card behind the overlay (B-68)
   const pickedBefore = await selectedDeckCards(alice).count();
-  await alice.keyboard.press('1');
+  await alice.keyboard.press('KeyQ');
   await expect(selectedDeckCards(alice)).toHaveCount(pickedBefore);
   await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
   await expect(alice.locator('#user_settings_box')).toBeHidden();

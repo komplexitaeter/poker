@@ -8,15 +8,15 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=5" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=1.71" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.72" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.33" type="text/javascript"></script>
-    <script defer src="script/cards.js?v=1.8" type="text/javascript"></script>
+    <script defer src="script/cards.js?v=1.9" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.2" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.4" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.65" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.67" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -172,14 +172,15 @@
         <p class="deck-pick" id="deck_pick" aria-live="polite"></p>
 
         <!-- B-69: more cards to the left / right (chevron bars, shown by updateDeckRoom(), a click scrolls
-             the deck: scrollDeckByBar() in script.js); keyboard users have the keys 1–9/0 and scrolling -->
+             the deck: scrollDeckByBar() in script.js); keyboard users have the letter keys and scrolling -->
         <button type="button" class="deck-more deck-more-left" tabindex="-1" aria-label="Show previous cards"
                 onclick="scrollDeckByBar(-1)"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></button>
         <button type="button" class="deck-more deck-more-right" tabindex="-1" aria-label="Show more cards"
                 onclick="scrollDeckByBar(1)"><svg class="i" aria-hidden="true"><use href="#i-next"/></svg></button>
 
-        <!-- B-68: devices with a mouse: keys 1–9 and 0 pick the first ten cards (keys under the cards) -->
-        <p class="deck-hint" aria-hidden="true">keys 1–9 pick a card</p>
+        <!-- B-68, F8: devices with a mouse: the letter rows Q–P, A–L, Y–M pick the cards (keys under the cards;
+             text set by updateDeckKeys() in script.js) -->
+        <p class="deck-hint" aria-hidden="true">keys Q–P pick a card</p>
 
         <footer class="survey-container" id="survey-container">
             <button id="survey-button" onclick="toggleSurvey()">Survey<i id="survey-arrow" class="arrow up"></i></button>

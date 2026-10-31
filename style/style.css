@@ -1827,6 +1827,27 @@ div#cbox {
     #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
 }
 
+/* B-99 F8 (Andreas): control cards on the table show heading and description in every set. In decks without or with
+ * one-word texts (none, word) the symbol gives way to the description, which is cut to a few lines on small cards
+ * (like J.U.D.G.E.: whole lines, never a cut line) */
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl.has-info .mot { flex: 1 1 0; }
+
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl.has-info .ttl { margin-block: calc(var(--card-w) * 0.03) 0; }
+
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl .txt {
+    flex: none;
+    margin-block: calc(var(--card-w) * 0.02) 0;
+    -webkit-line-clamp: 4;
+}
+
+@container (max-width: 109.98px) {
+    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl .txt { -webkit-line-clamp: 3; }
+}
+
+@container (max-width: 79.98px) {
+    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl .txt { -webkit-line-clamp: 2; }
+}
+
 /* B-99 F7 (Andreas): a card with exactly one text (only a heading, only a description like the emotions, a status
  * caption like "thinking …") sets it like a heading: mono, bold (one-text, cardFace() in cards.js) */
 .pc.one-text :is(.ttl, .txt, .stl) {
@@ -1924,6 +1945,19 @@ div#cbox {
 
 /* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read */
 .spread-value .sm-draw { height: 1.7em; }
+
+/* B-99 F8 (Andreas): sets in the style "inverted" (J.U.D.G.E.): a mini square in the card colour with the white value
+ * in a black outline, like on the card (cardSmall() in cards.js). As high as a capital letter and a half less its
+ * hatched rim, its middle on the middle of the digits like .sm-draw; the margins keep the line as before. */
+.mini.sm-inv {
+    width: auto;
+    height: 1.35em;
+    aspect-ratio: 1;
+    margin-block: -0.3em -0.1em;
+    vertical-align: -0.33em;
+}
+
+.spread-value .sm-inv { height: 1.5em; }
 
 /* badge (traffic lights, emotions, stars): the card tinted, the heading as a pill with a coloured rim */
 .pc.sty-badge,
@@ -2402,12 +2436,24 @@ div#cbox {
     line-height: 20px;
     color: var(--muted);
     pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+}
+
+/* B-99 F8 (Andreas): the block in the middle above the deck; in it the chip on the left, the text on the right, left-aligned:
+ * a second line starts below the first one's start (not centered). display: flex in .deck-info above, so [hidden] and
+ * the phone rule (display: none) still win */
+
+.deck-info-text {
+    min-width: 0;
+    text-align: left;
 }
 
 .deck-info[hidden] { display: none; }
 
 .deck-info-value {
     display: inline-block;
+    flex: none;
     margin-right: 6px;
     padding: 0 6px;
     border-left: 4px solid var(--a, var(--line-strong));
@@ -2438,8 +2484,8 @@ div#cbox {
     }
 }
 
-/* keys 1–9 and 0 pick a card (pickCardByKey() in script.js): the key small below each of the first
- * ten cards, the hint on the right in the same row; only with a mouse and a keyboard at hand,
+/* the letter keys pick a card (B-99 F8: Q–P, A–L, Y–M by physical position, pickCardByKey() in script.js): the
+ * key small below each of the first 26 cards, the hint on the right in the same row; only with a mouse and a keyboard at hand,
  * players only. The hint never takes a row of its own: when it does not fit next to the keys or
  * the deck scrolls, it is hidden (hint-off, set by updateDeckRoom() in script.js), so the tray
  * keeps its height. */
@@ -2675,7 +2721,17 @@ div#cbox {
         text-overflow: ellipsis;
     }
 
-    .deck-pick::before { content: "> "; }
+    /* B-99 F8: the line's text as one block in the middle, left-aligned inside (like the info line) */
+    .deck-pick-body {
+        display: inline-block;
+        max-width: 100%;
+        vertical-align: top;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .deck-pick-body::before { content: "> "; }
 
     .deck-pick b { font-weight: 400; color: var(--text); }
 
@@ -2907,7 +2963,7 @@ div#cbox {
  * the pointer below them */
 .spread-chart {
     position: relative; /* anchor of the pointer */
-    padding-bottom: 12px;
+    padding-bottom: 9px; /* B-99 F8: the pointer (about 9.5 px high) close below the labels (was 12px) */
 }
 
 .spread-bars {
@@ -3118,7 +3174,7 @@ div#cbox {
 
     .spread-head { margin-bottom: var(--space-2); }
 
-    .spread-chart { padding-bottom: 16px; }
+    .spread-chart { padding-bottom: 12px; } /* B-99 F8: the pointer close below the labels (was 16px) */
 }
 
 /* ---------- Overlays: QR code, privacy links ---------- */

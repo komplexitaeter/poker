@@ -101,19 +101,27 @@ function cardLook(card) {
     };
 }
 
-/* B-99 (F6): 'drawing' (a mini symbol) or 'text' (the value as mono text) for small places */
+/* B-99 (F6): 'drawing' (a mini symbol) or 'text' (the value as mono text) for small places.
+ * F8 (Andreas): a card of a set in the style "inverted" (J.U.D.G.E.) with a symbol is 'inverted': a mini square
+ * in the card colour with the white value in a black outline, as on the card. The rule follows the set's style,
+ * not a list of cards; control cards (always plain) keep their kind. */
 function cardSmallKind(card) {
+    if (card.status !== true && !card.controlCard && card.style === 'inverted' && cardLook(card).symbol !== null) {
+        return 'inverted';
+    }
     const symbol = card.status === true ? card.symbol : cardLook(card).symbol;
     return symbol !== null && CARD_SMALL_DRAWING.has(symbol) ? 'drawing' : 'text';
 }
 
-/* the value of a card for small places: span.sm-text (mono text) or span.mini with the symbol (named: plus its
+/* the value of a card for small places: span.sm-text (mono text), span.mini.sm-draw with the symbol or
+ * span.mini.sm-inv with the inverted square (F8; named: plus its
  * name for screen readers and as tooltip; not where its heading follows anyway). A text that is a system emoji
  * (a legacy card without a library symbol) never shows: its name instead. */
 function cardSmall(card, named = true) {
-    if (cardSmallKind(card) === 'drawing') {
+    const kind = cardSmallKind(card);
+    if (kind === 'drawing' || kind === 'inverted') {
         const face = cardFace(card, 'mini');
-        face.classList.add('sm-draw');
+        face.classList.add(kind === 'inverted' ? 'sm-inv' : 'sm-draw');
         if (named) {
             face.appendChild(textElement('span', 'sr-only', cardName(card)));
             face.title = cardName(card);
