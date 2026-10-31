@@ -1,5 +1,5 @@
 import { test, expect, Page, Browser } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, addPlayersViaApi, deckCard } from './helpers';
 
 /**
  * B-70: below the round status line a short tip tells the current user what to do now (large
@@ -97,7 +97,7 @@ const BREAK = 'Maybe take a short break.';
 test('tip after the reveal: talk about traffic lights, also in a mixed choice; control cards stay neutral (B-79)', async ({ browser }) => {
   const { alice, vote } = await teamWithDeck(browser, 'Tips Traffic', 'Traffic');
   const tip = alice.locator('#round_tip');
-  await expect(alice.locator('#ctl .ctl[data-card="green01"]')).toBeVisible(); // the Traffic Lights deck
+  await expect(deckCard(alice, 'green01')).toBeVisible(); // the Traffic Lights deck
 
   await vote(['green01', 'red0001', 'yellow1']);
   await expect(tip).toHaveText(TALK);
@@ -128,7 +128,7 @@ test('tip after the reveal: talk about traffic lights, also in a mixed choice; c
 
 test('tip after the reveal: talk about emotions (B-79)', async ({ browser }) => {
   const { alice, vote } = await teamWithDeck(browser, 'Tips Emotions', 'Emoticons');
-  await expect(alice.locator('#ctl .ctl[data-card="satis01"]')).toBeVisible(); // the Emotions deck
+  await expect(deckCard(alice, 'satis01')).toBeVisible(); // the Emotions deck
   await vote(['satis01', 'angry01', 'qstmrk1']);
   await expect(alice.locator('#round_tip')).toHaveText('Talk about the cards you chose \u2013 Cleo (?) first.');
   await vote(['enthu01', 'enthu01', 'enthu01']);

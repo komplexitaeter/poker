@@ -91,6 +91,11 @@ export function deckCards(page: Page): Locator {
   return page.locator('#ctl .ctl');
 }
 
+/** The picked card(s) in the player's own deck. */
+export function selectedDeckCards(page: Page): Locator {
+  return page.locator('#ctl .ctl.selected');
+}
+
 /** Picks a card from the player's own deck. */
 export async function pickCard(page: Page, cardKey: string): Promise<void> {
   await deckCard(page, cardKey).click();

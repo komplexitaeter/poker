@@ -1,5 +1,5 @@
 import { test, expect, Page, WebSocketRoute } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, teamWithTwoPlayers, pickCard, expectTableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, teamWithTwoPlayers, pickCard, expectTableCard, selectedDeckCards } from './helpers';
 
 /**
  * B-81: the connection to poker-msg only receives ('pull' after a change of the team, 'hb' every 30 s); the board
@@ -212,9 +212,9 @@ test('while the hint is shown, keys do not pick cards and Tab stays out of the b
   await alice.keyboard.press('1');
   await alice.keyboard.press('Tab');
   expect(await alice.evaluate('document.activeElement.closest(".container") === null')).toBe(true);
-  await expect(alice.locator('#ctl .ctl.selected')).toHaveCount(0);
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
 
   proxy.refuse = false;
   await expect(hint).toBeHidden();
-  await expect(alice.locator('#ctl .ctl.selected')).toHaveCount(0);
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
 });

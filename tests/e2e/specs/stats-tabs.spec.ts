@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, gotoStats } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, gotoStats, deckCard } from './helpers';
 
 /**
  * B-64: stats.php with tabs. The live tab (default) lists the active tables by team name and must never
@@ -24,7 +24,7 @@ test('live tab shows a table with a finished round by name, no tab contains the 
 
   await pickCard(page, 'three01');
   await page.locator('#newroundbtn').click();
-  await expect(page.locator('#ctl .ctl[data-card="three01"]')).not.toHaveClass(/selected/);
+  await expect(deckCard(page, 'three01')).not.toHaveClass(/selected/);
   await admin.reload();
   await expect(row).toHaveCount(1);
   await expect(row.locator('td.last-round')).toHaveText(/^\d\d:\d\d$/);
@@ -60,7 +60,7 @@ test('"Rounds per day" counts a new round for today (live and usage tab)', async
   await joinAsPlayer(page, url, 'Rob');
   await pickCard(page, 'three01');
   await page.locator('#newroundbtn').click();
-  await expect(page.locator('#ctl .ctl[data-card="three01"]')).not.toHaveClass(/selected/);
+  await expect(deckCard(page, 'three01')).not.toHaveClass(/selected/);
 
   const admin = await page.context().newPage();
   await gotoStats(admin, '/stats.php');

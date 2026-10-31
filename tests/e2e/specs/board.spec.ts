@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  newPlayer, createTeam, joinAsPlayer, teamWithTwoPlayers, tableCard, expectTableCard, pickCard,
-} from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, teamWithTwoPlayers, tableCard, expectTableCard, pickCard, deckCard, deckCards, selectedDeckCards } from './helpers';
 
 test('create a team from the start page', async ({ browser }) => {
   const page = await newPlayer(browser);
@@ -83,16 +81,16 @@ test('a new round resets all cards', async ({ browser }) => {
     await expectTableCard(page, 'Alice', 'prgrss1');
     await expectTableCard(page, 'Bob', 'prgrss1');
   }
-  await expect(alice.locator('#ctl .ctl[data-card="three01"]')).not.toHaveClass(/selected/);
-  await expect(bob.locator('#ctl .ctl[data-card="five001"]')).not.toHaveClass(/selected/);
+  await expect(deckCard(alice, 'three01')).not.toHaveClass(/selected/);
+  await expect(deckCard(bob, 'five001')).not.toHaveClass(/selected/);
 });
 
 test('changing the deck of cards applies to all players', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Team');
   // new teams start with the Fibonacci preset
   for (const page of [alice, bob]) {
-    await expect(page.locator('#ctl .ctl[data-card="three01"]')).toHaveCount(1);
-    await expect(page.locator('#ctl .ctl[data-card="green01"]')).toHaveCount(0);
+    await expect(deckCard(page, 'three01')).toHaveCount(1);
+    await expect(deckCard(page, 'green01')).toHaveCount(0);
   }
 
   await alice.locator('#cset_btn').click();
@@ -100,17 +98,55 @@ test('changing the deck of cards applies to all players', async ({ browser }) =>
 
   for (const page of [alice, bob]) {
     for (const card of ['green01', 'yellow1', 'red0001']) {
-      await expect(page.locator(`#ctl .ctl[data-card="${card}"]`)).toHaveCount(1);
+      await expect(deckCard(page, card)).toHaveCount(1);
     }
-    await expect(page.locator('#ctl .ctl[data-card="three01"]')).toHaveCount(0);
+    await expect(deckCard(page, 'three01')).toHaveCount(0);
     // B-99: the tray holds only the cards of the deck, in deck order (the preset keeps the control
     // cards); the spread follows the deck
     const deck = ['green01', 'yellow1', 'red0001', 'break01', 'qstmrk1', 'xclam01'];
-    await expect.poll(() => page.locator('#ctl .ctl').evaluateAll(cards =>
+    await expect.poll(() => deckCards(page).evaluateAll(cards =>
       cards.map(c => c.getAttribute('data-card')))).toEqual(deck);
     await expect.poll(() => page.locator('#spread_bars .spread-col').evaluateAll(cols =>
       cols.map(c => c.getAttribute('data-card')))).toEqual(deck);
   }
+});
+
+test('a placed card that is no longer in the deck stays on the table (B-99)', async ({ browser }) => {
+  // the average pointer is on, so the reveal also runs the average with a card outside the deck
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Gone Card Team');
+  const t = new URL(url).searchParams.get('t')!;
+  expect((await alice.request.post(`/api/update_show_avg.php?t=${encodeURIComponent(t)}&show_avg=1`)).ok()).toBeTruthy();
+  await joinAsPlayer(alice, url, 'Alice');
+  const bob = await newPlayer(browser);
+  await joinAsPlayer(bob, url, 'Bob');
+  const errors: string[] = [];
+  for (const page of [alice, bob]) page.on('pageerror', e => errors.push(e.message));
+
+  await pickCard(alice, 'three01');
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#cet_pre').selectOption({ label: 'Traffic Lights' });
+
+  // today a deck change does not start a new round (that comes with S2): the card stays placed,
+  // but the tray no longer holds it; the table shows the status card
+  for (const page of [alice, bob]) {
+    await expect(deckCard(page, 'green01')).toHaveCount(1);
+    await expect(deckCard(page, 'three01')).toHaveCount(0);
+    await expectTableCard(page, 'Alice', 'done001');
+  }
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
+
+  // Bob picks the last card: revealed, Alice's card shows its value, the spread follows the deck
+  await pickCard(bob, 'green01');
+  for (const page of [alice, bob]) {
+    await expectTableCard(page, 'Alice', 'three01');
+    await expectTableCard(page, 'Bob', 'green01');
+    await expect(page.locator('#round_status')).toHaveText('revealed');
+    await expect(page.locator('#spread')).toBeVisible();
+    await expect(page.locator('#spread_bars [data-card="green01"] .spread-count')).toHaveText('1');
+    await expect(page.locator('#spread_bars [data-card="three01"]')).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
 });
 
 test('idle boards stay connected and keep receiving updates (heartbeat)', async ({ browser }) => {

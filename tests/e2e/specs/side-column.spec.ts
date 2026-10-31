@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer, deckCard, deckCards } from './helpers';
 
 /**
  * B-68: from 800px a column is always there on the right, as wide as the menu panel: where the round
@@ -54,7 +54,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   const LIFT = 20;
   await expect.poll(async () => Math.abs(await btnBottom() + LIFT - await trayBottom())).toBeLessThan(1.5);
   // compact: hardly any room above the cards
-  const cardTop = (await box(alice, '#ctl .ctl >> nth=0')).y;
+  const cardTop = (await deckCards(alice).first().boundingBox())!.y;
   expect(cardTop - (await box(alice, '#down-container')).y).toBeLessThan(16);
 
   // the topic is in the column
@@ -68,7 +68,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   // voting: no spread yet, but its room is kept; the round button keeps its place when the timer
   // goes on and off. Alice picks the 6th card (5) with the key 6.
   await alice.keyboard.press('6');
-  await expect(alice.locator('#ctl .ctl[data-card="five001"]')).toHaveClass(/selected/);
+  await expect(deckCard(alice, 'five001')).toHaveClass(/selected/);
   await expect(status).toHaveText('voting · 1/2 voted');
   await expect(alice.locator('#spread')).toBeHidden();
   const spreadBefore = await box(alice, '#spread');
@@ -125,7 +125,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   // a key in the menu does not pick a card
   await alice.locator('#cset_btn').click();
   await alice.keyboard.press('1');
-  await expect(alice.locator('#ctl .ctl[data-card="five001"]')).toHaveClass(/selected/);
+  await expect(deckCard(alice, 'five001')).toHaveClass(/selected/);
   await alice.keyboard.press('Escape');
 
   // still the column at 820px, narrower (300-380px); all 15 cards fit without scrolling (they
@@ -186,7 +186,7 @@ test('deck tray: the hint never takes a row of its own, scrolling only as a last
   const t = new URL(url).searchParams.get('t')!;
   setDeck(t, [0, 2, 3, 4, 6, 9, 10, 11, 12, 13]); // 10 cards: the 10th key lies far right
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#ctl .ctl')).toHaveCount(10);
+  await expect(deckCards(alice)).toHaveCount(10);
   const hint = alice.locator('.deck-hint');
   const trayRoom = async () => (await box(alice, '#down-container')).height - (await box(alice, '#ctl')).height;
 
@@ -206,9 +206,9 @@ test('deck tray: the hint never takes a row of its own, scrolling only as a last
   // a very large deck: the cards shrink to their minimum, only then the deck scrolls
   setDeck(t, Array.from({ length: 46 }, (_, i) => i));
   await alice.reload();
-  await expect(alice.locator('#ctl .ctl')).toHaveCount(46);
+  await expect(deckCards(alice)).toHaveCount(46);
   await expect.poll(() => alice.locator('#ctl').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
-  const w = (await box(alice, '#ctl .ctl >> nth=0')).width;
+  const w = (await deckCards(alice).first().boundingBox())!.width;
   expect(w).toBeGreaterThanOrEqual(25.5);
   expect(w).toBeLessThan(30);
   await expect(hint).toBeHidden();

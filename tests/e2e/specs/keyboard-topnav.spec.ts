@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, selectedDeckCards } from './helpers';
 
 /**
  * B-48: the header is made of real buttons and can be used with the keyboard.
@@ -46,9 +46,9 @@ test('keyboard: topic box opens with Enter, Escape closes it, timer panel by key
   await alice.locator('#delete_user_btn').click();
   await expect(alice.locator('#overlay_delete_user')).not.toHaveClass(/hidden/);
   // a key does not pick a card behind the overlay (B-68)
-  const pickedBefore = await alice.locator('#ctl .ctl.selected').count();
+  const pickedBefore = await selectedDeckCards(alice).count();
   await alice.keyboard.press('1');
-  await expect(alice.locator('#ctl .ctl.selected')).toHaveCount(pickedBefore);
+  await expect(selectedDeckCards(alice)).toHaveCount(pickedBefore);
   await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
   await expect(alice.locator('#user_settings_box')).toBeHidden();
   await alice.locator('#overlay_delete_user').getByRole('button', { name: 'Cancel' }).click();
