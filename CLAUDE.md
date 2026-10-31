@@ -97,10 +97,10 @@ April 2026 eingestellt – nicht mehr verwenden.
 
 | Server | Branch | Zweck |
 |---|---|---|
-| Release-Server | `release` | manueller Test vor dem Livegang |
+| Release-Server (Staging, `poker-staging.komplexitaeter.de`) | `release`; während R3 `rollout-3` | manueller Test vor dem Livegang |
 | Live-Server | `master` | Produktion |
 
-- Code auf dem Live-Server: `/home/ubuntu/poker/public_html/`.
+- Code auf dem Live-Server: `/home/ubuntu/poker/public_html/`, auf Staging: `/home/ubuntu/poker-staging.komplexitaeter.de/public_html/`.
 - Deployment: manuell per `git pull --ff-only` auf dem jeweiligen Server (`git config pull.ff only` auf beiden Servern).
   `config.php` ist nicht im Repo und wird von `git pull` nicht angefasst. Es gibt keine Build- oder Migrationsschritte;
   Schemaänderungen werden von Hand eingespielt.
