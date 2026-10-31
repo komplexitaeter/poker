@@ -1311,6 +1311,25 @@ fast alle Decks sind **Fibonacci-Varianten** (Unterschiede: 0, ½, 20/40/100, �
 **plus Kontrollkarten**. Gemischte Gruppen (Fibonacci + Emotionen/Sterne/4-7-10) nur bei einzelnen Teams. Gelegte Karten:
 3/5/2 je 7–9 Tsd., ☕ 1.907, ? 513, veto 117, ! 28; T-Shirt ~800, Sterne ~270, Emotionen ~55, Ampel 7.
 
+### B-99 Rollout 3: Karten neu (gerendert, Skizzen-Stil, Rich-Sets)
+Ergebnis der Mock-up-Runden 2026-10-31 (Delia; Artifacts „Karten R3“ und „Karten im Board“), Entscheidungen Andreas:
+- **Karten werden gerendert** (SVG/CSS) statt PNG; Stil **F1 „Skizze“**: Ziffer/Symbol im Vordergrund, Schraffur, leicht
+  verwackelte Linien (für die App in die Pfade „gebacken“, kein Laufzeit-Filter), Farbe je Wert, farbiger Balken oben,
+  **keine Strichmännchen**, **kein Deck-Name** auf Karten. Statuskarten „thinking“/„ready“ im selben Stil.
+- **Namensschild über der Karte** (B-76), ohne Unterstrich.
+- **Drei Ebenen** je Karte: Symbol – Heading* – Description* (* optional). Tisch (aufgedeckt) zeigt alle vorhandenen Ebenen
+  und nutzt den Platz; Deck/Controls zeigen Symbol (kleiner, wenn Heading) + Heading; Description im Deck über eine
+  Info-Zeile (Desktop: Hover/Fokus) bzw. die Hinweiszeile unter den Punkten (Touch: Karte in der Mitte). Großansicht per
+  Tippen am Tisch. Description in Sans, Rest Mono. Längen: Wert ≤ 6, Heading ≤ 16, Description ≤ 160.
+- **Stil je Set** (Set-Attribut `style`, kein freies CSS): Fibonacci `plain`; J.U.D.G.E. `inverted` (Zahl invertiert, Heading
+  im Strich-Punkt-Rahmen); Delegation eigener Stil (Heading invertiert), **Texte exakt vom Original** (passt laut Andreas zur
+  EULA von Management 3.0), nicht deren Layout.
+- **Sets in R3:** Fibonacci (+ Kontrollkarten), J.U.D.G.E., Delegation, **Ampel, Emotionen, Sterne**; Deck-Gruppen (B-98),
+  eigene Werte (B-61). Fibonacci ohne Erklärtext im Default. Anonym-Modus wie heute.
+- **Später:** Themes (Saison-Rückseiten).
+- Umsetzung braucht Ben (Kartendaten/Sets/Stile, eigene Werte je Team) und Fred (Rendering statt `<img>`, Info-Zeile,
+  Großansicht, Karussell) und Delia (Motive, Stile). Planung gemeinsam vor Start; R3 hat noch Wochen Zeit.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
