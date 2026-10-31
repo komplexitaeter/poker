@@ -824,7 +824,8 @@ COL = {
     "tXXS": ("#d47fe6", None), "tXS": ("#e88a46", None), "tS": ("#8fcf3f", None), "tM": ("#b3d84a", None), "tL": ("#167a8a", None),
     "tXL": ("#e06272", None), "tXXL": ("#14c4ae", None),
     "agreen": ("#5fbf2a", None), "ayellow": ("#e8d21e", None), "ared": ("#c8372e", None),
-    "esatis": ("#a8c820", None), "eannoy": ("#ee6a45", None), "esad": ("#8a72dc", None), "eunint": ("#e6cf3c", None),
+    # uninterested: cool, neutral blue-grey (indifferent), clearly apart from yellow "satisfied" and violet "sad" (Andreas, 27)
+    "esatis": ("#a8c820", None), "eannoy": ("#ee6a45", None), "esad": ("#8a72dc", None), "eunint": ("#6f92b8", None),
     "eangry": ("#de2430", None), "eenthu": ("#62b83a", None), "star": ("#f0cf3a", None), "vveto": ("#ef5a32", None),
     "j0": ("#265873", "#3a7b9c"), "j1": ("#4fa587", "#55b08f"), "j2": ("#8fbc3b", "#94c044"), "j3": ("#b54467", "#c45578"),
     "j4": ("#be5a40", "#cc6a4f"), "j5": ("#ded65f", "#d8d06a"), "j6": ("#b23b41", "#c74a50"),
