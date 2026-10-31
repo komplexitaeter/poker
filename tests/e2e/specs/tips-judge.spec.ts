@@ -3,7 +3,7 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, setTeamDeck, dec
 
 /**
  * B-101: with the J.U.D.G.E. deck the tip after the reveal is about a decision, not an estimate. Accepted as long as
- * nobody needs to talk (5, ? counts as 5) and nobody vetoes (6); those who need to talk come first, then the veto.
+ * nobody needs to talk (5, ? and ! count as 5) and nobody vetoes (6); those who need to talk come first, then the veto.
  * No "Let them explain" for the extremes and no "Everyone agrees". Anonymous mode: counts instead of names.
  */
 const DESKTOP = { width: 1400, height: 800 };
@@ -16,12 +16,12 @@ async function setCard(page: Page, boardUrl: string, id: string, cardKey: string
   expect(res.ok()).toBeTruthy();
 }
 
-/** a J.U.D.G.E. board (with ☕ and ?), Alice joined, the others via the API; vote() sets everyone's card and reloads */
+/** a J.U.D.G.E. board (with ☕, ? and !), Alice joined, the others via the API; vote() sets everyone's card and reloads */
 async function judgeTeam(browser: Browser, team: string, others: string[]) {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, team);
   await joinAsPlayer(alice, url, 'Alice');
-  await setTeamDeck(alice, url, 'judge', null, ['break01', 'qstmrk1']);
+  await setTeamDeck(alice, url, 'judge', null, ['break01', 'qstmrk1', 'xclam01']);
   const ids = await addPlayersViaApi(alice, url, others);
   const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
   await alice.reload();
@@ -52,7 +52,7 @@ test('J.U.D.G.E.: decision accepted, concerns offered (B-101)', async ({ browser
   await expect(tip.locator('b')).toHaveText(['Bob (3)', 'Cleo (4)']);
 });
 
-test('J.U.D.G.E.: need to talk first, then the veto; ? counts as 5; veto only (B-101)', async ({ browser }) => {
+test('J.U.D.G.E.: need to talk first, then the veto; ? and ! count as 5; veto only (B-101)', async ({ browser }) => {
   const { vote, tip } = await judgeTeam(browser, 'Judge Talk', ['Bob', 'Cleo', 'Dan']);
 
   // 5 and 6: talk first, then the veto (concerns are not mentioned)
@@ -65,6 +65,10 @@ test('J.U.D.G.E.: need to talk first, then the veto; ? counts as 5; veto only (B
   await expect(tip).toHaveText('Let them talk first: Bob (?)');
   await vote(['jdg5', 'jdg5', 'qstmrk1', 'jdg6']);
   await expect(tip).toHaveText('Let them talk first: Alice, Bob (5) and Cleo (?). Then hear the veto: Dan (6)');
+
+  // ! counts as 5 too
+  await vote(['jdg1', 'jdg1', 'xclam01', 'jdg1']);
+  await expect(tip).toHaveText('Let them talk first: Cleo (!)');
 
   // veto only
   await vote(['jdg1', 'jdg6', 'jdg4', 'jdg6']);

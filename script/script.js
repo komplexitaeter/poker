@@ -2258,7 +2258,7 @@ function isJudgeDeck(json) {
 }
 
 /* B-101: the tip after the reveal for a J.U.D.G.E. decision. It is accepted as long as nobody needs to talk
- * (5, or ? which counts as a 5) and nobody vetoes (6, also the ✋ card). Those who need to talk come first,
+ * (5, or ? and ! which count as a 5) and nobody vetoes (6, also the ✋ card). Those who need to talk come first,
  * then the veto; an accepted decision offers to hear the concerns (3, 4). Anonymous mode: counts, no names.
  * configs: [{ player, config }] of the table; returns the tip parts (tipText) */
 function judgeTip(configs, anonymous) {
@@ -2276,7 +2276,7 @@ function judgeTip(configs, anonymous) {
     const join = list => list.flatMap((group, i) =>
         i === 0 ? [group] : [i === list.length - 1 ? ' and ' : ', ', group]);
 
-    const talk = groups(['jdg5', 'qstmrk1'], 'need to talk');
+    const talk = groups(['jdg5', 'qstmrk1', 'xclam01'], 'need to talk');
     const veto = groups(['jdg6', 'veto'], 'veto');
     if (talk.length > 0) {
         const parts = ['Let them talk first: ', ...join(talk)];
