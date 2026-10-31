@@ -28,20 +28,20 @@ const CARD_SYMBOLS = new Set([
 
 /* B-99 (F6): how each symbol is shown small (spread labels, info line, carousel hint line, "you picked", tips).
  * Every symbol of CARD_SYMBOLS is in exactly one of the two sets (tests/e2e/specs/card-catalog.spec.ts):
- *   text     the value as mono text (digits, ½, ∞, 100, XXS–XXL, ?, !)
- *   drawing  a mini symbol from the sprite (faces, traffic lights, stars, coffee, hand, status symbols)
+ *   text     the value as mono text (digits, ½, ∞, 100, XXS–XXL)
+ *   drawing  a mini symbol from the sprite (faces, traffic lights, stars, coffee, ?, !, hand, status symbols;
+ *            F7, Andreas: ? and ! as drawings too)
  * Never a system emoji. A card without a library symbol (a custom text value) is always text. */
 const CARD_SMALL_TEXT = new Set([
     's-0', 's-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7', 's-8', 's-9', 's-10', 's-13', 's-20', 's-21', 's-34',
     's-40', 's-55', 's-60', 's-89', 's-100', 's-half', 's-inf',
     's-xxs', 's-xs', 's-s', 's-m', 's-l', 's-xl', 's-xxl',
-    's-question', 's-exclam',
 ]);
 const CARD_SMALL_DRAWING = new Set([
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
     's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
-    's-coffee', 's-hand', 's-check', 's-thought', 's-mask', 's-frame-inv',
+    's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-mask', 's-frame-inv',
 ]);
 
 /* the colour tokens of style/cards.css (catalogue and palette) */
@@ -217,7 +217,10 @@ function cardHeading(className, heading, style) {
 /* B-99: the face of a card.
  *   card   the card model (deck.js) or a status card (STATUS_CARDS)
  *   level  'table' | 'deck' | 'mini'
- *   texts  show heading and description (false: symbol only, e.g. control cards in Fibonacci decks)
+ *   texts  true: heading and description; 'heading': the heading only (F7: control cards in decks without
+ *          or with one-word texts, the description stays in the aria-label); false: the symbol only
+ * F7 (Andreas): a card that shows exactly one text (only a heading, only a description, a status caption)
+ * gets the class one-text: that text is set like a heading (mono, bold; style.css).
  * Returns the element: table div.pc (role img, aria-label), deck span.dkc, mini span.mini (both decorative:
  * the button / the column carries the name). */
 function cardFace(card, level, texts = true) {
@@ -244,7 +247,7 @@ function cardFace(card, level, texts = true) {
     if (level === 'mini') return face;
 
     const heading = !status && texts && card.heading ? card.heading : '';
-    const info = !status && texts && card.info ? card.info : '';
+    const info = !status && texts === true && card.info ? card.info : '';
     if (status) {
         face.appendChild(textElement('span', 'stl', card.caption));
     } else if (level === 'deck') {
@@ -255,10 +258,12 @@ function cardFace(card, level, texts = true) {
     }
     face.classList.toggle('has-head', heading !== '');
     face.classList.toggle('has-info', level === 'table' && info !== '');
+    const shown = status ? 1 : (heading !== '' ? 1 : 0) + (level === 'table' && info !== '' ? 1 : 0);
+    face.classList.toggle('one-text', shown === 1);
 
     if (level === 'table') {
         face.setAttribute('role', 'img');
-        face.setAttribute('aria-label', status ? card.aria : cardAriaLabel(card, texts));
+        face.setAttribute('aria-label', status ? card.aria : cardAriaLabel(card, texts !== false));
         // no title tooltip (B-99 D5): it repeated the text shown on the card
     }
     return face;
