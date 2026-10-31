@@ -12,13 +12,13 @@
  * Only createElement / textContent / setAttribute; symbol ids and colour tokens only from the whitelists
  * below (never free text in href, class or style). No innerHTML here. */
 
-const CARDS_SPRITE = 'src/cards.svg?v=5'; // bump with the sprite (tools/cards/gen_symbols.py)
+const CARDS_SPRITE = 'src/cards.svg?v=6'; // bump with the sprite (tools/cards/gen_symbols.py)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /* the symbols of the sprite (tools/cards/README.md) */
 const CARD_SYMBOLS = new Set([
     's-0', 's-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7', 's-8', 's-9', 's-10', 's-13', 's-20', 's-21', 's-34',
-    's-40', 's-55', 's-100', 's-half', 's-inf',
+    's-40', 's-55', 's-60', 's-89', 's-100', 's-half', 's-inf',
     's-xxs', 's-xs', 's-s', 's-m', 's-l', 's-xl', 's-xxl',
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
@@ -34,7 +34,7 @@ const CARD_SYMBOLS = new Set([
  * Never a system emoji. A card without a library symbol (a custom text value) is always text. */
 const CARD_SMALL_TEXT = new Set([
     's-0', 's-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7', 's-8', 's-9', 's-10', 's-13', 's-20', 's-21', 's-34',
-    's-40', 's-55', 's-100', 's-half', 's-inf',
+    's-40', 's-55', 's-60', 's-89', 's-100', 's-half', 's-inf',
     's-xxs', 's-xs', 's-s', 's-m', 's-l', 's-xl', 's-xxl',
 ]);
 const CARD_SMALL_DRAWING = new Set([
@@ -47,7 +47,7 @@ const CARD_SMALL_DRAWING = new Set([
 /* the colour tokens of style/cards.css (catalogue and palette) */
 const CARD_COLORS = new Set([
     'v0', 'vh', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v13', 'v20', 'v21', 'v34', 'v40', 'v55',
-    'v100', 'vinf', 'vbrk', 'vq', 'vx', 'vveto', 'vthink', 'vdone',
+    'v60', 'v89', 'v100', 'vinf', 'vbrk', 'vq', 'vx', 'vveto', 'vthink', 'vdone',
     'tXXS', 'tXS', 'tS', 'tM', 'tL', 'tXL', 'tXXL', 'agreen', 'ayellow', 'ared',
     'esatis', 'eannoy', 'esad', 'eunint', 'eangry', 'eenthu', 'star',
     'j0', 'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7',

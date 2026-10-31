@@ -29,6 +29,10 @@ body {
     --sym-face-pos: color-mix(in srgb, currentColor 62%, #fffbe8);
     --sym-face-mid: color-mix(in srgb, currentColor 50%, #f4f1e6);
     --sym-face-neg: color-mix(in srgb, currentColor 48%, #b4b7bf);
+    /* calm status symbols (s-check, s-thought): a light body, the hatching only at the edge */
+    --sym-calm: color-mix(in srgb, currentColor 55%, #fffbe8);
+    --sym-calm-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
+    --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);   /* s-coffee: milk and foam of the latte */
 
     /* catalogue */
     --c-v0: #4d8cff; --on-c-v0: #1d2027;
@@ -56,6 +60,8 @@ body {
     --c-v21: #5dc4df; --on-c-v21: #1d2027;
     --c-v34: #c082e1; --on-c-v34: #1d2027;
     --c-v55: #69d765; --on-c-v55: #1d2027;
+    --c-v60: #6cc3d0; --on-c-v60: #1d2027;
+    --c-v89: #cc709a; --on-c-v89: #1d2027;
     --c-tXXS: #d892e7; --on-c-tXXS: #1d2027;
     --c-tXS: #e69356; --on-c-tXS: #1d2027;
     --c-tS: #a4d567; --on-c-tS: #1d2027;
@@ -112,6 +118,7 @@ body.light-theme {
     --sym-face-pos: color-mix(in srgb, currentColor 40%, #fffbe8);
     --sym-face-mid: color-mix(in srgb, currentColor 30%, #fbfaf5);
     --sym-face-neg: color-mix(in srgb, currentColor 28%, #f1efea);
+    --sym-calm: color-mix(in srgb, currentColor 38%, #fffbe8);
 
     /* catalogue */
     --c-v0: #2f6fe0; --on-c-v0: #ffffff;
@@ -139,6 +146,8 @@ body.light-theme {
     --c-v21: #36b9dc; --on-c-v21: #1d2027;
     --c-v34: #b86fe0; --on-c-v34: #1d2027;
     --c-v55: #2fb52a; --on-c-v55: #1d2027;
+    --c-v60: #2f8f9d; --on-c-v60: #1d2027;
+    --c-v89: #c2477f; --on-c-v89: #ffffff;
     --c-tXXS: #d47fe6; --on-c-tXXS: #1d2027;
     --c-tXS: #e88a46; --on-c-tXS: #1d2027;
     --c-tS: #8fcf3f; --on-c-tS: #1d2027;

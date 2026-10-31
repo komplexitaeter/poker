@@ -53,7 +53,10 @@ DIG = {
     "lS": '<path d="M70 36c-4-9-12-14-21-14-12 0-21 7-21 18 0 24 44 14 44 40 0 12-10 20-23 20-10 0-18-5-23-13"/>',
     "lM": '<path d="M24 102V26l26 46 26-46v76"/>',
     "lL": '<path d="M34 24v78h38"/>',
-    "mug": '<path d="M22 52h46v30c0 14-10 22-23 22s-23-8-23-22z"/>',
+    # latte glass (B-99 D7): tall, slightly tapered; "foam" covers the milk and foam on top (no hatching there)
+    "glass": '<path d="M28 38h42l-4 63c0 4-2 6-6 6H38c-4 0-6-2-6-6z"/>',
+    "milk": '<path d="M28.5 38.5h41l-1.6 25.5c-6 3-12-3-18 0s-12 3-18 0z"/>',
+    "foam": '<path d="M10 20h80v44H10z"/>',
     "hand": '<path d="M36 106c-8-6-14-16-17-28l-7-18c-2-7 7-11 11-4l7 12V32c0-7 10-7 10 0v24V22c0-7 10-7 10 0v32V24c0-7 10-7 10 0v32V34c0-7 10-7 10 0v40c0 18-6 28-14 32z"/>',
     "face": '<circle cx="50" cy="62" r="37"/>',
     "emouth": '<path d="M30 68h40c0 14-9 21-20 21s-20-7-20-21z"/>',
@@ -110,12 +113,14 @@ HATCH_STRONG = "var(--sym-hatch-strong,currentColor)"
 FAINT = "var(--sym-faint,#b9bcc4)"                                         # empty stars: faint outline
 
 
-def L(ref, t="", s=1.0, w=W):    # thick centre line: outline, shadow, tint, hatching
-    return ("L", ref, t, s, w)
+def L(ref, t="", s=1.0, w=W, calm=False):   # thick centre line: outline, shadow, tint, hatching
+    """calm: hatching only hinted, a thin band along the lower right edge of the stroke (like the faces)"""
+    return ("L", ref, t, s, w, calm)
 
 
 def S(ref, t="", s=1.0, fill=None, hatch=None, hw=None, rim=None):
-    """filled, hatched shape in the value colour; rim = DIG ref cut out of the hatching (hatch only at the edge)"""
+    """filled, hatched shape in the value colour; rim = DIG ref (or (ref, transform)) cut out of the hatching
+    (hatch only at the edge)"""
     return ("S", ref, t, s, fill, hatch, hw, rim)
 
 
@@ -178,7 +183,7 @@ SYM["s-8"] = ([L("d8", "translate(-8 -11) scale(1.16)", 1.16, W / 1.16)], "8")
 SYM["s-10"] = (row(["d1", "d0"]), "10")
 SYM["s-13"] = ([L("d1", "translate(2 23.6) scale(.62)", .62, 11 / .62), L("d3", "translate(37 23.6) scale(.62)", .62, 11 / .62)], "13")
 for v, refs in (("20", ["d2", "d0"]), ("21", ["d2", "d1"]), ("34", ["d3", "d4"]), ("40", ["d4", "d0"]),
-                ("55", ["d5", "d5"]), ("100", ["d1", "d0", "d0"])):
+                ("55", ["d5", "d5"]), ("60", ["d6", "d0"]), ("89", ["d8", "d9"]), ("100", ["d1", "d0", "d0"])):
     SYM[f"s-{v}"] = (row(refs), v)
 SYM["s-half"] = ([L("d1", "translate(4 4) scale(.5)", .5, 20), L("dsl", "", 1, 10), L("d2", "translate(46 52) scale(.5)", .5, 20)], "one half")
 # The infinity glyph is wider than the digits: scaled down around the centre (50 62), line width kept.
@@ -202,16 +207,28 @@ for f, feats in FACE.items():
                                   f"--sym-face:var(--sym-face-mouth,#fbfaf5)")
 for k in range(6):
     SYM[f"s-stars-{k}"] = (stars(k), f"{k} of 5 stars")
-# The cup is scaled up (B-99 D6) so its height and top edge match ? ! and the hand (steam top ~15, bottom ~110).
-CUP = "translate(-8.6 -19.5) scale(1.17)"
-SYM["s-coffee"] = ([S("mug", "translate(-8.6 -14.82) scale(1.17)"), T("M68 64c15 0 15 22 0 22", t=CUP),
-                    T("M46 46c-4-5 4-9 0-15M58 46c-4-5 4-9 0-15", t=CUP)], "coffee cup")
+# Break (B-99 D7): a tall latte glass with a handle, as high as ? ! and the hand (steam top ~15, bottom ~108).
+# The coffee below is hatched, milk and foam on top stay calm (tint only); the steam says "hot, pause".
+GLASS = re.search(r'd="([^"]+)"', DIG["glass"]).group(1)
+SYM["s-coffee"] = ([S("glass", rim="foam"),
+                    P("milk", "", "var(--sym-milk,#fbfaf5)", "none", 0),         # milk and foam: light in both themes
+                    T(GLASS),                                                       # glass outline again, over the milk
+                    T("M30.5 64c6-3 12 3 18 0s12-3 18 0"),                          # coffee / milk line
+                    T("M68 49h5c6 0 9 4 9 10v13c0 6-3 10-9 10h-8"),                 # handle, outer
+                    T("M68 57h3c2 0 3 1 3 3v11c0 2-1 3-3 3h-4"),                    # handle, inner
+                    T("M43 32c-4-5 4-10 0-16M55 32c-4-5 4-10 0-16")], "latte glass")
 SYM["s-question"] = (row(["dq"]), "question mark")
 SYM["s-exclam"] = (row(["dx"]), "exclamation mark")
 SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "raised hand")
-SYM["s-check"] = (row(["dchk"]), "check mark")
-SYM["s-thought"] = ([S("cloud", "translate(6 7)"), S("bub1", "translate(6 7)"), S("bub2", "translate(6 7)"),
+# Status cards (B-99 D7): calm like the faces - a light body, the hatching only hinted at the lower right edge.
+SYM["s-check"] = ([L("dchk", calm=True)], "check mark")
+THOUGHT = "translate(6 7)"
+SYM["s-thought"] = ([S("cloud", THOUGHT, hw=1.1, rim=("cloud", "translate(9.2 8.6) scale(.93)")),
+                     S("bub1", THOUGHT, hw=1.1, rim=("bub1", "translate(5.9 6.6) scale(.86)")),
+                     P("bub2", THOUGHT, TINT),
                      T("M42 55h.1M56 55h.1M70 55h.1", 9)], "thought bubble")
+for _sid in ("s-check", "s-thought"):
+    GROUP_STYLE[_sid] = "--sym-ink:var(--sym-face-ink,#1d2027);--sym-tint:var(--sym-calm,#fbfaf5);--sym-hatch:var(--sym-calm-hatch,currentColor)"
 # Anonymous mode: high contrast like the old picture - black hood (light outline in the dark theme), white mask.
 MASK_INK = "#1d2027"
 SYM["s-mask"] = ([P("cloud", "translate(14.7 -15.5) scale(.84)", "var(--sym-bubble,#7d8592)", INK, 2.4),
@@ -623,12 +640,16 @@ def el(d, style, width=None, extra=""):
 def layers(item):
     kind = item[0]
     if kind == "L":
-        _, ref, t, s, w = item
+        _, ref, t, s, w, calm = item
         subs, sc = shape(ref, t)
         wa = w * sc
         d = d_of(outline_polys(subs))
         r = Raster()
         r.stroke(subs, wa)
+        if calm:      # keep a band of ~2.5 units at the lower right edge
+            inner = Raster()
+            inner.stroke([([(x - 2.2, y - 2.2) for x, y in pts], c, k) for pts, c, k in subs], wa)
+            r.cut(inner)
         h = d_of(hatch_polys(r, bbox_of(subs, wa / 2 + 1)))
         # Outline plus shifted outline (both ink, both under the body) = one wider ink stroke,
         # moved by half the shift: saves a copy of the path, looks the same.
@@ -644,7 +665,7 @@ def layers(item):
         r.fill(subs)
         if rim:
             inner = Raster()
-            inner.fill(shape(rim, t)[0])
+            inner.fill(shape(*rim)[0] if isinstance(rim, tuple) else shape(rim, t)[0])
             r.cut(inner)
         h = d_of(hatch_polys(r, bbox_of(subs, 1)))
         return [el(d, f"fill:{fill or TINT};stroke:{INK}", 2 * O),
@@ -771,6 +792,7 @@ COL = {
     "vdone": ("#3fcf5a", "#56dc6e"),
     "v4": ("#14bfae", None), "v6": ("#b02ccc", None), "v7": ("#0d9f48", None), "v9": ("#cc3360", None), "v10": ("#a0b43a", None),
     "v21": ("#36b9dc", None), "v34": ("#b86fe0", None), "v55": ("#2fb52a", None),
+    "v60": ("#2f8f9d", None), "v89": ("#c2477f", None),
     "tXXS": ("#d47fe6", None), "tXS": ("#e88a46", None), "tS": ("#8fcf3f", None), "tM": ("#b3d84a", None), "tL": ("#167a8a", None),
     "tXL": ("#e06272", None), "tXXL": ("#14c4ae", None),
     "agreen": ("#5fbf2a", None), "ayellow": ("#e8d21e", None), "ared": ("#c8372e", None),
@@ -853,6 +875,10 @@ body {{
     --sym-face-pos: color-mix(in srgb, currentColor 62%, #fffbe8);
     --sym-face-mid: color-mix(in srgb, currentColor 50%, #f4f1e6);
     --sym-face-neg: color-mix(in srgb, currentColor 48%, #b4b7bf);
+    /* calm status symbols (s-check, s-thought): a light body, the hatching only at the edge */
+    --sym-calm: color-mix(in srgb, currentColor 55%, #fffbe8);
+    --sym-calm-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
+    --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);   /* s-coffee: milk and foam of the latte */
 
     /* catalogue */
 {tokens(COL, 1)}
@@ -867,6 +893,7 @@ body.light-theme {{
     --sym-face-pos: color-mix(in srgb, currentColor 40%, #fffbe8);
     --sym-face-mid: color-mix(in srgb, currentColor 30%, #fbfaf5);
     --sym-face-neg: color-mix(in srgb, currentColor 28%, #f1efea);
+    --sym-calm: color-mix(in srgb, currentColor 38%, #fffbe8);
 
     /* catalogue */
 {tokens(COL, 0)}
@@ -881,7 +908,7 @@ body.light-theme {{
 # symbol -> catalogue colour of the card that uses it today
 SYM_COLOUR = {"s-half": "vh", "s-inf": "vinf", "s-coffee": "vbrk", "s-question": "vq", "s-exclam": "vx",
               "s-hand": "vveto", "s-check": "vdone", "s-thought": "vthink", "s-mask": "vthink", "s-frame-inv": "j3"}
-for _v in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "13", "20", "21", "34", "40", "55", "100"):
+for _v in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "13", "20", "21", "34", "40", "55", "60", "89", "100"):
     SYM_COLOUR[f"s-{_v}"] = {"20": "v20", "40": "v40"}.get(_v, f"v{_v}")
 SYM_COLOUR.update({"s-xxs": "tXXS", "s-xs": "tXS", "s-s": "tS", "s-m": "tM", "s-l": "tL", "s-xl": "tXL", "s-xxl": "tXXL",
                    "s-light-green": "agreen", "s-light-yellow": "ayellow", "s-light-red": "ared",

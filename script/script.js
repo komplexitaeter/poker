@@ -2167,9 +2167,15 @@ function updateTip(json, revealed) {
         if (typeof part === 'string') return document.createTextNode(part);
         const b = document.createElement('b');
         b.textContent = part.name;
-        // B-99 (F6): "Dan (3)", "Eve (✋ as mini symbol)"
+        // B-99 (F6): "Dan (3)", "Eve (✋ as mini symbol)". The last name and "(symbol)" never break apart:
+        // no-break space plus a nowrap group (style.css), the names before it still wrap normally.
         const card = part.card !== undefined ? cardByKey(part.card) : undefined;
-        if (card !== undefined) b.append(' (', cardSmall(card), ')');
+        if (card !== undefined) {
+            const value = document.createElement('span');
+            value.className = 'tip-value';
+            value.append('(', cardSmall(card), ')');
+            b.append('\u00a0', value);
+        }
         return b;
     }));
 }

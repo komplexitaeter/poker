@@ -197,6 +197,11 @@ test('spread labels: numbers as text, faces, coffee and hand as mini symbols, no
   await setCard(alice, url, bob, 'veto');
   await pickCard(alice, 'jdg1');
   await expect(alice.locator('#round_tip b .mini use')).toHaveAttribute('href', /#s-hand$/);
+  // "(✋)" never wraps onto a line of its own: one line high, glued to the name
+  const tipValue = alice.locator('#round_tip b .tip-value');
+  await expect(tipValue).toHaveCSS('white-space', 'nowrap');
+  const tipRects = await tipValue.evaluate(el => el.getClientRects().length);
+  expect(tipRects).toBe(1);
   expect(EMOJI.test(await alice.locator('aside.side').textContent() ?? '')).toBe(false);
 
   await setTeamDeck(alice, url, 'fib-classic', null, ['break01', 'veto']);
