@@ -102,8 +102,8 @@ test('changing the deck of cards applies to all players', async ({ browser }) =>
     }
     await expect(deckCard(page, 'three01')).toHaveCount(0);
     // B-99: the tray holds only the cards of the deck, in deck order (the preset keeps the control
-    // cards); the spread follows the deck
-    const deck = ['green01', 'yellow1', 'red0001', 'break01', 'qstmrk1', 'xclam01'];
+    // cards, new teams start with ☕ and ?, B-98); the spread follows the deck
+    const deck = ['green01', 'yellow1', 'red0001', 'break01', 'qstmrk1'];
     await expect.poll(() => deckCards(page).evaluateAll(cards =>
       cards.map(c => c.getAttribute('data-card')))).toEqual(deck);
     await expect.poll(() => page.locator('#spread_bars .spread-col').evaluateAll(cols =>
