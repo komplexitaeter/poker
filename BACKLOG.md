@@ -1327,6 +1327,12 @@ Ergebnis der Mock-up-Runden 2026-10-31 (Delia; Artifacts „Karten R3“ und „
 - **Sets in R3:** Fibonacci (+ Kontrollkarten), J.U.D.G.E., Delegation, **Ampel, Emotionen, Sterne**; Deck-Gruppen (B-98),
   eigene Werte (B-61). Fibonacci ohne Erklärtext im Default. Anonym-Modus wie heute.
 - **Später:** Themes (Saison-Rückseiten).
+- **Architektur (Kai, 2026-10-31, von Andreas bestätigt):** Symbole einmal per Generator-Skript als SVG erzeugen (Verwacklung/
+  Schraffur eingerechnet) und committen (kein Build-Schritt), als **Symbolbibliothek** in einer Sprite-Datei (`cards.svg`,
+  `<use href="cards.svg?v=…#id">`, erbt CSS-Farben → hell/dunkel/Wertfarbe/Themes). Die Karte (Rahmen, Balken, Heading,
+  Description, Stil) baut der Client zur Laufzeit als HTML/CSS aus den Set-Daten. Sets referenzieren Symbole per ID; eigene
+  Sets/Werte (B-61) können Symbole aus der Bibliothek wählen statt Bilder hochzuladen. Bibliothek wächst durch neue
+  Symbole im Generator; bei Bedarf Sprite je Set-Gruppe aufteilen.
 - Umsetzung braucht Ben (Kartendaten/Sets/Stile, eigene Werte je Team) und Fred (Rendering statt `<img>`, Info-Zeile,
   Großansicht, Karussell) und Delia (Motive, Stile). Planung gemeinsam vor Start; R3 hat noch Wochen Zeit.
 
