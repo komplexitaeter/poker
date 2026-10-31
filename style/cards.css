@@ -9,14 +9,14 @@
 
 /* Symbol colours, inherited into <use href="cards.svg#…">: set `color` to the value colour. */
 body {
-    --card-face: #1b1f27;   /* card paper */
-    --card-ink: #d9dee8;    /* outlines, text */
+    --cardc-face: #1b1f27;   /* card paper */
+    --cardc-ink: #d9dee8;    /* outlines, text */
     --on-inv: #ffffff;      /* inverted style: symbol on the coloured square */
     --inv-o: #1d2027;       /* inverted style: outline of that symbol */
-    --sym-ink: var(--card-ink);
-    --sym-face: var(--card-face);
+    --sym-ink: var(--cardc-ink);
+    --sym-face: var(--cardc-face);
     /* currentColor resolves where the symbol is used: 22 % of the value colour on the paper */
-    --sym-tint: color-mix(in srgb, currentColor 22%, var(--card-face));
+    --sym-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
 
     /* catalogue */
     --c-v0: #4d8cff; --on-c-v0: #1d2027;
@@ -95,8 +95,8 @@ body {
 }
 
 body.light-theme {
-    --card-face: #fbfaf5;
-    --card-ink: #1d2027;
+    --cardc-face: #fbfaf5;
+    --cardc-ink: #1d2027;
 
     /* catalogue */
     --c-v0: #2f6fe0; --on-c-v0: #ffffff;

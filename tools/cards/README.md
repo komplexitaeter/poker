@@ -15,6 +15,7 @@ python3 -m http.server 8099                         # from the repository root
 # http://localhost:8099/tools/cards/preview.html    (?light for the light theme)
 ```
 
+The generator aborts if a symbol (outlines incl. half the stroke width) leaves its viewBox.
 After a change: raise `?v=` wherever `cards.svg`/`cards.css` are referenced (once they are linked, F2).
 
 ## Use
@@ -29,9 +30,9 @@ are inherited into the `<use>`:
 | Property | Meaning | Default (`cards.css`) |
 |---|---|---|
 | `color` | value colour (tint, hatching) | – set per card |
-| `--sym-ink` | outlines, details | `--card-ink` (theme) |
-| `--sym-face` | paper (empty stars, traffic-light housing) | `--card-face` (theme) |
-| `--sym-tint` | body of lines/shapes | 22 % `color` on `--card-face` |
+| `--sym-ink` | outlines, details | `--cardc-ink` (theme) |
+| `--sym-face` | paper (empty stars, traffic-light housing) | `--cardc-face` (theme) |
+| `--sym-tint` | body of lines/shapes | 22 % `color` on `--cardc-face` |
 | `--sym-hatch` | hatching | `currentColor` |
 
 Inverted style (J.U.D.G.E.): frame plus value symbol, see the preview:
@@ -39,7 +40,7 @@ Inverted style (J.U.D.G.E.): frame plus value symbol, see the preview:
 ```html
 <svg viewBox="0 0 100 100" style="color: var(--c-j3)">
   <use href="src/cards.svg#s-frame-inv" style="--sym-tint: currentColor;
-       --sym-hatch: color-mix(in srgb, var(--card-ink) 18%, currentColor)"/>
+       --sym-hatch: color-mix(in srgb, var(--cardc-ink) 18%, currentColor)"/>
   <use href="src/cards.svg#s-3" x="10" y=".4" width="80" height="96"
        style="--sym-ink: var(--inv-o); --sym-tint: var(--on-c-j3); --sym-hatch: transparent"/>
 </svg>

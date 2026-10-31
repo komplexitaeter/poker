@@ -143,7 +143,8 @@ for v, refs in (("20", ["d2", "d0"]), ("21", ["d2", "d1"]), ("34", ["d3", "d4"])
                 ("55", ["d5", "d5"]), ("100", ["d1", "d0", "d0"])):
     SYM[f"s-{v}"] = (row(refs), v)
 SYM["s-half"] = ([L("d1", "translate(4 4) scale(.5)", .5, 20), L("dsl", "", 1, 10), L("d2", "translate(46 52) scale(.5)", .5, 20)], "one half")
-SYM["s-inf"] = (row(["dinf"]), "infinity")
+# The infinity glyph is wider than the digits: scaled down around the centre (50 62), line width kept.
+SYM["s-inf"] = ([L("dinf", "translate(8 9.92) scale(.84)", .84, W / .84)], "infinity")
 for v, refs in (("xxs", ["lX", "lX", "lS"]), ("xs", ["lX", "lS"]), ("s", ["lS"]), ("m", ["lM"]), ("l", ["lL"]),
                 ("xl", ["lX", "lL"]), ("xxl", ["lX", "lX", "lL"])):
     SYM[f"s-{v}"] = (row(refs), v.upper())
@@ -158,8 +159,8 @@ SYM["s-question"] = (row(["dq"]), "question mark")
 SYM["s-exclam"] = (row(["dx"]), "exclamation mark")
 SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "raised hand")
 SYM["s-check"] = (row(["dchk"]), "check mark")
-SYM["s-thought"] = ([S("cloud", "translate(8 7)"), S("bub1", "translate(8 7)"), S("bub2", "translate(8 7)"),
-                     T("M44 55h.1M58 55h.1M72 55h.1", 9)], "thought bubble")
+SYM["s-thought"] = ([S("cloud", "translate(6 7)"), S("bub1", "translate(6 7)"), S("bub2", "translate(6 7)"),
+                     T("M42 55h.1M56 55h.1M70 55h.1", 9)], "thought bubble")
 SYM["s-mask"] = ([S("gfmask"),
                   T("M24 45c6-8 15-9 22-5M76 45c-6-8-15-9-22-5", 3),          # raised brows
                   T("M29 55c5-4 11-4 16 0M71 55c-5-4-11-4-16 0", 4.4),        # slit eyes
@@ -621,7 +622,50 @@ def symbol(sid):
     for it in items:
         parts += layers(it)
     vb = VIEWBOX.get(sid, "0 0 100 120")
+    check_bounds(sid, "\n".join(parts))
     return (f'<symbol id="{sid}" viewBox="{vb}"{PRES}><title>{title}</title>\n' + "\n".join(merge(parts)) + "\n</symbol>")
+
+
+def path_extent(d):
+    """Absolute points of a path written by d_of() (M/m/l/z only)."""
+    pts, cur, start, cmd = [], (0.0, 0.0), (0.0, 0.0), None
+    for tok in re.findall(r"[MmLlZz]|-?(?:\d+\.?\d*|\.\d+)", d):
+        if tok in "MmLlZz":
+            cmd = tok
+            if tok in "Zz":
+                cur = start
+            buf = []
+            continue
+        buf.append(float(tok))
+        if len(buf) == 2:
+            x, y = buf
+            buf = []
+            if cmd in "Mm":
+                cur = (x, y) if cmd == "M" else (cur[0] + x, cur[1] + y)
+                start, cmd = cur, ("L" if cmd == "M" else "l")
+            else:
+                cur = (x, y) if cmd == "L" else (cur[0] + x, cur[1] + y)
+            pts.append(cur)
+    return pts
+
+
+def check_bounds(sid, markup):
+    """Abort if any stroke (incl. half its width) leaves the symbol's viewBox."""
+    vx, vy, vw, vh = map(float, VIEWBOX.get(sid, "0 0 100 120").split())
+    x0 = y0 = math.inf
+    x1 = y1 = -math.inf
+    for m in re.finditer(r"<path([^>]*)/>", markup):
+        a = m.group(1)
+        w = re.search(r'stroke-width="([^"]+)"', a)
+        h = float(w.group(1)) / 2 if w else 0.0
+        t = re.search(r'translate\(([-\d.]+) ([-\d.]+)\)', a)
+        tx, ty = (float(t.group(1)), float(t.group(2))) if t else (0.0, 0.0)
+        for x, y in path_extent(re.search(r' d="([^"]*)"', a).group(1)):
+            x0, y0 = min(x0, x + tx - h), min(y0, y + ty - h)
+            x1, y1 = max(x1, x + tx + h), max(y1, y + ty + h)
+    if x0 < vx or y0 < vy or x1 > vx + vw or y1 > vy + vh:
+        raise SystemExit(f"{sid}: drawing {x0:.1f} {y0:.1f} .. {x1:.1f} {y1:.1f} (incl. stroke width) "
+                         f"leaves viewBox {vx:g} {vy:g} {vx + vw:g} {vy + vh:g}")
 
 
 def build_svg():
@@ -707,14 +751,14 @@ def build_css():
 
 /* Symbol colours, inherited into <use href="cards.svg#…">: set `color` to the value colour. */
 body {{
-    --card-face: #1b1f27;   /* card paper */
-    --card-ink: #d9dee8;    /* outlines, text */
+    --cardc-face: #1b1f27;   /* card paper */
+    --cardc-ink: #d9dee8;    /* outlines, text */
     --on-inv: #ffffff;      /* inverted style: symbol on the coloured square */
     --inv-o: #1d2027;       /* inverted style: outline of that symbol */
-    --sym-ink: var(--card-ink);
-    --sym-face: var(--card-face);
+    --sym-ink: var(--cardc-ink);
+    --sym-face: var(--cardc-face);
     /* currentColor resolves where the symbol is used: 22 % of the value colour on the paper */
-    --sym-tint: color-mix(in srgb, currentColor 22%, var(--card-face));
+    --sym-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
 
     /* catalogue */
 {tokens(COL, 1)}
@@ -724,8 +768,8 @@ body {{
 }}
 
 body.light-theme {{
-    --card-face: #fbfaf5;
-    --card-ink: #1d2027;
+    --cardc-face: #fbfaf5;
+    --cardc-ink: #1d2027;
 
     /* catalogue */
 {tokens(COL, 0)}
@@ -764,7 +808,7 @@ def build_preview():
     judge = "".join(
         f'<figure class="t inv" style="color:var(--c-j{k})"><div class="card"><svg viewBox="0 0 100 100" aria-hidden="true">'
         f'<use href="../../src/cards.svg#s-frame-inv" style="--sym-tint:currentColor;'
-        f'--sym-hatch:color-mix(in srgb,var(--card-ink) 18%,currentColor)"/>'
+        f'--sym-hatch:color-mix(in srgb,var(--cardc-ink) 18%,currentColor)"/>'
         f'<use href="../../src/cards.svg#s-{k}" x="10" y=".4" width="80" height="96" style="--sym-ink:var(--inv-o);'
         f'--sym-tint:var(--on-c-j{k});--sym-hatch:transparent"/>'
         f'</svg></div><figcaption><code>s-frame-inv + s-{k}</code><br>--c-j{k}</figcaption></figure>' for k in range(7))
@@ -784,10 +828,10 @@ body.light-theme {{ background: #f7f6f1; color: #1d2027; }}
 h2 {{ font-size: 14px; margin: 24px 0 8px; }}
 .grid {{ display: flex; flex-wrap: wrap; gap: 12px; }}
 .t {{ margin: 0; width: 132px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; }}
-.card {{ width: 84px; aspect-ratio: 100 / 148; background: var(--card-face); border: 1px solid #586174; border-radius: 9px;
+.card {{ width: 84px; aspect-ratio: 100 / 148; background: var(--cardc-face); border: 1px solid #586174; border-radius: 9px;
         display: grid; place-items: center; }}
 .card svg {{ width: 84%; }}
-.deck {{ width: 38px; aspect-ratio: 100 / 148; background: var(--card-face); border: 1px solid #586174; border-radius: 5px;
+.deck {{ width: 38px; aspect-ratio: 100 / 148; background: var(--cardc-face); border: 1px solid #586174; border-radius: 5px;
         display: grid; place-items: center; }}
 .deck svg {{ width: 86%; }}
 .inv .card svg {{ width: 88%; }}
