@@ -131,8 +131,8 @@ def P(ref, t="", fill=None, stroke=None, w=2 * O):   # plain filled shape, fixed
     return ("P", ref, t, fill, stroke, w)
 
 
-def T(d, w=2 * O, color=None):    # ink line (details)
-    return ("T", d, w, color)
+def T(d, w=2 * O, color=None, t=""):    # ink line (details); t like S(), the line width is not scaled
+    return ("T", d, w, color, t)
 
 
 def row(refs):
@@ -202,7 +202,10 @@ for f, feats in FACE.items():
                                   f"--sym-face:var(--sym-face-mouth,#fbfaf5)")
 for k in range(6):
     SYM[f"s-stars-{k}"] = (stars(k), f"{k} of 5 stars")
-SYM["s-coffee"] = ([S("mug", "translate(0 4)"), T("M68 64c15 0 15 22 0 22"), T("M46 46c-4-5 4-9 0-15M58 46c-4-5 4-9 0-15")], "coffee cup")
+# The cup is scaled up (B-99 D6) so its height and top edge match ? ! and the hand (steam top ~15, bottom ~110).
+CUP = "translate(-8.6 -19.5) scale(1.17)"
+SYM["s-coffee"] = ([S("mug", "translate(-8.6 -14.82) scale(1.17)"), T("M68 64c15 0 15 22 0 22", t=CUP),
+                    T("M46 46c-4-5 4-9 0-15M58 46c-4-5 4-9 0-15", t=CUP)], "coffee cup")
 SYM["s-question"] = (row(["dq"]), "question mark")
 SYM["s-exclam"] = (row(["dx"]), "exclamation mark")
 SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "raised hand")
@@ -660,8 +663,11 @@ def layers(item):
         subs, _ = shape(ref, t)
         return [el(d_of(outline_polys(subs)), f"fill:{FACEC};stroke:{INK}", 1.6 * O)]
     if kind == "T":
-        subs = path_subpaths(item[1])
-        return [el(d_of(outline_polys(subs)), f"stroke:{item[3] or INK}", item[2])]
+        _, d, w, color, t = item
+        sc, tx, ty = parse_transform(t)
+        subs = [([(x * sc + tx, y * sc + ty) for x, y in pts], closed, corners)
+                for pts, closed, corners in path_subpaths(d)]
+        return [el(d_of(outline_polys(subs)), f"stroke:{color or INK}", w)]
     raise ValueError(kind)
 
 
