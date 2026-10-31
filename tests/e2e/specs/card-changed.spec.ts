@@ -149,7 +149,7 @@ test('the table shows a changed card as a stack of original and current card', a
   await expect(tableCard(page, 'Bob')).toHaveAttribute('data-original', 'five001');
   await expect(backFace(page, 'Bob')).toBeVisible();
   await expect(backFace(page, 'Bob')).toHaveAttribute('aria-hidden', 'true');
-  await expect(backFace(page, 'Bob').locator('use')).toHaveAttribute('href', /#s-5$/);
+  await expect(backFace(page, 'Bob').locator(':scope > svg.mot use')).toHaveAttribute('href', /#s-5$/);
   await expect(topFace(page, 'Bob').locator('use')).toHaveAttribute('href', /#s-13$/);
   await expect(topFace(page, 'Bob')).toHaveAttribute('aria-label', '13, changed from 5 to 13');
   await expect(backFace(page, 'Carol')).toHaveCount(0);
@@ -171,8 +171,8 @@ test('the table shows a changed card as a stack of original and current card', a
   expect(back.y).toBeGreaterThanOrEqual(name.y + name.height - 4);
   expect(Math.abs(top.x + top.width - (card.x + card.width))).toBeLessThan(1.5);
   expect(Math.abs(top.y + top.height - (card.y + card.height))).toBeLessThan(1.5);
-  // the original value as corner index in its upper left corner
-  await expect(tableCard(page, 'Bob').locator('.pc-corner')).toHaveText('5');
+  // the symbol of the original as corner index in its upper left corner
+  await expect(tableCard(page, 'Bob').locator('.pc-corner use')).toHaveAttribute('href', /#s-5$/);
   await expect(tableCard(page, 'Bob').locator('.pc-corner')).toBeVisible();
 
   // back to the original: no stack
@@ -199,25 +199,29 @@ test('the table shows a changed card as a stack of original and current card', a
   await expect(page.locator('#cbox .c[data-original]')).toHaveCount(0);
 });
 
-/** the corner index of the original: visible, on top (not covered), inside the upper left of the original */
+/** the corner index of the original: its symbol, visible, on top (not covered in its middle), in the visible upper
+ * rim of the original (above the current card) */
 async function expectCorner(page: Page, card: ReturnType<typeof tableCard>) {
   const corner = card.locator('.pc-corner');
   await expect(corner).toBeVisible();
-  const { box, back, hit } = await card.evaluate((c) => {
+  await expect(corner.locator('svg.mot')).toBeVisible();
+  const { box, back, top, hit } = await card.evaluate((c) => {
     const r = (e: Element) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; };
     const el = c.querySelector('.pc-corner')!;
-    const b = el.getBoundingClientRect();
+    const sym = el.querySelector('svg.mot')!;
+    const b = sym.getBoundingClientRect();
     (el as HTMLElement).style.pointerEvents = 'auto'; // it lets clicks through: hit-test it for this check only
-    const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+    const hitEl = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
     (el as HTMLElement).style.pointerEvents = '';
-    return { box: r(el), back: r(c.querySelector('.pc-orig')!), hit: top !== null && el.contains(top) };
+    return { box: r(sym), back: r(c.querySelector('.pc-orig')!), top: r(c.querySelector('.pc:not(.pc-orig)')!),
+      hit: hitEl !== null && el.contains(hitEl) };
   });
-  expect(hit).toBe(true); // nothing covers it
-  expect(box.height).toBeGreaterThanOrEqual(12); // readable
+  expect(hit).toBe(true); // its middle is not covered
+  expect(box.height).toBeGreaterThanOrEqual(14); // readable, also on phones
   expect(box.x).toBeGreaterThanOrEqual(back.x - 2);
   expect(box.y).toBeGreaterThanOrEqual(back.y - 2);
   expect(box.x + box.width / 2).toBeLessThan(back.x + back.width / 2);
-  expect(box.y + box.height / 2).toBeLessThan(back.y + back.height / 3);
+  expect(box.y + box.height / 2).toBeLessThan(top.y); // in the rim above the current card
 }
 
 for (const [label, viewport] of [['desktop', { width: 1280, height: 900 }], ['phone', { width: 375, height: 667 }]] as const) {
@@ -235,10 +239,13 @@ for (const [label, viewport] of [['desktop', { width: 1280, height: 900 }], ['ph
       sql(`update pok_players_tbl set card_key = '${pairs[i][0]}', original_card_key = '${pairs[i][1]}' where id = '${id}' and team_id = '${t}'`));
     await page.reload();
 
-    await expect(tableCard(page, 'Digit').locator('.pc-corner')).toHaveText('5');
-    await expect(tableCard(page, 'Picture').locator('.pc-corner .sm-draw use')).toHaveAttribute('href', /#s-face-satisfied$/);
-    await expect(tableCard(page, 'Control').locator('.pc-corner .sm-draw use')).toHaveAttribute('href', /#s-coffee$/);
-    await expect(tableCard(page, 'Judge').locator('.pc-corner .sm-inv')).toHaveCount(1);
+    // the card's own symbol (svg use), not its value as text
+    await expect(tableCard(page, 'Digit').locator('.pc-corner .mini use')).toHaveAttribute('href', /#s-5$/);
+    await expect(tableCard(page, 'Picture').locator('.pc-corner .mini use')).toHaveAttribute('href', /#s-face-satisfied$/);
+    await expect(tableCard(page, 'Control').locator('.pc-corner .mini use')).toHaveAttribute('href', /#s-coffee$/);
+    await expect(tableCard(page, 'Judge').locator('.pc-corner .mini use.inv-frame')).toHaveCount(1);
+    await expect(tableCard(page, 'Judge').locator('.pc-corner .mini use.inv-value')).toHaveAttribute('href', /#s-4$/);
+    for (const name of names) await expect(tableCard(page, name).locator('.pc-corner .sm-text')).toHaveCount(0);
     for (const name of names) await expectCorner(page, tableCard(page, name));
 
     // back to the original: the corner goes with the stack
