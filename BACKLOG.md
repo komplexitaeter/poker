@@ -1404,6 +1404,12 @@ gewählt, ggf. nicht im Set, löst den Pausen-Tipp aus, verfälscht die ☕-Stat
 - Wer will, legt noch eine echte Karte – sie ersetzt die Systemkarte. Neue Runde: verschwindet wie alle Karten.
 - Statistik: eigener Key, damit ☕-Zahlen künftig sauber sind (und man sieht, wie oft jemand später kommt).
 
+### B-103 `setc.php`: gelegte Karte gegen das Deck des Teams prüfen
+Hinweis Sina (Review B-102, 2026-10-31): `setc.php` speichert jeden formal gültigen `cardkey`, auch Karten außerhalb des
+aktiven Decks bzw. der Steuerkarten des Teams (z. B. per Direktaufruf); sie zählen dann in `getDao()` als Stimme. Kein
+XSS-Risiko (Ausgabe per textContent). Minimaler Fix: Keys ablehnen (400), die weder im Deck noch in den Steuerkarten des
+Teams sind. Nicht priorisiert.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
