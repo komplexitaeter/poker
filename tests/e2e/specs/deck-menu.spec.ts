@@ -48,8 +48,24 @@ test('variant and single cards: Short, a card off and on again, at least two car
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Cards');
   await alice.locator('#cset_btn').click();
 
-  // Fibonacci variants
-  await alice.locator('#deck_variant').getByRole('radio', { name: 'Short' }).check();
+  // Fibonacci variants; keyboard: an arrow key only moves the choice, Enter saves it (no write, no round per key)
+  const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
+  let deckWrites = 0;
+  alice.on('request', request => { if (request.url().includes('/api/update_deck.php')) deckWrites++; });
+  await variant('Classic').focus();
+  await alice.keyboard.press('ArrowRight');
+  await expect(variant('Short')).toBeChecked();
+  await expect(variant('Short')).toBeFocused();
+  await alice.waitForTimeout(500);
+  expect(deckWrites).toBe(0);
+  await expect.poll(() => trayKeys(bob)).toContain('hundro1');
+  await alice.keyboard.press('Enter');
+  await expect.poll(() => trayKeys(bob)).not.toContain('hundro1');
+  expect(deckWrites).toBe(1);
+  // mouse: back to Classic and to Short again
+  await variant('Classic').check();
+  await expect.poll(() => trayKeys(bob)).toContain('hundro1');
+  await variant('Short').check();
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(['zero001', 'one0001', 'two0001', 'three01', 'five001', 'eight01',
       'thrtn01', 'twnty01', '4ty0001', 'break01', 'qstmrk1']);

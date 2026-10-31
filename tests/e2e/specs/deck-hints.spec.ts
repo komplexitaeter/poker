@@ -1,6 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, deckCard, deckCards, selectedDeckCards, setLegacyDeck } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, deckCard, deckCards, selectedDeckCards, setLegacyDeck,
+  clearLegacyDeck, setTeamDeck } from './helpers';
 
 /**
  * B-69 (large screens): the deck has no scrollbar. When it overflows, a chevron bar shows at the
@@ -54,8 +55,9 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
   await expect(tray).not.toHaveClass(/more-right/);
   expect(Math.abs((await tray.boundingBox())!.height - height)).toBeLessThan(1);
 
-  // a deck that fits: no bars
-  await setLegacyDeck(alice, t, [0, 2, 3, 4]);
+  // a deck that fits (the server's deck again, update_deck.php): no bars
+  await clearLegacyDeck(alice);
+  await setTeamDeck(alice, url, 'fib-classic', ['zero001', 'one0001', 'two0001', 'three01'], []);
   await alice.reload();
   await expect(deckCards(alice)).toHaveCount(4);
   await expect(tray).not.toHaveClass(/more-left/);

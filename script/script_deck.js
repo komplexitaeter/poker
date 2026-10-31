@@ -2,6 +2,7 @@
  * Overview: the deck as small cards, the card set ("change" opens the list of sets), the variant (Fibonacci:
  * Classic / Short / True), the cards of the set to switch off or on, and the control cards (☕ ? ! ✋, per team,
  * with every set). The list: every set group with a fan of its cards.
+ * The variant is saved on click, Space or Enter only; arrow keys just move the choice (Sina, PR #113).
  * Data: card_catalog.json (gCatalogV2, gCardByKey in script.js) and the deck of dao ({id, group, cards, controls,
  * rev}). Every change is written at once (api/update_deck.php, api/update_controls.php, apiWrite()); the menu shows
  * it right away (a local copy of the deck) and takes the server's deck again when its rev changes.
@@ -24,6 +25,7 @@ const gDeckMenu = {
     sig: null,        // what the menu was last built from
     status: '',
     statusTimer: 0,
+    variantKeyMove: false, // the next change of the variant radios comes from an arrow key
 };
 
 function deckMenuGroups() {
@@ -160,7 +162,24 @@ function deckMainView(deck, group, variant) {
             input.value = v.id;
             input.checked = v.id === variant.id;
             input.setAttribute('data-f', 'variant:' + v.id);
-            input.addEventListener('change', () => pickDeckVariant(group, v));
+            // arrow keys only move the choice (no write, no new round per key); a click, Space or Enter saves it
+            input.addEventListener('keydown', event => {
+                if (event.key.startsWith('Arrow')) {
+                    gDeckMenu.variantKeyMove = true;
+                } else if (event.key === ' ' || event.key === 'Enter') {
+                    event.preventDefault();
+                    input.checked = true;
+                    pickDeckVariant(group, v);
+                }
+            });
+            input.addEventListener('pointerdown', () => { gDeckMenu.variantKeyMove = false; });
+            input.addEventListener('change', () => {
+                if (gDeckMenu.variantKeyMove) {
+                    gDeckMenu.variantKeyMove = false;
+                    return;
+                }
+                pickDeckVariant(group, v);
+            });
             label.append(input, dmEl('span', null, v.name));
             seg.appendChild(label);
         });

@@ -195,3 +195,9 @@ export async function setLegacyDeck(page: Page, t: string, indexes: number[]): P
     await route.fulfill({ response, json });
   });
 }
+
+/** R3 F5: back to the server's deck (dao.php with "deck") after setLegacyDeck */
+export async function clearLegacyDeck(page: Page): Promise<void> {
+  await page.unroute('**/api/dao.php*');
+  legacyDeckPages.delete(page);
+}
