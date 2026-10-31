@@ -72,10 +72,9 @@ DIG = {
     "hood": '<path d="M50 50c-16 0-25 12-26 30-1 8-3 14-8 19-5 4-7 9-7 14v2h82v-2c0-5-2-10-7-14-5-5-7-11-8-19-1-18-10-30-26-30z"/>',
     "fmask": '<path d="M50 60c-10 0-16 6-16 17 0 14 7 25 16 30 9-5 16-16 16-30 0-11-6-17-16-17z"/>',
     "face_in": '<circle cx="46" cy="58" r="32"/>',   # face minus this = crescent of hatching at the lower right
-    # joined late (B-102): an open door (frame, leaf hinged on the left) and an arrow coming out of it into the room
-    "door": '<path d="M30 22h42v84H30z"/>',
-    "leaf": '<path d="M30 22l22 9v83l-22-8z"/>',
-    "arrow": '<path d="M58 66H91M81 56l10 10-10 10"/>',
+    # joined late (B-102): an open door (frame, leaf hinged on the left); D11: no arrow, the door a bit larger
+    "door": '<path d="M27 17h46v90H27z"/>',
+    "leaf": '<path d="M27 17l24 10v89l-24-9z"/>',
     "square": '<path d="M15 6h70c5 0 9 4 9 9v70c0 5-4 9-9 9H15c-5 0-9-4-9-9V15c0-5 4-9 9-9z"/>',
 }
 
@@ -242,15 +241,13 @@ SYM["s-thought"] = ([S("cloud", THOUGHT, hw=1.25, rim=("cloud", "translate(7 3.2
                      S("bub1", THOUGHT, hw=1.25, rim=("bub1", "translate(3.9 .6) scale(.86)"), ow=THOUGHT_OW),
                      P("bub2", THOUGHT, TINT, w=THOUGHT_OW),
                      T("M42 55h.1M56 55h.1M70 55h.1", 9)], "thought bubble")
-# Joined late (B-102): calm like the other status symbols - an open door, a light leaf with the hatching at its edge,
-# an arrow coming out of the open door to the right, into the room ("has come in", Andreas #24); no figure
-# (reads at mini size too).
+# Joined late (B-102): calm like the other status symbols - an open door, a light leaf with the hatching at its edge;
+# no figure (reads at mini size too). D11 (Andreas): the arrow removed, the door a bit larger and centred.
 DOOR_INK = "var(--cardc-ink,#1d2027)"   # frame and floor in the theme ink (the calm group's ink is dark in both themes)
 SYM["s-late"] = ([T(re.search(r'd="([^"]+)"', DIG["door"]).group(1), color=DOOR_INK),   # door frame
-                  T("M20 106h62", color=DOOR_INK),                                  # floor
-                  S("leaf", hw=1.25, rim=("leaf", "translate(1.6 4.4) scale(.9)")),
-                  T("M46 70h.1", 6),                                                # door knob
-                  L("arrow", w=9, calm=True)], "open door, joined late")
+                  T("M16 107h68", color=DOOR_INK),                                  # floor
+                  S("leaf", hw=1.25, rim=("leaf", "translate(1.5 4.2) scale(.9)")),
+                  T("M45 68h.1", 6)], "open door, joined late")                     # door knob
 for _sid in ("s-check", "s-thought", "s-late"):
     GROUP_STYLE[_sid] = "--sym-ink:var(--sym-face-ink,#1d2027);--sym-tint:var(--sym-calm,#fbfaf5);--sym-hatch:var(--sym-calm-hatch,currentColor)"
 # Anonymous mode: high contrast like the old picture - black hood (light outline in the dark theme), white mask.
