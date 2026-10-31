@@ -62,10 +62,10 @@
     --card-fluid: clamp(64px, min(22vw, max(100px, 6.94vw)), 140px);
     /* smallest delete icon on a card: none here, 28px on touch screens (see "Touch screens") */
     --card-del-min: 0px;
-    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px). B-68 (large
-     * screens): the cards shrink together when they do not fit into the tray, down to --deck-min;
-     * only then the deck scrolls sideways. */
-    --deck-w: clamp(45px, 2.5vw + 13px, 64px);
+    /* Deck cards: 52px, from about 1300px up 2.5vw + 20px (up to 68px); wide enough for a heading
+     * word like "important" (B-99 D4). B-68 (large screens): the cards shrink together when they do
+     * not fit into the tray, down to --deck-min; only then the deck scrolls sideways. */
+    --deck-w: clamp(52px, 2.5vw + 20px, 68px);
     --deck-min: 26px;
 }
 
@@ -1781,6 +1781,19 @@ div#cbox {
 
 .pc.has-info:not(.has-head) .txt { font-size: clamp(10px, var(--card-w) * 0.1, 14px); color: var(--text); }
 
+/* B-99 D4: a deck whose descriptions are all short (control cards, traffic lights, emotions, Delegation;
+ * short-texts on #cbox, set by setDeck() in script.js): every card with texts gets the same larger symbol,
+ * a little lower, so the block sits nearer the middle and the symbols stay level side by side. Decks with
+ * long texts (J.U.D.G.E.) and small cards (phones, many players: the text is relatively large) keep the
+ * layout above. */
+#cbox.short-texts .c { container-type: inline-size; } /* .c is --card-w wide anyway */
+
+@container (min-width: 120px) {
+    #cbox.short-texts .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.16); }
+
+    #cbox.short-texts .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
+}
+
 /* touch: the delete icon sits on the lower right corner; the caption keeps clear of it */
 @media (hover: none), (pointer: coarse) {
     .pc { padding-bottom: calc(var(--card-del) / 2 + 2px); }
@@ -1797,6 +1810,7 @@ div#cbox {
     border: 1px solid var(--line-strong);
     border-radius: 6px;
     overflow: hidden;
+    container-type: inline-size; /* the heading follows the card's own width (cqi), see .dh */
 }
 
 .dkc::before { height: 3px; }
@@ -1824,11 +1838,22 @@ div#cbox {
     bottom: 4%;
     display: flex;
     justify-content: center;
-    font-size: 9px;
+    /* B-99 D4: the longest heading word ("important", 9 mono characters, about 5.2em with the tighter
+     * spacing) fits into the card's width without cutting; longer headings wrap at spaces, 2 lines */
+    font-size: clamp(6px, (100cqi - 8px) / 5, 10px);
     font-weight: 700;
     line-height: 1.1;
+    letter-spacing: -0.03em;
     text-align: center;
     color: var(--text);
+}
+
+/* a card shrunk below that (narrow tray, B-68): the symbol alone, like in a deck without texts */
+@container (max-width: 37.98px) {
+    .dkc .dh { display: none; }
+
+    .dkc .mot,
+    .dkc .tv { top: 10%; height: 84%; }
 }
 
 .dkc .dh > span:last-child {
@@ -1902,7 +1927,12 @@ div#cbox {
 
 .hd-inverted { position: relative; }
 
-.dkc.sty-inverted .dh { left: 2px; right: 2px; bottom: 2px; padding: 3px 2px; }
+.dkc.sty-inverted .dh { left: 2px; right: 2px; bottom: 2px; padding: 2px 1px; }
+
+/* B-99 D4, deck: a slimmer frame and a slightly smaller square, so a two-line heading keeps its room */
+.dkc.sty-inverted .hd-frame rect { stroke-width: 1; stroke-dasharray: 4 2 1 2; }
+
+.dkc.sty-inverted.has-head .mot { top: 5%; height: 54%; }
 
 /* ---------- New round button, timer (.dock, B-66/B-67/B-68) ---------- */
 
