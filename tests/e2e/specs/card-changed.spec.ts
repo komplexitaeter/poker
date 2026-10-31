@@ -156,14 +156,17 @@ test('the table shows a changed card as a stack of original and current card', a
   // the original peeks out to the upper left, the card and the table keep their size (the cards are sorted by
   // value after the reveal, so Bob's card may move)
   await expect(backFace(page, 'Bob')).not.toHaveClass(/pc-orig-in/); // slide-in finished
-  const back = (await backFace(page, 'Bob').boundingBox())!;
-  const top = (await topFace(page, 'Bob').boundingBox())!;
+  await expect(tableCard(page, 'Bob')).not.toHaveClass(/cardValueChanged/); // shake finished
+  // all boxes at once, relative to the card (the cards may still move on the table)
+  const { card, name, back, top } = await tableCard(page, 'Bob').evaluate((c) => {
+    const box = (e: Element) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
+    return { card: box(c), name: box(c.querySelector('.card_player_name')!), back: box(c.querySelector('.pc-orig')!),
+      top: box(c.querySelector('.pc:not(.pc-orig)')!) };
+  });
   expect(back.x).toBeLessThan(top.x - 3);
   expect(back.y).toBeLessThan(top.y);
   expect(await size()).toEqual(before);
   // both cards stay in the place of one card: below the name tag, the current card in its lower right corner
-  const card = (await tableCard(page, 'Bob').boundingBox())!;
-  const name = (await tableCard(page, 'Bob').locator('.card_player_name').boundingBox())!;
   expect(back.x).toBeGreaterThanOrEqual(card.x - 4); // turned slightly
   expect(back.y).toBeGreaterThanOrEqual(name.y + name.height - 4);
   expect(Math.abs(top.x + top.width - (card.x + card.width))).toBeLessThan(1.5);

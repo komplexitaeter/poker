@@ -1666,6 +1666,9 @@ div#cbox {
     --stack-dy: calc(var(--stack-dx) * var(--card-ratio));
     /* the index: as high as the visible rim allows, readable from the next seat */
     --stack-index: clamp(10px, var(--card-w) * 0.12, 18px);
+    /* a column of flex items: the margin of the name tag does not collapse into the offset of the current card */
+    display: inline-flex;
+    flex-direction: column;
 }
 .c.is-changed .pc { --card-w: var(--stack-w); width: var(--stack-w); }
 .c.is-changed .pc:not(.pc-orig) {
