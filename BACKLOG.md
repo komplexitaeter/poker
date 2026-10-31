@@ -1382,6 +1382,17 @@ Planning R3 (2026-10-31, Ben/Fred, Entscheidungen Andreas):
 Idee Andreas (2026-10-31): Eigene Sets (B-98) eventuell später hinter eine Paywall. Für R3 nicht geplant; das Limit (5 Sets
 je Team) wird deshalb konfigurierbar gebaut. Offen: ob überhaupt, Modell, Abrechnung.
 
+### B-101 Tipps in der Spalte für J.U.D.G.E. (Entscheidung statt Schätzung)
+Status: refined (Andreas, 2026-10-31), Teil von R3. Die Tipps (B-70/B-79) sind aufs Schätzen ausgelegt (Spannweite,
+„Let them explain“, „Everyone agrees“). Bei J.U.D.G.E. gilt: **Eine Entscheidung ist angenommen, solange es kein Veto und
+keine offenen Fragen gibt.**
+- Keine 5 (need to talk), keine 6 (veto), kein „?“: „Decision accepted.“ – gibt es 3 (severe concerns) oder 4 (step out),
+  zusätzlich als Angebot: „Concerns from <Name> (3) – want to hear them?“
+- 5 oder „?“ (zählt wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
+- Nur 6: Veto anhören.
+- Anonym-Modus: ohne Namen. Tipps abschaltbar wie bisher (B-96).
+Offen/später: ob Delegation, Ampel, Emotionen ebenfalls eigene Tipp-Regeln brauchen.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
