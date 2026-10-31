@@ -62,13 +62,13 @@ test('J.U.D.G.E.: need to talk first, then the veto; ? and ! count as 5; veto on
 
   // ? counts as 5
   await vote(['jdg1', 'qstmrk1', 'jdg2', 'jdg1']);
-  await expect(tip).toHaveText('Let them talk first: Bob (?)');
+  await expect(tip).toHaveText('Let them talk first: Bob (question)');
   await vote(['jdg5', 'jdg5', 'qstmrk1', 'jdg6']);
-  await expect(tip).toHaveText('Let them talk first: Alice, Bob (5) and Cleo (?). Then hear the veto: Dan (6)');
+  await expect(tip).toHaveText('Let them talk first: Alice, Bob (5) and Cleo (question). Then hear the veto: Dan (6)');
 
   // ! counts as 5 too
   await vote(['jdg1', 'jdg1', 'xclam01', 'jdg1']);
-  await expect(tip).toHaveText('Let them talk first: Cleo (!)');
+  await expect(tip).toHaveText('Let them talk first: Cleo (important)');
 
   // veto only
   await vote(['jdg1', 'jdg6', 'jdg4', 'jdg6']);

@@ -1790,28 +1790,37 @@ div#cbox {
  *   none   (Fibonacci): the symbol alone, see above
  *   word   (emotions, stars): one short word – the symbol large (about 57 % of the card from 120 px), the
  *          word in the lower quarter; the control cards show their heading only (the description stays in the aria-label)
+ *   none also lays out the control cards like word: B-99 F7, they show symbol + heading in every set (cardShowsTexts)
  *   short  (traffic lights, Delegation): descriptions up to 60 characters – a larger symbol from 120 px
  *   long   (J.U.D.G.E.): the layout above */
-#cbox[data-text-size="word"] .pc.is-ctl .txt { display: none; }
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.1); }
 
-#cbox[data-text-size="word"] .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.1); }
-
-#cbox[data-text-size="word"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.72); }
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.72); }
 
 /* the word in the middle of the room below the symbol (lower quarter of the card) */
-#cbox[data-text-size="word"] .pc :is(.ttl, .txt) { margin-block: auto; }
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc :is(.ttl, .txt) { margin-block: auto; }
 
-#cbox:is([data-text-size="word"], [data-text-size="short"]) .c { container-type: inline-size; } /* .c is --card-w wide anyway */
+#cbox:is([data-text-size="word"], [data-text-size="none"], [data-text-size="short"]) .c { container-type: inline-size; } /* .c is --card-w wide anyway */
 
 /* small cards: room for a word or heading on two lines; from 120 px the symbol takes its full size */
-#cbox[data-text-size="word"] .pc .hd-badge { padding-inline: 0.5em; }
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc .hd-badge { padding-inline: 0.5em; }
 
 @container (min-width: 120px) {
-    #cbox[data-text-size="word"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.84); }
+    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.84); }
 
     #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.16); }
 
     #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
+}
+
+/* B-99 F7 (Andreas): a card with exactly one text (only a heading, only a description like the emotions, a status
+ * caption like "thinking …") sets it like a heading: mono, bold (one-text, cardFace() in cards.js) */
+.pc.one-text :is(.ttl, .txt, .stl) {
+    font-family: var(--font);
+    font-size: clamp(9px, var(--card-w) * 0.1, 14px);
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--text);
 }
 
 /* touch: the delete icon sits on the lower right corner; the caption keeps clear of it */
@@ -2657,6 +2666,8 @@ div#cbox {
     .deck-pick b { font-weight: 400; color: var(--text); }
 
     /* B-99 (F3): sets with texts: the description of the card in the middle, two lines kept free */
+    .deck-pick-info.one-text { font-weight: 700; color: var(--text); }
+
     .deck-pick-info {
         display: block;
         white-space: normal;
@@ -3033,6 +3044,7 @@ div#cbox {
         color: var(--muted);
     }
     .round-tip b { font-weight: inherit; color: var(--text); }
+    .round-tip .tip-value { white-space: nowrap; } /* B-99 F7: "(symbol)" stays with the name (updateTip) */
 
     /* a small lightbulb in front of the tip (line icon like the sprite in board.html, drawn as a
      * mask in the muted text color), hanging left of the text; none while there is no tip. In CSS
@@ -3593,8 +3605,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-setbtn:focus-visible,
 .dm-back:focus-visible,
 .dm-prow-b:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.dm-status { min-height: 1.4em; margin: var(--space-2) 0 0; font-size: var(--fs-xs); color: var(--ok); }
 
 .dm-back {
     display: inline-flex;

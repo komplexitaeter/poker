@@ -24,8 +24,6 @@ const gDeckMenu = {
     deck: null,       // the deck as shown: the server's, with own changes on top until the server has them
     serverRev: null,  // rev of the server's deck the local copy is based on
     sig: null,        // what the menu was last built from
-    status: '',
-    statusTimer: 0,
     variantKeyMove: false, // the next change of the variant radios comes from an arrow key
 };
 
@@ -119,13 +117,6 @@ function dmRoundNote() {
     note.id = 'deck_round_hint';
     note.setAttribute('role', 'note');
     return note;
-}
-
-function dmStatus() {
-    const status = dmEl('p', 'dm-status', gDeckMenu.status ? '> ' + gDeckMenu.status : '');
-    status.id = 'deck_status';
-    status.setAttribute('role', 'status');
-    return status;
 }
 
 /* ------------------------------------------------------------------ views */
@@ -238,7 +229,6 @@ function deckMainView(deck, group, variant) {
     controls.append(ctlGrid, dmEl('p', 'hint', 'Need a break, question, important, veto: no value, not in the spread. They stay when you switch sets.'));
     parts.push(controls);
 
-    parts.push(dmStatus());
     return parts;
 }
 
@@ -284,7 +274,6 @@ function deckPickView(deck) {
         list.appendChild(item);
     });
     parts.push(list);
-    parts.push(dmStatus());
     return parts;
 }
 
@@ -344,31 +333,26 @@ function showDeckView(view) {
     if (target !== null) target.focus();
 }
 
-function setDeckStatus(text) {
-    gDeckMenu.status = text;
-    const status = document.getElementById('deck_status');
-    if (status !== null) status.textContent = text ? '> ' + text : '';
-    clearTimeout(gDeckMenu.statusTimer);
-    if (text) gDeckMenu.statusTimer = setTimeout(() => setDeckStatus(''), 5000);
-}
-
 /* ------------------------------------------------------------------ writes */
 
-/* a write of the menu; the local copy shows it at once, the next board state from the server wins */
-function writeDeck(url, local) {
+/* B-99 (F7, Andreas): the result of a change as a toast (showToast in script.js), like "Board link copied" */
+const DECK_TOASTS = { set: 'Deck changed', variant: 'Variant changed', card: 'Cards changed', control: 'Control cards changed' };
+
+/* a write of the menu; the local copy shows it at once, the next board state from the server wins.
+ * kind: 'set' | 'variant' | 'card' | 'control' (the text of the toast) */
+function writeDeck(url, local, kind) {
     gDeckMenu.deck = local;
     renderDeckMenu();
-    setDeckStatus('');
+    const done = DECK_TOASTS[kind] || 'Saved';
     apiWrite(url, {}, null).then(response => {
         if (response === null || !response.ok) {
             gDeckMenu.serverRev = null; // take the server's deck again with the next board state
-            setDeckStatus('not saved · please try again');
+            showToast('Not saved – please try again');
             return;
         }
         response.json().then(answer => {
-            setDeckStatus(answer && answer.new_round ? 'deck changed · a new round started for everyone'
-                : 'saved · everyone sees the new deck now');
-        }).catch(() => setDeckStatus('saved'));
+            showToast(done + (answer && answer.new_round ? ' – new round started' : ' – everyone sees it'));
+        }).catch(() => showToast(done));
     });
 }
 
@@ -387,7 +371,7 @@ function pickDeckGroup(group) {
     }
     const variant = group.variants[0];
     writeDeck(deckUrl(variant.id, null),
-        { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() });
+        { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() }, 'set');
     showDeckView('main');
 }
 
@@ -398,7 +382,7 @@ function pickDeckVariant(group, variant) {
     const match = deckMatchingVariant(group, deck.cards);
     if (deck.id === variant.id && match !== null && match.id === variant.id) return;
     writeDeck(deckUrl(variant.id, null),
-        { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() });
+        { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() }, 'variant');
 }
 
 function toggleDeckCard(group, variant, key) {
@@ -407,7 +391,7 @@ function toggleDeckCard(group, variant, key) {
     const on = new Set(deck.cards);
     if (on.has(key)) {
         if (on.size <= DECK_MIN_CARDS) {
-            setDeckStatus('a deck needs at least two cards of its set');
+            showToast('A deck needs at least two cards');
             return;
         }
         on.delete(key);
@@ -418,7 +402,7 @@ function toggleDeckCard(group, variant, key) {
     // a selection that is exactly a variant becomes that variant, else it stays with the last chosen one
     const match = deckMatchingVariant(group, cards);
     const id = match !== null ? match.id : variant.id;
-    writeDeck(deckUrl(id, cards), { id, group: group.id, cards, controls: deck.controls.slice() });
+    writeDeck(deckUrl(id, cards), { id, group: group.id, cards, controls: deck.controls.slice() }, 'card');
 }
 
 function toggleDeckControl(key) {
@@ -428,5 +412,5 @@ function toggleDeckControl(key) {
     if (on.has(key)) on.delete(key); else on.add(key);
     const controls = deckMenuControls().map(card => card.key).filter(k => on.has(k));
     writeDeck('./api/update_controls.php?t=' + encodeURIComponent(t) + '&controls=' + controls.map(encodeURIComponent).join(','),
-        { id: deck.id, group: deck.group, cards: deck.cards.slice(), controls });
+        { id: deck.id, group: deck.group, cards: deck.cards.slice(), controls }, 'control');
 }

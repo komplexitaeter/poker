@@ -28,7 +28,10 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
 
   // back on the overview; both trays hold the set plus the team's control cards
   await expect(alice.locator('#deck_change')).toContainText('J.U.D.G.E.');
-  await expect(alice.locator('#deck_status')).toHaveText(/saved/);
+  // F7: the result as a toast (like "Board link copied"), no status line in the menu
+  await expect(alice.locator('#toast')).toHaveText('Deck changed – everyone sees it');
+  await expect(alice.locator('#toast')).toHaveClass(/toast-on/);
+  await expect(alice.locator('#deck_status')).toHaveCount(0);
   const judge = ['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4', 'jdg5', 'jdg6', 'break01', 'qstmrk1'];
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(judge);
@@ -67,6 +70,7 @@ test('variant and single cards: Short, a card off and on again, at least two car
   expect(deckWrites).toBe(1);
   // mouse: back to Classic and to Short again
   await variant('Classic').check();
+  await expect(alice.locator('#toast')).toHaveText('Variant changed – everyone sees it');
   await expect.poll(() => trayKeys(bob)).toContain('hundro1');
   await variant('Short').check();
   for (const page of [alice, bob]) {
@@ -95,7 +99,7 @@ test('variant and single cards: Short, a card off and on again, at least two car
   await expect(deckCard(bob, 'red0001')).toHaveCount(0);
   await toggle(alice, 'yellow1').click();
   await expect(toggle(alice, 'yellow1')).toHaveAttribute('aria-pressed', 'true');
-  await expect(alice.locator('#deck_status')).toHaveText(/at least two cards/);
+  await expect(alice.locator('#toast')).toHaveText('A deck needs at least two cards');
   await expect(deckCard(bob, 'yellow1')).toHaveCount(1);
 });
 
@@ -133,12 +137,13 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   // a control card does not end the round
   await alice.locator('#deck_menu .dm-back').click();
   await control(alice, 'xclam01').click();
+  await expect(alice.locator('#toast')).toHaveText('Control cards changed – everyone sees it');
   await expect(deckCard(bob, 'xclam01')).toHaveCount(1);
   await expectTableCard(alice, 'Bob', 'done001');
 
   // a card of the set does
   await toggle(alice, 'zero001').click();
-  await expect(alice.locator('#deck_status')).toHaveText(/new round/);
+  await expect(alice.locator('#toast')).toHaveText('Cards changed – new round started');
   for (const page of [alice, bob]) {
     await expectTableCard(page, 'Bob', 'prgrss1');
     await expect(deckCard(page, 'zero001')).toHaveCount(0);
