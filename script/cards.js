@@ -12,7 +12,7 @@
  * Only createElement / textContent / setAttribute; symbol ids and colour tokens only from the whitelists
  * below (never free text in href, class or style). No innerHTML here. */
 
-const CARDS_SPRITE = 'src/cards.svg?v=3'; // bump with the sprite (tools/cards/gen_symbols.py)
+const CARDS_SPRITE = 'src/cards.svg?v=4'; // bump with the sprite (tools/cards/gen_symbols.py)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /* the symbols of the sprite (tools/cards/README.md) */
@@ -223,7 +223,7 @@ function cardFace(card, level, texts = true) {
     if (level === 'table') {
         face.setAttribute('role', 'img');
         face.setAttribute('aria-label', status ? card.aria : cardAriaLabel(card, texts));
-        if (info) face.title = info; // the whole text when it is cut
+        // no title tooltip (B-99 D5): it repeated the text shown on the card
     }
     return face;
 }

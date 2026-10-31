@@ -241,6 +241,21 @@ let gDeckTexts = false;
 
 /* D4: the longest description of a "short texts" deck (control cards: 51, J.U.D.G.E. up to 160 characters) */
 const DECK_SHORT_INFO = 60;
+/* D5: the longest text of a "one word" deck (emotions: "uninterested", stars: "no stars") */
+const DECK_WORD_TEXT = 16;
+
+/* D5: how much text the cards of a deck carry; the table cards of a deck share one layout (style.css,
+ * #cbox[data-text-size]): none (Fibonacci), word (one short word: emotions, stars; the control cards then
+ * show their heading only), short (descriptions up to DECK_SHORT_INFO: traffic lights, Delegation),
+ * long (J.U.D.G.E.) */
+function deckTextSize(deck) {
+    if (!deckHasTexts(deck)) return 'none';
+    const cards = deck.cards.filter(card => !card.controlCard);
+    const word = cards.every(card => !(card.heading && card.info)
+        && String(card.heading || card.info || '').length <= DECK_WORD_TEXT);
+    if (word) return 'word';
+    return deck.cards.every(card => String(card.info || '').length <= DECK_SHORT_INFO) ? 'short' : 'long';
+}
 
 function deckHasTexts(deck) {
     return deck.cards.some(card => !card.controlCard && (card.heading || card.info));
@@ -329,9 +344,9 @@ function setDeck(deck) {
     const textsChanged = texts !== gDeckTexts;
     gDeckTexts = texts;
     ctl.classList.toggle('deck-texts', texts);
-    // D4: short descriptions only: the table cards get a larger symbol (style.css, "short-texts")
-    document.getElementById('cbox')?.classList.toggle('short-texts', texts && deck.cards.every(card =>
-        String(card.info || '').length <= DECK_SHORT_INFO));
+    // D4/D5: the table cards' layout follows the deck's longest text (style.css, "data-text-size")
+    const cbox = document.getElementById('cbox');
+    if (cbox !== null) cbox.dataset.textSize = deckTextSize(deck);
     ctl.replaceChildren(...deck.cards.map(card => deckElement(card).slot));
     updateDeckTabStop();
     if (textsChanged) refreshTableFaces();
