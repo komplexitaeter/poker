@@ -13,6 +13,9 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
   await alice.locator('#cset_btn').click();
   await expect(alice.locator('#deck_change')).toBeFocused();
   await expect(alice.locator('#deck_change')).toContainText('Fibonacci');
+  // B-99 (F6): no deck row with card count and card row above it; the card set tile is the only way in
+  await expect(alice.locator('#deck_menu .dm-pv, #deck_menu .dm-pv-row')).toHaveCount(0);
+  await expect(alice.locator('#deck_menu')).not.toContainText(/\d+ cards/);
 
   // the list: every set group with a fan of its cards, the current one marked
   await alice.locator('#deck_change').click();
@@ -168,7 +171,6 @@ test('a variant is a preset: True, then 100 on as well (custom), Classic sets it
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
   await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: True + 100');
-  await expect(alice.locator('#deck_menu .dm-pv-h')).toContainText('Fibonacci · custom');
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(['zero001', 'one0001', 'two0001', 'three01', 'five001', 'eight01',
       'thrtn01', '2tyone1', '3tyfr01', '5tyfve1', 'hundro1', 'break01', 'qstmrk1']);

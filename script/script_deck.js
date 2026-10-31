@@ -128,30 +128,10 @@ function dmStatus() {
     return status;
 }
 
-function deckSetName(group, variant, cards) {
-    if (group.variants.length <= 1) return group.name;
-    const match = deckMatchingVariant(group, cards);
-    return group.name + ' · ' + (match !== null ? match.name : 'custom');
-}
-
 /* ------------------------------------------------------------------ views */
 
 function deckMainView(deck, group, variant) {
     const parts = [];
-
-    // the deck as it is now
-    const preview = dmEl('section', 'dm-pv');
-    preview.setAttribute('aria-label', 'Your deck');
-    const cards = deck.cards.concat(deck.controls).map(key => gCardByKey.get(key)).filter(card => card !== undefined);
-    const head = dmEl('p', 'dm-pv-h');
-    head.append(dmEl('span', 'cm', '> '), 'deck ', dmEl('b', null, deckSetName(group, variant, deck.cards)),
-        dmEl('span', 'dm-cnt', ' · ' + cards.length + ' cards'));
-    const row = dmEl('div', 'dm-pv-row');
-    row.setAttribute('role', 'img');
-    row.setAttribute('aria-label', 'Cards: ' + cards.map(card => cardAriaLabel(card, false)).join(', '));
-    cards.forEach(card => row.appendChild(dmCard(card, false)));
-    preview.append(head, row);
-    parts.push(preview);
 
     const note = dmRoundNote();
     if (note !== null) parts.push(note);
