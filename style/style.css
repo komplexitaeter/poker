@@ -361,8 +361,11 @@ textarea.field {
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    background-color: var(--background-color);
-    opacity: 96%;
+    /* B-99 D12: only the backdrop is see-through (the board shines through faintly); buttons and
+     * the name field on it stay opaque. Was `opacity: 96%` on the whole panel, which made them
+     * see-through as well. */
+    background-color: var(--bg);
+    background-color: color-mix(in srgb, var(--bg) 96%, transparent);
 }
 
 .overlay_msg {
@@ -378,6 +381,10 @@ textarea.field {
     width: 18rem;
     max-width: calc(100% - 2 * var(--space-3));
 }
+
+/* B-99 D12: an opaque fill (the field color), so nothing behind the panel shows through */
+.overlay_panel .btn,
+.overlay_panel #nameinput { background: var(--bg-2); }
 
 .overlay_panel .btn {
     min-height: var(--tap);
