@@ -9,6 +9,11 @@ $id = get_id_param("id");
 // card keys are up to 7 characters a-z0-9 (cards.json); a manipulated key changes nothing (B-88)
 $cardkey = get_id_param("cardkey", 7);
 if ($cardkey === '' && (string)filter_input(INPUT_GET, "cardkey") !== '') exit;
+// B-102: the system card "joined late" is only set by name.php, never picked
+if ($cardkey === LATE_CARD_KEY) {
+    http_response_code(400);
+    exit;
+}
 
 
 $link = db_init();

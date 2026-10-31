@@ -38,6 +38,10 @@ if ($is_in_db) {
         $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED', card_key = null WHERE id = ? and team_id = ?");
         $sql->bind_param('ss', $id, $t);
     } else if ($type == 'PLAYER') {
+        /* B-102: an existing user becomes (or stays) a player. If every PLAYER of the team already has a card down
+           (all_players_ready = 1, i.e. the cards are revealed; a team without players counts as not ready) and the
+           user has no card yet, he gets the system card LATE_CARD_KEY (before B-102: break01) so the revealed round
+           is not covered again. A card already down is kept (B-33). */
         $sql = $link->prepare("SELECT if (count(1) = sum(if(p.card_key is not null,1,0)), 1, 0) all_players_ready
                                   FROM pok_players_tbl p
                                  WHERE p.team_id = ?
@@ -51,9 +55,10 @@ if ($is_in_db) {
         $sql = $link->prepare("UPDATE pok_players_tbl ppt 
                                         set ppt.name = ?,
                                             ppt.player_type = ?, 
-                                            ppt.card_key = if(? = 1 and card_key is null, 'break01', card_key)
+                                            ppt.card_key = if(? = 1 and card_key is null, ?, card_key)
                                       WHERE ppt.id = ? and ppt.team_id = ?");
-        $sql->bind_param('ssiss', $name, $type,$obj->all_players_ready, $id, $t);
+        $late_card = LATE_CARD_KEY;
+        $sql->bind_param('ssisss', $name, $type, $obj->all_players_ready, $late_card, $id, $t);
     }  else {
         $sql = $link->prepare("UPDATE pok_players_tbl set name = ?, player_type = ? WHERE id = ? and team_id = ?");
         $sql->bind_param('ssss', $name, $type, $id, $t);
@@ -71,12 +76,16 @@ else {
     $result = $sql->get_result();
     $obj = $result->fetch_object();
 
-    if ($obj->all_players_ready == 0) {
+    /* B-102: same condition for a new user: joining as a player while every PLAYER has a card down (cards revealed)
+       gives the system card LATE_CARD_KEY instead of break01. Observers get no card (before B-102 they got break01
+       too, which only blurred the statistics); becoming a player later sets the card via the branch above. */
+    if ($obj->all_players_ready == 0 || $type !== 'PLAYER') {
         $sql = $link->prepare( "INSERT INTO pok_players_tbl (id, team_id, name, player_type) VALUES (?, ?, ?, ?)");
         $sql->bind_param('ssss', $id, $t, $name, $type);
     } else {
-        $sql = $link->prepare( "INSERT INTO pok_players_tbl (id, team_id, name, card_key, player_type) VALUES (?, ?, ?, 'break01', ?)");
-        $sql->bind_param('ssss', $id, $t, $name, $type);
+        $late_card = LATE_CARD_KEY;
+        $sql = $link->prepare( "INSERT INTO pok_players_tbl (id, team_id, name, card_key, player_type) VALUES (?, ?, ?, ?, ?)");
+        $sql->bind_param('sssss', $id, $t, $name, $late_card, $type);
     }
 }
 
