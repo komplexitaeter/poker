@@ -229,15 +229,17 @@ function deckElement(card) {
     }
     if (entry.texts !== gDeckTexts) {
         entry.texts = gDeckTexts;
-        entry.card.replaceChildren(cardFace(card, 'deck', cardShowsTexts(card)));
+        entry.card.replaceChildren(cardFace(card, 'deck', true)); // F7: control cards show their heading in every set
     }
     return entry;
 }
 
 /* B-99 (F2): the deck shows texts (headings / descriptions) when one of its cards (not a control card) has
- * some; then the control cards show their headings too. Fibonacci: symbols only, the info line explains
- * the control cards. */
+ * some. F7 (Andreas): the control cards show their heading in every set (Fibonacci too), on the table and in
+ * the deck; the info line explains them. */
 let gDeckTexts = false;
+/* the layout level of the table cards (deckTextSize) */
+let gDeckTextSize = 'none';
 
 /* D4: the longest description of a "short texts" deck (control cards: 51, J.U.D.G.E. up to 160 characters) */
 const DECK_SHORT_INFO = 60;
@@ -261,8 +263,11 @@ function deckHasTexts(deck) {
     return deck.cards.some(card => !card.controlCard && (card.heading || card.info));
 }
 
+/* the texts of a table card (cardFace): a control card shows its heading only where the deck's cards carry
+ * no or one-word texts (none, word: symbol + heading like the word layout), else heading and description */
 function cardShowsTexts(card) {
-    return gDeckTexts || !card.controlCard;
+    if (!card.controlCard) return true;
+    return gDeckTextSize === 'none' || gDeckTextSize === 'word' ? 'heading' : true;
 }
 
 /* B-99 (F2): the info line above the tray (devices with a mouse: pointing at a card; keyboard: focus) shows
@@ -289,7 +294,9 @@ function showDeckInfo(element) {
         heading.textContent = card.heading;
         parts.push(heading);
     }
-    if (card.info) parts.push(document.createTextNode((card.heading ? ' — ' : '') + card.info));
+    // F7: a description alone (emotions) reads like a heading
+    if (card.info && card.heading) parts.push(document.createTextNode(' — ' + card.info));
+    else if (card.info) parts.push(Object.assign(document.createElement('b'), { textContent: card.info }));
     line.replaceChildren(...parts);
     line.hidden = false;
 }
@@ -341,12 +348,14 @@ function setDeck(deck) {
     if (ctl === null || deck.rev === gDeck.rev) return;
     gDeck = deck;
     const texts = deckHasTexts(deck);
-    const textsChanged = texts !== gDeckTexts;
+    const textSize = deckTextSize(deck);
+    const textsChanged = texts !== gDeckTexts || textSize !== gDeckTextSize;
     gDeckTexts = texts;
+    gDeckTextSize = textSize;
     ctl.classList.toggle('deck-texts', texts);
     // D4/D5: the table cards' layout follows the deck's longest text (style.css, "data-text-size")
     const cbox = document.getElementById('cbox');
-    if (cbox !== null) cbox.dataset.textSize = deckTextSize(deck);
+    if (cbox !== null) cbox.dataset.textSize = textSize;
     ctl.replaceChildren(...deck.cards.map(card => deckElement(card).slot));
     updateDeckTabStop();
     if (textsChanged) refreshTableFaces();
@@ -615,8 +624,9 @@ function setDeckPickLine(line, middle, picked) {
             const name = document.createElement('b');
             name.append(cardSmall(card, !card.heading), card.heading ? ' · ' + card.heading : '');
             const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
+            // F7: a description alone (emotions) reads like a heading (one-text)
             if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
-                { className: 'deck-pick-info', textContent: card.info }));
+                { className: 'deck-pick-info' + (card.heading ? '' : ' one-text'), textContent: card.info }));
             return list;
         };
     }

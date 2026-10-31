@@ -109,14 +109,14 @@ test('tip after the reveal: talk about traffic lights, also in a mixed choice; c
 
   // ? and ! are asked first
   await vote(['green01', 'red0001', 'xclam01']);
-  await expect(tip).toHaveText('Talk about the cards you chose \u2013 Cleo (!) first.');
-  await expect(tip.locator('b')).toHaveText(['Cleo (!)']);
+  await expect(tip).toHaveText('Talk about the cards you chose \u2013 Cleo (important) first.');
+  await expect(tip.locator('b')).toHaveText(['Cleo (important)']);
 
   // control cards do not make it a talk: lowest and highest as before, coffee adds a break
   await vote(['three01', 'eight01', 'break01']);
   await expect(tip).toHaveText(`Let them explain: Alice (3) and Bob (8). ${BREAK}`);
   await vote(['qstmrk1', 'xclam01', 'break01']);
-  await expect(tip).toHaveText(`Let them explain: Alice (?), Bob (!). ${BREAK}`);
+  await expect(tip).toHaveText(`Let them explain: Alice (question), Bob (important). ${BREAK}`);
 
   // no numbers to compare (veto only): talk about them
   await vote(['veto', 'veto', 'break01']);
@@ -130,7 +130,7 @@ test('tip after the reveal: talk about emotions (B-79)', async ({ browser }) => 
   const { alice, vote } = await teamWithDeck(browser, 'Tips Emotions', 'Emoticons');
   await expect(deckCard(alice, 'satis01')).toBeVisible(); // the Emotions deck
   await vote(['satis01', 'angry01', 'qstmrk1']);
-  await expect(alice.locator('#round_tip')).toHaveText('Talk about the cards you chose \u2013 Cleo (?) first.');
+  await expect(alice.locator('#round_tip')).toHaveText('Talk about the cards you chose \u2013 Cleo (question) first.');
   await vote(['enthu01', 'enthu01', 'enthu01']);
   await expect(alice.locator('#round_tip')).toHaveText(TALK);
 });
@@ -158,15 +158,18 @@ test('tip after the reveal: ? and ! explain too, coffee suggests a break (B-79)'
 
   // ? and ! appended to the spread, coffee adds a break
   await vote(['three01', 'three01', 'eight01', 'qstmrk1', 'xclam01', 'break01']);
-  await expect(tip).toHaveText(`Let them explain: Alice, Bob (3), Cleo (8), Dan (?), Eve (!). ${BREAK}`);
-  await expect(tip.locator('b')).toHaveText(['Alice, Bob (3)', 'Cleo (8)', 'Dan (?)', 'Eve (!)']);
+  await expect(tip).toHaveText(`Let them explain: Alice, Bob (3), Cleo (8), Dan (question), Eve (important). ${BREAK}`);
+  await expect(tip.locator('b')).toHaveText(['Alice, Bob (3)', 'Cleo (8)', 'Dan (question)', 'Eve (important)']);
+  // F7: ? and ! are mini drawings; their names are read out (and the tooltip)
+  await expect(tip.locator('b').nth(2).locator('.mini use')).toHaveAttribute('href', /#s-question$/);
+  await expect(tip.locator('b').nth(3).locator('.mini use')).toHaveAttribute('href', /#s-exclam$/);
 
   // no spread: only ? and ! explain (before "Everyone agrees"); more than two: "+n"
   await vote(['five001', 'five001', 'five001', 'xclam01', 'five001', 'five001']);
-  await expect(tip).toHaveText('Let them explain: Dan (!)');
+  await expect(tip).toHaveText('Let them explain: Dan (important)');
   await vote(['qstmrk1', 'qstmrk1', 'qstmrk1', 'xclam01', 'five001', 'five001']);
-  await expect(tip).toHaveText('Let them explain: Alice, Bob +1 (?), Dan (!)');
-  await expect(tip.locator('b')).toHaveText(['Alice, Bob +1 (?)', 'Dan (!)']);
+  await expect(tip).toHaveText('Let them explain: Alice, Bob +1 (question), Dan (important)');
+  await expect(tip.locator('b')).toHaveText(['Alice, Bob +1 (question)', 'Dan (important)']);
 
   // everybody needs a break: only that
   await vote(Array(6).fill('break01'));

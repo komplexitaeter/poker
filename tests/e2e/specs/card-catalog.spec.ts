@@ -62,9 +62,11 @@ test('every symbol has one way to be shown small: text or drawing (B-99 F6)', ()
     expect(text.has(id) !== drawing.has(id), `${id}: in exactly one of CARD_SMALL_TEXT / CARD_SMALL_DRAWING`).toBe(true);
   }
   for (const id of [...text, ...drawing]) expect(symbols.has(id), `${id} in CARD_SYMBOLS`).toBe(true);
-  // as decided (Andreas, 2026-10-31): coffee, hand and faces are drawn, ? and ! are text
-  for (const id of ['s-coffee', 's-hand', 's-face-sad', 's-light-red', 's-stars-3', 's-check']) expect(drawing.has(id), id).toBe(true);
-  for (const id of ['s-question', 's-exclam', 's-half', 's-inf', 's-100', 's-xxl']) expect(text.has(id), id).toBe(true);
+  // as decided (Andreas, 2026-10-31): coffee, hand, faces and (F7) ? and ! are drawn, numbers and sizes are text
+  for (const id of ['s-coffee', 's-hand', 's-face-sad', 's-light-red', 's-stars-3', 's-check', 's-question', 's-exclam']) {
+    expect(drawing.has(id), id).toBe(true);
+  }
+  for (const id of ['s-half', 's-inf', 's-100', 's-xxl']) expect(text.has(id), id).toBe(true);
 });
 
 test('groups have a style, variants use their own cards, one symbol at most once per group (B-98)', () => {
