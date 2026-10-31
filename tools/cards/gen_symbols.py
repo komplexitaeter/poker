@@ -72,10 +72,10 @@ DIG = {
     "hood": '<path d="M50 50c-16 0-25 12-26 30-1 8-3 14-8 19-5 4-7 9-7 14v2h82v-2c0-5-2-10-7-14-5-5-7-11-8-19-1-18-10-30-26-30z"/>',
     "fmask": '<path d="M50 60c-10 0-16 6-16 17 0 14 7 25 16 30 9-5 16-16 16-30 0-11-6-17-16-17z"/>',
     "face_in": '<circle cx="46" cy="58" r="32"/>',   # face minus this = crescent of hatching at the lower right
-    # joined late (B-102): an open door (frame, leaf hinged on the left) and an arrow going in
+    # joined late (B-102): an open door (frame, leaf hinged on the left) and an arrow coming out of it into the room
     "door": '<path d="M30 22h42v84H30z"/>',
     "leaf": '<path d="M30 22l22 9v83l-22-8z"/>',
-    "arrow": '<path d="M92 66H60M70 56L60 66l10 10"/>',
+    "arrow": '<path d="M58 66H91M81 56l10 10-10 10"/>',
     "square": '<path d="M15 6h70c5 0 9 4 9 9v70c0 5-4 9-9 9H15c-5 0-9-4-9-9V15c0-5 4-9 9-9z"/>',
 }
 
@@ -243,7 +243,8 @@ SYM["s-thought"] = ([S("cloud", THOUGHT, hw=1.25, rim=("cloud", "translate(7 3.2
                      P("bub2", THOUGHT, TINT, w=THOUGHT_OW),
                      T("M42 55h.1M56 55h.1M70 55h.1", 9)], "thought bubble")
 # Joined late (B-102): calm like the other status symbols - an open door, a light leaf with the hatching at its edge,
-# an arrow going in; no figure (reads at mini size too).
+# an arrow coming out of the open door to the right, into the room ("has come in", Andreas #24); no figure
+# (reads at mini size too).
 DOOR_INK = "var(--cardc-ink,#1d2027)"   # frame and floor in the theme ink (the calm group's ink is dark in both themes)
 SYM["s-late"] = ([T(re.search(r'd="([^"]+)"', DIG["door"]).group(1), color=DOOR_INK),   # door frame
                   T("M20 106h62", color=DOOR_INK),                                  # floor
