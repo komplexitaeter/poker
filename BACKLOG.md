@@ -1410,6 +1410,17 @@ aktiven Decks bzw. der Steuerkarten des Teams (z. B. per Direktaufruf); sie zäh
 XSS-Risiko (Ausgabe per textContent). Minimaler Fix: Keys ablehnen (400), die weder im Deck noch in den Steuerkarten des
 Teams sind. Nicht priorisiert.
 
+### B-104 „Karte geändert“: Originalschätzung sichtbar
+Status: refined (Andreas, 2026-10-31), Teil von R3. Wer **nach dem Aufdecken** seine Karte ändert, bekommt am Tisch einen
+**versetzten Stapel**: oben die aktuelle Karte, darunter (versetzt, erkennbar) die **Originalschätzung** beim Aufdecken.
+- Änderungen vor dem Aufdecken zählen nicht.
+- Mehrere Änderungen: nur **Original + aktuell** (keine Zwischenstände).
+- Zurück auf die Originalkarte: **kein Stapel** mehr.
+- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte.
+- **Statistik:** Originalkarte wird gespeichert (additive Spalte, Snapshot der Runde) – auswertbar, wie oft Teams nach
+  der Diskussion umschwenken.
+- Anonym-Modus: Stapel ebenfalls (Namen sind dort ohnehin verborgen). Neue Runde: Original wird gelöscht.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
