@@ -12,7 +12,7 @@
  * Only createElement / textContent / setAttribute; symbol ids and colour tokens only from the whitelists
  * below (never free text in href, class or style). No innerHTML here. */
 
-const CARDS_SPRITE = 'src/cards.svg?v=6'; // bump with the sprite (tools/cards/gen_symbols.py)
+const CARDS_SPRITE = 'src/cards.svg?v=7'; // bump with the sprite (tools/cards/gen_symbols.py)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /* the symbols of the sprite (tools/cards/README.md) */
@@ -23,7 +23,7 @@ const CARD_SYMBOLS = new Set([
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
     's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
-    's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-mask', 's-frame-inv',
+    's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
 ]);
 
 /* B-99 (F6): how each symbol is shown small (spread labels, info line, carousel hint line, "you picked", tips).
@@ -41,7 +41,7 @@ const CARD_SMALL_DRAWING = new Set([
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
     's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
-    's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-mask', 's-frame-inv',
+    's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
 ]);
 
 /* the colour tokens of style/cards.css (catalogue and palette) */
