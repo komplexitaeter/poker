@@ -335,3 +335,91 @@ set @b96_sql = if((select count(1) from information_schema.columns
 prepare b96_stmt from @b96_sql;
 execute b96_stmt;
 deallocate prepare b96_stmt;
+
+/* B-98: deck = set group/variant + single cards on/off + control cards per team (rollout 3), custom sets per team.
+   Additive only: the release code never reads or writes the new columns and tables, cardset_flags stays as it is (old
+   boards keep using it). Teams are migrated lazily by the app: getDao() (api/lib.php) derives deck_id/deck_cards/
+   deck_controls from cardset_flags while deck_id is null, so no data update is needed here. pok_roundstats_tbl.deck_id
+   is the deck of a round (snapshot, written by newround.php). Custom card keys are 'c-' + base36 id (at most 7
+   characters like every card_key, never reused, rows are never deleted: changed cards become new rows).
+   Online: MySQL 8.0 adds nullable columns / columns with a default at the end of a table instantly (metadata only, no
+   table copy), so the size of pok_roundstats_tbl does not matter. Deploy order: run this BEFORE deploying the code
+   (dao.php reads the columns). Idempotent: run it again any time. */
+
+/* 1. check (read only): MySQL version (instant needs >= 8.0.12), row format (not COMPRESSED), sizes,
+   new columns and tables not there yet */
+select table_name, version(), row_format, table_rows, round((data_length + index_length) / 1048576) as mb
+  from information_schema.tables
+ where table_schema = database() and table_name in ('pok_teams_tbl', 'pok_roundstats_tbl');
+select table_name, column_name, column_type from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'deck_id'), ('pok_teams_tbl', 'deck_cards'),
+        ('pok_teams_tbl', 'deck_controls'), ('pok_teams_tbl', 'deck_rev'), ('pok_roundstats_tbl', 'deck_id'));
+select table_name from information_schema.tables
+ where table_schema = database() and table_name in ('pok_custom_sets_tbl', 'pok_custom_cards_tbl');
+
+/* 2. change: each ALTER only if the column is missing. If MySQL refuses algorithm = instant (ERROR 1845/1846), replace
+   it by "algorithm = inplace, lock = none" (online as well, rebuilds the table). The lock wait timeout makes the ALTER
+   give up after 5 s instead of queueing all dao.php calls behind a long query: just run it again. Not between 23:50
+   and 0:10 (nightly job reads pok_roundstats_tbl). */
+set session lock_wait_timeout = 5;
+set @b98_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'deck_id') = 0,
+  'alter table pok_teams_tbl
+     add column deck_id varchar(24) character set ascii collate ascii_bin null
+       comment ''B-98: variant id from card_catalog.json or c-<id> (custom set); null = not migrated yet'',
+     add column deck_cards varchar(200) character set ascii collate ascii_bin null
+       comment ''B-98: active card keys (comma list) if single cards are off; null = all cards of the variant'',
+     add column deck_controls varchar(40) character set ascii collate ascii_bin null
+       comment ''B-98: active control card keys (comma list), empty = none'',
+     add column deck_rev int not null default 0 comment ''B-98: +1 on every change of the deck or the active custom set'',
+     algorithm = instant',
+  'select 1');
+prepare b98_stmt from @b98_sql;
+execute b98_stmt;
+deallocate prepare b98_stmt;
+
+set @b98_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl' and column_name = 'deck_id') = 0,
+  'alter table pok_roundstats_tbl
+     add column deck_id varchar(24) character set ascii collate ascii_bin null comment ''B-98: deck of the round'',
+     algorithm = instant',
+  'select 1');
+prepare b98_stmt from @b98_sql;
+execute b98_stmt;
+deallocate prepare b98_stmt;
+
+/* custom sets of a team (rollout 3, S4). deleted = 1: soft delete (round history keeps its cards). rev: +1 per save
+   (hint "someone else changed this set"). team_id with the charset of pok_teams_tbl.id (utf8mb3) for the join. */
+create table if not exists pok_custom_sets_tbl (
+  id int unsigned not null auto_increment primary key,
+  team_id varchar(80) character set utf8mb3 collate utf8mb3_general_ci not null,
+  name varchar(24) not null,
+  style varchar(12) character set ascii collate ascii_bin not null default 'plain' comment 'style from card_catalog.json',
+  rev int unsigned not null default 1,
+  sort_order tinyint unsigned not null default 0,
+  deleted tinyint not null default 0,
+  creation_date timestamp not null default current_timestamp,
+  update_date timestamp not null default current_timestamp on update current_timestamp,
+  key ix_custom_sets_team (team_id, deleted)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
+
+/* cards of a custom set. Immutable: a changed card is a new row with a new card_key, the old row gets active = 0 and
+   is never deleted (historic rounds keep showing what was played). card_key = 'c-' + base36(id), set right after the
+   insert (unique, at most 7 characters). Either symbol_id (symbol library) or value_text (at most 6 characters). */
+create table if not exists pok_custom_cards_tbl (
+  id int unsigned not null auto_increment primary key,
+  set_id int unsigned not null,
+  card_key varchar(7) character set ascii collate ascii_bin null,
+  position tinyint unsigned not null,
+  symbol_id varchar(32) character set ascii collate ascii_bin null,
+  value_text varchar(6) null,
+  heading varchar(16) null,
+  description varchar(160) null,
+  numeric_value decimal(10,2) null,
+  color varchar(16) character set ascii collate ascii_bin not null comment 'colour token from card_catalog.json',
+  active tinyint not null default 1 comment '0 = replaced or removed version',
+  creation_date timestamp not null default current_timestamp,
+  unique key ux_custom_cards_key (card_key),
+  key ix_custom_cards_set (set_id, active)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;

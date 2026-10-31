@@ -143,21 +143,195 @@ function normalize_results_order($results_order) {
     return $results_order === 'NAME' ? 'NAME' : 'SEQUENCE';
 }
 
-function sort_players_by_sequence(array $players)
+/*
+ * Sorts revealed players by their card (sort_order of cards.json and card_catalog.json), players with the same card
+ * keep their order (by name). Players with a card key unknown to both files (e.g. custom cards, B-98) are never
+ * dropped: they come last, in their incoming order.
+ */
+function sort_players_by_sequence(array $players): array
 {
-    $ret_val = array();
-    $cards = json_decode(file_get_contents('../cards.json'), true)["cards"];
+    $rank = card_rank();
+    $unknown = count($rank);
+    usort($players, function ($a, $b) use ($rank, $unknown) {
+        return ($rank[(string)$a->display_card_key] ?? $unknown) <=> ($rank[(string)$b->display_card_key] ?? $unknown);
+    });
+    return $players;
+}
 
-    usort($cards, function($a, $b) {
-        return $a["sort_order"] - $b["sort_order"];
+/* card_key => position when all known cards are ordered by sort_order (ties: cards.json first, then file order) */
+function card_rank(): array
+{
+    static $rank = null;
+    if ($rank !== null) return $rank;
+
+    $cards = array();
+    $v1 = json_decode((string)file_get_contents(dirname(__DIR__) . '/cards.json'), true);
+    foreach ($v1['cards'] ?? array() as $card) $cards[] = $card;
+    $catalog = card_catalog();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['cards'] as $card) $cards[] = $card;
+    foreach ($catalog['controls'] as $card) $cards[] = $card;
+
+    $i = 0;
+    foreach ($cards as &$card) $card['pos'] = $i++;
+    unset($card);
+    usort($cards, function ($a, $b) {
+        return [$a['sort_order'], $a['pos']] <=> [$b['sort_order'], $b['pos']];
     });
 
+    $rank = array();
     foreach ($cards as $card)
-        foreach ($players as $player)
-            if ($card["card_key"] == $player->display_card_key)
-                $ret_val[] = $player;
+        if (!isset($rank[$card['card_key']])) $rank[$card['card_key']] = count($rank);
+    return $rank;
+}
 
-    return $ret_val;
+/*
+ * B-98: card catalog v2 (card_catalog.json): set groups with variants, their cards and the control cards. Read once
+ * per request. legacy_index is the position of a card in the old cardset_flags (cards.json v1).
+ * A missing, broken or half deployed file yields empty groups/controls and default_deck = null (an unknown default
+ * deck counts as missing); callers must then neither migrate nor store a deck (see getDao()).
+ * Statistics by card value must use numeric_value (or legacy_index for old rounds) from R3 on, not card_key: the same
+ * value has its own card_key in several groups (e.g. five001 in Fibonacci vs. num5 in Numbers).
+ */
+function card_catalog(): array
+{
+    static $catalog = null;
+    if ($catalog === null) {
+        $raw = @file_get_contents(dirname(__DIR__) . '/card_catalog.json');
+        $catalog = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($catalog)) $catalog = array();
+        foreach (array('groups', 'controls') as $key)
+            if (!isset($catalog[$key]) || !is_array($catalog[$key])) $catalog[$key] = array();
+        foreach ($catalog['groups'] as $i => $group) {
+            if (!isset($group['cards']) || !is_array($group['cards'])) $catalog['groups'][$i]['cards'] = array();
+            if (!isset($group['variants']) || !is_array($group['variants'])) $catalog['groups'][$i]['variants'] = array();
+        }
+        $default = $catalog['default_deck'] ?? null;
+        if (!is_string($default) || !isset(catalog_variants($catalog)[$default])) $catalog['default_deck'] = null;
+    }
+    return $catalog;
+}
+
+/* B-98: variant id => array('group' => group, 'variant' => variant) */
+function catalog_variants(array $catalog): array
+{
+    $variants = array();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['variants'] as $variant)
+            $variants[$variant['id']] = array('group' => $group, 'variant' => $variant);
+    return $variants;
+}
+
+/*
+ * B-98: derives the deck of a team from its old cardset_flags (lazy migration in getDao()). Returns the values for
+ * pok_teams_tbl.deck_id, deck_cards (null = all cards of the variant) and deck_controls (comma list, '' = none).
+ * - Control card bits (☕ ? ! ✋) are taken over as they are (existing teams keep their choice), except ✋ (veto) for
+ *   teams that end up in J.U.D.G.E. with "6 veto" (jdg6): that card covers it (Andreas, 2026-10-31).
+ * - The other cards equal a variant exactly -> that variant.
+ * - Otherwise they are a subset of a group (first group in catalog order, so Fibonacci wins over Numbers) -> the
+ *   first variant containing all of them (else the one sharing the most cards) with these cards switched on.
+ * - Otherwise (mixed groups, no card at all, e.g. needs_setup) -> the default deck with all of its cards.
+ * Bits at positions without a card (or beyond the string, old teams have shorter strings) count as off.
+ */
+function deck_from_cardset_flags(?string $flags, array $catalog): array
+{
+    $flags = (string)$flags;
+    $is_on = function (int $index) use ($flags): bool {
+        return isset($flags[$index]) && $flags[$index] === '1';
+    };
+
+    $controls = array();
+    $control_indexes = array();
+    foreach ($catalog['controls'] as $control) {
+        $control_indexes[$control['legacy_index']] = true;
+        if ($is_on($control['legacy_index'])) $controls[] = $control['card_key'];
+    }
+
+    $selected = array();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['cards'] as $card)
+            if ($is_on($card['legacy_index'])) $selected[$card['legacy_index']] = true;
+    $selected = array_keys(array_diff_key($selected, $control_indexes));
+    sort($selected);
+
+    $result = array('deck_id' => (string)$catalog['default_deck'], 'deck_cards' => null,
+                    'deck_controls' => implode(',', $controls));
+    if (count($selected) === 0) return $result;
+
+    foreach ($catalog['groups'] as $group) {
+        $index_of = array_column($group['cards'], 'legacy_index', 'card_key');
+        foreach ($group['variants'] as $variant) {
+            $indexes = array_map(function ($key) use ($index_of) { return $index_of[$key]; }, $variant['cards']);
+            sort($indexes);
+            if ($indexes === $selected) {
+                $result['deck_id'] = $variant['id'];
+                return drop_veto_for_judge($result, $group['id'], $variant['cards']);
+            }
+        }
+    }
+
+    foreach ($catalog['groups'] as $group) {
+        $key_of = array_column($group['cards'], 'card_key', 'legacy_index');
+        if (count(array_diff($selected, array_keys($key_of))) > 0) continue;
+
+        $keys = array();
+        foreach ($group['cards'] as $card)
+            if (in_array($card['legacy_index'], $selected, true)) $keys[] = $card['card_key'];
+
+        $best = null;
+        $best_common = -1;
+        foreach ($group['variants'] as $variant) {
+            $common = count(array_intersect($keys, $variant['cards']));
+            if ($common === count($keys)) { $best = $variant; break; }
+            if ($common > $best_common) { $best = $variant; $best_common = $common; }
+        }
+        $result['deck_id'] = $best['id'];
+        $result['deck_cards'] = implode(',', $keys);
+        return drop_veto_for_judge($result, $group['id'], $keys);
+    }
+
+    return $result;
+}
+
+/* B-98: a team migrated to J.U.D.G.E. including "6 veto" (jdg6) does not get the ✋ control card as well. */
+function drop_veto_for_judge(array $result, string $group_id, array $card_keys): array
+{
+    if ($group_id !== 'judge' || !in_array('jdg6', $card_keys, true)) return $result;
+    $controls = array_filter(explode(',', $result['deck_controls']), function ($key) {
+        return $key !== '' && $key !== 'veto';
+    });
+    $result['deck_controls'] = implode(',', $controls);
+    return $result;
+}
+
+/*
+ * B-98: the deck of a team as delivered by dao.php:
+ * {id: variant id, group: group id, cards: [active card keys in deck order], controls: [active control card keys], rev}
+ * Card data (value, heading, description, numeric value) comes from card_catalog.json. Unknown ids and keys (e.g. after
+ * a catalog change) fall back to the default deck and are ignored; at least one card always stays on.
+ */
+function resolve_deck(?string $deck_id, ?string $deck_cards, ?string $deck_controls, int $deck_rev, array $catalog): array
+{
+    $variants = catalog_variants($catalog);
+    $entry = $variants[(string)$deck_id] ?? $variants[$catalog['default_deck']] ?? null;
+    if ($entry === null) return array('id' => null, 'group' => null, 'cards' => array(), 'controls' => array(), 'rev' => $deck_rev);
+
+    $cards = $entry['variant']['cards'];
+    if ($deck_cards !== null && $deck_cards !== '' && $entry['variant']['id'] === $deck_id) {
+        $wanted = array_flip(explode(',', $deck_cards));
+        $subset = array();
+        foreach ($entry['group']['cards'] as $card)
+            if (isset($wanted[$card['card_key']])) $subset[] = $card['card_key'];
+        if (count($subset) > 0) $cards = $subset;
+    }
+
+    $controls = array();
+    $wanted = array_flip(explode(',', (string)$deck_controls));
+    foreach ($catalog['controls'] as $control)
+        if (isset($wanted[$control['card_key']])) $controls[] = $control['card_key'];
+
+    return array('id' => $entry['variant']['id'], 'group' => $entry['group']['id'], 'cards' => $cards,
+                 'controls' => $controls, 'rev' => $deck_rev);
 }
 
 function name2id($name) {
@@ -256,6 +430,7 @@ function getDao($t, $id) {
     $card_key = '';
     $player_type = null;
     $cardset_flags = null;
+    $deck = null;
     $team_name = null;
     $color_mode = 'dark';
     $hide_teaser = 0;
@@ -303,6 +478,10 @@ function getDao($t, $id) {
                   ,t.anonymous_request_toggle
                   ,t.show_tips
                   ,t.needs_setup
+                  ,t.deck_id
+                  ,t.deck_cards
+                  ,t.deck_controls
+                  ,t.deck_rev
             FROM pok_teams_tbl as t
              WHERE t.id = ?");
     $sql->bind_param('s', $t);
@@ -324,6 +503,32 @@ function getDao($t, $id) {
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
         $show_tips = (int)$obj->show_tips;
         $needs_setup = (bool)$obj->needs_setup;
+
+        /* B-98: lazy migration - a team without deck_id gets the deck derived from its cardset_flags (also after the
+           old deck menu changed them, update_cardset.php resets deck_id). Only if the flags are still the ones read
+           here, so a parallel update_cardset.php is never overwritten. No notify_team(): dao.php must never notify. */
+        $catalog = card_catalog();
+        if (!isset($catalog['default_deck'])) {
+            $deck = null; // broken or half deployed card_catalog.json: deliver no deck, store nothing
+        } else {
+            $deck_id = $obj->deck_id;
+            $deck_cards = $obj->deck_cards;
+            $deck_controls = $obj->deck_controls;
+            if ($deck_id === null) {
+                $migrated = deck_from_cardset_flags($obj->cardset_flags, $catalog);
+                $deck_id = $migrated['deck_id'];
+                $deck_cards = $migrated['deck_cards'];
+                $deck_controls = $migrated['deck_controls'];
+                $sql_m = $link->prepare("update pok_teams_tbl
+                                            set deck_id = ?, deck_cards = ?, deck_controls = ?
+                                          where id = ?
+                                            and deck_id is null
+                                            and cardset_flags <=> ?");
+                $sql_m->bind_param('sssss', $deck_id, $deck_cards, $deck_controls, $t, $obj->cardset_flags);
+                $sql_m->execute();
+            }
+            $deck = resolve_deck($deck_id, $deck_cards, $deck_controls, (int)$obj->deck_rev, $catalog);
+        }
     }
 
     $sql = $link->prepare("SELECT p.*
@@ -454,6 +659,7 @@ function getDao($t, $id) {
         "survey"=>$survey,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
+        "deck"=>$deck, // B-98: {id, group, cards, controls, rev}, card data in card_catalog.json
         "topic"=>(String)$topic,
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,

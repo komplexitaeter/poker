@@ -17,7 +17,7 @@ $sql->execute();
 
 $sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, type_code, timer_start_time
                             , timer_pause_time ,timer_visibility, topic, cardset_flags, results_order, show_avg
-                            , anonymous_mode)
+                            , anonymous_mode, deck_id)
                 select p.team_id
                      , count(1) players_count
                      , IF(count(1) = count(p.card_key), 'NEW_ROUND', 'CANCEL_ROUND') type_code
@@ -29,6 +29,7 @@ $sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, ty
                      , t.results_order
                      , t.show_avg
                      , t.anonymous_mode
+                     , t.deck_id
                   from pok_players_tbl p, pok_teams_tbl t
                  where p.team_id = ?
                    and p.player_type = 'PLAYER'

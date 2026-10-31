@@ -11,7 +11,11 @@ $cardset_flags = filter_input(INPUT_GET, "cardset_flags", FILTER_SANITIZE_NUMBER
 $link = db_init();
 require_team($t, $link);
 
-$sql = $link->prepare("UPDATE pok_teams_tbl SET cardset_flags = ?, needs_setup=0 WHERE id=?");
+/* B-98: the deck follows the old deck menu: deck_id = null makes getDao() derive it again from the new flags */
+$sql = $link->prepare("update pok_teams_tbl
+                          set cardset_flags = ?, needs_setup = 0
+                             ,deck_id = null, deck_cards = null, deck_controls = null, deck_rev = deck_rev + 1
+                        where id = ?");
 $sql->bind_param('ss',$cardset_flags, $t);
 $sql->execute();
 
