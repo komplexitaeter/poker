@@ -49,10 +49,11 @@
     /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
-     * The images are 300 x 443px: sharp up to 150px on 2x screens. */
+     * B-99: the cards are rendered (cards.js), sharp at any size. */
     --card-min: 64px;     /* the name stays readable; on a 375x667 phone 20 cards fit without scrolling, more scroll */
     --card-max: 150px;    /* phones: 110px, see below */
     --card-ratio: 1.48;   /* height / width (100 x 148) */
+    --card-name-h: 24px;  /* B-99: the name tag above a card (20px line + 4px gap), part of the fit */
     /* side gutter of #cbox: the gap between two cards, at least this (large screens: plus the
      * 8px padding of .table) – the outer cards never touch the edge of the table */
     --card-gutter-min: 8px;
@@ -69,7 +70,10 @@
 }
 
 @media (max-width: 799.98px) {
-    :root { --card-max: 110px; } /* few players: no giant cards on a phone */
+    :root {
+        --card-max: 110px;   /* few players: no giant cards on a phone */
+        --card-name-h: 17px; /* B-99: a slimmer name tag, 15 cards still fit on a 375x667 phone */
+    }
 }
 
 /* touch devices: the deck is a carousel (B-75, B-77 tablets too); the width of a card, the one in
@@ -1580,34 +1584,26 @@ div#cbox {
 
 
 .c {
-    /* relative: anchor for the absolutely positioned name and delete button */
+    /* relative: anchor for the absolutely positioned delete button */
     position: relative;
     text-align: left;
     display: inline-block;
     width: var(--card-w);
-    border-radius: calc(var(--card-w) * 0.15); /* 15px at 100px, the corners of the images */
-    background: var(--secondary-background-color);
 }
 
-.c .background {
+.c:hover .pc { border-color: var(--bluish); }
+
+/* B-76/B-99: the name tag above the card (its height is part of the fit, --card-name-h) */
+.c .card_player_name {
     display: block;
+    width: fit-content;
+    max-width: 100%;
+    height: calc(var(--card-name-h) - 4px);
+    margin: 0 auto 4px;
+    padding: 0 6px;
     box-sizing: border-box;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / var(--card-ratio);
-    border: 1px solid var(--light-border-color);
-    border-radius: inherit;
-}
-
-.c:hover .background { border-color: var(--bluish); }
-
-.c span {
-    position: absolute;
-    top: calc(var(--card-w) * 0.04);
-    width: 100%;
-    line-height: 2em;
-    box-sizing: border-box;
-    padding: 0 10%; /* clear of the rounded corners; a longer name ends with an ellipsis */
+    border-radius: var(--radius-s);
+    line-height: calc(var(--card-name-h) - 4px);
     text-align: center;
     color: var(--text-color);
     font-size: clamp(10px, var(--card-w) * 0.11, 14px); /* 11px at 100px */
@@ -1662,6 +1658,251 @@ div#cbox {
 @media (max-width: 799.98px) {
     div#cbox { margin-top: var(--space-2); }
 }
+
+/* ---------- Rendered cards (B-99) ---------- */
+
+/* A card face is built by cards.js: .pc on the table, .dkc in the deck, .mini in the spread. --a is the value
+ * colour, --on the text on it (tokens --c-* / --on-c-* of style/cards.css, light and dark). `color` is the value
+ * colour too: the symbols of src/cards.svg take their tint and hatching from currentColor. Paper and ink of
+ * the card: --cardc-face / --cardc-ink (cards.css). Values and headings in the mono font, descriptions in sans.
+ * Styles per set: sty-plain | sty-badge | sty-banner | sty-inverted (control and status cards: plain). */
+.pc,
+.dkc,
+.mini {
+    --a: var(--line-strong);
+    --on: var(--text);
+    color: var(--a);
+}
+
+.pc .mot,
+.dkc .mot,
+.mini .mot { display: block; overflow: visible; }
+
+/* J.U.D.G.E.: the value in paper colour on the hatched coloured square (tools/cards/README.md) */
+.inv-frame {
+    --sym-tint: currentColor;
+    --sym-hatch: color-mix(in srgb, var(--cardc-ink) 18%, currentColor);
+}
+
+.inv-value {
+    --sym-ink: var(--inv-o);
+    --sym-tint: var(--on);
+    --sym-hatch: transparent;
+}
+
+/* the value as text (no symbol for it) */
+.pc .tv,
+.dkc .tv {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+/* table: sizes follow the card width --card-w (B-49) */
+.pc {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 1 / var(--card-ratio);
+    padding: calc(var(--card-w) * 0.12) calc(var(--card-w) * 0.07) calc(var(--card-w) * 0.08);
+    background: var(--cardc-face);
+    border: 1px solid var(--line-strong);
+    border-radius: calc(var(--card-w) * 0.11);
+    overflow: hidden;
+}
+
+/* the coloured bar on top */
+.pc::before,
+.dkc::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: max(3px, calc(var(--card-w) * 0.045));
+    background: var(--a);
+}
+
+.pc .mot { flex: 1 1 auto; min-height: 0; width: 100%; }
+
+.pc .tv { flex: 1 1 auto; font-size: calc(var(--card-w) * 0.3); }
+
+.pc .tv-long { font-size: calc(var(--card-w) * 0.16); }
+
+.pc.is-status .mot { padding: calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.06) 0; box-sizing: border-box; }
+
+.pc .stl {
+    flex: none;
+    margin-top: calc(var(--card-w) * 0.03);
+    font-size: clamp(9px, var(--card-w) * 0.085, 12px);
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.pc .ttl {
+    position: relative;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    margin-top: calc(var(--card-w) * 0.03);
+    font-size: clamp(9px, var(--card-w) * 0.1, 14px);
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+.pc.has-info .mot { flex: 0 0 calc(var(--card-w) * 0.4); }
+
+/* a description but no heading (emotions): the symbol keeps its room, the word reads like a heading */
+.pc.has-info:not(.has-head) .mot { flex: 1 1 0; }
+
+.pc .txt {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 6;
+    overflow: hidden;
+    margin-top: calc(var(--card-w) * 0.02);
+    font: clamp(9px, var(--card-w) * 0.088, 12px) / 1.25 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--muted);
+    text-align: center;
+}
+
+.pc.has-info:not(.has-head) .txt { font-size: clamp(10px, var(--card-w) * 0.1, 14px); color: var(--text); }
+
+/* touch: the delete icon sits on the lower right corner; the caption keeps clear of it */
+@media (hover: none), (pointer: coarse) {
+    .pc { padding-bottom: calc(var(--card-del) / 2 + 2px); }
+}
+
+/* deck: the card fills its button; sizes in % (the cards shrink together when the tray is narrow) */
+.dkc {
+    position: relative;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 1 / var(--card-ratio);
+    background: var(--cardc-face);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.dkc::before { height: 3px; }
+
+.dkc .mot,
+.dkc .tv {
+    position: absolute;
+    left: 4%;
+    top: 10%;
+    width: 92%;
+    height: 84%;
+}
+
+.dkc .tv { font-size: calc(var(--deck-w) * 0.3); }
+
+.dkc .tv-long { font-size: calc(var(--deck-w) * 0.16); }
+
+.dkc.has-head .mot,
+.dkc.has-head .tv { top: 7%; height: 58%; }
+
+.dkc .dh {
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    bottom: 4%;
+    display: flex;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+    color: var(--text);
+}
+
+.dkc .dh > span:last-child {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+/* spread: picture symbols small */
+.mini { display: inline-block; width: 16px; height: 19px; vertical-align: middle; }
+
+.mini .mot { width: 100%; height: 100%; }
+
+/* badge (traffic lights, emotions, stars): the card tinted, the heading as a pill with a coloured rim */
+.pc.sty-badge,
+.dkc.sty-badge { background: color-mix(in srgb, var(--a) 13%, var(--cardc-face)); }
+
+.pc .hd-badge {
+    padding: 0.15em 0.7em;
+    border: 1.5px solid var(--a);
+    border-radius: 999px;
+    background: var(--cardc-face);
+}
+
+/* banner (Delegation): no bar, the heading light on a band in the value colour */
+.pc.sty-banner::before,
+.dkc.sty-banner::before,
+.pc.sty-inverted::before,
+.dkc.sty-inverted::before { display: none; }
+
+.pc.sty-banner .ttl {
+    align-self: stretch;
+    max-width: none;
+    margin-inline: calc(var(--card-w) * -0.07);
+}
+
+.sty-banner .hd-banner {
+    display: block;
+    width: 100%;
+    padding: 0.3em 0.6em;
+    box-sizing: border-box;
+    background: var(--a);
+    color: var(--on);
+}
+
+.dkc.sty-banner .dh { border-radius: 3px; background: var(--a); }
+
+.dkc.sty-banner .hd-banner { padding: 1px 0; }
+
+/* inverted (J.U.D.G.E.): the value on the square, the heading in a dash-dot frame as wide as the card */
+.pc.sty-inverted .mot { flex: 0 0 calc(var(--card-w) * 0.44); }
+
+.pc.sty-inverted .ttl { align-self: stretch; padding: 0.25em 0.35em; margin-block: calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.02); }
+
+.hd-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.hd-frame rect {
+    fill: none;
+    stroke: var(--cardc-ink);
+    stroke-width: 1.3;
+    stroke-dasharray: 7 3 1.5 3;
+}
+
+.hd-inverted { position: relative; }
+
+.dkc.sty-inverted .dh { left: 2px; right: 2px; bottom: 2px; padding: 3px 2px; }
 
 /* ---------- New round button, timer (.dock, B-66/B-67/B-68) ---------- */
 
@@ -1993,31 +2234,90 @@ div#cbox {
 
 .ctl-slot { display: contents; }
 
-.ctl-slot:has(> .off) { display: none; }
-
 .ctl-key { display: none; }
 
-.controls img {
+/* B-99: a deck card is a button with the rendered card (.dkc, see "Rendered cards"). Pointing at it lifts
+ * the card, the picked one stays lifted with the accent frame. */
+.controls .ctl {
     flex: none;
+    display: block;
     width: var(--deck-w);
     margin: 0 2px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid transparent;
-    border-top-left-radius: var(--radius-s);
-    border-top-right-radius: var(--radius-s);
+    padding: 0 0 6px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
     cursor: not-allowed;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.controls .ctl:focus { outline: none; }
+
+.controls .ctl:focus-visible .dkc {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .controls .ctl_hover { cursor: pointer; }
 
-.controls .ctl_hover:hover,
-.controls .selected { border-bottom: 1px solid var(--accent); }
+.controls .ctl .dkc { transition: transform 0.15s ease, border-color 0.15s ease; }
 
-.controls .off { display: none; }
+.controls .ctl_hover:hover .dkc,
+.controls .ctl:focus-visible .dkc {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+}
 
-.controls .on { display: unset; }
+.controls .selected .dkc {
+    transform: translateY(-4px);
+    border: 2px solid var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .controls .ctl .dkc { transition: none; }
+}
 
 .ctl_as_guest { filter: grayscale(100%); }
+
+/* B-99 (F3): the info line above the tray (value chip, heading — description), while pointing at / focusing a
+ * card that has texts. Floats above the tray, so the table keeps its room. */
+.deck-info {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    z-index: 3;
+    width: max-content;
+    max-width: min(640px, calc(100% - 2 * var(--space-3)));
+    box-sizing: border-box;
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    background: var(--bg-2);
+    box-shadow: var(--tray-shadow);
+    font-size: var(--fs-xs);
+    line-height: 20px;
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.deck-info[hidden] { display: none; }
+
+.deck-info-value {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 0 6px;
+    border-left: 4px solid var(--a, var(--line-strong));
+    background: var(--bg-4);
+    color: var(--text);
+    font-weight: 700;
+}
+
+.deck-info b {
+    color: var(--text);
+}
 
 .deck-hint { display: none; }
 
@@ -2031,7 +2331,7 @@ div#cbox {
         padding: 10px 10px 6px;
     }
 
-    .controls img {
+    .controls .ctl {
         flex-shrink: 1;
         min-width: var(--deck-min);
     }
@@ -2052,7 +2352,7 @@ div#cbox {
         min-width: calc(var(--deck-min) + 4px);
     }
 
-    .ctl-slot > img {
+    .ctl-slot > .ctl {
         min-width: 0;
         max-width: calc(100% - 4px);
     }
@@ -2110,7 +2410,8 @@ div#cbox {
     }
 
     .deck-more,
-    .deck-hint { display: none; }
+    .deck-hint,
+    .deck-info { display: none; }
 
     .controls {
         position: relative; /* offsetParent of the cards (script.js measures against it) */
@@ -2137,11 +2438,9 @@ div#cbox {
         scroll-snap-stop: always; /* one card per swipe */
     }
 
-    .controls .ctl-slot > img {
+    .controls .ctl-slot > .ctl {
         display: block;
         width: 100%;
-        height: auto;
-        aspect-ratio: 300 / 443;
         margin: 0;
         padding: 0;
         border: 0;
@@ -2152,11 +2451,15 @@ div#cbox {
         -webkit-touch-callout: none;
     }
 
-    .controls .ctl_hover:hover { border: 0; }
+    /* no lift in the carousel (the carousel scales the cards); picked: the accent frame, the dot below is filled */
+    .controls .ctl_hover:hover .dkc,
+    .controls .ctl:focus-visible .dkc,
+    .controls .selected .dkc { transform: none; }
 
-    /* picked: the accent frame of the deck (B-68 tab), the dot below is filled */
-    .controls .ctl-slot > img.selected {
-        background-color: var(--secondary-background-color);
+    .controls .ctl_hover:hover .dkc { border-color: var(--line-strong); }
+
+    .controls .selected .dkc {
+        border: 1px solid var(--line-strong);
         outline: 2px solid var(--accent);
         outline-offset: 1px;
     }
@@ -2272,6 +2575,20 @@ div#cbox {
     }
 
     .deck-pick::before { content: "> "; }
+
+    .deck-pick b { font-weight: 400; color: var(--text); }
+
+    /* B-99 (F3): sets with texts: the description of the card in the middle, two lines kept free */
+    .deck-pick-info {
+        display: block;
+        white-space: normal;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .down-container:has(.deck-texts) .deck-pick { height: 48px; white-space: normal; }
 
     .down-container:has(.ctl_as_guest) .deck-pick { visibility: hidden; }
 }

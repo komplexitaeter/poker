@@ -7,13 +7,15 @@
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
-    <link rel="stylesheet" href="style/style.css?v=1.61" media="screen" />
+    <link rel="stylesheet" href="style/cards.css?v=1" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.62" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.32" type="text/javascript"></script>
-    <script defer src="script/deck.js?v=1.0" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.54" type="text/javascript"></script>
+    <script defer src="script/cards.js?v=1.0" type="text/javascript"></script>
+    <script defer src="script/deck.js?v=1.1" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.55" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -149,6 +151,10 @@
     </main>
 
     <div class="down-container" id="down-container">
+
+        <!-- B-99 (F3), devices with a mouse / keyboard: value, heading and description of the card pointed at or
+             focused (sets without texts: control cards only); above the tray, set by showDeckInfo() in script.js -->
+        <p class="deck-info" id="deck_info" aria-live="polite" hidden></p>
 
         <div class="controls" id="ctl">
         </div>
