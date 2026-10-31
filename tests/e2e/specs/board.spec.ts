@@ -83,16 +83,16 @@ test('a new round resets all cards', async ({ browser }) => {
     await expectTableCard(page, 'Alice', 'prgrss1');
     await expectTableCard(page, 'Bob', 'prgrss1');
   }
-  await expect(alice.locator('#ctl img#three01')).not.toHaveClass(/selected/);
-  await expect(bob.locator('#ctl img#five001')).not.toHaveClass(/selected/);
+  await expect(alice.locator('#ctl .ctl[data-card="three01"]')).not.toHaveClass(/selected/);
+  await expect(bob.locator('#ctl .ctl[data-card="five001"]')).not.toHaveClass(/selected/);
 });
 
 test('changing the deck of cards applies to all players', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Team');
   // new teams start with the Fibonacci preset
   for (const page of [alice, bob]) {
-    await expect(page.locator('#ctl img#three01')).toHaveClass(/\bon\b/);
-    await expect(page.locator('#ctl img#green01')).toHaveClass(/\boff\b/);
+    await expect(page.locator('#ctl .ctl[data-card="three01"]')).toHaveCount(1);
+    await expect(page.locator('#ctl .ctl[data-card="green01"]')).toHaveCount(0);
   }
 
   await alice.locator('#cset_btn').click();
@@ -100,9 +100,16 @@ test('changing the deck of cards applies to all players', async ({ browser }) =>
 
   for (const page of [alice, bob]) {
     for (const card of ['green01', 'yellow1', 'red0001']) {
-      await expect(page.locator(`#ctl img#${card}`)).toHaveClass(/\bon\b/);
+      await expect(page.locator(`#ctl .ctl[data-card="${card}"]`)).toHaveCount(1);
     }
-    await expect(page.locator('#ctl img#three01')).toHaveClass(/\boff\b/);
+    await expect(page.locator('#ctl .ctl[data-card="three01"]')).toHaveCount(0);
+    // B-99: the tray holds only the cards of the deck, in deck order (the preset keeps the control
+    // cards); the spread follows the deck
+    const deck = ['green01', 'yellow1', 'red0001', 'break01', 'qstmrk1', 'xclam01'];
+    await expect.poll(() => page.locator('#ctl .ctl').evaluateAll(cards =>
+      cards.map(c => c.getAttribute('data-card')))).toEqual(deck);
+    await expect.poll(() => page.locator('#spread_bars .spread-col').evaluateAll(cols =>
+      cols.map(c => c.getAttribute('data-card')))).toEqual(deck);
   }
 });
 

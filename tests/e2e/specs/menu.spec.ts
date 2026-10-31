@@ -346,7 +346,7 @@ test('board settings: tabs Deck | Results | Team by click and arrow keys, card s
   await expect(three).toHaveClass(/cs_c_on/);
   await three.click();
   await expect(three).not.toHaveClass(/cs_c_on/);
-  await expect(alice.locator('#ctl img#three01')).toHaveClass(/\boff\b/);
+  await expect(alice.locator('#ctl .ctl[data-card="three01"]')).toHaveCount(0);
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 });
 

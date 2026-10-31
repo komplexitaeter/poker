@@ -42,7 +42,7 @@ test('the menu setting arranges revealed cards by player name or by card value, 
   // Alice 8, Bob 3: by name Alice comes first
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator(`#cbox .c[id="${bobId}"] img.card_image`)).toHaveAttribute('src', 'src/c_three01.png');
+  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveAttribute('data-card', 'three01');
   await expect(firstCard(alice)).toHaveAttribute('id', aliceId);
   await expect(firstCard(bob)).toHaveAttribute('id', aliceId);
 
@@ -85,7 +85,7 @@ test('anonymous mode: the choice is disabled, shows "Card value", a hint is show
   // Alice 8, Bob 3: arranged by card value although "Player name" is stored
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator(`#cbox .c[id="${bobId}"] img.card_image`)).toHaveAttribute('src', 'src/c_three01.png');
+  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveAttribute('data-card', 'three01');
   await expect(firstCard(alice)).toHaveAttribute('id', bobId);
   await expect(alice.locator('#order_by_div')).toHaveCount(0);
 });

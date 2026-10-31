@@ -199,7 +199,7 @@ test('round button always there; many deck cards in a narrow window: the deck sc
   await addPlayersViaApi(alice, url, ['Bob']);
   await joinAsPlayer(alice, url, 'Alice');
   await alice.reload();
-  await expect(alice.locator('#ctl img.on')).toHaveCount(15);
+  await expect(alice.locator('#ctl .ctl')).toHaveCount(15);
 
   // before the first card: there, but disabled (Andreas)
   const btn = alice.locator('#newroundbtn');

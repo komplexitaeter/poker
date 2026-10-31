@@ -24,7 +24,7 @@ test('without login only the form, wrong password and non-bcrypt entries rejecte
   await joinAsPlayer(player, await createTeam(player, teamName), 'Sam');
   await pickCard(player, 'three01');
   await player.locator('#newroundbtn').click();   // finished round: the table counts as active
-  await expect(player.locator('#ctl img#three01')).not.toHaveClass(/selected/);
+  await expect(player.locator('#ctl .ctl[data-card="three01"]')).not.toHaveClass(/selected/);
 
   const page = await newPlayer(browser);
   for (const tab of ['live', 'usage', 'ideas', 'tech']) {

@@ -39,7 +39,7 @@ test('an older board state that comes last is dropped (B-92)', async ({ browser 
   await stateDelivered;
   await alice.evaluate(() => new Promise(resolve => setTimeout(resolve, 300)));
   await expect(alice.locator('#team_name')).toHaveText('Dao Order');
-  await expect(alice.locator('#ctl img#three01')).toHaveClass(/selected/);
+  await expect(alice.locator('#ctl .ctl[data-card="three01"]')).toHaveClass(/selected/);
   await expectTableCard(alice, 'Alice', 'three01');
   await expectTableCard(alice, 'Bob', 'five001');
 });
