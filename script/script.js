@@ -282,7 +282,7 @@ function showDeckInfo(element) {
     chip.className = 'deck-info-value';
     const look = cardLook(card);
     setCardColor(chip, look.color);
-    chip.textContent = card.text;
+    chip.appendChild(cardSmall(card, !card.heading)); // B-99 (F6): mono text or mini symbol, no system emoji
     const parts = [chip];
     if (card.heading) {
         const heading = document.createElement('b');
@@ -606,13 +606,14 @@ function setDeckPickLine(line, middle, picked) {
     if (card === undefined) {
         const pickedCard = picked !== null ? cardByKey(deckCardKey(picked)) : undefined;
         key = pickedCard ? 'p:' + pickedCard.key : '-';
-        parts = () => [document.createTextNode(pickedCard ? 'you picked ' + pickedCard.label : 'tap to pick a card')];
+        parts = () => pickedCard ? [document.createTextNode('you picked '), cardSmall(pickedCard)]
+            : [document.createTextNode('tap to pick a card')];
     } else {
         const isPicked = middle === picked;
         key = (isPicked ? 'P:' : 'm:') + card.key + (gDeckTexts ? '+' : '');
         parts = () => {
             const name = document.createElement('b');
-            name.textContent = card.text + (card.heading ? ' · ' + card.heading : '');
+            name.append(cardSmall(card, !card.heading), card.heading ? ' · ' + card.heading : '');
             const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
             if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
                 { className: 'deck-pick-info', textContent: card.info }));
@@ -2062,17 +2063,8 @@ function updateSide(json, glide = true) {
             bar.className = 'spread-bar';
             const value = document.createElement('span');
             value.className = 'spread-value';
-            // B-99 (F2): picture symbols (traffic lights, faces, stars) small, the text for the range and screen readers
-            const look = cardLook(card);
-            if (isPictureSymbol(look.symbol)) {
-                const text = document.createElement('span');
-                text.className = 'sr-only';
-                text.textContent = card.label;
-                value.append(cardFace(card, 'mini'), text);
-                value.title = cardName(card);
-            } else {
-                value.textContent = card.label;
-            }
+            // B-99 (F6): per symbol mono text or a mini symbol (cards.js cardSmall), never a system emoji
+            value.appendChild(cardSmall(card));
             col.append(count, bar, value);
             return col;
         }));
@@ -2103,8 +2095,9 @@ function updateSide(json, glide = true) {
         col.classList.toggle('zero', n === 0);
         col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
         grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
-        const rank = cardRank(cardByKey(col.getAttribute('data-card')));
-        if (n > 0 && rank !== null) chosen.push({ rank, text: col.querySelector('.spread-value').textContent });
+        const card = cardByKey(col.getAttribute('data-card'));
+        const rank = cardRank(card);
+        if (n > 0 && rank !== null) chosen.push({ rank, card });
     });
     if (grown.length > 0) {
         void bars.offsetHeight; // the new blocks start invisible (class "in"), then fade in
@@ -2112,16 +2105,20 @@ function updateSide(json, glide = true) {
     }
 
     // the range of the chosen numeric values (B-79: infinity as the top end): "2 – 20", "3 – ∞",
-    // or "5" when all agree
-    let range = '';
+    // or "5" when all agree; B-99 (F6): each end as mono text or mini symbol (cardSmall)
+    let ends = [];
     if (chosen.length > 0) {
         chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
-        const low = chosen[0].text;
-        const high = chosen[chosen.length - 1].text;
-        range = low === high ? low : low + ' – ' + high;
+        const low = chosen[0].card;
+        const high = chosen[chosen.length - 1].card;
+        ends = low.key === high.key ? [low] : [low, high];
     }
     const rangeElement = document.getElementById('spread_range');
-    if (rangeElement.textContent !== range) rangeElement.textContent = range;
+    const rangeKey = ends.map(card => card.key).join(',');
+    if (rangeElement.getAttribute('data-shows') !== rangeKey) {
+        rangeElement.setAttribute('data-shows', rangeKey);
+        rangeElement.replaceChildren(...ends.flatMap((card, i) => i === 0 ? [cardSmall(card)] : [' – ', cardSmall(card)]));
+    }
 
     let left = null;
     if (json.show_avg === 1) {
@@ -2160,6 +2157,9 @@ function updateTip(json, revealed) {
         if (typeof part === 'string') return document.createTextNode(part);
         const b = document.createElement('b');
         b.textContent = part.name;
+        // B-99 (F6): "Dan (3)", "Eve (✋ as mini symbol)"
+        const card = part.card !== undefined ? cardByKey(part.card) : undefined;
+        if (card !== undefined) b.append(' (', cardSmall(card), ')');
         return b;
     }));
 }
@@ -2175,9 +2175,9 @@ function tipNames(names) {
 }
 
 /* the players on one side of the spread: "Dan (3)", "Dan, Eve +2 (8)" */
-function tipSide(players, value) {
+function tipSide(players, card) {
     const names = players.slice(0, 2).map(player => player.name).join(', ');
-    return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : '') + ' (' + value + ')' };
+    return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : ''), card: card.key };
 }
 
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
@@ -2224,7 +2224,7 @@ function tipText(json, revealed) {
     // "Maria (?)", "Jogi, Paul +1 (!)" – one group per control card that asks for a word
     const asking = ['qstmrk1', 'xclam01'].map(key => {
         const entries = configs.filter(entry => entry.config && entry.config.key === key);
-        return entries.length === 0 ? null : tipSide(entries.map(entry => entry.player), entries[0].config.label);
+        return entries.length === 0 ? null : tipSide(entries.map(entry => entry.player), entries[0].config);
     }).filter(group => group !== null);
     // groups joined by commas: "Let them explain: Alice (3), Bob (8), Maria (?)"
     const explain = groups => {
@@ -2261,7 +2261,7 @@ function tipText(json, revealed) {
     }
     const side = value => {
         const entries = numeric.filter(entry => cardRank(entry.config) === value);
-        return tipSide(entries.map(entry => entry.player), entries[0].config.label);
+        return tipSide(entries.map(entry => entry.player), entries[0].config);
     };
     return withBreak(explain([side(min), side(max), ...asking]));
 }
@@ -2285,7 +2285,7 @@ function judgeTip(configs, anonymous) {
             return n === 0 ? [] : [n + ' \u00d7 ' + what];
         }
         return keys.map(key => of([key])).filter(entries => entries.length > 0)
-            .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config.label));
+            .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config));
     };
     // "A", "A and B", "A, B and C"
     const join = list => list.flatMap((group, i) =>
