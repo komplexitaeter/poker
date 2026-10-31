@@ -1304,6 +1304,12 @@ Emotionen, Sterne, später J.U.D.G.E., Delegation, eigene Werte); innerhalb der 
 als Notoption weitere Karten aus dem Gesamtdeck hinzu. Vorher mit Live-Daten prüfen, welche Kombinationen in gespielten
 Runden wirklich vorkommen (`pok_roundstats_tbl.cardset_flags` je Runde, `pok_roundstat_details_tbl.card_key`).
 Passt zum gerenderten Kartenmodell aus der R3-Kartenrunde (Kartenset als Daten).
+Ergänzung Andreas (2026-10-31): **Kontrollkarten** (☕, ?, !, ✋/veto …) sind eine eigene Gruppe, die man optional zu jedem
+Set dazunimmt.
+Live-Daten (letzte 30 Tage, Abfrage 2026-10-31): ~1.180 Runden/150 Teams mit dem Top-Deck „Fibonacci 0–100 + ∞ + ☕ ? !“;
+fast alle Decks sind **Fibonacci-Varianten** (Unterschiede: 0, ½, 20/40/100, ∞; „echte“ Fibonacci 21/34/55 bei ~25 Teams)
+**plus Kontrollkarten**. Gemischte Gruppen (Fibonacci + Emotionen/Sterne/4-7-10) nur bei einzelnen Teams. Gelegte Karten:
+3/5/2 je 7–9 Tsd., ☕ 1.907, ? 513, veto 117, ! 28; T-Shirt ~800, Sterne ~270, Emotionen ~55, Ampel 7.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
