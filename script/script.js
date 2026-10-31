@@ -979,8 +979,6 @@ function setTableCardOriginal(cardDiv, key, animate) {
     if (original === null) {
         cardDiv.removeAttribute('data-original');
         cardDiv.classList.remove('is-changed');
-        const corner = cardDiv.querySelector('.pc-corner');
-        if (corner !== null) corner.remove();
         if (back !== null) {
             back.remove();
             top.setAttribute('aria-label', cardAriaLabel(tableCardModel(current), true));
@@ -993,24 +991,19 @@ function setTableCardOriginal(cardDiv, key, animate) {
         face.removeAttribute('role');
         face.removeAttribute('aria-label');
         face.setAttribute('aria-hidden', 'true');
-        // its value in its upper left corner, like the corner index of a playing card. Andreas: always visible and
-        // readable, for every card (also mini symbols, small cards on phones): a small tag of its own above the
-        // whole stack (not inside the dimmed original, whose visible rim is only a few pixels on small cards)
+        // its value in the visible upper rim, like the corner index of a playing card. Andreas: the card's own
+        // symbol (as drawn on the card, small, full opacity, in the card colour; a text value in the card's style),
+        // not the mono text of cardSmall()
         const corner = document.createElement('span');
         corner.className = 'pc-corner';
-        corner.setAttribute('aria-hidden', 'true');
-        corner.appendChild(cardSmall(tableCardModel(original), false));
+        corner.appendChild(cardFace(tableCardModel(original), 'mini'));
+        face.appendChild(corner);
         if (back === null && animate && oldOriginal === null) {
             face.classList.add('pc-orig-in'); // once: moving the card would restart it
             face.addEventListener('animationend', () => face.classList.remove('pc-orig-in'), { once: true });
-            corner.classList.add('pc-corner-in');
-            corner.addEventListener('animationend', () => corner.classList.remove('pc-corner-in'), { once: true });
         }
         if (back === null) cardDiv.insertBefore(face, top);
         else back.replaceWith(face);
-        const oldCorner = cardDiv.querySelector('.pc-corner');
-        if (oldCorner === null) cardDiv.insertBefore(corner, top);
-        else oldCorner.replaceWith(corner);
         back = face;
     }
     cardDiv.setAttribute('data-original', original);

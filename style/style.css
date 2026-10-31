@@ -1662,17 +1662,16 @@ div#cbox {
 
 .cardValueChanged { animation: shake 1s ease-in-out; }
 
-/* B-104: a card changed after the reveal: both cards in the place of one table card (Andreas): each --stack-s of
- * it, the original of the reveal behind in the upper left (turned slightly, dimmed), the current card in front in
- * the lower right. Name tag, next card and delete icon stay clear. The upper left corner of the original always
- * shows its value like the corner index of a playing card (.pc-corner, cardSmall() in cards.js). */
+/* B-104: a card changed after the reveal: both cards in the place of one table card (Andreas): the original of the
+ * reveal behind in the upper left (turned slightly, dimmed), the current card in front in the lower right, both
+ * --stack-w wide. Name tag, next card and delete icon stay clear. The visible upper rim of the original shows its
+ * symbol small like the corner index of a playing card (.pc-corner: cardFace(.., 'mini') in cards.js, full colour).
+ * The offset is at least 14px (small cards, phones: both cards a bit smaller), so the symbol stays readable;
+ * Andreas: rather large and its lower edge slightly covered by the current card than tiny. */
 .c.is-changed {
-    --stack-s: 0.88;
-    --stack-w: calc(var(--card-w) * var(--stack-s));
-    --stack-dx: calc(var(--card-w) - var(--stack-w));
+    --stack-dx: max(var(--card-w) * 0.12, 14px);
+    --stack-w: calc(var(--card-w) - var(--stack-dx));
     --stack-dy: calc(var(--stack-dx) * var(--card-ratio));
-    /* the index: as high as the visible rim allows, readable from the next seat */
-    --stack-index: clamp(11px, var(--card-w) * 0.12, 18px);
     /* a column of flex items: the margin of the name tag does not collapse into the offset of the current card */
     display: inline-flex;
     flex-direction: column;
@@ -1689,44 +1688,43 @@ div#cbox {
     top: var(--card-name-h);
     left: 0;
     transform: rotate(-2deg);
-    filter: saturate(0.6);
 }
-.c .pc-orig > * { opacity: 0.45; }
-/* the corner index of the original: a small tag of its own above the whole stack, in the upper left corner of the
- * original (Andreas: always visible and readable, also mini symbols and small cards on phones) */
+/* dimmed: everything but the corner symbol */
+.c .pc-orig > :not(.pc-corner) { opacity: 0.45; filter: saturate(0.6); }
+.c .pc-orig::before { opacity: 0.6; }
 .c .pc-corner {
+    /* a bit higher than the rim: its lower edge may hide behind the current card, its middle stays clear */
+    --corner-h: calc(var(--stack-dy) * 1.15);
     position: absolute;
-    z-index: 2;
-    top: calc(var(--card-name-h) + max(2px, var(--card-w) * 0.03));
-    left: max(1px, var(--card-w) * 0.025);
+    top: calc(max(3px, var(--stack-w) * 0.045) + 1px);
+    left: calc(var(--stack-w) * 0.04);
+    height: var(--corner-h);
     display: flex;
     align-items: center;
-    min-height: 1.3em;
-    padding: 0 0.25em;
-    box-sizing: border-box;
-    border: 1px solid var(--line-strong);
-    border-radius: 4px;
-    background: var(--cardc-face);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
-    transform: rotate(-2deg);
-    font-size: var(--stack-index);
+    pointer-events: none;
+}
+.c .pc-corner .mini { display: block; width: auto; height: auto; }
+/* a block in a block: the flex sizes of the big symbol (.pc .mot, by style and text size) do not reach it */
+.c .pc-corner .mot { height: var(--corner-h); width: calc(var(--corner-h) * 100 / 120); }
+/* J.U.D.G.E.: the square a bit smaller, it fills its box (the digits leave air) */
+.c .pc-corner .sty-inverted .mot { height: calc(var(--corner-h) * 0.8); width: calc(var(--corner-h) * 0.8); }
+/* a value without a symbol (custom text): as on the card, in the mono font */
+.c .pc-corner .tv {
+    display: flex;
+    align-items: center;
+    font-family: var(--font);
+    font-size: calc(var(--corner-h) * 0.7);
     font-weight: 700;
     line-height: 1;
     color: var(--text);
     white-space: nowrap;
-    pointer-events: none;
 }
-/* picture symbols (faces, traffic lights, stars, control cards) a bit larger: their drawing is slimmer than a digit */
-.c .pc-corner .mini.sm-draw { height: 1.7em; margin: -0.15em -0.1em; vertical-align: middle; }
-.c .pc-corner .mini.sm-inv { height: 1.3em; margin: 0; vertical-align: middle; }
-.c .pc-corner-in { animation: fade-in 0.6s; }
 .c .pc-orig-in { animation: card-orig-in 0.5s ease-out; }
 @keyframes card-orig-in {
-    from { transform: translate(var(--stack-dx), var(--stack-dy)); filter: none; }
+    from { transform: translate(var(--stack-dx), var(--stack-dy)); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .c .pc-orig-in,
-    .c .pc-corner-in { animation: none; }
+    .c .pc-orig-in { animation: none; }
 }
 
 /* touch devices cannot hover: the delete icon on every card, no sticky hover color
