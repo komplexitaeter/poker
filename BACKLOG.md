@@ -1320,7 +1320,8 @@ Entscheidungen Andreas zum Deck-Menü (2026-10-31, Mock-up „Deck-Menü R3“):
 - **Menü:** Variante C (erst Gruppe, dann Variante/Steuerkarten/Karten) mit Karten-Fächern aus B. „Eigenes Set definieren“
   als Vollbild-Overlay mit explizitem **Save**/Cancel (das Team sieht Änderungen erst nach Save).
 - **Migration:** `cardset_flags`, die genau einer Gruppe/Variante (+ Steuerkarten) entsprechen, werden übernommen; alle
-  anderen fallen auf den Standard zurück.
+  anderen fallen auf den Standard zurück. Fällt ein Team auf J.U.D.G.E. (mit „6 veto“), wird die Steuerkarte ✋ nicht
+  übernommen – „6 veto“ deckt sie ab; bei allen anderen Gruppen bleibt ✋ wie gewählt.
 - **Standard** für neue Teams und Rückfall: Fibonacci Classic + Steuerkarten.
 - **Steuerkarten** (☕ ? ! ✋) gelten **pro Team**, unabhängig vom Set; immer Stil `plain`. ✋ veto (Steuerkarte) und
   J.U.D.G.E. „6 veto“ sind verschiedene Karten. „!“ heißt **important**; Texte: need a break / question / important / veto.

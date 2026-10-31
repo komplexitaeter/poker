@@ -97,9 +97,11 @@ test('presets, subsets and mixed decks are derived from the bitmask', async ({ b
     ['classic', flags([0, 1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 24, 43, 44]),
       { id: 'fib-classic', controls: ['break01', 'qstmrk1', 'xclam01'] }],
     ['true', flags([0, 2, 3, 4, 6, 9, 10, 40, 41, 42]), { id: 'fib-true', controls: [] }],
-    // old JUDGE preset: 0-6 + ✋; ✋ becomes the control card, the cards the J.U.D.G.E. group
-    ['judge', flags([0, 2, 3, 4, 5, 6, 7, 45]),
-      { id: 'judge', cards: ['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4', 'jdg5', 'jdg6'], controls: ['veto'] }],
+    // old JUDGE preset: 0-6 + ☕ + ✋; "6 veto" covers ✋, so the veto control card is not taken over (Andreas)
+    ['judge', flags([0, 2, 3, 4, 5, 6, 7, 24, 45]),
+      { id: 'judge', cards: ['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4', 'jdg5', 'jdg6'], controls: ['break01'] }],
+    // other groups keep ✋ as chosen
+    ['delegation + veto', flags([2, 3, 4, 5, 6, 7, 8, 45]), { id: 'delegation', controls: ['veto'] }],
     ['delegation', flags([2, 3, 4, 5, 6, 7, 8]), { id: 'delegation', group: 'delegation' }],
     // old teams have shorter strings (38 characters)
     ['traffic, short string', flags([15, 16, 17, 24], 38),

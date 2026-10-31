@@ -225,7 +225,8 @@ function catalog_variants(array $catalog): array
 /*
  * B-98: derives the deck of a team from its old cardset_flags (lazy migration in getDao()). Returns the values for
  * pok_teams_tbl.deck_id, deck_cards (null = all cards of the variant) and deck_controls (comma list, '' = none).
- * - Control card bits (☕ ? ! ✋) are taken over as they are (existing teams keep their choice).
+ * - Control card bits (☕ ? ! ✋) are taken over as they are (existing teams keep their choice), except ✋ (veto) for
+ *   teams that end up in J.U.D.G.E. with "6 veto" (jdg6): that card covers it (Andreas, 2026-10-31).
  * - The other cards equal a variant exactly -> that variant.
  * - Otherwise they are a subset of a group (first group in catalog order, so Fibonacci wins over Numbers) -> the
  *   first variant containing all of them (else the one sharing the most cards) with these cards switched on.
@@ -264,7 +265,7 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
             sort($indexes);
             if ($indexes === $selected) {
                 $result['deck_id'] = $variant['id'];
-                return $result;
+                return drop_veto_for_judge($result, $group['id'], $variant['cards']);
             }
         }
     }
@@ -286,9 +287,20 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
         }
         $result['deck_id'] = $best['id'];
         $result['deck_cards'] = implode(',', $keys);
-        return $result;
+        return drop_veto_for_judge($result, $group['id'], $keys);
     }
 
+    return $result;
+}
+
+/* B-98: a team migrated to J.U.D.G.E. including "6 veto" (jdg6) does not get the ✋ control card as well. */
+function drop_veto_for_judge(array $result, string $group_id, array $card_keys): array
+{
+    if ($group_id !== 'judge' || !in_array('jdg6', $card_keys, true)) return $result;
+    $controls = array_filter(explode(',', $result['deck_controls']), function ($key) {
+        return $key !== '' && $key !== 'veto';
+    });
+    $result['deck_controls'] = implode(',', $controls);
     return $result;
 }
 
