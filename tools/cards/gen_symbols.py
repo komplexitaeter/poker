@@ -170,7 +170,7 @@ FACE = {
                      P("emouth", w=3.6)],   # laughing mouth: paper, never hatched
 }
 
-# Symbol id -> (motif layers, title). Ids "s-0", "s-1", "s-coffee" … as agreed with Ben (cards.json v2).
+# Symbol id -> (motif layers, name; the name is not written into the sprite). Ids "s-0", "s-1", "s-coffee" … as agreed with Ben (cards.json v2).
 SYM = {}
 for d in "0123456789":
     SYM[f"s-{d}"] = (row([f"d{d}"]), d)
@@ -684,7 +684,7 @@ PRES = ' fill="none" stroke-linecap="round" stroke-linejoin="round"'
 
 
 def symbol(sid):
-    items, title = SYM[sid]
+    items, _name = SYM[sid]  # the name is not written (B-99 D5)
     parts = []
     for it in items:
         parts += layers(it)
@@ -693,7 +693,8 @@ def symbol(sid):
     body = "\n".join(merge(parts))
     if sid in GROUP_STYLE:
         body = f'<g style="{GROUP_STYLE[sid]}">\n{body}\n</g>'
-    return (f'<symbol id="{sid}" viewBox="{vb}"{PRES}><title>{title}</title>\n' + body + "\n</symbol>")
+    # no <title>: browsers show it as a tooltip on every <use> (the table card has its aria-label)
+    return (f'<symbol id="{sid}" viewBox="{vb}"{PRES}>\n' + body + "\n</symbol>")
 
 
 def path_extent(d):
