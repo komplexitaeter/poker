@@ -2260,11 +2260,11 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 .timer[data-state=ready] .timer-display,
 .timer[data-state=paused] .timer-display { color: var(--muted); }
 
-/* time is up: T+ in amber and bold, with a dot, so it does not rely on the color alone
+/* time is up: T+ in amber and semi-bold, with a dot, so it does not rely on the color alone
  * (no sound, no blinking). The dot sits outside the text: the row keeps its width. */
 .timer[data-over=true] .timer-display {
     color: var(--warn);
-    font-weight: bold;
+    font-weight: 600; /* semi-bold: bold was a touch too heavy (Andreas) */
 }
 
 .timer[data-over=true] .timer-display::before {
