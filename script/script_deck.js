@@ -1,6 +1,7 @@
 /* R3 F5 (B-98): the deck menu (Board settings -> Deck), mock-up "Deck menu R3", variant C.
  * Overview: the deck as small cards, the card set ("change" opens the list of sets), the variant (Fibonacci:
- * Classic / Short / True), the cards of the set to switch off or on, and the control cards (☕ ? ! ✋, per team,
+ * Classic / Short / True, only a preset: it switches its cards on and the others off), every card of the set to
+ * switch off or on (a selection that matches no variant is "custom"), and the control cards (☕ ? ! ✋, per team,
  * with every set). The list: every set group with a fan of its cards.
  * The variant is saved on click, Space or Enter only; arrow keys just move the choice (Sina, PR #113).
  * Data: card_catalog.json (gCatalogV2, gCardByKey in script.js) and the deck of dao ({id, group, cards, controls,
@@ -47,11 +48,28 @@ function deckMenuVariant(group, id) {
     return group.variants.find(variant => variant.id === id) || group.variants[0];
 }
 
-/* the cards that can be switched in the overview: the variant's, plus cards of the group that are in the deck
- * (migrated decks), in the group's order */
-function deckToggleKeys(group, variant, deck) {
-    const wanted = new Set(variant.cards.concat(deck.cards));
-    return group.cards.map(entry => entry.card_key).filter(key => wanted.has(key));
+/* every card of the group in catalog order (sort_order): the variant is only a preset, any card can be switched on */
+function deckGroupKeys(group) {
+    return group.cards.map((entry, index) => ({ entry, index }))
+        .sort((a, b) => (Number(a.entry.sort_order) || 0) - (Number(b.entry.sort_order) || 0) || a.index - b.index)
+        .map(item => item.entry.card_key);
+}
+
+/* the variant whose cards are exactly the deck's cards, or null (a custom selection) */
+function deckMatchingVariant(group, cards) {
+    const on = new Set(cards);
+    return group.variants.find(v => v.cards.length === on.size && v.cards.every(key => on.has(key))) || null;
+}
+
+/* a custom selection, told against its last chosen variant: "True + 100 ∞ − 0" */
+function deckCustomText(variant, cards) {
+    const text = keys => keys.map(key => gCardByKey.get(key)).filter(card => card !== undefined)
+        .map(card => card.text).join(' ');
+    const on = new Set(cards);
+    const base = new Set(variant.cards);
+    const added = text(cards.filter(key => !base.has(key)));
+    const removed = text(variant.cards.filter(key => !on.has(key)));
+    return variant.name + (added ? ' + ' + added : '') + (removed ? ' \u2212 ' + removed : '');
 }
 
 function deckRoundRunning() {
@@ -110,8 +128,10 @@ function dmStatus() {
     return status;
 }
 
-function deckSetName(group, variant) {
-    return group.name + (group.variants.length > 1 ? ' · ' + variant.name : '');
+function deckSetName(group, variant, cards) {
+    if (group.variants.length <= 1) return group.name;
+    const match = deckMatchingVariant(group, cards);
+    return group.name + ' · ' + (match !== null ? match.name : 'custom');
 }
 
 /* ------------------------------------------------------------------ views */
@@ -124,7 +144,7 @@ function deckMainView(deck, group, variant) {
     preview.setAttribute('aria-label', 'Your deck');
     const cards = deck.cards.concat(deck.controls).map(key => gCardByKey.get(key)).filter(card => card !== undefined);
     const head = dmEl('p', 'dm-pv-h');
-    head.append(dmEl('span', 'cm', '> '), 'deck ', dmEl('b', null, deckSetName(group, variant)),
+    head.append(dmEl('span', 'cm', '> '), 'deck ', dmEl('b', null, deckSetName(group, variant, deck.cards)),
         dmEl('span', 'dm-cnt', ' · ' + cards.length + ' cards'));
     const row = dmEl('div', 'dm-pv-row');
     row.setAttribute('role', 'img');
@@ -150,6 +170,7 @@ function deckMainView(deck, group, variant) {
 
     // the variant (Fibonacci)
     if (group.variants.length > 1) {
+        const match = deckMatchingVariant(group, deck.cards);
         const field = dmEl('fieldset', 'f dm-variant');
         field.id = 'deck_variant';
         field.appendChild(dmEl('legend', 'lab', 'Variant'));
@@ -160,7 +181,7 @@ function deckMainView(deck, group, variant) {
             input.type = 'radio';
             input.name = 'deck_variant';
             input.value = v.id;
-            input.checked = v.id === variant.id;
+            input.checked = match !== null && v.id === match.id;
             input.setAttribute('data-f', 'variant:' + v.id);
             // arrow keys only move the choice (no write, no new round per key); a click, Space or Enter saves it
             input.addEventListener('keydown', event => {
@@ -183,9 +204,13 @@ function deckMainView(deck, group, variant) {
             label.append(input, dmEl('span', null, v.name));
             seg.appendChild(label);
         });
-        const values = variant.cards.map(key => gCardByKey.get(key)).filter(card => card !== undefined)
-            .map(card => card.text).join(' ');
-        field.append(seg, dmEl('p', 'hint', values));
+        // the preset's values, or what differs from the last chosen variant
+        const values = match !== null
+            ? match.cards.map(key => gCardByKey.get(key)).filter(card => card !== undefined).map(card => card.text).join(' ')
+            : 'Custom: ' + deckCustomText(variant, deck.cards);
+        const hint = dmEl('p', 'hint', values);
+        hint.id = 'deck_variant_hint';
+        field.append(seg, hint);
         parts.push(field);
     }
 
@@ -195,7 +220,7 @@ function deckMainView(deck, group, variant) {
     toggles.id = 'deck_cards';
     toggles.appendChild(dmEl('legend', 'lab', 'Cards (tap to switch off or on)'));
     const grid = dmEl('div', 'dm-tgs');
-    deckToggleKeys(group, variant, deck).forEach(key => {
+    deckGroupKeys(group).forEach(key => {
         const card = gCardByKey.get(key);
         if (card === undefined) return;
         const button = dmEl('button', 'dm-tg');
@@ -388,7 +413,10 @@ function pickDeckGroup(group) {
 
 function pickDeckVariant(group, variant) {
     const deck = gDeckMenu.deck;
-    if (deck === null || deck.id === variant.id) return;
+    if (deck === null) return;
+    // a click on the variant again sets its cards again (after own changes)
+    const match = deckMatchingVariant(group, deck.cards);
+    if (deck.id === variant.id && match !== null && match.id === variant.id) return;
     writeDeck(deckUrl(variant.id, null),
         { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() });
 }
@@ -406,8 +434,11 @@ function toggleDeckCard(group, variant, key) {
     } else {
         on.add(key);
     }
-    const cards = group.cards.map(entry => entry.card_key).filter(k => on.has(k));
-    writeDeck(deckUrl(variant.id, cards), { id: variant.id, group: group.id, cards, controls: deck.controls.slice() });
+    const cards = deckGroupKeys(group).filter(k => on.has(k));
+    // a selection that is exactly a variant becomes that variant, else it stays with the last chosen one
+    const match = deckMatchingVariant(group, cards);
+    const id = match !== null ? match.id : variant.id;
+    writeDeck(deckUrl(id, cards), { id, group: group.id, cards, controls: deck.controls.slice() });
 }
 
 function toggleDeckControl(key) {

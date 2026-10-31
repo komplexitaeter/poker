@@ -143,3 +143,70 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   await expect(bob.locator('#ctl .ctl.selected')).toHaveCount(0);
   await expect(alice.locator('#deck_round_hint')).toHaveCount(0);
 });
+
+test('a variant is a preset: True, then 100 on as well (custom), Classic sets its cards again', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Preset');
+  await alice.locator('#cset_btn').click();
+  const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
+
+  // every card of the group is shown, in catalog order; the ones outside the variant are off
+  const all = ['zero001', '1pnt501', 'one0001', 'two0001', 'three01', 'five001', 'eight01', 'thrtn01', 'twnty01',
+    '2tyone1', '3tyfr01', '4ty0001', '5tyfve1', 'hundro1', 'infin01'];
+  await expect.poll(() => alice.locator('#deck_cards .dm-tg')
+    .evaluateAll(buttons => buttons.map(b => b.getAttribute('data-card')))).toEqual(all);
+  await expect(variant('Classic')).toBeChecked();
+  await expect(toggle(alice, '2tyone1')).toHaveAttribute('aria-pressed', 'false');
+
+  // True: its cards on, the others off
+  await variant('True').check();
+  await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'false');
+  await expect(toggle(alice, '2tyone1')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => trayKeys(bob)).not.toContain('hundro1');
+
+  // 100 on as well: stays on, no variant is marked, the hint tells the custom selection
+  await toggle(alice, 'hundro1').click();
+  await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
+  await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
+  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: True + 100');
+  await expect(alice.locator('#deck_menu .dm-pv-h')).toContainText('Fibonacci · custom');
+  for (const page of [alice, bob]) {
+    await expect.poll(() => trayKeys(page)).toEqual(['zero001', 'one0001', 'two0001', 'three01', 'five001', 'eight01',
+      'thrtn01', '2tyone1', '3tyfr01', '5tyfve1', 'hundro1', 'break01', 'qstmrk1']);
+  }
+  // after a reload it is still the custom selection
+  await alice.reload();
+  await alice.locator('#cset_btn').click();
+  await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
+  await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
+
+  // 100 off again: exactly True, marked again
+  await toggle(alice, 'hundro1').click();
+  await expect(variant('True')).toBeChecked();
+
+  // Classic sets its cards again
+  await toggle(alice, 'infin01').click();
+  await variant('Classic').check();
+  await expect(variant('Classic')).toBeChecked();
+  await expect(toggle(alice, '2tyone1')).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(() => trayKeys(bob)).toEqual(['zero001', '1pnt501', 'one0001', 'two0001', 'three01', 'five001',
+    'eight01', 'thrtn01', 'twnty01', '4ty0001', 'hundro1', 'infin01', 'break01', 'qstmrk1']);
+});
+
+test('the selection decides the variant: Short plus the Classic cards is Classic', async ({ browser }) => {
+  const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Match');
+  await alice.locator('#cset_btn').click();
+  const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
+  const deckId = () => alice.evaluate(async () => {
+    const answer = await fetch('./api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + new URLSearchParams(location.search).get('t'));
+    return (await answer.json()).deck.id;
+  });
+
+  await variant('Short').check();
+  await expect.poll(deckId).toBe('fib-short');
+  await toggle(alice, '1pnt501').click();
+  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: Short + ½');
+  await toggle(alice, 'hundro1').click();
+  await toggle(alice, 'infin01').click();
+  await expect(variant('Classic')).toBeChecked();
+  await expect.poll(deckId).toBe('fib-classic');
+});
