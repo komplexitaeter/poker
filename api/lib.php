@@ -135,14 +135,14 @@ function notify_teams(array $team_ids): void {
 }
 
 /*
- * B-102: system card "joined late". api/name.php sets it instead of the former automatic coffee cup (break01) when a
+ * B-102: system card "joined in". api/name.php sets it instead of the former automatic coffee cup (break01) when a
  * player joins (or an observer becomes a player) while the cards are revealed, i.e. every PLAYER of the team has a
  * card down. It keeps the round revealed (counts as "has a card down", ready_players_count) but is NO vote: it is in
  * no set/deck, cannot be picked (setc.php answers 400), does not count for the celebration (needs_celebration) and
  * must be left out of histogram, spread, average and tips in the frontend. dao.php delivers it as display_card_key
  * 'late001' once the cards are revealed; sort_players_by_sequence() puts it last (unknown to the card files).
  * The round snapshot (pok_roundstat_details_tbl) stores it as its own key, so break01 statistics stay clean.
- * Frontend (Fred): key 'late001', symbol 's-late' (Delia), label "joined late", also in anonymous mode.
+ * Frontend (Fred): key 'late001', symbol 's-late' (Delia), label "joined in", also in anonymous mode.
  */
 const LATE_CARD_KEY = 'late001';
 
@@ -757,7 +757,7 @@ function getDao($t, $id) {
                 }
 
 
-                /* B-102: the "joined late" card is no vote, so it neither breaks nor makes a consensus */
+                /* B-102: the "joined in" card is no vote, so it neither breaks nor makes a consensus */
                 if ($obj->card_key !== LATE_CARD_KEY) {
                     $voters_count++;
                     if ($voters_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;

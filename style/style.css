@@ -119,9 +119,12 @@ body {
         0 0 0 1px rgba(255, 255, 255, 0.12);
     --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
     --survey-voted_background: rgba(0, 0, 0, 0.67);
-    /* B-99 D6: share of the value colour in a tinted card (badge style: traffic lights, emotions, stars);
-     * the dark paper needs more of it to look as clear and friendly as the light one */
-    --card-tint: 30%;
+    /* B-99 D6/D9: tinted cards (badge style: traffic lights, emotions, stars). Dark: neutral paper with a
+     * faint glow of the value colour from the top (--card-glow-end: how far it reaches) and a coloured inner
+     * rim, so symbols and texts keep the contrast of the plain card. Light: the whole card tinted. */
+    --card-tint: 16%;
+    --card-glow-end: 45%;
+    --card-rim: 40%;
 }
 
 body.light-theme {
@@ -147,7 +150,7 @@ body.light-theme {
     --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     --scrim: rgba(29, 32, 39, 0.4);
     --survey-voted_background: rgba(255, 255, 255, 0.67);
-    --card-tint: 13%;
+    --card-tint: 13%;   /* light: the whole card flat (no glow, no rim) */
 }
 
 /* Former token names, kept as aliases so the rest of the sheet (and script.js, which uses
@@ -1757,6 +1760,16 @@ div#cbox {
 
 .pc.is-status .mot { flex: 0 1 calc(var(--card-w) * 0.88); }
 
+/* B-99 D9: the group a bit above the middle (the symbols leave the top of their box empty, so the centred
+ * group looked low); the outline of the calm status symbols (ready, thinking, joined late) in the theme ink:
+ * dark ink in light, a light contour in dark - there with a deeper body, so the contour reads like on ?, ! or the hand */
+.pc.is-status {
+    padding-bottom: calc(var(--card-w) * 0.26);
+    --sym-face-ink: var(--cardc-ink);
+}
+
+body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentColor 60%, var(--cardc-face)); }
+
 .pc .stl {
     flex: none;
     margin-top: calc(var(--card-w) * 0.03);
@@ -1827,6 +1840,20 @@ div#cbox {
     #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
 }
 
+/* B-99 D9: long descriptions (J.U.D.G.E.) end on a whole line with an ellipsis instead of being cut by the card's
+ * edge: as many lines as fit below a two-line heading (measured: 4 from a 98 px card, 3 from 76 px, else 2) */
+#cbox[data-text-size="long"] .c { container-type: inline-size; }
+
+#cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 4; }
+
+@container (max-width: 97.98px) {
+    #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 3; }
+}
+
+@container (max-width: 75.98px) {
+    #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 2; }
+}
+
 /* B-99 F8 (Andreas): control cards on the table show heading and description in every set. In decks without or with
  * one-word texts (none, word) the symbol gives way to the description, which is cut to a few lines on small cards
  * (like J.U.D.G.E.: whole lines, never a cut line) */
@@ -1849,7 +1876,7 @@ div#cbox {
 }
 
 /* B-99 F7 (Andreas): a card with exactly one text (only a heading, only a description like the emotions, a status
- * caption like "thinking …") sets it like a heading: mono, bold (one-text, cardFace() in cards.js) */
+ * caption like "thinking") sets it like a heading: mono, bold (one-text, cardFace() in cards.js) */
 .pc.one-text :is(.ttl, .txt, .stl) {
     font-family: var(--font);
     font-size: clamp(9px, var(--card-w) * 0.1, 14px);
@@ -1959,9 +1986,17 @@ div#cbox {
 
 .spread-value .sm-inv { height: 1.5em; }
 
-/* badge (traffic lights, emotions, stars): the card tinted, the heading as a pill with a coloured rim */
+/* badge (traffic lights, emotions, stars): the card tinted (dark: a glow from the top and a coloured inner rim,
+ * light: flat, see --card-tint), the heading as a pill with a coloured rim */
 .pc.sty-badge,
-.dkc.sty-badge { background: color-mix(in srgb, var(--a) var(--card-tint), var(--cardc-face)); }
+.dkc.sty-badge {
+    --tint: color-mix(in srgb, var(--a) var(--card-tint), var(--cardc-face));
+    background: linear-gradient(to bottom, var(--tint), var(--cardc-face) var(--card-glow-end));
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--a) var(--card-rim), transparent);
+}
+
+body.light-theme .pc.sty-badge,
+body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 .pc .hd-badge {
     padding: 0.15em 0.7em;

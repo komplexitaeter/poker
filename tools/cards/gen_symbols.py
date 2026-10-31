@@ -124,10 +124,10 @@ def L(ref, t="", s=1.0, w=W, calm=False):   # thick centre line: outline, shadow
     return ("L", ref, t, s, w, calm)
 
 
-def S(ref, t="", s=1.0, fill=None, hatch=None, hw=None, rim=None):
+def S(ref, t="", s=1.0, fill=None, hatch=None, hw=None, rim=None, ow=None):
     """filled, hatched shape in the value colour; rim = DIG ref (or (ref, transform)) cut out of the hatching
-    (hatch only at the edge)"""
-    return ("S", ref, t, s, fill, hatch, hw, rim)
+    (hatch only at the edge); ow = a single, thinner outline of that width instead of the doubled one"""
+    return ("S", ref, t, s, fill, hatch, hw, rim, ow)
 
 
 def E(ref, t="", s=1.0):          # empty shape: paper fill, ink outline
@@ -235,10 +235,12 @@ SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "rais
 # Status cards (B-99 D7): calm like the faces - a light body, the hatching only hinted at the lower right edge.
 SYM["s-check"] = ([L("dchk", calm=True)], "check mark")
 # D8: the bubble 6 units higher (it sat low on the status card), the hatched band at the edge a bit wider again
+# D9: a single, thinner outline (the doubled one looked heavy in the light theme, like the ?, ! and hand now)
 THOUGHT = "translate(4 1)"
-SYM["s-thought"] = ([S("cloud", THOUGHT, hw=1.25, rim=("cloud", "translate(7 3.2) scale(.89)")),
-                     S("bub1", THOUGHT, hw=1.25, rim=("bub1", "translate(3.9 .6) scale(.86)")),
-                     P("bub2", THOUGHT, TINT),
+THOUGHT_OW = 2.6
+SYM["s-thought"] = ([S("cloud", THOUGHT, hw=1.25, rim=("cloud", "translate(7 3.2) scale(.89)"), ow=THOUGHT_OW),
+                     S("bub1", THOUGHT, hw=1.25, rim=("bub1", "translate(3.9 .6) scale(.86)"), ow=THOUGHT_OW),
+                     P("bub2", THOUGHT, TINT, w=THOUGHT_OW),
                      T("M42 55h.1M56 55h.1M70 55h.1", 9)], "thought bubble")
 # Joined late (B-102): calm like the other status symbols - an open door, a light leaf with the hatching at its edge,
 # an arrow going in; no figure (reads at mini size too).
@@ -679,7 +681,7 @@ def layers(item):
                 el(d, f"stroke:{TINT}", wa),
                 el(h, f"stroke:{HATCH}", HATCH_W, ' stroke-linecap="butt"')]
     if kind == "S":
-        _, ref, t, _, fill, hatch, hw, rim = item
+        _, ref, t, _, fill, hatch, hw, rim, ow = item
         subs, _ = shape(ref, t)
         d = d_of(outline_polys(subs))
         r = Raster()
@@ -689,6 +691,10 @@ def layers(item):
             inner.fill(shape(*rim)[0] if isinstance(rim, tuple) else shape(rim, t)[0])
             r.cut(inner)
         h = d_of(hatch_polys(r, bbox_of(subs, 1)))
+        if ow:        # D9: one outline over the hatching, no shifted second one (lighter, e.g. the thought bubble)
+            return [el(d, f"fill:{fill or TINT}"),
+                    el(h, f"stroke:{hatch or HATCH}", hw or HATCH_W, ' stroke-linecap="butt"'),
+                    el(d, f"stroke:{INK}", ow)]
         return [el(d, f"fill:{fill or TINT};stroke:{INK}", 2 * O),
                 el(h, f"stroke:{hatch or HATCH}", hw or HATCH_W, ' stroke-linecap="butt"'),
                 el(d, f"stroke:{INK}", 2 * O, " " + SHADOW)]

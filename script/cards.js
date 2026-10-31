@@ -12,7 +12,7 @@
  * Only createElement / textContent / setAttribute; symbol ids and colour tokens only from the whitelists
  * below (never free text in href, class or style). No innerHTML here. */
 
-const CARDS_SPRITE = 'src/cards.svg?v=7'; // bump with the sprite (tools/cards/gen_symbols.py)
+const CARDS_SPRITE = 'src/cards.svg?v=8'; // bump with the sprite (tools/cards/gen_symbols.py)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /* the symbols of the sprite (tools/cards/README.md) */
@@ -71,8 +71,8 @@ const CARD_VALUE_NAMES = { '½': 'one half', '∞': 'infinity' };
 /* status cards on the table (no value shown yet; B-102: late001 joined in after the reveal) */
 const STATUS_CARDS = {
     done001: { key: 'done001', status: true, symbol: 's-check', color: 'vdone', caption: 'ready', aria: 'card played' },
-    prgrss1: { key: 'prgrss1', status: true, symbol: 's-thought', color: 'vthink', caption: 'thinking …', aria: 'thinking, no card yet' },
-    prgrss2: { key: 'prgrss2', status: true, symbol: 's-mask', color: 'vthink', caption: 'thinking …', aria: 'thinking, no card yet' },
+    prgrss1: { key: 'prgrss1', status: true, symbol: 's-thought', color: 'vthink', caption: 'thinking', aria: 'thinking, no card yet' },
+    prgrss2: { key: 'prgrss2', status: true, symbol: 's-mask', color: 'vthink', caption: 'thinking', aria: 'thinking, no card yet' },
     // B-102: the system card of a player who joined after the reveal (no vote, in no deck); calm grey
     late001: { key: 'late001', status: true, symbol: 's-late', color: 'grey', caption: 'joined in', aria: 'joined in, no card yet' },
 };
