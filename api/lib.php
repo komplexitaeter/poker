@@ -338,6 +338,8 @@ function resolve_deck(?string $deck_id, ?string $deck_cards, ?string $deck_contr
  * B-98 S2: the old bitmask (cardset_flags, cards.json v1) for a resolved deck, so boards and the old deck menu that
  * still read cardset_flags show the same deck (until R3 S5). Cards without legacy_index (new cards, custom cards) are
  * left out. J.U.D.G.E./Delegation cards map to the old number cards at the same positions.
+ * Known gap until boards reload (F5): an old board shows these decks as the old number cards, and choosing in the old
+ * deck menu (update_cardset.php) resets deck_id, so the deck is derived from the flags again (number cards).
  */
 function deck_to_cardset_flags(array $deck, array $catalog): string
 {
