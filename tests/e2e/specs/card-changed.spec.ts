@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, tableCard, expectTableCard } from './helpers';
 
 /**
  * B-104: whoever changes his card after the reveal keeps the card of the reveal as original_card_key (only the first
@@ -118,4 +118,65 @@ test('late001 as card of the reveal is no original', async ({ browser }) => {
   await setCard(page, t, carol, 'three01');
   expect(original(t, carol)).toBe('NULL');
   expect((await players(page, t, bob)).Carol.original_card_key).toBeNull();
+});
+
+/** the current card (top of the stack) and the original behind it */
+const topFace = (page: Page, name: string) => tableCard(page, name).locator('.pc:not(.pc-orig)');
+const backFace = (page: Page, name: string) => tableCard(page, name).locator('.pc-orig');
+
+test('the table shows a changed card as a stack of original and current card', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Card Changed Table');
+  const t = teamIdOf(url);
+  await joinAsPlayer(page, url, 'Alice');
+  const [bob, carol] = await addPlayersViaApi(page, url, ['Bob', 'Carol']);
+  sql(`update pok_players_tbl set player_type = 'OBSERVER' where team_id = '${t}' and id not in ('${bob}', '${carol}')`);
+  await page.reload();
+
+  await setCard(page, t, bob, 'five001');
+  await setCard(page, t, carol, 'eight01');
+  await expectTableCard(page, 'Bob', 'five001');
+  await expect(backFace(page, 'Bob')).toHaveCount(0);
+  const before = await tableCard(page, 'Bob').boundingBox();
+
+  // Bob changes after the reveal: 5 lies behind 13
+  await setCard(page, t, bob, 'thrtn01');
+  await expectTableCard(page, 'Bob', 'thrtn01');
+  await expect(tableCard(page, 'Bob')).toHaveAttribute('data-original', 'five001');
+  await expect(backFace(page, 'Bob')).toBeVisible();
+  await expect(backFace(page, 'Bob')).toHaveAttribute('aria-hidden', 'true');
+  await expect(backFace(page, 'Bob').locator('use')).toHaveAttribute('href', /#s-5$/);
+  await expect(topFace(page, 'Bob').locator('use')).toHaveAttribute('href', /#s-13$/);
+  await expect(topFace(page, 'Bob')).toHaveAttribute('aria-label', '13, changed from 5 to 13');
+  await expect(backFace(page, 'Carol')).toHaveCount(0);
+  // the original peeks out to the upper left, the card itself keeps its place and size
+  await expect(backFace(page, 'Bob')).not.toHaveClass(/pc-orig-in/); // slide-in finished
+  const back = (await backFace(page, 'Bob').boundingBox())!;
+  const top = (await topFace(page, 'Bob').boundingBox())!;
+  expect(back.x).toBeLessThan(top.x - 3);
+  expect(back.y).toBeLessThan(top.y);
+  expect(await tableCard(page, 'Bob').boundingBox()).toEqual(before);
+
+  // back to the original: no stack
+  await setCard(page, t, bob, 'five001');
+  await expectTableCard(page, 'Bob', 'five001');
+  await expect(backFace(page, 'Bob')).toHaveCount(0);
+  await expect(tableCard(page, 'Bob')).not.toHaveAttribute('data-original', /./);
+  await expect(topFace(page, 'Bob')).toHaveAttribute('aria-label', '5');
+
+  // anonymous mode: the stack stays
+  await setCard(page, t, carol, 'two0001');
+  sql(`update pok_teams_tbl set anonymous_mode = 1 where id = '${t}'`);
+  await page.reload();
+  const carolCard = page.locator('#cbox .c[data-card="two0001"]');
+  await expect(carolCard).toHaveAttribute('data-original', 'eight01');
+  await expect(carolCard.locator('.pc-orig')).toBeVisible();
+  await expect(carolCard.locator('.pc:not(.pc-orig)')).toHaveAttribute('aria-label', '2, changed from 8 to 2');
+
+  // new round: all stacks are gone
+  const nr = await page.request.post(`/api/newround.php?${new URLSearchParams({ t, id: bob }).toString()}`);
+  expect(nr.ok()).toBeTruthy();
+  await expect(page.locator('#cbox .c[data-card="two0001"]')).toHaveCount(0);
+  await expect(page.locator('#cbox .pc-orig')).toHaveCount(0);
+  await expect(page.locator('#cbox .c[data-original]')).toHaveCount(0);
 });

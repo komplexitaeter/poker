@@ -2,6 +2,7 @@ export interface Player {
     name: string;
     mkey: string;
     display_card_key: string;
+    original_card_key: string | null; // B-104: card of the reveal when changed afterwards; null otherwise and while covered
     player_type: string;
     i: number;
 }

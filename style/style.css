@@ -1655,6 +1655,26 @@ div#cbox {
 
 .cardValueChanged { animation: shake 1s ease-in-out; }
 
+/* B-104: a card changed after the reveal: the original of the reveal lies behind the current card, offset to the
+ * upper left into the gap (the layout of the table does not change); the name tag stays on top */
+.c.is-changed .card_player_name { position: relative; z-index: 2; }
+.c.is-changed .pc:not(.pc-orig) { z-index: 1; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); }
+.c .pc-orig {
+    position: absolute;
+    top: var(--card-name-h);
+    left: 0;
+    transform: translate(-10%, -5%) rotate(-5deg);
+    opacity: 0.7;
+    filter: saturate(0.6);
+}
+.c .pc-orig-in { animation: card-orig-in 0.5s ease-out; }
+@keyframes card-orig-in {
+    from { transform: none; opacity: 1; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .c .pc-orig-in { animation: none; }
+}
+
 /* touch devices cannot hover: the delete icon on every card, no sticky hover color
  * (its size: --card-del-min, "Touch screens") */
 @media (hover: none), (pointer: coarse) {

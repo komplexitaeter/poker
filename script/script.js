@@ -934,6 +934,8 @@ function updateCards(cardsDiv, players) {
                 valueChangedCards.push(card);
             }
         }
+        // B-104: the original card of the reveal behind the current one (after the face, it sets the label)
+        setTableCardOriginal(card, player.original_card_key, true);
 
         const nameSpan = card.getElementsByClassName('card_player_name')[0];
         if (nameSpan.textContent !== player.name) {
@@ -958,14 +960,60 @@ function setTableCardFace(cardDiv, key) {
     // F8 (Andreas): every card on the table shows all its texts; control cards heading and description in
     // every set (small cards shorten the description, style.css "Rendered cards")
     const face = cardFace(card, 'table', true);
-    const old = cardDiv.querySelector('.pc');
+    const old = cardDiv.querySelector('.pc:not(.pc-orig)');
     if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.delete'));
     else old.replaceWith(face);
 }
 
+/* B-104: a card changed after the reveal shows as a stack: the original card of the reveal behind (offset to
+ * the upper left), the current card on top. key null (or a status card, or the current card) = no stack. The
+ * label of the top card says both values. animate: the original slides back when the stack appears. */
+function setTableCardOriginal(cardDiv, key, animate) {
+    const current = cardDiv.getAttribute('data-card');
+    const original = key === null || key === undefined || isStatusCardKey(current) || isStatusCardKey(String(key))
+        || String(key) === current ? null : String(key);
+    const oldOriginal = cardDiv.getAttribute('data-original');
+    const top = cardDiv.querySelector('.pc:not(.pc-orig)');
+    let back = cardDiv.querySelector('.pc-orig');
+
+    if (original === null) {
+        cardDiv.removeAttribute('data-original');
+        cardDiv.classList.remove('is-changed');
+        if (back !== null) {
+            back.remove();
+            top.setAttribute('aria-label', cardAriaLabel(tableCardModel(current), true));
+        }
+        return;
+    }
+    if (original !== oldOriginal || back === null) {
+        const face = cardFace(tableCardModel(original), 'table', true);
+        face.classList.add('pc-orig');
+        face.removeAttribute('role');
+        face.removeAttribute('aria-label');
+        face.setAttribute('aria-hidden', 'true');
+        if (back === null && animate && oldOriginal === null) {
+            face.classList.add('pc-orig-in'); // once: moving the card would restart it
+            face.addEventListener('animationend', () => face.classList.remove('pc-orig-in'), { once: true });
+        }
+        if (back === null) cardDiv.insertBefore(face, top);
+        else back.replaceWith(face);
+        back = face;
+    }
+    cardDiv.setAttribute('data-original', original);
+    cardDiv.classList.add('is-changed');
+    const model = tableCardModel(current);
+    top.setAttribute('aria-label', cardAriaLabel(model, true)
+        + ', changed from ' + cardName(tableCardModel(original)) + ' to ' + cardName(model));
+}
+
 /* all faces on the table anew (the deck switched between symbols only and texts) */
 function refreshTableFaces() {
-    document.querySelectorAll('#cbox .c').forEach(card => setTableCardFace(card, card.getAttribute('data-card')));
+    document.querySelectorAll('#cbox .c').forEach(card => {
+        const original = card.getAttribute('data-original');
+        setTableCardFace(card, card.getAttribute('data-card'));
+        card.removeAttribute('data-original'); // the original face anew, too
+        setTableCardOriginal(card, original, false);
+    });
 }
 
 function createCardDiv(player, playersCount, isOnLoad) {
@@ -988,6 +1036,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     cardDeleteImg.onclick = deletePlayer;
     newCard.appendChild(cardDeleteImg);
     setTableCardFace(newCard, String(player.display_card_key));
+    setTableCardOriginal(newCard, player.original_card_key, false); // B-104
 
     return newCard;
 }
