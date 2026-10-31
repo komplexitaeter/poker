@@ -40,6 +40,9 @@ test('letter keys pick the cards row by row; labels QWERTZ without a layout map 
   await expect(deckCards(alice)).toHaveCount(21);
   expect((await KEY_LABELS(alice)).join('')).toBe('QWERTZUIOPASDFGHJKLYX');
   await expect(alice.locator('.deck-hint')).toHaveText('keys Q–X pick a card');
+  // shown in small letters like the rest of the app (CSS text-transform, Andreas #25)
+  await expect(alice.locator('#ctl .ctl-key').first()).toHaveText('q', { useInnerText: true });
+  await expect(alice.locator('.deck-hint')).toHaveCSS('text-transform', 'lowercase'); // hidden here (hint-off)
 
   // the physical keys: top row, then the middle row, then the bottom row (control cards included)
   await alice.keyboard.press('KeyY'); // the 6th key of the top row (Z on QWERTZ)
@@ -77,6 +80,7 @@ test('labels follow the layout map, the key stays physical (QWERTY, AZERTY) (F8,
   await expect(deckCards(alice)).toHaveCount(21);
   await expect.poll(async () => (await KEY_LABELS(alice)).join('')).toBe('AZERTYUIOPQSDFGHJKLWX');
   await expect(alice.locator('.deck-hint')).toHaveText('keys A–X pick a card');
+  await expect(alice.locator('#ctl .ctl-key').first()).toHaveText('a', { useInnerText: true });
   // the key in the top left corner picks the first card, whatever is printed on it
   await alice.keyboard.press('KeyQ');
   await expect(deckCards(alice).first()).toHaveClass(/selected/);

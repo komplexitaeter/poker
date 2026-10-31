@@ -2546,6 +2546,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         font-size: 10px;
         line-height: 1;
         color: var(--muted);
+        text-transform: lowercase; /* q w e r t z, like the rest of the app (Andreas #25); script.js keeps capitals */
     }
 
     .controls .selected + .ctl-key { color: var(--accent); }
@@ -2559,6 +2560,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         font-size: 10px;
         line-height: 1;
         color: var(--line-strong);
+        text-transform: lowercase; /* "keys q–p pick a card", same as the keys */
     }
 
     .ctl_as_guest .ctl-key,
