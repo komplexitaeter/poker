@@ -161,9 +161,10 @@ export async function setTeamDeck(page: Page, boardUrl: string, deck: string, ca
   }
 }
 
-/** R3 F5: all cards of the Fibonacci group plus all control cards (19 cards, the largest deck) */
+/** R3 F5: all cards of the Fibonacci group (with 60 and 89 since B-98, Andreas 2026-10-31); with all control cards
+ * 21 cards, the largest deck */
 export const FIB_ALL = ['zero001', '1pnt501', 'one0001', 'two0001', 'three01', 'five001', 'eight01', 'thrtn01', 'twnty01',
-  '2tyone1', '3tyfr01', '4ty0001', '5tyfve1', 'hundro1', 'infin01'];
+  '2tyone1', '3tyfr01', '4ty0001', '5tyfve1', 'sixty01', 'eighty9', 'hundro1', 'infin01'];
 export const CONTROLS_ALL = ['break01', 'qstmrk1', 'xclam01', 'veto'];
 
 /** R3 F5: chooses a card set in the deck menu (Board settings -> Deck -> change), menu open or closed */
@@ -174,7 +175,7 @@ export async function chooseCardSet(page: Page, setName: string): Promise<void> 
 }
 
 /**
- * R3 F4: decks from card_catalog.json have at most 19 cards and never mix groups. Specs about the tray layout that
+ * R3 F4: decks from card_catalog.json have at most 21 cards and never mix groups. Specs about the tray layout that
  * need larger or mixed decks set cardset_flags in the database and let the board use its fallback: dao.php without
  * "deck" (as with a missing card_catalog.json on the server), so the deck comes from cardset_flags (deck.js adapter).
  */

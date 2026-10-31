@@ -231,7 +231,8 @@ function catalog_variants(array $catalog): array
  * - Otherwise they are a subset of a group (first group in catalog order, so Fibonacci wins over Numbers) -> the
  *   first variant containing all of them (else the one sharing the most cards) with these cards switched on.
  * - Otherwise (mixed groups, no card at all, e.g. needs_setup) -> the default deck with all of its cards.
- * Bits at positions without a card (or beyond the string, old teams have shorter strings) count as off.
+ * Bits at positions without a card (or beyond the string, old teams have shorter strings) count as off. Cards without
+ * legacy_index (added after cards.json v1, e.g. 60 and 89) are never derived from the flags.
  */
 function deck_from_cardset_flags(?string $flags, array $catalog): array
 {
@@ -250,7 +251,7 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
     $selected = array();
     foreach ($catalog['groups'] as $group)
         foreach ($group['cards'] as $card)
-            if ($is_on($card['legacy_index'])) $selected[$card['legacy_index']] = true;
+            if (isset($card['legacy_index']) && $is_on((int)$card['legacy_index'])) $selected[(int)$card['legacy_index']] = true;
     $selected = array_keys(array_diff_key($selected, $control_indexes));
     sort($selected);
 
@@ -261,6 +262,8 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
     foreach ($catalog['groups'] as $group) {
         $index_of = array_column($group['cards'], 'legacy_index', 'card_key');
         foreach ($group['variants'] as $variant) {
+            // a variant with a card that has no legacy_index can never equal old flags
+            if (count(array_diff($variant['cards'], array_keys($index_of))) > 0) continue;
             $indexes = array_map(function ($key) use ($index_of) { return $index_of[$key]; }, $variant['cards']);
             sort($indexes);
             if ($indexes === $selected) {
@@ -276,7 +279,7 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
 
         $keys = array();
         foreach ($group['cards'] as $card)
-            if (in_array($card['legacy_index'], $selected, true)) $keys[] = $card['card_key'];
+            if (isset($card['legacy_index']) && in_array((int)$card['legacy_index'], $selected, true)) $keys[] = $card['card_key'];
 
         $best = null;
         $best_common = -1;

@@ -1923,7 +1923,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=2'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=3'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
