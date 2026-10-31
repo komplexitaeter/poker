@@ -239,6 +239,9 @@ function deckElement(card) {
  * the control cards. */
 let gDeckTexts = false;
 
+/* D4: the longest description of a "short texts" deck (control cards: 51, J.U.D.G.E. up to 160 characters) */
+const DECK_SHORT_INFO = 60;
+
 function deckHasTexts(deck) {
     return deck.cards.some(card => !card.controlCard && (card.heading || card.info));
 }
@@ -326,6 +329,9 @@ function setDeck(deck) {
     const textsChanged = texts !== gDeckTexts;
     gDeckTexts = texts;
     ctl.classList.toggle('deck-texts', texts);
+    // D4: short descriptions only: the table cards get a larger symbol (style.css, "short-texts")
+    document.getElementById('cbox')?.classList.toggle('short-texts', texts && deck.cards.every(card =>
+        String(card.info || '').length <= DECK_SHORT_INFO));
     ctl.replaceChildren(...deck.cards.map(card => deckElement(card).slot));
     updateDeckTabStop();
     if (textsChanged) refreshTableFaces();
