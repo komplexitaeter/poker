@@ -15,10 +15,12 @@
  *   info         long description or null (card_catalog.json; not the v1 description)
  *   controlCard  one of the control cards of card_catalog.json (☕ ? ! ✋): drawn plain, texts only in the info line
  *   group, style the set group (card_catalog.json) and its style (plain | badge | banner | inverted)
+ *   symbol, color  symbol id / colour token from card_catalog.json (R3 S3); missing: derived from the value (cards.js)
  * A deck:  { rev, cards }  cards in deck order; rev changes whenever the deck changes.
  *
- * Today the cards come from cards.json (v1) and the team's cardset_flags (adapter below). Later
- * (R3, F4) the server sends the deck (dao "deck"); the adapter stays as the fallback.
+ * R3 F4: the server sends the deck (dao "deck": {id, group, cards, controls, rev}); the card data comes from
+ * card_catalog.json (catalogV2Cards). The adapter from cards.json (v1) and cardset_flags stays as the fallback
+ * when dao has no deck (card_catalog.json missing or broken on the server).
  * No DOM here. */
 
 /* the card model of a cards.json (v1) entry; v2 = its entry in card_catalog.json ({card, group}) or undefined */
@@ -36,6 +38,8 @@ function cardFromLegacy(config, v2) {
         text: typeof entry.value === 'string' ? entry.value : (config.symbol || config.description),
         heading: typeof entry.heading === 'string' && entry.heading !== '' ? entry.heading : null,
         info: typeof entry.description === 'string' && entry.description !== '' ? entry.description : null,
+        symbol: typeof entry.symbol === 'string' && entry.symbol !== '' ? entry.symbol : null,
+        color: typeof entry.color === 'string' && entry.color !== '' ? entry.color : null,
         group: v2 && v2.group ? v2.group.id : null,
         style: v2 && v2.group ? v2.group.style : 'plain',
     };
@@ -74,4 +78,70 @@ function deckFromLegacy(catalog, flags) {
 /* status cards on the table: no value is shown yet (thinking, thinking anonymous, ready) */
 function isStatusCardKey(key) {
     return key === 'done001' || String(key).startsWith('prgrss');
+}
+
+/* R3 F4: values of a catalog card that are given (strings only); null when missing or empty */
+function catalogText(value) {
+    return typeof value === 'string' && value !== '' ? value : null;
+}
+
+/* B-79: the tip asks to talk instead of naming the sides (catalog flag "talk", else these groups) */
+const TALK_GROUPS = new Set(['traffic', 'emotions']);
+
+/* R3 F4: the card model of a card_catalog.json (v2) entry; group null for the control cards (☕ ? ! ✋).
+ * Values in the catalog win (symbol, color, heading, description, style); what is missing is derived as before
+ * (symbol and colour from the value in cards.js, style from the group). */
+function cardFromCatalog(entry, group) {
+    const text = catalogText(entry.value) || String(entry.card_key);
+    const heading = catalogText(entry.heading);
+    const info = catalogText(entry.description);
+    const value = typeof entry.numeric_value === 'number' && isFinite(entry.numeric_value) ? entry.numeric_value : null;
+    const style = catalogText(entry.style) || (group ? catalogText(group.style) : null) || 'plain';
+    const talk = typeof entry.talk === 'boolean' ? entry.talk
+        : group && typeof group.talk === 'boolean' ? group.talk : group !== null && TALK_GROUPS.has(group.id);
+    return {
+        key: entry.card_key,
+        label: text,
+        description: heading || info || text,
+        value,
+        infinite: entry.infinite === true || text === '∞',
+        // neutral in the tips: ☕ ? ! (veto counts as a vote, as before)
+        control: group === null && entry.card_key !== 'veto',
+        controlCard: group === null,
+        talk,
+        text,
+        heading,
+        info,
+        symbol: catalogText(entry.symbol),
+        color: catalogText(entry.color),
+        group: group ? group.id : null,
+        style,
+    };
+}
+
+/* R3 F4: all cards of card_catalog.json (v2) by key: the control cards and the cards of every group */
+function catalogV2Cards(catalog) {
+    const cards = new Map();
+    if (!catalog || typeof catalog !== 'object') return cards;
+    (Array.isArray(catalog.controls) ? catalog.controls : []).forEach(entry => {
+        if (entry && typeof entry.card_key === 'string') cards.set(entry.card_key, cardFromCatalog(entry, null));
+    });
+    (Array.isArray(catalog.groups) ? catalog.groups : []).forEach(group => {
+        (Array.isArray(group.cards) ? group.cards : []).forEach(entry => {
+            if (entry && typeof entry.card_key === 'string' && !cards.has(entry.card_key)) {
+                cards.set(entry.card_key, cardFromCatalog(entry, group));
+            }
+        });
+    });
+    return cards;
+}
+
+/* R3 F4: the deck from dao ({id, group, cards, controls, rev}): the set's cards, then the control cards. Keys the
+ * catalog does not know are left out. null when there is no usable deck (then the adapter decides). */
+function deckFromServer(deck, cardsByKey) {
+    if (!deck || typeof deck !== 'object' || !Array.isArray(deck.cards)) return null;
+    const keys = deck.cards.concat(Array.isArray(deck.controls) ? deck.controls : []);
+    const cards = keys.map(key => cardsByKey.get(key)).filter(card => card !== undefined);
+    if (cards.length === 0) return null;
+    return { rev: 'd' + deck.rev + ':' + cards.map(card => card.key).join(','), cards, id: deck.id, group: deck.group };
 }

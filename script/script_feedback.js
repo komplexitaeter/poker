@@ -12,7 +12,7 @@ let gTopicChangePending = false;
 const gMenuSections = {
     index:         {btn: 'menu_btn'},
     topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX',         focus: 'topic_txt'},
-    cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'cet_pre'},
+    cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'deck_change'}, // R3 F5: "Card set ... change"
     timer:         {btn: 'timer_btn',         event: 'OPEN_TIMER_BOX',         focus: 'tmr_visibility'}, // B-67: the checked radio
     user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'},
     feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'fb_tab_backlog'} // opens on the backlog tab
@@ -53,6 +53,7 @@ function openMenuSection() {
 function prepareMenuSection(sec) {
     if (sec === 'cset') {
         showCsetTab('deck');
+        resetDeckMenu(); // R3 F5: the deck tab starts at its overview (script_deck.js)
         document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
     }
@@ -128,6 +129,7 @@ function openMenu(sec, opener = null, focusField = true) {
         let field = gMenuSections[sec].focus;
         if (field) {
             let element = document.getElementById(field);
+            if (element === null) element = section.querySelector('button, input, [tabindex]') || section; // R3 F5: deck not loaded yet
             // a radio group (fieldset): its checked radio, as the arrow keys move from there
             if (element.tagName === 'FIELDSET') element = element.querySelector('input:checked') || element.querySelector('input');
             if (sec === 'topic') element.select();
@@ -647,64 +649,6 @@ function save_topic(){
     measureEvent("TOPIC_SAVED");
 }
 
-
-function setCharAt(str, index, chr) {
-    return str.slice(0, index) + chr + str.slice(index + 1);
-}
-
-function toggleCSet(e) {
-    let str = localStorage.getItem('cSet');
-    let cardIdx = gCardsConfig.find(card => card.card_key === e.target.getAttribute("data-card_key")).index;
-
-    if (str.charAt(cardIdx) === '1') {
-        str = setCharAt(str, cardIdx, '0');
-    }
-    else {
-        str = setCharAt(str, cardIdx, '1');
-    }
-
-    for (let i=gCardsConfig.length - str.length; i>0 ; i--) str = str + "0";
-    updateCardset(str);
-
-}
-
-function updateCardset(cardSetDec) {
-    let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + t;
-    apiWrite(url);
-}
-
-function preSet() {
-    let preSetElement = document.getElementById("cet_pre");
-
-    if  (preSetElement.value !== "0") {
-
-        let str = "";
-        let indexList = gCardsPresets.find(preSet => preSet.id.toString() === preSetElement.value).index_list;
-        let cardsConfig = gCardsConfig;
-        cardsConfig.sort((a,b) => a.index - b.index);
-
-        cardsConfig.forEach(card => {
-            let s;
-            if (card.flow_control) {
-                if (card.index + 1 <= localStorage.getItem('cSet').length) {
-                    s = localStorage.getItem('cSet').charAt(card.index);
-                } else {
-                    s = "0";
-                }
-            } else {
-                if (indexList.includes(card.index)) {
-                    s = "1";
-                } else {
-                    s = "0";
-                }
-            }
-            str = str + s;
-        });
-
-        updateCardset(str);
-        preSetElement.value = "0";
-    }
-}
 
 // B-51: called by the radio group with SEQUENCE or NAME
 function changeSortOrder(resultsOrder) {
