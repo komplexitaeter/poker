@@ -1421,6 +1421,13 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Wer **nach dem Aufdecken** s
   der Diskussion umschwenken.
 - Anonym-Modus: Stapel ebenfalls (Namen sind dort ohnehin verborgen). Neue Runde: Original wird gelöscht.
 
+### B-105 Anonym-Modus: Spieler-Kennung nach dem Aufdecken pseudonymisieren
+Hinweis Sina (Review B-104, 2026-10-31): Im Anonym-Modus bleibt `mkey` je Karte nach dem Aufdecken gleich. Vor dem
+Aufdecken sind Namen und `mkey` zusammen sichtbar (dao.php), danach lassen sich die anonymen Karten – und seit B-104
+auch die Originalschätzung – technisch den Personen zuordnen (nur über die Daten, nicht in der Oberfläche). Abhilfe: im
+Anonym-Modus nach dem Aufdecken je Runde eine zufällige Pseudo-Kennung ausgeben (eigene Karte trotzdem erkennbar, z. B.
+über ein Flag). Nicht priorisiert.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
