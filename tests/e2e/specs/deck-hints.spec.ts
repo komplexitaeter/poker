@@ -315,6 +315,8 @@ test('phone deck: a tap on a card further out brings it exactly to the middle, n
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true });
   const url = await createTeam(alice, 'Deck Carousel Tap');
   setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  // start from this deck, not from the start deck the board showed before (its size moved the carousel, B-98 S2)
+  await alice.reload();
   await joinAsPlayer(alice, url, 'Alice');
   const cards = deckCards(alice);
   await expect(cards).toHaveCount(11);

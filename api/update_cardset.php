@@ -5,11 +5,16 @@ require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
-$cardset_flags = filter_input(INPUT_GET, "cardset_flags", FILTER_SANITIZE_NUMBER_INT);
-
+$cardset_flags = filter_input(INPUT_GET, "cardset_flags");
 
 $link = db_init();
 require_team($t, $link);
+
+/* B-98 S2: old deck menu (until R3 F5): only a bitmask of 0/1 is accepted */
+if (!is_string($cardset_flags) || !preg_match('/^[01]{1,100}$/D', $cardset_flags)) {
+    http_response_code(400);
+    exit;
+}
 
 /* B-98: the deck follows the old deck menu: deck_id = null makes getDao() derive it again from the new flags */
 $sql = $link->prepare("update pok_teams_tbl
