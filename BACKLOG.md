@@ -1364,6 +1364,20 @@ Entscheidungen Andreas zum Kartenkatalog (2026-10-31):
   Anonymous-Masken-Motiv (im Skizzen-Stil).
 - Gelbtöne: **dunkle Schrift auf hellen Farben** (Token je Farbe für die Schriftfarbe).
 
+Planning R3 (2026-10-31, Ben/Fred, Entscheidungen Andreas):
+- **Einzelne Karten an/aus** je Gruppe schon in R3; die Migration übernimmt damit auch Teilmengen genau einer Gruppe.
+- **Steuerkarten-Standard** für neue Teams: nur ☕ und ? an (! und ✋ zuschaltbar); bestehende Teams behalten ihre Auswahl.
+- **Aktives eigenes Set löschen:** Rückfall auf den Standard, neue Runde, wenn Karten liegen (vorher Rückfrage).
+- **Farben eigener Karten** nur aus einer festen Token-Palette (mit Schriftfarbe je Farbe).
+- **„(+)“ (Karten aus anderen Sets) gestrichen** – Mischen nur über eigene Sets.
+- **Info-Zeile** in Sets ohne Texte (Fibonacci) nur für Steuerkarten.
+- **Histogramm** bei Bild-Symbolen (Ampel, Emotionen, Sterne): Mini-Symbol, Text per Tooltip/aria-label.
+- **Gleichzeitiges Bearbeiten** eines eigenen Sets: Hinweis „Someone else changed this set“, Save überschreibt.
+- **Tastatur:** Karten von links nach rechts nach Tastaturreihen belegt (q w e r t z u i o p a s d f …) statt Ziffern;
+  physische Taste (`event.code`), damit QWERTY/QWERTZ gleich funktionieren; Beschriftung unter den Karten.
+- Pläne: Ben S0–S5, Fred F1–F7 (Schnitt siehe R3-Plan); erster Schritt parallel: Fred entkoppelt Board-Logik von
+  `<img>`, Ben Schema/Katalog v2/Lazy-Migration/`deck` im DAO, Delia Symbol-Generator `cards.svg`.
+
 ### B-100 Idee: eigene Kartensets als Bezahlfunktion
 Idee Andreas (2026-10-31): Eigene Sets (B-98) eventuell später hinter eine Paywall. Für R3 nicht geplant; das Limit (5 Sets
 je Team) wird deshalb konfigurierbar gebaut. Offen: ob überhaupt, Modell, Abrechnung.
