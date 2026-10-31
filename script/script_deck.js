@@ -211,7 +211,7 @@ function deckMainView(deck, group, variant) {
     // the control cards (per team)
     const controls = dmEl('fieldset', 'f');
     controls.id = 'deck_controls';
-    controls.appendChild(dmEl('legend', 'lab', 'Control cards · for this team, with every set'));
+    controls.appendChild(dmEl('legend', 'lab', 'Control cards'));
     const ctlGrid = dmEl('div', 'dm-tgs');
     const ctlOn = new Set(deck.controls);
     deckMenuControls().forEach(card => {
@@ -226,7 +226,7 @@ function deckMainView(deck, group, variant) {
         button.addEventListener('click', () => toggleDeckControl(card.key));
         ctlGrid.appendChild(button);
     });
-    controls.append(ctlGrid, dmEl('p', 'hint', 'Need a break, question, important, veto: no value, not in the spread. They stay when you switch sets.'));
+    controls.append(ctlGrid, dmEl('p', 'hint', 'Need a break, question, important, veto'));
     parts.push(controls);
 
     return parts;

@@ -965,8 +965,8 @@ function setTableCardFace(cardDiv, key) {
     else old.replaceWith(face);
 }
 
-/* B-104: a card changed after the reveal shows as a stack: the original card of the reveal behind (offset to
- * the upper left), the current card on top. key null (or a status card, or the current card) = no stack. The
+/* B-104: a card changed after the reveal shows as a stack in the place of one card: the original card of the
+ * reveal behind (upper left, its value small in the visible rim), the current card on top (lower right). key null (or a status card, or the current card) = no stack. The
  * label of the top card says both values. animate: the original slides back when the stack appears. */
 function setTableCardOriginal(cardDiv, key, animate) {
     const current = cardDiv.getAttribute('data-card');
@@ -991,6 +991,11 @@ function setTableCardOriginal(cardDiv, key, animate) {
         face.removeAttribute('role');
         face.removeAttribute('aria-label');
         face.setAttribute('aria-hidden', 'true');
+        // its value in the visible upper rim, like the corner index of a playing card
+        const corner = document.createElement('span');
+        corner.className = 'pc-corner';
+        corner.appendChild(cardSmall(tableCardModel(original), false));
+        face.appendChild(corner);
         if (back === null && animate && oldOriginal === null) {
             face.classList.add('pc-orig-in'); // once: moving the card would restart it
             face.addEventListener('animationend', () => face.classList.remove('pc-orig-in'), { once: true });

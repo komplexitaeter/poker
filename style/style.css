@@ -1655,22 +1655,51 @@ div#cbox {
 
 .cardValueChanged { animation: shake 1s ease-in-out; }
 
-/* B-104: a card changed after the reveal: the original of the reveal lies behind the current card, offset to the
- * upper left into the gap (the layout of the table does not change); the name tag stays on top */
-.c.is-changed .card_player_name { position: relative; z-index: 2; }
-.c .delete { z-index: 2; } /* above the original of the next card */
-.c.is-changed .pc:not(.pc-orig) { z-index: 1; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); }
+/* B-104: a card changed after the reveal: both cards in the place of one table card (Andreas): each --stack-s of
+ * it, the original of the reveal behind in the upper left (turned slightly, dimmed), the current card in front in
+ * the lower right. Name tag, next card and delete icon stay clear. The visible upper rim of the original shows
+ * its value like the corner index of a playing card (.pc-corner, cardSmall() in cards.js). */
+.c.is-changed {
+    --stack-s: 0.88;
+    --stack-w: calc(var(--card-w) * var(--stack-s));
+    --stack-dx: calc(var(--card-w) - var(--stack-w));
+    --stack-dy: calc(var(--stack-dx) * var(--card-ratio));
+    /* the index: as high as the visible rim allows, readable from the next seat */
+    --stack-index: clamp(10px, var(--card-w) * 0.12, 18px);
+}
+.c.is-changed .pc { --card-w: var(--stack-w); width: var(--stack-w); }
+.c.is-changed .pc:not(.pc-orig) {
+    z-index: 1;
+    margin: var(--stack-dy) 0 0 var(--stack-dx);
+    box-shadow: -1px -1px 4px rgb(0 0 0 / 0.3);
+}
+.c .delete { z-index: 2; }
 .c .pc-orig {
     position: absolute;
     top: var(--card-name-h);
     left: 0;
-    transform: translate(-10%, -5%) rotate(-5deg);
-    opacity: 0.7;
+    transform: rotate(-2deg);
     filter: saturate(0.6);
 }
+.c .pc-orig > :not(.pc-corner) { opacity: 0.45; }
+.c .pc-corner {
+    position: absolute;
+    top: max(3px, calc(var(--card-w) * 0.045));
+    left: calc(var(--card-w) * 0.05);
+    height: calc(var(--stack-dy) - max(3px, var(--card-w) * 0.045));
+    display: flex;
+    align-items: center;
+    font-size: var(--stack-index);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+    white-space: nowrap;
+}
+.c .pc-corner .mini.sm-draw,
+.c .pc-corner .mini.sm-inv { height: 1.25em; margin: 0; vertical-align: middle; }
 .c .pc-orig-in { animation: card-orig-in 0.5s ease-out; }
 @keyframes card-orig-in {
-    from { transform: none; opacity: 1; filter: none; }
+    from { transform: translate(var(--stack-dx), var(--stack-dy)); filter: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     .c .pc-orig-in { animation: none; }

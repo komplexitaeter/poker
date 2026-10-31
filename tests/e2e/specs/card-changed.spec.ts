@@ -161,6 +161,16 @@ test('the table shows a changed card as a stack of original and current card', a
   expect(back.x).toBeLessThan(top.x - 3);
   expect(back.y).toBeLessThan(top.y);
   expect(await size()).toEqual(before);
+  // both cards stay in the place of one card: below the name tag, the current card in its lower right corner
+  const card = (await tableCard(page, 'Bob').boundingBox())!;
+  const name = (await tableCard(page, 'Bob').locator('.card_player_name').boundingBox())!;
+  expect(back.x).toBeGreaterThanOrEqual(card.x - 4); // turned slightly
+  expect(back.y).toBeGreaterThanOrEqual(name.y + name.height - 4);
+  expect(Math.abs(top.x + top.width - (card.x + card.width))).toBeLessThan(1.5);
+  expect(Math.abs(top.y + top.height - (card.y + card.height))).toBeLessThan(1.5);
+  // the original value as corner index in the visible rim
+  await expect(backFace(page, 'Bob').locator('.pc-corner')).toHaveText('5');
+  await expect(backFace(page, 'Bob').locator('.pc-corner')).toBeVisible();
 
   // back to the original: no stack
   await setCard(page, t, bob, 'five001');
