@@ -138,10 +138,12 @@ function controlsDsp(playerType) {
         if (playerType === "PLAYER") {
             card.classList.add("ctl_hover");
             card.addEventListener("click", setC);
+            card.removeAttribute("aria-disabled");
         }
         else {
             card.classList.remove("ctl_hover");
             card.removeEventListener("click", setC);
+            card.setAttribute("aria-disabled", "true"); // observers do not pick
         }
     });
 }
@@ -154,7 +156,9 @@ function deletePlayer(e) {
 function updateSelectedC(currKey) {
     gDeckElements.forEach(({ card }, key) => {
         card.classList.toggle('selected', key === currKey);
+        card.setAttribute('aria-pressed', key === currKey ? 'true' : 'false');
     });
+    updateDeckTabStop();
     scheduleCarousel(); // B-75: the dot of the picked card
 }
 
@@ -170,6 +174,7 @@ function setC(e) {
         if (!gAllPlayersReady) {
             url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + t;
             element.classList.remove('selected');
+            element.setAttribute('aria-pressed', 'false');
         }
     }
     else
@@ -193,17 +198,25 @@ function deckCardElements() {
     return gDeck.cards.map(card => gDeckElements.get(card.key)).filter(entry => entry !== undefined).map(entry => entry.card);
 }
 
-/* the element of a card in the tray (today the card image), with its key below it (B-68). Built once per
- * card, so a card switched off and on again keeps its element (no reload, no listeners lost). */
+/* the element of a card in the tray (B-99 F2: a button with the rendered card, cards.js), with its key below
+ * it (B-68). Built once per card, so a card switched off and on again keeps its element (no listeners lost);
+ * the face is rebuilt when the deck shows texts or not (setDeck). */
 function deckElement(card) {
     let entry = gDeckElements.get(card.key);
     if (entry === undefined) {
-        const element = document.createElement("img");
+        const element = document.createElement("button");
+        element.type = "button";
         element.id = card.key;
-        element.src = "src/c_" + card.key + ".png";
         element.classList.add("ctl", "on");
         element.setAttribute("data-card", card.key);
-        element.alt = card.description;
+        element.setAttribute("aria-pressed", "false");
+        element.setAttribute("aria-label", cardAriaLabel(card, false));
+        element.tabIndex = -1;
+        element.addEventListener("pointerenter", showDeckInfoByPointer);
+        element.addEventListener("pointerleave", hideDeckInfo);
+        element.addEventListener("focus", showDeckInfoByFocus);
+        element.addEventListener("blur", hideDeckInfo);
+        element.addEventListener("keydown", moveDeckFocus);
         // B-68: the card with its key below it (shown on devices with a mouse, style.css)
         const slot = document.createElement("span");
         slot.className = "ctl-slot";
@@ -211,10 +224,96 @@ function deckElement(card) {
         keyLabel.className = "ctl-key";
         keyLabel.setAttribute("aria-hidden", "true");
         slot.append(element, keyLabel);
-        entry = { slot, card: element, keyLabel };
+        entry = { slot, card: element, keyLabel, texts: null };
         gDeckElements.set(card.key, entry);
     }
+    if (entry.texts !== gDeckTexts) {
+        entry.texts = gDeckTexts;
+        entry.card.replaceChildren(cardFace(card, 'deck', cardShowsTexts(card)));
+    }
     return entry;
+}
+
+/* B-99 (F2): the deck shows texts (headings / descriptions) when one of its cards (not a control card) has
+ * some; then the control cards show their headings too. Fibonacci: symbols only, the info line explains
+ * the control cards. */
+let gDeckTexts = false;
+
+function deckHasTexts(deck) {
+    return deck.cards.some(card => !card.controlCard && (card.heading || card.info));
+}
+
+function cardShowsTexts(card) {
+    return gDeckTexts || !card.controlCard;
+}
+
+/* B-99 (F2): the info line above the tray (devices with a mouse: pointing at a card; keyboard: focus) shows
+ * the value, heading and description of the card. Sets without texts (Fibonacci): only for control cards. */
+function deckInfoCard(element) {
+    const card = cardByKey(deckCardKey(element));
+    if (card === undefined || !(card.heading || card.info)) return undefined;
+    return gDeckTexts || card.controlCard ? card : undefined;
+}
+
+function showDeckInfo(element) {
+    const line = document.getElementById('deck_info');
+    if (line === null) return;
+    const card = deckInfoCard(element);
+    if (card === undefined) { hideDeckInfo(); return; }
+    const chip = document.createElement('span');
+    chip.className = 'deck-info-value';
+    const look = cardLook(card);
+    setCardColor(chip, look.color);
+    chip.textContent = card.text;
+    const parts = [chip];
+    if (card.heading) {
+        const heading = document.createElement('b');
+        heading.textContent = card.heading;
+        parts.push(heading);
+    }
+    if (card.info) parts.push(document.createTextNode((card.heading ? ' — ' : '') + card.info));
+    line.replaceChildren(...parts);
+    line.hidden = false;
+}
+
+function showDeckInfoByPointer(event) {
+    if (event.pointerType === 'mouse') showDeckInfo(event.currentTarget);
+}
+
+function showDeckInfoByFocus(event) {
+    const element = event.currentTarget;
+    gDeckElements.forEach(({ card }) => { card.tabIndex = card === element ? 0 : -1; }); // roving tab stop
+    if (!gCarousel.on) showDeckInfo(element);
+}
+
+function hideDeckInfo() {
+    const line = document.getElementById('deck_info');
+    if (line === null || line.hidden) return;
+    const focused = document.activeElement;
+    if (focused instanceof Element && focused.matches('#ctl .ctl') && focused.matches(':focus-visible') && !gCarousel.on) {
+        showDeckInfo(focused); // the pointer left, the keyboard focus stays
+        return;
+    }
+    line.hidden = true;
+    line.replaceChildren();
+}
+
+/* B-99 (F3): one tab stop for the deck; the arrow keys move between its cards */
+function moveDeckFocus(event) {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (step === 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+    const cards = deckCardElements();
+    const next = cards[cards.indexOf(event.currentTarget) + step];
+    event.preventDefault();
+    if (next !== undefined) next.focus();
+}
+
+/* the deck card that takes the tab stop: the picked one, else the first */
+function updateDeckTabStop() {
+    const cards = deckCardElements();
+    const stop = cards.find(card => card.classList.contains('selected')) || cards[0];
+    if (cards.includes(document.activeElement)) return; // the focus is in the deck: it keeps the stop
+    gDeckElements.forEach(({ card }) => { card.tabIndex = card === stop ? 0 : -1; });
 }
 
 /* B-99 (F1): shows a deck (deck.js) in the tray: only its cards, in its order. The tray is only
@@ -223,7 +322,13 @@ function setDeck(deck) {
     const ctl = document.getElementById('ctl');
     if (ctl === null || deck.rev === gDeck.rev) return;
     gDeck = deck;
+    const texts = deckHasTexts(deck);
+    const textsChanged = texts !== gDeckTexts;
+    gDeckTexts = texts;
+    ctl.classList.toggle('deck-texts', texts);
     ctl.replaceChildren(...deck.cards.map(card => deckElement(card).slot));
+    updateDeckTabStop();
+    if (textsChanged) refreshTableFaces();
 }
 
 /* the deck tab of the menu (until R3 F5): a thumbnail per card, marked when the card is in the deck */
@@ -462,11 +567,11 @@ function carouselFrame() {
         dot.classList.toggle('current', i === best);
         dot.classList.toggle('picked', picked);
     });
-    // the line below the dots: what you picked (players only; observers have no line, style.css)
+    // the line below the dots: what you picked (players only; observers have no line, style.css).
+    // B-99 (F3): a card with texts in the middle: "tap to pick 3 · Consult" (+ its description in sets with
+    // texts; Fibonacci: the control cards with their heading only)
     const line = document.getElementById('deck_pick');
-    const pickedCard = pickedIndex >= 0 ? cardByKey(deckCardKey(cards[pickedIndex])) : undefined;
-    const text = pickedCard ? 'you picked ' + pickedCard.label : 'tap to pick a card';
-    if (line !== null && line.textContent !== text) line.textContent = text;
+    if (line !== null) setDeckPickLine(line, cards[best], pickedIndex >= 0 ? cards[pickedIndex] : null);
     if (dots.classList.contains('as-bar')) {
         const bar = dots.querySelector('.deck-bar');
         const thumb = dots.querySelector('.deck-bar-thumb');
@@ -479,6 +584,32 @@ function carouselFrame() {
         pick.hidden = pickedIndex < 0;
         if (pickedIndex >= 0) pick.style.left = (pickedIndex / Math.max(1, cards.length - 1) * 100) + '%';
     }
+}
+
+/* B-99 (F3): the hint line of the carousel (textContent only) */
+function setDeckPickLine(line, middle, picked) {
+    const card = deckInfoCard(middle);
+    let key;
+    let parts;
+    if (card === undefined) {
+        const pickedCard = picked !== null ? cardByKey(deckCardKey(picked)) : undefined;
+        key = pickedCard ? 'p:' + pickedCard.key : '-';
+        parts = () => [document.createTextNode(pickedCard ? 'you picked ' + pickedCard.label : 'tap to pick a card')];
+    } else {
+        const isPicked = middle === picked;
+        key = (isPicked ? 'P:' : 'm:') + card.key + (gDeckTexts ? '+' : '');
+        parts = () => {
+            const name = document.createElement('b');
+            name.textContent = card.text + (card.heading ? ' · ' + card.heading : '');
+            const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
+            if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
+                { className: 'deck-pick-info', textContent: card.info }));
+            return list;
+        };
+    }
+    if (line.getAttribute('data-shows') === key) return; // only on a change (per frame while swiping)
+    line.setAttribute('data-shows', key);
+    line.replaceChildren(...parts());
 }
 
 /* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */
@@ -669,6 +800,7 @@ function fitCardsToTable() {
     const ratio = token('--card-ratio');
     const delMin = token('--card-del-min') || 0;
     const gutterMin = token('--card-gutter-min') || 0;
+    const nameH = token('--card-name-h') || 0; // B-99: the name tag above the card
     if (!(min > 0 && max >= min && ratio > 0)) return false;
 
     const tableStyle = getComputedStyle(table);
@@ -686,7 +818,7 @@ function fitCardsToTable() {
         // half a pixel to spare: the browser must not wrap a card earlier than computed
         const cols = Math.max(1, Math.floor((inner + gapX - 0.5) / (w + gapX)));
         const rows = Math.ceil(n / cols);
-        if (rows * (w * ratio + gapY) <= height) {
+        if (rows * (nameH + w * ratio + gapY) <= height) {
             fit = w;
             break;
         }
@@ -742,11 +874,25 @@ function updateCards(cardsDiv, players) {
     return valueChangedCards;
 }
 
-/* B-99 (F1): the face of a card on the table for a card key (a card of the deck or a status card:
- * prgrss1/prgrss2 thinking, done001 ready). The key is kept in data-card; today the face is the image. */
+/* B-99: the face of a card on the table for a card key (a card of the deck or a status card:
+ * prgrss1/prgrss2 thinking, done001 ready). The key is kept in data-card; F2: the face is rendered
+ * (cards.js). A key the client does not know (e.g. a newer card) shows as its key. */
+function tableCardModel(key) {
+    return STATUS_CARDS[key] || cardByKey(key) || { key, text: key, heading: null, info: null, style: 'plain' };
+}
+
 function setTableCardFace(cardDiv, key) {
     cardDiv.setAttribute('data-card', key);
-    cardDiv.getElementsByClassName('card_image')[0].src = 'src/c_' + key + '.png';
+    const card = tableCardModel(key);
+    const face = cardFace(card, 'table', card.status === true || cardShowsTexts(card));
+    const old = cardDiv.querySelector('.pc');
+    if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.delete'));
+    else old.replaceWith(face);
+}
+
+/* all faces on the table anew (the deck switched between symbols only and texts) */
+function refreshTableFaces() {
+    document.querySelectorAll('#cbox .c').forEach(card => setTableCardFace(card, card.getAttribute('data-card')));
 }
 
 function createCardDiv(player, playersCount, isOnLoad) {
@@ -755,14 +901,10 @@ function createCardDiv(player, playersCount, isOnLoad) {
     newCard.classList.add('c');
     if (!isOnLoad && playersCount>1) newCard.classList.add('c_fade-in');
 
-    let cardImg = document.createElement('img');
-    cardImg.classList.add('background', 'card_image');
-    newCard.appendChild(cardImg);
-    setTableCardFace(newCard, String(player.display_card_key));
-
+    // B-76/B-99: the name tag above the card
     let cardSpan = document.createElement('span');
     cardSpan.classList.add('card_player_name');
-    cardSpan.innerText = player.name;
+    cardSpan.textContent = player.name;
     cardSpan.title = player.name; // the full name when it ends with an ellipsis
     newCard.appendChild(cardSpan);
 
@@ -772,6 +914,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     cardDeleteImg.alt = "Delete";
     cardDeleteImg.onclick = deletePlayer;
     newCard.appendChild(cardDeleteImg);
+    setTableCardFace(newCard, String(player.display_card_key));
 
     return newCard;
 }
@@ -1767,14 +1910,19 @@ function loadCardConfig() {
 
     gCardsPresets = jsonCardsConf.presets;
 
-    // B-99 (F1): the card model (deck.js); the tray shows the team's deck once the board state is there
-    gCardCatalog = catalogFromLegacy(gCardsConfig);
+    // B-99 (F1): the card model (deck.js); the tray shows the team's deck once the board state is there.
+    // F2: values, headings, descriptions, groups and styles from card_catalog.json (v2); without it the
+    // cards still show (value as text, no texts)
+    let catalogV2 = null;
+    try {
+        catalogV2 = loadJSON('./card_catalog.json?v=1'); // bump when card_catalog.json changes
+    } catch (e) {
+        catalogV2 = null;
+    }
+    gCardCatalog = catalogFromLegacy(gCardsConfig, catalogV2Index(catalogV2));
     gCardByKey = new Map(gCardCatalog.map(entry => [entry.card.key, entry.card]));
 
     let cardsThumbs = document.getElementById("cards_thumbs");
-
-    // the tray elements are built now (not attached), so the card images load as early as before
-    gCardCatalog.forEach(entry => deckElement(entry.card));
 
     gCardsConfig.forEach(card => {
         let thumbElement = document.createElement("img");
@@ -1926,7 +2074,17 @@ function updateSide(json, glide = true) {
             bar.className = 'spread-bar';
             const value = document.createElement('span');
             value.className = 'spread-value';
-            value.textContent = card.label;
+            // B-99 (F2): picture symbols (traffic lights, faces, stars) small, the text for the range and screen readers
+            const look = cardLook(card);
+            if (isPictureSymbol(look.symbol)) {
+                const text = document.createElement('span');
+                text.className = 'sr-only';
+                text.textContent = card.label;
+                value.append(cardFace(card, 'mini'), text);
+                value.title = cardName(card);
+            } else {
+                value.textContent = card.label;
+            }
             col.append(count, bar, value);
             return col;
         }));
