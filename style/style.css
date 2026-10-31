@@ -1616,6 +1616,14 @@ div#cbox {
     text-overflow: ellipsis;
 }
 
+/* B-99 D8: the own name tag looks like the name tag in the header (.you-tag) */
+.c.is-me .card_player_name {
+    border-radius: var(--radius-m);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
 /* only visible on hover (large screens with a mouse), see the media queries below */
 .c .delete {
     display: none;
@@ -1742,6 +1750,12 @@ div#cbox {
 .pc .tv-long { font-size: calc(var(--card-w) * 0.16); }
 
 .pc.is-status .mot { padding: calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.06) 0; box-sizing: border-box; }
+
+/* B-99 D8: status cards (thinking, ready): symbol and caption as one group in the middle of the card,
+ * the caption right below the symbol instead of on the bottom edge */
+.pc.is-status { justify-content: center; }
+
+.pc.is-status .mot { flex: 0 1 calc(var(--card-w) * 0.88); }
 
 .pc .stl {
     flex: none;

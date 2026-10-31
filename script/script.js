@@ -1135,6 +1135,9 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     }
 
 
+    // B-99 D8: the own card's name tag is styled like the name tag in the header
+    document.querySelectorAll('#cbox .c').forEach(card => card.classList.toggle('is-me', card.id === myJson.mkey));
+
     updateSelectedC(myJson.selected_card_key);
 
     updateNewRoundBtn(myJson.one_ore_more_player_ready, myJson.all_players_ready);

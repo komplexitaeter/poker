@@ -32,7 +32,8 @@ body {
     /* calm status symbols (s-check, s-thought): a light body, the hatching only at the edge */
     --sym-calm: color-mix(in srgb, currentColor 55%, #fffbe8);
     --sym-calm-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
-    --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);   /* s-coffee: milk and foam of the latte */
+    /* s-coffee: milk and foam of the latte; in the dark theme a warmer latte tone, so it is not the light outline */
+    --sym-milk: color-mix(in srgb, currentColor 58%, #f4ead4);
 
     /* catalogue */
     --c-v0: #4d8cff; --on-c-v0: #1d2027;
@@ -119,6 +120,7 @@ body.light-theme {
     --sym-face-mid: color-mix(in srgb, currentColor 30%, #fbfaf5);
     --sym-face-neg: color-mix(in srgb, currentColor 28%, #f1efea);
     --sym-calm: color-mix(in srgb, currentColor 38%, #fffbe8);
+    --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);
 
     /* catalogue */
     --c-v0: #2f6fe0; --on-c-v0: #ffffff;

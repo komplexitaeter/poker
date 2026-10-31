@@ -57,9 +57,11 @@ light disc with dark ink in both themes (a `<g>` in the symbol maps `--sym-*` to
 `--sym-face-mid` (uninterested), `--sym-face-neg` (annoyed, sad, angry; a bit more muted).
 The status symbols `s-check` and `s-thought` are calm in the same way (D7): a light body `--sym-calm` with dark ink
 (`--sym-face-ink`), the hatching (`--sym-calm-hatch`) only in a thin band at the lower right edge. `s-coffee` is a
-latte glass: the coffee hatched, milk and foam light (`--sym-milk`).
+latte glass: the coffee hatched, milk and foam light (`--sym-milk`, warmer in the dark theme), kept apart from the
+outline by a thin rim in paper colour. `s-late` (joined late, B-102) is calm too: an open door with an arrow going in;
+frame and floor in the theme ink (`--cardc-ink`).
 
-## Symbol ids (52)
+## Symbol ids (53)
 
 | Group | Ids |
 |---|---|
@@ -69,7 +71,7 @@ latte glass: the coffee hatched, milk and foam light (`--sym-milk`).
 | Emotions | `s-face-satisfied`, `s-face-annoyed`, `s-face-sad`, `s-face-uninterested`, `s-face-angry`, `s-face-enthusiastic` |
 | Stars | `s-stars-0` … `s-stars-5` (five stars, the first n filled) |
 | Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto) |
-| Status cards | `s-check` (ready), `s-thought` (thinking), `s-mask` (thinking, anonymous mode) |
+| Status cards | `s-check` (ready), `s-thought` (thinking), `s-mask` (thinking, anonymous mode), `s-late` (joined late, B-102) |
 | Frames | `s-frame-inv` (inverted style) |
 
 Ids name the motif, not the card: one symbol can be used by several cards (`s-3` in Fibonacci,
