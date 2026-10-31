@@ -75,9 +75,17 @@ function deckFromLegacy(catalog, flags) {
     return { rev: cards.map(card => card.key).join(','), cards };
 }
 
-/* status cards on the table: no value is shown yet (thinking, thinking anonymous, ready) */
+/* B-102: the system card of a player who joined while the cards were revealed (api/lib.php LATE_CARD_KEY).
+ * It keeps the round revealed but is no vote: left out of the spread, range, average and tips. */
+const LATE_CARD_KEY = 'late001';
+
+function isLateCardKey(key) {
+    return key === LATE_CARD_KEY;
+}
+
+/* status cards on the table: no value is shown (thinking, thinking anonymous, ready; B-102: joined in) */
 function isStatusCardKey(key) {
-    return key === 'done001' || String(key).startsWith('prgrss');
+    return key === 'done001' || isLateCardKey(key) || String(key).startsWith('prgrss');
 }
 
 /* R3 F4: values of a catalog card that are given (strings only); null when missing or empty */

@@ -2149,7 +2149,8 @@ function updateSide(json, glide = true) {
         return;
     }
 
-    const cardStats = calculateCardStats(json.players);
+    // B-102: the "joined in" card is no vote
+    const cardStats = calculateCardStats(json.players.filter(player => !isLateCardKey(player.display_card_key)));
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
     const chosen = [];
     const grown = [];
@@ -2262,7 +2263,8 @@ function cardRank(card) {
 
 /* the tip as a list of plain strings and highlighted { name } parts; [] for none */
 function tipText(json, revealed) {
-    const players = json.players || [];
+    // B-102: a player who joined in after the reveal (late001) has no vote: not in any tip after the reveal
+    const players = (json.players || []).filter(player => !revealed || !isLateCardKey(player.display_card_key));
     if (json.players_count < 2) return ['Copy the board link and invite your team.'];
 
     if (!revealed) {

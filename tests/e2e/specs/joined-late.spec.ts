@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, pickCard, setTeamDeck, tableCard, expectTableCard } from './helpers';
 
 /**
  * B-102: whoever joins as a player (or switches from observer to player) while every player has a card down, i.e.
@@ -80,4 +80,82 @@ test('joining or becoming a player after the reveal gives late001, the round sta
   expect((await post(page, 'newround.php', { t, id: bob })).ok()).toBeTruthy();
   expect(sql(`select d.card_key from pok_roundstat_details_tbl d
                where d.team_id = '${t}' and d.player_id = '${erin}'`)).toBe('late001');
+});
+
+const DESKTOP = { width: 1400, height: 800 };
+const SHOTS = process.env.B102_SHOTS; // optional: directory for screenshots of the table (review)
+
+test('the table shows "joined in" with its symbol; no vote in the spread or the tips (B-102)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Joined In');
+  const t = teamIdOf(url);
+  await setTeamDeck(alice, url, 'fib-classic', null, ['break01', 'qstmrk1']);
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await joinAsPlayer(alice, url, 'Alice');
+  expect((await post(alice, 'setc.php', { t, id: bob, cardkey: 'five001' })).ok()).toBeTruthy();
+  await pickCard(alice, 'five001');
+  const tip = alice.locator('#round_tip');
+  await expect(tip).toHaveText('Everyone agrees \u2013 on to the next topic.');
+
+  // Dave joins after the reveal: the round stays revealed, his card is the status card "joined in"
+  const dave = sid('D');
+  expect((await post(alice, 'name.php', { t, id: dave, name: 'Dave', type: 'player' })).ok()).toBeTruthy();
+  await expectTableCard(alice, 'Dave', 'late001');
+  const face = tableCard(alice, 'Dave').locator('.pc');
+  await expect(face).toHaveClass(/is-status/);
+  await expect(face).toHaveClass(/one-text/);
+  await expect(face).toHaveAttribute('aria-label', 'joined in, no card yet');
+  await expect(face.locator('use')).toHaveAttribute('href', /#s-late$/);
+  await expect(face.locator('.stl')).toHaveText('joined in');
+  await expect(face.locator('.stl')).toHaveCSS('font-weight', '700');
+  // sorted last, the status line counts him as ready
+  await expect(alice.locator('#cbox .c .card_player_name')).toHaveText(['Alice', 'Bob', 'Dave']);
+  await expect(alice.locator('#round_status')).toHaveText('revealed');
+
+  // no vote: no column in the spread, 5 keeps its two votes, still a consensus, no break hint
+  await expect(alice.locator('#spread_bars [data-card="late001"]')).toHaveCount(0);
+  await expect(alice.locator('#spread_bars [data-card="five001"] .spread-count')).toHaveText('2');
+  await expect(alice.locator('#spread_bars .spread-col:not(.zero)')).toHaveCount(1);
+  await expect(tip).toHaveText('Everyone agrees \u2013 on to the next topic.');
+  await expect(tip).not.toContainText('break');
+  await expect(alice.locator('#ctl .ctl[data-card="late001"]')).toHaveCount(0); // not in the deck
+  if (SHOTS) {
+    for (const mode of ['light', 'dark']) {
+      await alice.evaluate(m => (window as unknown as { setColorMode: (m: string) => void }).setColorMode(m), mode);
+      await alice.waitForTimeout(400);
+      await alice.screenshot({ path: `${SHOTS}/table-${mode}.png` });
+    }
+  }
+
+  // a real card replaces it: shown like any card, now a vote with its own column
+  expect((await post(alice, 'setc.php', { t, id: dave, cardkey: 'eight01' })).ok()).toBeTruthy();
+  await expectTableCard(alice, 'Dave', 'eight01');
+  await expect(tableCard(alice, 'Dave').locator('.pc')).not.toHaveClass(/is-status/);
+  await expect(alice.locator('#spread_bars [data-card="eight01"] .spread-count')).toHaveText('1');
+  await expect(tip).toContainText('Let them explain');
+});
+
+test('"joined in" in anonymous mode: same card, general tip without a break hint (B-102)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Joined In Anonymous');
+  const t = teamIdOf(url);
+  await setTeamDeck(alice, url, 'fib-classic', null, ['break01']);
+  expect((await alice.request.post(`/api/update_team.php?t=${t}&anonymous_request_toggle=1`)).ok()).toBeTruthy();
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await joinAsPlayer(alice, url, 'Alice');
+  expect((await post(alice, 'setc.php', { t, id: bob, cardkey: 'three01' })).ok()).toBeTruthy();
+  await pickCard(alice, 'eight01');
+  await expect(alice.locator('#round_status')).toHaveText('revealed');
+
+  const dave = sid('A');
+  expect((await post(alice, 'name.php', { t, id: dave, name: 'Dave', type: 'player' })).ok()).toBeTruthy();
+  await expect(alice.locator('#cbox .c[data-card="late001"]')).toHaveCount(1);
+  const face = alice.locator('#cbox .c[data-card="late001"] .pc');
+  await expect(face.locator('use')).toHaveAttribute('href', /#s-late$/);
+  await expect(face.locator('.stl')).toHaveText('joined in');
+  // last in the anonymous order (by card)
+  await expect(alice.locator('#cbox .c').last()).toHaveAttribute('data-card', 'late001');
+  await expect(alice.locator('#spread_bars [data-card="late001"]')).toHaveCount(0);
+  await expect(alice.locator('#round_tip')).toHaveText('Take the chance and talk about what you see.');
+  if (SHOTS) await alice.screenshot({ path: `${SHOTS}/table-anonymous.png` });
 });
