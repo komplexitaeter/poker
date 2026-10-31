@@ -274,7 +274,9 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
     }
 
     foreach ($catalog['groups'] as $group) {
-        $key_of = array_column($group['cards'], 'card_key', 'legacy_index');
+        // only cards that exist in the old bitmask (60, 89 have no legacy_index; array_column would number them itself)
+        $legacy_cards = array_filter($group['cards'], fn($card) => isset($card['legacy_index']));
+        $key_of = array_column($legacy_cards, 'card_key', 'legacy_index');
         if (count(array_diff($selected, array_keys($key_of))) > 0) continue;
 
         $keys = array();
