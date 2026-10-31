@@ -448,3 +448,45 @@ prepare b98s2_stmt from @b98s2_sql;
 execute b98s2_stmt;
 deallocate prepare b98s2_stmt;
 /* end B-98 S2 */
+
+/* B-104: original card of a player who changes his card after the cards were revealed (stack "card changed" on the
+   board, statistics: how often teams change their estimate after the discussion). setc.php sets
+   pok_players_tbl.original_card_key, start_new_round() (api/lib.php) copies it into the round snapshot
+   pok_roundstat_details_tbl and clears it. Both columns are INVISIBLE: the old code inserts into
+   pok_roundstat_details_tbl without a column list (insert ... select) and reads p.*, so it keeps running unchanged.
+   Additive, instant (no table copy, also for the large pok_roundstat_details_tbl), idempotent (run it again any time),
+   BEFORE deploying the code. Needs MySQL >= 8.0.29.
+   Run only this block: sed -n '/^\/\* B-104:/,/^\/\* end B-104/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type, extra from information_schema.columns
+ where table_schema = database() and table_name in ('pok_players_tbl', 'pok_roundstat_details_tbl')
+   and column_name = 'original_card_key';
+
+set session lock_wait_timeout = 5;
+set @b104_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_players_tbl'
+                       and column_name = 'original_card_key') = 0,
+  'alter table pok_players_tbl
+     add column original_card_key varchar(7) character set ascii collate ascii_bin null invisible
+       comment ''B-104: card at the reveal if the player changed it afterwards, null = unchanged'',
+     algorithm = instant',
+  'select 1');
+prepare b104_stmt from @b104_sql;
+execute b104_stmt;
+deallocate prepare b104_stmt;
+
+set @b104_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_roundstat_details_tbl'
+                       and column_name = 'original_card_key') = 0,
+  'alter table pok_roundstat_details_tbl
+     add column original_card_key varchar(7) character set ascii collate ascii_bin null invisible
+       comment ''B-104: card at the reveal if the player changed it afterwards, null = unchanged'',
+     algorithm = instant',
+  'select 1');
+prepare b104_stmt from @b104_sql;
+execute b104_stmt;
+deallocate prepare b104_stmt;
+
+select table_name, column_name, column_type, extra from information_schema.columns
+ where table_schema = database() and table_name in ('pok_players_tbl', 'pok_roundstat_details_tbl')
+   and column_name = 'original_card_key';
+/* end B-104 */

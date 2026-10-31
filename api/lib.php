@@ -453,7 +453,8 @@ function team_has_cards_down($link, string $t): bool
  * Starts a new round (newround.php; B-98 S2 also update_deck.php when the deck changes while cards are down):
  * snapshot of the round in pok_roundstats_tbl (incl. the deck of the round: deck_id, deck_cards, deck_controls, so
  * callers that change the deck call this BEFORE storing the new deck) and pok_roundstat_details_tbl, then all cards
- * up. type_code NEW_ROUND if every player had a card down, else CANCEL_ROUND. Does not notify.
+ * up. type_code NEW_ROUND if every player had a card down, else CANCEL_ROUND. B-104: the snapshot keeps
+ * original_card_key (card at the reveal of a player who changed it afterwards), then it is cleared. Does not notify.
  */
 function start_new_round($link, string $t): void
 {
@@ -494,8 +495,11 @@ function start_new_round($link, string $t): void
     $result = $sql->get_result();
     $obj = $result->fetch_object();
     if ($obj != null && $obj->last_id != 0) {
+        // B-104: column list, original_card_key is an invisible column (not covered by an insert without list)
         $sql = $link->prepare( "insert into pok_roundstat_details_tbl
+                                        (roundstat_id, player_id, team_id, name, card_key, player_type, original_card_key)
                                     select ? roundstat_id, t.id as player_id, t.team_id, t.name, t.card_key, t.player_type
+                                         , t.original_card_key
                                     from pok_players_tbl t
                                     where t.team_id = ?
                                       and t.last_callback_time > TIMESTAMPADD(DAY, -1, CURRENT_TIMESTAMP);
@@ -523,6 +527,7 @@ function start_new_round($link, string $t): void
 
     $sql = $link->prepare( "update pok_players_tbl p
                                      set card_key = null
+                                        ,original_card_key = null
                                    where p.team_id=?");
     $sql->bind_param('s', $t);
     $sql->execute();
@@ -726,7 +731,8 @@ function getDao($t, $id) {
         }
     }
 
-    $sql = $link->prepare("SELECT p.*
+    // B-104: original_card_key is an invisible column, not part of p.*
+    $sql = $link->prepare("SELECT p.*, p.original_card_key
               FROM pok_players_tbl p
              WHERE p.team_id = ?
              ORDER BY p.name");
@@ -833,11 +839,20 @@ function getDao($t, $id) {
         else
             $display_card_key = 'done001';
 
+        /* B-104: card at the reveal if the player changed it afterwards (stack "card changed"). Only while revealed
+           (nothing leaks before), also in anonymous mode; never under the system card or a taken back card. */
+        $original_card_key = null;
+        if ($all_players_ready && $obj->original_card_key !== null && $obj->card_key !== null
+            && $obj->card_key !== LATE_CARD_KEY && $obj->original_card_key !== $obj->card_key) {
+            $original_card_key = $obj->original_card_key;
+        }
+
         $player = (object) array(
             "name"=>$obj->name
         // mkey must stay a string in the JSON: the frontend compares it with the DOM card id via ===
         ,"mkey"=>(string)$obj->mkey
         ,"display_card_key"=>$display_card_key
+        ,"original_card_key"=>$original_card_key // B-104: null = no stack
         ,"i"=>(int)null);
         $players[] = $player;
 

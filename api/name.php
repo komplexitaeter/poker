@@ -35,7 +35,7 @@ if ($result = $sql->get_result()) {
 
 if ($is_in_db) {
     if (strlen($name) == 0) {
-        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED', card_key = null WHERE id = ? and team_id = ?");
+        $sql = $link->prepare("UPDATE pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null WHERE id = ? and team_id = ?");
         $sql->bind_param('ss', $id, $t);
     } else if ($type == 'PLAYER') {
         /* B-102: an existing user becomes (or stays) a player. If every PLAYER of the team already has a card down
