@@ -1297,6 +1297,14 @@ Funde Fred/Delia (2026-10-31, Brand-Icon): `brand_*.svg` und `brand_icon_*.svg` 
 20-px-Zeichen bzw. ein 24-px-Logo viel zu groß; mit svgo o. ä. verkleinern (Delia). Außerdem lädt das helle Theme zuerst die
 dunkle Datei (Default im HTML) und dann die helle über `setColor()`, und `setColor()` setzt `src` bei jedem Update neu.
 
+### B-98 Kartendecks nach Gruppen statt freier Mischung
+Idee Andreas (2026-10-31): Heute lassen sich alle ~50 Karten frei in ein Deck mischen – flexibel, wird aber vermutlich kaum
+genutzt. Vorschlag: Karten in sinnvolle **Gruppen** (Fibonacci mit den bekannten Unteroptionen, Zahlen 1–10, T-Shirt, Ampel,
+Emotionen, Sterne, später J.U.D.G.E., Delegation, eigene Werte); innerhalb der Gruppe einzelne Karten an/aus; „(+)“ fügt nur
+als Notoption weitere Karten aus dem Gesamtdeck hinzu. Vorher mit Live-Daten prüfen, welche Kombinationen in gespielten
+Runden wirklich vorkommen (`pok_roundstats_tbl.cardset_flags` je Runde, `pok_roundstat_details_tbl.card_key`).
+Passt zum gerenderten Kartenmodell aus der R3-Kartenrunde (Kartenset als Daten).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
