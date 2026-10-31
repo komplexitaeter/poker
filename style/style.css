@@ -1853,7 +1853,11 @@ div#cbox {
     .dkc .dh { display: none; }
 
     .dkc .mot,
-    .dkc .tv { top: 10%; height: 84%; }
+    .dkc .tv,
+    .dkc.has-head .mot,
+    .dkc.has-head .tv,
+    .dkc.sty-inverted.has-head .mot,
+    .dkc.sty-inverted.has-head .tv { top: 10%; height: 84%; }
 }
 
 .dkc .dh > span:last-child {
