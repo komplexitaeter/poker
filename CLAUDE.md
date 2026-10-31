@@ -134,7 +134,7 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 ## Tests
 
 End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
-jedem PR nach `release` und jedem Push auf `release`, mit PHP 8.4 wie in Produktion; reine `*.md`-Änderungen lösen
+jedem PR nach `release`/`rollout-3` und jedem Push darauf, mit PHP 8.4 wie in Produktion; reine `*.md`-Änderungen lösen
 keinen Lauf aus. PRs `release` → `master` laufen nicht erneut: Kai mergt sie nur, wenn der letzte Lauf auf `release`
 (gleicher Stand) grün ist. **Lokal** (Agenten) laufen nur die Specs, die die Änderung betreffen, plus neue Tests; die
 komplette Suite übernimmt die CI (Andreas, 2026-10-28).
@@ -188,6 +188,10 @@ nachträglich im Backlog vermerkt.
 - Mehrere zusammengehörige Feature-Branches darf Kai zu einem Sammel-PR nach `release` zusammenführen.
 - Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
 - `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
+- **Rollout 3 (seit 2026-10-31, Andreas):** R3 wird auf dem Integrations-Branch `rollout-3` gebaut (Feature-Branches von
+  `rollout-3`, PRs nach `rollout-3`, sonst gleicher Ablauf). Staging hat `rollout-3` ausgecheckt. `release` nimmt bis zum
+  Ende von R3 nur Hotfixes und Backlog-/Doku-Pflege auf; Kai merget `release` regelmäßig nach `rollout-3`. Zum Abschluss
+  `rollout-3` → `release` → `master`. R3-Schemaänderungen nur additiv, damit `release` auf der Staging-DB weiterläuft.
 
 **Rollen und Agenten** (`.claude/agents/`):
 
