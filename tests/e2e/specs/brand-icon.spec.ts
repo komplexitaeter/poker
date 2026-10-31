@@ -40,3 +40,21 @@ test('phones show the logo mark file, large screens the full logo; the theme swi
   await expect(icon).toBeVisible();
   await expect.poll(() => icon.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
 });
+
+// Both images are loading="lazy": the hidden one (display:none) is not fetched (~130 KB each).
+for (const [viewport, shown, hidden] of [[PHONE, 'brand_icon_dark', 'brand_dark'], [LARGE, 'brand_dark', 'brand_icon_dark']] as const) {
+  test(`at ${viewport.width} px only ${shown}.svg is loaded`, async ({ browser }) => {
+    const page = await newPlayer(browser, { viewport });
+    const url = await createTeam(page, 'BrandLazy');
+    const loaded: string[] = [];
+    page.on('request', request => {
+      const file = /src\/(brand[a-z_]*)\.svg/.exec(request.url());
+      if (file) loaded.push(file[1]);
+    });
+    await joinAsPlayer(page, url, 'Alice');
+    await expect.poll(() => page.locator(viewport === PHONE ? '#brand_icon' : '#brand')
+      .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+    expect(loaded).toContain(shown);
+    expect(loaded).not.toContain(hidden);
+  });
+}
