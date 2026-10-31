@@ -1887,15 +1887,16 @@ div#cbox {
 
 /* B-99 D6: a card's value in small places (spread, range, info line, "you picked", tips; cardSmall() in cards.js):
  * .sm-text the value in the mono font, .sm-draw a mini symbol sized by the surrounding text (about a capital
- * letter and a half high), sitting on the baseline like a letter and never stretching the line */
+ * letter and a half high), never stretching the line. D7: its optical middle sits on the middle of the digits
+ * (about a third of an em above the baseline); the margins keep its margin box (and so the line) as before. */
 .sm-text { font-family: var(--font); }
 
 .mini.sm-draw {
     width: auto;
     height: 1.5em;
     aspect-ratio: 100 / 120;
-    margin-block: -0.25em;
-    vertical-align: -0.38em;
+    margin-block: -0.36em -0.14em;
+    vertical-align: -0.27em;
 }
 
 /* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read */
@@ -2892,6 +2893,7 @@ div#cbox {
 
 .spread-col {
     --bar: var(--line-strong);
+    container-type: inline-size; /* the value label scales to the column (100cqi) */
     flex: 1 1 0;
     min-width: 0;
     max-width: 32px;
@@ -2949,7 +2951,10 @@ div#cbox {
 .spread-value {
     flex: none;
     font-family: var(--font), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-    font-size: var(--fs-xs);
+    /* B-99 D7: three digits ("100", bold when top) fit a narrow column (many cards, phones): mono digits are
+     * about 0.6em wide, less the tighter spacing 0.56em, so 3 digits need 1.7em; never above --fs-xs */
+    font-size: clamp(7.5px, 100cqi / 1.75, var(--fs-xs));
+    letter-spacing: -0.04em;
     line-height: 1.25rem;
     white-space: nowrap;
     max-width: 100%;
