@@ -36,7 +36,7 @@ test('keyboard: topic box opens with Enter, Escape closes it, timer panel by key
 
   // setup and "you" focus their first field when opened by the user
   await alice.locator('#cset_btn').press('Enter');
-  await expect(alice.locator('#cet_pre')).toBeFocused();
+  await expect(alice.locator('#deck_change')).toBeFocused();
   await alice.keyboard.press('Escape');
   await expect(alice.locator('#cset_btn')).toBeFocused();
   await alice.locator('#user_settings_btn').press('Enter');

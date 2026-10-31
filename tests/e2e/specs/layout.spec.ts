@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers, openTimerPanel, setTimer, deckCards } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers, openTimerPanel, setTimer, deckCards, setTeamDeck } from './helpers';
 
 /**
  * B-46: The board is one screen-high grid. Only the table scrolls, the deck stays at the bottom.
@@ -189,13 +189,8 @@ test('timer switch: a toast for the own click only (B-46, B-67)', async ({ brows
 test('round button always there; many deck cards in a narrow window: the deck scrolls, the corner stays (B-67, B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1440, height: 900 } });
   const url = await createTeam(alice, 'Layout Corner');
-  // Fibonacci plus ½, coffee, ? and ! (15 cards); the id is checked before it goes into the statement
-  const t = new URL(url).searchParams.get('t') as string;
-  expect(t).toMatch(/^[A-Za-z0-9_-]+$/);
-  const flags = Array(46).fill('0');
-  [0, 1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 24, 43, 44].forEach(i => flags[i] = '1');
-  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
-    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
+  // Fibonacci Classic plus coffee, ? and ! (15 cards)
+  await setTeamDeck(alice, url, 'fib-classic', null, ['break01', 'qstmrk1', 'xclam01']);
   await addPlayersViaApi(alice, url, ['Bob']);
   await joinAsPlayer(alice, url, 'Alice');
   await alice.reload();

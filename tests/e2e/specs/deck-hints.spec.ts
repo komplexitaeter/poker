@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, deckCard, deckCards, selectedDeckCards } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, deckCard, deckCards, selectedDeckCards, setLegacyDeck } from './helpers';
 
 /**
  * B-69 (large screens): the deck has no scrollbar. When it overflows, a chevron bar shows at the
@@ -14,13 +14,6 @@ import { newPlayer, createTeam, joinAsPlayer, deckCard, deckCards, selectedDeckC
 const PHONE = { width: 390, height: 844 };
 const NARROW = { width: 1000, height: 800 }; // large screen layout, 46 cards overflow the tray
 
-function setDeck(t: string, indexes: number[]) {
-  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // checked before it goes into the statement
-  const flags = Array(46).fill('0');
-  indexes.forEach(i => flags[i] = '1');
-  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
-    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
-}
 
 const ALL = Array.from({ length: 46 }, (_, i) => i);
 
@@ -31,7 +24,7 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
   const alice = await newPlayer(browser, { viewport: NARROW });
   const url = await createTeam(alice, 'Deck Hints');
   const t = new URL(url).searchParams.get('t')!;
-  setDeck(t, ALL);
+  await setLegacyDeck(alice, t, ALL);
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(46);
   const tray = alice.locator('#down-container');
@@ -62,7 +55,7 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
   expect(Math.abs((await tray.boundingBox())!.height - height)).toBeLessThan(1);
 
   // a deck that fits: no bars
-  setDeck(t, [0, 2, 3, 4]);
+  await setLegacyDeck(alice, t, [0, 2, 3, 4]);
   await alice.reload();
   await expect(deckCards(alice)).toHaveCount(4);
   await expect(tray).not.toHaveClass(/more-left/);
@@ -73,7 +66,7 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
 test('deck hints: a key brings a hidden card into view, the wheel scrolls sideways (B-69)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1000, height: 800 }, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Keys');
-  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL);
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(46);
   const ctl = alice.locator('#ctl');
@@ -106,7 +99,7 @@ test('deck hints: a key brings a hidden card into view, the wheel scrolls sidewa
 test('deck hints: a click on a bar scrolls the deck, no card is picked (B-69)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: NARROW, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Bars');
-  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL);
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(46);
   const tray = alice.locator('#down-container');
@@ -137,7 +130,7 @@ test('deck hints: a click on a bar scrolls the deck, no card is picked (B-69)', 
 test('narrow window with a mouse: no carousel, the edge bars scroll the deck, keys pick (B-75, B-69)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, reducedMotion: 'reduce' }); // no touch
   const url = await createTeam(alice, 'Deck Narrow Mouse');
-  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL);
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(46);
   const tray = alice.locator('#down-container');
@@ -185,7 +178,7 @@ test('narrow window with a mouse: no carousel, the edge bars scroll the deck, ke
 test('touch device: the carousel stays at any width, no traces left when a mouse takes over (B-75, B-77)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Switch');
-  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   await joinAsPlayer(alice, url, 'Alice');
   const cards = deckCards(alice);
   await expect(cards).toHaveCount(11);
@@ -240,7 +233,7 @@ async function swipe(page: Page, x: number, y: number, dx: number) {
 test('phone deck: a carousel with dots, a tap picks, a swipe does not, no edge bars (B-75)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Carousel');
-  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   await joinAsPlayer(alice, url, 'Alice');
   const cards = deckCards(alice);
   await expect(cards).toHaveCount(11);
@@ -314,7 +307,7 @@ test('phone deck: a tap on a card further out brings it exactly to the middle, n
   // smooth scrolling (no reduced motion): snapping is off on the way, the card lands centered
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true });
   const url = await createTeam(alice, 'Deck Carousel Tap');
-  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   // start from this deck, not from the start deck the board showed before (its size moved the carousel, B-98 S2)
   await alice.reload();
   await joinAsPlayer(alice, url, 'Alice');
@@ -379,7 +372,7 @@ for (const [name, viewport] of [['portrait', { width: 820, height: 1180 }], ['la
   test(`tablet ${name}: the carousel in the floating tray, a tap picks and centers, the column's button aligned (B-77)`, async ({ browser }) => {
     const alice = await newPlayer(browser, { viewport, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
     const url = await createTeam(alice, `Deck Tablet ${name}`);
-    setDeck(new URL(url).searchParams.get('t')!, ALL.slice(0, 17).filter(i => i !== 1));
+    await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL.slice(0, 17).filter(i => i !== 1));
     await joinAsPlayer(alice, url, 'Alice');
     const cards = deckCards(alice);
     await expect(cards).toHaveCount(16);

@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer, deckCard, deckCards } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer, deckCard, deckCards, setLegacyDeck } from './helpers';
 
 /**
  * B-68: from 800px a column is always there on the right, as wide as the menu panel: where the round
@@ -171,20 +171,12 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   await bob.context().close();
 });
 
-/** sets the deck of a team straight in the database (card indexes of cards.json) */
-function setDeck(t: string, indexes: number[]) {
-  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // checked before it goes into the statement
-  const flags = Array(46).fill('0');
-  indexes.forEach(i => flags[i] = '1');
-  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
-    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
-}
 
 test('deck tray: the hint never takes a row of its own, scrolling only as a last resort (B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Deck Tray');
   const t = new URL(url).searchParams.get('t')!;
-  setDeck(t, [0, 2, 3, 4, 6, 9, 10, 11, 12, 13]); // 10 cards: the 10th key lies far right
+  await setLegacyDeck(alice, t, [0, 2, 3, 4, 6, 9, 10, 11, 12, 13]); // 10 cards: the 10th key lies far right
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(10);
   const hint = alice.locator('.deck-hint');
@@ -204,7 +196,7 @@ test('deck tray: the hint never takes a row of its own, scrolling only as a last
   await expect(hint).toBeVisible();
 
   // a very large deck: the cards shrink to their minimum, only then the deck scrolls
-  setDeck(t, Array.from({ length: 46 }, (_, i) => i));
+  await setLegacyDeck(alice, t, Array.from({ length: 46 }, (_, i) => i));
   await alice.reload();
   await expect(deckCards(alice)).toHaveCount(46);
   await expect.poll(() => alice.locator('#ctl').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);

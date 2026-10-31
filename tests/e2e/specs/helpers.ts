@@ -1,4 +1,5 @@
 import { test, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 
 /**
  * Contexts from newPlayer() are not closed by Playwright, and most specs do not close them either. A worker
@@ -146,4 +147,51 @@ export async function setTimer(page: Page, on: boolean): Promise<void> {
   else await expect(page.locator('#timer')).toBeHidden();
   await page.locator('#menu_close').click();
   await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
+}
+
+/** R3 F5: sets the deck of a team through the API (api/update_deck.php, api/update_controls.php): a variant of
+ * card_catalog.json, optionally single cards of its group and the control cards (null: leave them). */
+export async function setTeamDeck(page: Page, boardUrl: string, deck: string, cards: string[] | null = null,
+                                  controls: string[] | null = null): Promise<void> {
+  const t = encodeURIComponent(new URL(boardUrl).searchParams.get('t') ?? '');
+  const cardsParam = cards === null ? '' : `&cards=${cards.join(',')}`;
+  expect((await page.request.post(`/api/update_deck.php?t=${t}&deck=${deck}${cardsParam}`)).ok()).toBeTruthy();
+  if (controls !== null) {
+    expect((await page.request.post(`/api/update_controls.php?t=${t}&controls=${controls.join(',')}`)).ok()).toBeTruthy();
+  }
+}
+
+/** R3 F5: all cards of the Fibonacci group plus all control cards (19 cards, the largest deck) */
+export const FIB_ALL = ['zero001', '1pnt501', 'one0001', 'two0001', 'three01', 'five001', 'eight01', 'thrtn01', 'twnty01',
+  '2tyone1', '3tyfr01', '4ty0001', '5tyfve1', 'hundro1', 'infin01'];
+export const CONTROLS_ALL = ['break01', 'qstmrk1', 'xclam01', 'veto'];
+
+/** R3 F5: chooses a card set in the deck menu (Board settings -> Deck -> change), menu open or closed */
+export async function chooseCardSet(page: Page, setName: string): Promise<void> {
+  if (!(await page.locator('#deck_menu').isVisible())) await page.locator('#cset_btn').click();
+  await page.locator('#deck_change').click();
+  await page.locator('#deck_menu .dm-prow-b').filter({ hasText: setName }).click();
+}
+
+/**
+ * R3 F4: decks from card_catalog.json have at most 19 cards and never mix groups. Specs about the tray layout that
+ * need larger or mixed decks set cardset_flags in the database and let the board use its fallback: dao.php without
+ * "deck" (as with a missing card_catalog.json on the server), so the deck comes from cardset_flags (deck.js adapter).
+ */
+const legacyDeckPages = new WeakSet<Page>();
+
+export async function setLegacyDeck(page: Page, t: string, indexes: number[]): Promise<void> {
+  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // checked before it goes into the statement
+  const flags = Array(46).fill('0');
+  indexes.forEach(i => flags[i] = '1');
+  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
+    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
+  if (legacyDeckPages.has(page)) return;
+  legacyDeckPages.add(page);
+  await page.route('**/api/dao.php*', async route => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.deck = null;
+    await route.fulfill({ response, json });
+  });
 }

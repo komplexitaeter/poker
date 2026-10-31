@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, teamWithTwoPlayers, tableCard, expectTableCard, pickCard, deckCard, deckCards, selectedDeckCards } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, teamWithTwoPlayers, tableCard, expectTableCard, pickCard, deckCard, deckCards, selectedDeckCards, chooseCardSet } from './helpers';
 
 test('create a team from the start page', async ({ browser }) => {
   const page = await newPlayer(browser);
@@ -93,16 +93,15 @@ test('changing the deck of cards applies to all players', async ({ browser }) =>
     await expect(deckCard(page, 'green01')).toHaveCount(0);
   }
 
-  await alice.locator('#cset_btn').click();
-  await alice.locator('#cet_pre').selectOption({ label: 'Traffic Lights' });
+  await chooseCardSet(alice, 'Traffic lights');
 
   for (const page of [alice, bob]) {
     for (const card of ['green01', 'yellow1', 'red0001']) {
       await expect(deckCard(page, card)).toHaveCount(1);
     }
     await expect(deckCard(page, 'three01')).toHaveCount(0);
-    // B-99: the tray holds only the cards of the deck, in deck order (the preset keeps the control
-    // cards, new teams start with ☕ and ?, B-98); the spread follows the deck
+    // B-99: the tray holds only the cards of the deck, in deck order (the control cards stay with every set,
+    // new teams start with ☕ and ?, B-98); the spread follows the deck
     const deck = ['green01', 'yellow1', 'red0001', 'break01', 'qstmrk1'];
     await expect.poll(() => deckCards(page).evaluateAll(cards =>
       cards.map(c => c.getAttribute('data-card')))).toEqual(deck);
@@ -123,28 +122,26 @@ test('a placed card that is no longer in the deck stays on the table (B-99)', as
   const errors: string[] = [];
   for (const page of [alice, bob]) page.on('pageerror', e => errors.push(e.message));
 
-  await pickCard(alice, 'three01');
+  // R3 F5: a new set starts a new round, switching a control card off does not: the placed ? stays
+  await pickCard(alice, 'qstmrk1');
   await alice.locator('#cset_btn').click();
-  await alice.locator('#cet_pre').selectOption({ label: 'Traffic Lights' });
+  await alice.locator('#deck_controls [data-card="qstmrk1"]').click();
 
-  // today a deck change does not start a new round (that comes with S2): the card stays placed,
-  // but the tray no longer holds it; the table shows the status card
   for (const page of [alice, bob]) {
-    await expect(deckCard(page, 'green01')).toHaveCount(1);
-    await expect(deckCard(page, 'three01')).toHaveCount(0);
+    await expect(deckCard(page, 'qstmrk1')).toHaveCount(0);
     await expectTableCard(page, 'Alice', 'done001');
   }
   await expect(selectedDeckCards(alice)).toHaveCount(0);
 
   // Bob picks the last card: revealed, Alice's card shows its value, the spread follows the deck
-  await pickCard(bob, 'green01');
+  await pickCard(bob, 'five001');
   for (const page of [alice, bob]) {
-    await expectTableCard(page, 'Alice', 'three01');
-    await expectTableCard(page, 'Bob', 'green01');
+    await expectTableCard(page, 'Alice', 'qstmrk1');
+    await expectTableCard(page, 'Bob', 'five001');
     await expect(page.locator('#round_status')).toHaveText('revealed');
     await expect(page.locator('#spread')).toBeVisible();
-    await expect(page.locator('#spread_bars [data-card="green01"] .spread-count')).toHaveText('1');
-    await expect(page.locator('#spread_bars [data-card="three01"]')).toHaveCount(0);
+    await expect(page.locator('#spread_bars [data-card="five001"] .spread-count')).toHaveText('1');
+    await expect(page.locator('#spread_bars [data-card="qstmrk1"]')).toHaveCount(0);
   }
   expect(errors).toEqual([]);
 });
