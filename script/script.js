@@ -756,7 +756,8 @@ function initCarousel() {
  * shortcuts, Shift, AltGr), not while typing, in the menu or in an overlay. */
 function pickCardByKey(event) {
     const n = DECK_KEY_CODES.indexOf(event.code);
-    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
+        || (event.getModifierState && event.getModifierState('AltGraph'))) return;
     if (event.isComposing) return; // an input method is composing a character
     const target = event.target;
     if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog')) return;
