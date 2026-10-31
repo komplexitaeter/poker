@@ -30,7 +30,7 @@ const geometry = (page: Page) => page.evaluate(() => {
   const t = table.getBoundingClientRect();
   const cards = Array.from(document.querySelectorAll('#cbox .c'));
   const rects = cards.map(card => card.getBoundingClientRect());
-  const bottoms = cards.map(card => Math.max(...Array.from(card.querySelectorAll('img'))
+  const bottoms = cards.map(card => Math.max(...Array.from(card.querySelectorAll('.card_image, .delete'))
     .map(img => img.getBoundingClientRect().bottom), card.getBoundingClientRect().bottom));
   return {
     cardsBottom: Math.max(...bottoms),

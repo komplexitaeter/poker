@@ -75,16 +75,31 @@ export function tableCard(page: Page, playerName: string): Locator {
   });
 }
 
-/** Expects the card image shown for a player, e.g. 'prgrss1' (not chosen), 'done001' (chosen, hidden), 'three01'. */
+/** Expects the card shown for a player, e.g. 'prgrss1' (not chosen), 'done001' (chosen, hidden), 'three01'.
+ * By its key (data-card), not by the way it is drawn (B-99). */
 export async function expectTableCard(page: Page, playerName: string, displayCardKey: string): Promise<void> {
-  await expect(tableCard(page, playerName).locator('img.card_image'))
-    .toHaveAttribute('src', `src/c_${displayCardKey}.png`);
+  await expect(tableCard(page, playerName)).toHaveAttribute('data-card', displayCardKey);
+}
+
+/** A card in the player's own deck (the tray only holds the cards of the team's deck, B-99). */
+export function deckCard(page: Page, cardKey: string): Locator {
+  return page.locator(`#ctl .ctl[data-card="${cardKey}"]`);
+}
+
+/** All cards in the player's own deck, in deck order. */
+export function deckCards(page: Page): Locator {
+  return page.locator('#ctl .ctl');
+}
+
+/** The picked card(s) in the player's own deck. */
+export function selectedDeckCards(page: Page): Locator {
+  return page.locator('#ctl .ctl.selected');
 }
 
 /** Picks a card from the player's own deck. */
 export async function pickCard(page: Page, cardKey: string): Promise<void> {
-  await page.locator(`#ctl img#${cardKey}`).click();
-  await expect(page.locator(`#ctl img#${cardKey}`)).toHaveClass(/selected/);
+  await deckCard(page, cardKey).click();
+  await expect(deckCard(page, cardKey)).toHaveClass(/selected/);
 }
 
 /** Team with two joined players, Alice (creator) and Bob. */

@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, expectTableCard, teamWithTwoPlayers } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, expectTableCard, teamWithTwoPlayers, deckCard } from './helpers';
 
 /**
  * B-51: one menu (dialog#menu) with one section per area: Topic, Board settings, You, Feedback.
@@ -346,7 +346,7 @@ test('board settings: tabs Deck | Results | Team by click and arrow keys, card s
   await expect(three).toHaveClass(/cs_c_on/);
   await three.click();
   await expect(three).not.toHaveClass(/cs_c_on/);
-  await expect(alice.locator('#ctl img#three01')).toHaveClass(/\boff\b/);
+  await expect(deckCard(alice, 'three01')).toHaveCount(0);
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 });
 

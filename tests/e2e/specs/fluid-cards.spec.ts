@@ -90,7 +90,7 @@ test('large screen: few players get large cards (B-49)', async ({ browser }) => 
   // the whole card scales: image and gap (layout values, a glide of the join may still run)
   const { gap, image, width } = await alice.evaluate(() => {
     const cards = Array.from(document.querySelectorAll<HTMLElement>('#cbox .c'));
-    const img = cards[0].querySelector<HTMLElement>('img.card_image')!;
+    const img = cards[0].querySelector<HTMLElement>('.card_image')!;
     return {
       gap: cards[1].offsetLeft - (cards[0].offsetLeft + cards[0].offsetWidth),
       image: img.offsetHeight / img.offsetWidth,

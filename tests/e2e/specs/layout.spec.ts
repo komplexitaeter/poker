@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers, openTimerPanel, setTimer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWithTwoPlayers, openTimerPanel, setTimer, deckCards } from './helpers';
 
 /**
  * B-46: The board is one screen-high grid. Only the table scrolls, the deck stays at the bottom.
@@ -199,7 +199,7 @@ test('round button always there; many deck cards in a narrow window: the deck sc
   await addPlayersViaApi(alice, url, ['Bob']);
   await joinAsPlayer(alice, url, 'Alice');
   await alice.reload();
-  await expect(alice.locator('#ctl img.on')).toHaveCount(15);
+  await expect(deckCards(alice)).toHaveCount(15);
 
   // before the first card: there, but disabled (Andreas)
   const btn = alice.locator('#newroundbtn');

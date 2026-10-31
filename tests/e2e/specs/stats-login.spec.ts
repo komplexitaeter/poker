@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, gotoStats, STATS_USER, STATS_PASSWORD } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, gotoStats, STATS_USER, STATS_PASSWORD, deckCard } from './helpers';
 
 /**
  * B-63: stats.php has its own login page. Credentials come from the htpasswd file (bcrypt only), "stay logged
@@ -24,7 +24,7 @@ test('without login only the form, wrong password and non-bcrypt entries rejecte
   await joinAsPlayer(player, await createTeam(player, teamName), 'Sam');
   await pickCard(player, 'three01');
   await player.locator('#newroundbtn').click();   // finished round: the table counts as active
-  await expect(player.locator('#ctl img#three01')).not.toHaveClass(/selected/);
+  await expect(deckCard(player, 'three01')).not.toHaveClass(/selected/);
 
   const page = await newPlayer(browser);
   for (const tab of ['live', 'usage', 'ideas', 'tech']) {

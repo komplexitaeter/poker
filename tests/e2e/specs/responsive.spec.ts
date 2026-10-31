@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersViaApi, deckCards } from './helpers';
 
 /**
  * B-36: The layout switches purely by CSS media queries at 800 px (style/style.css,
@@ -53,7 +53,7 @@ async function expectLargeLayout(page: Page) {
   await expect(page.locator('#topic_btn')).toBeVisible();
   await expect(page.locator('#cset_btn')).toBeVisible();
   await expect(page.locator('#newroundbtn')).toBeVisible();
-  await expect(page.locator('#ctl img.on').first()).toHaveCSS('width', '45px');
+  await expect(deckCards(page).first()).toHaveCSS('width', '45px');
   // B-49: two players on a large table: the cards use the room up to --card-max (150px)
   await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(150);
 }
