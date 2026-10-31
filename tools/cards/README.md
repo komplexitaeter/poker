@@ -55,17 +55,20 @@ hatched only in a thin crescent at the edge; the laughing mouth of `s-face-enthu
 light disc with dark ink in both themes (a `<g>` in the symbol maps `--sym-*` to the face tokens): `--sym-face-ink`,
 `--sym-face-mouth`, `--sym-face-hatch` and the disc tint per mood `--sym-face-pos` (satisfied, enthusiastic),
 `--sym-face-mid` (uninterested), `--sym-face-neg` (annoyed, sad, angry; a bit more muted).
+The status symbols `s-check` and `s-thought` are calm in the same way (D7): a light body `--sym-calm` with dark ink
+(`--sym-face-ink`), the hatching (`--sym-calm-hatch`) only in a thin band at the lower right edge. `s-coffee` is a
+latte glass: the coffee hatched, milk and foam light (`--sym-milk`).
 
-## Symbol ids (50)
+## Symbol ids (52)
 
 | Group | Ids |
 |---|---|
-| Values | `s-0` … `s-10`, `s-13`, `s-20`, `s-21`, `s-34`, `s-40`, `s-55`, `s-100`, `s-half` (½), `s-inf` (∞) |
+| Values | `s-0` … `s-10`, `s-13`, `s-20`, `s-21`, `s-34`, `s-40`, `s-55`, `s-60`, `s-89`, `s-100`, `s-half` (½), `s-inf` (∞) |
 | T-shirt | `s-xxs`, `s-xs`, `s-s`, `s-m`, `s-l`, `s-xl`, `s-xxl` |
 | Traffic light | `s-light-green`, `s-light-yellow`, `s-light-red` |
 | Emotions | `s-face-satisfied`, `s-face-annoyed`, `s-face-sad`, `s-face-uninterested`, `s-face-angry`, `s-face-enthusiastic` |
 | Stars | `s-stars-0` … `s-stars-5` (five stars, the first n filled) |
-| Control cards | `s-coffee` (☕ need a break), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto) |
+| Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto) |
 | Status cards | `s-check` (ready), `s-thought` (thinking), `s-mask` (thinking, anonymous mode) |
 | Frames | `s-frame-inv` (inverted style) |
 
@@ -75,7 +78,7 @@ J.U.D.G.E. and Delegation) and chosen for custom cards. Never rename an id once 
 
 ## Colours
 
-Catalogue tokens (predefined sets, colour of today's card): `v0 vh v1 … v100 vinf` (values), `vbrk vq vx vveto`
+Catalogue tokens (predefined sets, colour of today's card): `v0 vh v1 … v55 v60 v89 v100 vinf` (values), `vbrk vq vx vveto`
 (control cards), `vthink vdone` (status), `tXXS … tXXL`, `agreen ayellow ared`, `esatis … eenthu`, `star`,
 `j0 … j6` (J.U.D.G.E.), `g1 … g7` (Delegation).
 
