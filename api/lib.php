@@ -188,13 +188,26 @@ function card_rank(): array
 /*
  * B-98: card catalog v2 (card_catalog.json): set groups with variants, their cards and the control cards. Read once
  * per request. legacy_index is the position of a card in the old cardset_flags (cards.json v1).
+ * A missing, broken or half deployed file yields empty groups/controls and default_deck = null (an unknown default
+ * deck counts as missing); callers must then neither migrate nor store a deck (see getDao()).
+ * Statistics by card value must use numeric_value (or legacy_index for old rounds) from R3 on, not card_key: the same
+ * value has its own card_key in several groups (e.g. five001 in Fibonacci vs. num5 in Numbers).
  */
 function card_catalog(): array
 {
     static $catalog = null;
     if ($catalog === null) {
-        $catalog = json_decode((string)file_get_contents(dirname(__DIR__) . '/card_catalog.json'), true);
-        if (!is_array($catalog)) $catalog = array('groups' => array(), 'controls' => array());
+        $raw = @file_get_contents(dirname(__DIR__) . '/card_catalog.json');
+        $catalog = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($catalog)) $catalog = array();
+        foreach (array('groups', 'controls') as $key)
+            if (!isset($catalog[$key]) || !is_array($catalog[$key])) $catalog[$key] = array();
+        foreach ($catalog['groups'] as $i => $group) {
+            if (!isset($group['cards']) || !is_array($group['cards'])) $catalog['groups'][$i]['cards'] = array();
+            if (!isset($group['variants']) || !is_array($group['variants'])) $catalog['groups'][$i]['variants'] = array();
+        }
+        $default = $catalog['default_deck'] ?? null;
+        if (!is_string($default) || !isset(catalog_variants($catalog)[$default])) $catalog['default_deck'] = null;
     }
     return $catalog;
 }
@@ -483,23 +496,27 @@ function getDao($t, $id) {
            old deck menu changed them, update_cardset.php resets deck_id). Only if the flags are still the ones read
            here, so a parallel update_cardset.php is never overwritten. No notify_team(): dao.php must never notify. */
         $catalog = card_catalog();
-        $deck_id = $obj->deck_id;
-        $deck_cards = $obj->deck_cards;
-        $deck_controls = $obj->deck_controls;
-        if ($deck_id === null) {
-            $migrated = deck_from_cardset_flags($obj->cardset_flags, $catalog);
-            $deck_id = $migrated['deck_id'];
-            $deck_cards = $migrated['deck_cards'];
-            $deck_controls = $migrated['deck_controls'];
-            $sql_m = $link->prepare("update pok_teams_tbl
-                                        set deck_id = ?, deck_cards = ?, deck_controls = ?
-                                      where id = ?
-                                        and deck_id is null
-                                        and cardset_flags <=> ?");
-            $sql_m->bind_param('sssss', $deck_id, $deck_cards, $deck_controls, $t, $obj->cardset_flags);
-            $sql_m->execute();
+        if (!isset($catalog['default_deck'])) {
+            $deck = null; // broken or half deployed card_catalog.json: deliver no deck, store nothing
+        } else {
+            $deck_id = $obj->deck_id;
+            $deck_cards = $obj->deck_cards;
+            $deck_controls = $obj->deck_controls;
+            if ($deck_id === null) {
+                $migrated = deck_from_cardset_flags($obj->cardset_flags, $catalog);
+                $deck_id = $migrated['deck_id'];
+                $deck_cards = $migrated['deck_cards'];
+                $deck_controls = $migrated['deck_controls'];
+                $sql_m = $link->prepare("update pok_teams_tbl
+                                            set deck_id = ?, deck_cards = ?, deck_controls = ?
+                                          where id = ?
+                                            and deck_id is null
+                                            and cardset_flags <=> ?");
+                $sql_m->bind_param('sssss', $deck_id, $deck_cards, $deck_controls, $t, $obj->cardset_flags);
+                $sql_m->execute();
+            }
+            $deck = resolve_deck($deck_id, $deck_cards, $deck_controls, (int)$obj->deck_rev, $catalog);
         }
-        $deck = resolve_deck($deck_id, $deck_cards, $deck_controls, (int)$obj->deck_rev, $catalog);
     }
 
     $sql = $link->prepare("SELECT p.*
