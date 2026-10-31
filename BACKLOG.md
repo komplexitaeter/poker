@@ -1304,6 +1304,10 @@ Emotionen, Sterne, später J.U.D.G.E., Delegation, eigene Werte); innerhalb der 
 als Notoption weitere Karten aus dem Gesamtdeck hinzu. Vorher mit Live-Daten prüfen, welche Kombinationen in gespielten
 Runden wirklich vorkommen (`pok_roundstats_tbl.cardset_flags` je Runde, `pok_roundstat_details_tbl.card_key`).
 Passt zum gerenderten Kartenmodell aus der R3-Kartenrunde (Kartenset als Daten).
+Zielbild Andreas (2026-10-31): **vordefinierte Set-Gruppen** (Fibonacci, Ampel, J.U.D.G.E., Delegation Poker, Emotionen,
+Sterne, T-Shirt, Zahlen …); Fibonacci mit **Varianten** (Short, Long, True …), die meisten anderen mit nur einer. Dazu
+**eigene Custom-Set-Gruppen** je Team: Stil wählen (plain/badge/banner/inverted), je Karte Symbol aus der Symbolbibliothek
+(oder Text-Wert), Heading, Description und **numerischer Wert** (für Spread/Sortierung/Durchschnitt). Mock-up läuft (Deck-Menü).
 Ergänzung Andreas (2026-10-31): **Kontrollkarten** (☕, ?, !, ✋/veto …) sind eine eigene Gruppe, die man optional zu jedem
 Set dazunimmt.
 Live-Daten (letzte 30 Tage, Abfrage 2026-10-31): ~1.180 Runden/150 Teams mit dem Top-Deck „Fibonacci 0–100 + ∞ + ☕ ? !“;
