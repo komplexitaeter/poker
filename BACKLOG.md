@@ -1389,7 +1389,7 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Die Tipps (B-70/B-79) sind a
 keine offenen Fragen gibt.**
 - Keine 5 (need to talk), keine 6 (veto), kein „?“: „Decision accepted.“ – gibt es 3 (severe concerns) oder 4 (step out),
   zusätzlich als Angebot: „Concerns from <Name> (3) – want to hear them?“
-- 5 oder „?“ (zählt wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
+- 5, „?“ oder „!“ (zählen wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
 - Nur 6: Veto anhören.
 - Anonym-Modus: ohne Namen. Tipps abschaltbar wie bisher (B-96).
 Offen/später: ob Delegation, Ampel, Emotionen ebenfalls eigene Tipp-Regeln brauchen.
