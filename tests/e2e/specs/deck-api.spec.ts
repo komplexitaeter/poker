@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, teamWithTwoPlayers, pickCard, expectTableCard, deckCard } from './helpers';
+import { newPlayer, createTeam, teamWithTwoPlayers, pickCard, expectTableCard, deckCard, deckCards } from './helpers';
 
 /**
  * B-98 (rollout 3, S2): deck endpoints for the new deck menu.
@@ -175,4 +175,49 @@ test('new teams from a preset get its deck, the old menu only accepts bitmasks (
     expect(res.status(), flags).toBe(400);
   }
   expect(storedDeck(teamId)).toBe('judge|NULL|break01,qstmrk1|0|0');
+});
+
+test('Fibonacci 60 and 89 can be switched on: placed, revealed, ordered and averaged by value (B-98)', async ({ browser }) => {
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'DeckApiFib6089');
+  const teamId = teamIdOf(url);
+
+  // in no variant, only as single cards of the group; in group order whatever order is sent
+  const res = await post(alice, 'update_deck.php', teamId,
+    { deck: 'fib-classic', cards: 'hundro1,eighty9,4ty0001,sixty01,5tyfve1' });
+  expect(res.status()).toBe(200);
+  expect(await res.json()).toMatchObject({
+    deck: { id: 'fib-classic', cards: ['4ty0001', '5tyfve1', 'sixty01', 'eighty9', 'hundro1'] }, changed: true,
+  });
+  // the old bitmask has no place for 60 and 89: only 40 (12), 100 (13), 55 (42) and the controls ☕ (24) ? (43)
+  expect(sql(`select cardset_flags from pok_teams_tbl where id = '${teamId}'`))
+    .toBe('0000000000001100000000001000000000000000001100');
+  expect((await post(alice, 'update_show_avg.php', teamId, { show_avg: '1' })).ok()).toBeTruthy();
+
+  await expect(deckCards(bob)).toHaveCount(7);
+  await expect(deckCards(bob).nth(2)).toHaveAttribute('data-card', 'sixty01');
+  await expect(deckCards(bob).nth(3)).toHaveAttribute('data-card', 'eighty9');
+
+  await pickCard(alice, 'eighty9');
+  await pickCard(bob, 'sixty01');
+  for (const page of [alice, bob]) {
+    await expectTableCard(page, 'Alice', 'eighty9');
+    await expectTableCard(page, 'Bob', 'sixty01');
+    // by card value (SEQUENCE, the default): Bob (60) before Alice (89)
+    await expect(page.locator('#cbox .c').first()).toHaveAttribute('data-card', 'sixty01');
+    await expect.poll(() => page.locator('#spread_bars .spread-col').evaluateAll(cols =>
+      cols.map(c => c.getAttribute('data-card')).filter(k => k !== 'break01' && k !== 'qstmrk1')))
+      .toEqual(['4ty0001', '5tyfve1', 'sixty01', 'eighty9', 'hundro1']);
+    await expect(page.locator('#spread_bars [data-card="sixty01"] .spread-count')).toHaveText('1');
+    await expect(page.locator('#spread_bars [data-card="eighty9"] .spread-count')).toHaveText('1');
+    await expect(page.locator('#spread_range')).toHaveAttribute('data-shows', 'sixty01,eighty9');
+  }
+
+  // average 74.5 (numeric_value): the pointer sits between the bars of 60 and 89
+  await expect(alice.locator('#spread_index')).toHaveClass(/visible/);
+  await expect.poll(() => alice.evaluate(() => {
+    const x = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
+    const index = x('#spread_index');
+    const middle = index.left + index.width / 2;
+    return middle > x('#spread_bars [data-card="sixty01"]').left && middle < x('#spread_bars [data-card="eighty9"]').right;
+  })).toBe(true);
 });

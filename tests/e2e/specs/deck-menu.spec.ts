@@ -159,11 +159,14 @@ test('a variant is a preset: True, then 100 on as well (custom), Classic sets it
 
   // every card of the group is shown, in catalog order; the ones outside the variant are off
   const all = ['zero001', '1pnt501', 'one0001', 'two0001', 'three01', 'five001', 'eight01', 'thrtn01', 'twnty01',
-    '2tyone1', '3tyfr01', '4ty0001', '5tyfve1', 'hundro1', 'infin01'];
+    '2tyone1', '3tyfr01', '4ty0001', '5tyfve1', 'sixty01', 'eighty9', 'hundro1', 'infin01'];
   await expect.poll(() => alice.locator('#deck_cards .dm-tg')
     .evaluateAll(buttons => buttons.map(b => b.getAttribute('data-card')))).toEqual(all);
   await expect(variant('Classic')).toBeChecked();
   await expect(toggle(alice, '2tyone1')).toHaveAttribute('aria-pressed', 'false');
+  // 60 and 89 are in no variant, only to be switched on (Andreas, 2026-10-31)
+  await expect(toggle(alice, 'sixty01')).toHaveAttribute('aria-pressed', 'false');
+  await expect(toggle(alice, 'eighty9')).toHaveAttribute('aria-pressed', 'false');
 
   // True: its cards on, the others off
   await variant('True').check();

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "comment": "B-98 card catalog v2: predefined set groups with variants and the control cards. card_key is stored in the database and never changes its meaning; keys have at most 7 characters [a-z0-9] (no '-', that is reserved for custom cards). legacy_index = position in cardset_flags (cards.json v1), only for the migration. B-99: symbol = id in src/cards.svg (tools/cards/README.md), color = colour token of style/cards.css without --c-; both win over values the client derives. Control cards are always drawn plain, each group has a style (plain | badge | banner | inverted).",
+  "comment": "B-98 card catalog v2: predefined set groups with variants and the control cards. card_key is stored in the database and never changes its meaning; keys have at most 7 characters [a-z0-9] (no '-', that is reserved for custom cards). legacy_index = position in cardset_flags (cards.json v1), only for the migration; cards added later (e.g. 60, 89) have none and are never derived from or written to cardset_flags. B-99: symbol = id in src/cards.svg (tools/cards/README.md), color = colour token of style/cards.css without --c-; both win over values the client derives. Control cards are always drawn plain, each group has a style (plain | badge | banner | inverted).",
   "styles": ["plain", "badge", "banner", "inverted"],
   "default_deck": "fib-classic",
   "default_controls": ["break01", "qstmrk1"],
@@ -30,6 +30,8 @@
         {"card_key": "3tyfr01", "value": "34", "symbol": "s-34", "color": "v34", "numeric_value": 34, "sort_order": 1250, "legacy_index": 41},
         {"card_key": "4ty0001", "value": "40", "symbol": "s-40", "color": "v40", "numeric_value": 40, "sort_order": 1300, "legacy_index": 12},
         {"card_key": "5tyfve1", "value": "55", "symbol": "s-55", "color": "v55", "numeric_value": 55, "sort_order": 1350, "legacy_index": 42},
+        {"card_key": "sixty01", "value": "60", "symbol": "s-60", "color": "v60", "numeric_value": 60, "sort_order": 1360},
+        {"card_key": "eighty9", "value": "89", "symbol": "s-89", "color": "v89", "numeric_value": 89, "sort_order": 1370},
         {"card_key": "hundro1", "value": "100", "symbol": "s-100", "color": "v100", "numeric_value": 100, "sort_order": 1400, "legacy_index": 13},
         {"card_key": "infin01", "value": "∞", "symbol": "s-inf", "color": "vinf", "numeric_value": null, "sort_order": 1500, "legacy_index": 14}
       ],
