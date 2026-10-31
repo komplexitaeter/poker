@@ -2196,9 +2196,12 @@ function tipText(json, revealed) {
         if (!pause) return parts;
         if (parts.length === 0) return ['Maybe take a short break.'];
         const last = parts[parts.length - 1];
-        const done = typeof last === 'string' && last.endsWith('.');
+        const done = typeof last === 'string' && /[.?!]$/.test(last);
         return [...parts, done ? ' Maybe take a short break.' : '. Maybe take a short break.'];
     };
+
+    // B-101: J.U.D.G.E. is a decision, not an estimate: own rules (also in anonymous mode)
+    if (isJudgeDeck(json)) return withBreak(judgeTip(configs, json.anonymous_mode === 1));
 
     // B-79: in anonymous mode always a general, gentle line – nobody is asked to explain
     if (json.anonymous_mode === 1) return withBreak(['Take the chance and talk about what you see.']);
@@ -2246,6 +2249,46 @@ function tipText(json, revealed) {
         return tipSide(entries.map(entry => entry.player), entries[0].config.label);
     };
     return withBreak(explain([side(min), side(max), ...asking]));
+}
+
+/* B-101: the team's deck is the J.U.D.G.E. group (dao deck.group, else the cards of the deck) */
+function isJudgeDeck(json) {
+    if (json.deck && typeof json.deck.group === 'string') return json.deck.group === 'judge';
+    return gDeck.cards.some(card => card.group === 'judge');
+}
+
+/* B-101: the tip after the reveal for a J.U.D.G.E. decision. It is accepted as long as nobody needs to talk
+ * (5, or ? and ! which count as a 5) and nobody vetoes (6, also the ✋ card). Those who need to talk come first,
+ * then the veto; an accepted decision offers to hear the concerns (3, 4). Anonymous mode: counts, no names.
+ * configs: [{ player, config }] of the table; returns the tip parts (tipText) */
+function judgeTip(configs, anonymous) {
+    const of = keys => configs.filter(entry => entry.config && keys.includes(entry.config.key));
+    // one group per card: "Bob, Cleo (5)", "Dan (?)"; anonymous: "2 × need to talk"
+    const groups = (keys, what) => {
+        if (anonymous) {
+            const n = of(keys).length;
+            return n === 0 ? [] : [n + ' \u00d7 ' + what];
+        }
+        return keys.map(key => of([key])).filter(entries => entries.length > 0)
+            .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config.label));
+    };
+    // "A", "A and B", "A, B and C"
+    const join = list => list.flatMap((group, i) =>
+        i === 0 ? [group] : [i === list.length - 1 ? ' and ' : ', ', group]);
+
+    const talk = groups(['jdg5', 'qstmrk1', 'xclam01'], 'need to talk');
+    const veto = groups(['jdg6', 'veto'], 'veto');
+    if (talk.length > 0) {
+        const parts = ['Let them talk first: ', ...join(talk)];
+        return veto.length > 0 ? [...parts, '. Then hear the veto: ', ...join(veto)] : parts;
+    }
+    if (veto.length > 0) return ['Hear the veto: ', ...join(veto)];
+    // no vote of the deck at all (only coffee): no tip
+    if (of(['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4']).length === 0) return [];
+    const concerns = groups(['jdg3', 'jdg4'], 'concerns');
+    if (concerns.length === 0) return ['Decision accepted.'];
+    return [anonymous ? 'Decision accepted. ' : 'Decision accepted. Concerns from ', ...join(concerns),
+        ' \u2013 want to hear them?'];
 }
 
 /* B-68: n blocks (one per vote) in a bar of the spread. New ones are added on top with the class
