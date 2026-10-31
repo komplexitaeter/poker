@@ -1848,18 +1848,6 @@ div#cbox {
     color: var(--text);
 }
 
-/* a card shrunk below that (narrow tray, B-68): the symbol alone, like in a deck without texts */
-@container (max-width: 37.98px) {
-    .dkc .dh { display: none; }
-
-    .dkc .mot,
-    .dkc .tv,
-    .dkc.has-head .mot,
-    .dkc.has-head .tv,
-    .dkc.sty-inverted.has-head .mot,
-    .dkc.sty-inverted.has-head .tv { top: 10%; height: 84%; }
-}
-
 .dkc .dh > span:last-child {
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -1937,6 +1925,18 @@ div#cbox {
 .dkc.sty-inverted .hd-frame rect { stroke-width: 1; stroke-dasharray: 4 2 1 2; }
 
 .dkc.sty-inverted.has-head .mot { top: 5%; height: 54%; }
+
+/* a deck card shrunk below ~38 px (narrow tray, B-68); after all .dkc rules so it wins: the symbol alone, like in a deck without texts */
+@container (max-width: 37.98px) {
+    .dkc .dh { display: none; }
+
+    .dkc .mot,
+    .dkc .tv,
+    .dkc.has-head .mot,
+    .dkc.has-head .tv,
+    .dkc.sty-inverted.has-head .mot,
+    .dkc.sty-inverted.has-head .tv { top: 10%; height: 84%; }
+}
 
 /* ---------- New round button, timer (.dock, B-66/B-67/B-68) ---------- */
 
