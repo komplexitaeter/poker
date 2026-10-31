@@ -188,9 +188,18 @@ for v, refs in (("xxs", ["lX", "lX", "lS"]), ("xs", ["lX", "lS"]), ("s", ["lS"])
     SYM[f"s-{v}"] = (row(refs), v.upper())
 for c in ("green", "yellow", "red"):
     SYM[f"s-light-{c}"] = (ampel(c), f"{c} light")
+# Faces (D3): a light, friendly disc with dark ink in both themes, like a classic smiley. The disc tint per
+# mood comes from cards.css: positive faces brightest, negative ones a bit more muted (--sym-face-pos/-mid/-neg).
+FACE_MOOD = {"satisfied": "pos", "enthusiastic": "pos", "uninterested": "mid",
+             "annoyed": "neg", "sad": "neg", "angry": "neg"}
+GROUP_STYLE = {}   # symbol id -> style of a <g> around its layers (local overrides of the --sym-* properties)
 for f, feats in FACE.items():
     # hatching only hinted: a thin crescent at the lower right, so the expression stays calm and clear
     SYM[f"s-face-{f}"] = ([S("face", hw=1.1, rim="face_in")] + feats, f"{f} face")
+    GROUP_STYLE[f"s-face-{f}"] = (f"--sym-ink:var(--sym-face-ink,#1d2027);"
+                                  f"--sym-tint:var(--sym-face-{FACE_MOOD[f]},#fbfaf5);"
+                                  f"--sym-hatch:var(--sym-face-hatch,currentColor);"
+                                  f"--sym-face:var(--sym-face-mouth,#fbfaf5)")
 for k in range(6):
     SYM[f"s-stars-{k}"] = (stars(k), f"{k} of 5 stars")
 SYM["s-coffee"] = ([S("mug", "translate(0 4)"), T("M68 64c15 0 15 22 0 22"), T("M46 46c-4-5 4-9 0-15M58 46c-4-5 4-9 0-15")], "coffee cup")
@@ -681,7 +690,10 @@ def symbol(sid):
         parts += layers(it)
     vb = VIEWBOX.get(sid, "0 0 100 120")
     check_bounds(sid, "\n".join(parts))
-    return (f'<symbol id="{sid}" viewBox="{vb}"{PRES}><title>{title}</title>\n' + "\n".join(merge(parts)) + "\n</symbol>")
+    body = "\n".join(merge(parts))
+    if sid in GROUP_STYLE:
+        body = f'<g style="{GROUP_STYLE[sid]}">\n{body}\n</g>'
+    return (f'<symbol id="{sid}" viewBox="{vb}"{PRES}><title>{title}</title>\n' + body + "\n</symbol>")
 
 
 def path_extent(d):
@@ -790,22 +802,9 @@ def on_of(hexs):
     return INK_LIGHT if contrast(hexs, INK_LIGHT) >= contrast(hexs, INK_DARK) else INK_DARK
 
 
-def lift(hexs, target=3.5):
-    """lighten a colour (same hue) until dark ink on it reaches the target contrast"""
-    r, g, b = (int(hexs[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    h, l, s = colorsys.rgb_to_hls(r, g, b)
-    out = hexs
-    while contrast(out, INK_DARK) < target and l < 1:
-        l = min(1, l + .005)
-        r, g, b = colorsys.hls_to_rgb(h, l, s)
-        out = "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
-    return out
-
-
-# Inverted style (J.U.D.G.E.): the value symbol is always dark ink with a light outline, so the square
-# colours are lightened where needed until dark ink reads well on them (WCAG >= 3.5:1, large text needs 3:1).
-for _k in ("j0", "j1", "j2", "j3", "j4", "j5", "j6"):
-    COL[_k] = tuple(lift(c) for c in COL[_k])
+# Inverted style (J.U.D.G.E.): the value symbol is white with a black ink outline on every square, in both
+# themes (Andreas, D3). The outline carries the contrast on the light squares (j1, j2, j5), so the square
+# colours stay as they are.
 
 
 def tokens(group, idx):
@@ -829,8 +828,8 @@ def build_css():
 body {{
     --cardc-face: #1b1f27;   /* card paper */
     --cardc-ink: #d9dee8;    /* outlines, text */
-    --on-inv: #1d2027;      /* inverted style: symbol on the coloured square (always dark ink) */
-    --inv-o: #fbfaf5;       /* inverted style: light outline of that symbol */
+    --on-inv: #ffffff;      /* inverted style: symbol on the coloured square (always white) */
+    --inv-o: #1d2027;       /* inverted style: black ink outline of that symbol */
     --sym-ink: var(--cardc-ink);
     --sym-face: var(--cardc-face);
     /* currentColor resolves where the symbol is used: 22 % of the value colour on the paper */
@@ -840,6 +839,13 @@ body {{
     --sym-faint: color-mix(in srgb, var(--cardc-ink) 40%, var(--cardc-face));   /* empty stars */
     --sym-hood: #0b0c0f;          /* s-mask: hood, black in both themes (outline in --sym-ink) */
     --sym-bubble: #7d8592;        /* s-mask: thought bubble */
+    /* faces: light disc, dark ink, in both themes; tint per mood (positive brightest, negative more muted) */
+    --sym-face-ink: #1d2027;
+    --sym-face-mouth: #fbfaf5;    /* laughing mouth */
+    --sym-face-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
+    --sym-face-pos: color-mix(in srgb, currentColor 62%, #fffbe8);
+    --sym-face-mid: color-mix(in srgb, currentColor 50%, #f4f1e6);
+    --sym-face-neg: color-mix(in srgb, currentColor 48%, #b4b7bf);
 
     /* catalogue */
 {tokens(COL, 1)}
@@ -851,6 +857,9 @@ body {{
 body.light-theme {{
     --cardc-face: #fbfaf5;
     --cardc-ink: #1d2027;
+    --sym-face-pos: color-mix(in srgb, currentColor 40%, #fffbe8);
+    --sym-face-mid: color-mix(in srgb, currentColor 30%, #fbfaf5);
+    --sym-face-neg: color-mix(in srgb, currentColor 28%, #f1efea);
 
     /* catalogue */
 {tokens(COL, 0)}

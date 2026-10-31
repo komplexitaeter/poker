@@ -46,12 +46,15 @@ Inverted style (J.U.D.G.E.): frame plus value symbol, see the preview:
 </svg>
 ```
 
-The value symbol is always dark ink (`--on-inv`) with a light outline (`--inv-o`); the generator lightens
-the `j…` square colours until dark ink reaches 3.5:1 on them.
+The value symbol is always white (`--on-inv`) with a black ink outline (`--inv-o`), in both themes; on the
+light squares (`j1`, `j2`, `j5`) the outline carries the contrast.
 
 Further symbol defaults: `--sym-strong` / `--sym-hatch-strong` (filled stars), `--sym-faint` (empty stars:
 faint outline only), `--sym-hood` / `--sym-bubble` (`s-mask`: black hood, grey thought bubble). Faces are
-hatched only in a thin crescent at the edge; the laughing mouth of `s-face-enthusiastic` is paper.
+hatched only in a thin crescent at the edge; the laughing mouth of `s-face-enthusiastic` is paper. Faces are a
+light disc with dark ink in both themes (a `<g>` in the symbol maps `--sym-*` to the face tokens): `--sym-face-ink`,
+`--sym-face-mouth`, `--sym-face-hatch` and the disc tint per mood `--sym-face-pos` (satisfied, enthusiastic),
+`--sym-face-mid` (uninterested), `--sym-face-neg` (annoyed, sad, angry; a bit more muted).
 
 ## Symbol ids (50)
 
