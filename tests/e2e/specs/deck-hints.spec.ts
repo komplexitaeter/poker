@@ -6,7 +6,7 @@ import { newPlayer, createTeam, joinAsPlayer, deckCard, deckCards, selectedDeckC
 /**
  * B-69 (large screens): the deck has no scrollbar. When it overflows, a chevron bar shows at the
  * edge where more cards are hidden (more-left / more-right on #down-container); a click on it
- * scrolls the deck that way. Keys 1–9 and 0 bring a hidden card into view.
+ * scrolls the deck that way. The letter keys (Q–P, A–L, Y–M) bring a hidden card into view.
  * B-75 (touch phones): the deck is a carousel instead: no bars, the card in the middle larger, dots below
  * (display only), a tap picks and centers a card, a swipe never picks. A narrow window with a mouse
  * keeps the deck row with the bars (Andreas, 2026-10-29). B-77: touch at any width (tablets: the
@@ -80,7 +80,7 @@ test('deck hints: a key brings a hidden card into view, the wheel scrolls sidewa
   await alice.mouse.wheel(0, 300);
   await expect.poll(() => ctl.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
 
-  // scrolled to the end, the first card is hidden; key 1 brings it back and picks it
+  // scrolled to the end, the first card is hidden; key Q brings it back and picks it
   await ctl.evaluate(el => { el.scrollLeft = el.scrollWidth; });
   const first = deckCards(alice).first();
   const visible = () => first.evaluate(img => {
@@ -89,7 +89,7 @@ test('deck hints: a key brings a hidden card into view, the wheel scrolls sidewa
     return r.left >= c.left - 1 && r.right <= c.right + 1;
   });
   expect(await visible()).toBe(false);
-  await alice.keyboard.press('1');
+  await alice.keyboard.press('KeyQ');
   await expect.poll(visible).toBe(true);
   await expect(first).toHaveClass(/selected/);
   // the first card scrolls the deck back to its start: no bar covers it
@@ -164,7 +164,7 @@ test('narrow window with a mouse: no carousel, the edge bars scroll the deck, ke
   await alice.mouse.move(deck.x + deck.width / 2, deck.y + deck.height / 2);
   await alice.mouse.wheel(0, 200);
   await expect.poll(scrollLeft).toBeGreaterThan(0);
-  await alice.keyboard.press('1');
+  await alice.keyboard.press('KeyQ');
   await expect(deckCards(alice).nth(0)).toHaveClass(/selected/);
   await expect.poll(scrollLeft).toBe(0);
 
