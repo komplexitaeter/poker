@@ -225,10 +225,19 @@ test('touch: the carousel hint shows the inverted square, left-aligned in a cent
 
 test('info line: a centred block, the text left-aligned, its second line under the first one\'s start (F8, 21)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
+  // the shipped texts fit on one line; a long description for "step out" forces the second line
+  await alice.route('**/card_catalog.json*', async route => {
+    const catalog = await (await route.fetch()).json();
+    const judge = catalog.groups.find((g: { id: string }) => g.id === 'judge');
+    judge.cards.find((c: { card_key: string }) => c.card_key === 'jdg4').description =
+      'A deliberately long description that cannot fit on a single line of the info block, so it has to wrap ' +
+      'onto a second line below the first one.';
+    await route.fulfill({ json: catalog });
+  });
   const url = await createTeam(alice, 'Info Block');
   await setTeamDeck(alice, url, 'judge', null, ['veto']);
   await joinAsPlayer(alice, url, 'Alice');
-  await deckCard(alice, 'jdg4').hover(); // "step out — Disagreements are so serious …": two lines
+  await deckCard(alice, 'jdg4').hover(); // "step out — A deliberately long description …": two lines
   const info = alice.locator('#deck_info');
   await expect(info.locator('.deck-info-text b')).toHaveText('step out');
   const m = await info.evaluate(el => {
