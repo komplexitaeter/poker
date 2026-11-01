@@ -4,7 +4,14 @@ export interface Player {
     display_card_key: string;
     original_card_key: string | null; // B-104: card of the reveal when changed afterwards; null otherwise and while covered
     player_type: string;
+    away: boolean; // B-110: no dao.php load for AWAY_AFTER_SEC (70 s, api/lib.php); never true for the own card
     i: number;
+}
+
+/* B-110: a connected observer (observers without connection are not delivered); the own observer row is included */
+export interface Observer {
+    name: string;
+    mkey: string;
 }
 
 export interface myJsonType {
@@ -36,6 +43,7 @@ export interface myJsonType {
     players_count: number;
     ready_players_count: number;
     players: Player[];
+    observers: Observer[]; // B-110: connected observers, ordered by name
     deck: Deck | null; // R3 (B-98): null without card_catalog.json on the server (fallback: cardset_flags)
 }
 

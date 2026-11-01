@@ -636,6 +636,10 @@ function get_team_id($name, $link) {
 }
 
 
+/* B-110: a player is "away" when his board has not loaded dao.php for this many seconds. The board loads dao.php on
+   every hb of poker-msg (every 30 s, plus 0-5 s jitter), so 70 s = two missed heartbeats (Andreas, 2026-11-01). */
+const AWAY_AFTER_SEC = 70;
+
 function getDao($t, $id) {
     $all_players_ready = true;
     $one_ore_more_player_ready = false;
@@ -659,6 +663,7 @@ function getDao($t, $id) {
     $results_order = 'NAME';
     $show_avg = 0;
     $players=array();
+    $observers = array(); // B-110: connected observers only (not away), {name, mkey}
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
     $show_tips = 1;
@@ -753,11 +758,15 @@ function getDao($t, $id) {
     }
 
     // B-104: original_card_key is an invisible column, not part of p.*
+    /* B-110: away is computed by the database (no clock skew between web and DB server); unix_timestamp() so a DST
+       switch of the session time zone cannot shift the comparison. Same query as before, no extra round trip. */
     $sql = $link->prepare("SELECT p.*, p.original_card_key
+                  ,if(unix_timestamp(p.last_callback_time) < unix_timestamp() - ?, 1, 0) as away
               FROM pok_players_tbl p
              WHERE p.team_id = ?
              ORDER BY p.name");
-    $sql->bind_param('s', $t);
+    $away_after_sec = AWAY_AFTER_SEC;
+    $sql->bind_param('is', $away_after_sec, $t);
     $sql->execute();
     $objs = array();
     if ($result = $sql->get_result()) {
@@ -765,6 +774,9 @@ function getDao($t, $id) {
         $previous_card = null;
 
         while(  $obj = $result->fetch_object()) {
+
+            // B-110: the own board is loading right now, so the own person is never away
+            $obj->away = ($obj->id != $id && (int)$obj->away === 1);
 
             if ($obj->id == $id) {
                 $name=$obj->name;
@@ -793,6 +805,13 @@ function getDao($t, $id) {
 
 
                 $objs[] = $obj;
+            } elseif ($obj->player_type === 'OBSERVER' && !$obj->away) {
+                /* B-110: observers without connection are simply left out (Andreas, 2026-11-01). The own observer
+                   row is included (like the own card in players); the board finds it by mkey. Never the id. */
+                $observers[] = (object) array(
+                    "name"=>$obj->name,
+                    // mkey must stay a string in the JSON (compared with ===, see below)
+                    "mkey"=>(string)$obj->mkey);
             }
         }
 
@@ -874,6 +893,7 @@ function getDao($t, $id) {
         ,"mkey"=>(string)$obj->mkey
         ,"display_card_key"=>$display_card_key
         ,"original_card_key"=>$original_card_key // B-104: null = no stack
+        ,"away"=>$obj->away // B-110: no dao.php load for AWAY_AFTER_SEC seconds (never the own card)
         ,"i"=>(int)null);
         $players[] = $player;
 
@@ -915,7 +935,8 @@ function getDao($t, $id) {
         "needs_celebration"=>$needs_celebration,
         "players_count"=>$players_count,
         "ready_players_count"=>$ready_players_count,
-        "players"=>$players );
+        "players"=>$players,
+        "observers"=>$observers ); // B-110: connected observers, ordered by name
 }
 
 /* B-57: allowed values for feedback types, roadmap status and reactions (UP = thumbs up, DOWN = thumbs down) */
