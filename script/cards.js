@@ -22,6 +22,7 @@ const CARD_SYMBOLS = new Set([
     's-xxs', 's-xs', 's-s', 's-m', 's-l', 's-xl', 's-xxl',
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
+    's-face-curious', 's-face-confused', 's-face-worried', 's-face-surprised', 's-face-tired', 's-face-relieved',
     's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
     's-coffee', 's-question', 's-exclam', 's-hand', 's-shrug', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
 ]);
@@ -40,6 +41,7 @@ const CARD_SMALL_TEXT = new Set([
 const CARD_SMALL_DRAWING = new Set([
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
+    's-face-curious', 's-face-confused', 's-face-worried', 's-face-surprised', 's-face-tired', 's-face-relieved',
     's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
     's-coffee', 's-question', 's-exclam', 's-hand', 's-shrug', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
 ]);
@@ -49,7 +51,8 @@ const CARD_COLORS = new Set([
     'v0', 'vh', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v13', 'v20', 'v21', 'v34', 'v40', 'v55',
     'v60', 'v89', 'v100', 'vinf', 'vbrk', 'vq', 'vx', 'vveto', 'vshrug', 'vthink', 'vdone',
     'tXXS', 'tXS', 'tS', 'tM', 'tL', 'tXL', 'tXXL', 'agreen', 'ayellow', 'ared',
-    'esatis', 'eannoy', 'esad', 'eunint', 'eangry', 'eenthu', 'star',
+    'esatis', 'eannoy', 'esad', 'eunint', 'eangry', 'eenthu',
+    'ecurio', 'econf', 'eworry', 'esurpr', 'etired', 'erelie', 'star',
     'j0', 'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7',
     'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'teal', 'cyan', 'blue', 'indigo', 'violet', 'pink', 'brown', 'grey',
 ]);

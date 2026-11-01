@@ -62,6 +62,9 @@ DIG = {
     "hand": '<path d="M36 106c-8-6-14-16-17-28l-7-18c-2-7 7-11 11-4l7 12V32c0-7 10-7 10 0v24V22c0-7 10-7 10 0v32V24c0-7 10-7 10 0v32V34c0-7 10-7 10 0v40c0 18-6 28-14 32z"/>',
     "face": '<circle cx="50" cy="62" r="37"/>',
     "emouth": '<path d="M30 68h40c0 14-9 21-20 21s-20-7-20-21z"/>',
+    # B-107 (mood faces): open mouths in ink (surprised: a round O, tired: a tall, slack yawn)
+    "omouth": '<ellipse cx="50" cy="81" rx="6.5" ry="8"/>',
+    "ymouth": '<path d="M50 72c7 0 10 5 10 12s-4 11-10 11-10-4-10-11 3-12 10-12z"/>',
     "house": '<path d="M36 12h28c7 0 11 4 11 11v78c0 7-4 11-11 11H36c-7 0-11-4-11-11V23c0-7 4-11 11-11z"/>',
     "lamp": '<circle cx="0" cy="0" r="11"/>',
     "cloud": '<path d="M22 60a12 12 0 0 1 4-20a14 14 0 0 1 22-12a14 14 0 0 1 24 2a12 12 0 0 1 10 22a12 12 0 0 1-12 16a14 14 0 0 1-24 2a12 12 0 0 1-24-10z"/>',
@@ -183,6 +186,22 @@ FACE = {
     "angry": [T("M29 44l15 7M71 44l-15 7", 4.5), T("M38 58v4M62 58v4", 5), T("M35 86c6-9 24-9 30 0", 4.5)],
     "enthusiastic": [T("M37 44v14M30 51h14M32 46l10 10M42 46l-10 10M63 44v14M56 51h14M58 46l10 10M68 46l-10 10", 2.8),
                      P("emouth", w=3.6)],   # laughing mouth: paper, never hatched
+    # B-107 "Mood" variant: six more faces, same construction (eyes/brows/mouth in ink on the light disc)
+    "curious": [T("M30 44c4-6 11-8 16-4", 4), T("M56 47h13", 4),               # one brow raised, the other flat
+                T("M38 52v6M62 53v5", 5), T("M48 81c4-2 9-2 12 1", 4.5)],       # small mouth, a little to the side
+    "confused": [T("M37 50v7", 5), T("M62 54h.1", 6.5), T("M58 44l10 3", 3.6),  # unequal eyes, one brow askew
+                 T("M36 83c6-1 10-6 16-4s9 1 13-4", 4.5)],                      # crooked, slanting mouth
+    "worried": [T("M29 49l14-7M71 49l-14-7", 4), T("M37 54v6M63 54v6", 5),      # brows up towards the middle
+                T("M33 84c4-4 7-4 11 0s7 4 11 0 7-4 11 0", 4)],                 # wavy mouth
+    "surprised": [T("M31 40c3-4 9-4 12-1M57 39c3-3 9-3 12 1", 3.6),            # brows raised high
+                  T("M33.5 52.5a4.5 5.5 0 1 1 9 0a4.5 5.5 0 1 1-9 0M57.5 52.5a4.5 5.5 0 1 1 9 0a4.5 5.5 0 1 1-9 0", 3.4),
+                  P("omouth", "", INK, INK, 3)],                                # round eyes, O mouth
+    "tired": [T("M30 55l14-2M56 53l14 2", 4), T("M33 55c2 4 8 4 10 0M59 55c2 4 8 4 10 0", 3.4),  # heavy, half-closed lids
+              P("ymouth", "", INK, INK, 3),                                     # yawn
+              T("M77 13h8l-8 9h8", 2.8, "var(--cardc-ink,#1d2027)")],          # a small "z" beside the head (theme ink)
+    "relieved": [T("M31 45c3-2 8-2 11 0M58 45c3-2 8-2 11 0", 3.2),              # relaxed brows
+                 T("M31 54c3 4 9 4 12 0M57 54c3 4 9 4 12 0", 4),                # closed eyes
+                 T("M38 76c6 6 18 6 24 0", 4.5)],                               # gentle smile
 }
 
 # Symbol id -> (motif layers, name; the name is not written into the sprite). Ids "s-0", "s-1", "s-coffee" … as agreed with Ben (cards.json v2).
@@ -210,7 +229,8 @@ for c in ("green", "yellow", "red"):
 # Faces (D3): a light, friendly disc with dark ink in both themes, like a classic smiley. The disc tint per
 # mood comes from cards.css: positive faces brightest, negative ones a bit more muted (--sym-face-pos/-mid/-neg).
 FACE_MOOD = {"satisfied": "pos", "enthusiastic": "pos", "uninterested": "mid",
-             "annoyed": "neg", "sad": "neg", "angry": "neg"}
+             "annoyed": "neg", "sad": "neg", "angry": "neg",
+             "curious": "pos", "relieved": "pos", "confused": "mid", "surprised": "mid", "tired": "mid", "worried": "neg"}
 GROUP_STYLE = {}   # symbol id -> style of a <g> around its layers (local overrides of the --sym-* properties)
 for f, feats in FACE.items():
     # hatching only hinted: a thin crescent at the lower right, so the expression stays calm and clear
@@ -835,6 +855,9 @@ COL = {
     # uninterested: cool, neutral blue-grey (indifferent), clearly apart from yellow "satisfied" and violet "sad" (Andreas, 27)
     "esatis": ("#a8c820", None), "eannoy": ("#ee6a45", None), "esad": ("#8a72dc", None), "eunint": ("#6f92b8", None),
     "eangry": ("#de2430", None), "eenthu": ("#62b83a", None), "star": ("#f0cf3a", None), "vveto": ("#ef5a32", None),
+    # B-107 mood faces, spread over the hue circle between the six above: gold, mint, cyan, indigo, orchid, taupe
+    "ecurio": ("#26a9d6", None), "econf": ("#c45fa8", None), "eworry": ("#4f63c9", None), "esurpr": ("#e3b51e", None),
+    "etired": ("#a8957c", None), "erelie": ("#3fbf93", None),
     # shruggie (B-106): calm petrol green-grey, apart from coffee (brown), ? (lime), ! (pink) and the hand (orange-red)
     "vshrug": ("#4f8f84", "#78b5a9"),
     "j0": ("#265873", "#3a7b9c"), "j1": ("#4fa587", "#55b08f"), "j2": ("#8fbc3b", "#94c044"), "j3": ("#b54467", "#c45578"),
@@ -955,7 +978,9 @@ for _v in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "13", "20", "
 SYM_COLOUR.update({"s-xxs": "tXXS", "s-xs": "tXS", "s-s": "tS", "s-m": "tM", "s-l": "tL", "s-xl": "tXL", "s-xxl": "tXXL",
                    "s-light-green": "agreen", "s-light-yellow": "ayellow", "s-light-red": "ared",
                    "s-face-satisfied": "esatis", "s-face-annoyed": "eannoy", "s-face-sad": "esad",
-                   "s-face-uninterested": "eunint", "s-face-angry": "eangry", "s-face-enthusiastic": "eenthu"})
+                   "s-face-uninterested": "eunint", "s-face-angry": "eangry", "s-face-enthusiastic": "eenthu",
+                   "s-face-curious": "ecurio", "s-face-confused": "econf", "s-face-worried": "eworry",
+                   "s-face-surprised": "esurpr", "s-face-tired": "etired", "s-face-relieved": "erelie"})
 for _k in range(6):
     SYM_COLOUR[f"s-stars-{_k}"] = "star"
 

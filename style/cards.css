@@ -81,6 +81,12 @@ body {
     --c-eenthu: #8dce6e; --on-c-eenthu: #1d2027;
     --c-star: #edd04f; --on-c-star: #1d2027;
     --c-vveto: #ed714f; --on-c-vveto: #1d2027;
+    --c-ecurio: #5ebede; --on-c-ecurio: #1d2027;
+    --c-econf: #c974b1; --on-c-econf: #1d2027;
+    --c-eworry: #6d7dcf; --on-c-eworry: #1d2027;
+    --c-esurpr: #e6c456; --on-c-esurpr: #1d2027;
+    --c-etired: #b1a18c; --on-c-etired: #1d2027;
+    --c-erelie: #70ccad; --on-c-erelie: #1d2027;
     --c-vshrug: #78b5a9; --on-c-vshrug: #1d2027;
     --c-j0: #3a7b9c; --on-c-j0: #ffffff;
     --c-j1: #55b08f; --on-c-j1: #1d2027;
@@ -169,6 +175,12 @@ body.light-theme {
     --c-eenthu: #62b83a; --on-c-eenthu: #1d2027;
     --c-star: #f0cf3a; --on-c-star: #1d2027;
     --c-vveto: #ef5a32; --on-c-vveto: #1d2027;
+    --c-ecurio: #26a9d6; --on-c-ecurio: #1d2027;
+    --c-econf: #c45fa8; --on-c-econf: #1d2027;
+    --c-eworry: #4f63c9; --on-c-eworry: #ffffff;
+    --c-esurpr: #e3b51e; --on-c-esurpr: #1d2027;
+    --c-etired: #a8957c; --on-c-etired: #1d2027;
+    --c-erelie: #3fbf93; --on-c-erelie: #1d2027;
     --c-vshrug: #4f8f84; --on-c-vshrug: #1d2027;
     --c-j0: #265873; --on-c-j0: #ffffff;
     --c-j1: #4fa587; --on-c-j1: #1d2027;
