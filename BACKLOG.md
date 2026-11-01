@@ -1492,12 +1492,14 @@ B-56 (Players-Menü) und B-60 (Spaß-Funktionen) am Tisch zusammen. Für nach R3
    gesperrtes Handy/eingefrorener Tab nach der Schwelle als „away“. Kein Schema. Neutrales Symbol „Verbindung gestört“
    (kein 💤/Emoji), Mülleimer an dieser Karte dauerhaft sichtbar (auch ohne Hover). Risiko: Neu-Rendern alle 30 s
    muss ruhig bleiben (kein Flackern, Eingaben/Fokus bleiben). poker-msg nach offenen Verbindungen fragen: vorerst nicht.
-2. **Beobachter sichtbar**: Zeile „observing: …“ unter dem Tisch (DAO liefert Beobachter mit Name/`mkey`).
+2. **Beobachter sichtbar**: Zeile „observing: …“ unter dem Tisch (DAO liefert Beobachter mit Name/`mkey`); nur
+   verbundene Beobachter, ohne Mülleimer.
 3. **Kontextmenü / zweiter Kreis** auf Karten (Variante offen: A Popover, B Bottom-Sheet, C zweiter Kreis neben dem
    Mülleimer): Entfernen, Reaktionen, eigene Karte (Name ändern, beobachten).
 4. **Reaktionen + Nudge**: Emoji fliegt von der eigenen zur gewählten Karte; feste 6 Emojis; kein Team-Schalter
    (erst bei Bedarf). Verteilung flüchtig über neuen Endpunkt + poker-msg (`react:`), nur Codes aus fester Liste.
-Entscheidungen Andreas: jeder darf jeden entfernen, auch Beobachter; im Anonym-Modus dürfen Reaktionen geschickt
+Entscheidungen Andreas: jeder darf jeden Spieler entfernen. **Beobachter** (Andreas, 2026-11-01): nicht entfernbar;
+ist ihre Verbindung weg („away“), werden sie in der Beobachter-Zeile einfach ausgeblendet (kein Symbol, kein Mülleimer); im Anonym-Modus dürfen Reaktionen geschickt
 und auch auf anonyme Karten geworfen werden.
 Variante (Andreas, 2026-11-01): **C** – zwei Kreise an der Karte (Smiley → Emoji-Leiste, Mülleimer). Desktop: beide beim
 Hover. Touch-Geräte (wie heute `(hover: none), (pointer: coarse)`, Tablets inklusive): Kreise erst nach Antippen der
