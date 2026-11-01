@@ -1634,28 +1634,53 @@ div#cbox {
     font-weight: bold;
 }
 
-/* only visible on hover (large screens with a mouse), see the media queries below */
+/* B-99 D16: remove a player from the table – a round button with a sketched trash can (the stroke of the card
+ * symbols): card paper, ink outline, tinted and hatched body. Hover: red, the lid tilts.
+ * Only visible on hover (large screens with a mouse), see the media queries below. Hidden by opacity, not by
+ * display: it stays in the tab order, keyboard focus shows it (:focus-within). */
 .c .delete {
-    display: none;
+    display: grid;
+    opacity: 0;
+    pointer-events: none;
     position: absolute;
     bottom: calc(var(--card-del) / -2);
     right: 5%;
     width: var(--card-del);
     height: var(--card-del);
-    border: 1px solid var(--bluish);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--line-strong);
     border-radius: 100%;
-    background: var(--background-color);
+    background: var(--cardc-face);
+    color: var(--muted);
+    font: inherit;
+    line-height: 1;
     cursor: pointer;
+    --del-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
 }
+.c .delete svg { display: block; width: 72%; height: 72%; overflow: visible; pointer-events: none; }
+.c .delete .body { fill: var(--del-tint); }
+.c .delete .hatch { stroke: currentColor; }
+.c .delete .ink { stroke: var(--cardc-ink); }
+.c .delete .lid { transform-origin: 19px 7px; transition: transform 0.15s ease-out; }
 
 /* B-49: shown by input device, not by width: mouse = on hover (or keyboard focus inside the
  * card), touch = always (see below), whatever the window size */
 .c:hover .delete,
-.c:focus-within .delete { display: block; }
+.c:focus-within .delete { opacity: 1; pointer-events: auto; }
 
-.c .delete:hover {
-    content: url('../src/delete_red.png');
-    border-color: var(--danger-color);
+.c .delete:hover,
+.c .delete:focus-visible { border-color: var(--danger); color: var(--danger); }
+.c .delete:hover .lid,
+.c .delete:focus-visible .lid { transform: rotate(14deg) translate(0, -1px); }
+.c .delete:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .c .delete .lid { transition: none; }
+    .c .delete:hover .lid,
+    .c .delete:focus-visible .lid { transform: none; }
 }
 
 .c_fade-in { animation: fade-in 0.9s forwards; }
@@ -1733,14 +1758,15 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  * (its size: --card-del-min, "Touch screens") */
 @media (hover: none), (pointer: coarse) {
     .c .delete {
-        display: block;
+        opacity: 1;
+        pointer-events: auto;
         cursor: auto;
     }
 
-    .c .delete:hover {
-        content: normal;
-        border-color: var(--bluish);
-    }
+    .c .delete:hover { border-color: var(--line-strong); color: var(--muted); }
+    .c .delete:hover .lid { transform: none; }
+    /* the red while the finger is on it */
+    .c .delete:active { border-color: var(--danger); color: var(--danger); }
 }
 
 /* phones: 8px (not 1em) – on a 375x667 touch phone 20 cards fit at --card-min without scrolling */

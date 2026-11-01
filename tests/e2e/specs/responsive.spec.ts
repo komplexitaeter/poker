@@ -142,14 +142,14 @@ test('touch tablet: delete icon visible without hover (B-36)', async ({ browser 
   const alice = await newPlayer(browser, { viewport, hasTouch: true });
   const url = await createTeam(alice, 'RespTouch');
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(tableCard(alice, 'Alice').locator('.delete')).toBeVisible();
+  await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
 
   // a mouse device of the same size shows it on hover only
   const bob = await newPlayer(browser, { viewport });
   await joinAsPlayer(bob, url, 'Bob');
   await expect(tableCard(bob, 'Alice')).toBeVisible();
   await bob.mouse.move(0, 0);
-  await expect(tableCard(bob, 'Alice').locator('.delete')).toBeHidden();
+  await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '0');
   await tableCard(bob, 'Alice').hover();
-  await expect(tableCard(bob, 'Alice').locator('.delete')).toBeVisible();
+  await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
 });
