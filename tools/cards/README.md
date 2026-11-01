@@ -62,9 +62,12 @@ The status symbols `s-check` and `s-thought` are calm in the same way (D7): a li
 (`--sym-face-ink`), the hatching (`--sym-calm-hatch`) only in a thin band at the lower right edge. `s-coffee` is a
 latte glass: the coffee hatched, milk and foam light (`--sym-milk`, warmer in the dark theme), kept apart from the
 outline by a thin rim in paper colour. `s-late` (joined late, B-102) is calm too: an open door;
-frame and floor in the theme ink (`--cardc-ink`). `s-shrug` (B-106) draws the kaomoji ¯\\\_(ツ)\_/¯: arms and
-brackets as thinner centre lines (tint, hatching, outline like ? ! and the hand; the `_` sits low like an underscore,
-below the brackets, so the parts stay apart at deck size), the ツ in ink.
+frame and floor in the theme ink (`--cardc-ink`). `s-shrug` (B-106) is the shrugging figure of the emoji (not the kaomoji), friendly and
+gender-neutral: a sweater (`--sym-shirt` in the sky blue `--c-vshrug`, hatching `--sym-shirt-hatch` at the lower right edge)
+with the upper arms down along the torso, the elbows out at the bottom and the forearms up (a clear bend), two open hands
+palm up at shoulder height; a round head, a soft tuft instead of a hair style (in the theme ink). Head and hands in a light
+skin tone (`--sym-skin`) with a warm hatching (`--sym-skin-hatch`); one thin outline like the thought bubble. Friendly face:
+open eyes, brows gently up, a small open smile. Ink is dark in both themes, like the faces.
 
 ## Symbol ids (60)
 
@@ -75,7 +78,7 @@ below the brackets, so the parts stay apart at deck size), the ツ in ink.
 | Traffic light | `s-light-green`, `s-light-yellow`, `s-light-red` |
 | Emotions | `s-face-satisfied`, `s-face-annoyed`, `s-face-sad`, `s-face-uninterested`, `s-face-angry`, `s-face-enthusiastic`; Mood (B-107): `s-face-curious`, `s-face-confused`, `s-face-worried`, `s-face-surprised`, `s-face-tired`, `s-face-relieved` |
 | Stars | `s-stars-0` … `s-stars-5` (five stars, the first n filled) |
-| Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto), `s-shrug` (¯\\\_(ツ)\_/¯ shruggie, B-106) |
+| Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto), `s-shrug` (🤷 shrugging figure, B-106) |
 | Status cards | `s-check` (ready), `s-thought` (thinking), `s-mask` (thinking, anonymous mode), `s-late` (joined late, B-102) |
 | Frames | `s-frame-inv` (inverted style) |
 
@@ -86,7 +89,7 @@ J.U.D.G.E. and Delegation) and chosen for custom cards. Never rename an id once 
 ## Colours
 
 Catalogue tokens (predefined sets, colour of today's card): `v0 vh v1 … v55 v60 v89 v100 vinf` (values), `vbrk vq vx vveto vshrug`
-(control cards; `vshrug` a calm petrol green-grey), `vthink vdone` (status), `tXXS … tXXL`, `agreen ayellow ared`, `esatis … eenthu`, `ecurio econf eworry esurpr etired erelie` (mood faces, B-107), `star`,
+(control cards; `vshrug` a sky blue), `vthink vdone` (status), `tXXS … tXXL`, `agreen ayellow ared`, `esatis … eenthu`, `ecurio econf eworry esurpr etired erelie` (mood faces, B-107), `star`,
 `j0 … j6` (J.U.D.G.E.), `g1 … g7` (Delegation).
 
 Palette for custom cards (the only allowed choice, whitelist for the API):

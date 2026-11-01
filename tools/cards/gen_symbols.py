@@ -78,11 +78,23 @@ DIG = {
     # joined late (B-102): an open door (frame, leaf hinged on the left); D11: no arrow, the door a bit larger
     "door": '<path d="M27 17h46v90H27z"/>',
     "leaf": '<path d="M27 17l24 10v89l-24-9z"/>',
-    # shruggie (B-106): arms ¯\_ and _/¯ (the _ low like an underscore, below the brackets), brackets ( )
-    "sarml": '<path d="M6.8 31h6l8.7 60h9"/>',
-    "sarmr": '<path d="M93.2 31h-6l-8.7 60h-9"/>',
-    "sparl": '<path d="M39.5 30c-4 7-6 15-6 24.5s2 17.5 6 24.5"/>',
-    "sparr": '<path d="M60.5 30c4 7 6 15 6 24.5s-2 17.5-6 24.5"/>',
+    # shruggie (B-106, Andreas: variant A after the emoji template, gender-neutral): a sweater with the upper arms
+    # down along the torso, the elbow sticking out at the bottom, the forearms out and up to the cuffs (a clear bend);
+    # a round head; open hands, palm up on the cuffs (fingers out and up, the thumb up on the inner side).
+    "sbody": '<path d="M50 56L43 56C37.5 56 34 58.5 33 63C32.4 68 32 73 31.6 78L19.5 58.5L8.5 62.5L19 94.5'
+             'C20.6 99.5 25.5 101 29.5 98.5L31.4 97L31.6 104C31.7 107 33.5 108 36 108L50 108L64 108'
+             'C66.5 108 68.3 107 68.4 104L68.6 97L70.5 98.5C74.5 101 79.4 99.5 81 94.5L91.5 62.5L80.5 58.5'
+             'L68.4 78C68 73 67.6 68 67 63C66 58.5 62.5 56 57 56L50 56z"/>',
+    "shead": '<circle cx="50" cy="35" r="21"/>',
+    "shead_in": '<circle cx="47" cy="32.5" r="18.6"/>',
+    "shandl": '<path d="M20.9 58.9C16.9 62.9 9.9 63.9 5.9 60.9C3.4 59 2 55.4 2.4 52.6C2.8 50.2 5 49.8 7 51'
+              'C9.8 52.8 12.8 53.8 15.6 54L16.8 48.8C17.4 46.6 20.4 46.8 20.4 49.2C20.4 52 21.2 54.4 22 56.2'
+              'C22.4 57.4 22 58.3 20.9 58.9z"/>',
+    "shandr": '<path d="M79.1 58.9C83.1 62.9 90.1 63.9 94.1 60.9C96.6 59 98 55.4 97.6 52.6C97.2 50.2 95 49.8 93 51'
+              'C90.2 52.8 87.2 53.8 84.4 54L83.2 48.8C82.6 46.6 79.6 46.8 79.6 49.2C79.6 52 78.8 54.4 78 56.2'
+              'C77.6 57.4 78 58.3 79.1 58.9z"/>',
+    "smouth": '<path d="M43 42.4C46 44 54 44 57 42.4C56.4 47.8 53.4 50 50 50C46.6 50 43.6 47.8 43 42.4z"/>',
+    "stongue": '<path d="M46.4 48.2C47.6 46.8 52.4 46.8 53.6 48.2C52.4 49.3 47.6 49.3 46.4 48.2z"/>',
     "square": '<path d="M15 6h70c5 0 9 4 9 9v70c0 5-4 9-9 9H15c-5 0-9-4-9-9V15c0-5 4-9 9-9z"/>',
 }
 
@@ -256,12 +268,32 @@ SYM["s-coffee"] = ([S("glass", rim="foam"),
 SYM["s-question"] = (row(["dq"]), "question mark")
 SYM["s-exclam"] = (row(["dx"]), "exclamation mark")
 SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "raised hand")
-# Shruggie (B-106): the kaomoji ¯\_(ツ)_/¯ as a line drawing - arms and brackets as thinner centre lines like the
-# digits (tint, hatching, light/dark outline like ? ! and the hand), the ツ face as ink, so it reads small too.
-SHRUG_W = 5.2
-SYM["s-shrug"] = ([L("sarml", w=SHRUG_W), L("sarmr", w=SHRUG_W), L("sparl", w=SHRUG_W), L("sparr", w=SHRUG_W),
-                   T("M42 46l2.2 5.4M48 44l2.2 5.4", 3.8),                       # ツ: the two ticks (eyes)
-                   T("M56 43c0 12-4 20-13 25.5", 3.8)], "shrug")                 # ツ: the long sweep (smile)
+# Shruggie (B-106, Andreas: variant A after the shrugging emoji, gender-neutral): a friendly figure in a sky-blue
+# sweater, the upper arms down along the torso, the elbows out at the bottom, the forearms up, both open hands palm up
+# at shoulder height. Friendly face: open eyes, brows gently up, a small open smile; a soft tuft instead of a hair style.
+# Ink dark in both themes (group style below), the tuft in the theme ink (it sits on the card paper);
+# sweater in the value colour (--sym-shirt), head and hands light (--sym-skin) with a warm hatching (--sym-skin-hatch).
+SKIN = "var(--sym-skin,#f6dc9a)"
+SKIN_HATCH = "var(--sym-skin-hatch,#d9a24e)"
+SHIRT = "var(--sym-shirt,currentColor)"
+SHRUG_OW = 2.6   # one thin outline, like the thought bubble and the hands
+SHRUG_FEATURES = [T("M40.5 25.6c1.8-1.6 4.2-2 6.2-1.2M53.3 24.4c2-.8 4.4-.4 6.2 1.2", 2.2),   # brows gently up
+                  T("M43.5 32.5v2.6M56.5 32.5v2.6", 5.4),                                     # open eyes
+                  P("smouth", "", INK, INK, 1.6),                                             # small open smile
+                  P("stongue", "", "#f08a8a", "transparent", .1)]
+
+SYM["s-shrug"] = ([S("sbody", fill=SHIRT, hatch="var(--sym-shirt-hatch,currentColor)", hw=1.1, rim=("sbody", "translate(-2 -2.6)"),
+                     ow=SHRUG_OW),
+                   T("M33.4 66C33 76 32.8 86 33 99M66.6 66C67 76 67.2 86 67 99", 1.8),   # upper arms against the torso
+                   T("M9.8 66.4L20.6 62.4M90.2 66.4L79.4 62.4", 2.2),                     # cuffs
+                   S("shandl", fill=SKIN, hatch=SKIN_HATCH, hw=1.1, rim=("shandl", "translate(-1.2 -1.6)"), ow=SHRUG_OW),
+                   S("shandr", fill=SKIN, hatch=SKIN_HATCH, hw=1.1, rim=("shandr", "translate(-1.2 -1.6)"), ow=SHRUG_OW),
+                   T("M4.4 55.4c3 2 6.6 3 10 2.8M95.6 55.4c-3 2-6.6 3-10 2.8", 1.5),        # palm line
+                   S("shead", fill=SKIN, hatch=SKIN_HATCH, hw=1.1, rim="shead_in", ow=SHRUG_OW)] + SHRUG_FEATURES
+                  + [T("M47 14.6c-.6-3.4 1.2-6.2 4.4-6.8M51.6 14.4c.8-2.6 3.2-4 5.8-3.6", 2.4,
+                       "var(--cardc-ink,#1d2027)")],                                        # soft tuft
+                  "shrugging figure")
+GROUP_STYLE["s-shrug"] = "--sym-ink:var(--sym-face-ink,#1d2027);--sym-hatch:var(--sym-face-hatch,currentColor)"
 # Status cards (B-99 D7): calm like the faces - a light body, the hatching only hinted at the lower right edge.
 SYM["s-check"] = ([L("dchk", calm=True)], "check mark")
 # D8: the bubble 6 units higher (it sat low on the status card), the hatched band at the edge a bit wider again
@@ -858,8 +890,8 @@ COL = {
     # B-107 mood faces, spread over the hue circle between the six above: gold, mint, cyan, indigo, orchid, taupe
     "ecurio": ("#26a9d6", None), "econf": ("#c45fa8", None), "eworry": ("#4f63c9", None), "esurpr": ("#e3b51e", None),
     "etired": ("#a8957c", None), "erelie": ("#3fbf93", None),
-    # shruggie (B-106): calm petrol green-grey, apart from coffee (brown), ? (lime), ! (pink) and the hand (orange-red)
-    "vshrug": ("#4f8f84", "#78b5a9"),
+    # shruggie (B-106, Andreas): a friendly sky blue, lighter and softer than 0 / 8, fresher than the blue-grey of "uninterested"
+    "vshrug": ("#5b9be8", "#7db4f5"),
     "j0": ("#265873", "#3a7b9c"), "j1": ("#4fa587", "#55b08f"), "j2": ("#8fbc3b", "#94c044"), "j3": ("#b54467", "#c45578"),
     "j4": ("#be5a40", "#cc6a4f"), "j5": ("#ded65f", "#d8d06a"), "j6": ("#b23b41", "#c74a50"),
     "g1": ("#b23b41", "#d65a5f"), "g2": ("#d0702c", "#ef8c45"), "g3": ("#d9a300", "#f0c43a"), "g4": ("#8fbc3b", "#a5d14f"),
@@ -942,6 +974,11 @@ body {{
     --sym-calm-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
     /* s-coffee: milk and foam of the latte; in the dark theme a warmer latte tone, so it is not the light outline */
     --sym-milk: color-mix(in srgb, currentColor 58%, #f4ead4);
+    /* s-shrug: the sweater in the value colour, head and hands a light skin with a warm hatching, dark ink (like the faces) */
+    --sym-shirt: currentColor;
+    --sym-shirt-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
+    --sym-skin: #f8dca4;
+    --sym-skin-hatch: color-mix(in srgb, #1d2027 15%, #e0a24e);
 
     /* catalogue */
 {tokens(COL, 1)}
@@ -958,6 +995,9 @@ body.light-theme {{
     --sym-face-neg: color-mix(in srgb, currentColor 28%, #f1efea);
     --sym-calm: color-mix(in srgb, currentColor 38%, #fffbe8);
     --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);
+    --sym-shirt: color-mix(in srgb, currentColor 75%, #fffbe8);
+    --sym-shirt-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
+    --sym-skin: #fbe4b4;
 
     /* catalogue */
 {tokens(COL, 0)}
