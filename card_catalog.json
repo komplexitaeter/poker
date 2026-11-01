@@ -137,13 +137,13 @@
       "name": "J.U.D.G.E.",
       "style": "inverted",
       "cards": [
-        {"card_key": "jdg0", "value": "0", "symbol": "s-0", "color": "j0", "numeric_value": 0, "sort_order": 100, "heading": "step aside", "description": "I step aside. I support the group's decision and don't need to be involved.", "legacy_index": 0},
-        {"card_key": "jdg1", "value": "1", "symbol": "s-1", "color": "j1", "numeric_value": 1, "sort_order": 300, "heading": "full support", "description": "I really like it. It's great and it works like a charm for me.", "legacy_index": 2},
-        {"card_key": "jdg2", "value": "2", "symbol": "s-2", "color": "j2", "numeric_value": 2, "sort_order": 400, "heading": "slight concerns", "description": "I have some slight concerns but I can live with it. I'll support the group actively.", "legacy_index": 3},
-        {"card_key": "jdg3", "value": "3", "symbol": "s-3", "color": "j3", "numeric_value": 3, "sort_order": 500, "heading": "severe concerns", "description": "Not perfect but it's good enough. I disagree with a few points. But I'll support the group.", "legacy_index": 4},
-        {"card_key": "jdg4", "value": "4", "symbol": "s-4", "color": "j4", "numeric_value": 4, "sort_order": 600, "heading": "step out", "description": "Disagreements are so serious that I'm not willing to support this decision actively. Group can still continue but without my involvement.", "legacy_index": 5},
-        {"card_key": "jdg5", "value": "5", "symbol": "s-5", "color": "j5", "numeric_value": 5, "sort_order": 700, "heading": "need to talk", "description": "I don't understand the proposal and / or I need more discussion before I can support this decision.", "legacy_index": 6},
-        {"card_key": "jdg6", "value": "6", "symbol": "s-6", "color": "j6", "numeric_value": 6, "sort_order": 800, "heading": "veto", "description": "I understand the proposal but do not support it! I can explain my concerns.", "legacy_index": 7}
+        {"card_key": "jdg0", "value": "0", "symbol": "s-0", "color": "j0", "numeric_value": 0, "sort_order": 100, "heading": "step aside", "description": "I step aside and support the group's decision.", "legacy_index": 0},
+        {"card_key": "jdg1", "value": "1", "symbol": "s-1", "color": "j1", "numeric_value": 1, "sort_order": 300, "heading": "full support", "description": "I love it. Works perfectly for me!", "legacy_index": 2},
+        {"card_key": "jdg2", "value": "2", "symbol": "s-2", "color": "j2", "numeric_value": 2, "sort_order": 400, "heading": "slight concerns", "description": "A few concerns, but I fully support it.", "legacy_index": 3},
+        {"card_key": "jdg3", "value": "3", "symbol": "s-3", "color": "j3", "numeric_value": 3, "sort_order": 500, "heading": "severe concerns", "description": "Not perfect, but good enough. I'll still support it.", "legacy_index": 4},
+        {"card_key": "jdg4", "value": "4", "symbol": "s-4", "color": "j4", "numeric_value": 4, "sort_order": 600, "heading": "step out", "description": "I won't support it actively. Go on without me.", "legacy_index": 5},
+        {"card_key": "jdg5", "value": "5", "symbol": "s-5", "color": "j5", "numeric_value": 5, "sort_order": 700, "heading": "need to talk", "description": "I don't understand it yet or need more discussion.", "legacy_index": 6},
+        {"card_key": "jdg6", "value": "6", "symbol": "s-6", "color": "j6", "numeric_value": 6, "sort_order": 800, "heading": "veto", "description": "I understand it and I block it. Let me explain why.", "legacy_index": 7}
       ],
       "variants": [
         {"id": "judge", "name": "J.U.D.G.E.", "cards": ["jdg0", "jdg1", "jdg2", "jdg3", "jdg4", "jdg5", "jdg6"], "preset_mapping": "Judge"}
