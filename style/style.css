@@ -1677,6 +1677,22 @@ div#cbox {
  * card), touch = always (see below), whatever the window size */
 .c:hover :is(.delete, .react),
 .c:has(:focus-visible) :is(.delete, .react) { opacity: 1; pointer-events: auto; }
+/* B-110: the circles hang half below the card; between them the pointer would leave the card and both vanish.
+ * A bridge below the card spans both circles and the gap, only while the card is hovered (it never catches the
+ * pointer otherwise, so it blocks nothing below). Absolute: no effect on the layout or the fit. */
+@media (hover: hover) {
+    .c:has(.react)::after {
+        content: "";
+        position: absolute;
+        right: 5%;
+        bottom: calc(var(--card-del) / -2);
+        z-index: 1; /* below the circles (2) */
+        width: calc(2 * var(--card-del) + max(4px, var(--card-w) * 0.04));
+        height: calc(var(--card-del) / 2);
+        pointer-events: none;
+    }
+    .c:has(.react):hover::after { pointer-events: auto; }
+}
 
 .c .delete:hover,
 .c .delete:focus-visible { border-color: var(--danger); color: var(--danger); }
@@ -1823,7 +1839,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  * popovers (board.html, one of each, position: fixed): script.js sets style.left / style.top (the box, px),
  * --arrow-x (the arrow tip, px from the left edge of the box: the middle of the anchor) and .is-below when
  * there is no room above the anchor (the arrow then points up). Show/hide with the hidden attribute.
- *   #react_bar.tbl-pop.react-bar   above the smiley: "throw at <.react-bar-name>", six button[data-react]
+ *   #react_bar.tbl-pop.react-bar   above the smiley: "throw at <.react-bar-name>", seven button[data-react] (the last one, 👋 .react-nudge, after a thin line)
  *   #rm_confirm.tbl-pop.rm-confirm  touch only, above the trash can: "Remove <.rm-name>?", Cancel / Remove
  *   #tap_hint.tbl-pop.tap-hint      touch only, once (localStorage): "Tap a card …", "Got it"
  *
@@ -2044,7 +2060,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     from { opacity: 0; transform: translateY(-4px) scale(0.96); }
 }
 
-/* the emoji bar: "throw at Name", six emojis in a row */
+/* the emoji bar: "throw at Name", seven emojis in a row, the nudge set apart by a thin line */
 .react-bar-label {
     margin: 0;
     padding: 0 6px 4px;
@@ -2070,6 +2086,15 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     font-family: var(--font-emoji);
     cursor: pointer;
     transition: transform 0.1s ease-out, background-color 0.1s;
+}
+.react-bar .react-nudge { position: relative; margin-left: 5px; }
+.react-bar .react-nudge::before { /* a nudge is not a mood: a thin line sets it apart */
+    content: "";
+    position: absolute;
+    left: -4px;
+    top: 20%;
+    bottom: 20%;
+    border-left: 1px solid var(--line-strong);
 }
 .react-bar button:hover,
 .react-bar button:focus-visible { background: var(--bg-4); transform: scale(1.15); }
@@ -2218,7 +2243,7 @@ body.light-theme .react-fly { filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
     .obs.is-nudged-me .obs-name { animation: react-nudge-blink 0.5s step-end 2; }
 }
 @keyframes react-nudge-blink {
-    0% { box-shadow: 0 0 0 3px var(--accent); }
+    0% { box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px var(--accent); } /* a gap first: also on an accent name tag */
     60%, 100% { box-shadow: none; }
 }
 
