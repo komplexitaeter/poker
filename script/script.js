@@ -1039,7 +1039,18 @@ function deleteLabel(name) {
     return 'Remove ' + name + ' from the table';
 }
 
-function deleteIcon() {
+/* B-110: the smiley of the reaction button (.react, next to the delete button), same sketch as the trash can:
+ * a tinted, hatched face, the outline and the face in ink. Static paths only, no user data. */
+const REACT_ICON_PATHS = [
+    { d: 'M12 3.6c4.7-.1 8.3 3.6 8.3 8.4 0 4.7-3.7 8.4-8.4 8.4-4.6 0-8.3-3.8-8.3-8.5 0-4.6 3.8-8.2 8.4-8.3z', cls: 'body' },
+    { d: 'M5.6 13.9l2.2-1.9M6.6 16.6l3-2.6M15.9 16.4l2.6-2.3', cls: 'hatch', w: 1 },
+    { d: 'M12 3.6c4.7-.1 8.3 3.6 8.3 8.4 0 4.7-3.7 8.4-8.4 8.4-4.6 0-8.3-3.8-8.3-8.5 0-4.6 3.8-8.2 8.4-8.3z', cls: 'ink', w: 1.8 },
+    { d: 'M9.3 9.3v1.6M14.7 9.2v1.6', cls: 'ink', w: 2.1 },
+    { d: 'M8.2 14c1.9 2.6 5.8 2.6 7.6-.2', cls: 'ink', w: 1.8 },
+];
+
+/* a sketched 24x24 icon from static paths; paths with lid: true go into a group .lid (it tilts, style.css) */
+function sketchIcon(paths) {
     const NS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
@@ -1050,15 +1061,24 @@ function deleteIcon() {
     svg.setAttribute('focusable', 'false');
     const lid = document.createElementNS(NS, 'g');
     lid.setAttribute('class', 'lid');
-    DELETE_ICON_PATHS.forEach(p => {
+    paths.forEach(p => {
         const path = document.createElementNS(NS, 'path');
         path.setAttribute('d', p.d);
         path.setAttribute('class', p.cls);
         if (p.w) path.setAttribute('stroke-width', String(p.w));
         (p.lid ? lid : svg).appendChild(path);
     });
-    svg.appendChild(lid);
+    if (lid.hasChildNodes()) svg.appendChild(lid);
     return svg;
+}
+
+function deleteIcon() {
+    return sketchIcon(DELETE_ICON_PATHS);
+}
+
+/* B-110: for the reaction button (.react); the "no connection" symbol of an away player is CSS only (.c.is-away) */
+function reactIcon() {
+    return sketchIcon(REACT_ICON_PATHS);
 }
 
 function createCardDiv(player, playersCount, isOnLoad) {

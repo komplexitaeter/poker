@@ -1636,9 +1636,10 @@ div#cbox {
 
 /* B-99 D16: remove a player from the table – a round button with a sketched trash can (the stroke of the card
  * symbols): card paper, ink outline, tinted and hatched body. Hover: red, the lid tilts.
+ * B-110: the reaction button (.react, a sketched smiley) sits left of it in the same style; hover: blue.
  * Only visible on hover (large screens with a mouse), see the media queries below. Hidden by opacity, not by
  * display: it stays in the tab order, keyboard focus shows it (:focus-within). */
-.c .delete {
+.c :is(.delete, .react) {
     display: grid;
     opacity: 0;
     pointer-events: none;
@@ -1660,27 +1661,41 @@ div#cbox {
     cursor: pointer;
     --del-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
 }
-.c .delete svg { display: block; width: 72%; height: 72%; overflow: visible; pointer-events: none; }
-.c .delete .body { fill: var(--del-tint); }
-.c .delete .hatch { stroke: currentColor; }
-.c .delete .ink { stroke: var(--cardc-ink); }
+/* B-110: one circle further left, with a small gap */
+.c .react { right: calc(5% + var(--card-del) + max(4px, var(--card-w) * 0.04)); }
+.c :is(.delete, .react) svg { display: block; width: 72%; height: 72%; overflow: visible; pointer-events: none; }
+.c .react svg { width: 76%; height: 76%; transition: transform 0.15s ease-out; }
+.c :is(.delete, .react) .body { fill: var(--del-tint); }
+.c :is(.delete, .react) .hatch { stroke: currentColor; }
+.c :is(.delete, .react) .ink { stroke: var(--cardc-ink); }
 .c .delete .lid { transform-origin: 19px 7px; transition: transform 0.15s ease-out; }
 
 /* B-49: shown by input device, not by width: mouse = on hover (or keyboard focus inside the
  * card), touch = always (see below), whatever the window size */
-.c:hover .delete,
-.c:focus-within .delete { opacity: 1; pointer-events: auto; }
+.c:hover :is(.delete, .react),
+.c:focus-within :is(.delete, .react) { opacity: 1; pointer-events: auto; }
 
 .c .delete:hover,
 .c .delete:focus-visible { border-color: var(--danger); color: var(--danger); }
 .c .delete:hover .lid,
 .c .delete:focus-visible .lid { transform: rotate(14deg) translate(0, -1px); }
-.c .delete:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* B-110: the smiley tilts its head; it stays blue while its emoji bar is open */
+.c .react:hover,
+.c .react:focus-visible,
+.c .react[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.c .react:hover svg,
+.c .react:focus-visible svg,
+.c .react[aria-expanded="true"] svg { transform: rotate(-12deg); }
+.c .react[aria-expanded="true"],
+.c:has(.react[aria-expanded="true"]) .delete { opacity: 1; pointer-events: auto; }
+.c :is(.delete, .react):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-    .c .delete .lid { transition: none; }
+    .c .delete .lid,
+    .c .react svg { transition: none; }
     .c .delete:hover .lid,
-    .c .delete:focus-visible .lid { transform: none; }
+    .c .delete:focus-visible .lid,
+    .c .react svg { transform: none !important; }
 }
 
 .c_fade-in { animation: fade-in 0.9s forwards; }
@@ -1709,7 +1724,7 @@ div#cbox {
     box-shadow: -5px -5px 8px -2px rgb(0 0 0 / 0.9);
 }
 body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2px rgb(0 0 0 / 0.4); }
-.c .delete { z-index: 2; }
+.c :is(.delete, .react) { z-index: 2; }
 .c .pc-orig {
     position: absolute;
     top: var(--card-name-h);
@@ -1757,16 +1772,408 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 /* touch devices cannot hover: the delete icon on every card, no sticky hover color
  * (its size: --card-del-min, "Touch screens") */
 @media (hover: none), (pointer: coarse) {
-    .c .delete {
+    .c :is(.delete, .react) {
         opacity: 1;
         pointer-events: auto;
         cursor: auto;
     }
 
-    .c .delete:hover { border-color: var(--line-strong); color: var(--muted); }
-    .c .delete:hover .lid { transform: none; }
-    /* the red while the finger is on it */
+    .c :is(.delete, .react):hover { border-color: var(--line-strong); color: var(--muted); }
+    .c .delete:hover .lid,
+    .c .react:hover svg { transform: none; }
+    /* the red (blue) while the finger is on it */
     .c .delete:active { border-color: var(--danger); color: var(--danger); }
+    .c .react:active,
+    .c .react[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+}
+
+/* ---------- Table interaction (B-110) ---------- */
+
+/* Markup contract (set by script.js; all names via textContent, emoji codes from the fixed list only):
+ *
+ * card on the table (createCardDiv):
+ *   <div class="c [is-me] [is-away] [is-open] [is-hit]" id="<mkey>">
+ *     <span class="card_player_name">Name</span>
+ *     <div class="pc">…</div>
+ *     <button type="button" class="react" aria-label="Throw a reaction at Name" aria-haspopup="menu"
+ *             aria-expanded="false">reactIcon()</button>          – not on the own card (.is-me)
+ *     <button type="button" class="delete" …>deleteIcon()</button> – last child, as before
+ *   </div>
+ *   .is-away  no connection for a while: card dimmed, name grey, "no connection" symbol before the name
+ *             (CSS only), trash can always visible. Name it for screen readers in the delete label.
+ *   .is-open  touch only: the card was tapped, its circles show (one card at a time; a tap elsewhere closes).
+ *             Touch devices = (hover: none), (pointer: coarse). The tap mode starts once a card has a .react
+ *             (#cbox:has(.react)); without one, touch keeps the trash can on every card (as before B-110).
+ *
+ * observers (the row below the cards, inside main#table after #cbox, board.html):
+ *   <div id="observers" class="observers" hidden>
+ *     <h2 class="obs-label">observing</h2>
+ *     <ul class="obs-list">
+ *       <li class="obs [is-me] [is-open]" data-mkey="<mkey>">
+ *         <span class="obs-name">Name</span>
+ *         <button type="button" class="react" …>reactIcon()</button>   – not for .is-me; no delete
+ *       </li>
+ *     </ul>
+ *   </div>
+ *   away observers are left out (no symbol). Desktop: the smiley on hover/focus; touch: after a tap (.is-open).
+ *
+ * popovers (board.html, one of each, position: fixed): script.js sets style.left / style.top (the box, px),
+ * --arrow-x (the arrow tip, px from the left edge of the box: the middle of the anchor) and .is-below when
+ * there is no room above the anchor (the arrow then points up). Show/hide with the hidden attribute.
+ *   #react_bar.tbl-pop.react-bar   above the smiley: "throw at <.react-bar-name>", six button[data-react]
+ *   #rm_confirm.tbl-pop.rm-confirm  touch only, above the trash can: "Remove <.rm-name>?", Cancel / Remove
+ *   #tap_hint.tbl-pop.tap-hint      touch only, once (localStorage): "Tap a card …", "Got it"
+ *
+ * reaction landing (the flight itself: Web Animations API in script.js, see "Reaction flight" below):
+ *   .react-fly                                   the flying emoji, appended to body, removed after the flight
+ *   <span class="react-land" aria-hidden="true"> appended to the target .c (or .obs), removed on animationend
+ *     <span class="react-emoji">🎂</span><span class="react-from">Name</span>
+ *   </span>                                      plus .is-hit on the target .c for the bump of the card */
+
+/* away: the card fades back, the name greys, a sketched "wifi off" before the name (neutral, no emoji) */
+.c.is-away > .pc { opacity: 0.45; filter: saturate(0.4); }
+.c.is-away .card_player_name { color: var(--muted); }
+.c.is-away .card_player_name::before {
+    content: "";
+    display: inline-block;
+    width: 1.2em;
+    height: calc(var(--card-name-h) - 4px); /* the line of the name tag; the mask is centred in it */
+    margin-right: 3px;
+    vertical-align: top;
+    background: currentColor;
+    -webkit-mask: var(--icon-away) center / contain no-repeat;
+    mask: var(--icon-away) center / contain no-repeat;
+}
+/* the trash can stays, no hover needed (also in the touch tap mode, below) */
+.c.is-away .delete { opacity: 1; pointer-events: auto; }
+
+:root {
+    /* three arcs and a dot, struck through; the stroke cuts a gap into the arcs (a mask in the image) */
+    --icon-away: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round'%3E%3Cmask id='m'%3E%3Crect width='24' height='24' fill='%23fff'/%3E%3Cpath d='M4.6 3.6l15.1 16.9' stroke='%23000' stroke-width='4.4'/%3E%3C/mask%3E%3Cg mask='url(%23m)'%3E%3Cpath d='M3.5 9.2c4.9-4.3 12.1-4.4 17 .1' stroke-width='1.9'/%3E%3Cpath d='M6.6 12.7c3.1-2.8 7.7-2.7 10.8 0' stroke-width='1.9'/%3E%3Cpath d='M9.6 16c1.4-1.1 3.4-1.2 4.7.1' stroke-width='1.9'/%3E%3Ccircle cx='12' cy='19.4' r='1.4' fill='%23000' stroke='none'/%3E%3C/g%3E%3Cpath d='M4.6 3.6l15.1 16.9' stroke-width='2'/%3E%3C/svg%3E");
+    --icon-eye: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.2 12.2c2.6-4.6 6-7 9.9-7 3.8 0 7.2 2.4 9.7 6.8-2.6 4.6-6 7-9.8 7-3.9 0-7.3-2.3-9.8-6.8z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    /* B-110: reactions */
+    --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    --react-size: 40px;       /* the flying emoji */
+    --react-fly-dur: 900ms;   /* script.js reads it for the flight (Web Animations API) */
+    --react-land-dur: 1.8s;   /* the landed emoji at the target, then it is removed */
+    --z-pop: 200;             /* emoji bar, remove confirm, tap hint: above the table and the menu panel */
+    --z-fly: 240;             /* a reaction in flight, below the toast */
+}
+
+@media (max-width: 799.98px) {
+    :root { --react-size: 32px; }
+}
+
+/* touch: the circles only on the tapped card (.is-open); the trash can of an away player always */
+@media (hover: none), (pointer: coarse) {
+    #cbox:has(.react) .c:not(.is-open) :is(.delete, .react) { opacity: 0; pointer-events: none; }
+    #cbox:has(.react) .c.is-away:not(.is-open) .delete { opacity: 1; pointer-events: auto; }
+    .c.is-open > .pc { border-color: var(--accent); }
+}
+
+/* observers: one quiet line below the cards, like the labels of the column ("// observing") */
+.observers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1) var(--space-2);
+    margin: 0 auto var(--space-3);
+    padding: 0 var(--space-2);
+    font-size: var(--fs-s);
+}
+.observers[hidden] { display: none; }
+.obs-label {
+    margin: 0;
+    font-size: inherit;
+    font-weight: normal;
+    color: var(--muted);
+}
+.obs-label::before { content: "// "; color: var(--line-strong); }
+.obs-list {
+    display: contents;
+    list-style: none;
+}
+.obs {
+    position: relative; /* anchor of a landed reaction */
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.obs-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 16ch;
+    height: 24px;
+    padding: 0 8px 0 6px;
+    box-sizing: border-box;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg-2);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.obs-name::before {
+    content: "";
+    flex: none;
+    width: 14px;
+    height: 14px;
+    background: var(--muted);
+    -webkit-mask: var(--icon-eye) center / contain no-repeat;
+    mask: var(--icon-eye) center / contain no-repeat;
+}
+.obs.is-me .obs-name { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: bold; }
+.obs.is-me .obs-name::before { background: var(--on-accent); }
+/* the smiley: the same circle as on a card, in the line */
+.obs .react {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 100%;
+    background: var(--cardc-face);
+    color: var(--muted);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    --del-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
+}
+.obs .react svg { display: block; width: 76%; height: 76%; overflow: visible; pointer-events: none; transition: transform 0.15s ease-out; }
+.obs .react .body { fill: var(--del-tint); }
+.obs .react .hatch { stroke: currentColor; }
+.obs .react .ink { stroke: var(--cardc-ink); }
+/* hidden: no room either (zero width, still focusable: keyboard focus opens it) */
+.obs .react:not(:is(.obs:hover, .obs:focus-within, .obs.is-open) .react, [aria-expanded="true"]) {
+    width: 0;
+    margin-left: -4px; /* the gap of .obs */
+    border-width: 0;
+}
+.obs:hover .react,
+.obs:focus-within .react,
+.obs .react[aria-expanded="true"],
+.obs.is-open .react { opacity: 1; pointer-events: auto; }
+.obs .react:hover,
+.obs .react:focus-visible,
+.obs .react[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.obs .react:hover svg,
+.obs .react:focus-visible svg,
+.obs .react[aria-expanded="true"] svg { transform: rotate(-12deg); }
+.obs .react:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.obs.is-open .obs-name { border-color: var(--accent); }
+
+@media (pointer: coarse) {
+    .obs-name { height: 32px; }
+    .obs .react { width: 32px; height: 32px; }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .obs:hover .react,
+    .obs:focus-within .react { opacity: 0; pointer-events: none; }
+    .obs:not(.is-open) .react:not([aria-expanded="true"]) { width: 0; margin-left: -4px; border-width: 0; }
+    .obs.is-open .react,
+    .obs .react[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
+    .obs .react:hover svg { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .obs .react svg { transition: none; transform: none !important; }
+}
+
+/* popovers at a card: a small box with an arrow to its anchor (position: see the contract above) */
+.tbl-pop {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--z-pop);
+    box-sizing: border-box;
+    max-width: calc(100vw - 2 * var(--space-2));
+    padding: 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-2);
+    color: var(--text);
+    font: var(--fs-s) var(--font);
+    text-align: left;
+    box-shadow: 0 12px 28px -6px var(--shadow-color);
+    animation: tbl-pop-in 0.15s ease-out;
+}
+.tbl-pop[hidden] { display: none; }
+.tbl-pop::after {
+    content: "";
+    position: absolute;
+    left: var(--arrow-x, 50%);
+    bottom: -7px;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    background: inherit;
+    border-right: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
+    transform: translateX(-50%) rotate(45deg);
+}
+.tbl-pop.is-below::after { bottom: auto; top: -7px; transform: translateX(-50%) rotate(225deg); }
+@keyframes tbl-pop-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.96); }
+}
+.tbl-pop.is-below { animation-name: tbl-pop-in-below; }
+@keyframes tbl-pop-in-below {
+    from { opacity: 0; transform: translateY(-4px) scale(0.96); }
+}
+
+/* the emoji bar: "throw at Name", six emojis in a row */
+.react-bar-label {
+    margin: 0;
+    padding: 0 6px 4px;
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.react-bar-row { display: flex; gap: 2px; }
+.react-bar button {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-m);
+    background: transparent;
+    font-size: 22px;
+    line-height: 1;
+    font-family: var(--font-emoji);
+    cursor: pointer;
+    transition: transform 0.1s ease-out, background-color 0.1s;
+}
+.react-bar button:hover,
+.react-bar button:focus-visible { background: var(--bg-4); transform: scale(1.15); }
+.react-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (pointer: coarse) {
+    .react-bar button { width: 44px; height: 44px; font-size: 26px; }
+    .react-bar button:hover { background: transparent; transform: none; }
+    .react-bar button:active { background: var(--bg-4); transform: scale(1.15); }
+}
+
+/* touch: "Remove Name?" at the card, before the trash can removes anyone */
+.rm-confirm { padding: 8px 10px 10px; max-width: min(260px, calc(100vw - 2 * var(--space-2))); }
+.rm-confirm p { margin: 0 0 8px; line-height: 1.4; }
+.rm-confirm .rm-name { font-weight: bold; overflow-wrap: anywhere; }
+.rm-confirm small { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--muted); }
+.rm-row { display: flex; gap: var(--space-2); justify-content: flex-end; }
+.rm-row .btn-box { flex: 1; margin: 0; padding: 4px 10px; font-size: var(--fs-s); }
+.rm-row .btn-box.danger { border-color: var(--danger); }
+.rm-row .btn-box.danger:enabled:hover,
+.rm-row .btn-box.danger:active { background: var(--danger); color: var(--bg); }
+
+/* touch, once: how to reach the circles. In the accent colour like the own name tag */
+.tap-hint {
+    max-width: min(250px, calc(100vw - 2 * var(--space-2)));
+    padding: 10px 12px;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    line-height: 1.4;
+}
+.tap-hint::after { border-color: var(--accent); }
+.tap-hint p { margin: 0 0 8px; }
+.tap-hint button {
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--on-accent);
+    border-radius: var(--radius-m);
+    background: transparent;
+    color: var(--on-accent);
+    font: bold var(--fs-s) var(--font);
+    cursor: pointer;
+}
+.tap-hint button:focus-visible { outline: 2px solid var(--on-accent); outline-offset: 2px; }
+
+/* Reaction flight: script.js moves .react-fly along a curve from the sender's card to the target (Web Animations
+ * API, transform only, --react-fly-dur). With prefers-reduced-motion it skips the flight and only lands. */
+.react-fly {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--z-fly);
+    font-size: var(--react-size);
+    line-height: 1;
+    font-family: var(--font-emoji);
+    pointer-events: none;
+    will-change: transform;
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
+}
+body.light-theme .react-fly { filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
+
+/* the landing: the emoji pops onto the middle of the card, wobbles, the sender's name below, then it fades */
+.react-land {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--card-name-h) + var(--card-w) * var(--card-ratio) / 2);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: react-land var(--react-land-dur) ease-out forwards;
+}
+.obs .react-land { top: 50%; }
+.react-emoji {
+    font-size: min(var(--react-size), var(--card-w, 64px) * 0.45);
+    line-height: 1;
+    font-family: var(--font-emoji);
+    filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.35));
+}
+.obs .react-emoji { font-size: 26px; }
+.react-from {
+    max-width: 12ch;
+    padding: 1px 6px;
+    border-radius: var(--radius-s);
+    background: var(--bg-4);
+    color: var(--text);
+    font: var(--fs-xs) var(--font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+@keyframes react-land {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-18deg); }
+    12% { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(8deg); }
+    22% { transform: translate(-50%, -50%) scale(0.95) rotate(-4deg); }
+    32% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
+}
+/* the card takes the hit: a short bump */
+.c.is-hit > .pc:not(.pc-orig) { animation: react-hit 0.4s ease-out; }
+@keyframes react-hit {
+    30% { transform: translateY(3px) rotate(1.5deg); }
+    60% { transform: translateY(-1px) rotate(-1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tbl-pop,
+    .tbl-pop.is-below { animation: none; }
+    .react-bar button { transition: none; }
+    .react-bar button:hover,
+    .react-bar button:focus-visible,
+    .react-bar button:active { transform: none; }
+    .react-land { animation-name: react-land-still; }
+    .c.is-hit > .pc:not(.pc-orig) { animation: none; }
+}
+@keyframes react-land-still {
+    0%, 100% { opacity: 0; }
+    10%, 80% { opacity: 1; }
 }
 
 /* phones: 8px (not 1em) – on a 375x667 touch phone 20 cards fit at --card-min without scrolling */
