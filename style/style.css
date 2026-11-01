@@ -2140,7 +2140,15 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 .tap-hint button:focus-visible { outline: 2px solid var(--on-accent); outline-offset: 2px; }
 
 /* Reaction flight: script.js moves .react-fly along a curve from the sender's card to the target (Web Animations
- * API, transform only, --react-fly-dur). With prefers-reduced-motion it skips the flight and only lands. */
+ * API, transform only, --react-fly-dur). With prefers-reduced-motion it skips the flight and only lands.
+ * The emojis get an outline like a sticker (--react-halo, all around), so they stand out on any card: light on the
+ * dark theme, the ink of the cards on the light one. */
+body {
+    --react-halo: #ffffff;
+    --react-outline: drop-shadow(1.5px 0 0 var(--react-halo)) drop-shadow(-1.5px 0 0 var(--react-halo))
+        drop-shadow(0 1.5px 0 var(--react-halo)) drop-shadow(0 -1.5px 0 var(--react-halo));
+}
+body.light-theme { --react-halo: #1d2027; }
 .react-fly {
     position: fixed;
     left: 0;
@@ -2151,9 +2159,9 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     font-family: var(--font-emoji);
     pointer-events: none;
     will-change: transform;
-    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
+    filter: var(--react-outline) drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
 }
-body.light-theme .react-fly { filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
+body.light-theme .react-fly { filter: var(--react-outline) drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
 
 /* the landing: the emoji pops onto the middle of the card, wobbles, the sender's name below, then it fades */
 .react-land {
@@ -2164,7 +2172,7 @@ body.light-theme .react-fly { filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 3px;
     pointer-events: none;
     transform: translate(-50%, -50%);
     animation: react-land var(--react-land-dur) ease-out forwards;
@@ -2174,19 +2182,22 @@ body.light-theme .react-fly { filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
     font-size: min(var(--react-size), var(--card-w, 64px) * 0.45);
     line-height: 1;
     font-family: var(--font-emoji);
-    filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.35));
+    filter: var(--react-outline) drop-shadow(0 3px 4px rgb(0 0 0 / 0.35));
 }
 .obs .react-emoji { font-size: 26px; }
+/* the sender: a small opaque name tag, framed in the outline colour of the emoji */
 .react-from {
     max-width: 12ch;
     padding: 1px 6px;
+    border: 1px solid var(--react-halo);
     border-radius: var(--radius-s);
-    background: var(--bg-4);
+    background: var(--bg-2);
     color: var(--text);
-    font: var(--fs-xs) var(--font);
+    font: bold var(--fs-xs) var(--font);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    box-shadow: 0 2px 6px -1px var(--shadow-color);
 }
 @keyframes react-land {
     0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-18deg); }
