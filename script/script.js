@@ -1149,9 +1149,10 @@ function nudgeIcon() {
 /* ---------- B-110: table interaction (markup contract: style.css "Table interaction") ----------
  * Every other card and every other observer has its circles: the nudge (.nudge, shakes the card on every board,
  * anonymous), the smiley (.react, opens the emoji bar #react_bar) and, on cards only, the trash can (.delete).
- * Desktop: the circles on hover / keyboard focus, remove at once.
+ * Desktop: the circles on hover / keyboard focus.
  * Touch devices ((hover: none), (pointer: coarse), tablets included): a tap on a card or an observer opens it
- * (.is-open, one at a time, a tap elsewhere closes it); removing asks first (#rm_confirm); a hint once (#tap_hint).
+ * (.is-open, one at a time, a tap elsewhere closes it); a hint once (#tap_hint).
+ * Removing always asks first (#rm_confirm, Esc / Cancel: the focus goes back to the trash can).
  * All names via textContent. The clicks go through one handler (onTableClick). */
 const gTapQuery = window.matchMedia('(hover: none), (pointer: coarse)');
 // the emojis of the bar (board.html data-react); 'nudge' is the nudge circle (no emoji, no flight)
@@ -1340,7 +1341,7 @@ function openRemoveConfirm(btn) {
     const holder = holderOf(btn);
     if (holder === null) return;
     const box = document.getElementById('rm_confirm');
-    box.querySelector('.rm-name').textContent = holderName(holder);
+    box.querySelectorAll('.rm-name').forEach(span => { span.textContent = holderName(holder); });
     box.dataset.mkey = holderMkey(holder);
     setOpenHolder(holder);
     openPopover(box, btn, holder, btn);
@@ -1571,13 +1572,9 @@ function onTableClick(event) {
     const del = target.closest('#cbox .c .delete');
     if (del !== null) {
         hideTapHint(true);
-        if (gTapQuery.matches) {
-            if (gPop !== null && gPop.opener === del) closePopover(false);
-            else openRemoveConfirm(del);
-        } else {
-            closePopover(false);
-            deletePlayer(del.parentElement.id);
-        }
+        // B-110 (Andreas): removing always asks first, also with a mouse or the keyboard
+        if (gPop !== null && gPop.opener === del) closePopover(false);
+        else openRemoveConfirm(del);
         return;
     }
 
@@ -1721,7 +1718,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     cardDeleteBtn.setAttribute('aria-label', deleteLabel(player.name, player.away === true));
     cardDeleteBtn.title = 'Remove from the table';
     cardDeleteBtn.appendChild(deleteIcon());
-    // B-110: the click is handled by onTableClick (desktop: remove at once, touch: ask first)
+    // B-110: the click is handled by onTableClick (always asks first, #rm_confirm)
     newCard.appendChild(cardDeleteBtn);
     if (player.away === true) newCard.classList.add('is-away');
     setTableCardFace(newCard, String(player.display_card_key));
