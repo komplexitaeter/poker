@@ -156,7 +156,7 @@ test('smiley: opens the emoji bar, keys, Esc closes, focus back (B-110)', async 
   await expect(bar.locator('.react-bar-name')).toHaveText('Bob');
   await expect(smiley).toHaveAttribute('aria-expanded', 'true');
   await expect(bar.locator('button[data-react="cake"]')).toBeFocused();
-  await expect(bar.locator('button[data-react]')).toHaveCount(6);
+  await expect(bar.locator('button[data-react]')).toHaveCount(7); // six emojis and the nudge
   // the bar sits above the smiley
   const [b, s] = [await bar.boundingBox(), await smiley.boundingBox()];
   expect(b!.y + b!.height).toBeLessThanOrEqual(s!.y);
@@ -167,7 +167,7 @@ test('smiley: opens the emoji bar, keys, Esc closes, focus back (B-110)', async 
   await expect(bar.locator('button[data-react="heart"]')).toBeFocused();
   await alice.keyboard.press('ArrowLeft');
   await alice.keyboard.press('ArrowLeft');
-  await expect(bar.locator('button[data-react="think"]')).toBeFocused();
+  await expect(bar.locator('button[data-react="nudge"]')).toBeFocused();
   // a letter key does not pick a card while the bar has the focus
   await alice.keyboard.press('KeyA');
   await expect(alice.locator('#ctl .ctl.selected')).toHaveCount(0);
