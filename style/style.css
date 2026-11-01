@@ -3482,15 +3482,13 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         text-overflow: ellipsis;
     }
 
-    /* B-99 F8: the line's text as one block in the middle, left-aligned inside (like the info line).
-     * D17: the block is as wide as the deck's longest entry (--deck-pick-width, measured by
-     * sizeDeckPickLine() in script.js), so its start ("> tap to pick") stays put while swiping */
+    /* B-99 F8: the line's text as one block in the middle. D17 (Andreas): centred, the description below
+     * as well, so the line swings evenly around the middle while swiping */
     .deck-pick-body {
         display: inline-block;
-        min-width: min(var(--deck-pick-width, 0px), 100%);
         max-width: 100%;
         vertical-align: top;
-        text-align: left;
+        text-align: center;
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -3504,6 +3502,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
     .deck-pick-info {
         display: block;
+        text-align: center;
         white-space: normal;
         overflow: hidden;
         display: -webkit-box;
@@ -3514,26 +3513,6 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .down-container:has(.deck-texts) .deck-pick { height: 48px; white-space: normal; }
 
     .down-container:has(.ctl_as_guest) .deck-pick { visibility: hidden; }
-
-    /* D17: the hidden copy of the line for measuring, one entry per row at its natural width (removed at once) */
-    .down-container .deck-pick.deck-pick-sizer {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: max-content;
-        height: auto;
-        visibility: hidden;
-        pointer-events: none;
-    }
-
-    .deck-pick-sizer .deck-pick-body,
-    .deck-pick-sizer .deck-pick-info {
-        display: block;
-        width: max-content;
-        min-width: 0;
-        max-width: none;
-        white-space: nowrap;
-    }
 }
 
 /* B-77, tablets (touch, large screens): the carousel in the floating tray. A little more room above

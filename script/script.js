@@ -667,10 +667,9 @@ function setDeckPickLine(line, middle, picked) {
         key = (isPicked ? 'P:' : 'm:') + card.key + (gDeckTexts ? '+' : '');
         parts = () => deckPickParts(card, isPicked, true);
     }
-    sizeDeckPickLine(line);
     if (line.getAttribute('data-shows') === key) return; // only on a change (per frame while swiping)
     line.setAttribute('data-shows', key);
-    // F8: one block in the middle, its text left-aligned (a description below starts under the first line's start)
+    // F8, D17 (Andreas): the text centred, the description below as well (style.css)
     const body = document.createElement('span');
     body.className = 'deck-pick-body';
     body.append(...parts());
@@ -689,33 +688,6 @@ function deckPickParts(card, isPicked, withTexts) {
     if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
         { className: 'deck-pick-info' + (card.heading ? '' : ' one-text'), textContent: card.info }));
     return list;
-}
-
-/* B-99 F8 (D17, Andreas): the line keeps its start while swiping. Its block is as wide as the deck's longest
- * entry (every card, picked or not; capped by the line in style.css), so "> tap to pick" never moves.
- * Measured once per deck in a hidden copy of the line (removed again before it is drawn). */
-function sizeDeckPickLine(line) {
-    if (line.getAttribute('data-sized') === String(gDeck.rev) || line.clientWidth === 0) return;
-    const sizer = document.createElement('p');
-    sizer.className = 'deck-pick deck-pick-sizer';
-    sizer.setAttribute('aria-hidden', 'true');
-    const entries = [[undefined, false, false]];
-    gDeck.cards.forEach(card => {
-        const texts = Boolean(card.heading || card.info) && (gDeckTexts || Boolean(card.controlCard)); // deckInfoCard()
-        entries.push([card, true, texts]);
-        if (texts) entries.push([card, false, true]);
-    });
-    entries.forEach(([card, isPicked, texts]) => {
-        const body = document.createElement('span');
-        body.className = 'deck-pick-body';
-        body.append(...deckPickParts(card, isPicked, texts));
-        sizer.append(body);
-    });
-    line.after(sizer);
-    const width = Math.max(...Array.from(sizer.children, body => body.getBoundingClientRect().width));
-    sizer.remove();
-    line.style.setProperty('--deck-pick-width', Math.ceil(width) + 'px');
-    line.setAttribute('data-sized', String(gDeck.rev));
 }
 
 /* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */
