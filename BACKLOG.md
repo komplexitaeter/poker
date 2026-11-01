@@ -1482,6 +1482,23 @@ Konto, Telefonnummer), die ID im Browser ist ohnehin flüchtig. **User-ID nach e
   **Local Storage**, nicht im „Session Store“ (bleibt also über das Schließen des Browsers hinaus); Rundenstatistik und
   Nutzungs-Events erwähnen; Hinweis, dass „Delete User“ alles umfasst, erst wenn der Fix live ist.
 
+
+### B-110 Tisch-Interaktion: „away“-Erkennung, Karten-Kontextmenü, Beobachter, Reaktionen
+Status: neu, nicht priorisiert (Ideen Andreas, 2026-11-01; Mockups Delia „Kontextmenü A/B/C“, Analyse Ben). Fasst
+B-56 (Players-Menü) und B-60 (Spaß-Funktionen) am Tisch zusammen. Für nach R3, in Schritten:
+1. **„away“ erkennen** (Andreas: Entfernen ist mission-critical): Board lädt bei jedem `hb` (30 s, mit 0–5 s Zufall)
+   einmal `dao.php`; `getDao()` liefert je Spieler `away`, wenn `last_callback_time` älter als ca. 2 verpasste `hb`
+   ist (Andreas; Schwelle als Konstante, ~70 s). Tab im Hintergrund zählt als „da“ (WebSocket bleibt offen),
+   gesperrtes Handy/eingefrorener Tab nach der Schwelle als „away“. Kein Schema. Neutrales Symbol „Verbindung gestört“
+   (kein 💤/Emoji), Mülleimer an dieser Karte dauerhaft sichtbar (auch ohne Hover). Risiko: Neu-Rendern alle 30 s
+   muss ruhig bleiben (kein Flackern, Eingaben/Fokus bleiben). poker-msg nach offenen Verbindungen fragen: vorerst nicht.
+2. **Beobachter sichtbar**: Zeile „observing: …“ unter dem Tisch (DAO liefert Beobachter mit Name/`mkey`).
+3. **Kontextmenü / zweiter Kreis** auf Karten (Variante offen: A Popover, B Bottom-Sheet, C zweiter Kreis neben dem
+   Mülleimer): Entfernen, Reaktionen, eigene Karte (Name ändern, beobachten).
+4. **Reaktionen + Nudge**: Emoji fliegt von der eigenen zur gewählten Karte; feste 6 Emojis; kein Team-Schalter
+   (erst bei Bedarf). Verteilung flüchtig über neuen Endpunkt + poker-msg (`react:`), nur Codes aus fester Liste.
+Entscheidungen Andreas: jeder darf jeden entfernen, auch Beobachter; im Anonym-Modus dürfen Reaktionen geschickt
+und auch auf anonyme Karten geworfen werden.
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
