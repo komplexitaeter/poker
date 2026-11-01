@@ -978,6 +978,8 @@ function updateCards(cardsDiv, players) {
         setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(player.name, away));
         const react = card.querySelector('.react');
         if (react !== null) setAttrIfChanged(react, 'aria-label', reactLabel(player.name));
+        const nudge = card.querySelector('.nudge');
+        if (nudge !== null) setAttrIfChanged(nudge, 'aria-label', nudgeLabel(player.name));
     });
 
     return valueChangedCards;
@@ -997,7 +999,7 @@ function setTableCardFace(cardDiv, key) {
     // every set (small cards shorten the description, style.css "Rendered cards")
     const face = cardFace(card, 'table', true);
     const old = cardDiv.querySelector('.pc:not(.pc-orig)');
-    if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.react, .delete'));
+    if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.nudge, .react, .delete'));
     else old.replaceWith(face);
 }
 
@@ -1140,16 +1142,19 @@ function nudgeIcon() {
 }
 
 /* ---------- B-110: table interaction (markup contract: style.css "Table interaction") ----------
- * Every other card and every other observer has two circles: the smiley (.react, opens the emoji bar #react_bar)
- * and, on cards only, the trash can (.delete). Desktop: the circles on hover / keyboard focus, remove at once.
+ * Every other card and every other observer has its circles: the nudge (.nudge, shakes the card on every board,
+ * anonymous), the smiley (.react, opens the emoji bar #react_bar) and, on cards only, the trash can (.delete).
+ * Desktop: the circles on hover / keyboard focus, remove at once.
  * Touch devices ((hover: none), (pointer: coarse), tablets included): a tap on a card or an observer opens it
  * (.is-open, one at a time, a tap elsewhere closes it); removing asks first (#rm_confirm); a hint once (#tap_hint).
  * All names via textContent. The clicks go through one handler (onTableClick). */
 const gTapQuery = window.matchMedia('(hover: none), (pointer: coarse)');
-const REACT_CODES = ['cake', 'heart', 'clap', 'party', 'coffee', 'think', 'nudge'];
-const REACT_EMOJI = { cake: '🎂', heart: '❤️', clap: '👏', party: '🎉', coffee: '☕', think: '🤔', nudge: '👋' };
-// the same check as poker-msg (MsgServer::parseReact): anything else is ignored
-const REACT_MSG = /^react:([0-9]{1,10}):([0-9]{1,10}):(cake|heart|clap|party|coffee|think|nudge)$/;
+// the emojis of the bar (board.html data-react); 'nudge' is the nudge circle (no emoji, no flight)
+const REACT_EMOJI = { cake: '🎂', heart: '❤️', clap: '👏', party: '🎉', think: '🤔', thumbs: '👍', fish: '🐟' };
+const REACT_NUDGE = 'nudge';
+// the same format check as poker-msg (MsgServer::parseReact, format only); unknown codes are ignored (onReaction)
+const REACT_MSG = /^react:([0-9]{1,10}):([0-9]{1,10}):([a-z]{1,12})$/;
+const REACT_LAND_SLOTS = 4; // landings on the same target at once get offset (--land-i 0..3), more overlap
 const TAP_HINT_KEY = 'TAP_HINT_SEEN';
 const POP_GAP = 10;     // between a popover and its anchor (the arrow sits in it)
 const POP_MARGIN = 8;   // to the edge of the window
@@ -1162,14 +1167,17 @@ function setAttrIfChanged(el, name, value) {
     if (el !== null && el.getAttribute(name) !== value) el.setAttribute(name, value);
 }
 
-/* the smiley on a card or an observer: added when wanted (before the trash can, if any), removed otherwise */
+/* the nudge and the smiley on a card or an observer: added when wanted (before the trash can, if any), removed
+ * otherwise. Order: .nudge, .react, .delete (style.css "Table interaction"). */
 function syncReactButton(holder, wanted, name, before = null) {
     let btn = holder.querySelector(':scope > .react');
+    let nudge = holder.querySelector(':scope > .nudge');
     if (!wanted) {
         if (btn !== null) {
             if (gPop !== null && gPop.opener === btn) closePopover(false);
             btn.remove();
         }
+        if (nudge !== null) nudge.remove();
         return;
     }
     if (btn === null) {
@@ -1182,7 +1190,16 @@ function syncReactButton(holder, wanted, name, before = null) {
         btn.appendChild(reactIcon());
         holder.insertBefore(btn, before);
     }
+    if (nudge === null) {
+        nudge = document.createElement('button');
+        nudge.type = 'button';
+        nudge.className = 'nudge';
+        nudge.title = 'Nudge';
+        nudge.appendChild(nudgeIcon());
+        holder.insertBefore(nudge, btn);
+    }
     setAttrIfChanged(btn, 'aria-label', reactLabel(name));
+    setAttrIfChanged(nudge, 'aria-label', nudgeLabel(name));
 }
 
 /* B-110: the row "observing" below the cards: the connected observers (dao.php "observers", away ones are left out
@@ -1330,9 +1347,11 @@ function openRemoveConfirm(btn) {
 
 /* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket. Nothing happens here before the echo: poker-msg
  * sends the same text to every board of the team, the sender's too, and all of them animate on it (onReaction).
- * Not sent without an open connection (the reaction is lost, as when poker-msg drops it above 1/s). */
+ * Not sent without an open connection (the reaction is lost, as when poker-msg drops it above 1/s).
+ * A nudge is anonymous: from is always 0, also in the message. */
 function sendReaction(toMkey, code) {
-    const from = gLastJson === null ? '' : String(gLastJson.mkey ?? '');
+    const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : String(gLastJson.mkey ?? ''));
+    if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
     const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
     if (!REACT_MSG.test(msg)) return;
     if (gConn === null || gConn.readyState !== WebSocket.OPEN) return;
@@ -1378,12 +1397,19 @@ function cssDurationMs(name, fallback) {
     return v.endsWith('ms') ? n : (v.endsWith('s') ? n * 1000 : fallback);
 }
 
-/* an echo of poker-msg: "react:<from>:<to>:<code>" (checked already). Flight from the sender to the target, then the
- * landing; a nudge shakes the target card (harder on the board of the nudged one). Target gone: nothing. Anonymous
- * mode: no sender name and the flight starts at the top of the table (no hint who threw it). */
+/* the flights under way: { fly, anim }; dropped when the tab is hidden (nothing is played late) */
+const gFlights = new Set();
+
+/* an echo of poker-msg: "react:<from>:<to>:<code>" (format checked already). A nudge only shakes the target card on
+ * every board (harder on the board of the nudged one): no flight, no emoji, no name. An emoji flies from the sender to
+ * the target, then lands. Unknown code or target gone: nothing. Anonymous mode: no sender name and the flight starts
+ * at the top of the table (no hint who threw it). Tab hidden: dropped, not buffered (Andreas). */
 function onReaction(from, to, code) {
+    if (document.visibilityState !== 'visible') return;
+    if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
     const target = reactHolder(to);
     if (target === null) return;
+    if (code === REACT_NUDGE) { nudgeTarget(target, to); return; }
     const anonymous = gLastJson !== null && gLastJson.anonymous_mode === 1;
     const sender = anonymous ? null : reactHolder(from);
     const name = sender === null ? '' : holderName(sender);
@@ -1417,9 +1443,41 @@ function onReaction(from, to, code) {
                 + `rotate(${Math.round(-30 + 390 * k)}deg) scale(${scale.toFixed(2)})`, offset: k });
     }
     const anim = fly.animate(frames, { duration: cssDurationMs('--react-fly-dur', 900), easing: 'ease-in-out' });
-    const done = () => { fly.remove(); land(); };
+    const flight = { fly, anim, dropped: false };
+    gFlights.add(flight);
+    const done = () => {
+        gFlights.delete(flight);
+        fly.remove();
+        if (!flight.dropped) land();
+    };
     anim.onfinish = done;
     anim.oncancel = done;
+}
+
+/* the tab is hidden: flights and landings under way are dropped, not played when it is back */
+function dropReactions() {
+    gFlights.forEach(flight => {
+        flight.dropped = true;
+        flight.anim.cancel();
+    });
+    gFlights.clear();
+    document.querySelectorAll('.react-fly, .react-land').forEach(el => el.remove());
+}
+
+/* a nudge: the target shakes on every board, harder on the board of the nudged one */
+function nudgeTarget(target, to) {
+    const isMe = gLastJson !== null && String(gLastJson.mkey) === to;
+    restartClass(target, 'is-nudged', 700);
+    if (isMe) restartClass(target, 'is-nudged-me', 1100);
+}
+
+/* the slot of a new landing on a target (--land-i): the first one free, so landings at once are offset; all taken:
+ * they overlap ("Gewusel ist ok") */
+function landSlot(target) {
+    const used = new Set(Array.from(target.querySelectorAll(':scope > .react-land'))
+        .map(el => Number(el.style.getPropertyValue('--land-i')) || 0));
+    for (let i = 0; i < REACT_LAND_SLOTS; i++) if (!used.has(i)) return i;
+    return used.size % REACT_LAND_SLOTS;
 }
 
 /* the landing at the target (looked up again: it may have gone or been rebuilt during the flight) */
@@ -1429,6 +1487,7 @@ function landReaction(to, code, name) {
     const span = document.createElement('span');
     span.className = 'react-land';
     span.setAttribute('aria-hidden', 'true');
+    span.style.setProperty('--land-i', String(landSlot(target)));
     const emoji = document.createElement('span');
     emoji.className = 'react-emoji';
     emoji.textContent = REACT_EMOJI[code];
@@ -1444,13 +1503,7 @@ function landReaction(to, code, name) {
     span.addEventListener('animationend', remove);
     setTimeout(remove, cssDurationMs('--react-land-dur', 1800) + 500); // no animation (hidden, no CSS): gone anyway
 
-    if (code === 'nudge') {
-        const isMe = gLastJson !== null && String(gLastJson.mkey) === to;
-        restartClass(target, 'is-nudged', 700);
-        if (isMe) restartClass(target, 'is-nudged-me', 1100);
-    } else if (target.classList.contains('c')) {
-        restartClass(target, 'is-hit', 450);
-    }
+    if (target.classList.contains('c')) restartClass(target, 'is-hit', 450);
 }
 
 /* sets a class for ms milliseconds; set again while it is on, the CSS animation starts over */
@@ -1478,7 +1531,7 @@ function onTableClick(event) {
         const code = emoji.dataset.react;
         const to = document.getElementById('react_bar').dataset.to;
         closePopover(true);
-        if (REACT_CODES.includes(code) && to) sendReaction(to, code);
+        if (Object.hasOwn(REACT_EMOJI, code) && to) sendReaction(to, code);
         return;
     }
     if (target.closest('#rm_confirm .rm-cancel') !== null) { closePopover(true); return; }
@@ -1493,6 +1546,14 @@ function onTableClick(event) {
     if (target.closest('.tbl-pop') !== null) return;
 
     // the circles
+    const nudge = target.closest('#cbox .c .nudge, #observers .obs .nudge');
+    if (nudge !== null) {
+        hideTapHint(true);
+        closePopover(false);
+        const holder = holderOf(nudge);
+        if (holder !== null) sendReaction(holderMkey(holder), REACT_NUDGE);
+        return;
+    }
     const react = target.closest('#cbox .c .react, #observers .obs .react');
     if (react !== null) {
         hideTapHint(true);
@@ -1858,7 +1919,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
 
     // B-99 D8: the own card's name tag is styled like the name tag in the header
-    // B-110: every other card gets the smiley (.react) to throw a reaction
+    // B-110: every other card gets the nudge (.nudge) and the smiley (.react) to throw a reaction
     document.querySelectorAll('#cbox .c').forEach(card => {
         const isMe = card.id === myJson.mkey;
         if (card.classList.contains('is-me') !== isMe) card.classList.toggle('is-me', isMe);
@@ -1970,6 +2031,7 @@ function initializeWSConnection(teamId) {
         gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
         if (typeof e.data !== 'string') return;
         if (e.data.startsWith('react:')) { // B-110: a reaction (never a pull, even if it contained the word)
+            if (document.visibilityState !== 'visible') return; // hidden tab: dropped, not buffered
             const m = REACT_MSG.exec(e.data);
             if (m !== null) onReaction(m[1], m[2], m[3]);
             return;
@@ -2029,6 +2091,7 @@ function reconnectWSConnection() {
 function initWSReconnect() {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reconnectWSConnection();
+        else dropReactions(); // B-110: nothing is played late
     });
     window.addEventListener('online', reconnectWSConnection);
     window.addEventListener('pageshow', (event) => {

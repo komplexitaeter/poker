@@ -1868,7 +1868,8 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  *
  * reaction landing (the flight itself: Web Animations API in script.js, see "Reaction flight" below):
  *   .react-fly                                   the flying emoji, appended to body, removed after the flight
- *   <span class="react-land" aria-hidden="true"> appended to the target .c (or .obs), removed on animationend
+ *   <span class="react-land" aria-hidden="true" style="--land-i: 0..3">
+ *                                                appended to the target .c (or .obs), removed on animationend
  *     <span class="react-emoji">🎂</span><span class="react-from">Name</span>
  *   </span>                                      plus .is-hit on the target .c for the bump of the card */
 
@@ -2202,6 +2203,12 @@ body.light-theme .react-fly { filter: var(--react-outline) drop-shadow(0 6px 8px
     animation: react-land var(--react-land-dur) ease-out forwards;
 }
 .obs .react-land { top: 50%; }
+/* several landings on the same target at once (script.js sets --land-i 0..3, the first free slot): each one a bit
+ * off and tilted, the first one in the middle; more than four overlap (Andreas: "Gewusel ist ok"). Fred, minimal. */
+.react-land {
+    translate: calc(sin(var(--land-i, 0) * 130deg) * 18px) calc((cos(var(--land-i, 0) * 130deg) - 1) * 8px);
+}
+.react-land .react-emoji { rotate: calc(sin(var(--land-i, 0) * 130deg) * 14deg); }
 .react-emoji {
     font-size: min(var(--react-size), var(--card-w, 64px) * 0.45);
     line-height: 1;
@@ -2253,8 +2260,8 @@ body.light-theme .react-fly { filter: var(--react-outline) drop-shadow(0 6px 8px
     10%, 80% { opacity: 1; }
 }
 
-/* B-110 part 2 (Fred, minimal – Delia may restyle): a nudge (data-react="nudge") lands like a reaction and shakes the
- * target: .is-nudged on every board, plus .is-nudged-me on the board of the nudged one (harder, longer).
+/* B-110 part 2 (Fred, minimal – Delia may restyle): a nudge (the .nudge circle) shakes the target, nothing lands
+ * (anonymous): .is-nudged on every board, plus .is-nudged-me on the board of the nudged one (harder, longer).
  * prefers-reduced-motion: an accent frame blinks instead. No sound. */
 .c.is-nudged > .pc:not(.pc-orig),
 .obs.is-nudged .obs-name { animation: react-nudge 0.6s ease-in-out; }

@@ -112,6 +112,13 @@ test('observers row: connected observers only, names as text, own one marked (B-
   await expect(row.locator('.obs .react')).toHaveCount(2);
   await expect(row.locator('.delete')).toHaveCount(0);
   await expect(row.getByRole('button', { name: 'Throw a reaction at Olga' })).toHaveCount(1);
+  // the nudge circle before the smiley, no popup
+  await expect(row.locator('.obs .nudge')).toHaveCount(2);
+  const olgaNudge = row.getByRole('button', { name: 'Nudge Olga' });
+  await expect(olgaNudge).toHaveCount(1);
+  await expect(olgaNudge).not.toHaveAttribute('aria-haspopup', /./);
+  expect(await row.locator('.obs').filter({ hasText: 'Olga' }).evaluate(li =>
+    Array.from(li.children).map(c => c.className))).toEqual(['obs-name', 'nudge', 'react']);
 
   // the row takes room from the cards: nothing overflows the table
   const overflow = await alice.locator('#table').evaluate(el => el.scrollHeight - el.clientHeight);
@@ -133,7 +140,7 @@ test('observers row: connected observers only, names as text, own one marked (B-
   await oscar.locator('#nameinput').fill('Oscar');
   await oscar.locator('#become_observer_btn').click();
   await expect(oscar.locator('#observers .obs.is-me .obs-name')).toHaveText('Oscar');
-  await expect(oscar.locator('#observers .obs.is-me .react')).toHaveCount(0);
+  await expect(oscar.locator('#observers .obs.is-me :is(.react, .nudge)')).toHaveCount(0);
   await reload(alice);
   await expect(row.locator('.obs-name')).toHaveText(['Oscar']);
 });
@@ -146,7 +153,11 @@ test('smiley: opens the emoji bar, keys, Esc closes, focus back (B-110)', async 
   await alice.reload();
   const bobCard = tableCard(alice, 'Bob');
   await expect(bobCard).toBeVisible();
-  await expect(tableCard(alice, 'Alice').locator('.react')).toHaveCount(0); // not on the own card
+  await expect(tableCard(alice, 'Alice').locator('.react, .nudge')).toHaveCount(0); // not on the own card
+  // the circles of a card: nudge, smiley, trash can (after the face)
+  expect(await bobCard.evaluate(c => Array.from(c.children).map(e => e.className.split(' ')[0])))
+    .toEqual(['card_player_name', 'pc', 'nudge', 'react', 'delete']);
+  await expect(bobCard.locator('.nudge')).toHaveAttribute('aria-label', 'Nudge Bob');
   const smiley = bobCard.getByRole('button', { name: 'Throw a reaction at Bob' });
   const bar = alice.locator('#react_bar');
 
