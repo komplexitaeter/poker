@@ -1909,9 +1909,9 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 @container (min-width: 120px) {
     #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.84); }
 
-    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.16); }
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) { padding-top: calc(var(--card-w) * 0.16); }
 
-    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
 }
 
 /* B-99 D9: long descriptions (J.U.D.G.E.) end on a whole line with an ellipsis instead of being cut by the card's
@@ -1928,25 +1928,34 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
     #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 2; }
 }
 
-/* B-99 F8 (Andreas): control cards on the table show heading and description in every set. In decks without or with
- * one-word texts (none, word) the symbol gives way to the description, which is cut to a few lines on small cards
- * (like J.U.D.G.E.: whole lines, never a cut line) */
-#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl.has-info .mot { flex: 1 1 0; }
+/* B-99 F8 (Andreas): control cards on the table show heading and description in every set.
+ * B-99 D13 (Andreas): in every deck the description of a control card (plain: coffee, ?, !, hand, shruggie) gets a
+ * fixed room of --txt-lines lines below the heading and the symbol takes the rest of the card. So the card is filled
+ * like the "joined in" card, and symbols and headings of the control cards stay level side by side however long a
+ * description is (it runs top-down in its room and is cut to whole lines). --txt-lines follows the card width: what
+ * the longest control text (52 characters) needs, measured. The cards of the sets keep their layout (above). */
+#cbox .pc.is-ctl.has-info { --txt-lines: 3; padding-top: calc(var(--card-w) * 0.1); }
 
-#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl.has-info .ttl { margin-block: calc(var(--card-w) * 0.03) 0; }
+#cbox .pc.is-ctl.has-info .mot { flex: 1 1 0; }
 
-#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl .txt {
+#cbox .pc.is-ctl.has-info .ttl { margin-block: calc(var(--card-w) * 0.03) 0; }
+
+#cbox .pc.is-ctl.has-info .txt {
     flex: none;
+    height: calc(var(--txt-lines) * 1.25em);
     margin-block: calc(var(--card-w) * 0.02) 0;
-    -webkit-line-clamp: 4;
-}
-
-@container (max-width: 109.98px) {
-    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl .txt { -webkit-line-clamp: 3; }
+    -webkit-line-clamp: var(--txt-lines);
 }
 
 @container (max-width: 79.98px) {
-    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc.is-ctl .txt { -webkit-line-clamp: 2; }
+    #cbox .pc.is-ctl.has-info { --txt-lines: 2; }
+
+    /* a heading that wraps ("need a break") must not push its symbol up: room for two lines on every control card */
+    #cbox .pc.is-ctl.has-info .ttl { min-height: 2.3em; }
+}
+
+@container (min-width: 110px) and (max-width: 144.98px) {
+    #cbox .pc.is-ctl.has-info { --txt-lines: 4; }
 }
 
 /* B-99 F7 (Andreas): a card with exactly one text (only a heading, only a description like the emotions, a status
