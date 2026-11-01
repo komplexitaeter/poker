@@ -7,7 +7,7 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, pickC
  * fixed height (large screens: the column; phones: a strip above the deck), so switching the
  * timer, the first vote or a new round neither resizes the cards nor lets the dock cover
  * them; the outer cards keep a side gutter to the edge of the table.
- * The delete icon depends on the input device, not on the width.
+ * The delete icon depends on the input device, not on the width; hidden by opacity, so it stays in the tab order (B-99 D16).
  * SHOT_DIR (optional): screenshots of the cases.
  */
 const PHONE = { width: 375, height: 667 };
@@ -130,15 +130,42 @@ test('delete icon: by input device, not by width (B-49)', async ({ browser }) =>
   const url = await createTeam(alice, 'Fit Delete');
   await joinAsPlayer(alice, url, 'Alice');
   await alice.mouse.move(0, 0);
-  await expect(tableCard(alice, 'Alice').locator('.delete')).toBeHidden();
+  await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '0');
   await tableCard(alice, 'Alice').hover();
-  await expect(tableCard(alice, 'Alice').locator('.delete')).toBeVisible();
+  await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
 
   // a phone: always
   const bob = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true });
   await joinAsPlayer(bob, url, 'Bob');
-  await expect(tableCard(bob, 'Alice').locator('.delete')).toBeVisible();
-  await expect(tableCard(bob, 'Bob').locator('.delete')).toBeVisible();
+  await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
+  await expect(tableCard(bob, 'Bob').locator('.delete')).toHaveCSS('opacity', '1');
+});
+
+test('delete button: named, reachable by keyboard, removes the player (B-99 D16)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Fit Remove');
+  await joinAsPlayer(alice, url, 'Alice');
+  await addPlayersViaApi(alice, url, ['Bob']);
+  await alice.reload();
+  await expect(tableCard(alice, 'Bob')).toBeVisible();
+
+  // a real button, named after the player
+  const remove = tableCard(alice, 'Bob').getByRole('button', { name: 'Remove Bob from the table' });
+  await expect(remove).toHaveCount(1);
+
+  // reachable with Tab (hidden until the focus is on it, then shown by :focus-within)
+  await alice.mouse.move(0, 0);
+  let focused = false;
+  for (let i = 0; i < 80 && !focused; i++) {
+    await alice.keyboard.press('Tab');
+    focused = await remove.evaluate(el => el === document.activeElement);
+  }
+  expect(focused).toBe(true);
+  await expect(remove).toBeVisible();
+
+  await alice.keyboard.press('Enter');
+  await expect(tableCard(alice, 'Bob')).toHaveCount(0);
+  await expect(tableCard(alice, 'Alice')).toBeVisible();
 });
 
 test('a long name stays inside the card and ends with an ellipsis (B-49)', async ({ browser }) => {

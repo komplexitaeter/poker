@@ -149,7 +149,8 @@ function controlsDsp(playerType) {
 }
 
 function deletePlayer(e) {
-    let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + t;
+    // currentTarget: the button, also when the click lands on its svg
+    let url = './api/delete.php?mkey=' + encodeURIComponent(e.currentTarget.parentElement.id) + '&t=' + t;
     apiWrite(url);
 }
 
@@ -941,6 +942,7 @@ function updateCards(cardsDiv, players) {
         if (nameSpan.textContent !== player.name) {
             nameSpan.textContent = player.name;
             nameSpan.title = player.name; // the full name when it ends with an ellipsis
+            card.querySelector('.delete').setAttribute('aria-label', deleteLabel(player.name));
         }
     });
 
@@ -1023,6 +1025,42 @@ function refreshTableFaces() {
     });
 }
 
+/* B-99 D16: the trash can of the delete button: a tinted body with hatching (currentColor), the outline in the
+ * ink of the cards, a lid that tilts on hover (style.css). Static paths only, no user data. */
+const DELETE_ICON_PATHS = [
+    { d: 'M6.3 8.4l.9 11.3c.1.9.6 1.4 1.5 1.4l6.7-.1c.9 0 1.4-.5 1.5-1.4l.9-11.2', cls: 'body' },
+    { d: 'M7.6 12.1l2.6-2.2M7.8 15.4l5.6-4.9M8.1 18.6l7.4-6.6M10.6 20.6l5-4.4', cls: 'hatch', w: 1 },
+    { d: 'M6.3 8.4l.9 11.3c.1.9.6 1.4 1.5 1.4l6.7-.1c.9 0 1.4-.5 1.5-1.4l.9-11.2', cls: 'ink', w: 1.9 },
+    { d: 'M4.3 7.1l7.6-.3 7.8.2', cls: 'ink', w: 2.1, lid: true },
+    { d: 'M9.6 6.8c-.1-1.6.4-2.4 2.3-2.4 2 0 2.5.8 2.5 2.4', cls: 'ink', w: 1.7, lid: true },
+];
+
+function deleteLabel(name) {
+    return 'Remove ' + name + ' from the table';
+}
+
+function deleteIcon() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const lid = document.createElementNS(NS, 'g');
+    lid.setAttribute('class', 'lid');
+    DELETE_ICON_PATHS.forEach(p => {
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', p.d);
+        path.setAttribute('class', p.cls);
+        if (p.w) path.setAttribute('stroke-width', String(p.w));
+        (p.lid ? lid : svg).appendChild(path);
+    });
+    svg.appendChild(lid);
+    return svg;
+}
+
 function createCardDiv(player, playersCount, isOnLoad) {
     let newCard = document.createElement('div');
     newCard.id = player.mkey;
@@ -1036,12 +1074,15 @@ function createCardDiv(player, playersCount, isOnLoad) {
     cardSpan.title = player.name; // the full name when it ends with an ellipsis
     newCard.appendChild(cardSpan);
 
-    let cardDeleteImg = document.createElement('img');
-    cardDeleteImg.classList.add('delete');
-    cardDeleteImg.src = "./src/delete.png";
-    cardDeleteImg.alt = "Delete";
-    cardDeleteImg.onclick = deletePlayer;
-    newCard.appendChild(cardDeleteImg);
+    // B-99 D16: a real button (focusable, named), a sketched trash can inside
+    let cardDeleteBtn = document.createElement('button');
+    cardDeleteBtn.type = 'button';
+    cardDeleteBtn.classList.add('delete');
+    cardDeleteBtn.setAttribute('aria-label', deleteLabel(player.name));
+    cardDeleteBtn.title = 'Remove from the table';
+    cardDeleteBtn.appendChild(deleteIcon());
+    cardDeleteBtn.onclick = deletePlayer;
+    newCard.appendChild(cardDeleteBtn);
     setTableCardFace(newCard, String(player.display_card_key));
     setTableCardOriginal(newCard, player.original_card_key, false); // B-104
 
