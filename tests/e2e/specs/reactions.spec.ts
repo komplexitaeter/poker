@@ -1,6 +1,6 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, tableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, tableCard, stopHbLoads } from './helpers';
 
 /**
  * B-110 part 2: reactions. The board sends "react:<from>:<to>:<code>" over the WebSocket; poker-msg sends the same
@@ -66,6 +66,44 @@ async function watchFlights(page: Page): Promise<void> {
 
 const sawFly = (page: Page) => page.evaluate(() => (window as unknown as { sawFly: boolean }).sawFly);
 
+/**
+ * Records what a reaction shows on a board, because it is short: a landing (.react-land, 1.8 s; with reduced motion
+ * right on the echo, elsewhere after the 900 ms flight), .is-hit (450 ms), .is-nudged (700 ms). Checking that live,
+ * board after board, fails at random: each expect polls at 100, 250, 500, 1000 ms steps, so the check of the first
+ * board may return up to a second after the landing, when it is gone on the next board already.
+ * Entries: "land:<mkey>:<emoji>:<sender name or ->" and "class:<mkey>:<class>" (mkey of the card or the observer).
+ */
+async function watchReactions(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { seenReact: string[] };
+    w.seenReact = [];
+    const mkeyOf = (el: Element) => (el.classList.contains('obs') ? (el as HTMLElement).dataset.mkey : el.id) ?? '';
+    new MutationObserver(list => {
+      list.forEach((m, i) => {
+        const el = m.target as Element;
+        if (m.type === 'childList') {
+          for (const n of Array.from(m.addedNodes)) {
+            if (!(n instanceof Element) || !n.classList.contains('react-land')) continue;
+            const from = n.querySelector('.react-from');
+            w.seenReact.push(`land:${mkeyOf(el)}:${n.querySelector('.react-emoji')?.textContent}:`
+              + (from === null ? '-' : from.textContent));
+          }
+        } else if (el.matches('#cbox .c, #observers .obs')) {
+          // the classes after this change: the old value of the next change of the element, else the current ones
+          const next = list.slice(i + 1).find(n => n.type === 'attributes' && n.target === el);
+          const after = (next === undefined ? el.className : next.oldValue ?? '').split(/\s+/);
+          const before = (m.oldValue ?? '').split(/\s+/);
+          for (const cls of ['is-hit', 'is-nudged', 'is-nudged-me']) {
+            if (after.includes(cls) && !before.includes(cls)) w.seenReact.push(`class:${mkeyOf(el)}:${cls}`);
+          }
+        }
+      });
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'],
+      attributeOldValue: true });
+  });
+  return () => page.evaluate(() => (window as unknown as { seenReact: string[] }).seenReact.slice());
+}
+
 /** Alice and Bob as players, Olga as observer, all with a board open */
 async function setup(browser: import('@playwright/test').Browser, teamName: string,
                      olgaOptions: Record<string, unknown> = {}) {
@@ -92,6 +130,7 @@ test('a reaction lands at the target on every board, the sender only on the echo
   const sent = await recordSent(alice);
   await watchFlights(alice);
   await watchFlights(olga);
+  const [seenA, seenB, seenO] = [await watchReactions(alice), await watchReactions(bob), await watchReactions(olga)];
 
   // the echo does not come (the message is dropped before the WebSocket): nothing moves, not even at the sender
   await alice.evaluate(() => {
@@ -105,18 +144,16 @@ test('a reaction lands at the target on every board, the sender only on the echo
   await throwAt(alice, tableCard(alice, 'Bob'), 'heart');
   await alice.waitForTimeout(1500);
   for (const p of [alice, bob, olga]) await expect(p.locator('.react-land, .react-fly')).toHaveCount(0);
+  for (const seen of [seenA, seenB, seenO]) expect(await seen()).toEqual([]);
   expect(await sawFly(alice)).toBe(false);
 
   // with the echo: the flight at the sender, the landing at Bob's card on all three boards, with the sender's name
   await alice.evaluate(() => { (window as unknown as { dropReact: boolean }).dropReact = false; });
   await throwAt(alice, tableCard(alice, 'Bob'), 'heart');
-  for (const p of [alice, bob, olga]) {
-    const land = tableCard(p, 'Bob').locator('.react-land');
-    await expect(land).toHaveCount(1);
-    await expect(land.locator('.react-emoji')).toHaveText('❤️');
-    await expect(land.locator('.react-from')).toHaveText('Alice');
+  // (recorded, the landing is short: see watchReactions)
+  for (const seen of [seenA, seenB, seenO]) {
+    await expect.poll(seen).toEqual([`land:${bobMkey}:❤️:Alice`, `class:${bobMkey}:is-hit`]);
   }
-  await expect(tableCard(bob, 'Bob')).toHaveClass(/\bis-hit\b/);
   expect(await sawFly(alice)).toBe(true);
   // reduced motion: no flight, only the landing
   expect(await sawFly(olga)).toBe(false);
@@ -130,9 +167,10 @@ test('a reaction lands at the target on every board, the sender only on the echo
   const olgaRow = alice.locator('#observers .obs').filter({ hasText: 'Olga' });
   await olgaRow.hover();
   await olgaRow.locator('.react').click();
+  const olgaMkey = await olgaRow.getAttribute('data-mkey') as string;
   await alice.locator('#react_bar button[data-react="cake"]').click();
-  await expect(olga.locator('#observers .obs.is-me .react-land .react-emoji')).toHaveText('🎂');
-  await expect(bob.locator('#observers .obs .react-land .react-from')).toHaveText('Alice');
+  await expect.poll(seenO).toContain(`land:${olgaMkey}:🎂:Alice`);
+  await expect.poll(seenB).toContain(`land:${olgaMkey}:🎂:Alice`);
 });
 
 test('invalid reactions are not sent, unknown messages are ignored (B-110)', async ({ browser }) => {
@@ -163,22 +201,23 @@ test('invalid reactions are not sent, unknown messages are ignored (B-110)', asy
 });
 
 test('nudge: the card shakes on every board, harder on the nudged one (B-110)', async ({ browser }) => {
-  const { alice, bob, olga } = await setup(browser, 'React Nudge');
+  const { alice, bob, olga, bobMkey } = await setup(browser, 'React Nudge');
   await expect(alice.locator('#react_bar button[data-react]')).toHaveCount(7);
   await expect(alice.locator('#react_bar button[data-react="nudge"]')).toHaveAttribute('aria-label', 'Nudge');
+  const [seenA, seenB, seenO] = [await watchReactions(alice), await watchReactions(bob), await watchReactions(olga)];
   await throwAt(alice, tableCard(alice, 'Bob'), 'nudge');
-  await expect(tableCard(bob, 'Bob')).toHaveClass(/\bis-nudged-me\b/);
-  await expect(tableCard(bob, 'Bob')).toHaveClass(/\bis-nudged\b/);
-  await expect(tableCard(olga, 'Bob')).toHaveClass(/\bis-nudged\b/);
-  await expect(tableCard(alice, 'Bob')).toHaveClass(/\bis-nudged\b/);
-  await expect(tableCard(olga, 'Bob')).not.toHaveClass(/\bis-nudged-me\b/);
-  await expect(tableCard(bob, 'Bob').locator('.react-land .react-emoji')).toHaveText('👋');
+  // (recorded, the shake is short: see watchReactions)
+  await expect.poll(seenB).toEqual([`land:${bobMkey}:👋:Alice`, `class:${bobMkey}:is-nudged`,
+    `class:${bobMkey}:is-nudged-me`]);
+  for (const seen of [seenA, seenO]) {
+    await expect.poll(seen).toEqual([`land:${bobMkey}:👋:Alice`, `class:${bobMkey}:is-nudged`]);
+  }
   // then it stops
   await expect(tableCard(bob, 'Bob')).not.toHaveClass(/\bis-nudged/, { timeout: 3000 });
 });
 
 test('anonymous mode: reactions land without the sender name (B-110)', async ({ browser }) => {
-  const { alice, bob, olga, url } = await setup(browser, 'React Anon');
+  const { alice, bob, olga, url, bobMkey } = await setup(browser, 'React Anon');
   const t = teamIdOf(url);
   execFileSync('mysql', [...DB_ARGS, '-e',
     `update pok_teams_tbl set anonymous_mode = 1, anonymous_request_toggle = 1 where id = '${t}'`]);
@@ -187,12 +226,10 @@ test('anonymous mode: reactions land without the sender name (B-110)', async ({ 
     // gLastJson is a script-level let (not on window)
     await expect.poll(() => p.evaluate(() => (0, eval)('gLastJson').anonymous_mode)).toBe(1);
   }
+  const seens = [await watchReactions(alice), await watchReactions(bob), await watchReactions(olga)];
   await throwAt(alice, tableCard(alice, 'Bob'), 'party');
-  for (const p of [alice, bob, olga]) {
-    const land = tableCard(p, 'Bob').locator('.react-land');
-    await expect(land.locator('.react-emoji')).toHaveText('🎉');
-    await expect(land.locator('.react-from')).toHaveCount(0);
-  }
+  // (recorded, the landing is short: see watchReactions); "-": no sender name
+  for (const seen of seens) await expect.poll(seen).toEqual([`land:${bobMkey}:🎉:-`, `class:${bobMkey}:is-hit`]);
 });
 
 test('touch: a double tap on a card in the tap mode does not load the board (B-110)', async ({ browser }) => {
@@ -204,6 +241,7 @@ test('touch: a double tap on a card in the tap mode does not load the board (B-1
   const bobCard = tableCard(alice, 'Bob');
   await expect(bobCard.locator('.react')).toHaveCount(1);
   await alice.waitForTimeout(500);
+  await stopHbLoads(alice); // a load after a hb is no load by the double tap
   let loads = 0;
   alice.on('request', r => { if (r.url().includes('/api/dao.php')) loads++; });
   await bobCard.locator('.card_player_name').dblclick();
