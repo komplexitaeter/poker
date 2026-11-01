@@ -1802,8 +1802,8 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  *             aria-expanded="false">reactIcon()</button>          – not on the own card (.is-me)
  *     <button type="button" class="delete" …>deleteIcon()</button> – last child, as before
  *   </div>
- *   .is-away  no connection for a while: card dimmed, name grey, "no connection" symbol before the name
- *             (CSS only), trash can always visible. Name it for screen readers in the delete label.
+ *   .is-away  no connection for a while: card paler (opaque, a veil in .pc::after), name grey, "no connection"
+ *             symbol before the name (CSS only), trash can always visible. Name it for screen readers in the delete label.
  *   .is-open  touch only: the card was tapped, its circles show (one card at a time; a tap elsewhere closes).
  *             Touch devices = (hover: none), (pointer: coarse). The tap mode starts once a card has a .react
  *             (#table:has(.react), cards or observers); without one, touch keeps the trash can on every card (as before B-110).
@@ -1833,8 +1833,22 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  *     <span class="react-emoji">🎂</span><span class="react-from">Name</span>
  *   </span>                                      plus .is-hit on the target .c for the bump of the card */
 
-/* away: the card fades back, the name greys, a sketched "wifi off" before the name (neutral, no emoji) */
-.c.is-away > .pc { opacity: 0.45; filter: saturate(0.4); }
+/* away: the card fades back, the name greys, a sketched "wifi off" before the name (neutral, no emoji).
+ * Paler, not transparent (Andreas): a veil in the page colour over the opaque card, so a card gliding over another
+ * one does not let it show through. Same look as the former opacity 0.45 on the page background. */
+.c.is-away > .pc { filter: saturate(0.4); }
+/* the veil leaves the border out: pale it the same way (hover and the tapped card keep their accent border) */
+.c.is-away:not(:hover, .is-open) > .pc {
+    border-color: color-mix(in srgb, var(--line-strong) 45%, var(--bg));
+}
+.c.is-away > .pc::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5; /* above the symbols and texts of the card (the filter makes .pc a stacking context) */
+    background: color-mix(in srgb, var(--bg) 55%, transparent);
+    pointer-events: none;
+}
 .c.is-away .card_player_name { color: var(--muted); }
 .c.is-away .card_player_name::before {
     content: "";
