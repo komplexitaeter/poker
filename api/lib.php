@@ -447,6 +447,19 @@ function store_team_deck($link, string $t, array $deck, array $catalog, bool $se
     $sql->execute();
 }
 
+/*
+ * B-103: true if a player of the team may put the card $key down: it is one of the cards of the team's deck that are
+ * switched on ("cards on/off") or one of its active control cards. $deck as returned by resolve_deck() (e.g. via
+ * lock_team_deck(), which also covers teams not migrated yet). Status cards (prgrss*, done001) and LATE_CARD_KEY are
+ * in no deck, so they are never allowed. Without a valid card_catalog.json (default_deck null) getDao() delivers no
+ * deck and the board falls back to cards.json; then every key is allowed, as before B-103.
+ */
+function deck_allows_card(array $deck, string $key, array $catalog): bool
+{
+    if ($catalog['default_deck'] === null) return true;
+    return in_array($key, $deck['cards'], true) || in_array($key, $deck['controls'], true);
+}
+
 /* B-98 S2: true if at least one player of the team has a card down (B-102: cards of observers, e.g. late001, do not count) */
 function team_has_cards_down($link, string $t): bool
 {

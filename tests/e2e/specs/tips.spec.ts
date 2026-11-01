@@ -1,4 +1,5 @@
 import { test, expect, Page, Browser } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { newPlayer, createTeam, joinAsPlayer, pickCard, addPlayersViaApi, deckCard } from './helpers';
 
 /**
@@ -13,6 +14,17 @@ async function setCard(page: Page, boardUrl: string, id: string, cardKey: string
   const res = await page.request.post(
     `/api/setc.php?id=${encodeURIComponent(id)}&cardkey=${cardKey}&t=${encodeURIComponent(t)}`);
   expect(res.ok()).toBeTruthy();
+}
+
+// same credentials as the test config written by tests/e2e/setup.sh
+const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
+
+/** B-103: setc.php only takes cards of the team's deck; the tips also cover cards outside it (control cards that
+ * are off, mixed decks), so these votes go to the database directly. */
+function placeCard(t: string, id: string, cardKey: string): void {
+  for (const value of [t, id, cardKey]) expect(value).toMatch(/^[A-Za-z0-9_-]+$/); // safe to put into the SQL below
+  execFileSync('mysql', [...DB_ARGS, '-e',
+    `update pok_players_tbl set card_key = '${cardKey}' where id = '${id}' and team_id = '${t}'`], { stdio: 'ignore' });
 }
 
 const below = async (page: Page, upper: string, lower: string) => {
@@ -88,7 +100,7 @@ async function teamWithDeck(browser: Browser, team: string, preset: string, othe
   const vote = async (cards: string[]) => {
     const res = await alice.request.post(`/api/newround.php?${new URLSearchParams({ t, id: aliceId }).toString()}`);
     expect(res.ok()).toBeTruthy();
-    for (const [i, id] of [aliceId, ...ids].entries()) await setCard(alice, url, id, cards[i]);
+    for (const [i, id] of [aliceId, ...ids].entries()) placeCard(t, id, cards[i]);
     await alice.reload();
     await expect(alice.locator('#round_status')).toHaveText('revealed');
   };

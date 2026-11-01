@@ -144,8 +144,11 @@ test('sorting by card keeps players whose card key is unknown', async ({ browser
   const { teamId, dao } = await teamOf(page, url);
   const [anna, ben, cleo] = await addPlayersViaApi(page, url, ['Anna', 'Ben', 'Cleo']);
 
-  // results_order SEQUENCE is the default; 'c-zz1' is a key no catalog knows (like a custom card)
-  for (const [id, key] of [[anna, 'c-zz1'], [ben, 'thrtn01'], [cleo, 'two0001']]) {
+  // results_order SEQUENCE is the default; 'c-zz1' is a key no catalog knows (like a custom card). setc.php only
+  // takes cards of the deck (B-103), so the unknown key goes to the database directly (e.g. after a catalog change)
+  expect(anna).toMatch(/^[A-Za-z0-9_-]+$/);
+  sql(`update pok_players_tbl set card_key = 'c-zz1' where id = '${anna}' and team_id = '${teamId}'`);
+  for (const [id, key] of [[ben, 'thrtn01'], [cleo, 'two0001']]) {
     const res = await page.request.post(`./api/setc.php?id=${id}&cardkey=${key}&t=${encodeURIComponent(teamId)}`);
     expect(res.ok()).toBeTruthy();
   }

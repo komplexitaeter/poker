@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCards, pickCard, tableCard, setTeamDeck } from './helpers';
 
 /* B-99 (R3, F2/F3): cards are rendered (script/cards.js, symbols from src/cards.svg) instead of images. */
@@ -12,6 +13,17 @@ function teamParam(url: string): string {
 
 async function setDeck(page: Page, url: string, deck: { deck: string, controls: string[] }): Promise<void> {
   await setTeamDeck(page, url, deck.deck, null, deck.controls);
+}
+
+// same credentials as the test config written by tests/e2e/setup.sh
+const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
+
+/** B-103: setc.php only takes cards of the deck; a key no catalog knows is put into the database directly */
+function setUnknownCard(url: string, id: string, key: string): void {
+  const t = new URL(url).searchParams.get('t')!;
+  for (const value of [t, id, key]) expect(value).toMatch(/^[A-Za-z0-9_-]+$/); // safe to put into the SQL below
+  execFileSync('mysql', [...DB_ARGS, '-e',
+    `update pok_players_tbl set card_key = '${key}' where id = '${id}' and team_id = '${t}'`], { stdio: 'ignore' });
 }
 
 async function setCard(page: Page, url: string, id: string, key: string): Promise<void> {
@@ -71,7 +83,7 @@ test('a card without a symbol shows its value as text', async ({ browser }) => {
   const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
   await joinAsPlayer(alice, url, 'Alice');
   // a key no catalog knows (like a custom card): the board keeps the player and shows the key as text
-  await setCard(alice, url, bob, 'c-zz1');
+  setUnknownCard(url, bob, 'c-zz1');
   await pickCard(alice, 'three01');
   const face = tableCard(alice, 'Bob').locator('.pc');
   await expect(face.locator('.tv')).toHaveText('c-zz1');
