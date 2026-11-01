@@ -1446,6 +1446,16 @@ Status: refined (Andreas, 2026-11-01), Teil von R3 („ausprobieren“). Abgleic
   Emotionen: kein Heading, das Wort als Description.
 - Später denkbar: overwhelmed 🤯, tense 😬.
 
+### B-108 Promo-Mechanik ausbauen (pflegbar wie die Umfrage)
+Status: neu, nicht priorisiert. Idee Andreas (2026-11-01): Die Promo-Teaser (`api/get_promo.php`, `api/update_promo.php`,
+`pok_promotions_tbl`, seit Rollout 1 abgeschaltet) so ausbauen, dass wir Hinweise ohne Code-Änderung schalten können –
+analog zur Umfrage (Inhalte in der DB, gepflegt in `stats.php`).
+- Inhalte (Headline, Link, Bild, CTA, Zeitraum, Sprache) in einer Tabelle statt im PHP-Code; anlegen/aktivieren in `stats.php`.
+- Auslöser konfigurierbar (heute: zufällig 30–300 s nach dem Laden, nur Browsersprache `de`).
+- Messung ohne Personenbezug (Sina): Zähler je Promo/Variante, ohne User- und Team-ID; `update_promo.php` prüft heute
+  nur die fortlaufende `id` – beim Umbau entfällt das bzw. wird abgesichert.
+- Gemeinsam mit B-90 (Umfrage reparieren oder entfernen) denken.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
