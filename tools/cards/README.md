@@ -62,10 +62,11 @@ The status symbols `s-check` and `s-thought` are calm in the same way (D7): a li
 (`--sym-face-ink`), the hatching (`--sym-calm-hatch`) only in a thin band at the lower right edge. `s-coffee` is a
 latte glass: the coffee hatched, milk and foam light (`--sym-milk`, warmer in the dark theme), kept apart from the
 outline by a thin rim in paper colour. `s-late` (joined late, B-102) is calm too: an open door;
-frame and floor in the theme ink (`--cardc-ink`). `s-shrug` (B-106) is the shrugging figure of the emoji (not the kaomoji): a sweater with raised shoulders and both
-forearms up (`--sym-shirt`, hatched with `--sym-shirt-hatch`), a round head and two open hands, palm up, in a warm
-light skin tone (`--sym-skin`, hatching only at the edge like the faces); calm, slightly puzzled face (one brow up,
-crooked mouth). Ink is dark in both themes, like the faces.
+frame and floor in the theme ink (`--cardc-ink`). `s-shrug` (B-106) is the shrugging figure of the emoji (not the kaomoji), iconic and friendly: a sweater as one soft
+shape (round bell, shoulders up, short round arms with the forearms up; `--sym-shirt` in the warm apricot `--c-vshrug`,
+the hatching `--sym-shirt-hatch` only at the lower right edge), a round head and two open hands, palm up, in a light
+skin tone (`--sym-skin`); one thin outline like the thought bubble. Friendly face: both brows gently up, round eyes,
+a small smile. Ink is dark in both themes, like the faces.
 
 ## Symbol ids (60)
 
