@@ -1126,7 +1126,10 @@ function reactIcon() {
  * (.is-open, one at a time, a tap elsewhere closes it); removing asks first (#rm_confirm); a hint once (#tap_hint).
  * All names via textContent. The clicks go through one handler (onTableClick). */
 const gTapQuery = window.matchMedia('(hover: none), (pointer: coarse)');
-const REACT_CODES = ['cake', 'heart', 'clap', 'party', 'coffee', 'think'];
+const REACT_CODES = ['cake', 'heart', 'clap', 'party', 'coffee', 'think', 'nudge'];
+const REACT_EMOJI = { cake: '🎂', heart: '❤️', clap: '👏', party: '🎉', coffee: '☕', think: '🤔', nudge: '👋' };
+// the same check as poker-msg (MsgServer::parseReact): anything else is ignored
+const REACT_MSG = /^react:([0-9]{1,10}):([0-9]{1,10}):(cake|heart|clap|party|coffee|think|nudge)$/;
 const TAP_HINT_KEY = 'TAP_HINT_SEEN';
 const POP_GAP = 10;     // between a popover and its anchor (the arrow sits in it)
 const POP_MARGIN = 8;   // to the edge of the window
@@ -1305,9 +1308,143 @@ function openRemoveConfirm(btn) {
     box.querySelector('.rm-cancel').focus({ preventScroll: true });
 }
 
-/* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket; the flight starts with the echo of poker-msg */
+/* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket. Nothing happens here before the echo: poker-msg
+ * sends the same text to every board of the team, the sender's too, and all of them animate on it (onReaction).
+ * Not sent without an open connection (the reaction is lost, as when poker-msg drops it above 1/s). */
 function sendReaction(toMkey, code) {
-    // TODO B-110 part 2: send the reaction to poker-msg (react:<own mkey>:<toMkey>:<code>)
+    const from = gLastJson === null ? '' : String(gLastJson.mkey ?? '');
+    const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
+    if (!REACT_MSG.test(msg)) return;
+    if (gConn === null || gConn.readyState !== WebSocket.OPEN) return;
+    try {
+        gConn.send(msg);
+    } catch (e) {
+        console.log('reaction not sent', e);
+    }
+}
+
+/* the card (#cbox .c) or the observer (#observers .obs) of a mkey, null when not on the board */
+function reactHolder(mkey) {
+    const card = document.getElementById(mkey);
+    if (card !== null && card.matches('#cbox .c')) return card;
+    return Array.from(document.querySelectorAll('#observers .obs')).find(li => li.dataset.mkey === mkey) ?? null;
+}
+
+/* the middle of an element in the window, null when it is not visible (outside the table or the window) */
+function visibleCenter(el) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return null;
+    const table = document.getElementById('table');
+    const box = table === null ? null : table.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return null;
+    if (box !== null && (x < box.left || x > box.right || y < box.top || y > box.bottom)) return null;
+    return { x, y };
+}
+
+/* where a flight starts when the sender cannot be shown (not visible, anonymous mode): the top edge of the table */
+function neutralFlightStart() {
+    const table = document.getElementById('table');
+    const r = table === null ? { left: 0, width: window.innerWidth, top: 0 } : table.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: Math.max(0, r.top) };
+}
+
+/* a CSS duration token ("900ms", "1.8s") in ms */
+function cssDurationMs(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const n = parseFloat(v);
+    if (!Number.isFinite(n)) return fallback;
+    return v.endsWith('ms') ? n : (v.endsWith('s') ? n * 1000 : fallback);
+}
+
+/* an echo of poker-msg: "react:<from>:<to>:<code>" (checked already). Flight from the sender to the target, then the
+ * landing; a nudge shakes the target card (harder on the board of the nudged one). Target gone: nothing. Anonymous
+ * mode: no sender name and the flight starts at the top of the table (no hint who threw it). */
+function onReaction(from, to, code) {
+    const target = reactHolder(to);
+    if (target === null) return;
+    const anonymous = gLastJson !== null && gLastJson.anonymous_mode === 1;
+    const sender = anonymous ? null : reactHolder(from);
+    const name = sender === null ? '' : holderName(sender);
+    const land = () => landReaction(to, code, name);
+
+    if (prefersReducedMotion() || typeof Element.prototype.animate !== 'function') { land(); return; }
+    const aim = target.classList.contains('c') ? (target.querySelector(':scope > .pc') ?? target) : target;
+    const ra = aim.getBoundingClientRect();
+    const end = { x: ra.left + ra.width / 2, y: ra.top + ra.height / 2 };
+    const start = (sender === null ? null : visibleCenter(sender.classList.contains('c')
+        ? (sender.querySelector(':scope > .pc') ?? sender) : sender)) ?? neutralFlightStart();
+
+    const fly = document.createElement('span');
+    fly.className = 'react-fly';
+    fly.setAttribute('aria-hidden', 'true');
+    fly.textContent = REACT_EMOJI[code];
+    document.body.appendChild(fly);
+    const half = fly.offsetWidth / 2;
+    const halfH = fly.offsetHeight / 2;
+    // a quadratic curve with its top above the higher end (a throw), the emoji turns and grows a little
+    const dist = Math.hypot(end.x - start.x, end.y - start.y);
+    const ctrl = { x: (start.x + end.x) / 2, y: Math.min(start.y, end.y) - Math.max(60, dist * 0.35) };
+    const steps = 12;
+    const frames = [];
+    for (let i = 0; i <= steps; i++) {
+        const k = i / steps;
+        const x = (1 - k) * (1 - k) * start.x + 2 * (1 - k) * k * ctrl.x + k * k * end.x;
+        const y = (1 - k) * (1 - k) * start.y + 2 * (1 - k) * k * ctrl.y + k * k * end.y;
+        const scale = 0.6 + 0.6 * Math.sin(Math.PI * k) + 0.4 * k;
+        frames.push({ transform: `translate(${(x - half).toFixed(1)}px, ${(y - halfH).toFixed(1)}px) `
+                + `rotate(${Math.round(-30 + 390 * k)}deg) scale(${scale.toFixed(2)})`, offset: k });
+    }
+    const anim = fly.animate(frames, { duration: cssDurationMs('--react-fly-dur', 900), easing: 'ease-in-out' });
+    const done = () => { fly.remove(); land(); };
+    anim.onfinish = done;
+    anim.oncancel = done;
+}
+
+/* the landing at the target (looked up again: it may have gone or been rebuilt during the flight) */
+function landReaction(to, code, name) {
+    const target = reactHolder(to);
+    if (target === null) return;
+    const span = document.createElement('span');
+    span.className = 'react-land';
+    span.setAttribute('aria-hidden', 'true');
+    const emoji = document.createElement('span');
+    emoji.className = 'react-emoji';
+    emoji.textContent = REACT_EMOJI[code];
+    span.appendChild(emoji);
+    if (name !== '') {
+        const from = document.createElement('span');
+        from.className = 'react-from';
+        from.textContent = name;
+        span.appendChild(from);
+    }
+    target.appendChild(span);
+    const remove = () => span.remove();
+    span.addEventListener('animationend', remove);
+    setTimeout(remove, cssDurationMs('--react-land-dur', 1800) + 500); // no animation (hidden, no CSS): gone anyway
+
+    if (code === 'nudge') {
+        const isMe = gLastJson !== null && String(gLastJson.mkey) === to;
+        restartClass(target, 'is-nudged', 700);
+        if (isMe) restartClass(target, 'is-nudged-me', 1100);
+    } else if (target.classList.contains('c')) {
+        restartClass(target, 'is-hit', 450);
+    }
+}
+
+/* sets a class for ms milliseconds; set again while it is on, the CSS animation starts over */
+const gClassTimers = new WeakMap();
+function restartClass(el, cls, ms) {
+    if (!gClassTimers.has(el)) gClassTimers.set(el, {});
+    const timers = gClassTimers.get(el);
+    clearTimeout(timers[cls]);
+    if (el.classList.contains(cls)) {
+        el.classList.remove(cls);
+        void el.offsetWidth; // restart the animation
+    }
+    el.classList.add(cls);
+    timers[cls] = setTimeout(() => el.classList.remove(cls), ms);
 }
 
 /* one click handler for the table, the observers and the popovers (document, bubbling) */
@@ -1811,7 +1948,12 @@ function initializeWSConnection(teamId) {
     conn.onmessage = function(e){
         if (conn !== gConn) return;
         gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
-        if (typeof e.data !== 'string' || e.data.startsWith('react:')) return; // B-110: reactions, part 2
+        if (typeof e.data !== 'string') return;
+        if (e.data.startsWith('react:')) { // B-110: a reaction (never a pull, even if it contained the word)
+            const m = REACT_MSG.exec(e.data);
+            if (m !== null) onReaction(m[1], m[2], m[3]);
+            return;
+        }
         if (e.data.includes('pull')) updateDao(false);
         else if (e.data === 'hb') scheduleHbLoad(); // B-110
     };
@@ -1963,6 +2105,7 @@ function showConnHint(show) {
 function onBodyDblClick(event) {
     const target = event.target instanceof Element ? event.target : null;
     if (target !== null && target.closest('#menu, .tbl-pop, #cbox button, #observers')) return;
+    if (target !== null && tapMode() && target.closest('#cbox .c')) return; // B-110: two taps open and close a card
     updateDao(false);
 }
 

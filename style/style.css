@@ -2193,6 +2193,35 @@ body.light-theme .react-fly { filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
     10%, 80% { opacity: 1; }
 }
 
+/* B-110 part 2 (Fred, minimal – Delia may restyle): a nudge (data-react="nudge") lands like a reaction and shakes the
+ * target: .is-nudged on every board, plus .is-nudged-me on the board of the nudged one (harder, longer).
+ * prefers-reduced-motion: an accent frame blinks instead. No sound. */
+.c.is-nudged > .pc:not(.pc-orig),
+.obs.is-nudged .obs-name { animation: react-nudge 0.6s ease-in-out; }
+.c.is-nudged-me > .pc:not(.pc-orig),
+.obs.is-nudged-me .obs-name { animation: react-nudge-me 1s ease-in-out; }
+@keyframes react-nudge {
+    15% { transform: rotate(-4deg); }
+    35% { transform: rotate(4deg); }
+    55% { transform: rotate(-3deg); }
+    75% { transform: rotate(2deg); }
+}
+@keyframes react-nudge-me {
+    10%, 50% { transform: translateX(-6px) rotate(-6deg); }
+    30%, 70% { transform: translateX(6px) rotate(6deg); }
+    85% { transform: translateX(-2px) rotate(-2deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .c.is-nudged > .pc:not(.pc-orig),
+    .obs.is-nudged .obs-name { animation: react-nudge-blink 0.6s step-end; }
+    .c.is-nudged-me > .pc:not(.pc-orig),
+    .obs.is-nudged-me .obs-name { animation: react-nudge-blink 0.5s step-end 2; }
+}
+@keyframes react-nudge-blink {
+    0% { box-shadow: 0 0 0 3px var(--accent); }
+    60%, 100% { box-shadow: none; }
+}
+
 /* phones: 8px (not 1em) – on a 375x667 touch phone 20 cards fit at --card-min without scrolling */
 @media (max-width: 799.98px) {
     div#cbox { margin-top: var(--space-2); }
