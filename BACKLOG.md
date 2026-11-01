@@ -1499,6 +1499,10 @@ B-56 (Players-Menü) und B-60 (Spaß-Funktionen) am Tisch zusammen. Für nach R3
    (erst bei Bedarf). Verteilung flüchtig über neuen Endpunkt + poker-msg (`react:`), nur Codes aus fester Liste.
 Entscheidungen Andreas: jeder darf jeden entfernen, auch Beobachter; im Anonym-Modus dürfen Reaktionen geschickt
 und auch auf anonyme Karten geworfen werden.
+Variante (Andreas, 2026-11-01): **C** – zwei Kreise an der Karte (Smiley → Emoji-Leiste, Mülleimer). Desktop: beide beim
+Hover. Touch-Geräte (wie heute `(hover: none), (pointer: coarse)`, Tablets inklusive): Kreise erst nach Antippen der
+Karte, mit einmaligem Hinweis; Rückfrage beim Entfernen auf Touch. Getrennte Spieler: Verbindungssymbol (WLAN
+durchgestrichen, neutral) und Mülleimer dauerhaft sichtbar.
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
