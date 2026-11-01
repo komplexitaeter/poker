@@ -1406,6 +1406,13 @@ const gFlights = new Set();
  * every board (harder on the board of the nudged one): no flight, no emoji, no name. An emoji flies from the sender to
  * the target, then lands. Unknown code or target gone: nothing. Anonymous mode: no sender name and the flight starts
  * at the top of the table (no hint who threw it). Tab hidden: dropped, not buffered (Andreas). */
+/* the visible part of a holder a flight starts or lands on: the card face of a card, the name tag of an observer
+ * (not the room for the circles above it) */
+function flightAnchor(holder) {
+    const part = holder.querySelector(holder.classList.contains('c') ? ':scope > .pc' : '.obs-name');
+    return part ?? holder;
+}
+
 function onReaction(from, to, code) {
     if (document.visibilityState !== 'visible') return;
     if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
@@ -1418,11 +1425,9 @@ function onReaction(from, to, code) {
     const land = () => landReaction(to, code, name);
 
     if (prefersReducedMotion() || typeof Element.prototype.animate !== 'function') { land(); return; }
-    const aim = target.classList.contains('c') ? (target.querySelector(':scope > .pc') ?? target) : target;
-    const ra = aim.getBoundingClientRect();
+    const ra = flightAnchor(target).getBoundingClientRect();
     const end = { x: ra.left + ra.width / 2, y: ra.top + ra.height / 2 };
-    const start = (sender === null ? null : visibleCenter(sender.classList.contains('c')
-        ? (sender.querySelector(':scope > .pc') ?? sender) : sender)) ?? neutralFlightStart();
+    const start = (sender === null ? null : visibleCenter(flightAnchor(sender))) ?? neutralFlightStart();
 
     const fly = document.createElement('span');
     fly.className = 'react-fly';
