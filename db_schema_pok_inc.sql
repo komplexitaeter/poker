@@ -490,3 +490,55 @@ select table_name, column_name, column_type, extra from information_schema.colum
  where table_schema = database() and table_name in ('pok_players_tbl', 'pok_roundstat_details_tbl')
    and column_name = 'original_card_key';
 /* end B-104 */
+
+/* B-106: deck_controls (comma list of the active control card keys) gets more room: with the shruggie and further
+   control cards the list can grow beyond 40 characters. varchar(40) -> varchar(100) in pok_teams_tbl and
+   pok_roundstats_tbl. Additive (only longer), no data change, the old code keeps running unchanged. ascii stays below
+   256 bytes (1 length byte) -> "algorithm = inplace, lock = none" without a table rebuild (metadata only; instant is
+   not available for this change). The statement is built from information_schema, so character set, collation,
+   NULL/default, INVISIBLE and the comment stay as they are (MODIFY would drop them otherwise). Idempotent: only if the
+   column is shorter than 100 (run it again any time). Before or after deploying the code.
+   Run only this block: sed -n '/^\/\* B-106:/,/^\/\* end B-106/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type, character_set_name, collation_name, is_nullable, extra
+  from information_schema.columns
+ where table_schema = database() and table_name in ('pok_teams_tbl', 'pok_roundstats_tbl')
+   and column_name = 'deck_controls';
+
+set session lock_wait_timeout = 5;
+set @b106_sql = (select ifnull(max(if(character_maximum_length < 100,
+                   concat('alter table pok_teams_tbl modify column deck_controls varchar(100)',
+                          ' character set ', character_set_name, ' collate ', collation_name,
+                          if(is_nullable = 'YES', ' null', ' not null'),
+                          if(column_default is null, '', concat(' default ', quote(column_default))),
+                          if(extra like '%INVISIBLE%', ' invisible', ''),
+                          ' comment ', quote(column_comment),
+                          ', algorithm = inplace, lock = none'),
+                   'select 1')), 'select 1')
+                   from information_schema.columns
+                  where table_schema = database() and table_name = 'pok_teams_tbl'
+                    and column_name = 'deck_controls');
+prepare b106_stmt from @b106_sql;
+execute b106_stmt;
+deallocate prepare b106_stmt;
+
+set @b106_sql = (select ifnull(max(if(character_maximum_length < 100,
+                   concat('alter table pok_roundstats_tbl modify column deck_controls varchar(100)',
+                          ' character set ', character_set_name, ' collate ', collation_name,
+                          if(is_nullable = 'YES', ' null', ' not null'),
+                          if(column_default is null, '', concat(' default ', quote(column_default))),
+                          if(extra like '%INVISIBLE%', ' invisible', ''),
+                          ' comment ', quote(column_comment),
+                          ', algorithm = inplace, lock = none'),
+                   'select 1')), 'select 1')
+                   from information_schema.columns
+                  where table_schema = database() and table_name = 'pok_roundstats_tbl'
+                    and column_name = 'deck_controls');
+prepare b106_stmt from @b106_sql;
+execute b106_stmt;
+deallocate prepare b106_stmt;
+
+select table_name, column_name, column_type, character_set_name, collation_name, is_nullable, extra, column_comment
+  from information_schema.columns
+ where table_schema = database() and table_name in ('pok_teams_tbl', 'pok_roundstats_tbl')
+   and column_name = 'deck_controls';
+/* end B-106 */
