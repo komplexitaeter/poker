@@ -1508,7 +1508,8 @@ B-56 (Players-Menü) und B-60 (Spaß-Funktionen) am Tisch zusammen. Für nach R3
    Mülleimer): Entfernen, Reaktionen, eigene Karte (Name ändern, beobachten).
 4. **Reaktionen + Nudge**: Emoji fliegt von der eigenen zur gewählten Karte; feste 6 Emojis; kein Team-Schalter
    (erst bei Bedarf). **Direkt über den WebSocket** (Andreas, 2026-11-01): Board sendet `react:<von-mkey>:<an-mkey>:<code>`,
-   poker-msg leitet es nur an die anderen Verbindungen derselben Team-Subscription weiter (kein `react.php`, kein
+   poker-msg leitet es an **alle** Verbindungen derselben Team-Subscription weiter, auch an den Absender (Andreas:
+   alle im Team sehen den Wurf von A zu B; A animiert erst beim Echo, nichts vorab) (kein `react.php`, kein
    Neuladen). poker-msg prüft das Format streng (nur Codes aus fester Liste, feste Länge) und bremst (z. B. 1/s je
    Verbindung). „von“ ist fälschbar – bei einer Spaßfunktion vertretbar. Nichts in die DB, keine Statistik.
 Entscheidungen Andreas: jeder darf jeden Spieler entfernen. **Beobachter** (Andreas, 2026-11-01): nicht entfernbar;
