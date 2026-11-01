@@ -103,6 +103,10 @@ test('presets, subsets and mixed decks are derived from the bitmask', async ({ b
     // other groups keep ✋ as chosen
     ['delegation + veto', flags([2, 3, 4, 5, 6, 7, 8, 45]), { id: 'delegation', controls: ['veto'] }],
     ['delegation', flags([2, 3, 4, 5, 6, 7, 8]), { id: 'delegation', group: 'delegation' }],
+    // B-107: the six old faces stay "emotions" (now named Team Assessment), Mood has no bitmask; a subset of them too
+    ['emotions', flags([18, 19, 20, 21, 22, 23, 24]), { id: 'emotions', cards: ['satis01', 'annoy01', 'sad0001',
+      'unint01', 'angry01', 'enthu01'], controls: ['break01'] }],
+    ['emotions subset', flags([18, 23]), { id: 'emotions', cards: ['satis01', 'enthu01'] }],
     // old teams have shorter strings (38 characters)
     ['traffic, short string', flags([15, 16, 17, 24], 38),
       { id: 'traffic', cards: ['green01', 'yellow1', 'red0001'], controls: ['break01'] }],

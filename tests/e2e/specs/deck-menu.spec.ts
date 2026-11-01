@@ -220,3 +220,34 @@ test('the selection decides the variant: Short plus the Classic cards is Classic
   await expect(variant('Classic')).toBeChecked();
   await expect.poll(deckId).toBe('fib-classic');
 });
+
+test('shruggie: off by default, switched on and placed; Emotions: Team Assessment and Mood (B-106, B-107)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Shruggie Mood');
+  await alice.locator('#cset_btn').click();
+  await expect(control(alice, 'shrug01')).toHaveAttribute('aria-pressed', 'false');
+  await expect(deckCard(bob, 'shrug01')).toHaveCount(0);
+
+  await control(alice, 'shrug01').click();
+  await expect(control(alice, 'shrug01')).toHaveAttribute('aria-pressed', 'true');
+  await expect(deckCard(bob, 'shrug01')).toHaveCount(1);
+  await expect(deckCard(bob, 'shrug01').locator('.dh')).toHaveText('shruggie');
+  await pickCard(bob, 'shrug01');
+  await expectTableCard(alice, 'Bob', 'done001');
+
+  // Emotions: Team Assessment (the six known faces) is the first variant, Mood has all twelve
+  await chooseCardSet(alice, 'Emotions');
+  const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
+  await expect(variant('Team Assessment')).toBeChecked();
+  const assessment = ['satis01', 'annoy01', 'sad0001', 'unint01', 'angry01', 'enthu01'];
+  for (const page of [alice, bob])
+    await expect.poll(() => trayKeys(page)).toEqual([...assessment, 'break01', 'qstmrk1', 'shrug01']);
+  await variant('Mood').check();
+  for (const page of [alice, bob]) {
+    await expect.poll(() => trayKeys(page)).toEqual([...assessment, 'curio01', 'confu01', 'worri01', 'surpr01',
+      'tired01', 'relie01', 'break01', 'qstmrk1', 'shrug01']);
+  }
+  await pickCard(bob, 'worri01');
+  await pickCard(alice, 'shrug01');
+  await expectTableCard(alice, 'Bob', 'worri01');
+  await expectTableCard(bob, 'Alice', 'shrug01');
+});

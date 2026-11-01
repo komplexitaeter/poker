@@ -244,7 +244,7 @@ function catalog_variants(array $catalog): array
  *   first variant containing all of them (else the one sharing the most cards) with these cards switched on.
  * - Otherwise (mixed groups, no card at all, e.g. needs_setup) -> the default deck with all of its cards.
  * Bits at positions without a card (or beyond the string, old teams have shorter strings) count as off. Cards without
- * legacy_index (added after cards.json v1, e.g. 60 and 89) are never derived from the flags.
+ * legacy_index (added after cards.json v1, e.g. 60, 89, the Mood faces, shruggie) are never derived from the flags.
  */
 function deck_from_cardset_flags(?string $flags, array $catalog): array
 {
@@ -256,8 +256,9 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
     $controls = array();
     $control_indexes = array();
     foreach ($catalog['controls'] as $control) {
-        $control_indexes[$control['legacy_index']] = true;
-        if ($is_on($control['legacy_index'])) $controls[] = $control['card_key'];
+        if (!isset($control['legacy_index'])) continue; // B-106: control cards added later (shrug01) are not in the flags
+        $control_indexes[(int)$control['legacy_index']] = true;
+        if ($is_on((int)$control['legacy_index'])) $controls[] = $control['card_key'];
     }
 
     $selected = array();
@@ -1030,7 +1031,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
         $deck_controls = implode(',', $deck['controls']);
         if ($needs_setup === 1) {
             foreach ($catalog['controls'] as $control)
-                if (in_array($control['card_key'], $deck['controls'], true))
+                if (in_array($control['card_key'], $deck['controls'], true) && isset($control['legacy_index']))
                     $cardset_flags = substr_replace($cardset_flags, "1", $control['legacy_index'], 1);
         } else {
             $cardset_flags = deck_to_cardset_flags($deck, $catalog);
