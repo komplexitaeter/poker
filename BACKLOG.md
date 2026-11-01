@@ -1443,6 +1443,15 @@ von Gehlen, „Das Pragmatismus-Prinzip“: Ratlosigkeit ist kein Problem, sonde
 - Kein Wert: nicht in Histogramm, Spannweite, Durchschnitt; **keine Aufforderung in den Tipps** (ausdrücklich ok),
   auch bei J.U.D.G.E. nicht wie „?“/„!“.
 
+### B-107 Mehr Emotionen: Varianten „Team Assessment“ und „Mood“
+Status: refined (Andreas, 2026-11-01), Teil von R3 („ausprobieren“). Abgleich mit Standard-Emoji siehe Chat.
+- Variante **Team Assessment**: die bisherigen sechs (satisfied, annoyed, sad, uninterested, angry, enthusiastic), unverändert.
+- Variante **Mood**: zusätzlich **curious** 🤔, **confused** 😕, **worried** 😟, **surprised** 😮, **tired** 🥱,
+  **relieved** 😌 (zwölf insgesamt). Wie bei Fibonacci: Variante = Voreinstellung, Karten frei zu-/abschaltbar.
+- Gesichter im gleichen Skizzen-Stil (helle Fläche, angedeutete Schraffur), je eigene Farbe; Text wie bei den
+  Emotionen: kein Heading, das Wort als Description.
+- Später denkbar: overwhelmed 🤯, tense 😬.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
