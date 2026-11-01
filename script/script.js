@@ -1087,6 +1087,21 @@ const REACT_ICON_PATHS = [
     { d: 'M8.2 14c1.9 2.6 5.8 2.6 7.6-.2', cls: 'ink', w: 1.8 },
 ];
 
+/* B-110: the nudge button (.nudge, left of the smiley): a tilted card that wobbles, same sketch as the trash can and
+ * the smiley: a tinted, hatched card with the bar on top, in ink, and motion lines on both sides. Static paths only, no user data. */
+const NUDGE_ICON_PATHS = [
+    { d: 'M7.7 6.3l5.8-1.3c1.1-.2 1.8.2 2.1 1.3l2 9.8c.3 1.1-.1 1.8-1.3 2l-5.8 1.3c-1.1.2-1.8-.2-2.1-1.3l-2-9.8c-.3-1.1.2-1.8 1.3-2z', cls: 'body' },
+    { d: 'M8.6 14.6l2-2.7M9.2 17.5l4.8-6.2M10.2 18.5l5.8-5.8', cls: 'hatch', w: 1 },
+    { d: 'M7.7 6.3l5.8-1.3c1.1-.2 1.8.2 2.1 1.3l2 9.8c.3 1.1-.1 1.8-1.3 2l-5.8 1.3c-1.1.2-1.8-.2-2.1-1.3l-2-9.8c-.3-1.1.2-1.8 1.3-2z', cls: 'ink', w: 1.8 },
+    { d: 'M8.2 8.6l6-1.3', cls: 'ink', w: 1.5 },
+    { d: 'M4.4 7.4c-1 1.3-1.1 2.8-.3 4.2M2.3 6.1c-1.6 2.1-1.8 4.6-.5 6.7', cls: 'ink', w: 1.6 },
+    { d: 'M19.9 12.9c1 1.3 1 2.8.1 4.2M22 11.6c1.6 2.1 1.6 4.6.3 6.7', cls: 'ink', w: 1.6 },
+];
+
+function nudgeLabel(name) {
+    return 'Nudge ' + name;
+}
+
 /* a sketched 24x24 icon from static paths; paths with lid: true go into a group .lid (it tilts, style.css) */
 function sketchIcon(paths) {
     const NS = 'http://www.w3.org/2000/svg';
@@ -1117,6 +1132,11 @@ function deleteIcon() {
 /* B-110: for the reaction button (.react); the "no connection" symbol of an away player is CSS only (.c.is-away) */
 function reactIcon() {
     return sketchIcon(REACT_ICON_PATHS);
+}
+
+/* B-110: for the nudge button (.nudge) */
+function nudgeIcon() {
+    return sketchIcon(NUDGE_ICON_PATHS);
 }
 
 /* ---------- B-110: table interaction (markup contract: style.css "Table interaction") ----------
