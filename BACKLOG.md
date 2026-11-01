@@ -1519,7 +1519,7 @@ ist ihre Verbindung weg („away“), werden sie in der Beobachter-Zeile einfach
 und auch auf anonyme Karten geworfen werden.
 Variante (Andreas, 2026-11-01): **C** – zwei Kreise an der Karte (Smiley → Emoji-Leiste, Mülleimer). Desktop: beide beim
 Hover. Touch-Geräte (wie heute `(hover: none), (pointer: coarse)`, Tablets inklusive): Kreise erst nach Antippen der
-Karte, mit einmaligem Hinweis; Rückfrage beim Entfernen auf Touch. Getrennte Spieler: Verbindungssymbol (WLAN
+Karte, mit einmaligem Hinweis; Rückfrage beim Entfernen immer (Desktop und Touch, Andreas 2026-11-01). Getrennte Spieler: Verbindungssymbol (WLAN
 durchgestrichen, neutral) und Mülleimer dauerhaft sichtbar.
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
