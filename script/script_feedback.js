@@ -5,11 +5,15 @@ let gTopicChangePending = false;
  * table does not close it. Phones (breakpoint as in style.css): a modal bottom sheet (showModal()) that
  * starts at the index (#menu_btn) and has a back button. Openers carry data-open="<section>", the close
  * button data-close (one delegated click listener below).
+ * B-74: a click outside the side panel closes it (like Escape) and still does what it does there (pick a
+ * card, another header button switches the section). Not for clicks in overlays (QR, delete user, name)
+ * or on the toast.
  * Per section: the header button (aria-expanded), the field focused when the user opens it, analytics. */
 const gMenuSections = {
     index:         {btn: 'menu_btn'},
     topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX',         focus: 'topic_txt'},
     cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'cet_pre'},
+    timer:         {btn: 'timer_btn',         event: 'OPEN_TIMER_BOX',         focus: 'tmr_visibility'}, // B-67: the checked radio
     user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'},
     feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'fb_tab_backlog'} // opens on the backlog tab
 };
@@ -18,6 +22,23 @@ let gMenuOpener = null; // gets the focus back when the menu closes
 
 function getMenu() {
     return document.getElementById('menu');
+}
+
+/* B-89: opens the menu dialog as the phone sheet (modal) or the panel; the flag is for isModalOpen() */
+function showMenuDialog(menu, modal) {
+    menu.dataset.modal = modal ? '1' : '0';
+    if (modal) menu.showModal(); else menu.show();
+}
+
+/* B-89: true when the dialog is open and modal. ':modal' throws in browsers without it (Safari < 15.6,
+ * Firefox < 103); there the flag set by showMenuDialog() decides. */
+function isModalOpen(dialog) {
+    if (dialog === null || !dialog.open) return false;
+    try {
+        return dialog.matches(':modal');
+    } catch (e) {
+        return dialog.dataset.modal === '1';
+    }
 }
 
 /* the section shown in the open menu, or null when it is closed */
@@ -35,6 +56,7 @@ function prepareMenuSection(sec) {
         document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
     }
+    if (sec === 'timer') updateTimerConfig(true); // B-67: fresh from the last server state
     if (sec === 'feedback') showMenuTab(document.getElementById('feedback_box'), 'backlog'); // B-57: backlog first
     if (sec === 'user_settings') {
         document.getElementById('cet_usr_name').value = gUserName;
@@ -80,7 +102,7 @@ function updateMenuExpanded() {
     });
 }
 
-/* sec: index, topic, cset, user_settings, feedback; opener: the element that gets the focus back on
+/* sec: index, topic, cset, timer, user_settings, feedback; opener: the element that gets the focus back on
  * close (null: none). focusField: false when the board opens the menu by itself (needs_setup). */
 function openMenu(sec, opener = null, focusField = true) {
     let menu = getMenu();
@@ -96,7 +118,7 @@ function openMenu(sec, opener = null, focusField = true) {
 
     if (!menu.open) {
         gMenuOpener = opener;
-        if (gPhoneQuery.matches) menu.showModal(); else menu.show();
+        showMenuDialog(menu, gPhoneQuery.matches);
     } else if (opener !== null && !menu.contains(opener)) {
         gMenuOpener = opener; // another header button while the panel is open
     }
@@ -105,8 +127,11 @@ function openMenu(sec, opener = null, focusField = true) {
     if (focusField) {
         let field = gMenuSections[sec].focus;
         if (field) {
-            if (sec === 'topic') document.getElementById(field).select();
-            else document.getElementById(field).focus();
+            let element = document.getElementById(field);
+            // a radio group (fieldset): its checked radio, as the arrow keys move from there
+            if (element.tagName === 'FIELDSET') element = element.querySelector('input:checked') || element.querySelector('input');
+            if (sec === 'topic') element.select();
+            else element.focus();
         } else if (sec === 'index') {
             // back from a section: the focus on its entry, otherwise on the first entry
             let entry = previousSec !== null && menu.querySelector('#menu_index [data-open="' + previousSec + '"]');
@@ -181,23 +206,40 @@ function switchMenuLayout() {
         closeMenu(false);
         return;
     }
-    if (menu.matches(':modal') === gPhoneQuery.matches) return;
+    if (isModalOpen(menu) === gPhoneQuery.matches) return;
 
     let focused = menu.contains(document.activeElement) ? document.activeElement : null;
     let toast = document.getElementById('toast');
     if (toast !== null && menu.contains(toast)) document.body.appendChild(toast);
     let opener = gMenuOpener;
     menu.close();
-    if (gPhoneQuery.matches) menu.showModal(); else menu.show();
+    showMenuDialog(menu, gPhoneQuery.matches);
     gMenuOpener = opener;
     if (focused !== null && focused.isConnected) focused.focus({preventScroll: true});
     else if (menu.contains(document.activeElement)) document.activeElement.blur();
     updateMenuExpanded();
 }
 
+/* B-74: true when the event did not happen in the menu, an overlay (QR, delete user, name), another dialog,
+ * the toast or the light/dark switch (Andreas: look at the open panel in the other mode). composedPath(): the
+ * target may be gone from the page by now (re-rendered by its handler). */
+function isOutsideMenu(event) {
+    return !event.composedPath().some(el => el instanceof Element
+        && (el.id === 'menu' || el.id === 'toast' || el.id === 'cmode_btn' || el.id === 'rotate_hint' || el.id === 'conn_hint' || el.tagName === 'DIALOG'
+            || el.classList.contains('overlay')));
+}
+
+/* B-74: the last press (pointerdown) started outside the menu; a text selection dragged from the panel
+ * out to the table ends in a click on a common ancestor and must not close it */
+let gMenuPressOutside = false;
+
 function initMenu() {
     let menu = getMenu();
     if (menu === null) return;
+
+    document.addEventListener('pointerdown', function (event) {
+        gMenuPressOutside = isOutsideMenu(event);
+    }, true);
 
     document.addEventListener('click', function (event) {
         let target = event.target;
@@ -229,8 +271,17 @@ function initMenu() {
             return;
         }
 
+        // B-74: large screens: a mouse click or tap outside the panel closes it; the click goes on to its
+        // target (handled above for header buttons). No programmatic focus (no ring after a mouse click).
+        if (menu.open && !isModalOpen(menu) && event.detail > 0 && gMenuPressOutside
+            && isOutsideMenu(event)) {
+            if (menu.contains(document.activeElement)) document.activeElement.blur();
+            closeMenu(false);
+            return;
+        }
+
         // phones: a tap on the backdrop (the dialog itself, outside its box) closes the sheet
-        if (target === menu && menu.matches(':modal')) {
+        if (target === menu && isModalOpen(menu)) {
             let r = menu.getBoundingClientRect();
             if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) {
                 closeMenu();
@@ -239,8 +290,9 @@ function initMenu() {
     });
 
     // tabs in menu sections (board settings, feedback): click, arrow keys, Home and End
-    // (focus follows the selection)
-    menu.querySelectorAll('section.menu_sec:has([role="tablist"])').forEach(box => {
+    // (focus follows the selection). All sections (B-89: no ':has()', it throws in older browsers);
+    // the handlers do nothing outside a tab.
+    menu.querySelectorAll('section.menu_sec').forEach(box => {
         box.addEventListener('click', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
             if (tab !== null) showMenuTab(box, tab.getAttribute('data-tab'));
@@ -266,7 +318,8 @@ function initMenu() {
         closeMenu();
     });
     document.addEventListener('keydown', function (event) {
-        if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || menu.matches(':modal')) return;
+        if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || isModalOpen(menu)) return;
+        if (typeof connHintVisible === 'function' && connHintVisible()) return; // B-86: the panel is inert
         event.preventDefault();
         closeMenu();
     });
@@ -283,7 +336,7 @@ function updateJediBtn() {
 
 function pushJediBtn(showAvg) {
     let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function toggleSurvey(forceSurvey){
@@ -324,35 +377,55 @@ function toggleSurvey(forceSurvey){
 function generateSurveyContents(){
 
     let url = './api/get_survey.php?id=' + localStorage.getItem('SID');
-    let htmlStr = '';
     fetch(url)
         .then((response) => {
             return response.json();
         })
         .then((myJson) => {
 
-            htmlStr += '<div id="survey_intro">' + myJson.survey_intro+ '</div>';
+            // B-89: vote options as DOM with textContent; the intro stays HTML (written by us in the database)
+            let content = document.getElementById("survey-content");
+            let intro = document.createElement('div');
+            intro.id = 'survey_intro';
+            intro.innerHTML = myJson.survey_intro;
+            content.replaceChildren(intro);
 
             if(gSurvey === "LOUD" || gSurvey === "SILENT") {
-                htmlStr += '<div id="vote_options">';
+                let options = document.createElement('div');
+                options.id = 'vote_options';
                 myJson.vote_options.forEach(vote_option => {
-                    htmlStr += '<button id="vote_option_' + vote_option.id + '" value="' + vote_option.id + '" class="vote_option" onclick="vote('+vote_option.id+')">' + vote_option.text + '</button>';
+                    let btn = document.createElement('button');
+                    btn.id = 'vote_option_' + vote_option.id;
+                    btn.value = vote_option.id;
+                    btn.className = 'vote_option';
+                    btn.textContent = vote_option.text;
+                    btn.addEventListener('click', () => vote(vote_option.id));
+                    options.appendChild(btn);
                 });
-                htmlStr += '</div>';
+                content.appendChild(options);
             }
             if (gSurvey === "VOTED") {
-                htmlStr += '<div id="vote_results">';
-
+                let results = document.createElement('div');
+                results.id = 'vote_results';
                 myJson.vote_options.forEach(vote_option => {
-                    htmlStr += '<div class="vote_results_bar">' +
-                        '<span class="vote_results_bar_value" id="vote_option_results_' + vote_option.id + '" style="width:0;background:transparent;">' + vote_option.text + ' (' + vote_option.votes_percentage + '%)</span></div>';
-
+                    let bar = document.createElement('div');
+                    bar.className = 'vote_results_bar';
+                    let value = document.createElement('span');
+                    value.className = 'vote_results_bar_value';
+                    value.id = 'vote_option_results_' + vote_option.id;
+                    value.style.width = '0';
+                    value.style.background = 'transparent';
+                    value.textContent = vote_option.text + ' (' + vote_option.votes_percentage + '%)';
+                    bar.appendChild(value);
+                    results.appendChild(bar);
                 });
-                htmlStr += '</div>';
+                content.appendChild(results);
             }
 
-            htmlStr+= '<div id="vote_count">'+myJson.votes_count+' votes</div>';
-            document.getElementById("survey-content").innerHTML = htmlStr;
+            let count = document.createElement('div');
+            count.id = 'vote_count';
+            count.textContent = myJson.votes_count + ' votes';
+            content.appendChild(count);
 
             if(gSurvey === "VOTED") {
                 let interval = 25;
@@ -566,15 +639,8 @@ function save_topic(){
     let topic = document.getElementById('topic_txt').value;
 
     const url = './api/update_topic.php?t='+t;
-    let httpRequest = new XMLHttpRequest();
-
-    httpRequest.open("POST", url, true);
-    httpRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    // notify the other boards only once the topic is saved, otherwise they reload the old one
-    httpRequest.onload = () => pushDomChange();
-    httpRequest.send(
-        "topic=" + encodeURIComponent(topic)
-    );
+    // the topic goes in the POST body (form encoded), not in the URL
+    apiWrite(url, { body: new URLSearchParams({ topic: topic }) });
 
     closeMenu();
 
@@ -604,7 +670,7 @@ function toggleCSet(e) {
 
 function updateCardset(cardSetDec) {
     let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function preSet() {
@@ -643,19 +709,20 @@ function preSet() {
 // B-51: called by the radio group with SEQUENCE or NAME
 function changeSortOrder(resultsOrder) {
     const url = './api/update_results_order.php?t='+t+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
-    let httpRequest = new XMLHttpRequest();
-    httpRequest.open("POST", url, false);
-    httpRequest.send();
-    pushDomChange();
+    apiWrite(url);
 }
 
 // B-51: called by the radio group with 0 (show names) or 1 (anonymous)
 function changeAnonymity(anonymous) {
     const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
-    let httpRequest = new XMLHttpRequest();
-    httpRequest.open("POST", url, false);
-    httpRequest.send();
-    pushDomChange();
+    apiWrite(url);
+}
+
+// B-96: called by the radio group with 0 (tips off) or 1 (tips on), for the whole team
+function changeShowTips(showTips) {
+    const on = showTips === '1';
+    measureEvent(on ? 'TIPS_ON' : 'TIPS_OFF');
+    apiWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
 }
 
 function onChangeTeamNameInput() {
@@ -676,7 +743,7 @@ function updateTeamName() {
     document.getElementById('cet_change_name').disabled = true;
 
     let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function updateUserName() {
@@ -685,7 +752,7 @@ function updateUserName() {
     document.getElementById('cet_change_user').disabled = true;
 
     let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 // B-51: called by the radio group with PLAYER or OBSERVER
@@ -693,5 +760,5 @@ function toggleUserType(playerType) {
     if (playerType !== 'OBSERVER') playerType = 'PLAYER';
 
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }

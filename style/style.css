@@ -5,7 +5,8 @@
  * Board page grid (B-46): see "Board layout". Short landscape screens (max-height: 500px)
  * get the phone topic strip as well.
  * Touch screens (pointer: coarse, B-47): larger targets, see "Touch screens".
- * Menus (B-51): one panel, see "Menu panel". */
+ * Menus (B-51): one panel, see "Menu panel".
+ * Phones in landscape (B-78): a hint to turn the phone, see "Rotate hint". */
 
 /* ---------- Tokens ---------- */
 
@@ -18,7 +19,7 @@
     --fs-s: 0.8125rem;    /* 13px: labels, menu buttons, fields */
     --fs-m: 0.875rem;     /* 14px: body text */
     --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
-    --fs-xl: 1.125rem;    /* 18px: stopwatch display */
+    --fs-xl: 1.125rem;    /* 18px: timer display (large screens) */
     /* stacking order (lowest first) */
     --z-nav: 10;          /* header, above the table */
     --z-promo: 100;
@@ -26,6 +27,8 @@
     --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
     --z-scrim: 300;       /* QR code backdrop */
     --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
+    --z-rotate: 400;      /* B-78: "turn your phone upright" hint, above everything */
+    --z-conn: 410;        /* B-86: "reconnecting" hint, the board cannot be used meanwhile */
     /* shapes */
     --radius-s: 3px;      /* small tiles, tooltips */
     --radius-m: 4px;      /* fields, buttons, topnav buttons */
@@ -40,6 +43,9 @@
     --tap: 36px;
     /* menu panel width on large screens */
     --panel-w: 380px;
+    /* B-68: width of the column (large screens): as wide as the menu panel, narrower on small
+     * desktops (300px at 800px), so the deck keeps room for its cards; the menu panel covers it */
+    --col-w: clamp(300px, 40vw - 20px, var(--panel-w));
     /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
@@ -55,19 +61,27 @@
     --card-fluid: clamp(64px, min(22vw, max(100px, 6.94vw)), 140px);
     /* smallest delete icon on a card: none here, 28px on touch screens (see "Touch screens") */
     --card-del-min: 0px;
-    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px); never wider than
-     * 16 cards fit in one row ((100vw - 80px padding) / 16 - 4px margin), at least 36px. */
-    --deck-w: clamp(36px, min((100vw - 80px) / 16 - 4px, max(45px, 2.5vw + 13px)), 64px);
-    --deck-h: calc(var(--deck-w) * 1.48 + 23.4px);  /* deck bar height: 90px at 45px */
-    --deck-stats: calc(var(--deck-w) * 5 / 3);      /* max. height of a usage bar: 75px at 45px */
+    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px). B-68 (large
+     * screens): the cards shrink together when they do not fit into the tray, down to --deck-min;
+     * only then the deck scrolls sideways. */
+    --deck-w: clamp(45px, 2.5vw + 13px, 64px);
+    --deck-min: 26px;
 }
 
-/* phones: the deck scrolls sideways; 55px at 375px as before, smaller in landscape (12vh) */
 @media (max-width: 799.98px) {
-    :root {
-        --deck-w: clamp(44px, min(12vw + 10px, 12vh), 64px);
-        --card-max: 110px; /* few players: no giant cards on a phone */
-    }
+    :root { --card-max: 110px; } /* few players: no giant cards on a phone */
+}
+
+/* touch devices: the deck is a carousel (B-75, B-77 tablets too); the width of a card, the one in
+ * the middle 1.25 times that, never below 44px (a comfortable tap). Phones: 58px at 390px, smaller
+ * in landscape (11vh). Tablets (the floating tray): 64px, less on short screens (8vh). A mouse
+ * or a trackpad keeps the deck row with the "<" / ">" bars (B-69). */
+@media (max-width: 799.98px) and (hover: none) and (pointer: coarse) {
+    :root { --deck-w: clamp(44px, min(15vw, 11vh), 72px); }
+}
+
+@media (min-width: 800px) and (hover: none) and (pointer: coarse) {
+    :root { --deck-w: clamp(44px, 8vh, 64px); }
 }
 
 @media (pointer: coarse) {
@@ -91,9 +105,14 @@ body {
     --topic-color: #fc91f5;
     --ok: #5af78e;          /* prompt user@host */
     --danger: #ff6b66;
+    --warn: #ffb547;        /* B-67: timer over its timebox (T+) */
     --flash-red-background: #340000;
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
+    /* B-68: the deck tray floating over the table: a deep shadow and a faint light edge, so it
+     * stands out on the dark page too */
+    --tray-shadow: 0 12px 32px -2px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.12);
     --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
     --survey-voted_background: rgba(0, 0, 0, 0.67);
 }
@@ -114,9 +133,11 @@ body.light-theme {
     --topic-color: #9a0089;
     --ok: #1b7a37;
     --danger: #c0262d;
+    --warn: #9a5800;
     --flash-red-background: #ffd9d9;
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
+    --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     --scrim: rgba(29, 32, 39, 0.4);
     --survey-voted_background: rgba(255, 255, 255, 0.67);
 }
@@ -135,7 +156,6 @@ body.light-theme {
     --light-border-color: var(--line-strong);
     --text-color: var(--text);
     --primary-border-color: var(--line-strong);
-    --secondary-border-color: var(--line);
     --switch-color: var(--muted);
     --box-disabled: var(--disabled);
     --bluish: var(--accent);
@@ -167,6 +187,9 @@ body {
 
 /* board: the page grid fills the screen, only the table scrolls (B-46) */
 body:has(> .container) { overflow: hidden; }
+
+/* B-75: no rubber band of the whole page (iOS), the deck stays at the bottom edge */
+html:has(> body > .container) { overscroll-behavior: none; }
 
 /* form controls do not inherit the font by default */
 button,
@@ -394,21 +417,29 @@ textarea.field {
 
 /* ---------- Board layout (B-46) ---------- */
 
-/* One grid for the whole screen: header / topic / table / card deck.
- * dvh follows the visible height on phones (address bar), vh is the fallback.
- * Only the table scrolls; the deck keeps its place. The round actions (.dock: New Round,
- * stopwatch) follow the cards and stick to the bottom of the table when it scrolls.
- * Phones: the topic is a one-line strip, the actions a dock right above the deck.
- * Safe areas (viewport-fit=cover): left/right here, bottom below the deck. */
+/* One grid for the whole screen. dvh follows the visible height on phones (address bar), vh is
+ * the fallback. Only the table scrolls; everything else keeps its place and its height.
+ * B-68, like a console (one surface, zones, hardly any lines):
+ * - large screens (from 800px): the table on the left, the deck below it as a compact rounded
+ *   tray floating over the table; the column on the right (--col-w) from the header down to the
+ *   bottom edge in its own tone: where the round is, the topic, the spread, and at its foot the
+ *   round actions (.dock), the button's bottom edge a little above the tray's.
+ * - phones: header, topic strip, table, then the spread and the round actions as a strip right
+ *   above the deck.
+ * Table: the page color; header, column and deck: one panel color (--bg-2), no lines between them.
+ * Safe areas (viewport-fit=cover): left/right here, bottom below deck and dock.
+ * Details of the column: see "Column (B-68)". */
 .container {
     position: relative; /* anchor of the phone menu and its boxes */
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
         "head"
         "topic"
         "table"
+        "side"
+        "dock"
         "deck";
     height: 100vh;
     height: 100dvh;
@@ -434,14 +465,41 @@ textarea.field {
 
 .table > #cbox { flex: none; }
 
-/* the deck spans the full width (wide card sets need it until B-49) */
+/* the deck: the cards centered, scrolling sideways when they do not fit; the hint for the keys
+ * below them on the right (see "Card deck") */
 .down-container {
     grid-area: deck;
     position: relative; /* anchor of the survey */
     display: flex;
-    justify-content: center;
-    align-items: flex-end;
+    flex-direction: column;
+    min-width: 0;
     padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bg-2);
+}
+
+@media (min-width: 800px) {
+    .container {
+        --dock-lift: 20px; /* the round button above the tray's bottom edge (.dock, survey) */
+        grid-template-columns: minmax(0, 1fr) var(--col-w);
+        grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+        grid-template-areas:
+            "head  head"
+            "table status"
+            "table topic"
+            "table side"
+            "deck  dock";
+    }
+
+    /* the deck: a compact rounded tray that floats over the table (page color around it), ending
+     * a gap before the column and the bottom edge; no line between deck and column. The round
+     * button at the foot of the column (.dock) ends a little above the tray's bottom edge. */
+    .down-container {
+        --tray-gap: 12px;
+        align-self: end;
+        margin: var(--tray-gap) var(--tray-gap) calc(var(--tray-gap) + env(safe-area-inset-bottom));
+        border-radius: var(--radius-l);
+        box-shadow: var(--tray-shadow);
+    }
 }
 
 /* Topic (large screens): "// topic", the topic as a quoted block, edit pen on the right.
@@ -487,45 +545,14 @@ textarea.field {
 /* the arrow that unfolds the topic is for the phone strip only */
 #topic_toggle { display: none; }
 
-/* Round actions: New Round, the stopwatch below it. They follow the cards; when the table
- * scrolls they stick to its bottom edge (the background covers the cards behind). */
-.dock {
-    position: sticky;
-    bottom: 0;
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) 0 var(--space-3);
-    background: var(--bg);
-}
-
-/* nothing to show yet (stopwatch off, nobody has voted): no empty zone over the cards */
-.dock:has(> #stopwatch.display_none):has(> #newroundbtn.display_none) { display: none; }
-
 /* Phones in landscape: little height, so a lower header */
 @media (max-height: 500px) and (orientation: landscape) {
     .container > .head { min-height: 44px; }
 }
 
-/* Small screens: the actions as a dock right above the deck (thumb zone, always in view),
- * stopwatch left, New Round right. */
+/* Small screens: 3 cards fit at 320px; the round actions are the row above the deck (.dock) */
 @media (max-width: 799.98px) {
-    .table { padding: 0; } /* 3 cards fit at 320px */
-
-    .dock {
-        margin-top: auto; /* few cards: still at the bottom */
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: var(--space-1);
-        padding: var(--space-1) 8px;
-        background: var(--bg-2);
-        border-top: 1px solid var(--line);
-    }
-
-    .dock > #stopwatch { order: -1; }
+    .table { padding: 0; }
 }
 
 /* Phones (and short landscape screens): the topic as a strip below the header, one line
@@ -584,6 +611,14 @@ textarea.field {
     display: block;
     height: 24px;
     width: auto;
+}
+
+/* the mark alone (src/brand_icon_*.svg, same height and position as the mark in the full logo);
+ * only shown on phones (board), see below. display:none also hides it from screen readers. */
+#brand_icon {
+    display: none;
+    height: 20px;
+    width: 20px;
 }
 
 /* B-51: the team name with a softly pulsing text cursor. The cursor carries the player's name as a
@@ -655,6 +690,15 @@ textarea.field {
     top: -0.05em; /* the line box hangs below the letters (descender room): centre on the letters */
 }
 
+/* B-70 board: a bit more room around the line, so it reads as a deliberate divider between team
+ * name and name tag; without the tag it would stand alone: hidden (no name yet, phones) */
+.team-name .caret {
+    gap: 0.5em;
+    margin-left: 0.5em;
+}
+
+.team-name .caret:has(.you-tag:empty) { display: none; }
+
 /* Centre cursor and tag on the lowercase letters of the team name, independent of font metrics
  * (SF Mono in Safari vs. other monospace fonts): the team name's box is trimmed to the x-height,
  * so flex centring hits the middle of the lowercase letters. The padding keeps ascenders and
@@ -702,8 +746,7 @@ textarea.field {
 .icon-btn:hover { border-color: var(--line-strong); }
 
 /* open menu section (aria-expanded, set by the menu script) */
-.icon-btn[aria-expanded=true],
-.topnav_btn_on {
+.icon-btn[aria-expanded=true] {
     border-color: var(--accent);
     color: var(--accent);
 }
@@ -751,6 +794,24 @@ textarea.field {
     vertical-align: middle;
 }
 
+/* B-67: a small green dot behind ":timer" while the timer is on for the board (#timer shown);
+ * green and behind the label, so it does not read as a notification like the red feedback dot.
+ * Its room is always kept (transparent while off): the other header buttons do not move. */
+#timer_btn .lbl::after,
+#menu_index [data-open="timer"] b::after {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: transparent;
+    vertical-align: middle;
+}
+
+body:has(#timer:not(.display_none)) #timer_btn .lbl::after,
+body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { background: var(--ok); }
+
 #copy_link_btn { color: var(--muted); }
 #copy_link_btn:hover { color: var(--accent); }
 
@@ -758,20 +819,6 @@ textarea.field {
 #cmode_btn .i-sun,
 .light-theme #cmode_btn .i-moon { display: none; }
 .light-theme #cmode_btn .i-sun { display: block; }
-
-/* stopwatch: a direct on/off switch for the whole board, state in aria-pressed */
-.sw-btn {
-    color: var(--muted);
-    border-color: var(--line);
-}
-
-.sw-btn[aria-pressed=true] {
-    color: var(--accent);
-    border-color: var(--accent);
-}
-
-.sw-state::before { content: "[ ]"; }
-.sw-btn[aria-pressed=true] .sw-state::before { content: "[x]"; }
 
 /* reduced motion: the caret stays, half dimmed */
 @media (prefers-reduced-motion: reduce) {
@@ -814,8 +861,7 @@ textarea.field {
     .team-name { font-size: var(--fs-m); }
 
     #show_qr_code,
-    #copy_link_btn .lbl,
-    .sw-btn .lbl { display: none; }
+    #copy_link_btn .lbl { display: none; }
 
     /* board: the header buttons move into the menu sheet (index) */
     .container .topnav-bar { display: none; }
@@ -825,13 +871,11 @@ textarea.field {
 /* phones (board): the team name gets the room, the name tag goes away completely,
  * the logo shrinks to its mark */
 @media (max-width: 420px) {
-    .you-tag { display: none; }
+    .you-tag,
+    .team-name .caret { display: none; }
 
-    .container #brand {
-        width: 20px;
-        object-fit: cover;
-        object-position: left center;
-    }
+    .container #brand { display: none; }
+    .container #brand_icon { display: block; }
 }
 
 /* ---------- Start page header ---------- */
@@ -879,8 +923,8 @@ textarea.field {
  * (whatever its height) and ends at the bottom edge (an absolutely positioned grid child) */
 .container > .menu {
     position: absolute;
-    grid-row: 2 / 5;
-    grid-column: 1;
+    grid-row: 2 / -1;
+    grid-column: 1 / -1; /* B-68: over the right column */
     top: 0;
 }
 
@@ -1619,96 +1663,350 @@ div#cbox {
     div#cbox { margin-top: var(--space-2); }
 }
 
-/* ---------- New round button, stopwatch (.dock) ---------- */
+/* ---------- New round button, timer (.dock, B-66/B-67/B-68) ---------- */
 
-#newroundbtn {
-    min-width: 12rem;
-    min-height: var(--tap);
+/* The round actions at the foot of the column, on the panel color, no frame.
+ * Phones: one row right above the deck, timer left, button right. Large screens: in the deck's
+ * row, the timer row above the button, both as wide as the column, at the bottom: the button ends
+ * a little above the deck tray's bottom edge. The timer keeps its room while it is off, so the button never
+ * moves. */
+.dock {
+    grid-area: dock;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: var(--space-1) var(--space-3) var(--space-2);
+    background: var(--bg-2);
 }
 
-/* hidden until someone has voted: keeps its place, so the stopwatch does not jump */
-.dock #newroundbtn.display_none {
-    display: inline-block;
+.dock .timer.display_none {
+    display: flex;
     visibility: hidden;
 }
 
-.stopwatch_control {
+@media (min-width: 800px) {
+    /* the timer right above the button, both at the bottom: the button ends a little above the
+     * deck's tray bottom edge (--tray-gap plus --dock-lift, about halfway to the cards' middle);
+     * the timer keeps its row while it is off, so the button never moves */
+    .dock {
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: stretch;
+        padding: 12px var(--space-3) calc(12px + var(--dock-lift) + env(safe-area-inset-bottom));
+    }
+
+    .dock > .timer {
+        flex: none;
+        height: var(--tap);
+    }
+}
+
+/* the row (phones): the button fills the rest of the row up to 200px and only shrinks to its
+ * text: one row down to 320px; large screens: see below */
+#newroundbtn {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: 200px;
+    min-width: 0;
+    min-height: var(--tap);
+    margin-left: auto;
+    padding: 0.2rem 0.6rem;
+    font-size: var(--fs-m);
+}
+
+/* B-67 (Andreas): always there. Disabled ("Cancel Round") until someone has voted, dashed like a
+ * locked switch; "Cancel Round" while voting; "New Round" (all cards revealed) as the main action. */
+#newroundbtn.primary:enabled {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+#newroundbtn.primary:enabled:hover {
+    background: transparent;
+    color: var(--accent);
+}
+
+/* B-68: the text much paler than an active label, so it does not look clickable */
+#newroundbtn:disabled {
+    border-style: dashed;
+    border-color: var(--line-strong);
+    color: var(--disabled);
+    color: color-mix(in srgb, var(--muted) 40%, var(--bg-2));
+}
+
+/* Timer: display (T−05:00 / T+00:42) and the line icons play/pause and reset in one row.
+ * data-state: ready (not started) | running | paused; data-over="true": past the timebox. */
+.timer {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
-    cursor: pointer;
 }
 
-.stopwatch_control.display_none { display: none; }
+.timer.display_none { display: none; }
 
-.stopwatch_control > img {
-    width: 30px;
-    height: auto;
-    aspect-ratio: 1; /* its height counts before the image has loaded (fit to table, B-49) */
-}
-
-.stopwatch_control > img.display_none { display: none; }
-
-.stopwatch_control > label { display: none; }
-
-.stopwatch_control > input {
-    width: 8ch;
-    padding: 0;
-    border: none;
-    background-color: transparent;
-    text-align: center;
-    font-family: inherit;
-    font-size: var(--fs-xl);
+.timer-display {
+    position: relative; /* anchor of the time-up dot */
+    font-size: var(--fs-l);
     font-variant-numeric: tabular-nums;
-    color: var(--text-color);
+    text-align: center;
+    white-space: nowrap;
+    color: var(--text);
 }
 
-@media (max-width: 799.98px) {
-    /* dock: stopwatch left, New Round right; sized so both fit in one row at 320px */
+.timer-actions {
+    display: flex;
+    align-items: center;
+}
+
+.timer-btn { color: var(--text); }
+.timer-btn:hover { color: var(--accent); }
+.timer-btn[hidden] { display: none; }
+
+.timer-btn .i {
+    width: 18px;
+    height: 18px;
+}
+
+/* not started and paused: dimmed */
+.timer[data-state=ready] .timer-display,
+.timer[data-state=paused] .timer-display { color: var(--muted); }
+
+/* time is up: T+ in amber and bold, with a dot, so it does not rely on the color alone
+ * (no sound, no blinking). The dot sits outside the text: the row keeps its width. */
+.timer[data-over=true] .timer-display {
+    color: var(--warn);
+    font-weight: bold;
+}
+
+.timer[data-over=true] .timer-display::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 100%; /* the row: behind the time, in the empty part of the pause button; corner: below */
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 5px;
+    border-radius: 50%;
+    background: var(--warn);
+}
+
+/* large screens: the timer row above the button, both as wide as the column */
+@media (min-width: 800px) {
     #newroundbtn {
-        min-width: 0;
-        margin-left: auto;
-        padding: 0.2rem 0.6rem;
-        font-size: var(--fs-m);
+        flex: none;
+        width: 100%;
+        max-width: none;
+        min-height: 44px;
+        margin: 0;
+        padding: 5pt var(--space-3);
+        font-size: var(--fs-l);
     }
 
-    .stopwatch_control > input { font-size: var(--fs-l); }
+    .timer-display {
+        min-width: 7ch; /* T−05:00; from 60 min on h:mm:ss grows to 9ch, the row stays centered */
+        font-size: var(--fs-xl);
+    }
+
+    /* the dot in front of the time, outside the text: the row keeps its width */
+    .timer[data-over=true] .timer-display::before {
+        right: 100%;
+        left: auto;
+        margin: -3.5px 6px 0 0;
+    }
 }
 
-/* ---------- Card deck (bottom bar) and average indicator ---------- */
+/* ---------- Timer panel (B-67) ---------- */
 
+/* six presets in one segment switch: tighter padding (fits 320px) */
+.tmr-presets span { padding: 2px 0; }
+
+.tmr-other { margin-top: var(--space-2); }
+
+.tmr-other > span { color: var(--muted); }
+
+.tmr-other .lab { margin: 0; }
+
+/* a plain text field (no spin buttons): room for "1–240" in the field's own font */
+.menu .tmr-other .field {
+    flex: none;
+    width: calc(5ch + 2 * 10px + 2px);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.tmr-other .field::placeholder {
+    color: var(--muted);
+    opacity: 1;
+}
+
+.tmr-other .field:focus {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.tmr-other .field[aria-invalid="true"] { border-color: var(--danger); }
+
+/* a custom timebox is marked like a checked preset (.seg input:checked + span): the frame of the
+ * switch with the inverse box inside; set by updateTimerConfig(). While typing (focus) the plain
+ * field with the focus ring. */
+.tmr-other[data-set="true"] .field:not(:focus) {
+    border-color: var(--line-strong);
+    background: var(--text);
+    box-shadow: inset 0 0 0 2px var(--bg);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+/* invalid input: the red border of the field carries it, the message below stays small and calm */
+.tmr-other-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: var(--space-1);
+}
+
+.tmr-other-error[hidden] { display: none; }
+
+.tmr-other-error::before {
+    content: "";
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--danger);
+}
+
+/* ---------- Card deck (bottom bar) ---------- */
+
+/* B-68: input only (the spread is in the column): no frame, no usage bars, no pointer, and nothing
+ * on it moves when the window is resized. Each card sits in a .ctl-slot with its key below it
+ * (.ctl-key, set by updateDeckKeys() in script.js); the slot only takes part in the layout where
+ * the keys show (devices with a mouse, large screens). */
 .controls {
-    width: auto;
-    margin: 0 auto;
     display: flex;
     align-items: flex-end;
-    justify-content: center;
-    padding: 0 40px 5px;
-    height: var(--deck-h);
-    background: var(--background-color);
-    border-top: 2px solid var(--secondary-border-color);
-    border-top-left-radius: var(--deck-w);
-    border-top-right-radius: var(--deck-w);
-    transition: height 0.8s ease-in-out;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
+    padding: 12px var(--space-3) 5px;
+    overflow: auto hidden;
+    /* B-69: no scrollbar (swipe, trackpad and wheel still scroll); the bars below show that
+     * there is more. A card brought into view by its key stays clear of the bars (the first and
+     * the last card scroll the deck to its end, pickCardByKey() in script.js). */
+    scrollbar-width: none;
+    scroll-padding-inline: var(--deck-more-w);
 }
 
-/* room for the usage bars */
-.show_card_stats { height: calc(var(--deck-h) + var(--deck-stats)); }
+.controls::-webkit-scrollbar { display: none; }
 
-/* usage bar: script.js sets --usage (0..1, share of the players) on each deck card */
+/* B-69: a chevron bar at the edge of the deck where more cards are hidden (more-left, more-right on
+ * .down-container, set by updateDeckRoom() in script.js). A click / tap scrolls the deck by about
+ * one visible width (scrollDeckByBar() in script.js). A solid strip a shade off the tray (darker in
+ * light, lighter in dark mode) carries the chevron, then the deck fades into it. --deck-more-w is
+ * the whole bar, --deck-more-strip its solid part (::before, rounded like the tray). */
+.down-container {
+    --deck-more-w: 34px;
+    --deck-more-strip: 22px;
+}
+
+.deck-more {
+    position: absolute;
+    top: 0;
+    bottom: env(safe-area-inset-bottom);
+    width: var(--deck-more-w);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    color: var(--text);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    /* hidden until there is more: not clickable then, and not in the accessibility tree */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.15s, visibility 0.15s;
+}
+
+.deck-more::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--deck-more-strip);
+    border-radius: inherit;
+    background: var(--bg-4);
+    transition: background-color 0.15s;
+}
+
+.deck-more .i {
+    position: relative; /* above the strip */
+    width: var(--deck-more-strip);
+    height: var(--deck-more-strip);
+    stroke-width: 2.5;
+}
+
+.deck-more-left {
+    left: 0;
+    justify-content: flex-start;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    background: linear-gradient(to right, var(--bg-4), transparent)
+        no-repeat var(--deck-more-strip) 0 / calc(var(--deck-more-w) - var(--deck-more-strip)) 100%;
+}
+
+.deck-more-left::before { left: 0; }
+
+.deck-more-right {
+    right: 0;
+    justify-content: flex-end;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background: linear-gradient(to left, var(--bg-4), transparent)
+        no-repeat 0 0 / calc(var(--deck-more-w) - var(--deck-more-strip)) 100%;
+}
+
+.deck-more-right::before { right: 0; }
+
+.down-container.more-left .deck-more-left,
+.down-container.more-right .deck-more-right {
+    visibility: visible;
+    opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .deck-more:hover { color: var(--accent); }
+    .deck-more:hover::before { background-color: color-mix(in srgb, var(--bg-4), var(--text) 12%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .deck-more,
+    .deck-more::before { transition: none; }
+}
+
+.ctl-slot { display: contents; }
+
+.ctl-slot:has(> .off) { display: none; }
+
+.ctl-key { display: none; }
+
 .controls img {
+    flex: none;
     width: var(--deck-w);
+    margin: 0 2px;
     padding-bottom: 10px;
     border-bottom: 1px solid transparent;
     border-top-left-radius: var(--radius-s);
     border-top-right-radius: var(--radius-s);
-    box-shadow: 0 calc(var(--usage, 0) * var(--deck-stats) * -1) 0 0 var(--secondary-border-color);
-    transition: box-shadow 0.8s ease-in-out;
     cursor: not-allowed;
 }
-
-.controls .ctl { margin: 0 2px; }
 
 .controls .ctl_hover { cursor: pointer; }
 
@@ -1721,68 +2019,297 @@ div#cbox {
 
 .ctl_as_guest { filter: grayscale(100%); }
 
-/* left: set by script.js from the deck cards (viewport coordinates), so it is fixed */
-#index {
-    position: fixed;
-    left: 557px;
-    /* just over the top edge of the deck cards: 77px / 15px at 45px deck cards */
-    bottom: calc(var(--deck-w) * 1.48 + 10.4px + env(safe-area-inset-bottom));
-    width: calc(var(--deck-w) / 3);
-    transition: left 0.8s ease-in-out;
-}
+.deck-hint { display: none; }
 
-/* Small screens: the deck scrolls sideways, the selected card is a raised tab */
-@media (max-width: 799.98px) {
+/* B-68, large screens: the deck fills the tray, the cards centered; when they do not fit, they
+ * all shrink alike down to --deck-min, only then the deck scrolls sideways. The tray is compact:
+ * a small margin above the cards, the keys (if any) below them. */
+@media (min-width: 800px) {
     .controls {
-        flex: 1 1 auto;
-        min-width: 0;
-        height: auto;
-        padding: 0;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        align-items: normal;
-        justify-content: normal;
-        border-top: none;
-        border-radius: 0;
+        width: 100%;
+        justify-content: safe center;
+        padding: 10px 10px 6px;
     }
-
-    .show_card_stats { height: auto; }
 
     .controls img {
+        flex-shrink: 1;
+        min-width: var(--deck-min);
+    }
+}
+
+/* keys 1–9 and 0 pick a card (pickCardByKey() in script.js): the key small below each of the first
+ * ten cards, the hint on the right in the same row; only with a mouse and a keyboard at hand,
+ * players only. The hint never takes a row of its own: when it does not fit next to the keys or
+ * the deck scrolls, it is hidden (hint-off, set by updateDeckRoom() in script.js), so the tray
+ * keeps its height. */
+@media (min-width: 800px) and (hover: hover) and (pointer: fine) {
+    /* the slot shrinks (down to --deck-min), the card follows it */
+    .ctl-slot {
+        display: flex;
+        flex: 0 1 auto;
+        flex-direction: column;
+        align-items: center;
+        min-width: calc(var(--deck-min) + 4px);
+    }
+
+    .ctl-slot > img {
+        min-width: 0;
+        max-width: calc(100% - 4px);
+    }
+
+    .ctl-key {
+        display: block;
+        min-height: 1em;
+        margin-top: 5px;
+        font-size: 10px;
+        line-height: 1;
+        color: var(--muted);
+    }
+
+    .controls .selected + .ctl-key { color: var(--accent); }
+
+    .deck-hint {
+        display: block;
+        position: absolute;
+        right: var(--space-3);
+        bottom: calc(6px + env(safe-area-inset-bottom)); /* level with the keys */
+        margin: 0;
+        font-size: 10px;
+        line-height: 1;
+        color: var(--line-strong);
+    }
+
+    .ctl_as_guest .ctl-key,
+    .down-container.hint-off .deck-hint { visibility: hidden; }
+
+    /* separate rule: browsers without :has() drop a whole selector list that contains it */
+    .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
+}
+
+/* B-75: the position dots and the "picked" line below the deck are for the carousel (touch devices) only */
+.deck-dots,
+.deck-pick { display: none; }
+
+/* B-75, touch devices (Andreas, 2026-10-29: touch only, B-77: at any width, tablets too; a window
+ * with a mouse or a trackpad keeps the deck row with the "<" / ">" bars of B-69): the deck is a carousel. One card at a time snaps into the middle and is shown
+ * larger (scale and fade per card set by the carousel code in script.js, around the vertical
+ * middle, so all cards stay centered in the row); the first and the last card can reach the
+ * middle (padding), never further (no overscroll into empty space). A tap picks the card (and
+ * centers it), a swipe never does. The picked card keeps the accent frame of the deck; below the
+ * deck one dot per card, display only (the ring is the card in the middle, filled = picked).
+ * Many cards: the dots move closer together; when they no longer
+ * fit, a thin bar takes their place (as-bar, set by script.js). No "<" / ">" bars (B-69) on the
+ * carousel. Same query as gCarouselQuery in script.js. The tray stays at the bottom edge and keeps clear of the home
+ * indicator (safe area plus a little room), whose edge reacts to system swipes. Large screens: see below. */
+@media (hover: none) and (pointer: coarse) {
+    .down-container {
+        --deck-h: calc(var(--deck-w) * var(--card-ratio));
+        --deck-grow: 1.25;                                   /* the card in the middle */
+        --deck-room: calc(var(--deck-h) * (var(--deck-grow) - 1) / 2 + 4px); /* above and below */
+        padding-bottom: calc(var(--space-1) + env(safe-area-inset-bottom));
+    }
+
+    .deck-more,
+    .deck-hint { display: none; }
+
+    .controls {
+        position: relative; /* offsetParent of the cards (script.js measures against it) */
+        width: 100%;
+        gap: calc(var(--deck-w) * 0.2);
+        justify-content: flex-start; /* the padding centers the first card (not "safe center", B-68) */
+        align-items: center;
+        padding: var(--deck-room) calc(50% - var(--deck-w) / 2);
+        scroll-padding-inline: 0;
+        scroll-snap-type: x mandatory;
+        overscroll-behavior-x: none;
+        touch-action: pan-x; /* a vertical drag on the deck does not move the page */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* a tap brings a card to the middle: no snapping on the way (script.js carouselCenter) */
+    .controls.steering { scroll-snap-type: none; }
+
+    .ctl-slot {
+        display: block;
+        flex: none;
+        width: var(--deck-w);
+        scroll-snap-align: center;
+        scroll-snap-stop: always; /* one card per swipe */
+    }
+
+    .controls .ctl-slot > img {
+        display: block;
+        width: 100%;
         height: auto;
-        padding-bottom: 0;
-        /* transparent frame: selecting a card only colours it, the deck keeps its height
-         * (otherwise the table loses 1px on the first vote and the table cards shrink) */
-        border: 1px solid transparent;
-        border-bottom: none;
-        align-self: center;
-        float: right;
-        transition: none;
+        aspect-ratio: 300 / 443;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-s);
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
         cursor: auto;
+        -webkit-touch-callout: none;
     }
 
-    .controls .ctl { flex: 0 0 auto; }
+    .controls .ctl_hover:hover { border: 0; }
 
-    .controls .ctl_hover { cursor: auto; }
-
-    .controls .ctl_hover:hover { border-bottom: none; }
-
-    .controls .selected {
-        border: 1px solid var(--accent);
-        border-bottom: none;
+    /* picked: the accent frame of the deck (B-68 tab), the dot below is filled */
+    .controls .ctl-slot > img.selected {
         background-color: var(--secondary-background-color);
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
     }
+
+    .deck-dots {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 14px;
+        padding: 0 var(--space-3);
+        pointer-events: none; /* display only (Andreas: too small to tap) */
+    }
+
+    .deck-dots-row {
+        display: flex;
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* each dot as wide as there is room, at most 10px; the dot itself shrinks along */
+    .deck-dot {
+        flex: 0 1 10px;
+        min-width: 0;
+        height: 14px;
+        display: grid;
+        place-items: center;
+    }
+
+    .deck-dot::before {
+        content: "";
+        box-sizing: border-box;
+        width: min(5px, 80%);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        border: 1px solid var(--line-strong);
+        transition: width 0.15s;
+    }
+
+    .deck-dot.picked::before {
+        background: var(--accent);
+        border-color: var(--accent);
+    }
+
+    /* the card in the middle: a larger ring (picked too: an accent ring around the filled dot) */
+    .deck-dot.current::before {
+        width: min(9px, 100%);
+        border: 2px solid var(--text);
+    }
+
+    .deck-dot.current.picked::before {
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1.5px var(--bg-2);
+    }
+
+    .deck-bar { display: none; }
+
+    .deck-dots.as-bar .deck-dots-row { display: none; }
+
+    .deck-dots.as-bar .deck-bar {
+        display: block;
+        position: relative;
+        width: 60%;
+        height: 14px;
+    }
+
+    .deck-bar::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 3px;
+        margin-top: -1.5px;
+        border-radius: 2px;
+        background: var(--line);
+    }
+
+    .deck-bar-thumb {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        height: 5px;
+        margin-top: -2.5px;
+        border-radius: 3px;
+        background: var(--text);
+    }
+
+    .deck-bar-pick {
+        position: absolute;
+        top: 50%;
+        width: 3px;
+        height: 11px;
+        margin: -5.5px 0 0 -1.5px;
+        border-radius: 1px;
+        background: var(--accent);
+    }
+
+    .deck-bar-pick[hidden] { display: none; }
+
+    .down-container:has(.ctl_as_guest) .deck-dots { opacity: 0.6; } /* observers: like the grey deck */
+
+    /* what you picked, in the console voice: "> you picked 5"; players only */
+    .deck-pick {
+        display: block;
+        margin: 0;
+        padding: 0 var(--space-3);
+        font-size: var(--fs-xs);
+        line-height: 16px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .deck-pick::before { content: "> "; }
+
+    .down-container:has(.ctl_as_guest) .deck-pick { visibility: hidden; }
+}
+
+/* B-77, tablets (touch, large screens): the carousel in the floating tray. A little more room above
+ * the card in the middle and below the "picked" line, so neither touches the tray's rounded edge (its
+ * margin already keeps clear of the safe area). The tray grows with it; the round button at the foot
+ * of the column still ends --dock-lift above the tray's bottom edge (same grid row). */
+@media (min-width: 800px) and (hover: none) and (pointer: coarse) {
+    .down-container { padding-bottom: var(--space-2); }
+
+    .controls { padding-top: calc(var(--deck-room) + 6px); }
+}
+
+/* short screens in this layout (phones in landscape, 800px and wider): the table keeps its room */
+@media (min-width: 800px) and (max-height: 500px) and (hover: none) and (pointer: coarse) {
+    .down-container { padding-bottom: var(--space-1); }
+
+    .controls { padding-top: var(--deck-room); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .deck-dot::before { transition: none; }
 }
 
 /* ---------- Survey (markup from script_feedback.js) ---------- */
 
+/* B-66/B-68: in the column right above the round actions (.dock), so the two never overlap: the
+ * deck's tray is its anchor, the column lies right of it (beyond the tray's gap). The round button
+ * ends --dock-lift above the tray's bottom edge, so the survey ends a step above the timer row
+ * (button 44px, gaps 8px, timer as high as --tap). Large screens only (hidden on phones). */
 .survey-container {
     font-size: var(--fs-s);
     width: auto;
     max-width: 18rem;
     position: absolute;
-    bottom: 0;
-    right: 0;
+    bottom: calc(var(--dock-lift, 0px) + 44px + var(--space-2) + var(--tap) + var(--space-2));
+    right: calc(-1 * (var(--col-w) + var(--tray-gap, 0px)));
     margin: 0 auto;
     visibility: hidden;
     display: unset;
@@ -1803,6 +2330,11 @@ div#cbox {
 }
 
 #survey-button:hover { opacity: 0.7; }
+
+/* above the dock it floats: rounded at the bottom too (open: the content's corners).
+ * Two rules: browsers without :has() drop a whole selector list that contains it. */
+.survey-container:has(#survey-content.survey-closed) #survey-button { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
+.survey-container #survey-content.survey-open { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
 
 #survey-button .arrow { margin-left: var(--space-3); }
 
@@ -1894,6 +2426,276 @@ div#cbox {
 
 .down { transform: rotate(45deg); }
 
+/* ---------- Column (B-68) ---------- */
+
+/* Large screens (from 800px): the column on the right, always there, so the table keeps its size
+ * from round to round. From the top: where the round is (#round_status), the topic (.topic-bar)
+ * and the spread (.side, #spread; filled by updateSide() in script.js); its foot are the round
+ * actions (.dock, see "New round button, timer"). Phones: no status line, only the spread (once
+ * revealed), as a strip right above the round actions and the deck. One panel color, no lines between the parts.
+ * The spread has a fixed height: its room is kept before the reveal (hidden = invisible), the bars
+ * grow inside a fixed area, count and value have their rows. Nothing moves when values change. */
+.round-status,
+.round-tip { display: none; }
+
+.side {
+    --spread-h: 34px; /* the bar of the most chosen card */
+    grid-area: side;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3) 0;
+    background: var(--bg-2);
+    text-align: left;
+}
+
+.spread[hidden] {
+    display: block;
+    visibility: hidden;
+}
+
+/* "// spread  2 – 20" */
+.spread-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    min-width: 0;
+    margin-bottom: var(--space-1);
+    font-size: var(--fs-s);
+    line-height: 1.25rem;
+    white-space: nowrap;
+}
+
+.side-label {
+    margin: 0;
+    font-size: inherit;
+    font-weight: normal;
+    color: var(--muted);
+}
+
+.side-label::before,
+.round-status::before {
+    content: "// ";
+    color: var(--line-strong);
+}
+
+.spread-range {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+}
+
+/* one column per deck card: the count, the bar (a stack of blocks, one per vote), the value;
+ * the pointer below them */
+.spread-chart {
+    position: relative; /* anchor of the pointer */
+    padding-bottom: 12px;
+}
+
+.spread-bars {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+}
+
+.spread-col {
+    --bar: var(--line-strong);
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 32px;
+    height: calc(1rem + var(--spread-h) + 1.25rem + 6px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+}
+
+.spread-count {
+    min-height: 1rem;
+    font-size: var(--fs-xs);
+    line-height: 1rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+}
+
+/* the bar: a stack of blocks, one per vote (.spread-seg, set by updateSide() in script.js), from
+ * the bottom. A block's height is fixed for the round: --spread-h shared by the players on the
+ * board (--voters), less the 2px gap above each block, at least 2px; with very many players the
+ * bar is capped at --spread-h. So a block never changes when another bar grows; votes fade whole
+ * blocks in and out (in, out; one after another via transition-delay from script.js). Only when
+ * players join or leave do the blocks glide to their new height. No votes: a thin line. */
+.spread-bar {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 72%;
+    max-width: 22px;
+    min-height: 1px;
+    max-height: var(--spread-h);
+    overflow: hidden;
+}
+
+.spread-seg {
+    flex: none;
+    height: max(2px, calc(var(--spread-h) / var(--voters, 1) - 2px));
+    margin-top: 2px;
+    background: var(--bar);
+    transition: opacity 0.15s ease-out, height 0.4s ease-out;
+}
+
+.spread-seg.in,
+.spread-seg.out { opacity: 0; }
+
+/* a resize (e.g. the breakpoint to phones) changes --spread-h: the blocks jump to it (no-anim, set
+ * by handleResize() in script.js) */
+.spread.no-anim .spread-seg { transition: none; }
+
+.spread-col.zero .spread-bar { background: var(--line); }
+
+.spread-value {
+    flex: none;
+    font-family: var(--font), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    font-size: var(--fs-xs);
+    line-height: 1.25rem;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden; /* a long label must never run into its neighbours */
+    color: var(--muted);
+}
+
+/* the most chosen card(s), from two votes on */
+.spread-col.top { --bar: var(--accent); }
+
+.spread-col.top .spread-count,
+.spread-col.top .spread-value {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+/* short phones (e.g. 375x667): a flatter chart */
+@media (max-width: 799.98px) and (max-height: 700px) {
+    .side { --spread-h: 22px; }
+}
+
+/* the average pointer (left set by script.js): it slides to a new spot; no-glide when it shows up
+ * and on a resize (it would trail it) */
+.spread-index {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 12px;
+    transition: left 0.6s ease-in-out;
+}
+
+.spread-index.no-glide { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .spread-seg,
+    .spread-index { transition: none; }
+}
+
+/* phones: no status line (the cards on the table show who is missing); the strip above the deck
+ * is only there once the cards are revealed: the spread. Until then its room goes to the table. */
+@media (max-width: 799.98px) {
+    .container:has(#spread[hidden]) > .side { display: none; }
+}
+
+@media (min-width: 800px) {
+    /* "// voting · 3/5 voted": plain text, set by script.js */
+    .round-status {
+        grid-area: status;
+        display: block;
+        min-width: 0;
+        margin: 0;
+        padding: var(--space-3) var(--space-3) var(--space-1);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: var(--fs-s);
+        line-height: 1.5rem;
+        text-align: left;
+        color: var(--text);
+        background: var(--bg-2);
+    }
+
+    /* B-70: what to do now, muted plain text (set by script.js), below the spread. Before the
+     * reveal the spread's room is empty (kept, invisible): the tip sits at its top, so neither the
+     * spread nor the tip pushes anything when it shows up. */
+    .side { position: relative; }
+
+    .round-tip {
+        display: block;
+        position: relative;
+        margin: var(--space-2) 0 0;
+        padding-left: 22px; /* room for the lightbulb */
+        font-size: var(--fs-s);
+        line-height: 1.25rem;
+        text-align: left;
+        color: var(--muted);
+    }
+    .round-tip b { font-weight: inherit; color: var(--text); }
+
+    /* a small lightbulb in front of the tip (line icon like the sprite in board.html, drawn as a
+     * mask in the muted text color), hanging left of the text; none while there is no tip. In CSS
+     * because updateTip() replaces the tip's children. */
+    .round-tip::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 2px;
+        width: 16px;
+        height: 16px;
+        background: currentColor;
+        -webkit-mask: var(--i-bulb) center / contain no-repeat;
+        mask: var(--i-bulb) center / contain no-repeat;
+        --i-bulb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4'/%3E%3Cpath d='M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z'/%3E%3C/svg%3E");
+    }
+
+    .round-tip:empty::before { display: none; }
+    .round-tip[hidden] { display: none; } /* B-96: team setting "Tips" off */
+
+    .side > #spread[hidden] + .round-tip {
+        position: absolute;
+        top: var(--space-3);
+        left: var(--space-3);
+        right: var(--space-3);
+        margin: 0;
+    }
+
+    /* the topic: "// topic" and the pen in one row, the topic below, long ones scroll */
+    .container > .topic-bar {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0 var(--space-2);
+        min-width: 0;
+        padding: var(--space-2) var(--space-2) var(--space-3) var(--space-3);
+        background: var(--bg-2);
+    }
+
+    .topic-bar .topic-label { padding: 0; }
+
+    .topic-bar .topic-edit { order: 1; }
+
+    .topic-bar #topic {
+        order: 2;
+        flex: 1 1 100%;
+        margin: var(--space-1) var(--space-2) 0 0;
+        max-height: min(40vh, 24rem);
+        max-height: min(40dvh, 24rem);
+    }
+
+    .side {
+        --spread-h: 64px;
+        min-height: 0;
+        overflow-y: auto;
+        padding: var(--space-3);
+    }
+
+    .spread-head { margin-bottom: var(--space-2); }
+
+    .spread-chart { padding-bottom: 16px; }
+}
+
 /* ---------- Overlays: QR code, privacy links ---------- */
 
 #overlay_qr {
@@ -1953,6 +2755,14 @@ div#cbox {
 
 @media (max-width: 799.98px) {
     #nameinput { margin-top: 50px; }
+}
+
+/* B-75: touch devices get no focus without a tap: the field shows that it wants one */
+@media (hover: none) and (pointer: coarse) {
+    #nameinput {
+        min-height: var(--tap);
+        border-color: var(--bluish);
+    }
 }
 
 /* ---------- Promo tab ---------- */
@@ -2054,8 +2864,20 @@ div#cbox {
     transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* B-67: in the phone sheet (the toast moves into the modal menu) it drops in from the top edge,
+ * over the dimmed board, so it does not cover the controls at the bottom of the sheet */
+.menu > .toast {
+    top: calc(var(--space-3) + env(safe-area-inset-top));
+    bottom: auto;
+    transform: translate(-50%, calc(-100% - var(--space-3) - 32px - env(safe-area-inset-top)));
+}
+
+.menu > .toast.toast-on { transform: translate(-50%, 0); }
+
 /* reduced motion: fade in and out in place */
 @media (prefers-reduced-motion: reduce) {
+    .menu > .toast,
+    .menu > .toast.toast-on,
     .toast,
     .toast.toast-on { transform: translate(-50%, 0); }
 
@@ -2082,12 +2904,6 @@ div#cbox {
     /* 16px keeps iOS from zooming into the field (small screens did this already) */
     .field { font-size: var(--fs-l); }
 
-    /* stopwatch icons: 30px image, 44px target */
-    .stopwatch_control > img {
-        box-sizing: content-box;
-        padding: 7px;
-    }
-
     /* delete icon on a card: at least 28px (the row gap grows with it) */
     :root { --card-del-min: 28px; }
 
@@ -2108,7 +2924,6 @@ div#cbox {
 
 @media (max-width: 799.98px) {
     .survey-container,
-    #index,
     #promo-tab { display: none; }
 }
 
@@ -2185,4 +3000,118 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     0% { background-color: var(--background-color); }
     50% { background-color: var(--flash-red-background); }
     100% { background-color: var(--background-color); }
+}
+
+/* ---------- Rotate hint (B-78) ---------- */
+
+/* Phones held sideways: too short for the board, so a hint asks to turn the phone upright.
+ * Only on touch devices without hover (not desktops, not touch laptops), in landscape, and
+ * only when the screen is short (phones: 320-440px high; tablets from 744px never see it).
+ * Pure CSS: it vanishes as soon as the phone is turned back. "Continue anyway" sets
+ * html.rotate-ok (inline handler in board.html / init.html, kept for the session). */
+.rotate-hint { display: none; }
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+    html:not(.rotate-ok) .rotate-hint {
+        position: fixed;
+        inset: 0;
+        z-index: var(--z-rotate);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-3);
+        padding: var(--space-3) calc(var(--space-3) + env(safe-area-inset-right))
+            var(--space-3) calc(var(--space-3) + env(safe-area-inset-left));
+        /* the board stays visible, dimmed */
+        background: var(--bg); /* fallback without color-mix */
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        -webkit-backdrop-filter: blur(2px);
+        backdrop-filter: blur(2px);
+        color: var(--text);
+        text-align: center;
+    }
+}
+
+.rotate-hint svg.i {
+    width: 64px;
+    height: 64px;
+    stroke-width: 1.5;
+    color: var(--accent);
+    animation: rotate-hint-turn 2.4s ease-in-out infinite;
+}
+
+.rotate-hint p {
+    margin: 0;
+    max-width: 30em;
+    font-size: var(--fs-l);
+}
+
+.rotate-hint .rotate-hint-skip {
+    background: none;
+    border: 0;
+    min-height: var(--tap);
+    padding: 0 var(--space-3);
+    color: var(--brand-pink);
+    font-family: inherit;
+    font-size: var(--fs-m);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* the phone lies sideways, turns upright, rests, and turns back */
+@keyframes rotate-hint-turn {
+    0%, 15% { transform: rotate(-90deg); }
+    45%, 85% { transform: rotate(0deg); }
+    100% { transform: rotate(-90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rotate-hint svg.i { animation: none; }
+}
+
+/* ---------- Connection hint (B-86) ---------- */
+
+/* No connection to the server: covers the board like the rotate hint (dimmed, not dismissable).
+ * script.js (showConnHint) shows it after a short delay and hides it when the connection is back. */
+.conn-hint:not([hidden]) {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-conn);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-3) calc(var(--space-3) + env(safe-area-inset-right))
+        var(--space-3) calc(var(--space-3) + env(safe-area-inset-left));
+    background: var(--bg); /* fallback without color-mix */
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    color: var(--text);
+    text-align: center;
+    outline: none; /* gets the focus for screen readers, nothing to operate */
+}
+
+.conn-hint svg.i {
+    width: 48px;
+    height: 48px;
+    stroke-width: 1.5;
+    color: var(--accent);
+    animation: conn-hint-spin 1.6s linear infinite;
+}
+
+.conn-hint p {
+    margin: 0;
+    font-size: var(--fs-l);
+}
+
+/* counterclockwise, like the arrow of the symbol */
+@keyframes conn-hint-spin {
+    to { transform: rotate(-360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .conn-hint svg.i { animation: none; }
 }

@@ -18,6 +18,10 @@ let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
 let gLastShowAvg = null;
+// B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard).
+// B-75/B-77: on these the deck is a carousel at any width (same query as style.css "Card deck");
+// a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
+const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 let gUserName = null;
 let gPromoInitiated = false;
 
@@ -59,7 +63,7 @@ function getBrowserWidth(){
 
 function newRound() {
     let url = './api/newround.php?t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function playerTypeUpdate(playerType, name) {
@@ -100,7 +104,9 @@ function playerTypeUpdate(playerType, name) {
                 setTimeout(function () {
                     document.getElementById('become_player_btn').focus();
                 }, 100);
-            } else {
+            } else if (!gTouchQuery.matches) {
+                // B-75: not on touch devices: iOS opens the keyboard only for a focus inside a tap,
+                // a focus here would only show the ring (the overlay focuses the field on a tap)
                 setTimeout(function () {
                     document.getElementById('nameinput').focus();
                 }, 100);
@@ -138,7 +144,7 @@ function controlsDsp(playerType) {
 
 function deletePlayer(e) {
     let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + t;
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    apiWrite(url);
 }
 
 function updateSelectedC(currKey) {
@@ -151,6 +157,7 @@ function updateSelectedC(currKey) {
             e[i].classList.remove('selected');
         }
     }
+    scheduleCarousel(); // B-75: the dot of the picked card
 }
 
 function setC(e) {
@@ -164,7 +171,7 @@ function setC(e) {
     else
         url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + t;
 
-    if (url !== null) fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+    if (url !== null) apiWrite(url);
 }
 
 function toggleC(cardId, flag) {
@@ -193,10 +200,358 @@ function setCSet(cSet) {
     gCardsConfig.forEach(card => {
         toggleC(card.card_key, str.charAt(card.index));
     });
+    updateDeckKeys();
 }
+
+/* B-68: keys 1–9 and 0 pick the first ten cards of the deck (in deck order) */
+const DECK_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+function updateDeckKeys() {
+    document.querySelectorAll('#ctl img.ctl').forEach(img => {
+        img.nextElementSibling.textContent = '';
+    });
+    document.querySelectorAll('#ctl img.on').forEach((img, i) => {
+        if (i < DECK_KEYS.length) img.nextElementSibling.textContent = DECK_KEYS[i];
+    });
+    updateDeckRoom();
+    syncCarousel(); // B-75
+}
+
+/* B-68: the hint "keys 1–9 pick a card" sits in the row of the keys; it is hidden (class
+ * hint-off) when the deck scrolls or its last key does not stay clear of it, so the tray keeps its
+ * height. Only where the keys show (style.css "Card deck"). */
+function updateDeckRoom() {
+    const container = document.getElementById('down-container');
+    const ctl = document.getElementById('ctl');
+    const hint = container === null ? null : container.querySelector('.deck-hint');
+    if (ctl === null || container === null) return;
+    const keyed = Array.from(ctl.querySelectorAll('img.on')).slice(0, DECK_KEYS.length);
+    const lastKey = keyed.length > 0 ? keyed[keyed.length - 1].nextElementSibling : null;
+    const fits = hint !== null && ctl.scrollWidth <= ctl.clientWidth + 1
+        && (lastKey === null || lastKey.getBoundingClientRect().right + 8 <= hint.getBoundingClientRect().left);
+    container.classList.toggle('hint-off', !fits);
+    // B-69: the "<" / ">" bars where more cards are hidden (style.css "Card deck")
+    const left = Math.abs(ctl.scrollLeft); // 0 at the start
+    container.classList.toggle('more-left', left > 1);
+    container.classList.toggle('more-right', left + ctl.clientWidth < ctl.scrollWidth - 1);
+}
+
+/* B-69: the deck has no scrollbar; a vertical mouse wheel scrolls it sideways while it overflows */
+function scrollDeckByWheel(event) {
+    const ctl = event.currentTarget;
+    if (event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    if (ctl.scrollWidth <= ctl.clientWidth + 1) return;
+    const step = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1;
+    event.preventDefault();
+    ctl.scrollLeft += event.deltaY * step;
+}
+
+/* B-69: a click / tap on the "<" (direction -1) or ">" (1) bar scrolls the deck by its visible
+ * width minus one card, so the card at the edge stays in view */
+function scrollDeckByBar(direction) {
+    const ctl = document.getElementById('ctl');
+    if (ctl === null) return;
+    const card = ctl.querySelector('img.on');
+    const cardWidth = card === null ? 0 : card.getBoundingClientRect().width;
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    ctl.scrollBy({ left: direction * Math.max(ctl.clientWidth - cardWidth, cardWidth), behavior });
+}
+
+/* B-75/B-77: touch devices (gTouchQuery, phones and tablets): the deck is a carousel (style.css "Card deck"). The
+ * card in the middle is larger, the others smaller and paler (per frame, by their distance from the
+ * middle, relative to the deck's width). Below the deck one dot per card (#deck_dots, display only), or a bar when they do not fit,
+ * and a line with the picked card (#deck_pick).
+ * Tap vs. swipe: a card is only picked by a real tap (short, hardly moved, not a touch that stops
+ * a running swipe); other clicks on the deck are dropped before they reach setC(). A picked card
+ * comes to the middle. A pull from the server never moves the deck; only a changed deck (cards
+ * switched on/off) or the breakpoint centers a card again (the one in the middle, else the picked,
+ * else the middle one). Haptics (navigator.vibrate, Android) only while the user swipes. */
+const gCarousel = {
+    on: false,         // carousel layout active (touch devices)
+    keys: '',          // the deck's cards when last laid out
+    currentKey: null,  // card in the middle
+    raf: 0,
+    press: null,       // pointer down on the deck
+    swiping: false,    // the user's finger moved the deck (until it comes to rest)
+    tapOk: false,      // the last press on the deck was a tap
+    tween: 0,          // a tap brings a card to the middle: rAF id of the running tween (snap off meanwhile)
+    restTimer: 0,
+    lastTick: 0,
+};
+
+function carouselCards() {
+    return Array.from(document.querySelectorAll('#ctl img.on'));
+}
+
+/* brings a deck card (img) to the middle of the deck. Animated by an own tween of scrollLeft
+ * (easeOutCubic, CAROUSEL_TWEEN_MS) instead of the browser's smooth scroll, which is jerky on
+ * iPhones; scroll snapping is off meanwhile (.steering, style.css), or iOS stops at a snap point
+ * on the way (scroll-snap-stop). The last frame sets the exact position, then snapping is on
+ * again. Each tween frame also lays out the carousel (carouselFrame), so the scroll events it
+ * causes do no work of their own. A finger on the deck ends the tween (pointerdown). */
+const CAROUSEL_TWEEN_MS = 250;
+function carouselCenter(img, instant) {
+    const ctl = document.getElementById('ctl');
+    const slot = img.parentElement;
+    const max = ctl.scrollWidth - ctl.clientWidth;
+    const to = Math.min(max, Math.max(0, slot.offsetLeft + slot.offsetWidth / 2 - ctl.clientWidth / 2));
+    carouselSteerEnd(ctl);
+    const from = ctl.scrollLeft;
+    if (instant || prefersReducedMotion() || Math.abs(to - from) < 0.5) {
+        ctl.scrollLeft = to;
+        return;
+    }
+    ctl.classList.add('steering');
+    const start = performance.now();
+    const step = now => {
+        const p = Math.min(1, (now - start) / CAROUSEL_TWEEN_MS);
+        const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+        ctl.scrollLeft = p < 1 ? from + (to - from) * eased : to;
+        if (gCarousel.raf) { cancelAnimationFrame(gCarousel.raf); gCarousel.raf = 0; } // done here
+        carouselFrame();
+        if (p < 1) {
+            gCarousel.tween = requestAnimationFrame(step);
+        } else {
+            gCarousel.tween = 0;
+            ctl.classList.remove('steering');
+        }
+    };
+    gCarousel.tween = requestAnimationFrame(step);
+}
+
+/* ends a running tween (if any): snapping on again */
+function carouselSteerEnd(ctl) {
+    if (gCarousel.tween) cancelAnimationFrame(gCarousel.tween);
+    gCarousel.tween = 0;
+    ctl.classList.remove('steering');
+}
+
+/* layout: called when the deck may have changed (pull, card set, resize, breakpoint) */
+function syncCarousel(recenter = false) {
+    const ctl = document.getElementById('ctl');
+    const dots = document.getElementById('deck_dots');
+    if (ctl === null || dots === null) return;
+    if (!gTouchQuery.matches) {
+        if (gCarousel.on) { // back to the deck row (mouse / trackpad): no traces of the carousel
+            gCarousel.on = false;
+            gCarousel.keys = '';
+            ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; img.style.pointerEvents = ''; });
+            carouselSteerEnd(ctl);
+        }
+        return;
+    }
+    gCarousel.on = true;
+    const cards = carouselCards();
+    const keys = cards.map(img => img.id).join(',');
+    if (keys !== gCarousel.keys) {
+        gCarousel.keys = keys;
+        const row = dots.querySelector('.deck-dots-row');
+        row.replaceChildren(...cards.map(img => {
+            const dot = document.createElement('span');
+            dot.className = 'deck-dot';
+            return dot;
+        }));
+        recenter = true;
+    }
+    // many cards: the dots get closer; below 5px per dot the bar takes their place
+    const room = dots.clientWidth - 32; // padding of .deck-dots
+    dots.classList.toggle('as-bar', cards.length > 0 && room / cards.length < 5);
+    if (recenter && cards.length > 0) {
+        const picked = gLastJson ? gLastJson.selected_card_key : null;
+        const target = cards.find(img => img.id === gCarousel.currentKey)
+            || cards.find(img => img.id === picked)
+            || cards[Math.floor((cards.length - 1) / 2)];
+        carouselCenter(target, true);
+    }
+    carouselFrame();
+}
+
+function scheduleCarousel() {
+    if (gCarousel.on && !gCarousel.raf) gCarousel.raf = requestAnimationFrame(carouselFrame);
+}
+
+/* per frame: size, position and fade by the distance from the middle (cover-flow like), dots / bar.
+ * B-77: the falloff is relative to the deck's width, not per card: u = distance from the middle / half
+ * the deck width (0 in the middle, 1 at the edge). scale: 1.25 in the middle, times CAROUSEL_EDGE at
+ * the edge (at least 0.3); so a wide tray (tablet) shows more large cards, a phone (390px, about 2.8
+ * cards per half) looks like B-75 (0.7 per card). The cards move toward the middle by the width they
+ * lost, so the gaps shrink along with the cards (pos = the integral of the scaled step). Opacity falls
+ * with u; the picked card stays readable (0.85).
+ * Visual only (transform): the snap positions stay where the slots are; taps hit the drawn card. */
+const CAROUSEL_GROW = 1.25;
+const CAROUSEL_EDGE = 0.37; // scale factor at the edge of the deck (0.7 per card on a 390px phone)
+function carouselFrame() {
+    gCarousel.raf = 0;
+    if (!gCarousel.on) return;
+    const ctl = document.getElementById('ctl');
+    const dots = document.getElementById('deck_dots');
+    const cards = carouselCards();
+    if (cards.length === 0) return;
+    // reads first (layout), then the writes
+    const half = Math.max(1, ctl.clientWidth / 2);
+    const mid = ctl.scrollLeft + half;
+    const centers = cards.map(img => img.parentElement.offsetLeft + img.parentElement.offsetWidth / 2);
+    const step = (cards.length > 1 ? centers[1] - centers[0] : 0) || 1;
+    const k = Math.log(CAROUSEL_EDGE) * step / half; // ln of the factor per card
+    let best = 0;
+    let bestDist = Infinity;
+    cards.forEach((img, i) => {
+        const signed = (centers[i] - mid) / step; // in cards, < 0 left of the middle
+        const d = Math.abs(signed);
+        const u = d * step / half;                // relative to the deck's width, 1 at its edge
+        if (d < bestDist) { bestDist = d; best = i; }
+        const fall = Math.exp(k * d);
+        const scale = Math.max(0.3, CAROUSEL_GROW * fall);
+        const pos = step * CAROUSEL_GROW * (fall - 1) / k; // where the card is drawn, in px
+        const shift = Math.sign(signed) * pos - signed * step;
+        const opacity = Math.max(img.classList.contains('selected') ? 0.85 : 0.12, 1 - 0.7 * u);
+        img.style.transform = 'translateX(' + shift.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
+        img.style.opacity = opacity.toFixed(3);
+        // far cards pile up faintly at the edges: not tappable, or a tap there would pick a card far away
+        img.style.pointerEvents = u > 1.1 ? 'none' : '';
+    });
+    const currentKey = cards[best].id;
+    if (currentKey !== gCarousel.currentKey) {
+        gCarousel.currentKey = currentKey;
+        if (gCarousel.swiping) carouselTick();
+    }
+    let pickedIndex = -1;
+    dots.querySelectorAll('.deck-dot').forEach((dot, i) => {
+        const picked = cards[i] !== undefined && cards[i].classList.contains('selected');
+        if (picked) pickedIndex = i;
+        dot.classList.toggle('current', i === best);
+        dot.classList.toggle('picked', picked);
+    });
+    // the line below the dots: what you picked (players only; observers have no line, style.css)
+    const line = document.getElementById('deck_pick');
+    const config = pickedIndex >= 0 ? getCardConfig(cards[pickedIndex].id) : null;
+    const text = config ? 'you picked ' + (config.symbol || config.description) : 'tap to pick a card';
+    if (line !== null && line.textContent !== text) line.textContent = text;
+    if (dots.classList.contains('as-bar')) {
+        const bar = dots.querySelector('.deck-bar');
+        const thumb = dots.querySelector('.deck-bar-thumb');
+        const pick = dots.querySelector('.deck-bar-pick');
+        const max = ctl.scrollWidth - ctl.clientWidth;
+        const frac = max > 0 ? ctl.scrollLeft / max : 0;
+        const thumbW = Math.max(18, bar.clientWidth / cards.length);
+        thumb.style.width = thumbW + 'px';
+        thumb.style.transform = 'translateX(' + (frac * (bar.clientWidth - thumbW)).toFixed(1) + 'px)';
+        pick.hidden = pickedIndex < 0;
+        if (pickedIndex >= 0) pick.style.left = (pickedIndex / Math.max(1, cards.length - 1) * 100) + '%';
+    }
+}
+
+/* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */
+function carouselTick() {
+    const now = performance.now();
+    if (now - gCarousel.lastTick < 35 || typeof navigator.vibrate !== 'function') return;
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+    gCarousel.lastTick = now;
+    navigator.vibrate(5);
+}
+
+/* the deck came to rest (no scroll for 120 ms) */
+function carouselRest() {
+    gCarousel.swiping = false;
+}
+
+function initCarousel() {
+    const ctl = document.getElementById('ctl');
+    if (ctl === null) return;
+
+    ctl.addEventListener('scroll', () => {
+        if (!gCarousel.on || gCarousel.tween) return; // the tween lays out its frames itself
+        if (gCarousel.press !== null) gCarousel.swiping = true;
+        scheduleCarousel();
+        clearTimeout(gCarousel.restTimer);
+        gCarousel.restTimer = setTimeout(carouselRest, 120); // no scrollend in iOS Safari yet
+    }, { passive: true });
+
+    // tap vs. swipe: a press that starts while the user's swipe is still running only stops it
+    ctl.addEventListener('pointerdown', event => {
+        gCarousel.tapOk = false;
+        gCarousel.lastDown = performance.now();
+        if (!gCarousel.on || !event.isPrimary) { gCarousel.press = null; return; }
+        carouselSteerEnd(ctl); // the finger takes over: the tween stops, snapping on again
+        gCarousel.press = { x: event.clientX, y: event.clientY, t: performance.now(), stops: gCarousel.swiping };
+    });
+    ctl.addEventListener('pointercancel', () => { // the browser took over (the finger swipes)
+        if (gCarousel.press !== null) gCarousel.swiping = true;
+        gCarousel.press = null;
+        // a swipe that cannot move (first card to the left, last to the right) fires no scroll event:
+        // end the swipe anyway, or every later tap would count as stopping it
+        clearTimeout(gCarousel.restTimer);
+        gCarousel.restTimer = setTimeout(carouselRest, 120);
+    });
+    ctl.addEventListener('pointerup', event => {
+        const p = gCarousel.press;
+        gCarousel.press = null;
+        if (p === null) return;
+        gCarousel.tapOk = !p.stops && performance.now() - p.t < 600
+            && Math.hypot(event.clientX - p.x, event.clientY - p.y) < 8;
+    });
+    // before setC() (on the card): drop clicks that were no tap; keyboard clicks (detail 0) count
+    ctl.addEventListener('click', event => {
+        if (!gCarousel.on) return;
+        // keyboard clicks (detail 0) and clicks without a press of their own (screen readers) count too
+        const ok = event.detail === 0 || gCarousel.tapOk || performance.now() - (gCarousel.lastDown || 0) > 1000;
+        gCarousel.tapOk = false;
+        if (!ok) {
+            event.stopPropagation();
+            event.preventDefault();
+            return;
+        }
+        const img = event.target instanceof Element ? event.target.closest('img.on') : null;
+        if (img !== null) carouselCenter(img, false);
+    }, true);
+
+    // carousel on / off at runtime (resize, a mouse plugged in): lay out the deck anew
+    gTouchQuery.addEventListener('change', () => {
+        syncCarousel(true);
+        updateDeckRoom();
+    });
+}
+
+/* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
+ * (observers have no click handler). Not while typing, in the menu or in an overlay. */
+function pickCardByKey(event) {
+    const n = DECK_KEYS.indexOf(event.key);
+    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    const target = event.target;
+    if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog')) return;
+    const menu = document.getElementById('menu');
+    if (menu !== null && menu.open) return;
+    if (document.querySelector('.overlay:not(.hidden), .overlay.visible') !== null) return; // name, delete user, QR
+    if (connHintVisible()) return; // B-86: no connection, the board cannot be used
+    const cards = document.querySelectorAll('#ctl img.on');
+    const img = cards[n];
+    if (img === undefined) return;
+    event.preventDefault();
+    // B-69: a card outside the visible part of the deck comes into view, clear of the edge bars;
+    // the first and the last card scroll the deck to its start / end (no bar left there)
+    // (touch phones: the carousel brings the clicked card to the middle itself, initCarousel(), B-75)
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const ctl = img.closest('#ctl');
+    if (!gCarousel.on) {
+        if (n === 0) ctl.scrollTo({ left: 0, behavior });
+        else if (n === cards.length - 1) ctl.scrollTo({ left: ctl.scrollWidth, behavior });
+        else img.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
+    }
+    img.click();
+}
+
+/* B-92: every board state asked for gets a number; an answer older than the one shown last is
+ * dropped (answers may come in any order). The answer on load is always taken: it sets up the page
+ * and asks again right away. */
+let gDaoSeq = 0;        // board states asked for so far
+let gDaoShownSeq = 0;   // number of the board state shown last
 
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
+    const seq = ++gDaoSeq;
+    // B-73: the timer part of an answer counts only when no own timer change was under way or
+    // finished meanwhile (see timerStateFresh)
+    const timerWrite = gTimerWrites === 0 ? gTimerWriteGen : -1;
 
     fetch(url)
         .then((response) => {
@@ -204,8 +559,11 @@ function updateDao(isOnLoad) {
         })
         .then((myJson) => {
 
+            if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
+            gDaoShownSeq = Math.max(gDaoShownSeq, seq);
+
             gLastJson = myJson;
-            updateDom(myJson, isOnLoad)
+            updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
             gJsonBefore = myJson;
 
             // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
@@ -253,9 +611,10 @@ function getCardPositions(cardsDiv) {
  * --card-min the table scrolls. Gaps and padding scale with the width as in style.css
  * (div#cbox). The result is set as --card-w on #cbox; returns true when it changed.
  * The measured area does not depend on --card-w: the table height comes from the page
- * grid, the width is taken including a possible scrollbar, and the dock is always reserved
- * at its full height, with New Round and the stopwatch, even while (parts of) it are hidden:
- * the cards keep their size when the first vote, the stopwatch or a new round changes it.
+ * grid, the width is taken including a possible scrollbar. B-68: the round actions (.dock) and
+ * the spread sit outside the table with a fixed height (the column, or the strip above the
+ * deck on phones), so the cards keep their size when the first vote, the timer or a new round
+ * changes them.
  * The side gutter of #cbox (--card-gutter: the gap between two cards, at least
  * --card-gutter-min) is taken off the width. */
 function fitCardsToTable() {
@@ -275,9 +634,8 @@ function fitCardsToTable() {
     const tableStyle = getComputedStyle(table);
     const width = table.offsetWidth - parseFloat(tableStyle.paddingLeft) - parseFloat(tableStyle.paddingRight);
 
-    const dockHeight = fullDockHeight(table.querySelector('.dock'));
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
-    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - dockHeight - 7;
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7;
 
     const n = cbox.children.length;
     let fit = min;
@@ -298,24 +656,6 @@ function fitCardsToTable() {
     if (cbox.style.getPropertyValue('--card-w') === value) return false;
     cbox.style.setProperty('--card-w', value);
     return true;
-}
-
-/* B-49: height of the dock with everything it can show (New Round and the stopwatch), whatever
- * is visible right now; the inline styles only last for the measurement (no repaint). */
-function fullDockHeight(dock) {
-    if (dock === null) return 0;
-    const shown = [];
-    const show = (element, display) => {
-        if (element === null || getComputedStyle(element).display !== 'none') return;
-        element.style.display = display;
-        shown.push(element);
-    };
-    show(dock, 'flex');
-    show(dock.querySelector('#stopwatch'), 'flex');
-    show(dock.querySelector('#newroundbtn'), 'inline-block');
-    const height = dock.offsetHeight;
-    shown.forEach(element => element.style.removeProperty('display'));
-    return height;
 }
 
 function removeCards(cardsDiv, players) {
@@ -499,7 +839,7 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
     return cardsHaveBeenAdded;
 }
 
-function updateDom(myJson, isOnLoad) {
+function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     if (myJson === 0) return;
 
@@ -587,14 +927,15 @@ function updateDom(myJson, isOnLoad) {
 
     updateNewRoundBtn(myJson.one_ore_more_player_ready, myJson.all_players_ready);
 
-    showCardUsage(myJson.players, myJson.all_players_ready, myJson.show_avg);
+    updateSide(myJson);
 
 
     controlsDsp(myJson.player_type);
-    updateStopwatch(myJson.timer_status, myJson.timer_time, myJson.timer_visibility);
+    if (timerFresh) updateTimer(myJson);
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
+    checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
 
     activateJediMode(myJson.show_avg);
     updateJediBtn();
@@ -633,69 +974,200 @@ function activateJediMode(showAvg) {
 }
 
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
+    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Cancel Round")
     let newRoundBtn = document.getElementById('newroundbtn');
-
-    if (oneOreMorePlayerReady) {
-        toggleStyleClass(newRoundBtn, "display_unset", "display_none");
-        let newButtonText;
-        if (allPlayersReady) {
-            newButtonText = 'New Round';
-        } else {
-            newButtonText = 'Cancel Round';
-        }
-        if (document.getElementById('newroundbtn').value !== newButtonText) {
-            document.getElementById('newroundbtn').value = newButtonText
-        }
-    }
-    else {
-        toggleStyleClass(newRoundBtn, "display_none", "display_unset");
+    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New Round' : 'Cancel Round';
+    newRoundBtn.disabled = !oneOreMorePlayerReady;
+    newRoundBtn.classList.toggle('primary', newButtonText === 'New Round'); // all cards revealed
+    if (newRoundBtn.value !== newButtonText) {
+        newRoundBtn.value = newButtonText;
     }
 }
+
+/* ---------- Connection to poker-msg (B-81, B-82, B-86) ----------
+ * The connection only receives: after 'subscribe' poker-msg sends 'pull' whenever the team changed
+ * (the API notifies it after every write, B-81) and 'hb' to every connection every 30 s. The board
+ * never sends 'push'; after an own write it loads the board itself (afterWrite), so the own board
+ * never depends on the signal. A connection that is closed, or silent for longer than HB_TIMEOUT_MS
+ * (half open: sleep, network change, proxies), is rebuilt; its onopen calls updateDao (B-82).
+ * While the connection is down #conn_hint covers the board after a short delay and vanishes by
+ * itself when it is back (B-86). */
+const WS_RECONNECT_MS = 300;       // reconnect after an open connection closed
+const WS_RETRY_MS = 2000;          // try again after a connection could not be opened
+const WS_CHECK_MS = 3000;          // how often the connection is checked
+const HB_TIMEOUT_MS = 40000;       // B-81: no 'hb' or 'pull' for this long: the connection is dead
+const CONN_HINT_DELAY_MS = 1200;   // B-86: show the hint only when the trouble lasts longer (no flicker)
+const WRITE_TIMEOUT_MS = 15000;    // B-92: a writing API call that hangs longer is given up
+
+let gWsTimer = null;          // check / reconnect timer, only one at a time
+let gWsLastMsgAt = 0;         // B-81: when the current connection opened or last received something
+let gConnTrouble = false;     // B-86: connection closed or silent
+let gConnHintTimer = null;
+let gConnHintFocusBack = null;
 
 function initializeWSConnection(teamId) {
 
     console.log("initializeWSConnection");
 
-    // Überprüfen, ob eine bestehende Verbindung existiert und offen ist
+    // close an existing connection that is open or still opening
     if (gConn && (gConn.readyState === WebSocket.OPEN || gConn.readyState === WebSocket.CONNECTING)) {
-        // Bestehende Verbindung schließen
         gConn.close();
     }
 
     let wsProtocol = 'wss://';
     if (window.location.protocol.includes('http:')) wsProtocol = 'ws://';
 
-    gConn = new WebSocket(wsProtocol+window.location.host+'/poker-msg');
-    gConn.onmessage = function(e){
+    const conn = new WebSocket(wsProtocol+window.location.host+'/poker-msg');
+    gConn = conn;
+    gWsLastMsgAt = Date.now();
+    setConnTrouble(true); // until it is open
+
+    conn.onmessage = function(e){
+        if (conn !== gConn) return;
+        gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
         if (e.data.includes('pull')) updateDao(false);
     };
 
-    gConn.onopen = () => {
-        gConn.send('subscribe: '+teamId);
+    let wasOpen = false;
+    conn.onopen = () => {
+        if (conn !== gConn) return;
+        wasOpen = true;
+        gWsLastMsgAt = Date.now();
+        conn.send('subscribe: '+teamId);
+        setConnTrouble(false);
         updateDao(false);
-    }
+    };
 
-    setTimeout(function () {
-        heartbeatWSConnection();
-    }, 10000);
+    conn.onclose = () => {
+        if (conn !== gConn) return; // replaced on purpose
+        setConnTrouble(true);
+        scheduleWSCheck(wasOpen ? WS_RECONNECT_MS : WS_RETRY_MS);
+    };
+
+    scheduleWSCheck(10000);
 }
 
-function heartbeatWSConnection() {
+function scheduleWSCheck(ms) {
+    clearTimeout(gWsTimer);
+    gWsTimer = setTimeout(checkWSConnection, ms);
+}
 
-    //console.log("heartbeatWSConnection");
+/* B-81: true when the connection is open and something came within HB_TIMEOUT_MS */
+function wsConnectionAlive() {
+    return gConn.readyState === WebSocket.OPEN && Date.now() - gWsLastMsgAt <= HB_TIMEOUT_MS;
+}
 
-    if (gConn && gConn.readyState !== WebSocket.OPEN) {
+function checkWSConnection() {
+    if (gConn.readyState === WebSocket.CONNECTING) {
+        // still opening after 10 s: start over
+        if (Date.now() - gWsLastMsgAt > 10000) initializeWSConnection(t);
+        else scheduleWSCheck(WS_CHECK_MS);
+    } else if (!wsConnectionAlive()) {
         initializeWSConnection(t);
     } else {
-        setTimeout(function () {
-            heartbeatWSConnection();
-        }, 3000);
+        scheduleWSCheck(WS_CHECK_MS);
     }
-
 }
 
-function pushDomChange() {
-    gConn.send('push');
+/* B-82: back to the tab, back online or back from the page cache: the connection may be dead or
+ * half open without an error, so always build a new one (its onopen calls updateDao). */
+function reconnectWSConnection() {
+    if (gConn === null) return; // no board on this page
+    initializeWSConnection(t);
+}
+
+function initWSReconnect() {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reconnectWSConnection();
+    });
+    window.addEventListener('online', reconnectWSConnection);
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) reconnectWSConnection();
+    });
+}
+
+/* B-81: a writing API call (POST). Never rejects: resolves with the response, or null when the
+ * request failed or took longer than WRITE_TIMEOUT_MS. Afterwards (success or not) beforeReload
+ * runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
+function apiWrite(url, init = {}, beforeReload = null) {
+    const options = Object.assign({ method: 'POST' }, init);
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
+    }
+    let request;
+    try {
+        request = fetch(url, options);
+    } catch (e) {
+        request = Promise.reject(e);
+    }
+    return request.catch(error => {
+        console.log('write failed', url, error);
+        return null;
+    }).then(response => {
+        if (beforeReload !== null) beforeReload();
+        afterWrite();
+        return response;
+    });
+}
+
+/* B-81: after an own write: load the board, and do not wait for a dead connection to be found */
+function afterWrite() {
+    if (gConn === null) return; // no board on this page (start page)
+    if (gConn.readyState !== WebSocket.CONNECTING && !wsConnectionAlive()) {
+        initializeWSConnection(t); // its onopen loads the board again
+    }
+    updateDao(false);
+}
+
+/* B-86: #conn_hint (board.html) shows up when the trouble lasts longer than CONN_HINT_DELAY_MS.
+ * It takes the focus (role="alertdialog"), the rest of the page is inert meanwhile; an open phone
+ * menu (modal, top layer, it would cover the hint) is closed. When the connection is there again
+ * the hint hides and gives the focus back. */
+function setConnTrouble(trouble) {
+    if (trouble === gConnTrouble) return;
+    gConnTrouble = trouble;
+    clearTimeout(gConnHintTimer);
+    gConnHintTimer = null;
+    if (trouble) {
+        gConnHintTimer = setTimeout(() => showConnHint(true), CONN_HINT_DELAY_MS);
+    } else {
+        showConnHint(false);
+    }
+}
+
+function connHintVisible() {
+    const hint = document.getElementById('conn_hint');
+    return hint !== null && !hint.hidden;
+}
+
+let gConnHintInert = [];   // the elements made inert while the hint is shown
+
+function showConnHint(show) {
+    const hint = document.getElementById('conn_hint');
+    if (hint === null || hint.hidden === !show) return;
+    if (show) {
+        gConnHintFocusBack = document.activeElement;
+        const menu = document.getElementById('menu');
+        if (isModalOpen(menu)) {
+            if (typeof gMenuOpener !== 'undefined' && gMenuOpener !== null) gConnHintFocusBack = gMenuOpener;
+            closeMenu(false);
+        }
+        hint.hidden = false;
+        hint.focus({ preventScroll: true });
+        gConnHintInert = Array.from(document.body.children).filter(el => el !== hint && !el.inert);
+        gConnHintInert.forEach(el => { el.inert = true; });
+    } else {
+        gConnHintInert.forEach(el => { el.inert = false; });
+        gConnHintInert = [];
+        hint.hidden = true;
+        const back = gConnHintFocusBack;
+        gConnHintFocusBack = null;
+        if (document.activeElement === hint || document.activeElement === document.body) {
+            if (back instanceof HTMLElement && back !== document.body && back.isConnected) {
+                back.focus({ preventScroll: true });
+            }
+        }
+    }
 }
 
 function loadBoard() {
@@ -706,11 +1178,21 @@ function loadBoard() {
     updateDao(true);
     generateQRCode(window.location.href);
     initializeWSConnection(t);
+    initWSReconnect();
     initDisplayHandling();
     measureEvent("BOARD_ON_LOAD");
 
     document.getElementById('nameinput').addEventListener('input', function(event) {
         updateBecomeUserButtons(event.target);
+    });
+
+    // B-75: a tap on the name overlay (outside its buttons and links) focuses the name field;
+    // inside the tap, so iOS opens the keyboard too
+    document.getElementById('overlay_name_input').addEventListener('click', function(event) {
+        const nameinput = document.getElementById('nameinput');
+        if (event.target instanceof Element && event.target.closest('input, button, a')) return;
+        if (nameinput.classList.contains('display_none') || document.activeElement === nameinput) return;
+        nameinput.focus();
     });
 
     document.getElementById('nameinput').addEventListener('keydown', function(event) {
@@ -760,6 +1242,8 @@ function loadBoard() {
     document.addEventListener('keydown', function(event) {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
            keyUpDown(event);
+        } else {
+           pickCardByKey(event);
         }
     });
 }
@@ -808,9 +1292,7 @@ function becomeUser(type) {
     let name = document.getElementById("nameinput").value;
     if (name.length > 0) {
         let url = './api/name.php?id=' + localStorage.getItem('SID') + '&type=' + type + '&name=' + encodeURIComponent(name) + '&t=' + t;
-        fetch(url, { method: 'POST' }).then(() => {
-            pushDomChange();
-        });
+        apiWrite(url);
     }
 }
 
@@ -841,13 +1323,16 @@ function measureEvent(eventCode) {
 function setColor() {
     // the color mode button (#cmode_btn) shows moon/sun via CSS (body.light-theme)
     let brandImg = document.getElementById("brand");
+    let brandIcon = document.getElementById("brand_icon"); // board only (phones show the mark alone)
     checkRadio('cet_color_mode', gColorMode === "dark" ? 'dark' : 'light');
 
     if (gColorMode === "dark") {
         brandImg.src = "./src/brand_dark.svg?v=2";
+        if (brandIcon) brandIcon.src = "./src/brand_icon_dark.svg?v=1";
         document.body.classList.remove('light-theme');
     } else {
         brandImg.src = "./src/brand_light.svg?v=2";
+        if (brandIcon) brandIcon.src = "./src/brand_icon_light.svg?v=1";
         document.body.classList.add('light-theme');
     }
 }
@@ -899,7 +1384,7 @@ function showToast(text) {
     // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
     // (closeMenu() puts it back)
     let menu = document.getElementById('menu');
-    let host = (menu !== null && menu.open && menu.matches(':modal')) ? menu : document.body;
+    let host = isModalOpen(menu) ? menu : document.body;
     if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');
@@ -949,102 +1434,244 @@ function showQRCode(showIt) {
     }
 }
 
-function updateStopwatch(timer_status, timer_time, timer_visibility){
+/* B-67: timer instead of stopwatch. The server keeps the state per team (api/timer.php, dao.php):
+ * visibility (on for everyone), mode STOPWATCH | TIMER, timebox (seconds), auto-restart and the
+ * elapsed seconds (timer_time) with the status RUNNING | PAUSED (also before the first start).
+ * STOPWATCH shows just the elapsed time (B-79: no T+). TIMER shows T−rest (rest = timebox − elapsed)
+ * while rest > 0, then T+ (over time, amber). Between two server updates the client counts on by itself (interval).
+ * gTimer: the last server state, gTimerBaseTime: when it arrived. */
+let gTimer = null;
 
-    /* Save last timer value from Json response according to the base date (now),
-     * so the correct clock value can be calculated by the client, without
-     * relying on frequent server responses.
-     * */
-    gTimerTime = timer_time;
+/* B-73: an own timer change (a radio in the panel) is shown right away; a board state that was read
+ * before the change reached the server would set the panel back (the radio jumps back until the next
+ * pull, or for good when the older answer comes last). So the timer part of a board state is only
+ * taken when no own change was under way while it was asked for and answered. After the change the
+ * board loads itself (apiWrite, after the counters are back) and gets the new state. */
+let gTimerWrites = 0;     // own timer changes under way
+let gTimerWriteGen = 0;   // own timer changes finished so far
+
+/* writeGen: gTimerWriteGen when updateDao asked, -1 if a change was under way then */
+function timerStateFresh(writeGen) {
+    return writeGen === gTimerWriteGen && gTimerWrites === 0;
+}
+
+const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
+
+function updateTimer(json) {
+    gTimer = {
+        status: json.timer_status,
+        time: json.timer_time || 0,
+        visible: json.timer_visibility === 1,
+        mode: json.timer_mode === 'TIMER' ? 'TIMER' : 'STOPWATCH',
+        timebox: json.timer_timebox > 0 ? json.timer_timebox : 300,
+        autoRestart: json.timer_auto_restart === 1,
+    };
+    gTimerTime = gTimer.time;
     gTimerBaseTime = new Date();
 
-    switch(timer_status){
-        case "PAUSED":
-            addStyleClass(document.getElementById("stopwatch_pause"),"display_none");
-            removeStyleClass(document.getElementById("stopwatch_start"),"display_none");
-        break;
-
-        case "RUNNING":
-            addStyleClass(document.getElementById("stopwatch_start"),"display_none");
-            removeStyleClass(document.getElementById("stopwatch_pause"),"display_none");
-        break;
-
-        default:
-        break;
-    }
-
-    timer_time = new Date(timer_time * 1000).toISOString().slice(11, 19);
-
-    if(document.getElementById("stopwatch_timer").value !== timer_time){
-        document.getElementById("stopwatch_timer").value = timer_time;
-    }
-
-    switch(timer_visibility){
-        case 0:
-            addStyleClass(document.getElementById("stopwatch"),"display_none");
-            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "false");
-        break;
-
-        case 1:
-            removeStyleClass(document.getElementById("stopwatch"),"display_none");
-            document.getElementById("stopwatch_btn").setAttribute("aria-pressed", "true");
-        break;
-
-        default:
-        break;
-    }
-
-    /* Initiate r clear the Interval function, based on the timer status
-     */
-    if (timer_status === "RUNNING" && timer_visibility === 1) {
-        if (gTimerInterval === null) gTimerInterval = setInterval(updateStopwatchInterval, 500);
-    } else {
-        if (gTimerInterval !== null) {
-            clearInterval(gTimerInterval);
-            gTimerInterval = null;
+    let running = gTimer.status === 'RUNNING';
+    let box = document.getElementById('timer');
+    if (box !== null) {
+        box.classList.toggle('display_none', !gTimer.visible);
+        // not started yet (or reset): "ready"; both ready and paused are shown dimmed
+        box.setAttribute('data-state', running ? 'running' : (gTimer.time === 0 ? 'ready' : 'paused'));
+        document.getElementById('timer_start').hidden = running;
+        document.getElementById('timer_pause').hidden = !running;
+        // keep the focus on the control when play turns into pause (and back) by keyboard
+        let focused = document.activeElement;
+        if (focused !== null && focused.hidden && (focused.id === 'timer_start' || focused.id === 'timer_pause')) {
+            document.getElementById(running ? 'timer_pause' : 'timer_start').focus();
         }
+        renderTimer(gTimer.time);
+    }
+    updateTimerConfig();
+
+    if (running && gTimer.visible) {
+        if (gTimerInterval === null) gTimerInterval = setInterval(updateTimerInterval, 500);
+    } else if (gTimerInterval !== null) {
+        clearInterval(gTimerInterval);
+        gTimerInterval = null;
     }
 }
 
-function updateStopwatchInterval() {
-    /* Add the number of seconds elapsed since the last update of the timer time
-     * to this value und update the DOM accordingly (just to create the illusion
-     * of time).
-     * */
-    let timer_time = gTimerTime + Math.round((new Date() - gTimerBaseTime)/1000);
-
-    timer_time = new Date(timer_time * 1000).toISOString().slice(11, 19);
-
-
-    if(document.getElementById("stopwatch_timer").value !== timer_time){
-        document.getElementById("stopwatch_timer").value = timer_time;
-    }
+/* the seconds elapsed since the last server update are added locally (the illusion of time) */
+function updateTimerInterval() {
+    renderTimer(gTimerTime + Math.round((new Date() - gTimerBaseTime) / 1000));
 }
 
-function switchStopwatchVisiblity(){
-    // B-46: confirm the own click with a toast (others just see the stopwatch appear)
-    let switchingOn = document.getElementById("stopwatch_btn").getAttribute("aria-pressed") !== "true";
-    let url = './api/timer.php?t=' +t + '&action=toggle_visibility';
-    fetch(url, { method: 'POST' }).then(()=>{
-        pushDomChange();
-        showToast(switchingOn ? 'Stopwatch on \u2013 everyone on the board sees it' : 'Stopwatch off');
+/* m:ss as mm:ss below one hour, h:mm:ss from 60 minutes on */
+function formatTimerSeconds(seconds) {
+    let h = Math.floor(seconds / 3600);
+    let m = Math.floor(seconds % 3600 / 60);
+    let s = seconds % 60;
+    let pad = n => String(n).padStart(2, '0');
+    return (h > 0 ? h + ':' + pad(m) : pad(m)) + ':' + pad(s);
+}
+
+/* spoken form for the aria-label, e.g. "3 min 12 s" */
+function spokenTimerSeconds(seconds) {
+    let h = Math.floor(seconds / 3600);
+    let m = Math.floor(seconds % 3600 / 60);
+    let s = seconds % 60;
+    return (h > 0 ? h + ' h ' : '') + (h > 0 || m > 0 ? m + ' min ' : '') + s + ' s';
+}
+
+function renderTimer(elapsed) {
+    if (gTimer === null) return;
+    let display = document.getElementById('timer_display');
+    let box = document.getElementById('timer');
+    if (display === null) return;
+    let text, label, over = false;
+    if (gTimer.mode === 'TIMER') {
+        let rest = gTimer.timebox - elapsed;
+        if (rest > 0) {
+            text = 'T−' + formatTimerSeconds(rest);
+            label = spokenTimerSeconds(rest) + ' left';
+        } else {
+            over = true;
+            text = 'T+' + formatTimerSeconds(-rest);
+            label = 'time is up, ' + spokenTimerSeconds(-rest) + ' over';
+        }
+    } else {
+        text = formatTimerSeconds(elapsed);
+        label = spokenTimerSeconds(elapsed) + ' elapsed';
+    }
+    let state = box.getAttribute('data-state');
+    if (state === 'ready') label += ', not started';
+    if (state === 'paused') label += ', paused';
+    if (display.textContent !== text) display.textContent = text;
+    label = (gTimer.mode === 'TIMER' ? 'Timer: ' : 'Stopwatch: ') + label;
+    if (display.getAttribute('aria-label') !== label) display.setAttribute('aria-label', label);
+    box.setAttribute('data-over', over ? 'true' : 'false');
+}
+
+/* the timer panel follows the server state (also when someone else changes it); the "other"
+ * field is left alone while the user types in it */
+function updateTimerConfig(force = false) {
+    if (gTimer === null || document.getElementById('timer_box') === null) return;
+    checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
+    checkRadio('tmr_mode', gTimer.mode);
+    checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
+    document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
+
+    let minutes = Math.round(gTimer.timebox / 60);
+    let preset = TIMER_PRESETS.includes(minutes);
+    document.querySelectorAll('input[name="tmr_timebox"]').forEach(radio => {
+        radio.checked = preset && radio.value === String(minutes);
     });
+    let other = document.getElementById('tmr_other');
+    if (force || document.activeElement !== other) {
+        // a custom value is marked like a checked preset (data-set, style.css); a preset leaves the field empty
+        other.value = preset ? '' : String(minutes);
+        other.closest('.tmr-other').setAttribute('data-set', preset ? 'false' : 'true');
+        showTimerOtherError(false);
+    }
+}
+
+function timerAction(action, value = null) {
+    let url = './api/timer.php?t=' + encodeURIComponent(t) + '&action=' + action
+        + (value === null ? '' : '&value=' + encodeURIComponent(value));
+    gTimerWrites++;
+    // B-73: the counters are back before the board loads itself after the write (apiWrite),
+    // otherwise the timer part of that answer would be dropped
+    return apiWrite(url, {}, () => {
+        gTimerWrites--;
+        gTimerWriteGen++;
+    }).then(response => {
+        if (response === null || !response.ok) throw new Error('timer.php ' + (response ? response.status : 'failed'));
+    });
+}
+
+function setTimerVisibility(value) {
+    // B-46: confirm the own change with a toast (others just see the timer appear)
+    timerAction('set_visibility', value).then(() => {
+        showToast(value === '1' ? 'Timer on – everyone on the board sees it' : 'Timer off');
+    }).catch(() => {}); // the board loaded itself (apiWrite)
     measureEvent("TOGGLE_TIMER");
 }
 
-function stopwatchStart(){
-    let url = './api/timer.php?t=' + t + '&action=start';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+function setTimerMode(value) {
+    timerAction('set_mode', value).catch(() => {}); // the board loaded itself (apiWrite)
 }
 
-function stopwatchPause(){
-    let url = './api/timer.php?t=' + t + '&action=pause';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+function setTimerTimebox(minutes) {
+    let other = document.getElementById('tmr_other');
+    other.value = '';
+    other.closest('.tmr-other').setAttribute('data-set', 'false');
+    showTimerOtherError(false);
+    timerAction('set_timebox', minutes).catch(() => {}); // the board loaded itself (apiWrite)
 }
 
-function stopwatchReset(){
-    let url = './api/timer.php?t=' + t + '&action=reset';
-    fetch(url, { method: 'POST' }).then(()=>{pushDomChange();});
+/* "other: __ min" (whole minutes 1..240), a plain text field (no number field: Safari and Chrome
+ * differ there). The field keeps its value while typing (Tab selects it, a click puts the caret in),
+ * Enter saves and leaves the field, Escape drops the input, leaving the field saves a valid input
+ * (an invalid one is dropped). Invalid on Enter: a short message below the field, nothing is saved,
+ * the field keeps the focus. While the field has the focus, updates from others leave it alone
+ * (updateTimerConfig). */
+function timerOtherKeydown(event) {
+    let other = event.target;
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        if (saveTimerOther(true)) other.blur();
+    } else if (event.key === 'Escape') {
+        // drop the input; preventDefault keeps the menu open (initMenu ignores handled keys)
+        event.preventDefault();
+        updateTimerConfig(true);
+        other.blur();
+    }
+}
+
+function timerOtherBlur() {
+    saveTimerOther(false);
+    updateTimerConfig(true);
+}
+
+function showTimerOtherError(show) {
+    let other = document.getElementById('tmr_other');
+    let error = document.getElementById('tmr_other_error');
+    if (other === null || error === null) return;
+    error.hidden = !show;
+    if (show) other.setAttribute('aria-invalid', 'true');
+    else other.removeAttribute('aria-invalid');
+}
+
+/* saves the typed minutes; returns false for an invalid input (with the message if showError) */
+function saveTimerOther(showError) {
+    let other = document.getElementById('tmr_other');
+    let value = other.value.trim();
+    if (value === '') {
+        showTimerOtherError(false);
+        return true;
+    }
+    let minutes = Number(value);
+    if (!/^[0-9]+$/.test(value) || minutes < 1 || minutes > 240) {
+        showTimerOtherError(showError);
+        return false;
+    }
+    showTimerOtherError(false);
+    if (gTimer === null || gTimer.timebox === minutes * 60) return true;
+    // show the new value right away (the server resets the timer, the next pull brings the rest)
+    gTimer.timebox = minutes * 60;
+    gTimerTime = 0;
+    gTimerBaseTime = new Date();
+    timerAction('set_timebox', String(minutes)).catch(() => {}); // the board loaded itself (apiWrite)
+    return true;
+}
+
+function setTimerAutoRestart(value) {
+    timerAction('set_auto_restart', value).catch(() => {}); // the board loaded itself (apiWrite)
+}
+
+function timerStart() {
+    timerAction('start').catch(() => {}); // the board loaded itself (apiWrite)
+}
+
+function timerPause() {
+    timerAction('pause').catch(() => {}); // the board loaded itself (apiWrite)
+}
+
+function timerReset() {
+    timerAction('reset').catch(() => {}); // the board loaded itself (apiWrite)
 }
 
 
@@ -1088,7 +1715,7 @@ function loadCardConfig() {
        - sort_order does not have to be unique, but it will help to maintain consistency
      */
 
-    const url = "./cards.json";
+    const url = "./cards.json?v=3"; // bump when cards.json changes (Safari keeps it cached)
     let jsonCardsConf = loadJSON(url);
     gCardsConfig = jsonCardsConf.cards;
     gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
@@ -1104,7 +1731,14 @@ function loadCardConfig() {
         cardElement.src = "src/c_" + card.card_key + ".png";
         cardElement.classList.add("ctl");
         cardElement.alt = card.description;
-        ctl.appendChild(cardElement);
+        // B-68: the card with its key below it (shown on devices with a mouse, style.css)
+        let slot = document.createElement("span");
+        slot.className = "ctl-slot";
+        let key = document.createElement("span");
+        key.className = "ctl-key";
+        key.setAttribute("aria-hidden", "true");
+        slot.append(cardElement, key);
+        ctl.appendChild(slot);
 
         let thumbElement = document.createElement("img");
         thumbElement.id = "_" + card.card_key;
@@ -1182,11 +1816,30 @@ function handleResize() {
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
-    showCardUsage(gLastJson.players, gLastJson.all_players_ready, gLastJson.show_avg);
+    // B-68: the spread's blocks jump to their new height (e.g. at the breakpoint), only votes animate
+    const spread = document.getElementById('spread');
+    spread.classList.add('no-anim');
+    updateSide(gLastJson, false);
+    void spread.offsetHeight;
+    spread.classList.remove('no-anim');
+    updateDeckRoom();
+    syncCarousel(true); // B-75: the card in the middle stays there
 }
 
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
+    initCarousel(); // B-75
+    // B-69: the "<" / ">" bars follow the deck's scroll position; the wheel scrolls it sideways
+    const ctl = document.getElementById('ctl');
+    if (ctl !== null) {
+        // (not on the carousel: no bars there, and its frames stay light)
+        ctl.addEventListener('scroll', () => { if (!gCarousel.on) updateDeckRoom(); }, { passive: true });
+        ctl.addEventListener('wheel', scrollDeckByWheel, { passive: false });
+    }
+    // B-68: a deck card image that loads late widens the deck; measure again (load does not bubble)
+    document.addEventListener('load', event => {
+        if (event.target instanceof HTMLImageElement && event.target.closest('#ctl') !== null) updateDeckRoom();
+    }, true);
     // B-49: the table also changes its size without a window resize (topic shown, unfolded or
     // hidden): the cards jump to their new size like on a resize. Only the border box counts,
     // a scrollbar coming or going does not change the area the cards are fitted to.
@@ -1199,6 +1852,276 @@ function initDisplayHandling() {
             finishAnimations(cbox, 'height');
         }).observe(table, { box: 'border-box' });
     }
+}
+
+/* B-68: the column (style.css "Column"; large screens on the right, phones a strip above the deck):
+ * where the round is and, once the cards are revealed, the spread. Plain text only (textContent).
+ * The spread has one bar per card in the deck (a stack of blocks, one per vote; a block's height
+ * follows the number of players, see style.css), the vote count above it and the card's value below it (cards.json
+ * "symbol", else its description); the most chosen card(s) in the accent color, from two votes
+ * on. Its room is kept before the reveal (style.css), so nothing moves. The average pointer
+ * follows the board setting (show_avg).
+ * The columns and blocks are updated in place, so style.css can let the blocks fade in and out
+ * and the pointer slide (glide = false: jump, e.g. on a resize). */
+function updateSide(json, glide = true) {
+    const status = document.getElementById('round_status');
+    const spread = document.getElementById('spread');
+    if (status === null || spread === null || !json) return;
+
+    const revealed = json.all_players_ready && json.players_count > 0;
+    let text = 'waiting for players';
+    if (revealed) text = 'revealed';
+    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + '/' + json.players_count + ' voted';
+    if (status.textContent !== text) status.textContent = text;
+
+    spread.hidden = !revealed;
+    updateTip(json, revealed);
+
+    // the columns follow the deck, also before the reveal (they keep the spread's room)
+    const bars = document.getElementById('spread_bars');
+    const deckCards = Array.from(document.querySelectorAll('#ctl img.on'));
+    const keys = deckCards.map(img => img.id).join(',');
+    if (bars.getAttribute('data-keys') !== keys) {
+        bars.replaceChildren(...deckCards.map(img => {
+            const config = getCardConfig(img.id);
+            const col = document.createElement('div');
+            col.className = 'spread-col zero';
+            col.setAttribute('data-card', img.id);
+            const count = document.createElement('span');
+            count.className = 'spread-count';
+            const bar = document.createElement('span');
+            bar.className = 'spread-bar';
+            const value = document.createElement('span');
+            value.className = 'spread-value';
+            value.textContent = config ? (config.symbol || config.description) : '';
+            col.append(count, bar, value);
+            return col;
+        }));
+        bars.setAttribute('data-keys', keys);
+    }
+
+    // the block height is fixed per round: the bar height shared by the players on the board
+    // (style.css); only a player joining or leaving changes it
+    const voters = String(Math.max(1, json.players_count));
+    if (bars.style.getPropertyValue('--voters') !== voters) bars.style.setProperty('--voters', voters);
+
+    const pointer = document.getElementById('spread_index');
+    if (!revealed) {
+        // empty bars, so the votes grow in on the next reveal
+        bars.querySelectorAll('.spread-bar').forEach(bar => bar.replaceChildren());
+        toggleStyleClass(pointer, 'hidden', 'visible');
+        return;
+    }
+
+    const cardStats = calculateCardStats(json.players);
+    const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
+    const chosen = [];
+    const grown = [];
+    Array.from(bars.children).forEach(col => {
+        const stat = cardStats[col.getAttribute('data-card')];
+        const n = stat ? stat.usageCount : 0;
+        col.classList.toggle('top', n > 1 && n === top);
+        col.classList.toggle('zero', n === 0);
+        col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
+        grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
+        const config = getCardConfig(col.getAttribute('data-card'));
+        const rank = cardRank(config);
+        if (n > 0 && rank !== null) chosen.push({ rank, text: col.querySelector('.spread-value').textContent });
+    });
+    if (grown.length > 0) {
+        void bars.offsetHeight; // the new blocks start invisible (class "in"), then fade in
+        grown.forEach(seg => seg.classList.remove('in'));
+    }
+
+    // the range of the chosen numeric values (B-79: infinity as the top end): "2 – 20", "3 – ∞",
+    // or "5" when all agree
+    let range = '';
+    if (chosen.length > 0) {
+        chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
+        const low = chosen[0].text;
+        const high = chosen[chosen.length - 1].text;
+        range = low === high ? low : low + ' – ' + high;
+    }
+    const rangeElement = document.getElementById('spread_range');
+    if (rangeElement.textContent !== range) rangeElement.textContent = range;
+
+    let left = null;
+    if (json.show_avg === 1) {
+        left = calculateIndicatorLefPosition(cardStats,
+            key => bars.querySelector('[data-card="' + key + '"]'), pointer);
+    }
+    if (left === null) {
+        toggleStyleClass(pointer, 'hidden', 'visible');
+    } else {
+        // it slides to a new spot, but jumps when it shows up or on a resize
+        const jump = !glide || !pointer.classList.contains('visible');
+        pointer.classList.toggle('no-glide', jump);
+        pointer.style.left = (left - bars.getBoundingClientRect().left) + 'px';
+        toggleStyleClass(pointer, 'visible', 'hidden');
+        if (jump) {
+            void pointer.offsetWidth;
+            pointer.classList.remove('no-glide');
+        }
+    }
+}
+
+/* B-70: a short tip what to do now, in the column (before the reveal where the spread will be, then
+ * below it; style.css). Built from text nodes and <b> (textContent only: names are user input).
+ * Names are highlighted like in the mockup ("Let them explain: Chris (2) and Emil (20)"). Hidden on phones. */
+function updateTip(json, revealed) {
+    const tip = document.getElementById('round_tip');
+    if (tip === null) return;
+    // B-96: team setting "Tips" off: no tip and no room for it (hidden, style.css)
+    const off = json.show_tips === 0;
+    tip.hidden = off;
+    const parts = off ? [] : tipText(json, revealed);
+    const key = JSON.stringify(parts);
+    if (tip.dataset.key === key) return;
+    tip.dataset.key = key;
+    tip.replaceChildren(...parts.map(part => {
+        if (typeof part === 'string') return document.createTextNode(part);
+        const b = document.createElement('b');
+        b.textContent = part.name;
+        return b;
+    }));
+}
+
+/* "Bob", "Bob and Cleo", "Bob, Cleo and Dan" – each name highlighted */
+function tipNames(names) {
+    const parts = [];
+    names.forEach((name, i) => {
+        if (i > 0) parts.push(i === names.length - 1 ? ' and ' : ', ');
+        parts.push({ name });
+    });
+    return parts;
+}
+
+/* the players on one side of the spread: "Dan (3)", "Dan, Eve +2 (8)" */
+function tipSide(players, value) {
+    const names = players.slice(0, 2).map(player => player.name).join(', ');
+    return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : '') + ' (' + value + ')' };
+}
+
+/* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
+ * ("too big to estimate"), null for cards without a value (veto, control cards). Not for the
+ * average: infinity stays out of it. */
+function cardRank(config) {
+    if (!config) return null;
+    if (config.card_key === 'infin01' || config.description === 'infinity') return Infinity;
+    return config.numeric_value != null ? config.numeric_value : null;
+}
+
+/* the tip as a list of plain strings and highlighted { name } parts; [] for none */
+function tipText(json, revealed) {
+    const players = json.players || [];
+    if (json.players_count < 2) return ['Copy the board link and invite your team.'];
+
+    if (!revealed) {
+        if (json.player_type === 'PLAYER' && !json.selected_card_key) {
+            return ['Pick the card that fits best from your point of view. Once everyone has voted, cards are revealed automatically.'];
+        }
+        const missing = players.filter(player => String(player.display_card_key).startsWith('prgrss'));
+        if (missing.length === 0) return [];
+        const who = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
+        return ['Waiting for ', ...who, '. Once everyone has voted, cards are revealed automatically.'];
+    }
+
+    // B-79: coffee adds a hint for a break (also in anonymous mode); ? and ! are asked first
+    const configs = players.map(player => ({ player, config: getCardConfig(player.display_card_key) }));
+    const pause = configs.some(entry => entry.config && entry.config.card_key === 'break01');
+    const withBreak = parts => {
+        if (!pause) return parts;
+        if (parts.length === 0) return ['Maybe take a short break.'];
+        const last = parts[parts.length - 1];
+        const done = typeof last === 'string' && last.endsWith('.');
+        return [...parts, done ? ' Maybe take a short break.' : '. Maybe take a short break.'];
+    };
+
+    // B-79: in anonymous mode always a general, gentle line – nobody is asked to explain
+    if (json.anonymous_mode === 1) return withBreak(['Take the chance and talk about what you see.']);
+
+    // "Maria (?)", "Jogi, Paul +1 (!)" – one group per control card that asks for a word
+    const asking = ['qstmrk1', 'xclam01'].map(key => {
+        const entries = configs.filter(entry => entry.config && entry.config.card_key === key);
+        return entries.length === 0 ? null : tipSide(entries.map(entry => entry.player), entries[0].config.symbol);
+    }).filter(group => group !== null);
+    // groups joined by commas: "Let them explain: Alice (3), Bob (8), Maria (?)"
+    const explain = groups => {
+        const parts = ['Let them explain: '];
+        groups.forEach((group, i) => {
+            if (i > 0) parts.push(asking.length > 0 ? ', ' : ' and ');
+            parts.push(group);
+        });
+        return parts;
+    };
+    const talk = asking.length === 0
+        ? ['Talk about the cards you chose.']
+        : ['Talk about the cards you chose \u2013 ', ...explain(asking).slice(1), ' first.'];
+
+    // the cards actually chosen; control cards (coffee, ?, !) stay neutral
+    const chosen = configs.filter(entry => entry.config && !entry.config.flow_control);
+    if (chosen.length === 0) return withBreak(asking.length > 0 ? explain(asking) : []);
+    // B-79: emotions and traffic lights have no range (or just three values): talk instead of names
+    if (chosen.some(entry => entry.config.talk)) return withBreak(talk);
+
+    // lowest and highest numeric card; B-79: infinity counts as the highest, veto does not count
+    const numeric = chosen.filter(entry => cardRank(entry.config) !== null);
+    // no numbers at all (only veto): talk about them
+    if (numeric.length === 0) return withBreak(talk);
+    const values = numeric.map(entry => cardRank(entry.config));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (min === max) {
+        if (numeric.length === players.length) return ['Everyone agrees \u2013 on to the next topic.'];
+        // the same number next to a veto: talk about them
+        if (chosen.length > numeric.length) return withBreak(talk);
+        // next to control cards only: ? and ! explain, otherwise no tip
+        return withBreak(asking.length > 0 ? explain(asking) : []);
+    }
+    const side = value => {
+        const entries = numeric.filter(entry => cardRank(entry.config) === value);
+        return tipSide(entries.map(entry => entry.player), entries[0].config.symbol || entries[0].config.description);
+    };
+    return withBreak(explain([side(min), side(max), ...asking]));
+}
+
+/* B-68: n blocks (one per vote) in a bar of the spread. New ones are added on top with the class
+ * "in" (invisible) and returned, the caller removes it so they fade in; removed ones fade out from
+ * the top (class "out") and leave the DOM afterwards. Several at once go one after another: a
+ * growing bar builds up from the bottom, a shrinking one fades out from the top. No motion with
+ * prefers-reduced-motion or on a resize (no-anim). */
+const SPREAD_STEP_MS = 70;
+const SPREAD_FADE_MS = 150;
+
+function setSpreadSegments(bar, n) {
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        || bar.closest('.no-anim') !== null;
+    let segs = Array.from(bar.querySelectorAll('.spread-seg:not(.out)'));
+    const added = [];
+    if (segs.length < n) {
+        // blocks still fading out sit on top: drop them, the new ones go there
+        bar.querySelectorAll('.spread-seg.out').forEach(seg => seg.remove());
+        for (let i = segs.length; i < n; i++) {
+            const seg = document.createElement('span');
+            seg.className = 'spread-seg in';
+            // the delay only for the fade, not for the height (players joining or leaving)
+            if (!still) seg.style.transitionDelay = ((i - segs.length) * SPREAD_STEP_MS) + 'ms, 0s';
+            bar.prepend(seg);
+            added.push(seg);
+        }
+    }
+    // the blocks in DOM order run from the top: the top ones go first
+    segs.slice(0, Math.max(0, segs.length - n)).forEach((seg, i) => {
+        if (still) {
+            seg.remove();
+            return;
+        }
+        const delay = i * SPREAD_STEP_MS;
+        seg.style.transitionDelay = delay + 'ms, 0s';
+        seg.classList.add('out');
+        setTimeout(() => seg.remove(), delay + SPREAD_FADE_MS + 50);
+    });
+    return added;
 }
 
 function calculateCardStats(players) {
@@ -1223,14 +2146,15 @@ function calculateCardStats(players) {
     return cardStats;
 }
 
-/* Left edge of the average indicator when it points at the middle of a deck card whose left
- * edge is at left (B-49: deck cards and indicator scale with the screen). */
-function indicatorLeft(img, left) {
-    const index = document.getElementById('index');
-    return left + (img.getBoundingClientRect().width - index.getBoundingClientRect().width) / 2;
+/* Left edge of the average pointer when it points at the middle of an element (a bar of the
+ * spread) whose left edge is at left. */
+function indicatorLeft(img, left, pointer) {
+    return left + (img.getBoundingClientRect().width - pointer.getBoundingClientRect().width) / 2;
 }
 
-function calculateIndicatorLefPosition(cardStats) {
+/* elementFor: the element the pointer points at for a card key (B-68: its bar in the spread);
+ * pointer: the pointer image. Viewport coordinates. */
+function calculateIndicatorLefPosition(cardStats, elementFor, pointer) {
     let hasResult = false;
     let resultCnt = 0;
     let resultSum = 0;
@@ -1246,9 +2170,8 @@ function calculateIndicatorLefPosition(cardStats) {
             resultCnt += cardStats[cardKey].usageCount;
             resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
         } else if (cardConfig && cardConfig.description === "infinity") {
-            let e = document.getElementById(cardKey);
-            curPos = e.getBoundingClientRect().left;
-            returnPos = indicatorLeft(e, curPos);
+            let e = elementFor(cardKey);
+            if (e !== null) returnPos = indicatorLeft(e, e.getBoundingClientRect().left, pointer);
         }
     });
 
@@ -1265,23 +2188,23 @@ function calculateIndicatorLefPosition(cardStats) {
             let curVal = getCardConfig(img.id).numeric_value;
 
             if (curVal > avgResult) {
-                let e = document.getElementById(img.id);
+                let e = elementFor(img.id);
                 curPos = e.getBoundingClientRect().left;
 
                 let range = curVal - lastVal;
                 let relativePosition = (avgResult - lastVal) / range;
                 let newPosition = lastPos + relativePosition * (curPos - lastPos);
-                return Math.round(indicatorLeft(e, newPosition));
+                return Math.round(indicatorLeft(e, newPosition, pointer));
             }
 
             if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
-                let e = document.getElementById(img.id);
+                let e = elementFor(img.id);
                 curPos = e.getBoundingClientRect().left;
-                return indicatorLeft(e, curPos);
+                return indicatorLeft(e, curPos, pointer);
             }
 
             lastVal = curVal;
-            let e = document.getElementById(img.id);
+            let e = elementFor(img.id);
             curPos = e.getBoundingClientRect().left;
             lastPos = curPos;
         }
@@ -1290,54 +2213,6 @@ function calculateIndicatorLefPosition(cardStats) {
     return null;
 }
 
-
-function updateAvgIndicator(cardStats, showStats) {
-    let index = document.getElementById("index");
-    if (showStats) {
-        let indicatorLeftPos = calculateIndicatorLefPosition(cardStats);
-        if (indicatorLeftPos != null) {
-            index.style.left = indicatorLeftPos + "px";
-            if (index.classList.contains("hidden")) {
-                toggleStyleClass(index, "visible", "hidden")
-            }
-        } else {
-            toggleStyleClass(index, "hidden", "visible");
-        }
-    } else {
-        toggleStyleClass(index, "hidden", "visible");
-    }
-}
-
-function showCardUsage(players, allPlayersReady, showAvg) {
-    let cardStats = calculateCardStats(players);
-
-    const images = document.querySelectorAll('#ctl img.on');
-
-    images.forEach(img => {
-        const cardStat = cardStats[img.id];
-
-        // B-49: the usage bar (style.css, .controls img) scales with the deck cards
-        if (cardStat && cardStat.usageCount > 0 && allPlayersReady) {
-            img.style.setProperty('--usage', String(cardStat.usagePercentage || 0));
-        } else {
-            img.style.setProperty('--usage', '0');
-        }
-    });
-
-    let ctl = document.getElementById("ctl");
-
-    if (allPlayersReady && players.length>0) {
-        ctl.classList.add("show_card_stats");
-        if (showAvg === 1) {
-            updateAvgIndicator(cardStats, true);
-        } else {
-            updateAvgIndicator(cardStats,false);
-        }
-    } else {
-        ctl.classList.remove("show_card_stats");
-        updateAvgIndicator(cardStats,false);
-    }
-}
 
 function showConfetty(playersCount) {
     const jsConfetti = new JSConfetti();
@@ -1360,10 +2235,10 @@ function showDeleteUserOverlay(openIt=true) {
 
 function deleteUser() {
     let url = './api/delete_user.php?id=' + sid;
+    // B-81: the API tells the boards of all the user's teams; this page is left, so no reload here
     fetch(url, { method: 'POST' }).then(()=>{
         localStorage.clear();
         sid = '-1';
-        pushDomChange();
         document.location = 'about:blank';
     });
 }

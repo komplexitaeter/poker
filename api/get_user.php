@@ -2,7 +2,7 @@
 require '../config.php';
 require './lib.php';
 set_header('json');
-$id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
+$id = get_id_param("id");
 
 
 $color_mode = 'dark';

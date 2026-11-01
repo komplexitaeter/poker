@@ -4,8 +4,9 @@ require './lib.php';
 require_post();
 set_header('json');
 
-$player_id = get_text_param("player_id", 16);
-$team_id = get_text_param("team_id", 80);
+$player_id = get_id_param("player_id");
+// read like t in the other endpoints: non-ASCII is dropped, so it never reaches the utf8mb3 column (B-88)
+$team_id = substr(filter_input(INPUT_GET, "team_id", FILTER_SANITIZE_URL) ?? '', 0, 80);
 $display_type = get_text_param("display_type", 100);
 
 $promotions = [

@@ -33,10 +33,11 @@ const EVENTS = array(
     'INIT_ON_LOAD'           => 'Start page loaded',
     'OPEN_TOPIC_BOX'         => 'Menu: Topic',
     'OPEN_SETUP_BOX'         => 'Menu: Board settings',
+    'OPEN_TIMER_BOX'         => 'Menu: Timer',
     'OPEN_USER_SETTINGS_BOX' => 'Menu: You',
     'OPEN_FEEDBACK_BOX'      => 'Menu: Feedback',
     'TOPIC_SAVED'            => 'Topic saved',
-    'TOGGLE_TIMER'           => 'Stopwatch toggled',
+    'TOGGLE_TIMER'           => 'Timer switched on/off',
     'USE_COLOR_SWITCH'       => 'Color mode switched',
 );
 

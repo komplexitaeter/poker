@@ -4,20 +4,21 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 /**
  * B-48: the header is made of real buttons and can be used with the keyboard.
  * B-51: the menu sections open with Enter in the menu panel (aria-expanded), Escape closes it and
- * puts the focus back on the button; the stopwatch is an on/off switch (aria-pressed). On phones the
+ * puts the focus back on the button. B-67: the timer panel works the same way, its radio groups with the
+ * arrow keys. On phones the
  * menu button opens the menu (bottom sheet) and it closes with the keyboard as well.
  */
 
-test('keyboard: topic box opens with Enter, Escape closes it, stopwatch sets aria-pressed (B-48)', async ({ browser }) => {
+test('keyboard: topic box opens with Enter, Escape closes it, timer panel by keyboard (B-48, B-67)', async ({ browser }) => {
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'KeyboardDesk');
   await joinAsPlayer(alice, url, 'Alice');
 
   const topicBtn = alice.locator('#topic_btn');
-  const stopwatchBtn = alice.locator('#stopwatch_btn');
+  const timerBtn = alice.locator('#timer_btn');
 
-  // Tab from the stopwatch reaches the topic button, Enter opens the panel
-  await stopwatchBtn.focus();
+  // Tab from the QR code button reaches the topic button, Enter opens the panel
+  await alice.locator('#show_qr_code').focus();
   await alice.keyboard.press('Tab');
   await expect(topicBtn).toBeFocused();
   await alice.keyboard.press('Enter');
@@ -44,19 +45,35 @@ test('keyboard: topic box opens with Enter, Escape closes it, stopwatch sets ari
   // "Delete my data" shows its overlay and closes the menu under it
   await alice.locator('#delete_user_btn').click();
   await expect(alice.locator('#overlay_delete_user')).not.toHaveClass(/hidden/);
+  // a key does not pick a card behind the overlay (B-68)
+  const pickedBefore = await alice.locator('#ctl img.selected').count();
+  await alice.keyboard.press('1');
+  await expect(alice.locator('#ctl img.selected')).toHaveCount(pickedBefore);
   await expect(alice.locator('dialog#menu')).not.toHaveAttribute('open');
   await expect(alice.locator('#user_settings_box')).toBeHidden();
   await alice.locator('#overlay_delete_user').getByRole('button', { name: 'Cancel' }).click();
   await expect(alice.locator('#overlay_delete_user')).toHaveClass(/hidden/);
 
-  // the stopwatch is a toggle for the whole board
-  await expect(stopwatchBtn).toHaveAttribute('aria-pressed', 'false');
-  await stopwatchBtn.press('Enter');
-  await expect(stopwatchBtn).toHaveAttribute('aria-pressed', 'true');
-  await expect(alice.locator('#stopwatch')).toBeVisible();
-  await stopwatchBtn.press('Space');
-  await expect(stopwatchBtn).toHaveAttribute('aria-pressed', 'false');
-  await expect(alice.locator('#stopwatch')).toBeHidden();
+  // B-67: :timer follows :topic (before :board); Enter opens the timer panel on the checked radio
+  // ("Off"), the arrow key switches the timer on for the whole board, Escape goes back to the button
+  await topicBtn.focus();
+  await alice.keyboard.press('Tab');
+  await expect(timerBtn).toBeFocused();
+  await alice.keyboard.press('Tab');
+  await expect(alice.locator('#cset_btn')).toBeFocused();
+  await timerBtn.focus();
+  await alice.keyboard.press('Enter');
+  await expect(alice.locator('#timer_box')).toBeVisible();
+  await expect(timerBtn).toHaveAttribute('aria-expanded', 'true');
+  await expect(alice.locator('input[name=tmr_visibility][value="0"]')).toBeFocused();
+  await alice.keyboard.press('ArrowRight');
+  await expect(alice.locator('input[name=tmr_visibility][value="1"]')).toBeChecked();
+  await expect(alice.locator('#timer')).toBeVisible();
+  await alice.keyboard.press('Escape');
+  await expect(timerBtn).toBeFocused();
+  // play and reset are buttons with names
+  await expect(alice.getByRole('button', { name: 'Start timer' })).toBeVisible();
+  await expect(alice.getByRole('button', { name: 'Reset timer' })).toBeVisible();
 });
 
 test('keyboard on a phone: the menu button opens the index with Enter, Escape closes the menu (B-48, B-51)', async ({ browser }) => {

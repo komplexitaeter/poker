@@ -3,9 +3,10 @@ require '../config.php';
 require './lib.php';
 require_post();
 
-$id = substr(filter_input(INPUT_GET, "id", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,16);
-$event_code = substr(filter_input(INPUT_GET, "event_code", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,300);
-$display_type = substr(filter_input(INPUT_GET, "display_type", FILTER_SANITIZE_FULL_SPECIAL_CHARS	) ?? '', 0,50);
+$id = get_id_param("id");
+// codes like BOARD_ON_LOAD and xs/m/md/lg (script.js), so the id format fits them too (B-88)
+$event_code = get_id_param("event_code", 300);
+$display_type = get_id_param("display_type", 50);
 
 
 $link = db_init();

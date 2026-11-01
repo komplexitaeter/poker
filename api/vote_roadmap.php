@@ -10,7 +10,7 @@ require './lib.php';
 require_post();
 set_header('json');
 
-$id = get_text_param("id", 16);
+$id = get_id_param("id");
 $item = filter_input(INPUT_GET, "item", FILTER_VALIDATE_INT, array("options" => array("min_range" => 1)));
 $reaction = get_text_param("reaction", 10);
 
