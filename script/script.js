@@ -661,21 +661,13 @@ function setDeckPickLine(line, middle, picked) {
     if (card === undefined) {
         const pickedCard = picked !== null ? cardByKey(deckCardKey(picked)) : undefined;
         key = pickedCard ? 'p:' + pickedCard.key : '-';
-        parts = () => pickedCard ? [document.createTextNode('you picked '), cardSmall(pickedCard)]
-            : [document.createTextNode('tap to pick a card')];
+        parts = () => deckPickParts(pickedCard, true, false);
     } else {
         const isPicked = middle === picked;
         key = (isPicked ? 'P:' : 'm:') + card.key + (gDeckTexts ? '+' : '');
-        parts = () => {
-            const name = document.createElement('b');
-            name.append(cardSmall(card, !card.heading), card.heading ? ' · ' + card.heading : '');
-            const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
-            // F7: a description alone (emotions) reads like a heading (one-text)
-            if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
-                { className: 'deck-pick-info' + (card.heading ? '' : ' one-text'), textContent: card.info }));
-            return list;
-        };
+        parts = () => deckPickParts(card, isPicked, true);
     }
+    sizeDeckPickLine(line);
     if (line.getAttribute('data-shows') === key) return; // only on a change (per frame while swiping)
     line.setAttribute('data-shows', key);
     // F8: one block in the middle, its text left-aligned (a description below starts under the first line's start)
@@ -683,6 +675,47 @@ function setDeckPickLine(line, middle, picked) {
     body.className = 'deck-pick-body';
     body.append(...parts());
     line.replaceChildren(body);
+}
+
+/* the content of the hint line: "tap to pick a card", "you picked 5" or, for a card with texts,
+ * "tap to pick 3 · Consult" (+ its description in sets with texts) */
+function deckPickParts(card, isPicked, withTexts) {
+    if (card === undefined) return [document.createTextNode('tap to pick a card')];
+    if (!withTexts) return [document.createTextNode('you picked '), cardSmall(card)];
+    const name = document.createElement('b');
+    name.append(cardSmall(card, !card.heading), card.heading ? ' · ' + card.heading : '');
+    const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
+    // F7: a description alone (emotions) reads like a heading (one-text)
+    if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
+        { className: 'deck-pick-info' + (card.heading ? '' : ' one-text'), textContent: card.info }));
+    return list;
+}
+
+/* B-99 F8 (D17, Andreas): the line keeps its start while swiping. Its block is as wide as the deck's longest
+ * entry (every card, picked or not; capped by the line in style.css), so "> tap to pick" never moves.
+ * Measured once per deck in a hidden copy of the line (removed again before it is drawn). */
+function sizeDeckPickLine(line) {
+    if (line.getAttribute('data-sized') === String(gDeck.rev) || line.clientWidth === 0) return;
+    const sizer = document.createElement('p');
+    sizer.className = 'deck-pick deck-pick-sizer';
+    sizer.setAttribute('aria-hidden', 'true');
+    const entries = [[undefined, false, false]];
+    gDeck.cards.forEach(card => {
+        const texts = Boolean(card.heading || card.info) && (gDeckTexts || Boolean(card.controlCard)); // deckInfoCard()
+        entries.push([card, true, texts]);
+        if (texts) entries.push([card, false, true]);
+    });
+    entries.forEach(([card, isPicked, texts]) => {
+        const body = document.createElement('span');
+        body.className = 'deck-pick-body';
+        body.append(...deckPickParts(card, isPicked, texts));
+        sizer.append(body);
+    });
+    line.after(sizer);
+    const width = Math.max(...Array.from(sizer.children, body => body.getBoundingClientRect().width));
+    sizer.remove();
+    line.style.setProperty('--deck-pick-width', Math.ceil(width) + 'px');
+    line.setAttribute('data-sized', String(gDeck.rev));
 }
 
 /* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */

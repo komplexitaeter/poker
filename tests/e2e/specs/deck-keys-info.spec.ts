@@ -6,6 +6,7 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCa
  *   15  control cards on the table show heading and description in every set (small cards: a few whole lines)
  *   19  sets in the style "inverted" (J.U.D.G.E.) show small values as a mini square, not as grey digits
  *   21  the info line: one block in the middle, the text left-aligned next to the chip
+ *       (D17: on touch the block is as wide as the deck's longest entry, its start stays put while swiping)
  *   22  the letter rows pick the cards (Q–P, A–L, Y–M, physical keys), labels in the user's layout
  *   23  the average pointer close below the spread's labels */
 
@@ -221,6 +222,15 @@ test('touch: the carousel hint shows the inverted square, left-aligned in a cent
   });
   expect(Math.abs(lefts[0] - lefts[1])).toBeLessThan(1);
   expect(lefts[2]).toBeGreaterThanOrEqual(lefts[0] - 1);
+  // D17: swiping on, the line keeps its start ("> tap to pick" does not move with the text's length)
+  const start = async (key: string, text: string) => {
+    await deckCard(alice, key).evaluate(el => el.parentElement!.scrollIntoView({ inline: 'center' }));
+    await expect(line.locator('b')).toContainText(text);
+    return line.evaluate(el => el.querySelector('.deck-pick-body')!.getBoundingClientRect().left);
+  };
+  const starts = [await start('jdg1', 'full support'), await start('jdg3', 'severe concerns'),
+    await start('jdg6', 'veto'), lefts[0]];
+  expect(Math.max(...starts) - Math.min(...starts)).toBeLessThan(1);
 });
 
 test('info line: a centred block, the text left-aligned, its second line under the first one\'s start (F8, 21)', async ({ browser }) => {
