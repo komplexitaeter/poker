@@ -137,7 +137,7 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   // a control card does not end the round
   await alice.locator('#deck_menu .dm-back').click();
   await control(alice, 'xclam01').click();
-  await expect(alice.locator('#toast')).toHaveText('Control cards changed – everyone sees it');
+  await expect(alice.locator('#toast')).toHaveText('Special cards changed – everyone sees it');
   await expect(deckCard(bob, 'xclam01')).toHaveCount(1);
   await expectTableCard(alice, 'Bob', 'done001');
 
