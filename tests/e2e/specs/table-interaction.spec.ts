@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, stopHbLoads } from './helpers';
 
 /**
  * B-110 part 1 (board): the board loads dao.php on every hb; away players show with a dimmed card and the trash can
@@ -189,6 +189,7 @@ test('smiley: opens the emoji bar, keys, Esc closes, focus back (B-110)', async 
   await expect(bar).toBeVisible();
   await alice.locator('#team_name').click();
   await expect(bar).toBeHidden();
+  await stopHbLoads(alice); // a load after a hb is no load by the double click
   let loads = 0;
   alice.on('request', r => { if (r.url().includes('/api/dao.php')) loads++; });
   await bobCard.hover();

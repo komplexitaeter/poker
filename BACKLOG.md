@@ -1512,6 +1512,8 @@ B-56 (Players-Menü) und B-60 (Spaß-Funktionen) am Tisch zusammen. Für nach R3
    alle im Team sehen den Wurf von A zu B; A animiert erst beim Echo, nichts vorab) (kein `react.php`, kein
    Neuladen). poker-msg prüft das Format streng (nur Codes aus fester Liste, feste Länge) und bremst (z. B. 1/s je
    Verbindung). „von“ ist fälschbar – bei einer Spaßfunktion vertretbar. Nichts in die DB, keine Statistik.
+   Stand Andreas (2026-11-01, abends): Emoji-Leiste 🎂 ❤️ 👏 🎉 🤔 👍 🐟 (☕ und 👋 raus). **Nudge** ist kein Emoji, sondern
+   ein eigener Kreis neben dem Smiley: Karte wackelt bei allen, ohne Absender (auch in der Nachricht: `react:0:<an>:nudge`).
 Entscheidungen Andreas: jeder darf jeden Spieler entfernen. **Beobachter** (Andreas, 2026-11-01): nicht entfernbar;
 ist ihre Verbindung weg („away“), werden sie in der Beobachter-Zeile einfach ausgeblendet (kein Symbol, kein Mülleimer); im Anonym-Modus dürfen Reaktionen geschickt
 und auch auf anonyme Karten geworfen werden.
