@@ -21,11 +21,14 @@ async function closeContextsOfEarlierTests(testId: string): Promise<void> {
  * (B-15). The tests therefore block all external hosts and keep only 127.0.0.1/localhost reachable.
  * This also covers production analytics (plausible.io), which must stay blocked.
  */
-export async function newPlayer(browser: Browser, options: BrowserContextOptions = {}): Promise<Page> {
+export async function newPlayer(browser: Browser, options: BrowserContextOptions = {},
+                                { tapHint = false }: { tapHint?: boolean } = {}): Promise<Page> {
   const testId = test.info().testId;
   await closeContextsOfEarlierTests(testId);
   const context = await browser.newContext(options);
   playerContexts.push({ testId, context });
+  // B-110: touch devices show a hint once ("Tap a card ..."); seen already, unless a test is about it
+  if (!tapHint) await context.addInitScript(() => { try { localStorage.setItem('TAP_HINT_SEEN', '1'); } catch (e) { /* none */ } });
   await context.route(/^https?:\/\//, route => {
     const host = new URL(route.request().url()).hostname;
     if (host === '127.0.0.1' || host === 'localhost') return route.continue();

@@ -16,13 +16,13 @@
     <script defer src="script/cards.js?v=1.14" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.3" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.7" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.77" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.78" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
 </head>
 <!-- hidden inline (not only in style.css) so nothing shows before the stylesheet and the first server response arrive -->
-<body onload="loadBoard()" class="body-fade-in" style="opacity: 0" ondblclick="updateDao(false)">
+<body onload="loadBoard()" class="body-fade-in" style="opacity: 0" ondblclick="onBodyDblClick(event)">
 <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
 <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>

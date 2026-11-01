@@ -78,7 +78,7 @@ function playerTypeUpdate(playerType, name) {
     let privacyLink = document.getElementById("overlay_privacy_link");
 
     if (playerType === 'PLAYER' || playerType === 'OBSERVER') {
-        toggleStyleClass(ctl, "hidden", "visible");
+        // the deck (#ctl) is shown by controlsDsp() right after (B-110: no hidden/visible flip on every load)
         toggleStyleClass(overlayNameInput, "hidden", "visible");
         toggleStyleClass(privacyLink, 'hidden', 'visible');
     }
@@ -148,9 +148,8 @@ function controlsDsp(playerType) {
     });
 }
 
-function deletePlayer(e) {
-    // currentTarget: the button, also when the click lands on its svg
-    let url = './api/delete.php?mkey=' + encodeURIComponent(e.currentTarget.parentElement.id) + '&t=' + t;
+function deletePlayer(mkey) {
+    let url = './api/delete.php?mkey=' + encodeURIComponent(mkey) + '&t=' + t;
     apiWrite(url);
 }
 
@@ -408,18 +407,23 @@ function loadDeckKeyLayout() {
 }
 
 function updateDeckKeys() {
-    gDeckElements.forEach(({ keyLabel }) => { keyLabel.textContent = ''; });
+    // B-110: written only when a label changes (the board loads on every hb, the same state changes nothing)
+    const labels = new Map();
     gDeck.cards.forEach((card, i) => {
-        const entry = gDeckElements.get(card.key);
-        if (entry !== undefined && i < DECK_KEY_CODES.length) entry.keyLabel.textContent = deckKeyLabel(DECK_KEY_CODES[i]);
+        if (i < DECK_KEY_CODES.length) labels.set(card.key, deckKeyLabel(DECK_KEY_CODES[i]));
+    });
+    gDeckElements.forEach(({ keyLabel }, key) => {
+        const label = labels.get(key) || '';
+        if (keyLabel.textContent !== label) keyLabel.textContent = label;
     });
     // the hint names the first and the last key in use: "keys Q–P pick a card"
     const hint = document.querySelector('.deck-hint');
     const used = Math.min(gDeck.cards.length, DECK_KEY_CODES.length);
     if (hint !== null && used > 0) {
         const first = deckKeyLabel(DECK_KEY_CODES[0]);
-        hint.textContent = used === 1 ? 'key ' + first + ' picks the card'
+        const text = used === 1 ? 'key ' + first + ' picks the card'
             : 'keys ' + first + '–' + deckKeyLabel(DECK_KEY_CODES[used - 1]) + ' pick a card';
+        if (hint.textContent !== text) hint.textContent = text;
     }
     updateDeckRoom();
     syncCarousel(); // B-75
@@ -762,6 +766,7 @@ function pickCardByKey(event) {
     if (event.isComposing) return; // an input method is composing a character
     const target = event.target;
     if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog')) return;
+    if (target instanceof Element && target.closest('.tbl-pop')) return; // B-110: emoji bar, remove confirm
     const menu = document.getElementById('menu');
     if (menu !== null && menu.open) return;
     if (document.querySelector('.overlay:not(.hidden), .overlay.visible') !== null) return; // name, delete user, QR
@@ -789,9 +794,15 @@ function pickCardByKey(event) {
 let gDaoSeq = 0;        // board states asked for so far
 let gDaoShownSeq = 0;   // number of the board state shown last
 
+let gDaoLoading = 0;     // B-110: dao.php loads in flight
+
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
     const seq = ++gDaoSeq;
+    // B-110: any load does what a pending heartbeat load would do (it refreshes last_callback_time)
+    clearTimeout(gHbLoadTimer);
+    gHbLoadTimer = null;
+    gDaoLoading++;
     // B-73: the timer part of an answer counts only when no own timer change was under way or
     // finished meanwhile (see timerStateFresh)
     const timerWrite = gTimerWrites === 0 ? gTimerWriteGen : -1;
@@ -812,7 +823,24 @@ function updateDao(isOnLoad) {
             // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
             // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
-        });
+        })
+        .catch(error => console.log('dao.php failed', error))
+        .finally(() => { gDaoLoading--; });
+}
+
+/* B-110: on every 'hb' of poker-msg (30 s) the board loads dao.php once, 0-5 s later (the boards of a team do not all
+ * come at the same moment). The load keeps the own last_callback_time fresh: a board that stops loading (closed,
+ * locked phone, frozen tab) shows as away to the others (dao.php "away", AWAY_AFTER_SEC). Only one such load is
+ * pending; any other load meanwhile (pull, own write) replaces it, and none starts while a load is in flight. */
+const HB_LOAD_JITTER_MS = 5000;
+let gHbLoadTimer = null;
+
+function scheduleHbLoad() {
+    if (gHbLoadTimer !== null) return;
+    gHbLoadTimer = setTimeout(() => {
+        gHbLoadTimer = null;
+        if (gDaoLoading === 0) updateDao(false);
+    }, Math.round(Math.random() * HB_LOAD_JITTER_MS));
 }
 
 /* B-41: The cards are laid out by CSS (#cbox is a centered flex-wrap container),
@@ -879,7 +907,8 @@ function fitCardsToTable() {
     const width = table.offsetWidth - parseFloat(tableStyle.paddingLeft) - parseFloat(tableStyle.paddingRight);
 
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
-    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7;
+    // B-110: minus the observers row below the cards (with its margins)
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7 - observersHeight();
 
     const n = cbox.children.length;
     let fit = min;
@@ -942,8 +971,13 @@ function updateCards(cardsDiv, players) {
         if (nameSpan.textContent !== player.name) {
             nameSpan.textContent = player.name;
             nameSpan.title = player.name; // the full name when it ends with an ellipsis
-            card.querySelector('.delete').setAttribute('aria-label', deleteLabel(player.name));
         }
+        // B-110: no connection for a while (dao.php "away"); attributes only when they change (quiet re-render)
+        const away = player.away === true;
+        if (card.classList.contains('is-away') !== away) card.classList.toggle('is-away', away);
+        setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(player.name, away));
+        const react = card.querySelector('.react');
+        if (react !== null) setAttrIfChanged(react, 'aria-label', reactLabel(player.name));
     });
 
     return valueChangedCards;
@@ -963,7 +997,7 @@ function setTableCardFace(cardDiv, key) {
     // every set (small cards shorten the description, style.css "Rendered cards")
     const face = cardFace(card, 'table', true);
     const old = cardDiv.querySelector('.pc:not(.pc-orig)');
-    if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.delete'));
+    if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.react, .delete'));
     else old.replaceWith(face);
 }
 
@@ -1035,8 +1069,12 @@ const DELETE_ICON_PATHS = [
     { d: 'M9.6 6.8c-.1-1.6.4-2.4 2.3-2.4 2 0 2.5.8 2.5 2.4', cls: 'ink', w: 1.7, lid: true },
 ];
 
-function deleteLabel(name) {
-    return 'Remove ' + name + ' from the table';
+function deleteLabel(name, away = false) {
+    return 'Remove ' + name + ' from the table' + (away ? ' (no connection)' : ''); // B-110: away
+}
+
+function reactLabel(name) {
+    return 'Throw a reaction at ' + name;
 }
 
 /* B-110: the smiley of the reaction button (.react, next to the delete button), same sketch as the trash can:
@@ -1081,6 +1119,363 @@ function reactIcon() {
     return sketchIcon(REACT_ICON_PATHS);
 }
 
+/* ---------- B-110: table interaction (markup contract: style.css "Table interaction") ----------
+ * Every other card and every other observer has two circles: the smiley (.react, opens the emoji bar #react_bar)
+ * and, on cards only, the trash can (.delete). Desktop: the circles on hover / keyboard focus, remove at once.
+ * Touch devices ((hover: none), (pointer: coarse), tablets included): a tap on a card or an observer opens it
+ * (.is-open, one at a time, a tap elsewhere closes it); removing asks first (#rm_confirm); a hint once (#tap_hint).
+ * All names via textContent. The clicks go through one handler (onTableClick). */
+const gTapQuery = window.matchMedia('(hover: none), (pointer: coarse)');
+const REACT_CODES = ['cake', 'heart', 'clap', 'party', 'coffee', 'think'];
+const TAP_HINT_KEY = 'TAP_HINT_SEEN';
+const POP_GAP = 10;     // between a popover and its anchor (the arrow sits in it)
+const POP_MARGIN = 8;   // to the edge of the window
+
+let gPop = null;            // the open popover: { el, anchor, holder, opener }
+let gTapHintShown = false;  // once per page, also when localStorage is not available
+
+/* sets an attribute only when its value changes (a re-render with the same state changes nothing) */
+function setAttrIfChanged(el, name, value) {
+    if (el !== null && el.getAttribute(name) !== value) el.setAttribute(name, value);
+}
+
+/* the smiley on a card or an observer: added when wanted (before the trash can, if any), removed otherwise */
+function syncReactButton(holder, wanted, name, before = null) {
+    let btn = holder.querySelector(':scope > .react');
+    if (!wanted) {
+        if (btn !== null) {
+            if (gPop !== null && gPop.opener === btn) closePopover(false);
+            btn.remove();
+        }
+        return;
+    }
+    if (btn === null) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'react';
+        btn.title = 'Throw a reaction';
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.appendChild(reactIcon());
+        holder.insertBefore(btn, before);
+    }
+    setAttrIfChanged(btn, 'aria-label', reactLabel(name));
+}
+
+/* B-110: the row "observing" below the cards: the connected observers (dao.php "observers", away ones are left out
+ * by the API), the own one as a name tag like in the header (.is-me, no smiley). Updated in place, by mkey. */
+function updateObservers(observers, myMkey) {
+    const box = document.getElementById('observers');
+    if (box === null) return;
+    const list = box.querySelector('.obs-list');
+    const existing = new Map(Array.from(list.children).map(li => [li.dataset.mkey, li]));
+    let next = list.firstElementChild;
+    observers.forEach(o => {
+        const mkey = String(o.mkey);
+        let li = existing.get(mkey);
+        if (li === undefined) {
+            li = document.createElement('li');
+            li.className = 'obs';
+            li.dataset.mkey = mkey;
+            const span = document.createElement('span');
+            span.className = 'obs-name';
+            li.appendChild(span);
+        }
+        existing.delete(mkey);
+        const span = li.querySelector('.obs-name');
+        const name = String(o.name);
+        if (span.textContent !== name) {
+            span.textContent = name;
+            span.title = name;
+        }
+        const isMe = mkey === myMkey;
+        if (li.classList.contains('is-me') !== isMe) li.classList.toggle('is-me', isMe);
+        syncReactButton(li, !isMe, name);
+        if (li !== next) list.insertBefore(li, next);
+        else next = li.nextElementSibling;
+    });
+    existing.forEach(li => li.remove());
+    if (box.hidden !== (observers.length === 0)) box.hidden = observers.length === 0;
+}
+
+/* the height the observers row takes from the table, with its margins (0 when hidden) */
+function observersHeight() {
+    const box = document.getElementById('observers');
+    if (box === null || box.hidden) return 0;
+    const style = getComputedStyle(box);
+    return box.offsetHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+}
+
+/* the card (.c) or observer (.obs) a smiley or trash can belongs to; its mkey and name */
+function holderOf(el) {
+    return el.closest('#cbox .c, #observers .obs');
+}
+
+function holderMkey(holder) {
+    return holder.classList.contains('obs') ? holder.dataset.mkey : holder.id;
+}
+
+function holderName(holder) {
+    const span = holder.querySelector('.card_player_name, .obs-name');
+    return span === null ? '' : span.textContent;
+}
+
+/* touch: the tap mode starts once a card or an observer has a smiley (style.css: #cbox:has(.react)) */
+function tapMode() {
+    return gTapQuery.matches && document.querySelector('#cbox .react, #observers .react') !== null;
+}
+
+function setOpenHolder(holder) {
+    document.querySelectorAll('#cbox .c.is-open, #observers .obs.is-open').forEach(el => {
+        if (el !== holder) el.classList.remove('is-open');
+    });
+    if (holder !== null) holder.classList.add('is-open');
+}
+
+/* places a popover (position: fixed) above its anchor, below when there is no room; the arrow points at the middle
+ * of the anchor (--arrow-x). The popover has to be shown already (it is measured). */
+function placePopover(el, anchor) {
+    const a = anchor.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const mid = a.left + a.width / 2;
+    const left = Math.max(POP_MARGIN, Math.min(mid - w / 2, vw - w - POP_MARGIN));
+    let top = a.top - h - POP_GAP;
+    const below = top < POP_MARGIN && a.bottom + POP_GAP + h <= vh - POP_MARGIN;
+    if (below) top = a.bottom + POP_GAP;
+    el.classList.toggle('is-below', below);
+    el.style.left = Math.round(left) + 'px';
+    el.style.top = Math.round(Math.max(POP_MARGIN, top)) + 'px';
+    el.style.setProperty('--arrow-x', Math.round(Math.max(14, Math.min(mid - left, w - 14))) + 'px');
+}
+
+function openPopover(el, anchor, holder, opener) {
+    closePopover(false);
+    gPop = { el, anchor, holder, opener };
+    el.hidden = false;
+    placePopover(el, anchor);
+    if (opener !== null && opener.classList.contains('react')) opener.setAttribute('aria-expanded', 'true');
+}
+
+/* closes the open emoji bar or remove confirm; focusBack: the focus goes back to the button that opened it */
+function closePopover(focusBack) {
+    if (gPop === null) return;
+    const { el, opener } = gPop;
+    gPop = null;
+    el.hidden = true;
+    if (opener !== null && opener.classList.contains('react')) opener.setAttribute('aria-expanded', 'false');
+    if (!tapMode()) setOpenHolder(null); // without the tap mode .is-open only marks the card of the remove confirm
+    if (focusBack && opener !== null && opener.isConnected) opener.focus({ preventScroll: true });
+}
+
+/* after a re-render: a popover whose card or observer is gone closes, the others follow their anchor */
+function repositionPopover() {
+    if (gPop === null) return;
+    if (!gPop.anchor.isConnected || !gPop.holder.isConnected) {
+        const hadFocus = gPop.el.contains(document.activeElement);
+        closePopover(false);
+        if (hadFocus) document.body.focus();
+        return;
+    }
+    placePopover(gPop.el, gPop.anchor);
+}
+
+function openReactBar(btn) {
+    const holder = holderOf(btn);
+    if (holder === null) return;
+    const bar = document.getElementById('react_bar');
+    bar.querySelector('.react-bar-name').textContent = holderName(holder);
+    bar.dataset.to = holderMkey(holder);
+    if (gTapQuery.matches) setOpenHolder(holder);
+    openPopover(bar, btn, holder, btn);
+    const first = bar.querySelector('button[data-react]');
+    if (first !== null) first.focus({ preventScroll: true });
+}
+
+function openRemoveConfirm(btn) {
+    const holder = holderOf(btn);
+    if (holder === null) return;
+    const box = document.getElementById('rm_confirm');
+    box.querySelector('.rm-name').textContent = holderName(holder);
+    box.dataset.mkey = holderMkey(holder);
+    setOpenHolder(holder);
+    openPopover(box, btn, holder, btn);
+    box.querySelector('.rm-cancel').focus({ preventScroll: true });
+}
+
+/* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket; the flight starts with the echo of poker-msg */
+function sendReaction(toMkey, code) {
+    // TODO B-110 part 2: send the reaction to poker-msg (react:<own mkey>:<toMkey>:<code>)
+}
+
+/* one click handler for the table, the observers and the popovers (document, bubbling) */
+function onTableClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target === null) return;
+
+    // the emoji bar and the remove confirm
+    const emoji = target.closest('#react_bar button[data-react]');
+    if (emoji !== null) {
+        const code = emoji.dataset.react;
+        const to = document.getElementById('react_bar').dataset.to;
+        closePopover(true);
+        if (REACT_CODES.includes(code) && to) sendReaction(to, code);
+        return;
+    }
+    if (target.closest('#rm_confirm .rm-cancel') !== null) { closePopover(true); return; }
+    if (target.closest('#rm_confirm .rm-ok') !== null) {
+        const mkey = document.getElementById('rm_confirm').dataset.mkey;
+        closePopover(false);
+        setOpenHolder(null);
+        if (mkey) deletePlayer(mkey);
+        return;
+    }
+    if (target.closest('#tap_hint .tap-hint-ok') !== null) { hideTapHint(true); return; }
+    if (target.closest('.tbl-pop') !== null) return;
+
+    // the circles
+    const react = target.closest('#cbox .c .react, #observers .obs .react');
+    if (react !== null) {
+        hideTapHint(true);
+        if (gPop !== null && gPop.opener === react) closePopover(false);
+        else openReactBar(react);
+        return;
+    }
+    const del = target.closest('#cbox .c .delete');
+    if (del !== null) {
+        hideTapHint(true);
+        if (gTapQuery.matches) {
+            if (gPop !== null && gPop.opener === del) closePopover(false);
+            else openRemoveConfirm(del);
+        } else {
+            closePopover(false);
+            deletePlayer(del.parentElement.id);
+        }
+        return;
+    }
+
+    // a tap elsewhere closes an open popover first (and does nothing else)
+    if (gPop !== null) {
+        closePopover(false);
+        return;
+    }
+
+    // touch: a tap on a card or an observer opens its circles, a second tap or a tap elsewhere closes them
+    if (!tapMode()) return;
+    const holder = holderOf(target);
+    if (holder !== null && holder.querySelector(':scope > .react, :scope > .delete') !== null) {
+        hideTapHint(true);
+        setOpenHolder(holder.classList.contains('is-open') ? null : holder);
+    } else {
+        setOpenHolder(null);
+    }
+}
+
+/* the keys in the emoji bar (arrows, Home/End, Esc, Tab) and in the remove confirm (Esc) */
+function onPopoverKeydown(event) {
+    if (gPop === null || !gPop.el.contains(event.target)) return;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closePopover(true);
+        return;
+    }
+    if (gPop.el.id !== 'react_bar') return;
+    const buttons = Array.from(gPop.el.querySelectorAll('button[data-react]'));
+    const i = buttons.indexOf(document.activeElement);
+    let n = -1;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') n = (i + 1) % buttons.length;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') n = (i - 1 + buttons.length) % buttons.length;
+    else if (event.key === 'Home') n = 0;
+    else if (event.key === 'End') n = buttons.length - 1;
+    else if (event.key === 'Tab') {
+        // a menu: Tab leaves it, back on the smiley
+        event.preventDefault();
+        closePopover(true);
+        return;
+    } else return;
+    event.preventDefault();
+    event.stopPropagation(); // no card pick, no name overlay keys (document listener)
+    buttons[n].focus();
+}
+
+/* Touch, once: where the circles are. At the first card with a smiley; "Got it" or using a card hides it for good
+ * (localStorage; without it once per page). */
+function tapHintSeen() {
+    try {
+        return localStorage.getItem(TAP_HINT_KEY) === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function showTapHint() {
+    if (gTapHintShown || !tapMode() || tapHintSeen() || gPop !== null || connHintVisible()) return;
+    if (document.querySelector('.overlay.visible, .overlay:not(.hidden)') !== null) return; // name input etc.
+    const menu = document.getElementById('menu');
+    if (menu !== null && menu.open) return;
+    const card = document.querySelector('#cbox .c:not(.is-me) > .pc, #observers .obs:not(.is-me) .obs-name');
+    const hint = document.getElementById('tap_hint');
+    if (card === null || hint === null) return;
+    gTapHintShown = true;
+    hint.querySelector('p').textContent = 'Tap a card to throw a reaction or to remove a player.';
+    hint.querySelector('.tap-hint-ok').textContent = 'Got it';
+    hint.hidden = false;
+    placePopover(hint, card);
+    gTapHintAnchor = card;
+}
+
+let gTapHintAnchor = null;
+
+function hideTapHint(seen) {
+    const hint = document.getElementById('tap_hint');
+    if (hint === null || hint.hidden) return;
+    hint.hidden = true;
+    gTapHintAnchor = null;
+    if (seen) {
+        try {
+            localStorage.setItem(TAP_HINT_KEY, '1');
+        } catch (e) {
+            // private mode etc.: shown once per page only
+        }
+    }
+}
+
+function repositionTapHint() {
+    const hint = document.getElementById('tap_hint');
+    if (hint === null || hint.hidden) return;
+    if (gTapHintAnchor === null || !gTapHintAnchor.isConnected) { hideTapHint(false); return; }
+    placePopover(hint, gTapHintAnchor);
+}
+
+/* after every board update: popovers follow their anchor (also after a glide), without the tap mode nothing stays
+ * open, the tap hint shows once */
+function afterTableUpdate() {
+    repositionPopover();
+    repositionTapHint();
+    if (!tapMode()) {
+        if (gPop === null) setOpenHolder(null);
+        hideTapHint(false);
+    }
+    // after a glide: at the new place; the tap hint once the new card has arrived
+    clearTimeout(afterTableUpdate.timer);
+    afterTableUpdate.timer = setTimeout(() => {
+        repositionPopover();
+        repositionTapHint();
+        showTapHint();
+    }, CARD_ANIMATION_MS + 50);
+}
+
+function initTableInteraction() {
+    document.addEventListener('click', onTableClick);
+    document.addEventListener('keydown', onPopoverKeydown, true);
+    const reposition = () => { repositionPopover(); repositionTapHint(); };
+    window.addEventListener('resize', reposition);
+    document.getElementById('table').addEventListener('scroll', reposition, { passive: true });
+}
+
 function createCardDiv(player, playersCount, isOnLoad) {
     let newCard = document.createElement('div');
     newCard.id = player.mkey;
@@ -1098,11 +1493,12 @@ function createCardDiv(player, playersCount, isOnLoad) {
     let cardDeleteBtn = document.createElement('button');
     cardDeleteBtn.type = 'button';
     cardDeleteBtn.classList.add('delete');
-    cardDeleteBtn.setAttribute('aria-label', deleteLabel(player.name));
+    cardDeleteBtn.setAttribute('aria-label', deleteLabel(player.name, player.away === true));
     cardDeleteBtn.title = 'Remove from the table';
     cardDeleteBtn.appendChild(deleteIcon());
-    cardDeleteBtn.onclick = deletePlayer;
+    // B-110: the click is handled by onTableClick (desktop: remove at once, touch: ask first)
     newCard.appendChild(cardDeleteBtn);
+    if (player.away === true) newCard.classList.add('is-away');
     setTableCardFace(newCard, String(player.display_card_key));
     setTableCardOriginal(newCard, player.original_card_key, false); // B-104
 
@@ -1295,6 +1691,8 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateDeckMenu(myJson); // R3 F5 (script_deck.js)
 
     if (!isOnLoad) {
+        // B-110: the observers first, their row takes room from the cards (fitCardsToTable)
+        updateObservers(Array.isArray(myJson.observers) ? myJson.observers : [], myJson.mkey);
         if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
             /* returns true when new cards have been added */
             setColor();
@@ -1303,7 +1701,13 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
 
     // B-99 D8: the own card's name tag is styled like the name tag in the header
-    document.querySelectorAll('#cbox .c').forEach(card => card.classList.toggle('is-me', card.id === myJson.mkey));
+    // B-110: every other card gets the smiley (.react) to throw a reaction
+    document.querySelectorAll('#cbox .c').forEach(card => {
+        const isMe = card.id === myJson.mkey;
+        if (card.classList.contains('is-me') !== isMe) card.classList.toggle('is-me', isMe);
+        syncReactButton(card, !isMe, card.querySelector('.card_player_name').textContent, card.querySelector('.delete'));
+    });
+    afterTableUpdate(); // B-110: popovers, tap hint
 
     updateSelectedC(myJson.selected_card_key);
 
@@ -1407,7 +1811,9 @@ function initializeWSConnection(teamId) {
     conn.onmessage = function(e){
         if (conn !== gConn) return;
         gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
+        if (typeof e.data !== 'string' || e.data.startsWith('react:')) return; // B-110: reactions, part 2
         if (e.data.includes('pull')) updateDao(false);
+        else if (e.data === 'hb') scheduleHbLoad(); // B-110
     };
 
     let wasOpen = false;
@@ -1552,6 +1958,14 @@ function showConnHint(show) {
     }
 }
 
+/* a double click on the board loads it again (board.html, body); not inside the menu, the popovers at a card or on
+ * the circles (B-110: opening and closing the emoji bar quickly is no double click on the board) */
+function onBodyDblClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target !== null && target.closest('#menu, .tbl-pop, #cbox button, #observers')) return;
+    updateDao(false);
+}
+
 function loadBoard() {
     const urlParams = new URLSearchParams(window.location.search);
     t = urlParams.get("t");
@@ -1562,6 +1976,7 @@ function loadBoard() {
     initializeWSConnection(t);
     initWSReconnect();
     initDisplayHandling();
+    initTableInteraction(); // B-110
     measureEvent("BOARD_ON_LOAD");
 
     document.getElementById('nameinput').addEventListener('input', function(event) {

@@ -134,10 +134,16 @@ test('delete icon: by input device, not by width (B-49)', async ({ browser }) =>
   await tableCard(alice, 'Alice').hover();
   await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
 
-  // a phone: always
+  // a phone: after a tap on the card (B-110: with other players at the table the circles show on the tapped card)
   const bob = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true });
   await joinAsPlayer(bob, url, 'Bob');
+  await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '0');
+  await tableCard(bob, 'Alice').locator('.pc').tap();
+  await expect(tableCard(bob, 'Alice')).toHaveClass(/is-open/);
   await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
+  await expect(tableCard(bob, 'Alice').locator('.react')).toHaveCSS('opacity', '1');
+  await tableCard(bob, 'Bob').locator('.pc').tap();
+  await expect(tableCard(bob, 'Alice')).not.toHaveClass(/is-open/);
   await expect(tableCard(bob, 'Bob').locator('.delete')).toHaveCSS('opacity', '1');
 });
 
