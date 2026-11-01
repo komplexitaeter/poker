@@ -1838,11 +1838,15 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  * group looked low); the outline of the calm status symbols (ready, thinking, joined late) in the theme ink:
  * dark ink in light, a light contour in dark - there with a deeper body, so the contour reads like on ?, ! or the hand */
 .pc.is-status {
-    padding-bottom: calc(var(--card-w) * 0.26);
+    padding-bottom: calc(var(--card-w) * 0.22);
     --sym-face-ink: var(--cardc-ink);
 }
 
 body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentColor 60%, var(--cardc-face)); }
+
+/* B-99 D14 (Andreas): the word a little lower below its symbol (the room below the group looked a bit large); the
+ * gap grows by what the bottom padding gives up, so the symbol stays where it was */
+.pc.is-status .stl { margin-top: calc(var(--card-w) * 0.07); }
 
 .pc .stl {
     flex: none;
@@ -1926,6 +1930,27 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 
 @container (max-width: 75.98px) {
     #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 2; }
+}
+
+/* B-99 D14: J.U.D.G.E. (style inverted) only, below its two-line heading frame on every card (measured: 4 from a
+ * 98 px card, 3 from 81 px, else 2). Touch: the card keeps more room at the bottom for the delete icon, so one line
+ * less up to 141 px (4 from 142 px, 3 from 93 px, 2 from 79 px, else 1). Other sets keep the clamps above. */
+@container (max-width: 80.98px) {
+    #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 2; }
+}
+
+@media (hover: none), (pointer: coarse) {
+    @container (max-width: 141.98px) {
+        #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 3; }
+    }
+
+    @container (max-width: 92.98px) {
+        #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 2; }
+    }
+
+    @container (max-width: 78.98px) {
+        #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 1; }
+    }
 }
 
 /* B-99 F8 (Andreas): control cards on the table show heading and description in every set.
@@ -2125,6 +2150,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 .pc.sty-inverted .mot { flex: 0 0 calc(var(--card-w) * 0.44); }
 
 .pc.sty-inverted .ttl { align-self: stretch; padding: 0.25em 0.35em; margin-block: calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.02); }
+
+/* B-99 D14 (Andreas): within a set symbol and heading stand level: every heading frame has room for two lines, a
+ * one-line heading ("step out") sits in its middle, so the frames and the descriptions below start level */
+.pc.sty-inverted .ttl { min-height: calc(2 * 1.15em + 0.5em); box-sizing: border-box; }
 
 .hd-frame {
     position: absolute;
