@@ -62,9 +62,10 @@ The status symbols `s-check` and `s-thought` are calm in the same way (D7): a li
 (`--sym-face-ink`), the hatching (`--sym-calm-hatch`) only in a thin band at the lower right edge. `s-coffee` is a
 latte glass: the coffee hatched, milk and foam light (`--sym-milk`, warmer in the dark theme), kept apart from the
 outline by a thin rim in paper colour. `s-late` (joined late, B-102) is calm too: an open door;
-frame and floor in the theme ink (`--cardc-ink`). `s-shrug` (B-106) draws the kaomoji ¯\\\_(ツ)\_/¯: arms and
-brackets as thinner centre lines (tint, hatching, outline like ? ! and the hand; the `_` sits low like an underscore,
-below the brackets, so the parts stay apart at deck size), the ツ in ink.
+frame and floor in the theme ink (`--cardc-ink`). `s-shrug` (B-106) is the shrugging figure of the emoji (not the kaomoji): a sweater with raised shoulders and both
+forearms up (`--sym-shirt`, hatched with `--sym-shirt-hatch`), a round head and two open hands, palm up, in a warm
+light skin tone (`--sym-skin`, hatching only at the edge like the faces); calm, slightly puzzled face (one brow up,
+crooked mouth). Ink is dark in both themes, like the faces.
 
 ## Symbol ids (60)
 
@@ -75,7 +76,7 @@ below the brackets, so the parts stay apart at deck size), the ツ in ink.
 | Traffic light | `s-light-green`, `s-light-yellow`, `s-light-red` |
 | Emotions | `s-face-satisfied`, `s-face-annoyed`, `s-face-sad`, `s-face-uninterested`, `s-face-angry`, `s-face-enthusiastic`; Mood (B-107): `s-face-curious`, `s-face-confused`, `s-face-worried`, `s-face-surprised`, `s-face-tired`, `s-face-relieved` |
 | Stars | `s-stars-0` … `s-stars-5` (five stars, the first n filled) |
-| Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto), `s-shrug` (¯\\\_(ツ)\_/¯ shruggie, B-106) |
+| Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto), `s-shrug` (🤷 shrugging figure, B-106) |
 | Status cards | `s-check` (ready), `s-thought` (thinking), `s-mask` (thinking, anonymous mode), `s-late` (joined late, B-102) |
 | Frames | `s-frame-inv` (inverted style) |
 
