@@ -241,7 +241,13 @@ test('shruggie: off by default, switched on and placed; Emotions: Team Assessmen
   const assessment = ['satis01', 'annoy01', 'sad0001', 'unint01', 'angry01', 'enthu01'];
   for (const page of [alice, bob])
     await expect.poll(() => trayKeys(page)).toEqual([...assessment, 'break01', 'qstmrk1', 'shrug01']);
+  // the variant hint shows the faces as mini drawings, never as system emoji (B-107)
+  const hint = alice.locator('#deck_variant_hint');
+  await expect(hint.locator('.mini.sm-draw')).toHaveCount(6);
+  expect(await hint.textContent()).not.toMatch(/\p{Extended_Pictographic}/u);
   await variant('Mood').check();
+  await expect(hint.locator('.mini.sm-draw')).toHaveCount(12);
+  await expect(hint.locator('.mini use').nth(6)).toHaveAttribute('href', /#s-face-curious$/);
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual([...assessment, 'curio01', 'confu01', 'worri01', 'surpr01',
       'tired01', 'relie01', 'break01', 'qstmrk1', 'shrug01']);

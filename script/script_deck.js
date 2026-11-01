@@ -59,15 +59,20 @@ function deckMatchingVariant(group, cards) {
     return group.variants.find(v => v.cards.length === on.size && v.cards.every(key => on.has(key))) || null;
 }
 
-/* a custom selection, told against its last chosen variant: "True + 100 ∞ − 0" */
-function deckCustomText(variant, cards) {
-    const text = keys => keys.map(key => gCardByKey.get(key)).filter(card => card !== undefined)
-        .map(card => card.text).join(' ');
+/* B-107: the values of cards for the variant hint, separated by spaces: plain text where the card is shown as text
+ * small (0 1 2 3 …), a mini symbol for drawings (the faces of "Mood" and "Team Assessment": never a system emoji) */
+function deckValueParts(keys) {
+    return keys.map(key => gCardByKey.get(key)).filter(card => card !== undefined)
+        .flatMap((card, i) => [...(i > 0 ? [' '] : []), cardSmallKind(card) === 'text' ? String(card.text) : cardSmall(card)]);
+}
+
+/* a custom selection, told against its last chosen variant: "True + 100 ∞ − 0" (as parts, see deckValueParts) */
+function deckCustomParts(variant, cards) {
     const on = new Set(cards);
     const base = new Set(variant.cards);
-    const added = text(cards.filter(key => !base.has(key)));
-    const removed = text(variant.cards.filter(key => !on.has(key)));
-    return variant.name + (added ? ' + ' + added : '') + (removed ? ' \u2212 ' + removed : '');
+    const added = deckValueParts(cards.filter(key => !base.has(key)));
+    const removed = deckValueParts(variant.cards.filter(key => !on.has(key)));
+    return [variant.name, ...(added.length ? [' + ', ...added] : []), ...(removed.length ? [' \u2212 ', ...removed] : [])];
 }
 
 function deckRoundRunning() {
@@ -176,10 +181,9 @@ function deckMainView(deck, group, variant) {
             seg.appendChild(label);
         });
         // the preset's values, or what differs from the last chosen variant
-        const values = match !== null
-            ? match.cards.map(key => gCardByKey.get(key)).filter(card => card !== undefined).map(card => card.text).join(' ')
-            : 'Custom: ' + deckCustomText(variant, deck.cards);
-        const hint = dmEl('p', 'hint', values);
+        const values = match !== null ? deckValueParts(match.cards) : ['Custom: ', ...deckCustomParts(variant, deck.cards)];
+        const hint = dmEl('p', 'hint');
+        hint.append(...values);
         hint.id = 'deck_variant_hint';
         field.append(seg, hint);
         parts.push(field);

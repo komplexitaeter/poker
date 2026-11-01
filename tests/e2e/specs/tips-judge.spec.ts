@@ -16,12 +16,12 @@ async function setCard(page: Page, boardUrl: string, id: string, cardKey: string
   expect(res.ok()).toBeTruthy();
 }
 
-/** a J.U.D.G.E. board (with ☕, ? and !), Alice joined, the others via the API; vote() sets everyone's card and reloads */
+/** a J.U.D.G.E. board (with ☕, ?, ! and the shruggie), Alice joined, the others via the API; vote() sets everyone's card and reloads */
 async function judgeTeam(browser: Browser, team: string, others: string[]) {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, team);
   await joinAsPlayer(alice, url, 'Alice');
-  await setTeamDeck(alice, url, 'judge', null, ['break01', 'qstmrk1', 'xclam01']);
+  await setTeamDeck(alice, url, 'judge', null, ['break01', 'qstmrk1', 'xclam01', 'shrug01']);
   const ids = await addPlayersViaApi(alice, url, others);
   const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
   await alice.reload();
@@ -50,6 +50,16 @@ test('J.U.D.G.E.: decision accepted, concerns offered (B-101)', async ({ browser
   await vote(['jdg1', 'jdg3', 'jdg4', 'break01']);
   await expect(tip).toHaveText(`Decision accepted. Concerns from Bob (3) and Cleo (4) – want to hear them? ${BREAK}`);
   await expect(tip.locator('b')).toHaveText(['Bob (3)', 'Cleo (4)']);
+
+  // B-106: the shruggie is ok, not like ? and !: no talk, nobody named
+  await vote(['jdg1', 'shrug01', 'jdg2', 'jdg1']);
+  await expect(tip).toHaveText('Decision accepted.');
+  await expect(tip.locator('b')).toHaveCount(0);
+  await vote(['jdg1', 'shrug01', 'jdg3', 'jdg5']);
+  await expect(tip).toHaveText('Let them talk first: Dan (5)');
+  // only shruggies (and coffee): no vote of the deck, no tip
+  await vote(['shrug01', 'shrug01', 'shrug01', 'shrug01']);
+  await expect(tip).toHaveText('');
 });
 
 test('J.U.D.G.E.: need to talk first, then the veto; ? and ! count as 5; veto only (B-101)', async ({ browser }) => {
