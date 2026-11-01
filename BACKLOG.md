@@ -1456,6 +1456,28 @@ analog zur Umfrage (Inhalte in der DB, gepflegt in `stats.php`).
   nur die fortlaufende `id` – beim Umbau entfällt das bzw. wird abgesichert.
 - Gemeinsam mit B-90 (Umfrage reparieren oder entfernen) denken.
 
+### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
+Status: neu, nicht priorisiert. Hinweis Sina (2026-11-01), Gedanken Andreas (2026-11-01).
+**Ausgangslage:** Die User-ID (`localStorage` `SID`) ist zufällig, steht in der DB aber neben Name und Team → pseudonym,
+also personenbezogen. Heute gelöscht wird nur `pok_players_tbl` (2 Monate Inaktivität je Team, `start_new_round()`).
+Dauerhaft gespeichert: `pok_roundstat_details_tbl` (User-ID, Name, Karte je Runde), `pok_analytics_events_tbl`
+(User-ID je Event), `pok_promotions_tbl` (User-ID, Team). „Delete user“ (`api/delete_user.php`) löscht Analytics-Events
+und Promos nicht.
+**Haltung Andreas:** Man könnte argumentieren, dass Wiederfinden nach Jahren die Funktion der App ist. Faktisch ist es
+aber völlig ok, nach einem Jahr kurz den Namen neu einzugeben: Es gibt keinen langlebigen Identifier (E-Mail, Passkey,
+Konto, Telefonnummer), die ID im Browser ist ohnehin flüchtig. **User-ID nach einem Jahr invalidieren: ok.**
+**Sorge:** keine Inkonsistenzen in den historisierten Daten. Muss weiter gut funktionieren, vorher prüfen:
+- Statistik-Jobs (`db_jobs_pok.sql`), v. a. `related_teams_cnt` (wiederkehrende User über User-IDs) und Grafana.
+- Rundenstatistik inkl. B-104 (`original_card_key`) und künftige Auswertungen je User-ID.
+- Ansatz-Idee: Zeilen nicht löschen, sondern nach Frist pseudonymisieren (Name leeren, User-ID durch einen
+  nicht rückführbaren Wert ersetzen bzw. leeren) → Zählungen bleiben stimmig; Ben klärt, was die Jobs brauchen.
+**Umfang:**
+- Frist (Vorschlag 12 Monate nach letzter Aktivität) als nächtlicher MySQL-Event-Job.
+- `delete_user.php` löscht bzw. anonymisiert zusätzlich Analytics-Events und Promos.
+- Datenschutzerklärung (Webseite, Abschnitt „Agile Poker Online Tool“) anpassen: Speicherfrist nennen; ID liegt im
+  **Local Storage**, nicht im „Session Store“ (bleibt also über das Schließen des Browsers hinaus); Rundenstatistik und
+  Nutzungs-Events erwähnen; Hinweis, dass „Delete User“ alles umfasst, erst wenn der Fix live ist.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
