@@ -1428,6 +1428,15 @@ auch die Originalschätzung – technisch den Personen zuordnen (nur über die D
 Anonym-Modus nach dem Aufdecken je Runde eine zufällige Pseudo-Kennung ausgeben (eigene Karte trotzdem erkennbar, z. B.
 über ein Flag). Nicht priorisiert.
 
+### B-106 Special Card „shruggie“ ¯\_(ツ)_/¯
+Status: refined (Andreas, 2026-11-01), Teil von R3. Haltung „Ich kann es nicht sagen – und das ist absolut ok“ (nach Dirk
+von Gehlen, „Das Pragmatismus-Prinzip“: Ratlosigkeit ist kein Problem, sondern ein Ansatz).
+- Neue **Special Card** (Steuerkarte) wie ☕ ? ! ✋, in jedem Set zuschaltbar, **standardmäßig aus**.
+- Heading **„shruggie“**, Description **„Not knowing isn't a problem – it's a starting point.“**
+- Symbol: das Kaomoji ¯\_(ツ)_/¯ als Linienzeichnung im Skizzen-Stil (kein Strichmännchen), Kleindarstellung `drawing`.
+- Kein Wert: nicht in Histogramm, Spannweite, Durchschnitt; **keine Aufforderung in den Tipps** (ausdrücklich ok),
+  auch bei J.U.D.G.E. nicht wie „?“/„!“.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
