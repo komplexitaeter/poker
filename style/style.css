@@ -1722,8 +1722,20 @@ div#cbox {
     90% { transform: rotate(2deg); }
 }
 .c :is(.delete, .react, .nudge):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* B-110 (Andreas): on the trash can the other two circles fade out, the focus is on removing. Mouse: while it is
+ * hovered (only with a real hover, no sticky touch hover); keyboard: while it has the focus; always while the remove
+ * confirm of this card is open (#rm_confirm marks its card .is-open). Meanwhile the trash can stays, red.
+ * Only the opacity: they keep their place and their pointer events, so moving back to the smiley shows them again
+ * (the bridge below the card keeps the card hovered in the gaps). A smiley with its emoji bar open stays. */
+@media (hover: hover) and (pointer: fine) {
+    .c:has(.delete:hover) :is(.react:not([aria-expanded="true"]), .nudge) { opacity: 0; transition: opacity 0.15s ease-out; }
+}
+.c:has(.delete:focus-visible) :is(.react:not([aria-expanded="true"]), .nudge),
+body:has(#rm_confirm:not([hidden])) .c.is-open :is(.react, .nudge) { opacity: 0; transition: opacity 0.15s ease-out; }
+body:has(#rm_confirm:not([hidden])) .c.is-open .delete { opacity: 1; pointer-events: auto; border-color: var(--danger); color: var(--danger); }
 
 @media (prefers-reduced-motion: reduce) {
+    .c :is(.react, .nudge) { transition: none !important; }
     .c .delete .lid,
     .c :is(.react, .nudge) svg { transition: none; }
     .c .delete:hover .lid,
@@ -1865,7 +1877,8 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  * there is no room above the anchor (the arrow then points up). Show/hide with the hidden attribute.
  *   #react_bar.tbl-pop.react-bar   above the smiley: "throw at <.react-bar-name>", seven button[data-react]:
  *                                  cake heart clap party think thumbs fish
- *   #rm_confirm.tbl-pop.rm-confirm  touch only, above the trash can: "Remove <.rm-name>?", Cancel / Remove
+ *   #rm_confirm.tbl-pop.rm-confirm  on every click on a trash can, above it: "Remove <.rm-name> from the table?",
+ *                                  small "<.rm-name> can rejoin at any time.", Cancel / Remove
  *   #tap_hint.tbl-pop.tap-hint      touch only, once (localStorage): "Tap a card …", "Got it"
  *
  * reaction landing (the flight itself: Web Animations API in script.js, see "Reaction flight" below):
@@ -2167,6 +2180,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 .rm-confirm { padding: 8px 10px 10px; max-width: min(260px, calc(100vw - 2 * var(--space-2))); }
 .rm-confirm p { margin: 0 0 8px; line-height: 1.4; }
 .rm-confirm .rm-name { font-weight: bold; overflow-wrap: anywhere; }
+.rm-confirm small .rm-name { font-weight: inherit; }
 .rm-confirm small { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--muted); }
 .rm-row { display: flex; gap: var(--space-2); justify-content: flex-end; }
 .rm-row .btn-box { flex: 1; margin: 0; padding: 4px 10px; font-size: var(--fs-s); }

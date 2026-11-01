@@ -169,9 +169,77 @@ test('delete button: named, reachable by keyboard, removes the player (B-99 D16)
   expect(focused).toBe(true);
   await expect(remove).toBeVisible();
 
+  // B-110: on the trash can the nudge and the smiley fade out
+  const bob = tableCard(alice, 'Bob');
+  await expect(bob.locator('.react')).toHaveCSS('opacity', '0');
+  await expect(bob.locator('.nudge')).toHaveCSS('opacity', '0');
+
+  // B-110 (Andreas): removing always asks first, also with the keyboard; Esc cancels, the focus goes back
+  const confirm = alice.locator('#rm_confirm');
   await alice.keyboard.press('Enter');
+  await expect(confirm).toBeVisible();
+  await expect(confirm.locator('#rm_confirm_text')).toContainText('Remove Bob from the table?');
+  await expect(confirm.locator('#rm_confirm_text small')).toHaveText('Bob can rejoin at any time.');
+  await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await expect(remove).toHaveCSS('opacity', '1');
+  await expect(bob.locator('.react')).toHaveCSS('opacity', '0');
+  await alice.keyboard.press('Escape');
+  await expect(confirm).toBeHidden();
+  await expect(remove).toBeFocused();
+  await expect(bob).toBeVisible();
+
+  await alice.keyboard.press('Enter');
+  await expect(confirm).toBeVisible();
+  await alice.keyboard.press('Tab'); // Cancel -> Remove
+  await expect(confirm.getByRole('button', { name: 'Remove' })).toBeFocused();
+  await alice.keyboard.press('Enter');
+  await expect(confirm).toBeHidden();
   await expect(tableCard(alice, 'Bob')).toHaveCount(0);
   await expect(tableCard(alice, 'Alice')).toBeVisible();
+});
+
+test('remove with the mouse: the circles fade on the trash can, it asks first (B-110)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Fit Remove Mouse');
+  await joinAsPlayer(alice, url, 'Alice');
+  await addPlayersViaApi(alice, url, ['Bob']);
+  await alice.reload();
+  const bob = tableCard(alice, 'Bob');
+  await expect(bob).toBeVisible();
+  const del = bob.locator('.delete');
+  const react = bob.locator('.react');
+  const nudge = bob.locator('.nudge');
+
+  await bob.hover();
+  await expect(react).toHaveCSS('opacity', '1');
+  await del.hover();
+  await expect(react).toHaveCSS('opacity', '0');
+  await expect(nudge).toHaveCSS('opacity', '0');
+  await expect(del).toHaveCSS('opacity', '1');
+
+  // back to the smiley over the gap (the bridge keeps the card hovered): the circles come back
+  const d = (await del.boundingBox())!;
+  const r = (await react.boundingBox())!;
+  const y = d.y + d.height * 0.75;
+  for (let x = d.x + d.width / 2; x >= r.x + r.width / 2; x -= 4) await alice.mouse.move(x, y);
+  await expect(react).toHaveCSS('opacity', '1');
+  await expect(nudge).toHaveCSS('opacity', '1');
+
+  // a click asks first; a click elsewhere closes it, nothing removed
+  const confirm = alice.locator('#rm_confirm');
+  await del.click();
+  await expect(confirm).toBeVisible();
+  await alice.mouse.move(0, 0);
+  await expect(del).toHaveCSS('opacity', '1'); // stays at the popover without hover
+  await expect(react).toHaveCSS('opacity', '0');
+  await alice.mouse.click(5, 300);
+  await expect(confirm).toBeHidden();
+  await expect(bob).toBeVisible();
+
+  await bob.hover();
+  await del.click();
+  await confirm.getByRole('button', { name: 'Remove' }).click();
+  await expect(tableCard(alice, 'Bob')).toHaveCount(0);
 });
 
 test('a long name stays inside the card and ends with an ellipsis (B-49)', async ({ browser }) => {

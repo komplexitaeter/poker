@@ -251,7 +251,8 @@ test('touch: a tap opens the circles, removing asks first (B-110)', async ({ bro
   await bobCard.locator('.delete').tap();
   const confirm = alice.locator('#rm_confirm');
   await expect(confirm).toBeVisible();
-  await expect(confirm.locator('.rm-name')).toHaveText('Bob');
+  await expect(confirm.locator('#rm_confirm_text')).toContainText('Remove Bob from the table?');
+  await expect(confirm.locator('#rm_confirm_text small')).toHaveText('Bob can rejoin at any time.');
   await expect(bobCard).toHaveClass(/is-open/);
   await shot(alice, 'touch-light-remove-confirm');
   await confirm.getByRole('button', { name: 'Cancel' }).tap();
