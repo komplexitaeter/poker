@@ -1224,10 +1224,7 @@ function updateObservers(observers, myMkey) {
         existing.delete(mkey);
         const span = li.querySelector('.obs-name');
         const name = String(o.name);
-        if (span.textContent !== name) {
-            span.textContent = name;
-            span.title = name;
-        }
+        if (span.textContent !== name) span.textContent = name; // no title: the name is right there (B-110)
         const isMe = mkey === myMkey;
         if (li.classList.contains('is-me') !== isMe) li.classList.toggle('is-me', isMe);
         syncReactButton(li, !isMe, name);

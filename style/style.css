@@ -1854,6 +1854,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  *     </ul>
  *   </div>
  *   away observers are left out (no symbol). Desktop: nudge and smiley on hover/focus; touch: after a tap (.is-open).
+ *   The two circles float centred above the name tag (absolute, the names never move; below it without cards).
  *   Circles from the right: trash can, smiley, nudge (desktop: right-aligned below the card; touch: centred below
  *   the open card, as three touch-sized circles are wider than a small card). A click on .nudge shakes the card on
  *   every board (.is-nudged / .is-nudged-me, anonymous: no name lands).
@@ -1957,10 +1958,12 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     list-style: none;
 }
 .obs {
-    position: relative; /* anchor of a landed reaction */
+    position: relative; /* anchor of a landed reaction and of the circles */
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    /* the circles: size and the gap to the name tag and between them */
+    --obs-circ: 26px;
+    --obs-circ-gap: 4px;
 }
 .obs-name {
     display: inline-flex;
@@ -1989,12 +1992,19 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 }
 .obs.is-me .obs-name { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: bold; }
 .obs.is-me .obs-name::before { background: var(--on-accent); }
-/* the nudge and the smiley: the same circles as on a card, in the line */
+/* the nudge and the smiley: the same circles as on a card, as an overlay above the name tag (centred), so the
+ * names in the line never move and the row keeps its height (fitCardsToTable). Above, not below: the row is the
+ * last thing in the scrolling table, circles below it would add a scrollbar. Without cards (only observers) the row
+ * is at the top of the table: then below (room enough there). */
 .obs :is(.react, .nudge) {
+    position: absolute;
+    bottom: calc(100% + var(--obs-circ-gap));
+    left: calc(50% - var(--obs-circ) - var(--obs-circ-gap) / 2); /* the nudge; the smiley right of it */
+    z-index: 3; /* above the cards and the circles of the last card row */
     display: grid;
     place-items: center;
-    width: 26px;
-    height: 26px;
+    width: var(--obs-circ);
+    height: var(--obs-circ);
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -2002,25 +2012,39 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     border-radius: 100%;
     background: var(--cardc-face);
     color: var(--muted);
+    box-shadow: 0 3px 8px -3px var(--shadow-color); /* floats over the cards */
     cursor: pointer;
     opacity: 0;
     pointer-events: none;
     --del-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
 }
+.obs .react { left: calc(50% + var(--obs-circ-gap) / 2); }
+#table:has(#cbox:empty) .obs :is(.react, .nudge) { bottom: auto; top: calc(100% + var(--obs-circ-gap)); }
 .obs :is(.react, .nudge) svg { display: block; width: 76%; height: 76%; overflow: visible; pointer-events: none; transition: transform 0.15s ease-out; }
 .obs :is(.react, .nudge) .body { fill: var(--del-tint); }
 .obs :is(.react, .nudge) .hatch { stroke: currentColor; }
 .obs :is(.react, .nudge) .ink { stroke: var(--cardc-ink); }
-/* hidden: no room either (zero width, still focusable: keyboard focus opens it) */
-.obs :is(.react, .nudge):not(:is(.obs:hover, .obs:has(:focus-visible), .obs.is-open, .obs:has([aria-expanded="true"])) *) {
-    width: 0;
-    margin-left: -4px; /* the gap of .obs */
-    border-width: 0;
+/* the hover bridge: covers the circles and the gap to the name tag, only while the observer is hovered (it never
+ * catches the pointer otherwise, so it blocks nothing: neither the cards above nor the names beside) */
+@media (hover: hover) {
+    .obs:has(.react)::after {
+        content: "";
+        position: absolute;
+        bottom: 100%;
+        left: calc(50% - var(--obs-circ) - var(--obs-circ-gap) / 2);
+        z-index: 2; /* below the circles */
+        width: calc(2 * var(--obs-circ) + var(--obs-circ-gap));
+        height: calc(var(--obs-circ) + var(--obs-circ-gap));
+        pointer-events: none;
+    }
+    #table:has(#cbox:empty) .obs:has(.react)::after { bottom: auto; top: 100%; }
+    .obs:has(.react):hover::after { pointer-events: auto; }
 }
 .obs:hover :is(.react, .nudge),
 .obs:has(:focus-visible) :is(.react, .nudge),
 .obs:has(.react[aria-expanded="true"]) :is(.react, .nudge),
 .obs.is-open :is(.react, .nudge) { opacity: 1; pointer-events: auto; }
+.obs:not(.is-me):hover .obs-name { border-color: var(--bluish); } /* like a hovered card */
 .obs .react:hover,
 .obs .react:focus-visible,
 .obs .react[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
@@ -2036,15 +2060,16 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 
 @media (pointer: coarse) {
     .obs-name { height: 32px; }
-    .obs :is(.react, .nudge) { width: 32px; height: 32px; }
+    .obs { --obs-circ: 32px; --obs-circ-gap: 6px; }
 }
 
 @media (hover: none), (pointer: coarse) {
     .obs:hover :is(.react, .nudge),
     .obs:has(:focus-visible) :is(.react, .nudge) { opacity: 0; pointer-events: none; }
-    .obs:not(.is-open, :has([aria-expanded="true"])) :is(.react, .nudge) { width: 0; margin-left: -4px; border-width: 0; }
     .obs.is-open :is(.react, .nudge),
     .obs:has(.react[aria-expanded="true"]) :is(.react, .nudge) { opacity: 1; pointer-events: auto; }
+    .obs:not(.is-me):hover .obs-name { border-color: var(--line-strong); }
+    .obs.is-open .obs-name { border-color: var(--accent); }
     .obs .react:hover svg { transform: none; }
     .obs .nudge:hover svg { animation: none; }
 }
@@ -2167,11 +2192,15 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 /* Reaction flight: script.js moves .react-fly along a curve from the sender's card to the target (Web Animations
  * API, transform only, --react-fly-dur). With prefers-reduced-motion it skips the flight and only lands.
  * The emojis get an outline like a sticker (--react-halo, all around), so they stand out on any card: light on the
- * dark theme, the ink of the cards on the light one. */
+ * dark theme, the ink of the cards on the light one. Chained drop-shadows add up: four straight ones (a = 1.1px)
+ * and four diagonal ones (d = 0.8px per axis) give an even octagon of about 2.7px in every direction
+ * (straight a + 2d, diagonal (a + d) * 1.41). */
 body {
     --react-halo: #ffffff;
-    --react-outline: drop-shadow(1.5px 0 0 var(--react-halo)) drop-shadow(-1.5px 0 0 var(--react-halo))
-        drop-shadow(0 1.5px 0 var(--react-halo)) drop-shadow(0 -1.5px 0 var(--react-halo));
+    --react-outline: drop-shadow(1.1px 0 0 var(--react-halo)) drop-shadow(-1.1px 0 0 var(--react-halo))
+        drop-shadow(0 1.1px 0 var(--react-halo)) drop-shadow(0 -1.1px 0 var(--react-halo))
+        drop-shadow(0.8px 0.8px 0 var(--react-halo)) drop-shadow(-0.8px -0.8px 0 var(--react-halo))
+        drop-shadow(0.8px -0.8px 0 var(--react-halo)) drop-shadow(-0.8px 0.8px 0 var(--react-halo));
 }
 body.light-theme { --react-halo: #1d2027; }
 .react-fly {
