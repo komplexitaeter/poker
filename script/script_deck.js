@@ -211,7 +211,7 @@ function deckMainView(deck, group, variant) {
     // the control cards (per team)
     const controls = dmEl('fieldset', 'f');
     controls.id = 'deck_controls';
-    controls.appendChild(dmEl('legend', 'lab', 'Control cards'));
+    controls.appendChild(dmEl('legend', 'lab', 'Special cards'));
     const ctlGrid = dmEl('div', 'dm-tgs');
     const ctlOn = new Set(deck.controls);
     deckMenuControls().forEach(card => {
@@ -336,7 +336,7 @@ function showDeckView(view) {
 /* ------------------------------------------------------------------ writes */
 
 /* B-99 (F7, Andreas): the result of a change as a toast (showToast in script.js), like "Board link copied" */
-const DECK_TOASTS = { set: 'Deck changed', variant: 'Variant changed', card: 'Cards changed', control: 'Control cards changed' };
+const DECK_TOASTS = { set: 'Deck changed', variant: 'Variant changed', card: 'Cards changed', control: 'Special cards changed' };
 
 /* a write of the menu; the local copy shows it at once, the next board state from the server wins.
  * kind: 'set' | 'variant' | 'card' | 'control' (the text of the toast) */
