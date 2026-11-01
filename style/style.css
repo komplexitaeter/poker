@@ -1919,8 +1919,7 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 }
 
 /* B-99 D9: long descriptions (J.U.D.G.E.) end on a whole line with an ellipsis instead of being cut by the card's
- * edge: as many lines as fit below a two-line heading (D14, now on every card; measured: 4 from a 98 px card,
- * 3 from 81 px, else 2) */
+ * edge: as many lines as fit below a two-line heading (measured: 4 from a 98 px card, 3 from 76 px, else 2) */
 #cbox[data-text-size="long"] .c { container-type: inline-size; }
 
 #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 4; }
@@ -1929,23 +1928,28 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
     #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 3; }
 }
 
-@container (max-width: 80.98px) {
+@container (max-width: 75.98px) {
     #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 2; }
 }
 
-/* touch: the card keeps more room at the bottom for the delete icon (see below), so one line less up to 141 px
- * (measured: 4 from a 142 px card, 3 from 93 px, 2 from 79 px, else 1) */
+/* B-99 D14: J.U.D.G.E. (style inverted) only, below its two-line heading frame on every card (measured: 4 from a
+ * 98 px card, 3 from 81 px, else 2). Touch: the card keeps more room at the bottom for the delete icon, so one line
+ * less up to 141 px (4 from 142 px, 3 from 93 px, 2 from 79 px, else 1). Other sets keep the clamps above. */
+@container (max-width: 80.98px) {
+    #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 2; }
+}
+
 @media (hover: none), (pointer: coarse) {
     @container (max-width: 141.98px) {
-        #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 3; }
+        #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 3; }
     }
 
     @container (max-width: 92.98px) {
-        #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 2; }
+        #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 2; }
     }
 
     @container (max-width: 78.98px) {
-        #cbox[data-text-size="long"] .pc .txt { -webkit-line-clamp: 1; }
+        #cbox[data-text-size="long"] .pc.sty-inverted .txt { -webkit-line-clamp: 1; }
     }
 }
 
