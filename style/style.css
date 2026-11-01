@@ -1976,9 +1976,11 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     isolation: isolate; /* the frame (z-index -1) stays behind the tag and the circles, inside the observer */
     display: inline-flex;
     align-items: center;
+    justify-content: center; /* a very short tag stays below the middle of its circles */
+    min-width: calc(2 * var(--obs-circ) + var(--obs-circ-gap)); /* the circles never reach into the next observer */
     padding-top: calc(var(--obs-pad) + var(--obs-circ) + var(--obs-circ-gap)); /* the room for the circles */
 }
-.obs.is-me { padding-top: 0; } /* no circles; align-items: flex-end keeps it on the line */
+.obs.is-me { padding-top: 0; min-width: 0; } /* no circles; align-items: flex-end keeps it on the line */
 .obs-name {
     display: inline-flex;
     align-items: center;
