@@ -1605,7 +1605,10 @@ div#cbox {
     width: var(--card-w);
 }
 
-.c:hover .pc { border-color: var(--bluish); }
+/* only with a real mouse: on touch a tap would leave the hover border on the card */
+@media (hover: hover) {
+    .c:hover .pc { border-color: var(--bluish); }
+}
 
 /* B-76/B-99: the name tag above the card (its height is part of the fit, --card-name-h) */
 .c .card_player_name {
@@ -1638,7 +1641,7 @@ div#cbox {
  * symbols): card paper, ink outline, tinted and hatched body. Hover: red, the lid tilts.
  * B-110: the reaction button (.react, a sketched smiley) sits left of it in the same style; hover: blue.
  * Only visible on hover (large screens with a mouse), see the media queries below. Hidden by opacity, not by
- * display: it stays in the tab order, keyboard focus shows it (:focus-within). */
+ * display: it stays in the tab order, keyboard focus shows it (:has(:focus-visible)). */
 .c :is(.delete, .react) {
     display: grid;
     opacity: 0;
@@ -1673,7 +1676,7 @@ div#cbox {
 /* B-49: shown by input device, not by width: mouse = on hover (or keyboard focus inside the
  * card), touch = always (see below), whatever the window size */
 .c:hover :is(.delete, .react),
-.c:focus-within :is(.delete, .react) { opacity: 1; pointer-events: auto; }
+.c:has(:focus-visible) :is(.delete, .react) { opacity: 1; pointer-events: auto; }
 
 .c .delete:hover,
 .c .delete:focus-visible { border-color: var(--danger); color: var(--danger); }
@@ -1803,7 +1806,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  *             (CSS only), trash can always visible. Name it for screen readers in the delete label.
  *   .is-open  touch only: the card was tapped, its circles show (one card at a time; a tap elsewhere closes).
  *             Touch devices = (hover: none), (pointer: coarse). The tap mode starts once a card has a .react
- *             (#cbox:has(.react)); without one, touch keeps the trash can on every card (as before B-110).
+ *             (#table:has(.react), cards or observers); without one, touch keeps the trash can on every card (as before B-110).
  *
  * observers (the row below the cards, inside main#table after #cbox, board.html):
  *   <div id="observers" class="observers" hidden>
@@ -1866,8 +1869,8 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 
 /* touch: the circles only on the tapped card (.is-open); the trash can of an away player always */
 @media (hover: none), (pointer: coarse) {
-    #cbox:has(.react) .c:not(.is-open) :is(.delete, .react) { opacity: 0; pointer-events: none; }
-    #cbox:has(.react) .c.is-away:not(.is-open) .delete { opacity: 1; pointer-events: auto; }
+    #table:has(.react) .c:not(.is-open) :is(.delete, .react) { opacity: 0; pointer-events: none; }
+    #table:has(.react) .c.is-away:not(.is-open) .delete { opacity: 1; pointer-events: auto; }
     .c.is-open > .pc { border-color: var(--accent); }
 }
 
@@ -1950,13 +1953,13 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 .obs .react .hatch { stroke: currentColor; }
 .obs .react .ink { stroke: var(--cardc-ink); }
 /* hidden: no room either (zero width, still focusable: keyboard focus opens it) */
-.obs .react:not(:is(.obs:hover, .obs:focus-within, .obs.is-open) .react, [aria-expanded="true"]) {
+.obs .react:not(:is(.obs:hover, .obs:has(:focus-visible), .obs.is-open) .react, [aria-expanded="true"]) {
     width: 0;
     margin-left: -4px; /* the gap of .obs */
     border-width: 0;
 }
 .obs:hover .react,
-.obs:focus-within .react,
+.obs:has(:focus-visible) .react,
 .obs .react[aria-expanded="true"],
 .obs.is-open .react { opacity: 1; pointer-events: auto; }
 .obs .react:hover,
@@ -1975,7 +1978,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 
 @media (hover: none), (pointer: coarse) {
     .obs:hover .react,
-    .obs:focus-within .react { opacity: 0; pointer-events: none; }
+    .obs:has(:focus-visible) .react { opacity: 0; pointer-events: none; }
     .obs:not(.is-open) .react:not([aria-expanded="true"]) { width: 0; margin-left: -4px; border-width: 0; }
     .obs.is-open .react,
     .obs .react[aria-expanded="true"] { opacity: 1; pointer-events: auto; }

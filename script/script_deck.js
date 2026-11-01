@@ -230,7 +230,7 @@ function deckMainView(deck, group, variant) {
         button.addEventListener('click', () => toggleDeckControl(card.key));
         ctlGrid.appendChild(button);
     });
-    controls.append(ctlGrid, dmEl('p', 'hint', 'Need a break, question, important, veto'));
+    controls.appendChild(ctlGrid);
     parts.push(controls);
 
     return parts;
