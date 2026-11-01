@@ -181,6 +181,36 @@ test('tip after the reveal: ? and ! explain too, coffee suggests a break (B-79)'
   await expect(tip.locator('b')).toHaveCount(0);
 });
 
+test('tip after the reveal: the shruggie is ok – no request, no break, the others may still agree (B-106)', async ({ browser }) => {
+  const { alice, url, vote } = await teamWithDeck(browser, 'Tips Shruggie', 'Fibonacci', ['Bob', 'Cleo', 'Dan']);
+  const t = new URL(url).searchParams.get('t') ?? '';
+  expect((await alice.request.post(`/api/update_controls.php?t=${t}&controls=break01,qstmrk1,shrug01`)).ok()).toBeTruthy();
+  const tip = alice.locator('#round_tip');
+  const range = alice.locator('#spread_range');
+
+  // the others agree: still "Everyone agrees", the shruggie is no vote (range, no name)
+  await vote(['five001', 'five001', 'shrug01', 'five001']);
+  await expect(tip).toHaveText('Everyone agrees \u2013 on to the next topic.');
+  await expect(range).toHaveText('5');
+  // a spread: only the extremes explain, the shruggie is not asked
+  await vote(['three01', 'eight01', 'shrug01', 'five001']);
+  await expect(tip).toHaveText('Let them explain: Alice (3) and Bob (8)');
+  await expect(range).toHaveText('3 \u2013 8');
+  // next to ?: only ? explains
+  await vote(['five001', 'qstmrk1', 'shrug01', 'five001']);
+  await expect(tip).toHaveText('Let them explain: Bob (question)');
+  // one number and shruggies: nobody to agree with, no tip
+  await vote(['five001', 'shrug01', 'shrug01', 'shrug01']);
+  await expect(tip).toHaveText('');
+  // only shruggies: no tip, no range
+  await vote(Array(4).fill('shrug01'));
+  await expect(tip).toHaveText('');
+  await expect(range).toHaveText('');
+  // in the info line of the spread a mini drawing, never the kaomoji as text
+  await expect(alice.locator('#spread_bars [data-card="shrug01"] .spread-value .mini use')).toHaveAttribute('href', /#s-shrug$/);
+  await expect(alice.locator('#spread_bars [data-card="shrug01"] .spread-count')).toHaveText('4');
+});
+
 test('tip and spread range after the reveal: infinity counts as the highest value (B-79)', async ({ browser }) => {
   const { alice, vote } = await teamWithDeck(browser, 'Tips Infinity', 'Fibonacci');
   const tip = alice.locator('#round_tip');

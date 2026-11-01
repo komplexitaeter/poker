@@ -12,7 +12,7 @@
  * Only createElement / textContent / setAttribute; symbol ids and colour tokens only from the whitelists
  * below (never free text in href, class or style). No innerHTML here. */
 
-const CARDS_SPRITE = 'src/cards.svg?v=10'; // bump with the sprite (tools/cards/gen_symbols.py)
+const CARDS_SPRITE = 'src/cards.svg?v=11'; // bump with the sprite (tools/cards/gen_symbols.py)
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /* the symbols of the sprite (tools/cards/README.md) */
@@ -22,14 +22,15 @@ const CARD_SYMBOLS = new Set([
     's-xxs', 's-xs', 's-s', 's-m', 's-l', 's-xl', 's-xxl',
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
+    's-face-curious', 's-face-confused', 's-face-worried', 's-face-surprised', 's-face-tired', 's-face-relieved',
     's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
-    's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
+    's-coffee', 's-question', 's-exclam', 's-hand', 's-shrug', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
 ]);
 
 /* B-99 (F6): how each symbol is shown small (spread labels, info line, carousel hint line, "you picked", tips).
  * Every symbol of CARD_SYMBOLS is in exactly one of the two sets (tests/e2e/specs/card-catalog.spec.ts):
  *   text     the value as mono text (digits, ½, ∞, 100, XXS–XXL)
- *   drawing  a mini symbol from the sprite (faces, traffic lights, stars, coffee, ?, !, hand, status symbols;
+ *   drawing  a mini symbol from the sprite (faces, traffic lights, stars, coffee, ?, !, hand, shrug, status symbols;
  *            F7, Andreas: ? and ! as drawings too)
  * Never a system emoji. A card without a library symbol (a custom text value) is always text. */
 const CARD_SMALL_TEXT = new Set([
@@ -40,16 +41,18 @@ const CARD_SMALL_TEXT = new Set([
 const CARD_SMALL_DRAWING = new Set([
     's-light-green', 's-light-yellow', 's-light-red',
     's-face-satisfied', 's-face-annoyed', 's-face-sad', 's-face-uninterested', 's-face-angry', 's-face-enthusiastic',
+    's-face-curious', 's-face-confused', 's-face-worried', 's-face-surprised', 's-face-tired', 's-face-relieved',
     's-stars-0', 's-stars-1', 's-stars-2', 's-stars-3', 's-stars-4', 's-stars-5',
-    's-coffee', 's-question', 's-exclam', 's-hand', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
+    's-coffee', 's-question', 's-exclam', 's-hand', 's-shrug', 's-check', 's-thought', 's-late', 's-mask', 's-frame-inv',
 ]);
 
 /* the colour tokens of style/cards.css (catalogue and palette) */
 const CARD_COLORS = new Set([
     'v0', 'vh', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v13', 'v20', 'v21', 'v34', 'v40', 'v55',
-    'v60', 'v89', 'v100', 'vinf', 'vbrk', 'vq', 'vx', 'vveto', 'vthink', 'vdone',
+    'v60', 'v89', 'v100', 'vinf', 'vbrk', 'vq', 'vx', 'vveto', 'vshrug', 'vthink', 'vdone',
     'tXXS', 'tXS', 'tS', 'tM', 'tL', 'tXL', 'tXXL', 'agreen', 'ayellow', 'ared',
-    'esatis', 'eannoy', 'esad', 'eunint', 'eangry', 'eenthu', 'star',
+    'esatis', 'eannoy', 'esad', 'eunint', 'eangry', 'eenthu',
+    'ecurio', 'econf', 'eworry', 'esurpr', 'etired', 'erelie', 'star',
     'j0', 'j1', 'j2', 'j3', 'j4', 'j5', 'j6', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7',
     'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'teal', 'cyan', 'blue', 'indigo', 'violet', 'pink', 'brown', 'grey',
 ]);

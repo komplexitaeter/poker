@@ -55,22 +55,30 @@ hatched only in a thin crescent at the edge; the laughing mouth of `s-face-enthu
 light disc with dark ink in both themes (a `<g>` in the symbol maps `--sym-*` to the face tokens): `--sym-face-ink`,
 `--sym-face-mouth`, `--sym-face-hatch` and the disc tint per mood `--sym-face-pos` (satisfied, enthusiastic),
 `--sym-face-mid` (uninterested), `--sym-face-neg` (annoyed, sad, angry; a bit more muted).
+B-107 ("Mood" variant) adds six faces in the same style: curious and relieved (`pos`), confused, surprised and tired
+(`mid`), worried (`neg`); the O mouth (surprised) and the yawn (tired) are filled in ink, the small "z" of tired
+sits beside the head in the theme ink.
 The status symbols `s-check` and `s-thought` are calm in the same way (D7): a light body `--sym-calm` with dark ink
 (`--sym-face-ink`), the hatching (`--sym-calm-hatch`) only in a thin band at the lower right edge. `s-coffee` is a
 latte glass: the coffee hatched, milk and foam light (`--sym-milk`, warmer in the dark theme), kept apart from the
 outline by a thin rim in paper colour. `s-late` (joined late, B-102) is calm too: an open door;
-frame and floor in the theme ink (`--cardc-ink`).
+frame and floor in the theme ink (`--cardc-ink`). `s-shrug` (B-106) is the shrugging figure of the emoji (not the kaomoji), friendly and
+gender-neutral: a sweater (`--sym-shirt` in the sky blue `--c-vshrug`, hatching `--sym-shirt-hatch` at the lower right edge)
+with the upper arms down along the torso, the elbows out at the bottom and the forearms up (a clear bend), two open hands
+palm up at shoulder height; a round head, a soft tuft instead of a hair style (in the theme ink). Head and hands in a light
+skin tone (`--sym-skin`) with a warm hatching (`--sym-skin-hatch`); one thin outline like the thought bubble. Friendly face:
+open eyes, brows gently up, a small open smile. Ink is dark in both themes, like the faces.
 
-## Symbol ids (53)
+## Symbol ids (60)
 
 | Group | Ids |
 |---|---|
 | Values | `s-0` … `s-10`, `s-13`, `s-20`, `s-21`, `s-34`, `s-40`, `s-55`, `s-60`, `s-89`, `s-100`, `s-half` (½), `s-inf` (∞) |
 | T-shirt | `s-xxs`, `s-xs`, `s-s`, `s-m`, `s-l`, `s-xl`, `s-xxl` |
 | Traffic light | `s-light-green`, `s-light-yellow`, `s-light-red` |
-| Emotions | `s-face-satisfied`, `s-face-annoyed`, `s-face-sad`, `s-face-uninterested`, `s-face-angry`, `s-face-enthusiastic` |
+| Emotions | `s-face-satisfied`, `s-face-annoyed`, `s-face-sad`, `s-face-uninterested`, `s-face-angry`, `s-face-enthusiastic`; Mood (B-107): `s-face-curious`, `s-face-confused`, `s-face-worried`, `s-face-surprised`, `s-face-tired`, `s-face-relieved` |
 | Stars | `s-stars-0` … `s-stars-5` (five stars, the first n filled) |
-| Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto) |
+| Control cards | `s-coffee` (☕ need a break, a latte glass), `s-question` (?), `s-exclam` (! important), `s-hand` (✋ veto), `s-shrug` (🤷 shrugging figure, B-106) |
 | Status cards | `s-check` (ready), `s-thought` (thinking), `s-mask` (thinking, anonymous mode), `s-late` (joined late, B-102) |
 | Frames | `s-frame-inv` (inverted style) |
 
@@ -80,8 +88,8 @@ J.U.D.G.E. and Delegation) and chosen for custom cards. Never rename an id once 
 
 ## Colours
 
-Catalogue tokens (predefined sets, colour of today's card): `v0 vh v1 … v55 v60 v89 v100 vinf` (values), `vbrk vq vx vveto`
-(control cards), `vthink vdone` (status), `tXXS … tXXL`, `agreen ayellow ared`, `esatis … eenthu`, `star`,
+Catalogue tokens (predefined sets, colour of today's card): `v0 vh v1 … v55 v60 v89 v100 vinf` (values), `vbrk vq vx vveto vshrug`
+(control cards; `vshrug` a sky blue), `vthink vdone` (status), `tXXS … tXXL`, `agreen ayellow ared`, `esatis … eenthu`, `ecurio econf eworry esurpr etired erelie` (mood faces, B-107), `star`,
 `j0 … j6` (J.U.D.G.E.), `g1 … g7` (Delegation).
 
 Palette for custom cards (the only allowed choice, whitelist for the API):

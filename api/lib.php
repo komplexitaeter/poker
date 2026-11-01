@@ -147,6 +147,13 @@ function notify_teams(array $team_ids): void {
 const LATE_CARD_KEY = 'late001';
 
 /*
+ * B-106: the shruggie ("can't say – and that's ok") is a control card, but no objection: like LATE_CARD_KEY it neither
+ * breaks nor makes a consensus for needs_celebration (the others still need at least two matching cards), the same
+ * rule as the "Everyone agrees" tip in the frontend.
+ */
+const SHRUG_CARD_KEY = 'shrug01';
+
+/*
  * Maps a stored pok_teams_tbl.results_order to the values the app still knows (B-42): NAME or SEQUENCE.
  * Legacy CHOOSE:* values (the removed in-game choice; live data only ever had CHOOSE:SEQUENCE) and anything
  * unexpected become SEQUENCE, the default for new teams.
@@ -244,7 +251,7 @@ function catalog_variants(array $catalog): array
  *   first variant containing all of them (else the one sharing the most cards) with these cards switched on.
  * - Otherwise (mixed groups, no card at all, e.g. needs_setup) -> the default deck with all of its cards.
  * Bits at positions without a card (or beyond the string, old teams have shorter strings) count as off. Cards without
- * legacy_index (added after cards.json v1, e.g. 60 and 89) are never derived from the flags.
+ * legacy_index (added after cards.json v1, e.g. 60, 89, the Mood faces, shruggie) are never derived from the flags.
  */
 function deck_from_cardset_flags(?string $flags, array $catalog): array
 {
@@ -256,8 +263,9 @@ function deck_from_cardset_flags(?string $flags, array $catalog): array
     $controls = array();
     $control_indexes = array();
     foreach ($catalog['controls'] as $control) {
-        $control_indexes[$control['legacy_index']] = true;
-        if ($is_on($control['legacy_index'])) $controls[] = $control['card_key'];
+        if (!isset($control['legacy_index'])) continue; // B-106: control cards added later (shrug01) are not in the flags
+        $control_indexes[(int)$control['legacy_index']] = true;
+        if ($is_on((int)$control['legacy_index'])) $controls[] = $control['card_key'];
     }
 
     $selected = array();
@@ -645,7 +653,7 @@ function getDao($t, $id) {
     $needs_celebration = true;
     $players_count = 0;
     $ready_players_count = 0;
-    $voters_count = 0; // B-102: players with a real card (not LATE_CARD_KEY), for needs_celebration
+    $voters_count = 0; // B-102, B-106: players with a real card (not LATE_CARD_KEY/SHRUG_CARD_KEY), for needs_celebration
 
     if ($id === null || strlen($id) < 10) die();
 
@@ -763,8 +771,8 @@ function getDao($t, $id) {
                 }
 
 
-                /* B-102: the "joined in" card is no vote, so it neither breaks nor makes a consensus */
-                if ($obj->card_key !== LATE_CARD_KEY) {
+                /* B-102, B-106: "joined in" and the shruggie are no vote, so they neither break nor make a consensus */
+                if ($obj->card_key !== LATE_CARD_KEY && $obj->card_key !== SHRUG_CARD_KEY) {
                     $voters_count++;
                     if ($voters_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;
                     $previous_card = $obj->card_key;
@@ -1030,7 +1038,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
         $deck_controls = implode(',', $deck['controls']);
         if ($needs_setup === 1) {
             foreach ($catalog['controls'] as $control)
-                if (in_array($control['card_key'], $deck['controls'], true))
+                if (in_array($control['card_key'], $deck['controls'], true) && isset($control['legacy_index']))
                     $cardset_flags = substr_replace($cardset_flags, "1", $control['legacy_index'], 1);
         } else {
             $cardset_flags = deck_to_cardset_flags($deck, $catalog);

@@ -62,6 +62,9 @@ DIG = {
     "hand": '<path d="M36 106c-8-6-14-16-17-28l-7-18c-2-7 7-11 11-4l7 12V32c0-7 10-7 10 0v24V22c0-7 10-7 10 0v32V24c0-7 10-7 10 0v32V34c0-7 10-7 10 0v40c0 18-6 28-14 32z"/>',
     "face": '<circle cx="50" cy="62" r="37"/>',
     "emouth": '<path d="M30 68h40c0 14-9 21-20 21s-20-7-20-21z"/>',
+    # B-107 (mood faces): open mouths in ink (surprised: a round O, tired: a tall, slack yawn)
+    "omouth": '<ellipse cx="50" cy="81" rx="6.5" ry="8"/>',
+    "ymouth": '<path d="M50 72c7 0 10 5 10 12s-4 11-10 11-10-4-10-11 3-12 10-12z"/>',
     "house": '<path d="M36 12h28c7 0 11 4 11 11v78c0 7-4 11-11 11H36c-7 0-11-4-11-11V23c0-7 4-11 11-11z"/>',
     "lamp": '<circle cx="0" cy="0" r="11"/>',
     "cloud": '<path d="M22 60a12 12 0 0 1 4-20a14 14 0 0 1 22-12a14 14 0 0 1 24 2a12 12 0 0 1 10 22a12 12 0 0 1-12 16a14 14 0 0 1-24 2a12 12 0 0 1-24-10z"/>',
@@ -75,6 +78,23 @@ DIG = {
     # joined late (B-102): an open door (frame, leaf hinged on the left); D11: no arrow, the door a bit larger
     "door": '<path d="M27 17h46v90H27z"/>',
     "leaf": '<path d="M27 17l24 10v89l-24-9z"/>',
+    # shruggie (B-106, Andreas: variant A after the emoji template, gender-neutral): a sweater with the upper arms
+    # down along the torso, the elbow sticking out at the bottom, the forearms out and up to the cuffs (a clear bend);
+    # a round head; open hands, palm up on the cuffs (fingers out and up, the thumb up on the inner side).
+    "sbody": '<path d="M50 56L43 56C37.5 56 34 58.5 33 63C32.4 68 32 73 31.6 78L19.5 58.5L8.5 62.5L19 94.5'
+             'C20.6 99.5 25.5 101 29.5 98.5L31.4 97L31.6 104C31.7 107 33.5 108 36 108L50 108L64 108'
+             'C66.5 108 68.3 107 68.4 104L68.6 97L70.5 98.5C74.5 101 79.4 99.5 81 94.5L91.5 62.5L80.5 58.5'
+             'L68.4 78C68 73 67.6 68 67 63C66 58.5 62.5 56 57 56L50 56z"/>',
+    "shead": '<circle cx="50" cy="35" r="21"/>',
+    "shead_in": '<circle cx="47" cy="32.5" r="18.6"/>',
+    "shandl": '<path d="M20.9 58.9C16.9 62.9 9.9 63.9 5.9 60.9C3.4 59 2 55.4 2.4 52.6C2.8 50.2 5 49.8 7 51'
+              'C9.8 52.8 12.8 53.8 15.6 54L16.8 48.8C17.4 46.6 20.4 46.8 20.4 49.2C20.4 52 21.2 54.4 22 56.2'
+              'C22.4 57.4 22 58.3 20.9 58.9z"/>',
+    "shandr": '<path d="M79.1 58.9C83.1 62.9 90.1 63.9 94.1 60.9C96.6 59 98 55.4 97.6 52.6C97.2 50.2 95 49.8 93 51'
+              'C90.2 52.8 87.2 53.8 84.4 54L83.2 48.8C82.6 46.6 79.6 46.8 79.6 49.2C79.6 52 78.8 54.4 78 56.2'
+              'C77.6 57.4 78 58.3 79.1 58.9z"/>',
+    "smouth": '<path d="M43 42.4C46 44 54 44 57 42.4C56.4 47.8 53.4 50 50 50C46.6 50 43.6 47.8 43 42.4z"/>',
+    "stongue": '<path d="M46.4 48.2C47.6 46.8 52.4 46.8 53.6 48.2C52.4 49.3 47.6 49.3 46.4 48.2z"/>',
     "square": '<path d="M15 6h70c5 0 9 4 9 9v70c0 5-4 9-9 9H15c-5 0-9-4-9-9V15c0-5 4-9 9-9z"/>',
 }
 
@@ -178,6 +198,22 @@ FACE = {
     "angry": [T("M29 44l15 7M71 44l-15 7", 4.5), T("M38 58v4M62 58v4", 5), T("M35 86c6-9 24-9 30 0", 4.5)],
     "enthusiastic": [T("M37 44v14M30 51h14M32 46l10 10M42 46l-10 10M63 44v14M56 51h14M58 46l10 10M68 46l-10 10", 2.8),
                      P("emouth", w=3.6)],   # laughing mouth: paper, never hatched
+    # B-107 "Mood" variant: six more faces, same construction (eyes/brows/mouth in ink on the light disc)
+    "curious": [T("M30 44c4-6 11-8 16-4", 4), T("M56 47h13", 4),               # one brow raised, the other flat
+                T("M38 52v6M62 53v5", 5), T("M48 81c4-2 9-2 12 1", 4.5)],       # small mouth, a little to the side
+    "confused": [T("M37 50v7", 5), T("M62 54h.1", 6.5), T("M58 44l10 3", 3.6),  # unequal eyes, one brow askew
+                 T("M36 83c6-1 10-6 16-4s9 1 13-4", 4.5)],                      # crooked, slanting mouth
+    "worried": [T("M29 49l14-7M71 49l-14-7", 4), T("M37 54v6M63 54v6", 5),      # brows up towards the middle
+                T("M33 84c4-4 7-4 11 0s7 4 11 0 7-4 11 0", 4)],                 # wavy mouth
+    "surprised": [T("M31 40c3-4 9-4 12-1M57 39c3-3 9-3 12 1", 3.6),            # brows raised high
+                  T("M33.5 52.5a4.5 5.5 0 1 1 9 0a4.5 5.5 0 1 1-9 0M57.5 52.5a4.5 5.5 0 1 1 9 0a4.5 5.5 0 1 1-9 0", 3.4),
+                  P("omouth", "", INK, INK, 3)],                                # round eyes, O mouth
+    "tired": [T("M30 55l14-2M56 53l14 2", 4), T("M33 55c2 4 8 4 10 0M59 55c2 4 8 4 10 0", 3.4),  # heavy, half-closed lids
+              P("ymouth", "", INK, INK, 3),                                     # yawn
+              T("M77 13h8l-8 9h8", 2.8, "var(--cardc-ink,#1d2027)")],          # a small "z" beside the head (theme ink)
+    "relieved": [T("M31 45c3-2 8-2 11 0M58 45c3-2 8-2 11 0", 3.2),              # relaxed brows
+                 T("M31 54c3 4 9 4 12 0M57 54c3 4 9 4 12 0", 4),                # closed eyes
+                 T("M38 76c6 6 18 6 24 0", 4.5)],                               # gentle smile
 }
 
 # Symbol id -> (motif layers, name; the name is not written into the sprite). Ids "s-0", "s-1", "s-coffee" … as agreed with Ben (cards.json v2).
@@ -205,7 +241,8 @@ for c in ("green", "yellow", "red"):
 # Faces (D3): a light, friendly disc with dark ink in both themes, like a classic smiley. The disc tint per
 # mood comes from cards.css: positive faces brightest, negative ones a bit more muted (--sym-face-pos/-mid/-neg).
 FACE_MOOD = {"satisfied": "pos", "enthusiastic": "pos", "uninterested": "mid",
-             "annoyed": "neg", "sad": "neg", "angry": "neg"}
+             "annoyed": "neg", "sad": "neg", "angry": "neg",
+             "curious": "pos", "relieved": "pos", "confused": "mid", "surprised": "mid", "tired": "mid", "worried": "neg"}
 GROUP_STYLE = {}   # symbol id -> style of a <g> around its layers (local overrides of the --sym-* properties)
 for f, feats in FACE.items():
     # hatching only hinted: a thin crescent at the lower right, so the expression stays calm and clear
@@ -231,6 +268,32 @@ SYM["s-coffee"] = ([S("glass", rim="foam"),
 SYM["s-question"] = (row(["dq"]), "question mark")
 SYM["s-exclam"] = (row(["dx"]), "exclamation mark")
 SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "raised hand")
+# Shruggie (B-106, Andreas: variant A after the shrugging emoji, gender-neutral): a friendly figure in a sky-blue
+# sweater, the upper arms down along the torso, the elbows out at the bottom, the forearms up, both open hands palm up
+# at shoulder height. Friendly face: open eyes, brows gently up, a small open smile; a soft tuft instead of a hair style.
+# Ink dark in both themes (group style below), the tuft in the theme ink (it sits on the card paper);
+# sweater in the value colour (--sym-shirt), head and hands light (--sym-skin) with a warm hatching (--sym-skin-hatch).
+SKIN = "var(--sym-skin,#f6dc9a)"
+SKIN_HATCH = "var(--sym-skin-hatch,#d9a24e)"
+SHIRT = "var(--sym-shirt,currentColor)"
+SHRUG_OW = 2.6   # one thin outline, like the thought bubble and the hands
+SHRUG_FEATURES = [T("M40.5 25.6c1.8-1.6 4.2-2 6.2-1.2M53.3 24.4c2-.8 4.4-.4 6.2 1.2", 2.2),   # brows gently up
+                  T("M43.5 32.5v2.6M56.5 32.5v2.6", 5.4),                                     # open eyes
+                  P("smouth", "", INK, INK, 1.6),                                             # small open smile
+                  P("stongue", "", "#f08a8a", "transparent", .1)]
+
+SYM["s-shrug"] = ([S("sbody", fill=SHIRT, hatch="var(--sym-shirt-hatch,currentColor)", hw=1.1, rim=("sbody", "translate(-2 -2.6)"),
+                     ow=SHRUG_OW),
+                   T("M33.4 66C33 76 32.8 86 33 99M66.6 66C67 76 67.2 86 67 99", 1.8),   # upper arms against the torso
+                   T("M9.8 66.4L20.6 62.4M90.2 66.4L79.4 62.4", 2.2),                     # cuffs
+                   S("shandl", fill=SKIN, hatch=SKIN_HATCH, hw=1.1, rim=("shandl", "translate(-1.2 -1.6)"), ow=SHRUG_OW),
+                   S("shandr", fill=SKIN, hatch=SKIN_HATCH, hw=1.1, rim=("shandr", "translate(-1.2 -1.6)"), ow=SHRUG_OW),
+                   T("M4.4 55.4c3 2 6.6 3 10 2.8M95.6 55.4c-3 2-6.6 3-10 2.8", 1.5),        # palm line
+                   S("shead", fill=SKIN, hatch=SKIN_HATCH, hw=1.1, rim="shead_in", ow=SHRUG_OW)] + SHRUG_FEATURES
+                  + [T("M47 14.6c-.6-3.4 1.2-6.2 4.4-6.8M51.6 14.4c.8-2.6 3.2-4 5.8-3.6", 2.4,
+                       "var(--cardc-ink,#1d2027)")],                                        # soft tuft
+                  "shrugging figure")
+GROUP_STYLE["s-shrug"] = "--sym-ink:var(--sym-face-ink,#1d2027);--sym-hatch:var(--sym-face-hatch,currentColor)"
 # Status cards (B-99 D7): calm like the faces - a light body, the hatching only hinted at the lower right edge.
 SYM["s-check"] = ([L("dchk", calm=True)], "check mark")
 # D8: the bubble 6 units higher (it sat low on the status card), the hatched band at the edge a bit wider again
@@ -824,6 +887,11 @@ COL = {
     # uninterested: cool, neutral blue-grey (indifferent), clearly apart from yellow "satisfied" and violet "sad" (Andreas, 27)
     "esatis": ("#a8c820", None), "eannoy": ("#ee6a45", None), "esad": ("#8a72dc", None), "eunint": ("#6f92b8", None),
     "eangry": ("#de2430", None), "eenthu": ("#62b83a", None), "star": ("#f0cf3a", None), "vveto": ("#ef5a32", None),
+    # B-107 mood faces, spread over the hue circle between the six above: gold, mint, cyan, indigo, orchid, taupe
+    "ecurio": ("#26a9d6", None), "econf": ("#c45fa8", None), "eworry": ("#4f63c9", None), "esurpr": ("#e3b51e", None),
+    "etired": ("#a8957c", None), "erelie": ("#3fbf93", None),
+    # shruggie (B-106, Andreas): a friendly sky blue, lighter and softer than 0 / 8, fresher than the blue-grey of "uninterested"
+    "vshrug": ("#5b9be8", "#7db4f5"),
     "j0": ("#265873", "#3a7b9c"), "j1": ("#4fa587", "#55b08f"), "j2": ("#8fbc3b", "#94c044"), "j3": ("#b54467", "#c45578"),
     "j4": ("#be5a40", "#cc6a4f"), "j5": ("#ded65f", "#d8d06a"), "j6": ("#b23b41", "#c74a50"),
     "g1": ("#b23b41", "#d65a5f"), "g2": ("#d0702c", "#ef8c45"), "g3": ("#d9a300", "#f0c43a"), "g4": ("#8fbc3b", "#a5d14f"),
@@ -906,6 +974,11 @@ body {{
     --sym-calm-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
     /* s-coffee: milk and foam of the latte; in the dark theme a warmer latte tone, so it is not the light outline */
     --sym-milk: color-mix(in srgb, currentColor 58%, #f4ead4);
+    /* s-shrug: the sweater in the value colour, head and hands a light skin with a warm hatching, dark ink (like the faces) */
+    --sym-shirt: currentColor;
+    --sym-shirt-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
+    --sym-skin: #f8dca4;
+    --sym-skin-hatch: color-mix(in srgb, #1d2027 15%, #e0a24e);
 
     /* catalogue */
 {tokens(COL, 1)}
@@ -922,6 +995,9 @@ body.light-theme {{
     --sym-face-neg: color-mix(in srgb, currentColor 28%, #f1efea);
     --sym-calm: color-mix(in srgb, currentColor 38%, #fffbe8);
     --sym-milk: color-mix(in srgb, currentColor 30%, #fffbe8);
+    --sym-shirt: color-mix(in srgb, currentColor 75%, #fffbe8);
+    --sym-shirt-hatch: color-mix(in srgb, #1d2027 25%, currentColor);
+    --sym-skin: #fbe4b4;
 
     /* catalogue */
 {tokens(COL, 0)}
@@ -935,13 +1011,16 @@ body.light-theme {{
 # ------------------------------------------------------------------ preview (developers only)
 # symbol -> catalogue colour of the card that uses it today
 SYM_COLOUR = {"s-half": "vh", "s-inf": "vinf", "s-coffee": "vbrk", "s-question": "vq", "s-exclam": "vx",
-              "s-hand": "vveto", "s-check": "vdone", "s-thought": "vthink", "s-late": "v8", "s-mask": "vthink", "s-frame-inv": "j3"}
+              "s-hand": "vveto", "s-check": "vdone", "s-thought": "vthink", "s-late": "v8", "s-mask": "vthink", "s-frame-inv": "j3",
+              "s-shrug": "vshrug"}
 for _v in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "13", "20", "21", "34", "40", "55", "60", "89", "100"):
     SYM_COLOUR[f"s-{_v}"] = {"20": "v20", "40": "v40"}.get(_v, f"v{_v}")
 SYM_COLOUR.update({"s-xxs": "tXXS", "s-xs": "tXS", "s-s": "tS", "s-m": "tM", "s-l": "tL", "s-xl": "tXL", "s-xxl": "tXXL",
                    "s-light-green": "agreen", "s-light-yellow": "ayellow", "s-light-red": "ared",
                    "s-face-satisfied": "esatis", "s-face-annoyed": "eannoy", "s-face-sad": "esad",
-                   "s-face-uninterested": "eunint", "s-face-angry": "eangry", "s-face-enthusiastic": "eenthu"})
+                   "s-face-uninterested": "eunint", "s-face-angry": "eangry", "s-face-enthusiastic": "eenthu",
+                   "s-face-curious": "ecurio", "s-face-confused": "econf", "s-face-worried": "eworry",
+                   "s-face-surprised": "esurpr", "s-face-tired": "etired", "s-face-relieved": "erelie"})
 for _k in range(6):
     SYM_COLOUR[f"s-stars-{_k}"] = "star"
 

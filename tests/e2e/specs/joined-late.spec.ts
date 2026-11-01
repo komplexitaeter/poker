@@ -82,6 +82,37 @@ test('joining or becoming a player after the reveal gives late001, the round sta
                where d.team_id = '${t}' and d.player_id = '${erin}'`)).toBe('late001');
 });
 
+test('the shruggie is no objection: celebration if at least two others agree (B-106)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Shruggie Agrees');
+  const t = teamIdOf(url);
+  const [bob, carol, dave] = await addPlayersViaApi(page, url, ['Bob', 'Carol', 'Dave']);
+  const set = async (id: string, cardkey: string) =>
+    expect((await post(page, 'setc.php', { t, id, cardkey })).ok()).toBeTruthy();
+  // the creator of the team (page) has not joined: only Bob, Carol and Dave vote
+  await set(bob, 'five001');
+  await set(carol, 'five001');
+  await set(dave, 'shrug01');
+  let state = await dao(page, t, bob);
+  expect(state.all_players_ready).toBe(true);
+  expect(state.needs_celebration).toBe(true);
+
+  // one real card next to shruggies is no consensus
+  await set(carol, 'shrug01');
+  state = await dao(page, t, bob);
+  expect(state.all_players_ready).toBe(true);
+  expect(state.needs_celebration).toBe(false);
+
+  // only shruggies: no consensus either
+  await set(bob, 'shrug01');
+  expect((await dao(page, t, bob)).needs_celebration).toBe(false);
+
+  // two different real cards next to a shruggie: no consensus
+  await set(bob, 'five001');
+  await set(carol, 'three01');
+  expect((await dao(page, t, bob)).needs_celebration).toBe(false);
+});
+
 const DESKTOP = { width: 1400, height: 800 };
 const SHOTS = process.env.B102_SHOTS; // optional: directory for screenshots of the table (review)
 

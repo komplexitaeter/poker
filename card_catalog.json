@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "comment": "B-98 card catalog v2: predefined set groups with variants and the control cards. card_key is stored in the database and never changes its meaning; keys have at most 7 characters [a-z0-9] (no '-', that is reserved for custom cards). legacy_index = position in cardset_flags (cards.json v1), only for the migration; cards added later (e.g. 60, 89) have none and are never derived from or written to cardset_flags. B-99: symbol = id in src/cards.svg (tools/cards/README.md), color = colour token of style/cards.css without --c-; both win over values the client derives. Control cards are always drawn plain, each group has a style (plain | badge | banner | inverted).",
+  "comment": "B-98 card catalog v2: predefined set groups with variants and the control cards. card_key is stored in the database and never changes its meaning; keys have at most 7 characters [a-z0-9] (no '-', that is reserved for custom cards). legacy_index = position in cardset_flags (cards.json v1), only for the migration; cards added later (e.g. 60, 89, the Mood faces, shruggie) have none and are never derived from or written to cardset_flags. B-99: symbol = id in src/cards.svg (tools/cards/README.md), color = colour token of style/cards.css without --c-; both win over values the client derives. Control cards are always drawn plain, each group has a style (plain | badge | banner | inverted).",
   "styles": ["plain", "badge", "banner", "inverted"],
   "default_deck": "fib-classic",
   "default_controls": ["break01", "qstmrk1"],
@@ -9,7 +9,8 @@
     {"card_key": "break01", "value": "☕", "symbol": "s-coffee", "color": "vbrk", "numeric_value": null, "sort_order": 99000, "heading": "need a break", "description": "I need a short break before we go on.", "legacy_index": 24},
     {"card_key": "qstmrk1", "value": "?", "symbol": "s-question", "color": "vq", "numeric_value": null, "sort_order": 99010, "heading": "question", "description": "I have a question before I can estimate.", "legacy_index": 43},
     {"card_key": "xclam01", "value": "!", "symbol": "s-exclam", "color": "vx", "numeric_value": null, "sort_order": 99020, "heading": "important", "description": "Something important should be said before we go on.", "legacy_index": 44},
-    {"card_key": "veto", "value": "✋", "symbol": "s-hand", "color": "vveto", "numeric_value": null, "sort_order": 98990, "heading": "veto", "description": "I object. Let's not go ahead like this.", "legacy_index": 45}
+    {"card_key": "veto", "value": "✋", "symbol": "s-hand", "color": "vveto", "numeric_value": null, "sort_order": 98990, "heading": "veto", "description": "I object. Let's not go ahead like this.", "legacy_index": 45},
+    {"card_key": "shrug01", "value": "¯\\_(ツ)_/¯", "symbol": "s-shrug", "color": "vshrug", "numeric_value": null, "sort_order": 99030, "heading": "shruggie", "description": "Not knowing isn't a problem – it's a starting point."}
   ],
   "groups": [
     {
@@ -102,10 +103,17 @@
         {"card_key": "sad0001", "value": "😢", "symbol": "s-face-sad", "color": "esad", "numeric_value": null, "sort_order": 2100, "description": "sad", "legacy_index": 20},
         {"card_key": "unint01", "value": "😐", "symbol": "s-face-uninterested", "color": "eunint", "numeric_value": null, "sort_order": 2200, "description": "uninterested", "legacy_index": 21},
         {"card_key": "angry01", "value": "😡", "symbol": "s-face-angry", "color": "eangry", "numeric_value": null, "sort_order": 2300, "description": "angry", "legacy_index": 22},
-        {"card_key": "enthu01", "value": "🤩", "symbol": "s-face-enthusiastic", "color": "eenthu", "numeric_value": null, "sort_order": 2400, "description": "enthusiastic", "legacy_index": 23}
+        {"card_key": "enthu01", "value": "🤩", "symbol": "s-face-enthusiastic", "color": "eenthu", "numeric_value": null, "sort_order": 2400, "description": "enthusiastic", "legacy_index": 23},
+        {"card_key": "curio01", "value": "🤔", "symbol": "s-face-curious", "color": "ecurio", "numeric_value": null, "sort_order": 2410, "description": "curious"},
+        {"card_key": "confu01", "value": "😕", "symbol": "s-face-confused", "color": "econf", "numeric_value": null, "sort_order": 2420, "description": "confused"},
+        {"card_key": "worri01", "value": "😟", "symbol": "s-face-worried", "color": "eworry", "numeric_value": null, "sort_order": 2430, "description": "worried"},
+        {"card_key": "surpr01", "value": "😮", "symbol": "s-face-surprised", "color": "esurpr", "numeric_value": null, "sort_order": 2440, "description": "surprised"},
+        {"card_key": "tired01", "value": "🥱", "symbol": "s-face-tired", "color": "etired", "numeric_value": null, "sort_order": 2450, "description": "tired"},
+        {"card_key": "relie01", "value": "😌", "symbol": "s-face-relieved", "color": "erelie", "numeric_value": null, "sort_order": 2460, "description": "relieved"}
       ],
       "variants": [
-        {"id": "emotions", "name": "Emotions", "cards": ["satis01", "annoy01", "sad0001", "unint01", "angry01", "enthu01"], "preset_mapping": "Emoticons"}
+        {"id": "emotions", "name": "Team Assessment", "cards": ["satis01", "annoy01", "sad0001", "unint01", "angry01", "enthu01"], "preset_mapping": "Emoticons"},
+        {"id": "mood", "name": "Mood", "cards": ["satis01", "annoy01", "sad0001", "unint01", "angry01", "enthu01", "curio01", "confu01", "worri01", "surpr01", "tired01", "relie01"]}
       ]
     },
     {

@@ -2042,7 +2042,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=3'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=4'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
@@ -2371,7 +2371,7 @@ function tipText(json, revealed) {
         ? ['Talk about the cards you chose.']
         : ['Talk about the cards you chose \u2013 ', ...explain(asking).slice(1), ' first.'];
 
-    // the cards actually chosen; control cards (coffee, ?, !) stay neutral
+    // the cards actually chosen; control cards (coffee, ?, !, shruggie) stay neutral
     const chosen = configs.filter(entry => entry.config && !entry.config.control);
     if (chosen.length === 0) return withBreak(asking.length > 0 ? explain(asking) : []);
     // B-79: emotions and traffic lights have no range (or just three values): talk instead of names
@@ -2385,7 +2385,12 @@ function tipText(json, revealed) {
     const min = Math.min(...values);
     const max = Math.max(...values);
     if (min === max) {
-        if (numeric.length === players.length) return ['Everyone agrees \u2013 on to the next topic.'];
+        // B-106: the shruggie ("can't say – and that's ok") is no objection: the others may still agree,
+        // as long as at least two of them do
+        const shrugs = configs.filter(entry => entry.config && entry.config.key === 'shrug01').length;
+        if (numeric.length === players.length - shrugs && (shrugs === 0 || numeric.length > 1)) {
+            return ['Everyone agrees \u2013 on to the next topic.'];
+        }
         // the same number next to a veto: talk about them
         if (chosen.length > numeric.length) return withBreak(talk);
         // next to control cards only: ? and ! explain, otherwise no tip
