@@ -2635,7 +2635,9 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
  * key small below each of the first 26 cards, the hint on the right in the same row; only with a mouse and a keyboard at hand,
  * players only. The hint never takes a row of its own: when it does not fit next to the keys or
  * the deck scrolls, it is hidden (hint-off, set by updateDeckRoom() in script.js), so the tray
- * keeps its height. */
+ * keeps its height. Then pointing at the row of keys (not at a card) shows it after all and fades
+ * the keys out (Andreas, 2026-11-01): the keys only turn transparent, so they stay under the
+ * mouse and the hover does not end (no flicker); the hint lets the mouse through. */
 @media (min-width: 800px) and (hover: hover) and (pointer: fine) {
     /* the slot shrinks (down to --deck-min), the card follows it */
     .ctl-slot {
@@ -2644,6 +2646,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         flex-direction: column;
         align-items: center;
         min-width: calc(var(--deck-min) + 4px);
+        position: relative; /* places the hover area of its key (.ctl-key::before) */
     }
 
     .ctl-slot > .ctl {
@@ -2673,13 +2676,47 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         line-height: 1;
         color: var(--line-strong);
         text-transform: lowercase; /* "keys q–p pick a card", same as the keys */
+        pointer-events: none;
+        transition: opacity 150ms ease, visibility 150ms;
     }
 
-    .ctl_as_guest .ctl-key,
-    .down-container.hint-off .deck-hint { visibility: hidden; }
+    .ctl-key { transition: opacity 150ms ease; }
+
+    /* the area to point at: the key's row across the whole slot (the slots touch, so the row has no
+     * gaps) and the gap above it, but not the card. Placed by the slot, so it never sticks out of the
+     * deck (no scrolling) and the key's own box (measured by updateDeckRoom()) stays as it is. */
+    .ctl-key::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: calc(1em + 5px); /* the key (font-size 10px, line-height 1) and its margin */
+    }
+
+    .ctl_as_guest .ctl-key { visibility: hidden; }
+
+    .down-container.hint-off .deck-hint {
+        visibility: hidden;
+        opacity: 0;
+    }
+
+    /* pointing at the keys: the hint instead of the keys (separate rules, :has(), see below) */
+    .down-container.hint-off:has(.ctl-key:hover) .deck-hint {
+        visibility: visible;
+        opacity: 1;
+        color: var(--muted);
+    }
+
+    .down-container.hint-off:has(.ctl-key:hover) .ctl-key { opacity: 0; }
 
     /* separate rule: browsers without :has() drop a whole selector list that contains it */
     .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ctl-key,
+    .deck-hint { transition: none; }
 }
 
 /* B-75: the position dots and the "picked" line below the deck are for the carousel (touch devices) only */

@@ -86,6 +86,41 @@ test('labels follow the layout map, the key stays physical (QWERTY, AZERTY) (F8,
   await expect(deckCards(alice).first()).toHaveClass(/selected/);
 });
 
+test('the hidden key hint shows while pointing at the row of keys, not at a card (Andreas, 2026-11-01)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  await withLayout(alice, null);
+  const url = await createTeam(alice, 'Key Hint Hover');
+  await setTeamDeck(alice, url, 'fib-classic', FIB_ALL, CONTROLS_ALL); // 21 cards: the hint does not fit
+  await joinAsPlayer(alice, url, 'Alice');
+  await expect(deckCards(alice)).toHaveCount(21);
+  await expect(alice.locator('#down-container')).toHaveClass(/hint-off/);
+  const hint = alice.locator('.deck-hint');
+  const key = alice.locator('#ctl .ctl-key').nth(3);
+  await expect(hint).toBeHidden();
+
+  // pointing at a card: no hint
+  await deckCards(alice).nth(3).hover();
+  await alice.waitForTimeout(300);
+  await expect(hint).toBeHidden();
+
+  // pointing at the keys: the hint, the keys transparent (still under the mouse, so no flicker)
+  await key.hover();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveCSS('opacity', '1');
+  await expect(key).toHaveCSS('opacity', '0');
+  // between two keys the row stays hovered
+  const a = (await alice.locator('#ctl .ctl-key').nth(3).boundingBox())!;
+  const b = (await alice.locator('#ctl .ctl-key').nth(4).boundingBox())!;
+  await alice.mouse.move((a.x + a.width + b.x) / 2, a.y + a.height / 2);
+  await alice.waitForTimeout(300);
+  await expect(hint).toBeVisible();
+
+  // away from the deck: back to the keys
+  await alice.mouse.move(5, 5);
+  await expect(hint).toBeHidden();
+  await expect(key).toHaveCSS('opacity', '1');
+});
+
 test('control cards on the table: heading and description in every set, whole lines on small cards (F8, 15)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Control Texts');
