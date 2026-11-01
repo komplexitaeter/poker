@@ -1428,6 +1428,8 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Wer **nach dem Aufdecken** s
 - Anonym-Modus: Stapel ebenfalls (Namen sind dort ohnehin verborgen). Neue Runde: Original wird gelöscht.
 
 ### B-105 Anonym-Modus: Spieler-Kennung nach dem Aufdecken pseudonymisieren
+Status: **verworfen** (Andreas, 2026-11-01): Ziel des Modus ist, dass Anwender in der Oberfläche nicht sehen, wer was
+gelegt hat – das ist erreicht. Zuordnung nur über Rohdaten/Entwicklertools ist ok (Pragmatismus).
 Hinweis Sina (Review B-104, 2026-10-31): Im Anonym-Modus bleibt `mkey` je Karte nach dem Aufdecken gleich. Vor dem
 Aufdecken sind Namen und `mkey` zusammen sichtbar (dao.php), danach lassen sich die anonymen Karten – und seit B-104
 auch die Originalschätzung – technisch den Personen zuordnen (nur über die Daten, nicht in der Oberfläche). Abhilfe: im
