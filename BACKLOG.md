@@ -136,7 +136,7 @@ Abgeschlossen:
 | B-56 | Players-Menü: Spielerliste mit Status, Entfernen statt Lösch-Icon auf den Karten | neu |
 | B-57 | Ideas & Bugs: Meldungen mit Typ, öffentliche Liste mit Status und Abstimmung, Moderation | neu |
 | B-58 | Geänderte Karte sichtbar machen: ursprüngliche Karte versetzt darunter (statt Sperren) | neu |
-| B-59 | Aufdecken, bevor alle gewählt haben („reveal now“) | neu |
+| B-59 | Aufdecken, bevor alle gewählt haben („reveal now“) | verworfen |
 | B-60 | Spaß-Funktionen: Reaktionen/Emojis, Werfen, Fun-Karten | neu |
 | B-61 | Eigene Kartenwerte / eigene Decks | neu |
 
@@ -898,6 +898,9 @@ Backlog-Liste (B-57)? – noch klären.
 ### B-59 Aufdecken, bevor alle gewählt haben
 Feedback (3×): Button „reveal now“, wenn jemand abwesend ist, statt ihn zu entfernen. Andreas: ins Backlog + öffentlich;
 refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns Smarteres ein.
+Status: **verworfen** (Andreas, 2026-11-01): „Reveal now“ als Button nicht gewollt (Roadmap: 5 👍 / 1 👎). Das
+dahinterliegende Problem (jemand ist kurz weg) bleibt offen; Alternativen wie ein „Away“-Status bei Bedarf neu einbringen.
+Roadmap-Eintrag in `stats.php` entfernen oder umbenennen.
 
 ### B-60 Spaß-Funktionen
 Feedback (≈ 6×): Reaktionen/Emojis, Papierkugeln werfen, Fun-Karten, Emojis im Namen, Musik. Andreas: Backlog +
