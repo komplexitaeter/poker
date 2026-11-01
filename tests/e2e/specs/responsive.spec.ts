@@ -137,11 +137,12 @@ test('start page on a small screen shows logo, color switch and feedback (B-36)'
   expect(await legacyClassCount(page)).toBe(0);
 });
 
-test('touch tablet: delete icon visible without hover (B-36)', async ({ browser }) => {
+test('touch tablet: delete icon visible without hover (B-36), after a tap with others at the table (B-110)', async ({ browser }) => {
   const viewport = { width: 1024, height: 768 };
   const alice = await newPlayer(browser, { viewport, hasTouch: true });
   const url = await createTeam(alice, 'RespTouch');
   await joinAsPlayer(alice, url, 'Alice');
+  // alone at the table: no smiley, the trash can shows as before
   await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
 
   // a mouse device of the same size shows it on hover only
@@ -152,4 +153,10 @@ test('touch tablet: delete icon visible without hover (B-36)', async ({ browser 
   await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '0');
   await tableCard(bob, 'Alice').hover();
   await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
+
+  // B-110: with Bob at the table the touch device shows the circles on the tapped card only
+  await expect(tableCard(alice, 'Bob').locator('.delete')).toHaveCSS('opacity', '0');
+  await tableCard(alice, 'Bob').locator('.pc').tap();
+  await expect(tableCard(alice, 'Bob').locator('.delete')).toHaveCSS('opacity', '1');
+  await expect(tableCard(alice, 'Bob').locator('.react')).toHaveCSS('opacity', '1');
 });
