@@ -87,6 +87,8 @@ test('the shruggie is no objection: celebration if at least two others agree (B-
   const url = await createTeam(page, 'Shruggie Agrees');
   const t = teamIdOf(url);
   const [bob, carol, dave] = await addPlayersViaApi(page, url, ['Bob', 'Carol', 'Dave']);
+  // the shruggie is no default control card: switch it on (setc.php only takes cards of the deck, B-103)
+  expect((await post(page, 'update_controls.php', { t, controls: 'break01,qstmrk1,shrug01' })).ok()).toBeTruthy();
   const set = async (id: string, cardkey: string) =>
     expect((await post(page, 'setc.php', { t, id, cardkey })).ok()).toBeTruthy();
   // the creator of the team (page) has not joined: only Bob, Carol and Dave vote

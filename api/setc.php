@@ -27,12 +27,23 @@ $new_card = strlen($cardkey) > 0 ? $cardkey : null;
  * original card -> null (no stack). Changes before the reveal and the system card LATE_CARD_KEY as "original" do not
  * count. Same lock order as newround.php/update_deck.php (team row first, then players), so two parallel changes
  * and "New Round" see a consistent table.
+ * B-103: a key that is neither in the team's deck nor in its active control cards -> 400, nothing written, no notify.
  */
 $link->begin_transaction();
-$sql = $link->prepare("select id from pok_teams_tbl where id = ? for update");
-$sql->bind_param('s', $t);
-$sql->execute();
-$sql->get_result();
+// locks the team row (as before) and reads the team's deck, lazy migration included (B-103)
+$catalog = card_catalog();
+$team = lock_team_deck($link, $t, $catalog);
+if ($team === null) { // team deleted in between
+    $link->rollback();
+    http_response_code(403);
+    exit;
+}
+// B-103: only cards of the team's deck or its active control cards; taking the card back ('') is always allowed
+if ($new_card !== null && !deck_allows_card($team['deck'], $new_card, $catalog)) {
+    $link->rollback();
+    http_response_code(400);
+    exit;
+}
 
 $sql = $link->prepare("select count(1) players_cnt, count(card_key) cards_cnt from pok_players_tbl
                         where team_id = ? and player_type = 'PLAYER'");

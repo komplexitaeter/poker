@@ -1406,6 +1406,10 @@ gewählt, ggf. nicht im Set, löst den Pausen-Tipp aus, verfälscht die ☕-Stat
 - Statistik: eigener Key, damit ☕-Zahlen künftig sauber sind (und man sieht, wie oft jemand später kommt).
 
 ### B-103 `setc.php`: gelegte Karte gegen das Deck des Teams prüfen
+Status: umgesetzt (rollout-3), freigegeben von Andreas (2026-11-01), Teil von R3. `setc.php` lehnt Keys außerhalb der
+eingeschalteten Deck-Karten und Steuerkarten des Teams mit 400 ab (ohne Schreiben/notify, Deck über `lock_team_deck()`
+inkl. Lazy-Migration, `deck_allows_card()` in `api/lib.php`); Karte zurücknehmen bleibt erlaubt. Ohne gültigen
+`card_catalog.json` keine Prüfung (Board nutzt dann `cards.json`).
 Hinweis Sina (Review B-102, 2026-10-31): `setc.php` speichert jeden formal gültigen `cardkey`, auch Karten außerhalb des
 aktiven Decks bzw. der Steuerkarten des Teams (z. B. per Direktaufruf); sie zählen dann in `getDao()` als Stimme. Kein
 XSS-Risiko (Ausgabe per textContent). Minimaler Fix: Keys ablehnen (400), die weder im Deck noch in den Steuerkarten des
