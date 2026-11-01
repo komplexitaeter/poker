@@ -661,28 +661,33 @@ function setDeckPickLine(line, middle, picked) {
     if (card === undefined) {
         const pickedCard = picked !== null ? cardByKey(deckCardKey(picked)) : undefined;
         key = pickedCard ? 'p:' + pickedCard.key : '-';
-        parts = () => pickedCard ? [document.createTextNode('you picked '), cardSmall(pickedCard)]
-            : [document.createTextNode('tap to pick a card')];
+        parts = () => deckPickParts(pickedCard, true, false);
     } else {
         const isPicked = middle === picked;
         key = (isPicked ? 'P:' : 'm:') + card.key + (gDeckTexts ? '+' : '');
-        parts = () => {
-            const name = document.createElement('b');
-            name.append(cardSmall(card, !card.heading), card.heading ? ' · ' + card.heading : '');
-            const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
-            // F7: a description alone (emotions) reads like a heading (one-text)
-            if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
-                { className: 'deck-pick-info' + (card.heading ? '' : ' one-text'), textContent: card.info }));
-            return list;
-        };
+        parts = () => deckPickParts(card, isPicked, true);
     }
     if (line.getAttribute('data-shows') === key) return; // only on a change (per frame while swiping)
     line.setAttribute('data-shows', key);
-    // F8: one block in the middle, its text left-aligned (a description below starts under the first line's start)
+    // F8, D17 (Andreas): the text centred, the description below as well (style.css)
     const body = document.createElement('span');
     body.className = 'deck-pick-body';
     body.append(...parts());
     line.replaceChildren(body);
+}
+
+/* the content of the hint line: "tap to pick a card", "you picked 5" or, for a card with texts,
+ * "tap to pick 3 · Consult" (+ its description in sets with texts) */
+function deckPickParts(card, isPicked, withTexts) {
+    if (card === undefined) return [document.createTextNode('tap to pick a card')];
+    if (!withTexts) return [document.createTextNode('you picked '), cardSmall(card)];
+    const name = document.createElement('b');
+    name.append(cardSmall(card, !card.heading), card.heading ? ' · ' + card.heading : '');
+    const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
+    // F7: a description alone (emotions) reads like a heading (one-text)
+    if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
+        { className: 'deck-pick-info' + (card.heading ? '' : ' one-text'), textContent: card.info }));
+    return list;
 }
 
 /* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */

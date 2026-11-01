@@ -6,6 +6,7 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCa
  *   15  control cards on the table show heading and description in every set (small cards: a few whole lines)
  *   19  sets in the style "inverted" (J.U.D.G.E.) show small values as a mini square, not as grey digits
  *   21  the info line: one block in the middle, the text left-aligned next to the chip
+ *       (D17, Andreas: on touch the carousel's hint line is centred, its description as well)
  *   22  the letter rows pick the cards (Q–P, A–L, Y–M, physical keys), labels in the user's layout
  *   23  the average pointer close below the spread's labels */
 
@@ -200,27 +201,39 @@ test('J.U.D.G.E.: small values as inverted mini squares, control cards as drawin
   await expect(alice.locator('#spread_bars .sm-inv')).toHaveCount(0);
 });
 
-test('touch: the carousel hint shows the inverted square, left-aligned in a centred block (F8, 19, 21)', async ({ browser }) => {
+test('touch: the carousel hint shows the inverted square, centred with its description (F8, 19, D17)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const url = await createTeam(alice, 'Inverted Carousel');
   await setTeamDeck(alice, url, 'judge', null, ['veto']);
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(8);
-  await deckCard(alice, 'jdg4').evaluate(el => el.parentElement!.scrollIntoView({ inline: 'center' }));
   const line = alice.locator('#deck_pick');
-  await expect(line.locator('b .sm-inv use.inv-value')).toHaveAttribute('href', /#s-4$/);
+  // D17 (Andreas): both lines centred on the line's middle, for every card while swiping
+  const offsets = async (key: string, text: string) => {
+    await deckCard(alice, key).evaluate(el => el.parentElement!.scrollIntoView({ inline: 'center' }));
+    await expect(line.locator('b')).toContainText(text);
+    return line.evaluate(el => {
+      const box = el.getBoundingClientRect();
+      const mid = box.left + box.width / 2;
+      const body = el.querySelector('.deck-pick-body')!;
+      const range = document.createRange();
+      range.setStart(body, 0);
+      range.setEndBefore(body.querySelector('.deck-pick-info')!);
+      const first = range.getBoundingClientRect();
+      const infoRange = document.createRange();
+      infoRange.selectNodeContents(body.querySelector('.deck-pick-info')!);
+      const info = infoRange.getBoundingClientRect();
+      return [first.left + first.width / 2 - mid, info.left + info.width / 2 - mid];
+    });
+  };
+  await expect(async () => {
+    await deckCard(alice, 'jdg4').evaluate(el => el.parentElement!.scrollIntoView({ inline: 'center' }));
+    await expect(line.locator('b .sm-inv use.inv-value')).toHaveAttribute('href', /#s-4$/);
+  }).toPass();
   await expect(line).toContainText('step out');
-  // the description below starts where the first line starts
-  const lefts = await line.evaluate(el => {
-    const body = el.querySelector('.deck-pick-body')!;
-    const first = body.firstChild!;
-    const range = document.createRange();
-    range.selectNodeContents(first);
-    const info = body.querySelector('.deck-pick-info')!;
-    return [body.getBoundingClientRect().left, info.getBoundingClientRect().left, range.getClientRects()[0].left];
-  });
-  expect(Math.abs(lefts[0] - lefts[1])).toBeLessThan(1);
-  expect(lefts[2]).toBeGreaterThanOrEqual(lefts[0] - 1);
+  for (const [key, text] of [['jdg4', 'step out'], ['jdg1', 'full support'], ['jdg6', 'veto']]) {
+    for (const off of await offsets(key, text)) expect(Math.abs(off)).toBeLessThan(8); // "> " is on the left
+  }
 });
 
 test('info line: a centred block, the text left-aligned, its second line under the first one\'s start (F8, 21)', async ({ browser }) => {
