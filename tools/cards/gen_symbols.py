@@ -75,6 +75,11 @@ DIG = {
     # joined late (B-102): an open door (frame, leaf hinged on the left); D11: no arrow, the door a bit larger
     "door": '<path d="M27 17h46v90H27z"/>',
     "leaf": '<path d="M27 17l24 10v89l-24-9z"/>',
+    # shruggie (B-106): arms ¯\_ and _/¯ (the _ low like an underscore, below the brackets), brackets ( )
+    "sarml": '<path d="M6.8 31h6l8.7 60h9"/>',
+    "sarmr": '<path d="M93.2 31h-6l-8.7 60h-9"/>',
+    "sparl": '<path d="M39.5 30c-4 7-6 15-6 24.5s2 17.5 6 24.5"/>',
+    "sparr": '<path d="M60.5 30c4 7 6 15 6 24.5s-2 17.5-6 24.5"/>',
     "square": '<path d="M15 6h70c5 0 9 4 9 9v70c0 5-4 9-9 9H15c-5 0-9-4-9-9V15c0-5 4-9 9-9z"/>',
 }
 
@@ -231,6 +236,12 @@ SYM["s-coffee"] = ([S("glass", rim="foam"),
 SYM["s-question"] = (row(["dq"]), "question mark")
 SYM["s-exclam"] = (row(["dx"]), "exclamation mark")
 SYM["s-hand"] = ([S("hand"), T("M14 40l-6-4M18 30l-4-7M26 24l-2-8", 2.6)], "raised hand")
+# Shruggie (B-106): the kaomoji ¯\_(ツ)_/¯ as a line drawing - arms and brackets as thinner centre lines like the
+# digits (tint, hatching, light/dark outline like ? ! and the hand), the ツ face as ink, so it reads small too.
+SHRUG_W = 5.2
+SYM["s-shrug"] = ([L("sarml", w=SHRUG_W), L("sarmr", w=SHRUG_W), L("sparl", w=SHRUG_W), L("sparr", w=SHRUG_W),
+                   T("M42 46l2.2 5.4M48 44l2.2 5.4", 3.8),                       # ツ: the two ticks (eyes)
+                   T("M56 43c0 12-4 20-13 25.5", 3.8)], "shrug")                 # ツ: the long sweep (smile)
 # Status cards (B-99 D7): calm like the faces - a light body, the hatching only hinted at the lower right edge.
 SYM["s-check"] = ([L("dchk", calm=True)], "check mark")
 # D8: the bubble 6 units higher (it sat low on the status card), the hatched band at the edge a bit wider again
@@ -824,6 +835,8 @@ COL = {
     # uninterested: cool, neutral blue-grey (indifferent), clearly apart from yellow "satisfied" and violet "sad" (Andreas, 27)
     "esatis": ("#a8c820", None), "eannoy": ("#ee6a45", None), "esad": ("#8a72dc", None), "eunint": ("#6f92b8", None),
     "eangry": ("#de2430", None), "eenthu": ("#62b83a", None), "star": ("#f0cf3a", None), "vveto": ("#ef5a32", None),
+    # shruggie (B-106): calm petrol green-grey, apart from coffee (brown), ? (lime), ! (pink) and the hand (orange-red)
+    "vshrug": ("#4f8f84", "#78b5a9"),
     "j0": ("#265873", "#3a7b9c"), "j1": ("#4fa587", "#55b08f"), "j2": ("#8fbc3b", "#94c044"), "j3": ("#b54467", "#c45578"),
     "j4": ("#be5a40", "#cc6a4f"), "j5": ("#ded65f", "#d8d06a"), "j6": ("#b23b41", "#c74a50"),
     "g1": ("#b23b41", "#d65a5f"), "g2": ("#d0702c", "#ef8c45"), "g3": ("#d9a300", "#f0c43a"), "g4": ("#8fbc3b", "#a5d14f"),
@@ -935,7 +948,8 @@ body.light-theme {{
 # ------------------------------------------------------------------ preview (developers only)
 # symbol -> catalogue colour of the card that uses it today
 SYM_COLOUR = {"s-half": "vh", "s-inf": "vinf", "s-coffee": "vbrk", "s-question": "vq", "s-exclam": "vx",
-              "s-hand": "vveto", "s-check": "vdone", "s-thought": "vthink", "s-late": "v8", "s-mask": "vthink", "s-frame-inv": "j3"}
+              "s-hand": "vveto", "s-check": "vdone", "s-thought": "vthink", "s-late": "v8", "s-mask": "vthink", "s-frame-inv": "j3",
+              "s-shrug": "vshrug"}
 for _v in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "13", "20", "21", "34", "40", "55", "60", "89", "100"):
     SYM_COLOUR[f"s-{_v}"] = {"20": "v20", "40": "v40"}.get(_v, f"v{_v}")
 SYM_COLOUR.update({"s-xxs": "tXXS", "s-xs": "tXS", "s-s": "tS", "s-m": "tM", "s-l": "tL", "s-xl": "tXL", "s-xxl": "tXXL",

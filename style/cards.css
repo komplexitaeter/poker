@@ -81,6 +81,7 @@ body {
     --c-eenthu: #8dce6e; --on-c-eenthu: #1d2027;
     --c-star: #edd04f; --on-c-star: #1d2027;
     --c-vveto: #ed714f; --on-c-vveto: #1d2027;
+    --c-vshrug: #78b5a9; --on-c-vshrug: #1d2027;
     --c-j0: #3a7b9c; --on-c-j0: #ffffff;
     --c-j1: #55b08f; --on-c-j1: #1d2027;
     --c-j2: #94c044; --on-c-j2: #1d2027;
@@ -168,6 +169,7 @@ body.light-theme {
     --c-eenthu: #62b83a; --on-c-eenthu: #1d2027;
     --c-star: #f0cf3a; --on-c-star: #1d2027;
     --c-vveto: #ef5a32; --on-c-vveto: #1d2027;
+    --c-vshrug: #4f8f84; --on-c-vshrug: #1d2027;
     --c-j0: #265873; --on-c-j0: #ffffff;
     --c-j1: #4fa587; --on-c-j1: #1d2027;
     --c-j2: #8fbc3b; --on-c-j2: #1d2027;
