@@ -842,9 +842,9 @@ function csApiError(answer) {
         gCs.sel = answer.index;
         if (code === 'text') gCs.errors.text = CS_ERRORS.text;
         else if (code === 'numeric_value') gCs.errors.value = CS_ERRORS.numeric_value;
-        else gCs.errors.general = CS_ERRORS[code] || 'This card can’t be saved.';
+        else gCs.errors.general = Object.hasOwn(CS_ERRORS, code) ? CS_ERRORS[code] : 'This card can’t be saved.';
     } else {
-        gCs.errors.general = CS_ERRORS[code] || 'Not saved – please try again.';
+        gCs.errors.general = Object.hasOwn(CS_ERRORS, code) ? CS_ERRORS[code] : 'Not saved – please try again.';
     }
     csShowErrors();
 }
