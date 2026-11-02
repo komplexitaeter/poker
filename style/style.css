@@ -4915,6 +4915,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-dirty { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); text-align: right; }
 .cs-dirty.bad { color: var(--danger); font-weight: bold; }
 .cs-ovl .btn-box {
+    font-size: var(--fs-s);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -4995,7 +4996,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-ico .i { width: 18px; height: 18px; }
 
 .cs-preview { display: flex; justify-content: center; margin: 0 0 var(--space-3); }
-.cs-preview .pc { width: 120px; }
+.cs-preview .dm-card { --deck-w: 96px; }
 
 .cs-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .cs-chip {

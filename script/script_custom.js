@@ -478,7 +478,7 @@ function csRenderDetail() {
 
     const preview = csEl('div', 'cs-preview');
     preview.setAttribute('aria-hidden', 'true');
-    preview.appendChild(cardFace(csCardModel(card, gCs.sel), 'table'));
+    preview.appendChild(dmCard(csCardModel(card, gCs.sel), false));
     parts.push(preview);
 
     // symbol or text
@@ -642,7 +642,7 @@ function csRefreshCard(detail = false) {
         csRenderDetail();
     } else {
         const preview = document.querySelector('#cs_detail .cs-preview');
-        if (preview !== null) preview.replaceChildren(cardFace(csCardModel(gCs.cards[gCs.sel], gCs.sel), 'table'));
+        if (preview !== null) preview.replaceChildren(dmCard(csCardModel(gCs.cards[gCs.sel], gCs.sel), false));
     }
     csRenderTop();
     if (focusKey !== null && focused !== document.activeElement) {
