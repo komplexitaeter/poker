@@ -57,7 +57,7 @@ test('removed: the overlay says "You were removed from the table" (E3)', async (
   await expect(msg).toBeVisible();
   await expect(msg.locator('h1')).toHaveText('You were removed from the table');
   await expect(msg.locator('span')).toHaveText(
-    'This usually happens when you have been away for a while. What do you want to do now?');
+    'Usually a teammate does this when you have been away for a while. What do you want to do now?');
 });
 
 test('touch: a tap next to the emoji bar closes it and the circles, the team name only closes (E5)', async ({ browser }) => {
