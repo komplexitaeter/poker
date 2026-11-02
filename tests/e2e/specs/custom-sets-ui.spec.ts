@@ -84,7 +84,8 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
     await expect.poll(() => trayKeys(page)).toEqual([...keys, ...json.deck.controls]);
   }
   await expect(bob.locator(`#ctl .ctl[data-card="${keys[2]}"] .tv`)).toHaveText('M');
-  await expect(bob.locator('#toast')).toContainText('Card set changed to Risk');
+  // V6: Bob hears who put the set in play (deck.changed_by; the own user id goes with the write)
+  await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Risk');
 
   // play and reveal: the range from the values (1 and M = 5)
   await alice.locator('#menu_close').click();
@@ -135,7 +136,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
 });
 
 test('the limit of sets disables "+ New set"; Cancel without changes closes at once', async ({ browser }) => {
-  const { alice, url } = await teamWithTwoPlayers(browser, 'Own Sets Limit');
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Limit');
   const t = new URL(url).searchParams.get('t') as string;
   const card = (symbol: string) => ({ symbol, color: 'blue' });
   for (let i = 1; i <= 5; i++) {
@@ -153,6 +154,13 @@ test('the limit of sets disables "+ New set"; Cancel without changes closes at o
   // choosing an own set puts it in play
   await alice.locator('#deck_own_sets .dm-prow-b').filter({ hasText: 'Set 3' }).click();
   await expect(alice.locator('#deck_change')).toContainText('Set 3');
+  await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Set 3');
+  // from one own set to another (both group 'custom'): a toast with the set's name as well
+  await alice.locator('#deck_change').click();
+  await alice.locator('#deck_own_sets .dm-prow-b').filter({ hasText: 'Set 4' }).click();
+  await expect(alice.locator('#deck_change')).toContainText('Set 4');
+  await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Set 4');
+  await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
 
   // Cancel without changes: no question, the focus back on "Edit set"
   await alice.locator('#deck_edit').click();

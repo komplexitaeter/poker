@@ -525,7 +525,9 @@ function writeDeck(url, local, kind) {
 }
 
 function deckUrl(variantId, cards) {
-    let url = './api/update_deck.php?t=' + encodeURIComponent(t) + '&deck=' + encodeURIComponent(variantId);
+    // B-98 V6: the own user id, so the others' toast can name who changed the card set (deck.changed_by)
+    let url = './api/update_deck.php?t=' + encodeURIComponent(t) + '&id=' + encodeURIComponent(sid)
+        + '&deck=' + encodeURIComponent(variantId);
     if (cards !== null) url += '&cards=' + cards.map(encodeURIComponent).join(',');
     return url;
 }

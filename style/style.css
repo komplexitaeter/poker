@@ -5081,6 +5081,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     .cs-ovl .btn-box { padding: 4px 10px; }
     .cs-body { display: flex; flex-direction: column; align-items: stretch; gap: 20px; padding: 14px 14px 32px; }
     .cs-top { flex-wrap: wrap; row-gap: 2px; }
+    .cs-top h2 { flex: 1; }
+    .cs-top .btn-box.primary { margin-left: auto; } /* a long label ("Save and start new round") wraps to the right */
     .cs-dirty { order: 9; flex-basis: 100%; margin-left: 0; text-align: left; }
     .cs-dirty:empty { display: none; }
     .cs-preview .dm-card { --deck-w: 72px; }

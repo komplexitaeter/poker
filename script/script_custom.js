@@ -899,7 +899,7 @@ function csSave() {
     csRenderTop();
     let request;
     if (gCs.set === null) {
-        request = csPost('./api/custom_set_create.php?t=' + team, { ...body, activate: true })
+        request = csPost('./api/custom_set_create.php?t=' + team + '&id=' + encodeURIComponent(sid), { ...body, activate: true })
             .then(result => ({ result, kind: 'created' }));
     } else {
         const url = './api/custom_set_save.php?t=' + team + '&set=' + encodeURIComponent(String(gCs.set.set_id));
@@ -921,7 +921,8 @@ function csSave() {
 function csDelete() {
     if (gCs.busy || gCs.set === null) return;
     gCs.busy = true;
-    const url = './api/custom_set_delete.php?t=' + encodeURIComponent(t) + '&set=' + encodeURIComponent(String(gCs.set.set_id));
+    const url = './api/custom_set_delete.php?t=' + encodeURIComponent(t) + '&id=' + encodeURIComponent(sid)
+        + '&set=' + encodeURIComponent(String(gCs.set.set_id));
     csPost(url, {}).then(result => {
         if ((result.status === 200 && result.answer) || result.status === 404) {
             csDone(result.status === 200 ? result.answer : null, 'deleted');
