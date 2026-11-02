@@ -6,11 +6,11 @@
   "default_controls": ["break01", "qstmrk1"],
   "status_cards": ["prgrss1", "prgrss2", "done001"],
   "controls": [
-    {"card_key": "break01", "value": "☕", "symbol": "s-coffee", "color": "vbrk", "numeric_value": null, "sort_order": 99000, "heading": "need a break", "description": "I need a short break before we go on.", "legacy_index": 24},
-    {"card_key": "qstmrk1", "value": "?", "symbol": "s-question", "color": "vq", "numeric_value": null, "sort_order": 99010, "heading": "question", "description": "I have a question before I can estimate.", "legacy_index": 43},
-    {"card_key": "xclam01", "value": "!", "symbol": "s-exclam", "color": "vx", "numeric_value": null, "sort_order": 99020, "heading": "important", "description": "Something important should be said before we go on.", "legacy_index": 44},
+    {"card_key": "break01", "value": "☕", "symbol": "s-coffee", "color": "vbrk", "numeric_value": null, "sort_order": 99000, "heading": "break", "description": "I need a short break.", "legacy_index": 24},
+    {"card_key": "qstmrk1", "value": "?", "symbol": "s-question", "color": "vq", "numeric_value": null, "sort_order": 99010, "heading": "question", "description": "I have a question first.", "legacy_index": 43},
+    {"card_key": "xclam01", "value": "!", "symbol": "s-exclam", "color": "vx", "numeric_value": null, "sort_order": 99020, "heading": "important", "description": "I have something important to say first.", "legacy_index": 44},
     {"card_key": "veto", "value": "✋", "symbol": "s-hand", "color": "vveto", "numeric_value": null, "sort_order": 98990, "heading": "veto", "description": "I object. Let's not go ahead like this.", "legacy_index": 45},
-    {"card_key": "shrug01", "value": "¯\\_(ツ)_/¯", "symbol": "s-shrug", "color": "vshrug", "numeric_value": null, "sort_order": 99030, "heading": "shruggie", "description": "Not knowing isn't a problem – it's a starting point."}
+    {"card_key": "shrug01", "value": "¯\\_(ツ)_/¯", "symbol": "s-shrug", "color": "vshrug", "numeric_value": null, "sort_order": 99030, "heading": "don't know", "description": "I don't know – and that's fine. Let's find out."}
   ],
   "groups": [
     {
@@ -39,12 +39,12 @@
       "variants": [
         {"id": "fib-classic", "name": "Classic", "cards": ["zero001", "1pnt501", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "twnty01", "4ty0001", "hundro1", "infin01"], "preset_mapping": "Fibonacci"},
         {"id": "fib-short", "name": "Short", "cards": ["zero001", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "twnty01", "4ty0001"], "preset_mapping": "Fibonacci Short"},
-        {"id": "fib-true", "name": "True", "cards": ["zero001", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "2tyone1", "3tyfr01", "5tyfve1"], "preset_mapping": "True-Fibonacci"}
+        {"id": "fib-true", "name": "Pure Fibonacci", "cards": ["zero001", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "2tyone1", "3tyfr01", "5tyfve1"], "preset_mapping": "True-Fibonacci"}
       ]
     },
     {
       "id": "numbers",
-      "name": "Numbers 0-10",
+      "name": "Numbers 0–10",
       "style": "plain",
       "cards": [
         {"card_key": "num0", "value": "0", "symbol": "s-0", "color": "v0", "numeric_value": 0, "sort_order": 100, "legacy_index": 0},
@@ -60,12 +60,12 @@
         {"card_key": "ten01", "value": "10", "symbol": "s-10", "color": "v10", "numeric_value": 10, "sort_order": 1020, "legacy_index": 39}
       ],
       "variants": [
-        {"id": "numbers", "name": "0-10", "cards": ["num0", "num1", "num2", "num3", "four001", "num5", "six0001", "seven01", "num8", "nine01", "ten01"], "preset_mapping": "0-10"}
+        {"id": "numbers", "name": "0–10", "cards": ["num0", "num1", "num2", "num3", "four001", "num5", "six0001", "seven01", "num8", "nine01", "ten01"], "preset_mapping": "0-10"}
       ]
     },
     {
       "id": "tshirt",
-      "name": "T-Shirt",
+      "name": "T-shirt sizes",
       "style": "plain",
       "cards": [
         {"card_key": "xxs0001", "value": "XXS", "symbol": "s-xxs", "color": "tXXS", "numeric_value": 10000, "sort_order": 2500, "legacy_index": 25},
@@ -77,7 +77,7 @@
         {"card_key": "xxl0001", "value": "XXL", "symbol": "s-xxl", "color": "tXXL", "numeric_value": 16000, "sort_order": 3100, "legacy_index": 31}
       ],
       "variants": [
-        {"id": "tshirt", "name": "T-Shirt", "cards": ["xxs0001", "xs00001", "s000001", "m000001", "l000001", "xl00001", "xxl0001"], "preset_mapping": "T-shirt"}
+        {"id": "tshirt", "name": "T-shirt sizes", "cards": ["xxs0001", "xs00001", "s000001", "m000001", "l000001", "xl00001", "xxl0001"], "preset_mapping": "T-shirt"}
       ]
     },
     {
@@ -85,9 +85,9 @@
       "name": "Traffic lights",
       "style": "badge",
       "cards": [
-        {"card_key": "green01", "value": "🟢", "symbol": "s-light-green", "color": "agreen", "numeric_value": 1000, "sort_order": 1600, "heading": "green light", "description": "All good from my side.", "legacy_index": 15},
-        {"card_key": "yellow1", "value": "🟡", "symbol": "s-light-yellow", "color": "ayellow", "numeric_value": 2000, "sort_order": 1700, "heading": "yellow light", "description": "Doable, but I have concerns we should hear.", "legacy_index": 16},
-        {"card_key": "red0001", "value": "🔴", "symbol": "s-light-red", "color": "ared", "numeric_value": 3000, "sort_order": 1800, "heading": "red light", "description": "I see a blocker. Let's talk before we go on.", "legacy_index": 17}
+        {"card_key": "green01", "value": "🟢", "symbol": "s-light-green", "color": "agreen", "numeric_value": 1000, "sort_order": 1600, "heading": "green", "description": "All good from my side.", "legacy_index": 15},
+        {"card_key": "yellow1", "value": "🟡", "symbol": "s-light-yellow", "color": "ayellow", "numeric_value": 2000, "sort_order": 1700, "heading": "yellow", "description": "Doable, but I have concerns we should hear.", "legacy_index": 16},
+        {"card_key": "red0001", "value": "🔴", "symbol": "s-light-red", "color": "ared", "numeric_value": 3000, "sort_order": 1800, "heading": "red", "description": "I see a blocker. Let's talk before we go on.", "legacy_index": 17}
       ],
       "variants": [
         {"id": "traffic", "name": "Traffic lights", "cards": ["green01", "yellow1", "red0001"], "preset_mapping": "Traffic"}
@@ -112,8 +112,8 @@
         {"card_key": "relie01", "value": "😌", "symbol": "s-face-relieved", "color": "erelie", "numeric_value": null, "sort_order": 2460, "description": "relieved"}
       ],
       "variants": [
-        {"id": "emotions", "name": "Team Assessment", "cards": ["satis01", "annoy01", "sad0001", "unint01", "angry01", "enthu01"], "preset_mapping": "Emoticons"},
-        {"id": "mood", "name": "Mood", "cards": ["satis01", "annoy01", "sad0001", "unint01", "angry01", "enthu01", "curio01", "confu01", "worri01", "surpr01", "tired01", "relie01"]}
+        {"id": "emotions", "name": "Short", "cards": ["satis01", "annoy01", "sad0001", "unint01", "angry01", "enthu01"], "preset_mapping": "Emoticons"},
+        {"id": "mood", "name": "Full", "cards": ["satis01", "annoy01", "sad0001", "unint01", "angry01", "enthu01", "curio01", "confu01", "worri01", "surpr01", "tired01", "relie01"]}
       ]
     },
     {
@@ -121,7 +121,7 @@
       "name": "Stars",
       "style": "badge",
       "cards": [
-        {"card_key": "0star01", "value": "0★", "symbol": "s-stars-0", "color": "star", "numeric_value": 20000, "sort_order": 3200, "heading": "no stars", "legacy_index": 32},
+        {"card_key": "0star01", "value": "0★", "symbol": "s-stars-0", "color": "star", "numeric_value": 20000, "sort_order": 3200, "heading": "0 stars", "legacy_index": 32},
         {"card_key": "1star01", "value": "1★", "symbol": "s-stars-1", "color": "star", "numeric_value": 21000, "sort_order": 3300, "heading": "1 star", "legacy_index": 33},
         {"card_key": "2stars1", "value": "2★", "symbol": "s-stars-2", "color": "star", "numeric_value": 22000, "sort_order": 3400, "heading": "2 stars", "legacy_index": 34},
         {"card_key": "3stars1", "value": "3★", "symbol": "s-stars-3", "color": "star", "numeric_value": 23000, "sort_order": 3500, "heading": "3 stars", "legacy_index": 35},
@@ -137,13 +137,13 @@
       "name": "J.U.D.G.E.",
       "style": "inverted",
       "cards": [
-        {"card_key": "jdg0", "value": "0", "symbol": "s-0", "color": "j0", "numeric_value": 0, "sort_order": 100, "heading": "step aside", "description": "I step aside and support the group's decision.", "legacy_index": 0},
+        {"card_key": "jdg0", "value": "0", "symbol": "s-0", "color": "j0", "numeric_value": 0, "sort_order": 100, "heading": "step aside", "description": "The others know this better. I'll go with their decision.", "legacy_index": 0},
         {"card_key": "jdg1", "value": "1", "symbol": "s-1", "color": "j1", "numeric_value": 1, "sort_order": 300, "heading": "full support", "description": "I love it. Works perfectly for me!", "legacy_index": 2},
-        {"card_key": "jdg2", "value": "2", "symbol": "s-2", "color": "j2", "numeric_value": 2, "sort_order": 400, "heading": "slight concerns", "description": "A few concerns, but I fully support it.", "legacy_index": 3},
-        {"card_key": "jdg3", "value": "3", "symbol": "s-3", "color": "j3", "numeric_value": 3, "sort_order": 500, "heading": "severe concerns", "description": "Not perfect, but good enough. I'll still support it.", "legacy_index": 4},
-        {"card_key": "jdg4", "value": "4", "symbol": "s-4", "color": "j4", "numeric_value": 4, "sort_order": 600, "heading": "step out", "description": "I won't support it actively. Go on without me.", "legacy_index": 5},
-        {"card_key": "jdg5", "value": "5", "symbol": "s-5", "color": "j5", "numeric_value": 5, "sort_order": 700, "heading": "need to talk", "description": "I don't understand it yet or need more discussion.", "legacy_index": 6},
-        {"card_key": "jdg6", "value": "6", "symbol": "s-6", "color": "j6", "numeric_value": 6, "sort_order": 800, "heading": "veto", "description": "I understand it and I block it. Let me explain why.", "legacy_index": 7}
+        {"card_key": "jdg2", "value": "2", "symbol": "s-2", "color": "j2", "numeric_value": 2, "sort_order": 400, "heading": "minor concerns", "description": "Minor concerns, but I fully support it.", "legacy_index": 3},
+        {"card_key": "jdg3", "value": "3", "symbol": "s-3", "color": "j3", "numeric_value": 3, "sort_order": 500, "heading": "serious concerns", "description": "Serious concerns, but I can live with it.", "legacy_index": 4},
+        {"card_key": "jdg4", "value": "4", "symbol": "s-4", "color": "j4", "numeric_value": 4, "sort_order": 600, "heading": "step out", "description": "Not convinced, but I won't block it. Don't count on me to drive it.", "legacy_index": 5},
+        {"card_key": "jdg5", "value": "5", "symbol": "s-5", "color": "j5", "numeric_value": 5, "sort_order": 700, "heading": "need to talk", "description": "I don't get it yet or need to discuss it.", "legacy_index": 6},
+        {"card_key": "jdg6", "value": "6", "symbol": "s-6", "color": "j6", "numeric_value": 6, "sort_order": 800, "heading": "veto", "description": "I block this. Let me explain why.", "legacy_index": 7}
       ],
       "variants": [
         {"id": "judge", "name": "J.U.D.G.E.", "cards": ["jdg0", "jdg1", "jdg2", "jdg3", "jdg4", "jdg5", "jdg6"], "preset_mapping": "Judge"}
@@ -154,13 +154,13 @@
       "name": "Delegation Poker",
       "style": "banner",
       "cards": [
-        {"card_key": "dlg1", "value": "1", "symbol": "s-1", "color": "g1", "numeric_value": 1, "sort_order": 300, "heading": "Tell", "description": "I will tell them", "legacy_index": 2},
-        {"card_key": "dlg2", "value": "2", "symbol": "s-2", "color": "g2", "numeric_value": 2, "sort_order": 400, "heading": "Sell", "description": "I will try and sell it to them", "legacy_index": 3},
-        {"card_key": "dlg3", "value": "3", "symbol": "s-3", "color": "g3", "numeric_value": 3, "sort_order": 500, "heading": "Consult", "description": "I will consult and then decide", "legacy_index": 4},
-        {"card_key": "dlg4", "value": "4", "symbol": "s-4", "color": "g4", "numeric_value": 4, "sort_order": 600, "heading": "Agree", "description": "We will agree together", "legacy_index": 5},
-        {"card_key": "dlg5", "value": "5", "symbol": "s-5", "color": "g5", "numeric_value": 5, "sort_order": 700, "heading": "Advise", "description": "I will advise but they decide", "legacy_index": 6},
-        {"card_key": "dlg6", "value": "6", "symbol": "s-6", "color": "g6", "numeric_value": 6, "sort_order": 800, "heading": "Inquire", "description": "I will inquire after they decide", "legacy_index": 7},
-        {"card_key": "dlg7", "value": "7", "symbol": "s-7", "color": "g7", "numeric_value": 7, "sort_order": 900, "heading": "Delegate", "description": "I will fully delegate", "legacy_index": 8}
+        {"card_key": "dlg1", "value": "1", "symbol": "s-1", "color": "g1", "numeric_value": 1, "sort_order": 300, "heading": "Tell", "description": "I will tell them.", "legacy_index": 2},
+        {"card_key": "dlg2", "value": "2", "symbol": "s-2", "color": "g2", "numeric_value": 2, "sort_order": 400, "heading": "Sell", "description": "I will try and sell it to them.", "legacy_index": 3},
+        {"card_key": "dlg3", "value": "3", "symbol": "s-3", "color": "g3", "numeric_value": 3, "sort_order": 500, "heading": "Consult", "description": "I will consult and then decide.", "legacy_index": 4},
+        {"card_key": "dlg4", "value": "4", "symbol": "s-4", "color": "g4", "numeric_value": 4, "sort_order": 600, "heading": "Agree", "description": "We will agree together.", "legacy_index": 5},
+        {"card_key": "dlg5", "value": "5", "symbol": "s-5", "color": "g5", "numeric_value": 5, "sort_order": 700, "heading": "Advise", "description": "I will advise but they decide.", "legacy_index": 6},
+        {"card_key": "dlg6", "value": "6", "symbol": "s-6", "color": "g6", "numeric_value": 6, "sort_order": 800, "heading": "Inquire", "description": "I will inquire after they decide.", "legacy_index": 7},
+        {"card_key": "dlg7", "value": "7", "symbol": "s-7", "color": "g7", "numeric_value": 7, "sort_order": 900, "heading": "Delegate", "description": "I will fully delegate.", "legacy_index": 8}
       ],
       "variants": [
         {"id": "delegation", "name": "Delegation Poker", "cards": ["dlg1", "dlg2", "dlg3", "dlg4", "dlg5", "dlg6", "dlg7"], "preset_mapping": "Delegation Poker"}

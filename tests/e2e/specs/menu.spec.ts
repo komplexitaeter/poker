@@ -404,9 +404,11 @@ test('Invite and the QR overlay work as before, also with the panel open (B-51)'
   await expect(overlay).toHaveClass(/hidden/);
 });
 
-test('feedback from the start page panel: text sent URL-encoded, panel closes (B-51, B-54)', async ({ browser }) => {
+// R3 review V10: the start page has no feedback menu any more; the same panel on the board
+test('feedback from the board panel: text sent URL-encoded, panel closes (B-51, B-54)', async ({ browser }) => {
   const page = await newPlayer(browser);
-  await page.goto('/');
+  const url = await createTeam(page, 'Menu Feedback');
+  await joinAsPlayer(page, url, 'Alice');
   const fbBtn = page.locator('#feedback_btn');
 
   await fbBtn.click();

@@ -3,7 +3,7 @@ import { newPlayer, createTeam, joinAsPlayer, gotoStats } from './helpers';
 
 /**
  * B-57 "Ideas & Bugs", frontend part: the feedback panel with the tabs "New issue" (type, bug context,
- * toast) and "Backlog" (public list with status badge and reactions). The panel opens on "Backlog".
+ * toast) and "Roadmap" (id backlog: public list with status badge and reactions). The panel opens on "Roadmap".
  */
 
 const unique = (prefix: string) => `${prefix} ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -20,7 +20,7 @@ async function openFeedback(page: Page) {
   await expect(page.locator('dialog#menu[open] #feedback_box')).toBeVisible();
 }
 
-/** Opens the panel and switches to "New issue" (the panel opens on "Backlog"). */
+/** Opens the panel and switches to "New issue" (the panel opens on "Roadmap"). */
 async function openNewIssue(page: Page) {
   await openFeedback(page);
   await page.locator('#fb_tab_send').click();
@@ -42,7 +42,7 @@ async function createItem(page: Page, title: string, description: string) {
   await admin.close();
 }
 
-test('feedback tabs: the panel opens on "Backlog" (also after reopening), click and arrow keys', async ({ browser }) => {
+test('feedback tabs: the panel opens on "Roadmap" (also after reopening), click and arrow keys', async ({ browser }) => {
   const page = await newPlayer(browser);
   await boardWithPlayer(page, 'Tabby');
   const send = page.locator('#fb_tab_send');
@@ -84,7 +84,7 @@ test('feedback tabs: the panel opens on "Backlog" (also after reopening), click 
   await expect(backlog).toBeFocused();
   await expect(page.locator('#fb_panel_backlog')).toBeVisible();
 
-  // close on the "New issue" tab, reopen: "Backlog" again, the list is loaded anew
+  // close on the "New issue" tab, reopen: "Roadmap" again, the list is loaded anew
   await page.keyboard.press('ArrowRight');
   await expect(send).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Escape');
@@ -273,26 +273,4 @@ test('backlog while loading: no "Nothing here yet." flash; a pull update leaves 
   await expect(page.locator('#cbox .c')).toHaveCount(2);
   await expect(page.locator('dialog#menu[open] #fb_panel_backlog')).toBeVisible();
   await expect(page.locator('#fb_tab_backlog')).toHaveAttribute('aria-selected', 'true');
-});
-
-test('start page: backlog is shown, reactions are disabled with a hint', async ({ browser }) => {
-  const page = await newPlayer(browser);
-  await page.goto('/');
-  await openFeedback(page);   // opens on the backlog
-
-  const seed = page.locator('#fb_backlog li.fb-item').filter({ has: page.locator('.fb-title', { hasText: /^New look$/ }) });
-  await expect(seed.locator('.fb-status')).toHaveText('done');
-  await expect(seed.locator('.fb-react-btn')).toHaveCount(2);
-  for (const btn of await seed.locator('.fb-react-btn').all()) await expect(btn).toBeDisabled();
-  await expect(page.locator('#fb_react_hint')).toHaveText('Join a board to react.');
-  await expect(page.locator('#fb_react_hint')).toBeVisible();
-
-  // sending works on the start page as well, with the toast
-  await page.locator('#fb_tab_send').click();
-  await page.locator('#feedback_txt').fill('From the start page');
-  await Promise.all([
-    page.waitForRequest(r => r.url().includes('/api/feedback.php')),
-    page.getByRole('button', { name: 'Send feedback' }).click(),
-  ]);
-  await expect(page.locator('#toast')).toHaveText('Thanks – we read every message.');
 });

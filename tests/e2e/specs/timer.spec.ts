@@ -180,7 +180,7 @@ test('auto-start: New round and Cancel round restart the timer (B-67)', async ({
 
   // Cancel round starts it
   await pickCard(alice, 'three01');
-  await expect(alice.locator('#newroundbtn')).toHaveValue('Cancel Round');
+  await expect(alice.locator('#newroundbtn')).toHaveValue('Restart round');
   await alice.locator('#newroundbtn').click();
   for (const page of [alice, bob]) {
     await expect(page.locator('#timer')).toHaveAttribute('data-state', 'running');
@@ -194,7 +194,7 @@ test('auto-start: New round and Cancel round restart the timer (B-67)', async ({
   await expect(bob.locator('#timer')).toHaveAttribute('data-state', 'paused');
   await pickCard(alice, 'three01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator('#newroundbtn')).toHaveValue('New Round');
+  await expect(alice.locator('#newroundbtn')).toHaveValue('New round');
   await alice.locator('#newroundbtn').click();
   await expect(bob.locator('#timer')).toHaveAttribute('data-state', 'running');
   await expect(display(bob)).toHaveText(/^T−02:5\d|T−03:00$/);

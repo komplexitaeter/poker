@@ -30,20 +30,20 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
   await expect(alice.locator('#deck_change')).toContainText('J.U.D.G.E.');
   // F7, R3 review V1: the result in the status line of the menu (where the click was), no toast
   await expect(alice.locator('#deck_status')).toBeVisible();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Deck changed – everyone sees it');
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Card set changed for everyone');
   await expect(alice.locator('#deck_status .dm-status-x')).toBeHidden(); // only errors are closed by hand
   // screen readers: a live region that is always there (not switched by hidden)
-  await expect(alice.locator('#deck_status_live')).toHaveText('Deck changed – everyone sees it');
+  await expect(alice.locator('#deck_status_live')).toHaveText('Card set changed for everyone');
   await expect(alice.locator('#deck_status_live')).toHaveAttribute('role', 'status');
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   const judge = ['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4', 'jdg5', 'jdg6', 'break01', 'qstmrk1'];
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(judge);
-    await expect(deckCard(page, 'jdg3').locator('.dh')).toHaveText('severe concerns');
+    await expect(deckCard(page, 'jdg3').locator('.dh')).toHaveText('serious concerns');
   }
   await pickCard(bob, 'jdg3');
   await pickCard(alice, 'jdg1');
-  await expect(tableCard(alice, 'Bob').locator('.pc .ttl')).toHaveText('severe concerns');
+  await expect(tableCard(alice, 'Bob').locator('.pc .ttl')).toHaveText('serious concerns');
   await expect(tableCard(alice, 'Bob').locator('.pc')).toHaveClass(/sty-inverted/);
 
   // Delegation Poker: a new round starts (cards were down), headings from the catalog
@@ -74,7 +74,7 @@ test('variant and single cards: Short, a card off and on again, at least two car
   expect(deckWrites).toBe(1);
   // mouse: back to Classic and to Short again
   await variant('Classic').check();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Variant changed – everyone sees it');
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed for everyone');
   await expect.poll(() => trayKeys(bob)).toContain('hundro1');
   await variant('Short').check();
   for (const page of [alice, bob]) {
@@ -142,7 +142,7 @@ test('control cards per team: switched on and off, they stay when the set change
     await expect(deckCard(page, 'break01')).toHaveCount(0);
   }
 
-  await chooseCardSet(alice, 'T-Shirt');
+  await chooseCardSet(alice, 'T-shirt sizes');
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(['xxs0001', 'xs00001', 's000001', 'm000001', 'l000001', 'xl00001',
       'xxl0001', 'qstmrk1', 'veto']);
@@ -155,20 +155,20 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   await expect(alice.locator('#deck_round_hint')).toHaveCount(0);
 
   await pickCard(bob, 'five001');
-  await expect(alice.locator('#deck_round_hint')).toHaveText(/changing the deck starts a new round/);
+  await expect(alice.locator('#deck_round_hint')).toHaveText(/^Cards have been played – changing the card set starts a new round\.$/);
   await alice.locator('#deck_change').click();
   await expect(alice.locator('#deck_round_hint')).toBeVisible(); // also in the list of sets
 
   // a control card does not end the round
   await alice.locator('#deck_menu .dm-back').click();
   await control(alice, 'xclam01').click();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Special cards changed – everyone sees it');
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed for everyone');
   await expect(deckCard(bob, 'xclam01')).toHaveCount(1);
   await expectTableCard(alice, 'Bob', 'done001');
 
   // a card of the set does
   await toggle(alice, 'zero001').click();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed – new round started');
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed for everyone – new round started');
   for (const page of [alice, bob]) {
     await expectTableCard(page, 'Bob', 'prgrss1');
     await expect(deckCard(page, 'zero001')).toHaveCount(0);
@@ -177,7 +177,7 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   await expect(alice.locator('#deck_round_hint')).toHaveCount(0);
 });
 
-test('a variant is a preset: True, then 100 on as well (custom), Classic sets its cards again', async ({ browser }) => {
+test('a variant is a preset: Pure Fibonacci, then 100 on as well (custom), Classic sets its cards again', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Preset');
   await alice.locator('#cset_btn').click();
   const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
@@ -193,8 +193,8 @@ test('a variant is a preset: True, then 100 on as well (custom), Classic sets it
   await expect(toggle(alice, 'sixty01')).toHaveAttribute('aria-pressed', 'false');
   await expect(toggle(alice, 'eighty9')).toHaveAttribute('aria-pressed', 'false');
 
-  // True: its cards on, the others off
-  await variant('True').check();
+  // Pure Fibonacci: its cards on, the others off
+  await variant('Pure Fibonacci').check();
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'false');
   await expect(toggle(alice, '2tyone1')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => trayKeys(bob)).not.toContain('hundro1');
@@ -203,7 +203,7 @@ test('a variant is a preset: True, then 100 on as well (custom), Classic sets it
   await toggle(alice, 'hundro1').click();
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
-  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: True + 100');
+  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: Pure Fibonacci + 100');
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(['zero001', 'one0001', 'two0001', 'three01', 'five001', 'eight01',
       'thrtn01', '2tyone1', '3tyfr01', '5tyfve1', 'hundro1', 'break01', 'qstmrk1']);
@@ -214,9 +214,9 @@ test('a variant is a preset: True, then 100 on as well (custom), Classic sets it
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
 
-  // 100 off again: exactly True, marked again
+  // 100 off again: exactly Pure Fibonacci, marked again
   await toggle(alice, 'hundro1').click();
-  await expect(variant('True')).toBeChecked();
+  await expect(variant('Pure Fibonacci')).toBeChecked();
 
   // Classic sets its cards again
   await toggle(alice, 'infin01').click();
@@ -246,7 +246,7 @@ test('the selection decides the variant: Short plus the Classic cards is Classic
   await expect.poll(deckId).toBe('fib-classic');
 });
 
-test('shruggie: off by default, switched on and placed; Emotions: Team Assessment and Mood (B-106, B-107)', async ({ browser }) => {
+test('shruggie: off by default, switched on and placed; Emotions: Short and Full (B-106, B-107)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Shruggie Mood');
   await alice.locator('#cset_btn').click();
   await expect(control(alice, 'shrug01')).toHaveAttribute('aria-pressed', 'false');
@@ -255,14 +255,14 @@ test('shruggie: off by default, switched on and placed; Emotions: Team Assessmen
   await control(alice, 'shrug01').click();
   await expect(control(alice, 'shrug01')).toHaveAttribute('aria-pressed', 'true');
   await expect(deckCard(bob, 'shrug01')).toHaveCount(1);
-  await expect(deckCard(bob, 'shrug01').locator('.dh')).toHaveText('shruggie');
+  await expect(deckCard(bob, 'shrug01').locator('.dh')).toHaveText("don't know");
   await pickCard(bob, 'shrug01');
   await expectTableCard(alice, 'Bob', 'done001');
 
-  // Emotions: Team Assessment (the six known faces) is the first variant, Mood has all twelve
+  // Emotions: Short (the six known faces) is the first variant, Full has all twelve
   await chooseCardSet(alice, 'Emotions');
   const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
-  await expect(variant('Team Assessment')).toBeChecked();
+  await expect(variant('Short')).toBeChecked();
   const assessment = ['satis01', 'annoy01', 'sad0001', 'unint01', 'angry01', 'enthu01'];
   for (const page of [alice, bob])
     await expect.poll(() => trayKeys(page)).toEqual([...assessment, 'break01', 'qstmrk1', 'shrug01']);
@@ -270,7 +270,7 @@ test('shruggie: off by default, switched on and placed; Emotions: Team Assessmen
   const hint = alice.locator('#deck_variant_hint');
   await expect(hint.locator('.mini.sm-draw')).toHaveCount(6);
   expect(await hint.textContent()).not.toMatch(/\p{Extended_Pictographic}/u);
-  await variant('Mood').check();
+  await variant('Full').check();
   await expect(hint.locator('.mini.sm-draw')).toHaveCount(12);
   await expect(hint.locator('.mini use').nth(6)).toHaveAttribute('href', /#s-face-curious$/);
   for (const page of [alice, bob]) {

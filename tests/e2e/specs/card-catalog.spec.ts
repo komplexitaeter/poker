@@ -101,33 +101,33 @@ test('texts per group as decided (B-99, Andreas 2026-10-31)', () => {
     expect(card.heading).toBeUndefined();
     expect(card.description).toMatch(/^[a-z]+$/);
   }
-  expect(group('traffic').cards.map(c => c.heading)).toEqual(['green light', 'yellow light', 'red light']);
-  expect(group('stars').cards.map(c => c.heading)).toEqual(['no stars', '1 star', '2 stars', '3 stars', '4 stars', '5 stars']);
+  expect(group('traffic').cards.map(c => c.heading)).toEqual(['green', 'yellow', 'red']);
+  expect(group('stars').cards.map(c => c.heading)).toEqual(['0 stars', '1 star', '2 stars', '3 stars', '4 stars', '5 stars']);
   expect(group('judge').cards.map(c => c.heading)).toEqual(
-    ['step aside', 'full support', 'slight concerns', 'severe concerns', 'step out', 'need to talk', 'veto']);
+    ['step aside', 'full support', 'minor concerns', 'serious concerns', 'step out', 'need to talk', 'veto']);
   expect(group('delegation').cards.map(c => c.heading)).toEqual(
     ['Tell', 'Sell', 'Consult', 'Agree', 'Advise', 'Inquire', 'Delegate']);
-  expect(catalog.controls.map(c => c.heading)).toEqual(['need a break', 'question', 'important', 'veto', 'shruggie']);
+  expect(catalog.controls.map(c => c.heading)).toEqual(['break', 'question', 'important', 'veto', "don't know"]);
   for (const id of ['traffic', 'judge', 'delegation'])
     for (const card of group(id).cards) expect(card.description, `${id} ${card.card_key}`).toBeTruthy();
 });
 
 test('shruggie: a control card without value, off by default (B-106)', () => {
   const shrug = catalog.controls.find(c => c.card_key === 'shrug01') as Card;
-  expect(shrug).toMatchObject({ symbol: 's-shrug', color: 'vshrug', numeric_value: null, heading: 'shruggie',
-    description: "Not knowing isn't a problem – it's a starting point." });
+  expect(shrug).toMatchObject({ symbol: 's-shrug', color: 'vshrug', numeric_value: null, heading: "don't know",
+    description: "I don't know – and that's fine. Let's find out." });
   expect(shrug.legacy_index).toBeUndefined(); // not in the old cardset_flags
   expect(catalog.default_controls).not.toContain('shrug01');
   expect(clientSet('CARD_SMALL_DRAWING').has('s-shrug')).toBe(true);
 });
 
-test('Emotions: variants Team Assessment (the six known faces) and Mood (all twelve) (B-107)', () => {
+test('Emotions: variants Short (the six known faces) and Full (all twelve) (B-107)', () => {
   const group = catalog.groups.find(g => g.id === 'emotions') as Group;
   const assessment = ['satis01', 'annoy01', 'sad0001', 'unint01', 'angry01', 'enthu01'];
   const mood = [...assessment, 'curio01', 'confu01', 'worri01', 'surpr01', 'tired01', 'relie01'];
   expect(group.variants.map(v => [v.id, (v as { name?: string }).name, v.cards])).toEqual([
-    ['emotions', 'Team Assessment', assessment], // id unchanged: stored as pok_teams_tbl.deck_id
-    ['mood', 'Mood', mood],
+    ['emotions', 'Short', assessment], // id unchanged: stored as pok_teams_tbl.deck_id
+    ['mood', 'Full', mood],
   ]);
   expect(group.cards.map(c => c.card_key)).toEqual(mood);
   expect(group.cards.slice(6).map(c => c.description)).toEqual(

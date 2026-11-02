@@ -207,7 +207,7 @@ test('tip after the reveal: the shruggie is ok – no request, no break, the oth
   // a spread: only the extremes explain, the shruggie is not asked
   await vote(['three01', 'eight01', 'shrug01', 'five001']);
   await expect(tip).toHaveText('Let them explain: Alice (3) and Bob (8)');
-  await expect(range).toHaveText('3 \u2013 8');
+  await expect(range).toHaveText('range 3\u20138');
   // next to ?: only ? explains
   await vote(['five001', 'qstmrk1', 'shrug01', 'five001']);
   await expect(tip).toHaveText('Let them explain: Bob (question)');
@@ -232,12 +232,12 @@ test('tip and spread range after the reveal: infinity counts as the highest valu
   await vote(['three01', 'eight01', 'infin01']);
   await expect(tip).toHaveText('Let them explain: Alice (3) and Cleo (\u221e)');
   await expect(tip.locator('b')).toHaveText(['Alice (3)', 'Cleo (\u221e)']);
-  await expect(range).toHaveText('3 \u2013 \u221e');
+  await expect(range).toHaveText('range 3\u2013\u221e');
 
   // the same number next to infinity: a real spread with names
   await vote(['five001', 'five001', 'infin01']);
   await expect(tip).toHaveText('Let them explain: Alice, Bob (5) and Cleo (\u221e)');
-  await expect(range).toHaveText('5 \u2013 \u221e');
+  await expect(range).toHaveText('range 5\u2013\u221e');
 
   // everyone infinity: agreement
   await vote(['infin01', 'infin01', 'infin01']);

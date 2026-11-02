@@ -411,13 +411,14 @@ textarea.field {
 
 /* ---------- Start page ---------- */
 
+/* R3 review V10 (L15): the line about the app above the field keeps the former 60px gap below the header */
 #teaminput {
-    margin-top: 60px;
+    margin-top: var(--space-4);
     width: 250px;
 }
 
 #teambtn {
-    margin-top: 60px;
+    margin-top: var(--space-4);
     display: initial;
 }
 
@@ -428,7 +429,7 @@ textarea.field {
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-top: 60px;
+        margin-top: var(--space-4);
     }
 
     #teaminput,
@@ -444,7 +445,11 @@ textarea.field {
         margin-bottom: var(--space-4);
     }
 
-    #teambtn { min-height: 3rem; }
+    #teambtn { min-height: 3rem; order: 2; }
+
+    /* R3 review V10: the message for an empty name right below the field, above the button */
+    #team_err { order: 1; margin: 0 0 var(--space-4); }
+    #teaminput[aria-invalid="true"] { margin-bottom: var(--space-2); }
 }
 
 .instruction {
@@ -454,6 +459,22 @@ textarea.field {
     margin: var(--space-4) auto 1em;
     line-height: 1.6;
 }
+
+.team-lead {
+    margin: 60px auto 0;
+    padding: 0 var(--space-3);
+    max-width: 36rem;
+    color: var(--muted);
+}
+
+/* R3 review V10 (L17): an empty team name says so below the field (script_team.js) */
+.team-err {
+    margin: var(--space-2) auto 0;
+    padding: 0 var(--space-3);
+    color: var(--danger);
+    font-size: var(--fs-s);
+}
+.team-err[hidden] { display: none; }
 
 .instruction li::marker { color: var(--muted); }
 
@@ -1173,6 +1194,11 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 
 .btn-box.danger:enabled:hover { border-color: var(--danger); color: var(--danger); }
 
+/* R3 review V10 (L61): a large button for a dangerous action ("Delete my data"), like .rm-row .btn-box.danger */
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger:enabled:hover,
+.btn.danger:active { background: var(--danger); border-color: var(--danger); color: var(--bg); }
+
 /* segment switch: a radio group that looks like one control (fieldset.f > .seg > label);
  * used where there are two or three values */
 .seg {
@@ -1462,6 +1488,9 @@ fieldset:disabled .seg input:checked + span {
 }
 
 .m-links a:hover { color: var(--text); }
+
+/* R3 review V10 (L8): "Privacy policy · Imprint" */
+.m-links > span { color: var(--muted); }
 
 .menu .m-links .btn-box {
     margin-left: auto;
@@ -4120,6 +4149,17 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     margin: 0 2px; /* Same margin as links for even spacing */
 }
 
+/* R3 review V10 (L19): below "Join as observer", what observers do */
+.observer-note {
+    box-sizing: border-box;
+    width: 18rem;
+    max-width: calc(100% - 2 * var(--space-3));
+    margin: 0 0 var(--space-2);
+    font-size: var(--fs-s);
+    color: var(--muted);
+    text-align: center;
+}
+
 @media (max-width: 799.98px) {
     #nameinput { margin-top: 50px; }
 }
@@ -4598,6 +4638,16 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-t b { font-size: var(--fs-m); color: var(--text); }
 
 .dm-t small { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* R3 review V10: in the list of card sets the line about the set may take two lines (the "Card set" button stays one) */
+.dm-prow-b .dm-t small {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
 
 .dm-fan { display: flex; align-items: center; height: 46px; padding-right: 8px; }
 

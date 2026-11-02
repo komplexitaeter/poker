@@ -10,6 +10,52 @@ test('create a team from the start page', async ({ browser }) => {
   await expect(page.locator('#overlay_name_input')).toHaveClass(/visible/);
 });
 
+test('start page: an empty team name says so below the field, no feedback menu (R3 review V10)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  await page.goto('/');
+  await expect(page).toHaveTitle('Agile Poker – free planning poker for teams');
+  await expect(page.locator('.team-lead')).toHaveText('Free planning poker for agile teams. No sign-up – just share a link.');
+  await expect(page.locator('#teambtn')).toHaveValue('Create board');
+  await expect(page.locator('#feedback_btn')).toHaveCount(0);
+  await expect(page.locator('dialog#menu')).toHaveCount(0);
+  const error = page.locator('#team_err');
+  await expect(error).toBeHidden();
+
+  // empty (also only spaces): the message, the field keeps the focus, no team is created
+  let creates = 0;
+  page.on('request', request => { if (request.url().includes('/api/addteam.php')) creates++; });
+  await page.locator('#teaminput').fill('   ');
+  await page.locator('#teambtn').click();
+  await expect(error).toBeVisible();
+  await expect(error).toHaveText('Please enter a team name.');
+  await expect(page.locator('#teaminput')).toBeFocused();
+  await expect(page.locator('#teaminput')).toHaveAttribute('aria-invalid', 'true');
+  expect(creates).toBe(0);
+
+  // typing hides it again, Enter creates the board
+  await page.locator('#teaminput').fill('Lead Team');
+  await expect(error).toBeHidden();
+  await page.locator('#teaminput').press('Enter');
+  await page.waitForURL(/\?t=/);
+  expect(creates).toBe(1);
+  // the name overlay: "Join as player" / "Join as observer" and what observers do
+  await expect(page.locator('#become_player_btn')).toHaveValue('Join as player');
+  await expect(page.locator('#become_observer_btn')).toHaveValue('Join as observer');
+  await expect(page.locator('#observer_note')).toHaveText("Observers watch but don't vote (e.g. PO, guests).");
+});
+
+test('start page on a phone: the empty-name message sits between the field and the button (R3 review V10)', async ({ browser }) => {
+  const page = await newPlayer(browser, { viewport: { width: 375, height: 667 } });
+  await page.goto('/');
+  await page.locator('#teambtn').click();
+  await expect(page.locator('#team_err')).toBeVisible();
+  const input = (await page.locator('#teaminput').boundingBox())!;
+  const error = (await page.locator('#team_err').boundingBox())!;
+  const button = (await page.locator('#teambtn').boundingBox())!;
+  expect(error.y).toBeGreaterThanOrEqual(input.y + input.height);
+  expect(button.y).toBeGreaterThanOrEqual(error.y + error.height);
+});
+
 test('two players join and see each other', async ({ browser }) => {
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'Join Team');
@@ -65,7 +111,7 @@ test('cards are revealed when all players have picked', async ({ browser }) => {
   for (const page of [alice, bob]) {
     await expectTableCard(page, 'Alice', 'three01');
     await expectTableCard(page, 'Bob', 'five001');
-    await expect(page.locator('#newroundbtn')).toHaveValue('New Round');
+    await expect(page.locator('#newroundbtn')).toHaveValue('New round');
   }
 });
 

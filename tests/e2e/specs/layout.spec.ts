@@ -176,7 +176,7 @@ test('round button always there; many deck cards in a narrow window: the deck sc
   const btn = alice.locator('#newroundbtn');
   await expect(btn).toBeVisible();
   await expect(btn).toBeDisabled();
-  await expect(btn).toHaveValue('Cancel Round');
+  await expect(btn).toHaveValue('Restart round');
 
   // the header buttons keep their place when the timer (green dot) is switched on
   const boardBtnX = async () => (await alice.locator('#cset_btn').boundingBox())!.x;
