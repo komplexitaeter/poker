@@ -370,7 +370,7 @@ test('an own change is not undone by an older board state (B-73, B-92)', async (
   await stateDelivered;
   // B-92: the older answer comes last and is dropped as a whole (it would show the marked name)
   await alice.evaluate(() => new Promise(resolve => setTimeout(resolve, 300)));
-  await expect(alice.locator('#prompt_user')).toHaveText('Alice');
+  expect(await alice.evaluate('gUserName')).toBe('Alice');
   await expect(radio(alice, 'tmr_mode', 'TIMER')).toBeChecked();
   await expect(display(alice)).toHaveText('T−05:00');
   await alice.context().close();

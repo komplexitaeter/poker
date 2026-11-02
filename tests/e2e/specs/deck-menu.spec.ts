@@ -22,6 +22,10 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
   const rows = alice.locator('#deck_menu .dm-prow-b');
   await expect(rows).toHaveCount(8);
   await expect(rows.filter({ hasText: 'Fibonacci' })).toHaveAttribute('aria-current', 'true');
+  // R3 review polish: one line per set about what it is for, no variant names
+  await expect(rows.locator('.dm-t small')).toHaveText(['Estimate effort in points', 'Confidence, value, scores',
+    'Rough sizing for big items', 'Quick go / no-go check', 'How does the team feel?', 'Ratings from 0 to 5',
+    'Team decisions by consent', 'Who decides?']);
   // the current set: the check icon (#i-check), fully inside its row (Andreas: it was cut off on the right)
   const tick = rows.filter({ hasText: 'Fibonacci' }).locator('.dm-tick');
   await expect(tick.locator('use')).toHaveAttribute('href', '#i-check');

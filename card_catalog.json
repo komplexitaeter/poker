@@ -142,7 +142,7 @@
         {"card_key": "jdg2", "value": "2", "symbol": "s-2", "color": "j2", "numeric_value": 2, "sort_order": 400, "heading": "minor concerns", "description": "Minor concerns, but I fully support it.", "legacy_index": 3},
         {"card_key": "jdg3", "value": "3", "symbol": "s-3", "color": "j3", "numeric_value": 3, "sort_order": 500, "heading": "serious concerns", "description": "Serious concerns, but I can live with it.", "legacy_index": 4},
         {"card_key": "jdg4", "value": "4", "symbol": "s-4", "color": "j4", "numeric_value": 4, "sort_order": 600, "heading": "step out", "description": "Not convinced, but I won't block it. Don't count on me to drive it.", "legacy_index": 5},
-        {"card_key": "jdg5", "value": "5", "symbol": "s-5", "color": "j5", "numeric_value": 5, "sort_order": 700, "heading": "need to talk", "description": "I don't get it yet or need to discuss it.", "legacy_index": 6},
+        {"card_key": "jdg5", "value": "5", "symbol": "s-5", "color": "j5", "numeric_value": 5, "sort_order": 700, "heading": "need to talk", "description": "I don't get it yet. Please explain it to me.", "legacy_index": 6},
         {"card_key": "jdg6", "value": "6", "symbol": "s-6", "color": "j6", "numeric_value": 6, "sort_order": 800, "heading": "veto", "description": "I block this. Let me explain why.", "legacy_index": 7}
       ],
       "variants": [

@@ -14,14 +14,14 @@ const DECK_MIN_CARDS = 2; // a deck keeps at least two cards of its set
 
 /* a short line per set group where the catalog has none: what the set is for (R3 review V10, L40) */
 const DECK_GROUP_NOTES = {
-    fib: 'Estimate effort in story points',
-    numbers: 'Simple scale, e.g. confidence or value',
+    fib: 'Estimate effort in points',
+    numbers: 'Confidence, value, scores',
     tshirt: 'Rough sizing for big items',
     traffic: 'Quick go / no-go check',
-    emotions: 'How does the team feel? For retros and check-ins',
-    stars: 'Rate something from 0 to 5',
-    judge: 'Make a team decision by consent',
-    delegation: 'Who decides? 7 levels of delegation',
+    emotions: 'How does the team feel?',
+    stars: 'Ratings from 0 to 5',
+    judge: 'Team decisions by consent',
+    delegation: 'Who decides?',
 };
 
 const gDeckMenu = {
@@ -297,8 +297,8 @@ function deckPickView(deck) {
         const text = dmEl('span', 'dm-t');
         const note = typeof group.description === 'string' && group.description !== ''
             ? group.description : DECK_GROUP_NOTES[group.id] || '';
-        const variants = group.variants.length > 1 ? ' · ' + group.variants.map(v => v.name).join(', ') : '';
-        text.append(dmEl('b', null, group.name), dmEl('small', null, note + variants));
+        // R3 review polish (Andreas): the line says what the set is for, without the variant names
+        text.append(dmEl('b', null, group.name), dmEl('small', null, note));
         const keys = current ? deck.cards : group.variants[0].cards;
         const mark = current ? dmIcon('check', 'dm-tick') : dmIcon('next');
         if (current) mark.setAttribute('aria-hidden', 'true');
