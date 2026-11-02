@@ -31,8 +31,6 @@ const gDeckMenu = {
     serverRev: null,  // rev of the server's deck the local copy is based on
     sig: null,        // what the menu was last built from
     variantKeyMove: false, // the next change of the variant radios comes from an arrow key
-    refusal: null,    // R3 review V1: a refused toggle, shown below the cards until fixed or the next action ({ key, text })
-    error: false,     // R3 review: the last write failed, shown at the bottom of the overview until the next action
 };
 
 function deckMenuGroups() {
@@ -114,16 +112,6 @@ function dmRoundNote() {
     note.id = 'deck_round_hint';
     note.setAttribute('role', 'note');
     return note;
-}
-
-/* R3 review (Andreas): a refused toggle, right below the cards, plain text (not a toast, no box, no ×);
- * goes with the next action, once the deck has more cards again or when the menu opens again */
-function dmRefusal(refusal) {
-    const box = dmEl('div', 'dm-refusal');
-    box.id = 'deck_refusal';
-    box.setAttribute('role', 'alert');
-    box.append(dmEl('b', null, refusal.text), dmEl('small', null, refusal.help));
-    return box;
 }
 
 /* ------------------------------------------------------------------ views */
@@ -209,7 +197,6 @@ function deckMainView(deck, group, variant) {
         grid.appendChild(button);
     });
     toggles.appendChild(grid);
-    if (gDeckMenu.refusal !== null) toggles.appendChild(dmRefusal(gDeckMenu.refusal));
     parts.push(toggles);
 
     // the control cards (per team)
@@ -232,14 +219,6 @@ function deckMainView(deck, group, variant) {
     });
     controls.appendChild(ctlGrid);
     parts.push(controls);
-
-    // R3 review (Andreas): a failed write, at the very bottom (nothing above moves), until the next action;
-    // screen readers hear it from #deck_status_live
-    if (gDeckMenu.error) {
-        const error = dmEl('p', 'dm-error', 'Not saved \u2013 please try again');
-        error.id = 'deck_error';
-        parts.push(error);
-    }
 
     return parts;
 }
@@ -296,9 +275,7 @@ function renderDeckMenu(force = false) {
     const box = document.getElementById('deck_menu');
     if (box === null) return;
     const deck = gDeckMenu.deck;
-    // a refusal goes once it is fixed: the deck has more than the minimum again (also by someone else)
-    if (gDeckMenu.refusal !== null && (deck === null || deck.cards.length > DECK_MIN_CARDS)) gDeckMenu.refusal = null;
-    const sig = JSON.stringify([gDeckMenu.view, deck, deckRoundRunning(), gDeckMenu.refusal, gDeckMenu.error]);
+    const sig = JSON.stringify([gDeckMenu.view, deck, deckRoundRunning()]);
     if (!force && sig === gDeckMenu.sig) return;
     gDeckMenu.sig = sig;
 
@@ -337,16 +314,11 @@ function updateDeckMenu(json) {
 /* the menu opens at its overview (prepareMenuSection) */
 function resetDeckMenu() {
     gDeckMenu.view = 'main';
-    gDeckMenu.refusal = null;
-    gDeckMenu.error = false;
-    announceDeck('');
     renderDeckMenu(true);
 }
 
 function showDeckView(view) {
     gDeckMenu.view = view;
-    gDeckMenu.refusal = null; // the next action ends a message
-    gDeckMenu.error = false;
     renderDeckMenu(true);
     const target = document.getElementById(view === 'pick' ? 'deck_pick_title' : 'deck_change');
     if (target !== null) target.focus();
@@ -354,37 +326,27 @@ function showDeckView(view) {
 
 /* ------------------------------------------------------------------ writes */
 
-/* B-99 (F7, Andreas): the result of a change. R3 review (Andreas): as few messages as possible. A success shows
- * nowhere (the cards show it, the others get a toast, V6); screen readers hear it from the live region
- * #deck_status_live. An error shows at the bottom of the overview (gDeckMenu.error). */
+/* B-99 (F7, Andreas): the result of a change. R3 review (Andreas, final): every message of the deck menu is a
+ * toast (no status in the menu), shown a little longer than other toasts. */
 const DECK_DONE = { set: 'Card set changed for everyone', variant: 'Cards changed for everyone',
     card: 'Cards changed for everyone', control: 'Cards changed for everyone' };
-
-function announceDeck(text) {
-    const live = document.getElementById('deck_status_live');
-    if (live !== null) live.textContent = text;
-}
+const DECK_TOAST_MS = 4200;
 
 /* a write of the menu; the local copy shows it at once, the next board state from the server wins.
  * kind: 'set' | 'variant' | 'card' | 'control' (the text of the live region) */
 function writeDeck(url, local, kind) {
     gDeckMenu.deck = local;
-    gDeckMenu.refusal = null;
-    gDeckMenu.error = false;
     renderDeckMenu();
     const done = DECK_DONE[kind] || 'Saved';
-    announceDeck('');
     apiWrite(url, {}, null).then(response => {
         if (response === null || !response.ok) {
             gDeckMenu.serverRev = null; // take the server's deck again with the next board state
-            gDeckMenu.error = true;
-            renderDeckMenu(true);
-            announceDeck('Not saved \u2013 please try again');
+            showToast('Not saved \u2013 please try again', DECK_TOAST_MS);
             return;
         }
         response.json().then(answer => {
-            announceDeck(done + (answer && answer.new_round ? ' \u2013 new round started' : ''));
-        }).catch(() => announceDeck(done));
+            showToast(done + (answer && answer.new_round ? ' \u2013 new round started' : ''), DECK_TOAST_MS);
+        }).catch(() => showToast(done, DECK_TOAST_MS));
     });
 }
 
@@ -423,13 +385,14 @@ function toggleDeckCard(group, variant, key) {
     const on = new Set(deck.cards);
     if (on.has(key)) {
         if (on.size <= DECK_MIN_CARDS) {
-            // R3 review V1: the refusal shows right below the cards, the toggle shakes once
-            gDeckMenu.refusal = { key, text: 'A card set needs at least two cards.', help: 'Switch another card on first.' };
-            gDeckMenu.error = false; // one message at a time: the refusal
-            announceDeck('');
-            renderDeckMenu(true);
+            // refused: a toast, the toggle shakes once (again with every click)
+            showToast('A card set needs at least two cards.', DECK_TOAST_MS);
             const toggle = document.querySelector('#deck_menu [data-f="card:' + CSS.escape(key) + '"]');
-            if (toggle !== null) toggle.classList.add('is-refused');
+            if (toggle !== null) {
+                toggle.classList.remove('is-refused');
+                void toggle.offsetWidth; // restart the animation
+                toggle.classList.add('is-refused');
+            }
             return;
         }
         on.delete(key);

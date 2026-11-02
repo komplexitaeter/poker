@@ -4617,25 +4617,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .dm .hint.warn { color: var(--warn); }
 
-/* R3 review (Andreas): as few messages as possible, plain red text, no box, no close button.
- * A refused toggle (fewer than two cards): the reason right below the cards, the second line muted. */
-.dm-refusal {
-    margin-top: var(--space-2);
-    color: var(--danger);
-    font-size: var(--fs-xs);
-}
-
-.dm-refusal b { display: block; }
-
-.dm-refusal small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--fs-xs); }
-
-/* a failed write: at the very bottom of the deck tab, nothing above moves */
-.dm-error {
-    margin: var(--space-2) 0 0;
-    color: var(--danger);
-    font-size: var(--fs-xs);
-}
-
 .dm-tgs .dm-tg.is-refused { border-color: var(--danger); animation: dm-refuse 0.4s ease-in-out; }
 
 @keyframes dm-refuse {
