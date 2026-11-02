@@ -445,7 +445,11 @@ textarea.field {
         margin-bottom: var(--space-4);
     }
 
-    #teambtn { min-height: 3rem; }
+    #teambtn { min-height: 3rem; order: 2; }
+
+    /* R3 review V10: the message for an empty name right below the field, above the button */
+    #team_err { order: 1; margin: 0 0 var(--space-4); }
+    #teaminput[aria-invalid="true"] { margin-bottom: var(--space-2); }
 }
 
 .instruction {
@@ -4634,6 +4638,16 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-t b { font-size: var(--fs-m); color: var(--text); }
 
 .dm-t small { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* R3 review V10: in the list of card sets the line about the set may take two lines (the "Card set" button stays one) */
+.dm-prow-b .dm-t small {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
 
 .dm-fan { display: flex; align-items: center; height: 46px; padding-right: 8px; }
 

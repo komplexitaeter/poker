@@ -44,6 +44,18 @@ test('start page: an empty team name says so below the field, no feedback menu (
   await expect(page.locator('#observer_note')).toHaveText("Observers watch but don't vote (e.g. PO, guests).");
 });
 
+test('start page on a phone: the empty-name message sits between the field and the button (R3 review V10)', async ({ browser }) => {
+  const page = await newPlayer(browser, { viewport: { width: 375, height: 667 } });
+  await page.goto('/');
+  await page.locator('#teambtn').click();
+  await expect(page.locator('#team_err')).toBeVisible();
+  const input = (await page.locator('#teaminput').boundingBox())!;
+  const error = (await page.locator('#team_err').boundingBox())!;
+  const button = (await page.locator('#teambtn').boundingBox())!;
+  expect(error.y).toBeGreaterThanOrEqual(input.y + input.height);
+  expect(button.y).toBeGreaterThanOrEqual(error.y + error.height);
+});
+
 test('two players join and see each other', async ({ browser }) => {
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'Join Team');

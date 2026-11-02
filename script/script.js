@@ -3296,8 +3296,9 @@ function judgeTip(configs, anonymous) {
     const vetoKeys = ['jdg6', 'veto'];
     if (anonymous) {
         const talk = count(talkKeys, 'person needs to talk', 'people need to talk');
-        const veto = count(vetoKeys, 'veto', 'vetoes');
-        if (talk !== null) return veto !== null ? [talk + ' first. Then hear ' + veto + '.'] : [talk + ' first.'];
+        const vetoes = of(vetoKeys).length;
+        const veto = vetoes === 0 ? null : (vetoes === 1 ? 'the veto' : 'the ' + vetoes + ' vetoes');
+        if (talk !== null) return veto !== null ? [talk + ' first, then hear ' + veto + '.'] : [talk + ' first.'];
         if (veto !== null) return ['Hear ' + veto + ' first.'];
     } else {
         const talk = groups(talkKeys);

@@ -104,10 +104,12 @@ test('J.U.D.G.E. in anonymous mode: counts, nobody named (B-101)', async ({ brow
   await vote(['jdg1', 'jdg3', 'jdg1', 'jdg1']);
   await expect(tip).toHaveText('Decision accepted. 1 person has concerns – want to hear them?');
   await vote(['jdg5', 'qstmrk1', 'jdg6', 'jdg1']);
-  await expect(tip).toHaveText('2 people need to talk first. Then hear 1 veto.');
+  await expect(tip).toHaveText('2 people need to talk first, then hear the veto.');
   await vote(['jdg5', 'jdg1', 'jdg6', 'jdg6']);
-  await expect(tip).toHaveText('1 person needs to talk first. Then hear 2 vetoes.');
+  await expect(tip).toHaveText('1 person needs to talk first, then hear the 2 vetoes.');
   await vote(['jdg6', 'jdg1', 'jdg1', 'jdg1']);
-  await expect(tip).toHaveText('Hear 1 veto first.');
+  await expect(tip).toHaveText('Hear the veto first.');
+  await vote(['jdg6', 'jdg1', 'jdg6', 'jdg1']);
+  await expect(tip).toHaveText('Hear the 2 vetoes first.');
   await expect(tip.locator('b')).toHaveCount(0);
 });
