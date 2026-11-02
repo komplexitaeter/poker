@@ -32,6 +32,8 @@ const gDeckMenu = {
     sig: null,        // what the menu was last built from
     variantKeyMove: false, // the next change of the variant radios comes from an arrow key
     refusal: null,    // R3 review V1: a refused toggle, shown below the cards until fixed or dismissed ({ key, text })
+    status: null,     // R3 review: the result of the own change, shown in the card set box ({ text, short, error })
+    statusTimer: 0,
 };
 
 function deckMenuGroups() {
@@ -151,10 +153,13 @@ function deckMainView(deck, group, variant) {
     change.id = 'deck_change';
     change.setAttribute('data-f', 'change');
     const title = dmEl('span', 'dm-t');
-    title.append(dmEl('small', null, 'Card set'), dmEl('b', null, group.name));
+    const caption = dmEl('small', 'dm-cap', 'Card set');
+    caption.id = 'deck_caption';
+    title.append(caption, dmEl('b', null, group.name));
     change.append(title, dmFan(variant.cards), dmEl('span', 'cm', 'Change'), dmIcon('next'));
     change.setAttribute('aria-label', 'Card set: ' + group.name + '. Change');
     change.addEventListener('click', () => showDeckView('pick'));
+    paintDeckStatus(caption);
     parts.push(change);
 
     // the variant (Fibonacci)
@@ -354,21 +359,36 @@ function showDeckView(view) {
 
 /* ------------------------------------------------------------------ writes */
 
-/* B-99 (F7, Andreas): the result of a change; R3 review V1: in a status line at the top of the deck menu (#deck_status)
- * instead of a toast. It stays until the next change or until the menu opens again; an error gets a close button. */
+/* B-99 (F7, Andreas): the result of a change. R3 review (Andreas, variant 1): no line of its own; the small caption
+ * "Card set" of the card set box shows it: a success for 3 s, an error until the next change or until the menu
+ * opens again. Kept in gDeckMenu.status (the box is built again with every render); screen readers hear the full
+ * text from the live region #deck_status_live. */
 const DECK_DONE = { set: 'Card set changed for everyone', variant: 'Cards changed for everyone',
     card: 'Cards changed for everyone', control: 'Cards changed for everyone' };
+const DECK_STATUS_MS = 3000;
 
-/* status: null (none) | { text, error } */
+/* the caption of the card set box: "Card set" or the status */
+function paintDeckStatus(caption = document.getElementById('deck_caption')) {
+    if (caption === null) return;
+    const status = gDeckMenu.status;
+    caption.classList.toggle('is-ok', status !== null && !status.error);
+    caption.classList.toggle('is-error', status !== null && status.error);
+    // the status needs the width of the fan (CSS), the height of the box stays
+    const box = caption.closest('.dm-setbtn');
+    if (box !== null) box.classList.toggle('has-status', status !== null);
+    caption.textContent = status === null ? 'Card set' : (status.error ? '! ' : '\u2713 ') + status.short;
+}
+
+/* status: null (none) | { text, short, error } */
 function setDeckStatus(status) {
-    const line = document.getElementById('deck_status');
-    if (line === null) return;
-    const close = line.querySelector('.dm-status-x');
-    // the line hides itself while empty (CSS); screen readers hear it from a live region that is always there
-    line.classList.toggle('is-error', status !== null && status.error);
-    close.hidden = status === null || !status.error;
-    close.onclick = () => setDeckStatus(null);
-    line.querySelector('.dm-status-t').textContent = status === null ? '' : (status.error ? '! ' : '\u2713 ') + status.text;
+    clearTimeout(gDeckMenu.statusTimer);
+    gDeckMenu.status = status;
+    if (status !== null && !status.error) {
+        gDeckMenu.statusTimer = setTimeout(() => {
+            if (gDeckMenu.status === status) setDeckStatus(null);
+        }, DECK_STATUS_MS);
+    }
+    paintDeckStatus();
     const live = document.getElementById('deck_status_live');
     if (live !== null) live.textContent = status === null ? '' : status.text;
 }
@@ -384,12 +404,14 @@ function writeDeck(url, local, kind) {
     apiWrite(url, {}, null).then(response => {
         if (response === null || !response.ok) {
             gDeckMenu.serverRev = null; // take the server's deck again with the next board state
-            setDeckStatus({ text: 'Not saved – please try again', error: true });
+            setDeckStatus({ text: 'Not saved – please try again', short: 'Not saved – please try again', error: true });
             return;
         }
         response.json().then(answer => {
-            setDeckStatus({ text: done + (answer && answer.new_round ? ' \u2013 new round started' : ''), error: false });
-        }).catch(() => setDeckStatus({ text: done, error: false }));
+            const round = answer && answer.new_round;
+            setDeckStatus({ text: done + (round ? ' \u2013 new round started' : ''),
+                short: round ? 'Changed \u2013 new round started' : 'Changed for everyone', error: false });
+        }).catch(() => setDeckStatus({ text: done, short: 'Changed for everyone', error: false }));
     });
 }
 

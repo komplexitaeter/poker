@@ -7,6 +7,8 @@ import { teamWithTwoPlayers, deckCard, deckCards, pickCard, expectTableCard, tab
 const trayKeys = (page: Page) => deckCards(page).evaluateAll(cards => cards.map(c => c.getAttribute('data-card')));
 const toggle = (page: Page, key: string) => page.locator(`#deck_cards [data-card="${key}"]`);
 const control = (page: Page, key: string) => page.locator(`#deck_controls [data-card="${key}"]`);
+// R3 review (variant 1): the result of the own change shows in the caption of the card set box
+const caption = (page: Page) => page.locator('#deck_change #deck_caption');
 
 test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for everybody', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Sets');
@@ -37,11 +39,11 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
 
   // back on the overview; both trays hold the set plus the team's control cards
   await expect(alice.locator('#deck_change')).toContainText('J.U.D.G.E.');
-  // F7, R3 review V1: the result in the status line of the menu (where the click was), no toast
-  await expect(alice.locator('#deck_status')).toBeVisible();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Card set changed for everyone');
-  await expect(alice.locator('#deck_status .dm-status-x')).toBeHidden(); // only errors are closed by hand
-  // screen readers: a live region that is always there (not switched by hidden)
+  // F7, R3 review (variant 1): the result in the caption of the card set box, in green, no toast
+  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
+  await expect(caption(alice)).toHaveClass(/is-ok/);
+  await expect(alice.locator('#deck_status')).toHaveCount(0); // no line of its own any more
+  // screen readers: a live region that is always there (not switched by hidden), with the full text
   await expect(alice.locator('#deck_status_live')).toHaveText('Card set changed for everyone');
   await expect(alice.locator('#deck_status_live')).toHaveAttribute('role', 'status');
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
@@ -83,7 +85,7 @@ test('variant and single cards: Short, a card off and on again, at least two car
   expect(deckWrites).toBe(1);
   // mouse: back to Classic and to Short again
   await variant('Classic').check();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed for everyone');
+  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
   await expect.poll(() => trayKeys(bob)).toContain('hundro1');
   await variant('Short').check();
   for (const page of [alice, bob]) {
@@ -117,7 +119,7 @@ test('variant and single cards: Short, a card off and on again, at least two car
   await expect(refusal).toBeVisible();
   await expect(refusal).toHaveAttribute('role', 'alert');
   await expect(refusal).toContainText('A card set needs at least two cards.');
-  await expect(alice.locator('#deck_status')).toBeHidden(); // one message at a time
+  await expect(caption(alice)).toHaveText('Card set'); // one message at a time
   await expect(toggle(alice, 'yellow1')).toHaveClass(/is-refused/);
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   await expect(deckCard(bob, 'yellow1')).toHaveCount(1);
@@ -171,13 +173,14 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   // a control card does not end the round
   await alice.locator('#deck_menu .dm-back').click();
   await control(alice, 'xclam01').click();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed for everyone');
+  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
   await expect(deckCard(bob, 'xclam01')).toHaveCount(1);
   await expectTableCard(alice, 'Bob', 'done001');
 
   // a card of the set does
   await toggle(alice, 'zero001').click();
-  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed for everyone – new round started');
+  await expect(caption(alice)).toHaveText('\u2713 Changed – new round started');
+  await expect(alice.locator('#deck_status_live')).toHaveText('Cards changed for everyone – new round started');
   for (const page of [alice, bob]) {
     await expectTableCard(page, 'Bob', 'prgrss1');
     await expect(deckCard(page, 'zero001')).toHaveCount(0);
@@ -292,41 +295,54 @@ test('shruggie: off by default, switched on and placed; Emotions: Short and Full
   await expectTableCard(bob, 'Alice', 'shrug01');
 });
 
-test('a failed deck write: the error stays in the status line until dismissed (R3 review V1)', async ({ browser }) => {
+test('a failed deck write: the error stays red in the card set box until the next change (R3 review)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Error');
   await alice.locator('#cset_btn').click();
   await alice.route('**/api/update_controls.php*', route => route.fulfill({ status: 500, body: '' }));
   await control(alice, 'veto').click();
-  const status = alice.locator('#deck_status');
-  await expect(status).toHaveText('! Not saved – please try again');
-  await expect(status).toHaveClass(/is-error/);
+  await expect(caption(alice)).toHaveText('! Not saved – please try again');
+  await expect(caption(alice)).toHaveClass(/is-error/);
+  await expect(alice.locator('#deck_status_live')).toHaveText('Not saved – please try again');
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
-  await alice.waitForTimeout(2500);
-  await expect(status).toBeVisible();
-  await status.getByRole('button', { name: 'Dismiss' }).click();
-  await expect(status).toBeHidden();
   await expect(deckCard(bob, 'veto')).toHaveCount(0);
+  // no timer: still there later, also after the board state has built the menu again
+  await alice.waitForTimeout(3500);
+  await expect(caption(alice)).toHaveText('! Not saved – please try again');
+  // the next change replaces it; a success goes back to "Card set" after about 3 s
+  await alice.unroute('**/api/update_controls.php*');
+  await control(alice, 'veto').click();
+  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
+  await expect(caption(alice)).not.toHaveClass(/is-error/);
+  await expect(caption(alice)).toHaveText('Card set', { timeout: 6000 });
+  await expect(caption(alice)).not.toHaveClass(/is-ok/);
+  await expect(deckCard(bob, 'veto')).toHaveCount(1);
+
+  // an error ends when the menu opens again
+  await alice.route('**/api/update_controls.php*', route => route.fulfill({ status: 500, body: '' }));
+  await control(alice, 'veto').click();
+  await expect(caption(alice)).toHaveClass(/is-error/);
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#cset_btn').click();
+  await expect(caption(alice)).toHaveText('Card set');
 });
 
-test('the deck menu does not jump: the status line keeps its room, empty, done or error (R3 review)', async ({ browser }) => {
+test('the deck menu does not jump: the caption of the card set box shows the status, empty, done or error (R3 review)', async ({ browser }) => {
   const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Steady');
   await alice.locator('#cset_btn').click();
-  const status = alice.locator('#deck_status');
   const where = async () => {
-    const [cards, variants] = [(await alice.locator('#deck_cards').boundingBox())!, (await alice.locator('#deck_variant').boundingBox())!];
-    return { cardsY: cards.y, cardsH: cards.height, variantsY: variants.y };
+    const [box, cards, variants] = [(await alice.locator('#deck_change').boundingBox())!,
+      (await alice.locator('#deck_cards').boundingBox())!, (await alice.locator('#deck_variant').boundingBox())!];
+    return { boxY: box.y, boxH: box.height, cardsY: cards.y, cardsH: cards.height, variantsY: variants.y };
   };
-  const same = (a: { cardsY: number; cardsH: number; variantsY: number }, b: typeof a) => {
-    expect(Math.abs(a.cardsY - b.cardsY)).toBeLessThanOrEqual(1);
-    expect(Math.abs(a.cardsH - b.cardsH)).toBeLessThanOrEqual(1);
-    expect(Math.abs(a.variantsY - b.variantsY)).toBeLessThanOrEqual(1);
+  const same = (a: Awaited<ReturnType<typeof where>>, b: typeof a) => {
+    for (const k of Object.keys(a) as (keyof typeof a)[]) expect(Math.abs(a[k] - b[k])).toBeLessThanOrEqual(1);
   };
-  await expect(status).toBeHidden();
+  await expect(caption(alice)).toHaveText('Card set');
   const before = await where();
 
-  // a card off: the line shows, nothing moves; no variant checked, no extra line below the variants
+  // a card off: the caption says so, nothing moves; no variant checked, no extra line below the variants
   await toggle(alice, 'hundro1').click();
-  await expect(status).toHaveText('✓ Cards changed for everyone');
+  await expect(caption(alice)).toHaveText('✓ Changed for everyone');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
   same(before, await where());
   // on again: Classic again, still in place
@@ -334,27 +350,46 @@ test('the deck menu does not jump: the status line keeps its room, empty, done o
   await expect(alice.locator('#deck_variant').getByRole('radio', { name: 'Classic' })).toBeChecked();
   same(before, await where());
 
-  // an error with its close button: the same height
+  // an error: the same height, one line
   await alice.route('**/api/update_deck.php*', route => route.fulfill({ status: 500, body: '' }));
   await toggle(alice, 'zero001').click();
-  await expect(status).toHaveText('! Not saved – please try again');
-  same(before, await where());
-  await status.getByRole('button', { name: 'Dismiss' }).click();
-  await expect(status).toBeHidden();
+  await expect(caption(alice)).toHaveText('! Not saved – please try again');
   same(before, await where());
 });
 
-test('the list of card sets fits on a desktop screen: no status line, the last set visible without scrolling', async ({ browser }) => {
+test('a phone (360 px): the status fits into the caption on one line, nothing moves', async ({ browser }) => {
+  const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Phone');
+  await alice.setViewportSize({ width: 360, height: 740 });
+  await alice.locator('#menu_btn').click();
+  await alice.locator('#menu_index').getByRole('button', { name: /^Board settings/ }).click();
+  await expect(caption(alice)).toHaveText('Card set');
+  const height = async () => (await alice.locator('#deck_change').boundingBox())!.height;
+  const capHeight = async () => (await caption(alice).boundingBox())!.height;
+  const [box, cap] = [await height(), await capHeight()];
+  await alice.route('**/api/update_deck.php*', route => route.fulfill({ status: 500, body: '' }));
+  await toggle(alice, 'zero001').click();
+  await expect(caption(alice)).toHaveText('! Not saved – please try again');
+  expect(Math.abs(await height() - box)).toBeLessThanOrEqual(1);
+  expect(Math.abs(await capHeight() - cap)).toBeLessThanOrEqual(1);
+  // not cut off: the fan gives its width while the status shows
+  expect(await caption(alice).evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await alice.unroute('**/api/update_deck.php*');
+  await toggle(alice, 'zero001').click();
+  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
+  expect(Math.abs(await height() - box)).toBeLessThanOrEqual(1);
+  expect(await caption(alice).evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expect(caption(alice)).toHaveText('Card set', { timeout: 6000 });
+  await expect(alice.locator('#deck_change .dm-fan')).toBeVisible();
+});
+
+test('the list of card sets fits on a desktop screen: the last set visible without scrolling', async ({ browser }) => {
   const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Compact');
   await alice.setViewportSize({ width: 1280, height: 800 });
   await alice.locator('#cset_btn').click();
-  // overview: the empty status line keeps its room (see "does not jump")
-  await expect(alice.locator('#deck_status')).toHaveCSS('display', 'flex');
   await alice.locator('#deck_change').click();
   const rows = alice.locator('#deck_menu .dm-prow-b');
   await expect(rows).toHaveCount(8);
-  // the list: no room for the status line above "< Deck"; the live region stays
-  await expect(alice.locator('#deck_status')).toHaveCSS('display', 'none');
+  // the live region stays (sr-only)
   await expect(alice.locator('#deck_status_live')).toHaveCount(1);
   // every row is a full tap target, the last one inside the viewport without scrolling
   for (const box of await rows.evaluateAll(els => els.map(e => e.getBoundingClientRect().height))) {
@@ -371,8 +406,4 @@ test('the list of card sets fits on a desktop screen: no status line, the last s
   const box = (await last.boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(800);
   await expect(last).toBeInViewport({ ratio: 1 });
-
-  // back on the overview the status line has its room again
-  await alice.locator('#deck_back').click();
-  await expect(alice.locator('#deck_status')).toHaveCSS('display', 'flex');
 });
