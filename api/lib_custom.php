@@ -228,27 +228,41 @@ function body_text(array $data, string $name, int $max_length, bool $optional = 
 
 /*
  * Control and format characters could spoof texts on the board (bidi overrides/isolates, zero-width spaces), so
- * \p{Cc} and \p{Cf} are refused - except the zero-width joiner U+200D, which composed emoji need (family, profession).
+ * \p{Cc}, \p{Cf} and the line/paragraph separators \p{Zl}, \p{Zp} are refused - except the zero-width joiner U+200D, which composed emoji need (family, profession).
  * Variation selectors (U+FE0F), skin tones, regional indicators (flags) and the keycap U+20E3 are no Cf and allowed.
  */
 function has_spoofing_chars(string $value): bool
 {
-    return (bool)preg_match('/\p{Cc}|(?!\x{200D})\p{Cf}/u', $value);
+    return (bool)preg_match('/[\p{Cc}\p{Zl}\p{Zp}]|(?!\x{200D})\p{Cf}/u', $value);
 }
 
 /*
  * Number of user-perceived characters of a (valid UTF-8) text, simplified UAX #29 for emoji, the same on every server
  * (PCRE \X differs between library versions, e.g. 10.42 joins consecutive emoji; intl is not installed everywhere):
- * combining marks (incl. variation selectors U+FE0F, keycap U+20E3), skin tones U+1F3FB-1F3FF, tag characters
- * U+E0020-E007F and the joiner U+200D belong to the character before, a character after U+200D as well, and two
- * regional indicators form one flag.
+ * combining marks (incl. variation selectors U+FE0F, keycap U+20E3), skin tones U+1F3FB-1F3FF and the joiner U+200D
+ * belong to the character before; a pictograph after U+200D joins a pictograph before it (emoji ZWJ sequence, UAX #29
+ * GB11), any other character after U+200D starts a new one ('A' ZWJ 'B' are two); two regional indicators form one
+ * flag. Tag characters U+E0020-E007F are counted with the character before as well, but card texts refuse them
+ * (has_spoofing_chars(), \p{Cf}), so subdivision flags are not allowed.
  */
+function is_pictographic_codepoint(int $cp): bool
+{
+    // Extended_Pictographic by ranges (\p{Extended_Pictographic} needs PCRE2 >= 10.40, not on every server);
+    // regional indicators and skin tones lie in these blocks but are no pictographs
+    if ($cp >= 0x1F1E6 && $cp <= 0x1F1FF || $cp >= 0x1F3FB && $cp <= 0x1F3FF) return false;
+    return in_array($cp, array(0x00A9, 0x00AE, 0x203C, 0x2049, 0x2122, 0x2139, 0x3030, 0x303D, 0x3297, 0x3299), true)
+        || $cp >= 0x2194 && $cp <= 0x21AA || $cp >= 0x231A && $cp <= 0x23FF || $cp >= 0x25AA && $cp <= 0x25FE
+        || $cp >= 0x2600 && $cp <= 0x27BF || $cp >= 0x2934 && $cp <= 0x2935 || $cp >= 0x2B05 && $cp <= 0x2B55
+        || $cp >= 0x1F000 && $cp <= 0x1FAFF || $cp >= 0x1FC00 && $cp <= 0x1FFFD;
+}
+
 function custom_grapheme_count(string $value): int
 {
     preg_match_all('/./su', $value, $m);
     $count = 0;
     $joined = false;   // previous code point was U+200D
     $open_flag = false; // previous code point was a single regional indicator
+    $pictograph = false; // the current grapheme ends with a pictograph (before marks, skin tones, joiner)
     foreach ($m[0] as $char) {
         $b = array_values(unpack('C*', $char)); // one valid UTF-8 code point (1-4 bytes)
         $cp = match (count($b)) {
@@ -258,9 +272,12 @@ function custom_grapheme_count(string $value): int
             default => ($b[0] & 0x07) << 18 | ($b[1] & 0x3F) << 12 | ($b[2] & 0x3F) << 6 | $b[3] & 0x3F,
         };
         $is_ri = $cp >= 0x1F1E6 && $cp <= 0x1F1FF;
-        $extends = $count > 0 && ($joined || $cp === 0x200D || $cp >= 0x1F3FB && $cp <= 0x1F3FF
-            || $cp >= 0xE0020 && $cp <= 0xE007F || preg_match('/^\p{M}$/u', $char) || $is_ri && $open_flag);
+        $is_pict = is_pictographic_codepoint($cp);
+        $mark = $cp === 0x200D || $cp >= 0x1F3FB && $cp <= 0x1F3FF || $cp >= 0xE0020 && $cp <= 0xE007F
+            || preg_match('/^\p{M}$/u', $char);
+        $extends = $count > 0 && ($mark || $joined && $is_pict && $pictograph || $is_ri && $open_flag);
         if (!$extends) $count++;
+        if (!$mark) $pictograph = $is_pict;
         $open_flag = $is_ri && !($extends && $open_flag);
         $joined = $cp === 0x200D;
     }
@@ -278,7 +295,9 @@ function is_custom_value_text(string $value): bool
     $codepoints = preg_match_all('/./su', $value); // false for invalid UTF-8
     if ($value === '' || $codepoints === false || $codepoints > CUSTOM_VALUE_CODEPOINTS_MAX) return false;
     if (custom_grapheme_count($value) > CUSTOM_VALUE_MAX) return false;
-    if (has_spoofing_chars($value) || preg_match('/[\p{Co}\p{Cs}]/u', $value)) return false;
+    // invisible letters (Hangul fillers U+115F, U+1160, U+3164, U+FFA0, blank Braille U+2800) could fake an empty card
+    if (has_spoofing_chars($value) || preg_match('/[\p{Co}\p{Cs}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}]/u', $value))
+        return false;
     return (bool)preg_match('/[^\s\x{200D}\p{M}]/u', $value);
 }
 

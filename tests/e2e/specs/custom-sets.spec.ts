@@ -175,6 +175,14 @@ test('custom sets: validation, limits, other teams', async ({ browser }) => {
     ['bidi isolate in text', { ...ok, cards: [{ text: '\u2066ab', color: 'red' }] }, 'text'],
     ['zero-width space in text', { ...ok, cards: [{ text: '1\u200B', color: 'red' }] }, 'text'],
     ['only a joiner', { ...ok, cards: [{ text: '\u200D', color: 'red' }] }, 'text'],
+    // a joiner only joins pictographs: 24 letters with joiners are 24 graphemes (Sina, review emoji)
+    ['letters joined by ZWJ', { ...ok, cards: [{ text: [...'ABCDEFGHIJKLMNOPQRSTUVWX'].join('\u200D'), color: 'red' }] }, 'text'],
+    // invisible characters could fake an empty card
+    ['Hangul filler', { ...ok, cards: [{ text: '\u3164', color: 'red' }] }, 'text'],
+    ['blank Braille', { ...ok, cards: [{ text: '1\u2800', color: 'red' }] }, 'text'],
+    ['line separator in text', { ...ok, cards: [{ text: 'a\u2028b', color: 'red' }] }, 'text'],
+    ['paragraph separator in name', { ...ok, name: 'a\u2029b' }, 'name'],
+    ['line separator in heading', { ...ok, cards: [{ text: '1', color: 'red', heading: 'a\u2028b' }] }, 'heading'],
     ['text too long', { ...ok, cards: [{ text: '1234567', color: 'red' }] }, 'text'],
     ['symbol not in the library', { ...ok, cards: [{ symbol: 's-coffee', color: 'red' }] }, 'symbol'],
     ['symbol and text', { ...ok, cards: [{ symbol: 's-1', text: '1', color: 'red' }] }, 'symbol_or_text'],

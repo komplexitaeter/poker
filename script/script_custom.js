@@ -194,7 +194,7 @@ function csSymbolColor(symbol) {
 function csTextProblem(text) {
     if (text === '') return 'empty';
     if (textGraphemes(text) > CS_TEXT_MAX || [...text].length > CS_TEXT_CODEPOINTS_MAX) return 'long';
-    if (/[\p{Cc}\p{Co}\p{Cs}]|(?!\u200D)\p{Cf}/u.test(text)) return 'chars';
+    if (/[\p{Cc}\p{Co}\p{Cs}\p{Zl}\p{Zp}\u115F\u1160\u3164\uFFA0\u2800]|(?!\u200D)\p{Cf}/u.test(text)) return 'chars';
     if (!/[^\p{Z}\p{M}\s\u200D]/u.test(text)) return 'chars';
     return null;
 }
