@@ -423,6 +423,32 @@ textarea.field {
     display: initial;
 }
 
+/* phones: field and button one below the other in one column of the same width, like the name overlay
+ * (fix R3, iPhone: they wrapped as two centred boxes of different widths) */
+@media (max-width: 799.98px) {
+    #teamForm {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 60px;
+    }
+
+    #teaminput,
+    #teambtn {
+        box-sizing: border-box;
+        width: 18rem;
+        max-width: calc(100% - 2 * var(--space-3));
+        margin: 0;
+    }
+
+    #teaminput {
+        min-height: var(--tap); /* as high as the name field in the overlay on touch screens */
+        margin-bottom: var(--space-4);
+    }
+
+    #teambtn { min-height: 3rem; }
+}
+
 .instruction {
     color: var(--text-color);
     width: fit-content;
@@ -2702,15 +2728,17 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 .sm-text { font-family: var(--font); }
 
 .mini.sm-draw {
-    width: auto;
-    height: 1.5em;
-    aspect-ratio: 100 / 120;
+    --sm-h: 1.5em;
+    /* fix (R3, iPhone): the width spelled out, not via aspect-ratio: Safari sized the box around it (e.g. the spread's
+     * value row) from the svg's own width and so the symbol sat off the middle */
+    width: calc(var(--sm-h) * 100 / 120);
+    height: var(--sm-h);
     margin-block: -0.36em -0.14em;
     vertical-align: -0.27em;
 }
 
 /* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read */
-.spread-value .sm-draw { height: 1.7em; }
+.spread-value .sm-draw { --sm-h: 1.7em; }
 
 /* R3 review E8: traffic lights in small places: the lit lamp solid in its colour (the card's light tint and hatching
  * blur into the housing at this size), so green, yellow and red read at a glance. In the spread the light is taller:
@@ -2723,7 +2751,7 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 .spread:has(use[href*="#s-light-"]) { --spread-val-h: 1.875rem; }
 
 .spread-value .sm-draw:has(use[href*="#s-light-"]) {
-    height: 2.5em;
+    --sm-h: 2.5em;
     margin-block: -0.2em;
     vertical-align: middle;
 }
@@ -2732,14 +2760,14 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
  * in a black outline, like on the card (cardSmall() in cards.js). As high as a capital letter and a half less its
  * hatched rim, its middle on the middle of the digits like .sm-draw; the margins keep the line as before. */
 .mini.sm-inv {
-    width: auto;
-    height: 1.35em;
-    aspect-ratio: 1;
+    --sm-h: 1.35em;
+    width: var(--sm-h); /* spelled out, see .sm-draw */
+    height: var(--sm-h);
     margin-block: -0.3em -0.1em;
     vertical-align: -0.33em;
 }
 
-.spread-value .sm-inv { height: 1.5em; }
+.spread-value .sm-inv { --sm-h: 1.5em; }
 
 /* badge (traffic lights, emotions, stars): the card tinted (dark: a glow from the top and a coloured inner rim,
  * light: flat, see --card-tint), the heading as a pill with a coloured rim */
@@ -3872,6 +3900,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     font-size: clamp(7.5px, 100cqi / 1.75, var(--fs-xs));
     letter-spacing: -0.04em;
     line-height: var(--spread-val-h, 1.25rem);
+    text-align: center; /* fix (R3, iPhone): the value in the middle below its bar, also if its box comes out wider */
     white-space: nowrap;
     max-width: 100%;
     overflow: hidden; /* a long label must never run into its neighbours */
