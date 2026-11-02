@@ -242,6 +242,36 @@ test('remove with the mouse: the circles fade on the trash can, it asks first (B
   await expect(tableCard(alice, 'Bob')).toHaveCount(0);
 });
 
+test('the own trash can asks "Remove yourself from the table?" (B-110)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Fit Remove Self');
+  await joinAsPlayer(alice, url, 'Alice');
+  await addPlayersViaApi(alice, url, ['Bob']);
+  await alice.reload();
+  const me = tableCard(alice, 'Alice');
+  await expect(me).toHaveClass(/is-me/);
+  const del = me.locator('.delete');
+  await expect(del).toHaveAttribute('aria-label', 'Remove yourself from the table');
+  await expect(tableCard(alice, 'Bob').locator('.delete')).toHaveAttribute('aria-label', 'Remove Bob from the table');
+
+  await me.hover();
+  await del.click();
+  const confirm = alice.locator('#rm_confirm');
+  await expect(confirm).toBeVisible();
+  await expect(confirm.locator('#rm_confirm_text')).toContainText('Remove yourself from the table?');
+  await expect(confirm.locator('#rm_confirm_text small')).toHaveText('You can rejoin at any time.');
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(confirm).toBeHidden();
+  await expect(me).toBeVisible();
+
+  // a foreign card afterwards gets its own name again
+  const bob = tableCard(alice, 'Bob');
+  await bob.hover();
+  await bob.locator('.delete').click();
+  await expect(confirm.locator('#rm_confirm_text')).toContainText('Remove Bob from the table?');
+  await expect(confirm.locator('#rm_confirm_text small')).toHaveText('Bob can rejoin at any time.');
+});
+
 test('a long name stays inside the card and ends with an ellipsis (B-49)', async ({ browser }) => {
   const long = 'Andreas Paul Na'; // 15 characters, the maximum of the name field
   for (const viewport of [PHONE, { width: 1920, height: 1080 }]) {

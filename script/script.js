@@ -980,7 +980,7 @@ function updateCards(cardsDiv, players) {
         // B-110: no connection for a while (dao.php "away"); attributes only when they change (quiet re-render)
         const away = player.away === true;
         if (card.classList.contains('is-away') !== away) card.classList.toggle('is-away', away);
-        setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(player.name, away));
+        setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(player.name, away, card.classList.contains('is-me')));
         const react = card.querySelector('.react');
         if (react !== null) setAttrIfChanged(react, 'aria-label', reactLabel(player.name));
         const nudge = card.querySelector('.nudge');
@@ -1076,7 +1076,8 @@ const DELETE_ICON_PATHS = [
     { d: 'M9.6 6.8c-.1-1.6.4-2.4 2.3-2.4 2 0 2.5.8 2.5 2.4', cls: 'ink', w: 1.7, lid: true },
 ];
 
-function deleteLabel(name, away = false) {
+function deleteLabel(name, away = false, isMe = false) {
+    if (isMe) return 'Remove yourself from the table'; // B-110: the own card (.is-me)
     return 'Remove ' + name + ' from the table' + (away ? ' (no connection)' : ''); // B-110: away
 }
 
@@ -1341,7 +1342,11 @@ function openRemoveConfirm(btn) {
     const holder = holderOf(btn);
     if (holder === null) return;
     const box = document.getElementById('rm_confirm');
-    box.querySelectorAll('.rm-name').forEach(span => { span.textContent = holderName(holder); });
+    // B-110: the own card asks "Remove yourself from the table?"
+    const isMe = holder.classList.contains('is-me');
+    const name = holderName(holder);
+    box.querySelector('.rm-name').textContent = isMe ? 'yourself' : name;
+    box.querySelector('.rm-hint').textContent = (isMe ? 'You' : name) + ' can rejoin at any time.';
     box.dataset.mkey = holderMkey(holder);
     setOpenHolder(holder);
     openPopover(box, btn, holder, btn);
@@ -1927,7 +1932,9 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     document.querySelectorAll('#cbox .c').forEach(card => {
         const isMe = card.id === myJson.mkey;
         if (card.classList.contains('is-me') !== isMe) card.classList.toggle('is-me', isMe);
-        syncReactButton(card, !isMe, card.querySelector('.card_player_name').textContent, card.querySelector('.delete'));
+        const name = card.querySelector('.card_player_name').textContent;
+        setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(name, card.classList.contains('is-away'), isMe));
+        syncReactButton(card, !isMe, name, card.querySelector('.delete'));
     });
     afterTableUpdate(); // B-110: popovers, tap hint
 
