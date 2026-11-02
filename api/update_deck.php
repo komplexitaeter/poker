@@ -9,6 +9,7 @@
  * - Two parallel changes run one after the other (row lock), the second one never starts a second round.
  * - B-98 S4: deck = 'c-<set id>' chooses a custom set of the team (all its cards, no cards parameter);
  *   400 for a set of another team, a deleted or empty set.
+ * - B-98 V6: id (player id, optional) is remembered as the one who changed the card set if the set group changes.
  * Answer (JSON): {deck: {id, group, cards, controls, rev}, changed: bool, new_round: bool}
  */
 require '../config.php';
@@ -16,6 +17,7 @@ require './lib.php';
 require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL) ?? '', 0, 80);
+$player_id = get_id_param('id'); // B-98 V6: who changes the card set ('' = unknown)
 $deck_id = get_id_param('deck', 24);
 $cards_param = filter_input(INPUT_GET, 'cards');
 
@@ -66,6 +68,7 @@ if ($changed || (int)$team['needs_setup'] === 1 || $team['deck_id'] !== $old['id
         $new_round = true;
     }
     store_team_deck($link, $t, $new, $catalog, true);
+    if (deck_group_key($new) !== deck_group_key($old)) set_deck_changed_by($link, $t, $player_id); // B-98 V6
     $new['rev']++;
     $changed = true;
 }

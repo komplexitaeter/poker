@@ -1,7 +1,7 @@
 <?php
 /*
  * B-98 S4: creates a custom set of the team.
- * POST ?t=<team>, JSON body: {name, style, cards: [card, ...], activate: bool (optional, default false)}
+ * POST ?t=<team>&id=<player id, optional>, JSON body: {name, style, cards: [card, ...], activate: bool (optional, default false)}
  *   card: {symbol: id of card_catalog.json custom_symbols | text: 1-6 characters, no emoji (exactly one of both),
  *          heading?: <= 16, description?: <= 160, numeric_value?: number | null, color: card_catalog.json custom_colors}
  * - 400 {error, index?}: malformed body or card (error codes: body, name, style, cards, no_cards, too_many_cards, card,
@@ -15,6 +15,7 @@ require './lib.php';
 require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL) ?? '', 0, 80);
+$player_id = get_id_param('id'); // B-98 V6: who changes the card set (activate), optional
 
 $link = db_init();
 require_team($t, $link);
@@ -43,7 +44,7 @@ if (count($team['custom_sets']) >= custom_sets_max()) {
 }
 $set_id = insert_custom_set($link, $t, $head['name'], $head['style'], $checked['cards']);
 $result = array('deck' => $team['deck'], 'new_round' => false);
-if ($activate) $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true);
+if ($activate) $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true, $player_id);
 $set = load_custom_sets($link, $t, $catalog)[$set_id];
 $link->commit();
 $link->close();

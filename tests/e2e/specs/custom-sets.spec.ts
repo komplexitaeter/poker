@@ -340,3 +340,37 @@ test('revealed custom cards are ordered by their position in the set, not by val
   expect(dao.deck.cards).toEqual(keys);
   expect(dao.players.map((p: { name: string }) => p.name)).toEqual(['Cleo', 'Ben', 'Anna']);
 });
+
+test('B-98 V6: dao names who changed the set group last (deck.changed_by)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Changed By');
+  const t = teamIdOf(url);
+  const [alice, bob] = await addPlayersViaApi(page, url, ['Alice', 'Bob']);
+  const a = api(page, t);
+  const changedBy = async () => (await a.dao(alice)).deck.changed_by;
+
+  expect(await changedBy()).toBeNull(); // nobody changed it yet
+  // another group: Alice
+  expect((await a.deck('judge', `&id=${alice}`)).ok()).toBeTruthy();
+  expect(await changedBy()).toBe('Alice');
+  // the same group (single cards): stays Alice
+  expect((await a.deck('judge', `&id=${bob}&cards=jdg1,jdg2`)).ok()).toBeTruthy();
+  expect(await changedBy()).toBe('Alice');
+  // activating a custom set (create with activate): Bob
+  const res = await page.request.post(`/api/custom_set_create.php?${new URLSearchParams({ t, id: bob })}`,
+    { data: JSON.stringify({ name: 'Mine', style: 'plain', cards: RISK, activate: true }) });
+  expect(res.ok()).toBeTruthy();
+  const set = (await res.json()).set;
+  expect(await changedBy()).toBe('Bob');
+  // deleting the active set (fallback to the default deck): Alice
+  expect((await page.request.post(`/api/custom_set_delete.php?${new URLSearchParams({ t, set: String(set.set_id), id: alice })}`)).ok())
+    .toBeTruthy();
+  expect(await changedBy()).toBe('Alice');
+  // the old deck menu: T-shirt by Bob; without id the writer is unknown
+  const tshirt = Array<string>(46).fill('0');
+  [25, 26, 27, 28, 29, 30, 31].forEach(i => tshirt[i] = '1');
+  expect((await page.request.post(`/api/update_cardset.php?t=${t}&id=${bob}&cardset_flags=${tshirt.join('')}`)).ok()).toBeTruthy();
+  expect(await changedBy()).toBe('Bob');
+  expect((await a.deck('fib-classic')).ok()).toBeTruthy();
+  expect(await changedBy()).toBeNull();
+});

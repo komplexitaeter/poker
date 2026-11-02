@@ -517,6 +517,28 @@ function store_team_deck($link, string $t, array $deck, array $catalog, bool $se
 }
 
 /*
+ * B-98 V6: the set group of a deck for "who changed the card set": the catalog group, for a custom set its deck id
+ * (every custom set counts as its own group). null for no deck.
+ */
+function deck_group_key(?array $deck): ?string
+{
+    if ($deck === null) return null;
+    return ($deck['group'] ?? null) === CUSTOM_DECK_GROUP ? (string)$deck['id'] : ($deck['group'] ?? null);
+}
+
+/*
+ * B-98 V6: remembers who changed the set group of the team last (player id from get_id_param('id'); '' = unknown,
+ * stored as null). dao.php delivers the name as deck.changed_by. Callers only call it when the group changes.
+ */
+function set_deck_changed_by($link, string $t, string $player_id): void
+{
+    $by = $player_id !== '' ? $player_id : null;
+    $sql = $link->prepare("update pok_teams_tbl set deck_changed_by = ? where id = ?");
+    $sql->bind_param('ss', $by, $t);
+    $sql->execute();
+}
+
+/*
  * B-103: true if a player of the team may put the card $key down: it is one of the cards of the team's deck that are
  * switched on ("cards on/off") or one of its active control cards. $deck as returned by resolve_deck() (e.g. via
  * lock_team_deck(), which also covers teams not migrated yet). Status cards (prgrss*, done001) and LATE_CARD_KEY are
@@ -726,6 +748,7 @@ function getDao($t, $id) {
     $deck = null;
     $custom_sets = array(); // B-98 S4: set id => set (load_custom_sets())
     $custom_played = array(); // B-98 S4: custom cards on the table that are in no active set any more
+    $deck_changed_by = null;
     $team_name = null;
     $color_mode = 'dark';
     $hide_teaser = 0;
@@ -779,6 +802,7 @@ function getDao($t, $id) {
                   ,t.deck_cards
                   ,t.deck_controls
                   ,t.deck_rev
+                  ,t.deck_changed_by
             FROM pok_teams_tbl as t
              WHERE t.id = ?");
     $sql->bind_param('s', $t);
@@ -800,6 +824,7 @@ function getDao($t, $id) {
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
         $show_tips = (int)$obj->show_tips;
         $needs_setup = (bool)$obj->needs_setup;
+        $deck_changed_by = $obj->deck_changed_by; // B-98 V6: player id, the name comes from the players below
 
         /* B-98: lazy migration - a team without deck_id gets the deck derived from its cardset_flags (also after the
            old deck menu changed them, update_cardset.php resets deck_id). Only if the flags are still the ones read
@@ -846,6 +871,7 @@ function getDao($t, $id) {
             }
             $custom_sets = load_custom_sets($link, $t, $catalog);
             $deck = resolve_deck($deck_id, $deck_cards, $deck_controls, (int)$obj->deck_rev, $catalog, $custom_sets);
+            $deck['changed_by'] = null; // B-98 V6: name of the player who changed the set group last (null = unknown)
         }
     }
 
@@ -869,6 +895,8 @@ function getDao($t, $id) {
 
             // B-110: the own board is loading right now, so the own person is never away
             $obj->away = ($obj->id != $id && (int)$obj->away === 1);
+
+            if ($deck !== null && $obj->id === $deck_changed_by) $deck['changed_by'] = $obj->name; // B-98 V6
 
             if ($obj->id == $id) {
                 $name=$obj->name;

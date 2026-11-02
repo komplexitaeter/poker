@@ -13,7 +13,7 @@
     {"card_key": "qstmrk1", "value": "?", "symbol": "s-question", "color": "vq", "numeric_value": null, "sort_order": 99010, "heading": "question", "description": "I have a question first.", "legacy_index": 43},
     {"card_key": "xclam01", "value": "!", "symbol": "s-exclam", "color": "vx", "numeric_value": null, "sort_order": 99020, "heading": "important", "description": "I have something important to say first.", "legacy_index": 44},
     {"card_key": "veto", "value": "✋", "symbol": "s-hand", "color": "vveto", "numeric_value": null, "sort_order": 98990, "heading": "veto", "description": "I object. Let's not go ahead like this.", "legacy_index": 45},
-    {"card_key": "shrug01", "value": "¯\\_(ツ)_/¯", "symbol": "s-shrug", "color": "vshrug", "numeric_value": null, "sort_order": 99030, "heading": "don't know", "description": "I don't know – and that's fine. Let's find out."}
+    {"card_key": "shrug01", "value": "¯\\_(ツ)_/¯", "symbol": "s-shrug", "color": "vshrug", "numeric_value": null, "sort_order": 99030, "heading": "shruggie", "description": "I don't know – and that's fine. Let's find out."}
   ],
   "groups": [
     {

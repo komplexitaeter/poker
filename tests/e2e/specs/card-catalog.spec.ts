@@ -107,14 +107,14 @@ test('texts per group as decided (B-99, Andreas 2026-10-31)', () => {
     ['step aside', 'full support', 'minor concerns', 'serious concerns', 'step out', 'need to talk', 'veto']);
   expect(group('delegation').cards.map(c => c.heading)).toEqual(
     ['Tell', 'Sell', 'Consult', 'Agree', 'Advise', 'Inquire', 'Delegate']);
-  expect(catalog.controls.map(c => c.heading)).toEqual(['break', 'question', 'important', 'veto', "don't know"]);
+  expect(catalog.controls.map(c => c.heading)).toEqual(['break', 'question', 'important', 'veto', 'shruggie']);
   for (const id of ['traffic', 'judge', 'delegation'])
     for (const card of group(id).cards) expect(card.description, `${id} ${card.card_key}`).toBeTruthy();
 });
 
 test('shruggie: a control card without value, off by default (B-106)', () => {
   const shrug = catalog.controls.find(c => c.card_key === 'shrug01') as Card;
-  expect(shrug).toMatchObject({ symbol: 's-shrug', color: 'vshrug', numeric_value: null, heading: "don't know",
+  expect(shrug).toMatchObject({ symbol: 's-shrug', color: 'vshrug', numeric_value: null, heading: 'shruggie',
     description: "I don't know – and that's fine. Let's find out." });
   expect(shrug.legacy_index).toBeUndefined(); // not in the old cardset_flags
   expect(catalog.default_controls).not.toContain('shrug01');
