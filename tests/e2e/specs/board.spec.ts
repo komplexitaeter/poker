@@ -88,6 +88,9 @@ test('two players join and see each other', async ({ browser }) => {
   const url = await createTeam(alice, 'Join Team');
   await joinAsPlayer(alice, url, 'Alice');
   await expect(tableCard(alice, 'Alice')).toBeVisible();
+  // R3 review polish: the header shows the team name only, not the own name
+  await expect(alice.locator('.team-name')).toHaveText('Join Team');
+  await expect(alice.locator('#prompt_user')).toHaveCount(0);
 
   const bob = await newPlayer(browser);
   await joinAsPlayer(bob, url, 'Bob');

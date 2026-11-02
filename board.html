@@ -8,15 +8,15 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.05" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.06" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.35" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.14" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.3" type="text/javascript"></script>
-    <script defer src="script/script_deck.js?v=1.13" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.94" type="text/javascript"></script>
+    <script defer src="script/script_deck.js?v=1.14" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.95" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -68,12 +68,10 @@
     <header class="head">
         <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg?v=2" alt="Komplexitäter tools" loading="lazy"/><img id="brand_icon" src="src/brand_icon_dark.svg?v=1" alt="Komplexitäter tools" loading="lazy"/></a>
 
-        <!-- team name with a softly pulsing text cursor; the cursor carries the player's name as a small
-             tag (like the name flags of cursors in shared documents). Click copies the board link.
-             #prompt_user is filled from the DAO (textContent); empty until the player has a name, then
-             the tag is hidden and only the team name and the cursor show. -->
+        <!-- the team name (textContent from the DAO); a click copies the board link. R3 review polish (Andreas):
+             no own name in the header any more, the table shows who you are -->
         <div class="head-title">
-            <button type="button" class="team-name" onclick="copyLink()"><span id="team_name"></span><span class="caret" aria-hidden="true"><span id="prompt_user" class="you-tag"></span></span></button>
+            <button type="button" class="team-name" onclick="copyLink()"><span id="team_name"></span></button>
             <!-- R3 review V2: "Invite" is the primary action of the header (accent); with navigator.share the native
                  share menu opens, else the link is copied and the button itself confirms it (V1, inviteTeam()) -->
             <button type="button" id="invite_btn" class="icon-btn invite-btn" onclick="inviteTeam()" aria-label="Invite – copy board link"><svg class="i i-share" aria-hidden="true"><use href="#i-share"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg><span class="lbl">Invite</span></button>

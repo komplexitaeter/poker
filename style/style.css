@@ -730,22 +730,6 @@ textarea.field {
 
 .team-name:hover #team_name { color: var(--accent); }
 
-/* the name tag sits right of the cursor, vertically centred on the team name (inside .caret) */
-.you-tag {
-    min-width: 0;
-    max-width: 12ch;
-    padding: 1px 5px;
-    border-radius: var(--radius-m);
-    background: var(--accent);
-    color: var(--on-accent);
-    font: bold var(--fs-xs) / 1.35 var(--font);
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* no player name yet (name overlay): the team name and the cursor alone */
-.you-tag:empty { display: none; }
-
 /* start page: "poker" with the cursor */
 .prompt-line {
     display: inline-flex;
@@ -754,9 +738,7 @@ textarea.field {
     white-space: nowrap;
 }
 
-/* the cursor: a thin line that slowly dims and comes back (no hard blink); on the board it
- * carries the name tag, which stays steady. Tag and team name keep the same distance to the
- * cursor (gap = margin-left, both in the team name's font size). */
+/* the cursor of the start page ("poker"): a thin line that slowly dims and comes back (no hard blink) */
 .caret {
     flex: none; /* the team name shrinks first; the tag has its own maximum width */
     display: inline-flex;
@@ -767,26 +749,14 @@ textarea.field {
     top: -0.05em; /* the line box hangs below the letters (descender room): centre on the letters */
 }
 
-/* B-70 board: a bit more room around the line, so it reads as a deliberate divider between team
- * name and name tag; without the tag it would stand alone: hidden (no name yet, phones) */
-.team-name .caret {
-    gap: 0.5em;
-    margin-left: 0.5em;
-}
-
-.team-name .caret:has(.you-tag:empty) { display: none; }
-
-/* Centre cursor and tag on the lowercase letters of the team name, independent of font metrics
- * (SF Mono in Safari vs. other monospace fonts): the team name's box is trimmed to the x-height,
- * so flex centring hits the middle of the lowercase letters. The padding keeps ascenders and
- * descenders visible (overflow: hidden for the ellipsis) and is symmetric, so the centre stays.
- * Without text-box support (Firefox) the top: -0.05em approximation above remains. */
+/* The team name's box is trimmed to the x-height, so flex centring in the header hits the middle of its
+ * lowercase letters, independent of font metrics (SF Mono in Safari vs. other monospace fonts). The padding
+ * keeps ascenders and descenders visible (overflow: hidden for the ellipsis) and is symmetric. */
 @supports (text-box: trim-both ex alphabetic) {
     .team-name #team_name {
         text-box: trim-both ex alphabetic;
         padding-block: 0.35em;
     }
-    .team-name .caret { top: 0; }
 }
 
 .caret::before {
@@ -973,12 +943,8 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     .container .menu-btn { display: inline-flex; }
 }
 
-/* phones (board): the team name gets the room, the name tag goes away completely,
- * the logo shrinks to its mark */
+/* phones (board): the team name gets the room, the logo shrinks to its mark */
 @media (max-width: 420px) {
-    .you-tag,
-    .team-name .caret { display: none; }
-
     .container #brand { display: none; }
     .container #brand_icon { display: block; }
 }
@@ -1720,7 +1686,7 @@ div#cbox {
     text-overflow: ellipsis;
 }
 
-/* B-99 D8: the own name tag looks like the name tag in the header (.you-tag) */
+/* B-99 D8: the own name tag on the table, accent filled */
 .c.is-me .card_player_name {
     border-radius: var(--radius-m);
     background: var(--accent);

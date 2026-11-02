@@ -1908,11 +1908,6 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
-    // B-51: the player's name as a tag on the cursor behind the team name in the header; plain text only
-    let promptUser = document.getElementById('prompt_user');
-    let promptText = myJson.name ? myJson.name : '';
-    if (promptUser.textContent !== promptText) promptUser.textContent = promptText;
-
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
 
@@ -2867,7 +2862,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=7'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=8'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
