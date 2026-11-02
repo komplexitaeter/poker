@@ -35,7 +35,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(alice.locator('#cs_title')).toHaveText('New card set');
   await expect(alice.locator('#cs_name')).toBeFocused();
   await expect(alice.locator('#cs_list [data-f^="card:"]')).toHaveCount(2);
-  await expect(alice.locator('#cs_cards_label')).toHaveText('Cards (2 of 16)');
+  await expect(alice.locator('#cs_cards_label')).toHaveText('Cards (2 of 20)');
   await expect(alice.locator('#cs_value')).toHaveValue('1');
   await expect(alice.locator('#cs_remove')).toBeDisabled(); // at least two cards
 

@@ -11,12 +11,12 @@
  * - A card has either a symbol of the symbol library (card_catalog.json "custom_symbols") or a text value (at most 6
  *   characters, no emoji), optional heading/description, an optional numeric value (spread, sorting, average) and a
  *   colour of the palette (card_catalog.json "custom_colors"). Cards migrated from an old mixed deck may keep their
- *   catalog symbol/colour; an edited copy of such a card may keep them as well.
+ *   catalog symbol/colour; an edited copy of such a card may keep them as well. A card copied from a catalog card
+ *   (editor template, request key = catalog card_key) may keep that card's symbol/colour, too.
  */
 
 const CUSTOM_DECK_PREFIX = 'c-';
 const CUSTOM_DECK_GROUP = 'custom';
-const CUSTOM_CARDS_MAX = 16;          // cards per set when cards are added (B-98); migrated sets may have more
 const CUSTOM_SET_NAME_MAX = 24;
 const CUSTOM_VALUE_MAX = 6;
 const CUSTOM_HEADING_MAX = 16;
@@ -29,6 +29,25 @@ const CUSTOM_BODY_MAX_BYTES = 65536;
 function custom_sets_max(): int
 {
     return defined('_CUSTOM_SETS_MAX') ? max(0, (int)constant('_CUSTOM_SETS_MAX')) : 5;
+}
+
+/*
+ * B-98: cards per set when cards are added (migrated sets may have more); _CUSTOM_CARDS_MAX in config.php overrides
+ * the default of 20 (Fibonacci has 17 cards and can be copied as a template, Andreas 2026-11-02)
+ */
+function custom_cards_max(): int
+{
+    return defined('_CUSTOM_CARDS_MAX') ? max(1, (int)constant('_CUSTOM_CARDS_MAX')) : 20;
+}
+
+/* card_key => card of all cards of the catalog groups (templates of the editor; no control or status cards) */
+function catalog_group_cards(array $catalog): array
+{
+    $cards = array();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['cards'] as $card)
+            if (isset($card['card_key']) && is_string($card['card_key'])) $cards[$card['card_key']] = $card;
+    return $cards;
 }
 
 /*
@@ -216,9 +235,12 @@ function is_custom_value_text(string $value): bool
 /*
  * Validates the card list of a create/save request. $known: cards of this set by key (active and inactive rows) -
  * a card that refers to one of them may keep its symbol and colour even if they are not in the custom whitelists
- * (cards migrated from an old deck). Returns array('cards' => [normalized cards]) or array('error' => code,
- * 'index' => position of the card).
- * A normalized card: key (given key or null), symbol, text, heading, description, numeric (string '1.50' or null), color.
+ * (cards migrated from an old deck). Likewise a card whose key is the card_key of a catalog group card (template of
+ * the editor, e.g. 'infin01') may take that card's symbol and colour; it is a new card (normalized key null).
+ * Other keys (other sets, other teams, unknown) give no exception. Content is validated as usual.
+ * Returns array('cards' => [normalized cards]) or array('error' => code, 'index' => position of the card).
+ * A normalized card: key (given custom key or null), symbol, text, heading, description, numeric (string '1.50' or
+ * null), color.
  */
 function validate_custom_cards($input, array $known, array $catalog): array
 {
@@ -227,6 +249,7 @@ function validate_custom_cards($input, array $known, array $catalog): array
 
     $symbols = array_flip(custom_symbols($catalog));
     $colors = array_flip(custom_colors($catalog));
+    $templates = catalog_group_cards($catalog);
     $cards = array();
     $seen = array();
     foreach ($input as $i => $card) {
@@ -234,10 +257,16 @@ function validate_custom_cards($input, array $known, array $catalog): array
         if (!is_array($card) || array_is_list($card) && count($card) > 0) return $error('card');
 
         $key = $card['key'] ?? null;
-        if ($key !== null && (!is_string($key) || !preg_match('/^c-[a-z0-9]{1,5}$/D', $key))) return $error('key');
-        if ($key !== null && isset($seen[$key])) return $error('duplicate_key');
-        if ($key !== null) $seen[$key] = true;
-        $ref = $key !== null ? ($known[$key] ?? null) : null;
+        $ref = null;
+        if ($key !== null && is_string($key) && isset($templates[$key])) {
+            $ref = $templates[$key]; // copy of a catalog card: a new card, catalog keys may repeat
+            $key = null;
+        } else {
+            if ($key !== null && (!is_string($key) || !preg_match('/^c-[a-z0-9]{1,5}$/D', $key))) return $error('key');
+            if ($key !== null && isset($seen[$key])) return $error('duplicate_key');
+            if ($key !== null) $seen[$key] = true;
+            $ref = $key !== null ? ($known[$key] ?? null) : null;
+        }
 
         $symbol = $card['symbol'] ?? null;
         $symbol = $symbol === '' ? null : $symbol;
@@ -246,7 +275,7 @@ function validate_custom_cards($input, array $known, array $catalog): array
         $text = $text === '' ? null : $text;
         if (($symbol === null) === ($text === null)) return $error('symbol_or_text');
         if ($symbol !== null && (!is_string($symbol)
-                || !isset($symbols[$symbol]) && ($ref === null || $ref['symbol'] !== $symbol))) return $error('symbol');
+                || !isset($symbols[$symbol]) && ($ref === null || ($ref['symbol'] ?? null) !== $symbol))) return $error('symbol');
         if ($text !== null && (!is_string($text) || !is_custom_value_text($text))) return $error('text');
 
         $heading = body_text($card, 'heading', CUSTOM_HEADING_MAX);
@@ -264,7 +293,7 @@ function validate_custom_cards($input, array $known, array $catalog): array
         }
 
         $color = $card['color'] ?? null;
-        if (!is_string($color) || !isset($colors[$color]) && ($ref === null || $ref['color'] !== $color)) return $error('color');
+        if (!is_string($color) || !isset($colors[$color]) && ($ref === null || ($ref['color'] ?? null) !== $color)) return $error('color');
 
         $cards[] = array('key' => $key, 'symbol' => $symbol, 'text' => $text,
             'heading' => $heading === '' ? null : $heading, 'description' => $description === '' ? null : $description,

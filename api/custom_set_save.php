@@ -2,11 +2,12 @@
 /*
  * B-98 S4: saves a custom set of the team (editor "Save"): name, style and the complete card list in order.
  * POST ?t=<team>&set=<set id>, JSON body: {name, style, rev, force: bool (optional), cards: [card, ...]}
- *   card as in custom_set_create.php plus key: the card_key of an existing card of the set (null/missing = new card).
+ *   card as in custom_set_create.php plus key: the card_key of an existing card of the set (null/missing = new card;
+ *   a catalog card_key = new card copied from that catalog card, as in custom_set_create.php).
  * - The server compares the list with the active cards: a card with its key and unchanged content keeps its key (only
  *   its position follows the list); a changed card becomes a new card (new key), the old one is kept inactive (cards
  *   are immutable); active cards missing in the list are switched off.
- * - Card limit CUSTOM_CARDS_MAX (16) only when cards are added: a set with more cards (migrated "Our deck") may
+ * - Card limit custom_cards_max() (default 20) only when cards are added: a set with more cards (migrated "Our deck") may
  *   keep them, but not grow.
  * - Optimistic lock: rev must be the rev the editor started from. Otherwise 409 {error: 'conflict', set: current set}
  *   ("Someone else changed this set"); saving again with force: true (or the new rev) overwrites.
@@ -58,9 +59,9 @@ if (isset($checked['error'])) {
     $link->rollback();
     custom_fail(400, $checked['error'], isset($checked['index']) ? array('index' => $checked['index']) : array());
 }
-if (count($checked['cards']) > max(CUSTOM_CARDS_MAX, count($set['cards']))) {
+if (count($checked['cards']) > max(custom_cards_max(), count($set['cards']))) {
     $link->rollback();
-    custom_fail(400, 'too_many_cards', array('max' => max(CUSTOM_CARDS_MAX, count($set['cards']))));
+    custom_fail(400, 'too_many_cards', array('max' => max(custom_cards_max(), count($set['cards']))));
 }
 
 $active = array();
