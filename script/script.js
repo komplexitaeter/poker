@@ -222,6 +222,15 @@ function deckElement(card) {
         element.addEventListener("focus", showDeckInfoByFocus);
         element.addEventListener("blur", hideDeckInfo);
         element.addEventListener("keydown", moveDeckFocus);
+        element.addEventListener("pointerdown", () => {
+            gDeckPointerPress = element;
+            if (document.activeElement === element) gDeckPointerFocus = element;
+        });
+        element.addEventListener("focus", () => {
+            gDeckPointerFocus = gDeckPointerPress === element ? element : null;
+            gDeckPointerPress = null;
+        });
+        element.addEventListener("blur", () => { if (gDeckPointerFocus === element) gDeckPointerFocus = null; });
         // B-68: the card with its key below it (shown on devices with a mouse, style.css)
         const slot = document.createElement("span");
         slot.className = "ctl-slot";
@@ -322,6 +331,11 @@ function hideDeckInfo() {
     line.hidden = true;
     line.replaceChildren();
 }
+
+/* R3 (Andreas, 2026-11-02): the deck card that got the focus from a pointer press (mouse, finger), null when the
+ * focus came from the keyboard or left the card. A letter key then moves the focus along (pickCardByKey). */
+let gDeckPointerFocus = null;
+let gDeckPointerPress = null; // the card pressed last (Safari does not focus a button on a click)
 
 /* B-99 (F3): one tab stop for the deck; the arrow keys move between its cards */
 function moveDeckFocus(event) {
@@ -804,7 +818,25 @@ function pickCardByKey(event) {
         else if (n === cards.length - 1) ctl.scrollTo({ left: ctl.scrollWidth, behavior });
         else card.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
     }
+    const focused = document.activeElement;
+    const focusInDeck = cards.includes(focused);
+    const pointerFocus = focusInDeck && gDeckPointerFocus === focused;
+    const wasPicked = card.classList.contains('selected');
     card.click();
+    // R3 (Andreas, 2026-11-02): the key switches the browser to showing the focus ring (:focus-visible); a deck
+    // card that kept the focus (from a click or Tab) would look picked as well. So the focus goes with the key
+    // to its card. A card taken back by key loses a focus that came from the pointer (it would still look
+    // picked); a keyboard focus stays on it.
+    if (!focusInDeck) return;
+    if (wasPicked && !card.classList.contains('selected')) {
+        if (pointerFocus) focused.blur();
+        else if (focused !== card) card.focus({ preventScroll: true });
+        return;
+    }
+    if (focused !== card) {
+        card.focus({ preventScroll: true });
+        if (pointerFocus) gDeckPointerFocus = card; // still the pointer's focus: a later take-back drops it
+    }
 }
 
 /* B-92: every board state asked for gets a number; an answer older than the one shown last is
