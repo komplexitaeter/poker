@@ -866,6 +866,7 @@ function updateDao(isOnLoad) {
 
             if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
             gDaoShownSeq = Math.max(gDaoShownSeq, seq);
+            noteDeckGroup(myJson, seq);
 
             gLastJson = myJson;
             updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
@@ -877,6 +878,35 @@ function updateDao(isOnLoad) {
         })
         .catch(error => console.log('dao.php failed', error))
         .finally(() => { gDaoLoading--; });
+}
+
+/* V6 (Andreas): when someone else switches the team to another card set (group of card_catalog.json), the others
+ * see a toast ("Card set changed to J.U.D.G.E."); otherwise their cards would change without a word. Not on the
+ * first load, not for a new variant or other cards of the same set, not for the one who changed it (the deck menu
+ * shows it to them): an own deck write counts until a board state asked for after its answer is shown. */
+let gShownDeckGroup = null;   // the set group of the board state shown last (null: none yet / unknown)
+let gOwnDeckWrites = [];      // own deck writes: {doneSeq} = the last board state asked for before their answer
+
+function isDeckWrite(url) {
+    return /\/api\/update_(deck|cardset)\.php/.test(url);
+}
+
+function noteDeckGroup(json, seq) {
+    const own = gOwnDeckWrites.length > 0;
+    gOwnDeckWrites = gOwnDeckWrites.filter(write => seq <= write.doneSeq);
+    const group = json && json.deck && typeof json.deck.group === 'string' ? json.deck.group : null;
+    if (group === null) return;
+    const before = gShownDeckGroup;
+    gShownDeckGroup = group;
+    if (before === null || before === group || own) return;
+    showToast('Card set changed to ' + deckGroupName(group));
+}
+
+/* the name of a set group (card_catalog.json), else its id */
+function deckGroupName(groupId) {
+    const groups = gCatalogV2 && Array.isArray(gCatalogV2.groups) ? gCatalogV2.groups : [];
+    const group = groups.find(entry => entry && entry.id === groupId);
+    return group && typeof group.name === 'string' && group.name !== '' ? group.name : groupId;
 }
 
 /* B-110: on every 'hb' of poker-msg (30 s) the board loads dao.php once, 0-5 s later (the boards of a team do not all
@@ -2182,6 +2212,8 @@ function initWSReconnect() {
  * request failed or took longer than WRITE_TIMEOUT_MS. Afterwards (success or not) beforeReload
  * runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
 function apiWrite(url, init = {}, beforeReload = null) {
+    const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
+    if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
     const options = Object.assign({ method: 'POST' }, init);
     if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
         options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
@@ -2196,6 +2228,7 @@ function apiWrite(url, init = {}, beforeReload = null) {
         console.log('write failed', url, error);
         return null;
     }).then(response => {
+        if (deckWrite !== null) deckWrite.doneSeq = gDaoSeq; // the reload below gets a higher number
         if (beforeReload !== null) beforeReload();
         afterWrite();
         return response;
