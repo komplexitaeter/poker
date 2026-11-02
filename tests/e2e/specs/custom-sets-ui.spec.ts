@@ -101,7 +101,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#deck_change')).toContainText('Risk');
   // the result as a toast (Andreas: messages of the deck menu as toasts)
-  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in use');
   await expect(alice.locator('#deck_edit')).toBeFocused();
 
   // the deck of everybody: the set in its order and style, then the control cards
@@ -168,7 +168,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   }
 });
 
-test('Save creates a set without playing it; "Save & play" of a saved set puts it in play', async ({ browser }) => {
+test('Save creates a set without playing it; "Save & use" of a saved set puts it in use', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Play');
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
@@ -187,7 +187,7 @@ test('Save creates a set without playing it; "Save & play" of a saved set puts i
   await expect(alice.locator('#cs_play')).toBeVisible();
   await alice.locator('#cs_play').click(); // no changes: only put in play
   await expect(editor(alice)).toBeHidden();
-  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in use');
   await expect(alice.locator('#deck_change')).toContainText('Later');
   await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Later');
   await expect.poll(async () => (await lastJson(bob)).deck.id).toBe((await lastJson(alice)).custom_sets[0].deck_id);
@@ -233,7 +233,7 @@ test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills 
   await alice.locator('#cs_name').fill('Our Fibonacci');
   await alice.locator('#cs_play').click();
   await expect(editor(alice)).toBeHidden();
-  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in use');
 
   const json = await lastJson(alice);
   const set = json.custom_sets[0];
@@ -274,7 +274,7 @@ test('an emoji as card text: counted as one character, played and shown on the t
   await expect(alice.locator('[data-f="card:0"] .tv')).toHaveText('🎉');
   await alice.locator('#cs_play').click();
   await expect(editor(alice)).toBeHidden();
-  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in use');
 
   const set = (await lastJson(alice)).custom_sets[0];
   expect(set.cards.map(c => [c.symbol, c.value])).toEqual([[null, '🎉'], ['s-2', '2']]);

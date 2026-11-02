@@ -633,7 +633,7 @@ function csRenderFoot() {
     const play = !csActive();
     // a new round: Save changes the cards of the set in play / "Save & play" while cards are down
     const round = csStartsRound() ? 'Cards are down – Save starts a new round.'
-        : play && deckRoundRunning() ? 'Cards are down – Save & play starts a new round.' : '';
+        : play && deckRoundRunning() ? 'Cards are down – Save & use starts a new round.' : '';
     if (round !== '') {
         const hint = csEl('p', 'hint warn cs-round', round);
         hint.id = 'cs_round';
@@ -652,7 +652,7 @@ function csRenderFoot() {
     cancel.disabled = busy;
     parts.push(cancel);
     if (play) {
-        const savePlay = csButton('btn-box', gCs.busy === 'play' ? 'Saving…' : 'Save & play', 'play', () => csSave(true));
+        const savePlay = csButton('btn-box', gCs.busy === 'play' ? 'Saving…' : 'Save & use', 'play', () => csSave(true));
         savePlay.id = 'cs_play';
         savePlay.disabled = busy;
         parts.push(savePlay);
@@ -1360,7 +1360,7 @@ function csApiError(answer) {
 }
 
 /* the result of a save / delete as a toast (Andreas: all messages of the deck menu as toasts at the bottom) */
-const CS_DONE = { created: 'Set created', played: 'Set saved and in play', saved: 'Set saved', deleted: 'Set deleted' };
+const CS_DONE = { created: 'Set created', played: 'Set saved and in use', saved: 'Set saved', deleted: 'Set deleted' };
 
 /* the menu takes the result at once (the next board state confirms it).
  * kind: 'created' | 'played' (saved and put in play, also a new set) | 'saved' | 'deleted'; newRound: from the API */
@@ -1445,7 +1445,7 @@ function csSave(play) {
         apiWrite(deckUrl(set.deck_id, null), {}, null).then(response => {
             if (response === null || !response.ok) {
                 csDone(result.answer, 'saved', false);
-                showToast('Set saved – not in play, please try again', DECK_TOAST_MS);
+                showToast('Set saved – not in use, please try again', DECK_TOAST_MS);
                 return;
             }
             response.json().catch(() => null).then(answer => {
