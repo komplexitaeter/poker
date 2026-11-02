@@ -39,7 +39,7 @@
       "variants": [
         {"id": "fib-classic", "name": "Classic", "cards": ["zero001", "1pnt501", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "twnty01", "4ty0001", "hundro1", "infin01"], "preset_mapping": "Fibonacci"},
         {"id": "fib-short", "name": "Short", "cards": ["zero001", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "twnty01", "4ty0001"], "preset_mapping": "Fibonacci Short"},
-        {"id": "fib-true", "name": "Pure Fibonacci", "cards": ["zero001", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "2tyone1", "3tyfr01", "5tyfve1"], "preset_mapping": "True-Fibonacci"}
+        {"id": "fib-true", "name": "Pure", "cards": ["zero001", "one0001", "two0001", "three01", "five001", "eight01", "thrtn01", "2tyone1", "3tyfr01", "5tyfve1"], "preset_mapping": "True-Fibonacci"}
       ]
     },
     {

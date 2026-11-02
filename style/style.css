@@ -4149,6 +4149,13 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     margin: 50px 0 0;
     overflow-wrap: anywhere;
 }
+/* both overlay headings: smaller on phones (the browser default 2em wrapped "Join Team Phoenix" at 360px) */
+.join-title,
+#removed_msg h1 {
+    font-size: clamp(1.25rem, 6vw, 2rem);
+    line-height: 1.25;
+}
+/* depends on the markup order in board.html: h1#join_title, then the (empty) label, then #nameinput */
 .join-title:not(.display_none) + label + #nameinput { margin-top: var(--space-4); }
 
 .privacy_link {

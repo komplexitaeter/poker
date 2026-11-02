@@ -1,6 +1,6 @@
 /* R3 F5 (B-98): the deck menu (Board settings -> Deck), mock-up "Deck menu R3", variant C.
  * Overview: the deck as small cards, the card set ("Change" opens the list of sets), the variant (Fibonacci:
- * Classic / Short / Pure Fibonacci, only a preset: it switches its cards on and the others off), every card of the set to
+ * Classic / Short / Pure, only a preset: it switches its cards on and the others off), every card of the set to
  * switch off or on (a selection that matches no variant is "custom"), and the control cards (☕ ? ! ✋, per team,
  * with every set). The list: every set group with a fan of its cards.
  * The variant is saved on click, Space or Enter only; arrow keys just move the choice (Sina, PR #113).
