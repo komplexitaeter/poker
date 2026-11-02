@@ -2630,6 +2630,10 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 /* a description but no heading (emotions): the symbol keeps its room, the word reads like a heading */
 .pc.has-info:not(.has-head) :is(.mot, .tv) { flex: 1 1 0; }
 
+/* R3 (Delia): one emoji in the smallest symbol box (0.4, long and short below 120 px) not larger than the box;
+ * 0.5 only in the large layouts (below) */
+.pc.has-info > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.4); }
+
 .pc .txt {
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -2654,6 +2658,7 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.1); }
 
 #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.72); }
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.5); }
 
 /* the word in the middle of the room below the symbol (lower quarter of the card) */
 #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc :is(.ttl, .txt) { margin-block: auto; }
@@ -2669,12 +2674,14 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
     #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) { padding-top: calc(var(--card-w) * 0.16); }
 
     #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.56); }
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.5); }
 
     /* R3 review E4: J.U.D.G.E. (sty-inverted, a two-line heading frame) a bit smaller, so its descriptions keep
      * three whole lines below it (they were cut on 120-140 px cards) */
     #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) { padding-top: calc(var(--card-w) * 0.12); }
 
     #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.48); }
+    #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.46); }
 }
 
 /* R3 review E4: descriptions of the short decks (traffic lights, Delegation) end on a whole line with an ellipsis
