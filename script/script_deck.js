@@ -8,7 +8,9 @@
  * rev}). Every change is written at once (api/update_deck.php, api/update_controls.php, apiWrite()); the menu shows
  * it right away (a local copy of the deck) and takes the server's deck again when its rev changes.
  * While cards are down a note says that a new deck starts a new round (the server starts it in the same request).
- * Own sets (editor) come later (R3 S4/F6). Only createElement / textContent; keys in URLs encoded. */
+ * B-98 S5: the team's own sets (dao custom_sets, deck group 'custom'): "Your sets" on top of the list (choose, edit,
+ * "+ New set"), an own set in play shows its name, its cards and "Edit set" (editor: script_custom.js).
+ * Only createElement / textContent (set names are free text); keys in URLs encoded. */
 
 const DECK_MIN_CARDS = 2; // a deck keeps at least two cards of its set
 
@@ -31,7 +33,14 @@ const gDeckMenu = {
     serverRev: null,  // rev of the server's deck the local copy is based on
     sig: null,        // what the menu was last built from
     variantKeyMove: false, // the next change of the variant radios comes from an arrow key
+    sets: [],         // B-98 S5: the team's own sets (dao custom_sets)
+    limits: { sets: 5, cards: 16 }, // B-98 S5: dao custom_limits
 };
+
+/* B-98 S5: an own set of the team by its deck id 'c-<id>' */
+function deckCustomSet(deckId) {
+    return gDeckMenu.sets.find(set => set.deck_id === deckId);
+}
 
 function deckMenuGroups() {
     const groups = gCatalogV2 && Array.isArray(gCatalogV2.groups) ? gCatalogV2.groups : [];
@@ -199,7 +208,12 @@ function deckMainView(deck, group, variant) {
     toggles.appendChild(grid);
     parts.push(toggles);
 
-    // the control cards (per team)
+    parts.push(dmControlsField(deck));
+    return parts;
+}
+
+/* the control cards (per team), with every set */
+function dmControlsField(deck) {
     const controls = dmEl('fieldset', 'f');
     controls.id = 'deck_controls';
     controls.appendChild(dmEl('legend', 'lab', 'Special cards'));
@@ -218,8 +232,55 @@ function deckMainView(deck, group, variant) {
         ctlGrid.appendChild(button);
     });
     controls.appendChild(ctlGrid);
-    parts.push(controls);
+    return controls;
+}
 
+/* B-98 S5: the overview while an own set is in play: its name and cards, "Edit set" (the editor changes the cards),
+ * the control cards as with every set; no variants, no toggles */
+function deckCustomMainView(deck, set) {
+    const parts = [];
+    const note = dmRoundNote();
+    if (note !== null) parts.push(note);
+
+    const name = set ? set.name : 'Own set';
+    const change = dmEl('button', 'dm-setbtn');
+    change.type = 'button';
+    change.id = 'deck_change';
+    change.setAttribute('data-f', 'change');
+    const title = dmEl('span', 'dm-t');
+    title.append(dmEl('small', null, 'Card set \u00b7 your set'), dmEl('b', null, name));
+    change.append(title, dmFan(deck.cards), dmEl('span', 'cm', 'Change'), dmIcon('next'));
+    change.setAttribute('aria-label', 'Card set: ' + name + '. Change');
+    change.addEventListener('click', () => showDeckView('pick'));
+    parts.push(change);
+
+    const cards = dmEl('div', 'f');
+    cards.id = 'deck_cards';
+    const head = dmEl('div', 'cs-labrow');
+    head.appendChild(dmEl('span', 'lab', 'Cards (' + deck.cards.length + ')'));
+    if (set) {
+        const edit = dmEl('button', 'btn-box cs-editbtn');
+        edit.type = 'button';
+        edit.id = 'deck_edit';
+        edit.setAttribute('data-f', 'edit');
+        edit.append(dmIcon('pen'), 'Edit set');
+        edit.addEventListener('click', () => openCustomEditor(set, edit));
+        head.appendChild(edit);
+    }
+    cards.appendChild(head);
+    const grid = dmEl('div', 'dm-tgs cs-ro');
+    deck.cards.forEach(key => {
+        const card = gCardByKey.get(key);
+        if (card === undefined) return;
+        const item = dmEl('span', 'dm-tg cs-rocard');
+        item.setAttribute('data-card', key);
+        item.appendChild(dmCard(card, true));
+        grid.appendChild(item);
+    });
+    cards.appendChild(grid);
+    parts.push(cards);
+
+    parts.push(dmControlsField(deck));
     return parts;
 }
 
@@ -241,8 +302,13 @@ function deckPickView(deck) {
     const note = dmRoundNote();
     if (note !== null) parts.push(note);
 
+    parts.push(...dmOwnSets(deck));
+
+    const builtIn = dmEl('h4', 'lab cs-sec cs-sec2', 'Built-in sets');
+    builtIn.id = 'deck_builtin_title';
+    parts.push(builtIn);
     const list = dmEl('ul', 'dm-plist');
-    list.setAttribute('aria-labelledby', 'deck_pick_title');
+    list.setAttribute('aria-labelledby', 'deck_builtin_title');
     deckMenuGroups().forEach(group => {
         const current = group.id === deck.group;
         const item = dmEl('li', 'dm-prow' + (current ? ' sel' : ''));
@@ -268,6 +334,65 @@ function deckPickView(deck) {
     return parts;
 }
 
+/* B-98 S5: "Your sets (n / max)": a row per own set (choose it; the pen opens the editor), then "+ New set"
+ * (disabled with a hint at the limit) */
+function dmOwnSets(deck) {
+    const parts = [];
+    const max = gDeckMenu.limits.sets;
+    const count = gDeckMenu.sets.length;
+    const head = dmEl('h4', 'lab cs-sec');
+    head.id = 'deck_own_title';
+    head.append('Your sets ', dmEl('span', 'cs-count' + (count >= max ? ' full' : ''), count + ' / ' + max));
+    parts.push(head);
+
+    const list = dmEl('ul', 'dm-plist');
+    list.id = 'deck_own_sets';
+    list.setAttribute('aria-labelledby', 'deck_own_title');
+    gDeckMenu.sets.forEach(set => {
+        const current = set.deck_id === deck.id;
+        const item = dmEl('li', 'dm-prow cs-prow' + (current ? ' sel' : ''));
+        item.setAttribute('data-set', String(set.set_id));
+        const button = dmEl('button', 'dm-prow-b');
+        button.type = 'button';
+        button.setAttribute('data-f', 'set:' + set.set_id);
+        if (current) button.setAttribute('aria-current', 'true');
+        const text = dmEl('span', 'dm-t');
+        text.append(dmEl('b', null, set.name), dmEl('small', null, set.cards.length + ' cards'));
+        const mark = current ? dmIcon('check', 'dm-tick') : dmIcon('next');
+        button.append(text, dmFan(set.cards.map(card => card.card_key)), mark);
+        button.addEventListener('click', () => pickCustomSet(set));
+        const edit = dmEl('button', 'cs-edit');
+        edit.type = 'button';
+        edit.setAttribute('data-f', 'edit:' + set.set_id);
+        edit.setAttribute('aria-label', 'Edit ' + set.name);
+        edit.appendChild(dmIcon('pen'));
+        edit.addEventListener('click', () => openCustomEditor(set, edit));
+        item.append(button, edit);
+        list.appendChild(item);
+    });
+    parts.push(list);
+
+    const add = dmEl('button', 'cs-new');
+    add.type = 'button';
+    add.id = 'deck_new_set';
+    add.setAttribute('data-f', 'new');
+    const text = dmEl('span', 'dm-t');
+    text.append(dmEl('b', null, 'New set'), dmEl('small', null, 'Your own values, symbols and texts'));
+    add.append(dmEl('span', 'cs-plus', '+'), text);
+    add.setAttribute('aria-label', 'New set');
+    if (count >= max) {
+        add.disabled = true;
+        const hint = dmEl('p', 'hint cs-limit', count + ' of ' + max + ' sets \u2013 delete one of your sets to create a new one.');
+        hint.id = 'deck_new_hint';
+        add.setAttribute('aria-describedby', hint.id);
+        parts.push(add, hint);
+    } else {
+        add.addEventListener('click', () => openCustomEditor(null, add));
+        parts.push(add);
+    }
+    return parts;
+}
+
 /* ------------------------------------------------------------------ render */
 
 /* builds the menu when what it shows changed; the focus stays on the same control */
@@ -275,20 +400,22 @@ function renderDeckMenu(force = false) {
     const box = document.getElementById('deck_menu');
     if (box === null) return;
     const deck = gDeckMenu.deck;
-    const sig = JSON.stringify([gDeckMenu.view, deck, deckRoundRunning()]);
+    const sig = JSON.stringify([gDeckMenu.view, deck, deckRoundRunning(), gDeckMenu.sets, gDeckMenu.limits]);
     if (!force && sig === gDeckMenu.sig) return;
     gDeckMenu.sig = sig;
 
     const focused = document.activeElement;
     const focusKey = focused instanceof Element && box.contains(focused) ? focused.getAttribute('data-f') : null;
 
-    const group = deck ? deckMenuGroup(deck.group) : undefined;
-    if (!deck || group === undefined) {
+    const custom = !!deck && deck.group === 'custom';
+    const group = deck && !custom ? deckMenuGroup(deck.group) : undefined;
+    if (!deck || (!custom && group === undefined)) {
         box.replaceChildren(dmEl('p', 'hint', 'Card sets can\'t be loaded right now. Please reload the page in a moment.'));
         return;
     }
-    const variant = deckMenuVariant(group, deck.id);
-    box.replaceChildren(...(gDeckMenu.view === 'pick' ? deckPickView(deck) : deckMainView(deck, group, variant)));
+    if (gDeckMenu.view === 'pick') box.replaceChildren(...deckPickView(deck));
+    else if (custom) box.replaceChildren(...deckCustomMainView(deck, deckCustomSet(deck.id)));
+    else box.replaceChildren(...deckMainView(deck, group, deckMenuVariant(group, deck.id)));
 
     if (focusKey !== null) {
         const again = box.querySelector('[data-f="' + CSS.escape(focusKey) + '"]');
@@ -299,6 +426,8 @@ function renderDeckMenu(force = false) {
 /* called with every board state (updateDom); takes the server's deck when it changed */
 function updateDeckMenu(json) {
     gDeckMenu.json = json;
+    gDeckMenu.sets = json && Array.isArray(json.custom_sets) ? json.custom_sets.filter(set => set && Array.isArray(set.cards)) : [];
+    if (json && json.custom_limits && typeof json.custom_limits.sets === 'number') gDeckMenu.limits = json.custom_limits;
     const deck = json && json.deck && typeof json.deck === 'object' && Array.isArray(json.deck.cards) ? json.deck : null;
     if (deck === null) {
         gDeckMenu.deck = null;
@@ -351,7 +480,9 @@ function writeDeck(url, local, kind) {
 }
 
 function deckUrl(variantId, cards) {
-    let url = './api/update_deck.php?t=' + encodeURIComponent(t) + '&deck=' + encodeURIComponent(variantId);
+    // B-98 V6: the own user id, so the others' toast can name who changed the card set (deck.changed_by)
+    let url = './api/update_deck.php?t=' + encodeURIComponent(t) + '&id=' + encodeURIComponent(sid)
+        + '&deck=' + encodeURIComponent(variantId);
     if (cards !== null) url += '&cards=' + cards.map(encodeURIComponent).join(',');
     return url;
 }
@@ -366,6 +497,19 @@ function pickDeckGroup(group) {
     const variant = group.variants[0];
     writeDeck(deckUrl(variant.id, null),
         { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() }, 'set');
+    showDeckView('main');
+}
+
+/* B-98 S5: an own set becomes the team's deck (all its cards; the control cards stay) */
+function pickCustomSet(set) {
+    const deck = gDeckMenu.deck;
+    gDeckMenu.view = 'main';
+    if (deck === null || set.deck_id === deck.id) {
+        showDeckView('main');
+        return;
+    }
+    writeDeck(deckUrl(set.deck_id, null), { id: set.deck_id, group: 'custom', cards: set.cards.map(card => card.card_key),
+        controls: deck.controls.slice() }, 'set');
     showDeckView('main');
 }
 

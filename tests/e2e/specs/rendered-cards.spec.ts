@@ -91,7 +91,7 @@ test('a card without a symbol shows its value as text', async ({ browser }) => {
   await expect(face).toHaveAttribute('aria-label', 'c-zz1');
 });
 
-test('picture symbols: headings and descriptions on the table, mini symbols in the spread', async ({ browser }) => {
+test('picture symbols: headings on the table, mini symbols in the spread', async ({ browser }) => {
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'Pictures');
   const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
@@ -105,11 +105,13 @@ test('picture symbols: headings and descriptions on the table, mini symbols in t
   await setCard(alice, url, bob, 'red0001');
   await pickCard(alice, 'green01');
   const red = tableCard(alice, 'Bob').locator('.pc');
-  await expect(red).toHaveAttribute('aria-label', 'red. I see a blocker. Let\'s talk before we go on.');
+  await expect(red).toHaveAttribute('aria-label', 'red');
   await expect(red.locator('.ttl')).toHaveText('red');
-  await expect(red.locator('.txt')).toHaveText('I see a blocker. Let\'s talk before we go on.');
+  await expect(red.locator('.txt')).toHaveCount(0); // traffic lights without descriptions (Andreas)
   await expect(red.locator('use')).toHaveAttribute('href', /#s-light-red$/);
-  await expect(red).not.toHaveClass(/one-text/); // heading and description: the description stays thin
+  await expect(red).toHaveClass(/one-text/);
+  // laid out like the other one-word decks (stars, emotions): the light large, the word below it
+  await expect(alice.locator('#cbox')).toHaveAttribute('data-text-size', 'word');
 
   const spreadValue = alice.locator('#spread_bars [data-card="green01"] .spread-value');
   await expect(spreadValue.locator('.mini use')).toHaveAttribute('href', /#s-light-green$/);

@@ -4756,3 +4756,417 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 @media (max-width: 799.98px) {
     .dm-tg .dm-card { --deck-w: 42px; }
 }
+
+/* ---------- Own card sets (B-98 S5; script/script_deck.js "Your sets", script/script_custom.js editor) ---------- */
+
+/* deck menu: "Your sets (n / max)", a row per set with its pen, "+ New set" */
+.cs-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 2px; }
+.cs-sec2 { margin-top: 18px; }
+.cs-count { font-size: var(--fs-xs); color: var(--muted); }
+.cs-count.full { color: var(--warn); }
+.cs-prow { display: flex; align-items: center; }
+.cs-prow .dm-prow-b { flex: 1; min-width: 0; }
+.cs-edit {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    margin-left: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+}
+.cs-edit:hover { color: var(--accent); border-color: var(--accent); }
+.cs-edit .i { width: 16px; height: 16px; }
+.cs-new {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    margin: 8px 0 0;
+    padding: 6px 10px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.cs-new:enabled:hover { border-color: var(--accent); }
+.cs-new:enabled:hover b { color: var(--accent); }
+.cs-new:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+.cs-new:disabled b { color: var(--disabled); }
+.cs-plus { font-size: 22px; line-height: 1; width: 26px; text-align: center; }
+.cs-limit { color: var(--warn); }
+.cs-labrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.cs-labrow .lab { margin: 0; }
+.dm .cs-editbtn { min-height: var(--tap); padding: 2px 12px; }
+.cs-editbtn .i, .cs-ovl .btn-box .i { width: 16px; height: 16px; }
+.cs-ro .dm-tg { cursor: default; border: 1px solid transparent; }
+.cs-edit:focus-visible, .cs-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the editor (script_custom.js): a full-screen modal dialog (Andreas). Head and foot fixed; large screens: name and
+ * style on top, the card strip on the left in full height, the card's fields on the right (both scroll on their own);
+ * phones: one column that scrolls, the strip scrolls sideways */
+.cs-ovl {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--bg);
+    color: var(--text);
+    text-align: left;
+    font-size: var(--fs-m);
+}
+.cs-ovl[open] { display: flex; flex-direction: column; }
+.cs-ovl::backdrop { background: var(--bg); }
+.cs-ovl .btn-box {
+    font-size: var(--fs-s);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--tap);
+    margin: 0;
+    padding: 4px 16px;
+}
+.cs-ovl .field { width: 100%; min-height: var(--tap); font-size: var(--fs-m); }
+.cs-ovl textarea.field { display: block; padding: 8px 10px; line-height: 1.4; }
+.cs-ovl .f { margin: 0 0 14px; padding: 0; border: 0; min-width: 0; }
+.cs-ovl .hint { margin-top: 4px; }
+
+.cs-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    min-height: 52px;
+    padding: 4px 8px 4px 24px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+}
+.cs-head h2 { margin: 0; font-size: var(--fs-l); }
+.cs-sub { flex: 1; min-width: 12em; font-size: var(--fs-xs); color: var(--muted); }
+.cs-sub.bad { color: var(--danger); font-weight: bold; }
+.cs-x .i { width: 20px; height: 20px; }
+
+.cs-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 32px;
+    width: 100%;
+    max-width: 960px; /* the overlay is full screen, its content stays together on wide screens */
+    margin: 0 auto;
+    padding: 16px 24px 0;
+    box-sizing: border-box;
+}
+.cs-topf {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 360px) minmax(0, 420px);
+    gap: 0 24px;
+    align-items: start;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 14px;
+}
+.cs-lab { display: flex; align-items: baseline; gap: 6px; }
+.cs-opt { font-size: var(--fs-xs); color: var(--muted); }
+.cs-ctr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cs-err { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--danger); font-weight: bold; }
+.cs-f.has-err .field { border-color: var(--danger); }
+.cs-mono { font-weight: bold; letter-spacing: .04em; }
+
+/* the card strip: every card as it looks (cardFace 'table'), the selected one with ↑ ↓ × */
+.cs-cards { display: flex; flex-direction: column; min-height: 0; }
+.cs-cards > .lab { flex: none; }
+.cs-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 220px;
+    margin: 0;
+    padding: 2px 6px 16px 2px;
+    box-sizing: border-box;
+    list-style: none;
+    --card-w: 96px;
+}
+.cs-item { position: relative; display: flex; flex-direction: column; flex: none; }
+.cs-item.sel { align-items: center; gap: 6px; margin-block: 6px; }
+/* the card being edited: large, as on the table */
+.cs-card {
+    position: relative;
+    display: block;
+    width: calc(var(--card-w) + 10px);
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: calc(var(--card-w) * 0.11 + 5px);
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.cs-card .pc { width: var(--card-w); }
+/* the other cards: a compact row (small card, name, value) */
+.cs-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--tap);
+    padding: 2px 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.cs-row .dm-card { flex: none; --deck-w: 26px; width: var(--deck-w); }
+.cs-row-t { display: flex; flex-direction: column; min-width: 0; }
+.cs-row-t b { font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-row-t small { font-size: var(--fs-xs); color: var(--muted); }
+.cs-row:hover { border-color: var(--line-strong); }
+.cs-item.bad .cs-row { border-color: var(--danger); }
+.cs-row .cs-bang { top: 50%; right: 6px; transform: translateY(-50%); }
+.cs-item.sel .cs-card { border: 2px solid var(--accent); padding: 3px; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cs-item.bad .cs-card { border-color: var(--danger); }
+.cs-bang {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--danger);
+    color: var(--bg);
+    font-size: 13px;
+    font-weight: bold;
+}
+.cs-acts { display: flex; gap: 4px; }
+.cs-mv {
+    min-width: var(--tap);
+    min-height: var(--tap);
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg-2);
+    color: var(--text);
+    font: bold var(--fs-m) var(--font);
+    cursor: pointer;
+}
+.cs-mv:enabled:hover { border-color: var(--accent); color: var(--accent); }
+.cs-mv.danger:enabled { color: var(--danger); }
+.cs-mv.danger:enabled:hover { border-color: var(--danger); }
+.cs-mv:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+.cs-additem { flex: none; }
+.cs-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-height: var(--tap);
+    margin-top: 4px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+.cs-add:enabled:hover { border-color: var(--accent); color: var(--accent); }
+.cs-add:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+
+/* the fields of the selected card */
+.cs-detail {
+    position: relative;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    max-width: 680px;
+    padding: 0 4px 24px;
+}
+.cs-h { margin: 0 0 12px; font-size: var(--fs-m); }
+.cs-symf { position: relative; }
+.cs-symrow { display: flex; gap: 8px; align-items: stretch; }
+.cs-symbtn {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: calc(var(--tap) + 8px);
+    padding: 4px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg-2);
+    color: var(--text);
+    font: var(--fs-m) var(--font);
+    text-align: left;
+    cursor: pointer;
+}
+.cs-symrow .field { flex: 1 1 0; min-width: 0; width: auto; }
+.cs-symbtn:hover, .cs-symbtn[aria-expanded="true"] { border-color: var(--accent); }
+.cs-symname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-symbtn .i { width: 16px; height: 16px; color: var(--muted); }
+/* a symbol drawn small and whole (the spread's .mini is 16 x 19) */
+.cs-ovl .mini.cs-mini { flex: none; display: grid; place-items: center; width: 26px; height: 31px; }
+.cs-ovl .mini.cs-mini .mot { width: 100%; height: 100%; }
+.cs-abc { font: bold 11px var(--font); color: var(--text); border: 1px solid var(--line-strong); border-radius: 3px; box-sizing: border-box; }
+
+/* the picker: a search field and the list below the button */
+.cs-pop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    z-index: 2;
+    padding: 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+    box-shadow: 0 12px 32px var(--shadow-color);
+}
+.cs-plist { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; margin: 8px 0 0; padding: 0; list-style: none; }
+.cs-pgroup { padding: 8px 8px 4px; font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.cs-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--tap);
+    padding: 2px 8px;
+    border-radius: var(--radius-m);
+    cursor: pointer;
+}
+.cs-option:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cs-option.active { background: color-mix(in srgb, var(--accent) 20%, transparent); outline: 1px solid var(--accent); }
+.cs-option[aria-selected="true"] .cs-optname { font-weight: bold; }
+.cs-option.taken .cs-mini { opacity: .45; }
+.cs-option.taken .cs-optname { color: var(--muted); }
+.cs-optname { flex: 1; min-width: 0; }
+.cs-optnote { font-size: var(--fs-xs); color: var(--muted); }
+.cs-optcheck { width: 16px; height: 16px; color: var(--accent); stroke-width: 2.5; }
+.cs-pnone { padding: 10px 8px; color: var(--muted); font-size: var(--fs-s); }
+
+.cs-ovl .cs-num { max-width: 160px; }
+.cs-sw { display: flex; flex-wrap: wrap; gap: 6px; }
+.cs-swatch {
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    background: var(--a);
+    box-shadow: 0 0 0 1px var(--line-strong);
+    cursor: pointer;
+}
+.cs-swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+.cs-swatch:focus-visible, .cs-card:focus-visible, .cs-row:focus-visible, .cs-mv:focus-visible, .cs-add:focus-visible, .cs-del:focus-visible,
+.cs-symbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cs-row:focus-visible { outline-offset: -2px; } /* inside: the strip would cut it on the left */
+@media (pointer: coarse) {
+    .cs-swatch { width: 44px; height: 44px; }
+}
+
+.cs-foot {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--bg-2);
+}
+.cs-foot .cs-round { flex: 1 1 100%; margin: 0; }
+.cs-fill { flex: 1; }
+.cs-foot .btn-box.primary { min-width: 96px; }
+.cs-del {
+    min-height: var(--tap);
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--danger);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+/* the question (discard, delete) over the editor */
+.cs-scrim { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
+.cs-scrim[hidden] { display: none; }
+.cs-dlg {
+    width: min(440px, 100%);
+    box-sizing: border-box;
+    padding: 20px 22px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+    box-shadow: 0 12px 32px var(--shadow-color);
+}
+.cs-dlg h3 { margin: 0 0 10px; font-size: var(--fs-l); overflow-wrap: anywhere; }
+.cs-dlg p { margin: 0 0 10px; font-size: var(--fs-s); line-height: 1.5; color: var(--muted); }
+.cs-dlg .cs-warnp { color: var(--warn); }
+.cs-dlgbtns { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.btn-box.danger.strong:enabled { background: var(--danger); border-color: var(--danger); color: var(--bg); font-weight: bold; }
+
+/* phones: one column that scrolls (head and foot stay), the card strip sideways above the fields */
+@media (max-width: 799.98px) {
+    .cs-head { padding: 4px 4px 4px 14px; }
+    .cs-head h2 { flex: 1; font-size: var(--fs-m); }
+    .cs-sub { order: 3; flex-basis: 100%; padding-bottom: 4px; }
+    .cs-body { display: block; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 0; }
+    .cs-topf { grid-template-columns: minmax(0, 1fr); }
+    /* the strip sideways: the card being edited larger, the others small cards only */
+    .cs-list {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 6px;
+        width: auto;
+        overflow-x: auto;
+        overflow-y: hidden;
+        margin: 0 -14px;
+        padding: 4px 14px 60px;
+        --card-w: 72px;
+    }
+    .cs-item.sel { margin: 0; }
+    .cs-acts { position: absolute; top: 100%; left: 0; margin-top: 6px; }
+    .cs-row { flex-direction: column; width: auto; padding: 4px 3px; }
+    .cs-row .dm-card { --deck-w: 44px; }
+    .cs-row-t { display: none; }
+    .cs-row .cs-bang { top: -4px; right: -4px; transform: none; }
+    .cs-additem { align-self: stretch; display: flex; }
+    .cs-add { width: 56px; margin: 0; flex-direction: column; }
+    .cs-cards { margin-bottom: 14px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+    .cs-detail { overflow: visible; max-width: none; padding-bottom: 16px; }
+    .cs-plist { max-height: 50vh; }
+    .cs-foot { padding: 8px 14px; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
+    .cs-foot .btn-box { flex: 1 1 auto; padding: 4px 10px; }
+    .cs-fill { display: none; }
+}

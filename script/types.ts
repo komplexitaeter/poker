@@ -45,12 +45,40 @@ export interface myJsonType {
     players: Player[];
     observers: Observer[]; // B-110: connected observers, ordered by name
     deck: Deck | null; // R3 (B-98): null without card_catalog.json on the server (fallback: cardset_flags)
+    custom_sets: CustomSet[];          // B-98 S4: the team's own sets (not deleted), in their order
+    custom_cards_played: CustomCard[]; // B-98 S4: custom cards on the table that are in no active set any more
+    custom_limits: { sets: number; cards: number }; // B-98 S4: sets per team, cards per set (when adding)
+}
+
+/* B-98 S4: an own card set of the team (api/lib_custom.php load_custom_sets()) */
+interface CustomSet {
+    set_id: number;
+    deck_id: string;     // 'c-<set_id>', the deck id when the set is in play
+    name: string;        // free text: output with textContent only
+    style: string;       // plain | badge | banner | inverted (editor "Style"), the look of its cards
+    rev: number;         // optimistic lock of custom_set_save.php
+    cards: CustomCard[]; // active cards in position order
+}
+
+/* B-98 S4: a custom card (api/lib_custom.php custom_card_out()); immutable, a change gives a new card_key */
+interface CustomCard {
+    card_key: string;    // 'c-' + base36(id)
+    symbol: string | null; // symbol of the library, null for a text card
+    value: string;       // the text, or the catalog value of the symbol
+    heading: string | null;
+    description: string | null;
+    numeric_value: number | null; // spread, average; null: does not count
+    color: string;
+    sort_order: number;
+    set_id: number;
+    active: boolean;
+    infinite?: boolean;  // symbol s-inf
 }
 
 /* R3 (B-98): the team's deck from card_catalog.json (dao.php, api/update_deck.php) */
 interface Deck {
     id: string | null;  // variant id, e.g. 'fib-classic' (null: unknown variant)
-    group: string | null; // set group id, e.g. 'fib'
+    group: string | null; // set group id, e.g. 'fib'; B-98 S4: 'custom' for an own set (id 'c-<set id>')
     cards: string[];    // card keys of the group, in the group's order
     controls: string[]; // control card keys (per team)
     rev: number;        // deck_rev, changes with every change of the deck

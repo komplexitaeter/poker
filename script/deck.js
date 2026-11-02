@@ -144,8 +144,61 @@ function catalogV2Cards(catalog) {
     return cards;
 }
 
-/* R3 F4: the deck from dao ({id, group, cards, controls, rev}): the set's cards, then the control cards. Keys the
- * catalog does not know are left out. null when there is no usable deck (then the adapter decides). */
+/* B-98 S5: the card model of a custom card (dao custom_sets[].cards, custom_cards_played; api/lib_custom.php
+ * custom_card_out()) in the style of its set (plain | badge | banner | inverted, editor "Style"); no talk / control
+ * rules (the tips stay general). A text card gets symbol '' so cardLook() does not turn a text like "5" into the
+ * symbol s-5 (Delia). */
+function cardFromCustom(entry, style = 'plain') {
+    const symbol = catalogText(entry.symbol);
+    const text = typeof entry.value === 'string' && entry.value !== '' ? entry.value : String(entry.card_key);
+    const heading = catalogText(entry.heading);
+    const info = catalogText(entry.description);
+    const value = typeof entry.numeric_value === 'number' && isFinite(entry.numeric_value) ? entry.numeric_value : null;
+    return {
+        key: entry.card_key,
+        label: text,
+        description: heading || info || text,
+        value,
+        infinite: entry.infinite === true,
+        control: false,
+        controlCard: false,
+        talk: false,
+        text,
+        heading,
+        info,
+        symbol: symbol === null ? '' : symbol,
+        color: catalogText(entry.color),
+        group: 'custom',
+        style: CARD_STYLES.has(style) ? style : 'plain',
+        custom: true,
+    };
+}
+
+/* B-98 S5: adds the custom cards of a board state (the team's sets and custom cards still on the table) to the cards
+ * by key. A custom card never changes its content (a changed card gets a new key), but its set may get another
+ * style: a known key is only built again when the style of its set changed. Cards of deleted sets: plain. */
+function addCustomCards(json, cardsByKey) {
+    if (!json || typeof json !== 'object') return;
+    const styles = new Map(); // set_id -> style
+    const entries = [];
+    (Array.isArray(json.custom_sets) ? json.custom_sets : []).forEach(set => {
+        if (!set || !Array.isArray(set.cards)) return;
+        styles.set(set.set_id, typeof set.style === 'string' ? set.style : 'plain');
+        entries.push(...set.cards);
+    });
+    if (Array.isArray(json.custom_cards_played)) entries.push(...json.custom_cards_played);
+    entries.forEach(entry => {
+        if (!entry || typeof entry.card_key !== 'string') return;
+        const style = styles.get(entry.set_id) || 'plain';
+        const known = cardsByKey.get(entry.card_key);
+        if (known === undefined || (known.custom === true && known.style !== style && styles.has(entry.set_id))) {
+            cardsByKey.set(entry.card_key, cardFromCustom(entry, style));
+        }
+    });
+}
+
+/* R3 F4: the deck from dao ({id, group, cards, controls, rev}): the set's cards, then the control cards (B-98 S5:
+ * custom cards are in cardsByKey through addCustomCards()). Keys the catalog does not know are left out. null when there is no usable deck (then the adapter decides). */
 function deckFromServer(deck, cardsByKey) {
     if (!deck || typeof deck !== 'object' || !Array.isArray(deck.cards)) return null;
     const keys = deck.cards.concat(Array.isArray(deck.controls) ? deck.controls : []);

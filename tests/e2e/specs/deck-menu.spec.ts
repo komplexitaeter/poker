@@ -258,7 +258,7 @@ test('shruggie: off by default, switched on and placed; Emotions: Short and Full
   await control(alice, 'shrug01').click();
   await expect(control(alice, 'shrug01')).toHaveAttribute('aria-pressed', 'true');
   await expect(deckCard(bob, 'shrug01')).toHaveCount(1);
-  await expect(deckCard(bob, 'shrug01').locator('.dh')).toHaveText("don't know");
+  await expect(deckCard(bob, 'shrug01').locator('.dh')).toHaveText('shruggie');
   await pickCard(bob, 'shrug01');
   await expectTableCard(alice, 'Bob', 'done001');
 

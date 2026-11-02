@@ -1,16 +1,19 @@
 {
   "version": 2,
-  "comment": "B-98 card catalog v2: predefined set groups with variants and the control cards. card_key is stored in the database and never changes its meaning; keys have at most 7 characters [a-z0-9] (no '-', that is reserved for custom cards). legacy_index = position in cardset_flags (cards.json v1), only for the migration; cards added later (e.g. 60, 89, the Mood faces, shruggie) have none and are never derived from or written to cardset_flags. B-99: symbol = id in src/cards.svg (tools/cards/README.md), color = colour token of style/cards.css without --c-; both win over values the client derives. Control cards are always drawn plain, each group has a style (plain | badge | banner | inverted).",
+  "comment": "B-98 card catalog v2: predefined set groups with variants and the control cards. card_key is stored in the database and never changes its meaning; keys have at most 7 characters [a-z0-9] (no '-', that is reserved for custom cards). legacy_index = position in cardset_flags (cards.json v1), only for the migration; cards added later (e.g. 60, 89, the Mood faces, shruggie) have none and are never derived from or written to cardset_flags. B-99: symbol = id in src/cards.svg (tools/cards/README.md), color = colour token of style/cards.css without --c-; both win over values the client derives. Control cards are always drawn plain, each group has a style (plain | badge | banner | inverted). B-98 S4: custom_symbols and custom_colors are the only symbols and colour tokens a custom card may get (whitelist of the API, api/lib_custom.php); never remove an entry that is in use. custom_symbol_values: numeric value of a symbol in custom sets (editor default, migration of mixed decks; stars 0-5, T-shirt 1-7, traffic lights 1-3, faces and ∞ none), not the sort values of the predefined sets.",
   "styles": ["plain", "badge", "banner", "inverted"],
   "default_deck": "fib-classic",
   "default_controls": ["break01", "qstmrk1"],
+  "custom_symbols": ["s-0", "s-half", "s-1", "s-2", "s-3", "s-5", "s-8", "s-13", "s-20", "s-21", "s-34", "s-40", "s-55", "s-60", "s-89", "s-100", "s-inf", "s-4", "s-6", "s-7", "s-9", "s-10", "s-xxs", "s-xs", "s-s", "s-m", "s-l", "s-xl", "s-xxl", "s-light-green", "s-light-yellow", "s-light-red", "s-face-satisfied", "s-face-annoyed", "s-face-sad", "s-face-uninterested", "s-face-angry", "s-face-enthusiastic", "s-face-curious", "s-face-confused", "s-face-worried", "s-face-surprised", "s-face-tired", "s-face-relieved", "s-stars-0", "s-stars-1", "s-stars-2", "s-stars-3", "s-stars-4", "s-stars-5"],
+  "custom_colors": ["red", "orange", "amber", "yellow", "lime", "green", "teal", "cyan", "blue", "indigo", "violet", "pink", "brown", "grey"],
+  "custom_symbol_values": {"s-0": 0, "s-half": 0.5, "s-1": 1, "s-2": 2, "s-3": 3, "s-5": 5, "s-8": 8, "s-13": 13, "s-20": 20, "s-21": 21, "s-34": 34, "s-40": 40, "s-55": 55, "s-60": 60, "s-89": 89, "s-100": 100, "s-inf": null, "s-4": 4, "s-6": 6, "s-7": 7, "s-9": 9, "s-10": 10, "s-xxs": 1, "s-xs": 2, "s-s": 3, "s-m": 4, "s-l": 5, "s-xl": 6, "s-xxl": 7, "s-light-green": 1, "s-light-yellow": 2, "s-light-red": 3, "s-face-satisfied": null, "s-face-annoyed": null, "s-face-sad": null, "s-face-uninterested": null, "s-face-angry": null, "s-face-enthusiastic": null, "s-face-curious": null, "s-face-confused": null, "s-face-worried": null, "s-face-surprised": null, "s-face-tired": null, "s-face-relieved": null, "s-stars-0": 0, "s-stars-1": 1, "s-stars-2": 2, "s-stars-3": 3, "s-stars-4": 4, "s-stars-5": 5},
   "status_cards": ["prgrss1", "prgrss2", "done001"],
   "controls": [
     {"card_key": "break01", "value": "☕", "symbol": "s-coffee", "color": "vbrk", "numeric_value": null, "sort_order": 99000, "heading": "break", "description": "I need a short break.", "legacy_index": 24},
     {"card_key": "qstmrk1", "value": "?", "symbol": "s-question", "color": "vq", "numeric_value": null, "sort_order": 99010, "heading": "question", "description": "I have a question first.", "legacy_index": 43},
     {"card_key": "xclam01", "value": "!", "symbol": "s-exclam", "color": "vx", "numeric_value": null, "sort_order": 99020, "heading": "important", "description": "I have something important to say first.", "legacy_index": 44},
     {"card_key": "veto", "value": "✋", "symbol": "s-hand", "color": "vveto", "numeric_value": null, "sort_order": 98990, "heading": "veto", "description": "I object. Let's not go ahead like this.", "legacy_index": 45},
-    {"card_key": "shrug01", "value": "¯\\_(ツ)_/¯", "symbol": "s-shrug", "color": "vshrug", "numeric_value": null, "sort_order": 99030, "heading": "don't know", "description": "I don't know – and that's fine. Let's find out."}
+    {"card_key": "shrug01", "value": "¯\\_(ツ)_/¯", "symbol": "s-shrug", "color": "vshrug", "numeric_value": null, "sort_order": 99030, "heading": "shruggie", "description": "I don't know – and that's fine. Let's find out."}
   ],
   "groups": [
     {
@@ -85,9 +88,9 @@
       "name": "Traffic lights",
       "style": "badge",
       "cards": [
-        {"card_key": "green01", "value": "🟢", "symbol": "s-light-green", "color": "agreen", "numeric_value": 1000, "sort_order": 1600, "heading": "green", "description": "All good from my side.", "legacy_index": 15},
-        {"card_key": "yellow1", "value": "🟡", "symbol": "s-light-yellow", "color": "ayellow", "numeric_value": 2000, "sort_order": 1700, "heading": "yellow", "description": "Doable, but I have concerns we should hear.", "legacy_index": 16},
-        {"card_key": "red0001", "value": "🔴", "symbol": "s-light-red", "color": "ared", "numeric_value": 3000, "sort_order": 1800, "heading": "red", "description": "I see a blocker. Let's talk before we go on.", "legacy_index": 17}
+        {"card_key": "green01", "value": "🟢", "symbol": "s-light-green", "color": "agreen", "numeric_value": 1000, "sort_order": 1600, "heading": "green", "legacy_index": 15},
+        {"card_key": "yellow1", "value": "🟡", "symbol": "s-light-yellow", "color": "ayellow", "numeric_value": 2000, "sort_order": 1700, "heading": "yellow", "legacy_index": 16},
+        {"card_key": "red0001", "value": "🔴", "symbol": "s-light-red", "color": "ared", "numeric_value": 3000, "sort_order": 1800, "heading": "red", "legacy_index": 17}
       ],
       "variants": [
         {"id": "traffic", "name": "Traffic lights", "cards": ["green01", "yellow1", "red0001"], "preset_mapping": "Traffic"}

@@ -888,18 +888,35 @@ let gShownDeckGroup = null;   // the set group of the board state shown last (nu
 let gOwnDeckWrites = [];      // own deck writes: {doneSeq} = the last board state asked for before their answer
 
 function isDeckWrite(url) {
-    return /\/api\/update_(deck|cardset)\.php/.test(url);
+    return /\/api\/(update_(deck|cardset)|custom_set_(create|save|delete))\.php/.test(url);
+}
+
+/* B-98 S5: what counts as "another card set" for the toast: the group, for a custom set the set itself */
+function shownDeckSet(json) {
+    const deck = json && json.deck;
+    if (!deck || typeof deck.group !== 'string') return null;
+    return deck.group === 'custom' ? 'custom:' + deck.id : deck.group;
 }
 
 function noteDeckGroup(json, seq) {
     const own = gOwnDeckWrites.length > 0;
     gOwnDeckWrites = gOwnDeckWrites.filter(write => seq <= write.doneSeq);
-    const group = json && json.deck && typeof json.deck.group === 'string' ? json.deck.group : null;
+    const group = shownDeckSet(json);
     if (group === null) return;
     const before = gShownDeckGroup;
     gShownDeckGroup = group;
     if (before === null || before === group || own) return;
-    showToast('Card set changed to ' + deckGroupName(group));
+    const name = json.deck.group === 'custom' ? customSetName(json) : deckGroupName(group);
+    // B-98: who switched (dao deck.changed_by, free text: showToast() sets it with textContent)
+    const by = typeof json.deck.changed_by === 'string' ? json.deck.changed_by.trim() : '';
+    showToast(by !== '' ? by + ' changed the card set to ' + name : 'Card set changed to ' + name);
+}
+
+/* B-98 S5: the name of the team's custom set in play (free text: only ever shown with textContent) */
+function customSetName(json) {
+    const sets = Array.isArray(json.custom_sets) ? json.custom_sets : [];
+    const set = sets.find(entry => entry && entry.deck_id === json.deck.id);
+    return set && typeof set.name === 'string' ? set.name : 'your own set';
 }
 
 /* the name of a set group (card_catalog.json), else its id */
@@ -1958,6 +1975,7 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
 function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     if (myJson === 0) return;
+    addCustomCards(myJson, gCardByKey); // B-98 S5: custom cards of the team's sets and on the table (deck.js)
 
     if (!gAllPlayersReady
         && myJson.all_players_ready
@@ -2584,7 +2602,9 @@ function showToast(text, ms = 2200) {
     // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
     // (closeMenu() puts it back)
     let menu = document.getElementById('menu');
-    let host = isModalOpen(menu) ? menu : document.body;
+    // B-98 S5: above the editor of an own set (a modal dialog in the top layer as well)
+    let editor = document.getElementById('cs_editor');
+    let host = editor !== null && editor.open ? editor : isModalOpen(menu) ? menu : document.body;
     if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');
@@ -2927,7 +2947,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=8'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=11'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
@@ -3094,6 +3114,7 @@ function updateSide(json, glide = true) {
     const cardStats = calculateCardStats(json.players.filter(player => !isLateCardKey(player.display_card_key)));
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
     const chosen = [];
+    let unvalued = false; // B-98 S5: a custom card without a value is down (no range then)
     const grown = [];
     Array.from(bars.children).forEach(col => {
         const stat = cardStats[col.getAttribute('data-card')];
@@ -3105,6 +3126,7 @@ function updateSide(json, glide = true) {
         const card = cardByKey(col.getAttribute('data-card'));
         const rank = cardRank(card);
         if (n > 0 && rank !== null) chosen.push({ rank, card });
+        else if (n > 0 && card && card.custom) unvalued = true;
     });
     if (grown.length > 0) {
         void bars.offsetHeight; // the new blocks start invisible (class "in"), then fade in
@@ -3113,9 +3135,10 @@ function updateSide(json, glide = true) {
 
     // the range of the chosen numeric values (B-79: infinity as the top end): "range 2–20", "range 3–∞",
     // or "5" when all agree; B-99 (F6): each end as mono text (cardSmall). R3 review V10 (L22): number cards
-    // only – traffic lights, emotions, stars, T-shirt sizes show the chart alone
+    // only – traffic lights, emotions, stars, T-shirt sizes show the chart alone. B-98 S5: a custom set shows the
+    // range when every card down has a value (control cards aside)
     let ends = [];
-    if (chosen.length > 0 && chosen.every(entry => isNumberCard(entry.card))) {
+    if (chosen.length > 0 && !unvalued && chosen.every(entry => isNumberCard(entry.card))) {
         chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
         const low = chosen[0].card;
         const high = chosen[chosen.length - 1].card;
@@ -3201,6 +3224,7 @@ function tipSide(players, card) {
 
 /* R3 review V10 (L22): a card whose value is a number (0, ½, 13, ∞); the range of the result shows for these only */
 function isNumberCard(card) {
+    if (card && card.custom) return cardRank(card) !== null; // B-98 S5: a custom card with a value (or ∞)
     return !!card && /^(\d+(\.\d+)?|½|∞)$/.test(String(card.text));
 }
 
@@ -3483,13 +3507,20 @@ function calculateIndicatorLefPosition(cardStats, elementFor, pointer) {
 
     if (returnPos != null) return returnPos;
 
+    // B-98 S5: a custom set: between its cards with a value, in deck order, and only while the values rise
+    let line = gDeck.cards;
+    if (line.some(card => card.custom)) {
+        line = line.filter(card => card.custom && card.value !== null);
+        if (line.some((card, i) => i > 0 && card.value < line[i - 1].value)) return null;
+    }
+
     if (hasResult) {
         let avgResult = resultSum / resultCnt;
 
         let lastVal = null;
         let lastPos = null;
 
-        for (let card of gDeck.cards) {
+        for (let card of line) {
             let curVal = card.value;
 
             if (curVal > avgResult) {
