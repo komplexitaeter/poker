@@ -30,12 +30,17 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(alice.locator('#deck_builtin_title')).toBeVisible();
   await alice.locator('#deck_new_set').click();
 
+  // first the choice (B-98 copy): from scratch
+  await expect(alice.locator('#cs_title')).toHaveText('New card set');
+  await expect(alice.locator('#cs_scratch')).toBeFocused();
+  await alice.locator('#cs_scratch').click();
+
   // the editor: full screen, the focus in the name, two cards 1 and 2
   await expect(editor(alice)).toBeVisible();
   await expect(alice.locator('#cs_title')).toHaveText('New card set');
   await expect(alice.locator('#cs_name')).toBeFocused();
   await expect(alice.locator('#cs_list [data-f^="card:"]')).toHaveCount(2);
-  await expect(alice.locator('#cs_cards_label')).toHaveText('Cards (2 of 16)');
+  await expect(alice.locator('#cs_cards_label')).toHaveText('Cards (2 of 20)');
   await expect(alice.locator('#cs_value')).toHaveValue('1');
   await expect(alice.locator('#cs_remove')).toBeDisabled(); // at least two cards
 
@@ -168,6 +173,7 @@ test('Save creates a set without playing it; "Save & play" of a saved set puts i
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
   await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_scratch').click();
   await alice.locator('#cs_name').fill('Later');
   await alice.locator('#cs_save').click();
   await expect(editor(alice)).toBeHidden();
@@ -185,6 +191,61 @@ test('Save creates a set without playing it; "Save & play" of a saved set puts i
   await expect(alice.locator('#deck_change')).toContainText('Later');
   await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Later');
   await expect.poll(async () => (await lastJson(bob)).deck.id).toBe((await lastJson(alice)).custom_sets[0].deck_id);
+});
+
+test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills the editor', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Copy');
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_change').click();
+
+  // the choice in the overlay: from scratch or a built-in set (a row per group); Esc cancels, nothing is stored
+  await alice.locator('#deck_new_set').click();
+  await expect(editor(alice)).toBeVisible();
+  await expect(alice.locator('#cs_from [data-group]')).toHaveCount(8);
+  await expect(alice.locator('#cs_from [data-group="fib"]')).toContainText('Fibonacci');
+  await expect(alice.locator('#cs_save')).toHaveCount(0);
+  await alice.keyboard.press('Escape');
+  await expect(editor(alice)).toBeHidden();
+  await expect(alice.locator('#deck_new_set')).toBeFocused();
+  // × as well
+  await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_x').click();
+  await expect(editor(alice)).toBeHidden();
+
+  // Fibonacci: all 17 cards of the group (every variant, catalog order), its style, the name empty
+  await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_from [data-group="fib"]').click();
+  await expect(alice.locator('#cs_title')).toHaveText('New card set');
+  await expect(alice.locator('#cs_name')).toHaveValue('');
+  await expect(alice.locator('#cs_name')).toBeFocused();
+  await expect(alice.locator('#cs_list [data-f^="card:"]')).toHaveCount(17);
+  await expect(alice.locator('#cs_cards_label')).toHaveText('Cards (17 of 20)');
+  await expect(alice.locator('[data-f="style:plain"]')).toBeChecked();
+  await expect(alice.locator('#cs_value')).toHaveValue('0');
+  await alice.locator('[data-f="card:16"]').click();
+  await expect(alice.locator('#cs_sym')).toContainText('∞');
+  await expect(alice.locator('#cs_value')).toHaveValue('');
+
+  // the name is required
+  await alice.locator('#cs_play').click();
+  await expect(alice.locator('#cs_name_err')).toHaveText('Give the set a name.');
+  await expect(alice.locator('#cs_name')).toBeFocused();
+  await alice.locator('#cs_name').fill('Our Fibonacci');
+  await alice.locator('#cs_play').click();
+  await expect(editor(alice)).toBeHidden();
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
+
+  const json = await lastJson(alice);
+  const set = json.custom_sets[0];
+  expect(set.name).toBe('Our Fibonacci');
+  expect(set.cards.map(c => c.value)).toEqual(
+    ['0', '½', '1', '2', '3', '5', '8', '13', '20', '21', '34', '40', '55', '60', '89', '100', '∞']);
+  expect(set.cards[16].symbol).toBe('s-inf');
+  expect(set.cards[16].numeric_value).toBeNull();
+  for (const page of [alice, bob]) {
+    await expect.poll(async () => (await trayKeys(page)).length).toBe(17 + json.deck.controls.length);
+  }
+  await expect(bob.locator(`#ctl .ctl[data-card="${set.cards[16].card_key}"] svg.mot`)).toHaveCount(1);
 });
 
 test('the limit of sets disables "+ New set"; Cancel without changes closes at once', async ({ browser }) => {

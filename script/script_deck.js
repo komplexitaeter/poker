@@ -34,7 +34,7 @@ const gDeckMenu = {
     sig: null,        // what the menu was last built from
     variantKeyMove: false, // the next change of the variant radios comes from an arrow key
     sets: [],         // B-98 S5: the team's own sets (dao custom_sets)
-    limits: { sets: 5, cards: 16 }, // B-98 S5: dao custom_limits
+    limits: { sets: 5, cards: 20 }, // B-98 S5: dao custom_limits
 };
 
 /* B-98 S5: an own set of the team by its deck id 'c-<id>' */
