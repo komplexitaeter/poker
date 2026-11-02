@@ -843,6 +843,7 @@ function csPost(url, body) {
 /* an answer of the API: the error at its field / card */
 function csApiError(answer) {
     const code = answer && typeof answer.error === 'string' ? answer.error : '';
+    let toast = null;
     gCs.errors = {};
     if (code === 'name') {
         gCs.errors.name = CS_ERRORS.name;
@@ -851,12 +852,18 @@ function csApiError(answer) {
         gCs.sel = answer.index;
         if (code === 'text') gCs.errors.text = CS_ERRORS.text;
         else if (code === 'numeric_value') gCs.errors.value = CS_ERRORS.numeric_value;
-        else gCs.errors.general = Object.hasOwn(CS_ERRORS, code) ? CS_ERRORS[code] : 'This card can’t be saved.';
+        // the card is marked, the reason comes as a toast (Andreas: messages of the menu as toasts)
+        else toast = Object.hasOwn(CS_ERRORS, code) ? CS_ERRORS[code] : 'This card can\u2019t be saved.';
     } else {
-        gCs.errors.general = Object.hasOwn(CS_ERRORS, code) ? CS_ERRORS[code] : 'Not saved – please try again.';
+        // no field: a toast, the editor stays open with the changes
+        toast = Object.hasOwn(CS_ERRORS, code) ? CS_ERRORS[code] : 'Not saved \u2013 please try again';
     }
     csShowErrors();
+    if (toast !== null) showToast(toast); // after the editor was built anew (the toast lies in it)
 }
+
+/* the result of a save / delete as a toast (Andreas: all messages of the deck menu as toasts at the bottom) */
+const CS_DONE = { created: 'Set created and in play', saved: 'Set saved', deleted: 'Set deleted' };
 
 /* the menu takes the result at once (the next board state confirms it) */
 function csDone(answer, kind) {
@@ -878,9 +885,9 @@ function csDone(answer, kind) {
     if (kind === 'deleted' && gDeckMenu.view === 'main') gCs.opener = 'change';
     gDeckMenu.refusal = null;
     renderDeckMenu(true);
-    setDeckStatus({ text: DECK_DONE[kind] + (answer && answer.new_round ? ' – new round started' : ''), error: false });
     gCs.busy = false;
     csClose();
+    showToast(CS_DONE[kind] + (answer && answer.new_round ? ' \u2013 new round started' : ''));
 }
 
 function csSave() {
@@ -930,7 +937,7 @@ function csDelete() {
         }
         gCs.busy = false;
         csCloseQuestion();
-        gCs.errors = { general: 'Not deleted – please try again.' };
         csRenderTop();
+        showToast('Not deleted \u2013 please try again');
     });
 }

@@ -486,9 +486,7 @@ function showDeckView(view) {
 /* B-99 (F7, Andreas): the result of a change; R3 review V1: in a status line at the top of the deck menu (#deck_status)
  * instead of a toast. It stays until the next change or until the menu opens again; an error gets a close button. */
 const DECK_DONE = { set: 'Card set changed for everyone', variant: 'Cards changed for everyone',
-    card: 'Cards changed for everyone', control: 'Cards changed for everyone',
-    // B-98 S5: own sets (script_custom.js)
-    created: 'Set created and in play for everyone', saved: 'Set saved', deleted: 'Set deleted' };
+    card: 'Cards changed for everyone', control: 'Cards changed for everyone' };
 
 /* status: null (none) | { text, error } */
 function setDeckStatus(status) {

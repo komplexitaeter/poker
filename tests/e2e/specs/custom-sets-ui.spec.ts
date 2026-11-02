@@ -71,7 +71,8 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await alice.locator('#cs_save').click();
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#deck_change')).toContainText('Risk');
-  await expect(alice.locator('#deck_status')).toHaveText('✓ Set created and in play for everyone');
+  // the result as a toast (Andreas: messages of the deck menu as toasts)
+  await expect(alice.locator('#toast')).toHaveText('Set created and in play');
   await expect(alice.locator('#deck_edit')).toBeFocused();
 
   // the deck of everybody: the set in its order, then the control cards
@@ -108,7 +109,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(alice.locator('#cs_save')).toHaveText('Save and start new round');
   await alice.locator('#cs_save').click();
   await expect(editor(alice)).toBeHidden();
-  await expect(alice.locator('#deck_status')).toHaveText('✓ Set saved – new round started');
+  await expect(alice.locator('#toast')).toHaveText('Set saved – new round started');
   await expect(alice.locator('#deck_change')).toContainText('Risk level');
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual([keys[1], keys[2], ...json.deck.controls]);
@@ -127,7 +128,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await alice.locator('#cs_delete_ok').click();
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#deck_own_sets li')).toHaveCount(0);
-  await expect(alice.locator('#deck_status_live')).toHaveText('Set deleted');
+  await expect(alice.locator('#toast')).toHaveText('Set deleted');
   json = await lastJson(alice);
   for (const page of [alice, bob]) {
     await expect.poll(async () => (await lastJson(page)).deck.id).toBe('fib-classic');
@@ -161,6 +162,19 @@ test('the limit of sets disables "+ New set"; Cancel without changes closes at o
   await expect(alice.locator('#deck_change')).toContainText('Set 4');
   await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Set 4');
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
+
+  // an error of the API without a field: a toast above the editor, the editor stays open with the changes
+  await alice.locator('#deck_edit').click();
+  await alice.locator('#cs_name').fill('Set 4b');
+  await alice.route('**/api/custom_set_save.php*', route => route.fulfill({ status: 500, body: '' }));
+  await alice.locator('#cs_save').click();
+  await expect(editor(alice).locator('#toast')).toHaveText('Not saved \u2013 please try again');
+  await expect(editor(alice)).toBeVisible();
+  await expect(alice.locator('#cs_name')).toHaveValue('Set 4b');
+  await alice.unroute('**/api/custom_set_save.php*');
+  await alice.locator('#cs_cancel').click();
+  await alice.locator('[data-f="ask-ok"]').click(); // discard
+  await expect(editor(alice)).toBeHidden();
 
   // Cancel without changes: no question, the focus back on "Edit set"
   await alice.locator('#deck_edit').click();

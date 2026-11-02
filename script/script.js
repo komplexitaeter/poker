@@ -2602,7 +2602,9 @@ function showToast(text) {
     // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
     // (closeMenu() puts it back)
     let menu = document.getElementById('menu');
-    let host = isModalOpen(menu) ? menu : document.body;
+    // B-98 S5: above the editor of an own set (a modal dialog in the top layer as well)
+    let editor = document.getElementById('cs_editor');
+    let host = editor !== null && editor.open ? editor : isModalOpen(menu) ? menu : document.body;
     if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
     toast.classList.add('toast-on');
