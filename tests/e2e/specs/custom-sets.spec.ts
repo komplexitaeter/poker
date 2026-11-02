@@ -183,6 +183,10 @@ test('custom sets: validation, limits, other teams', async ({ browser }) => {
     ['no name', { ...ok, name: '  ' }, 'name'],
     ['name too long', { ...ok, name: 'x'.repeat(25) }, 'name'],
     ['style', { ...ok, style: 'fancy' }, 'style'],
+    // format characters (bidi override, zero-width space) could spoof texts on the board (Sina, review S4)
+    ['bidi override in name', { ...ok, name: '\u202Eevil' }, 'name'],
+    ['zero-width space in heading', { ...ok, cards: [{ text: '1', color: 'red', heading: 'lo\u200Bw' }] }, 'heading'],
+    ['bidi override in description', { ...ok, cards: [{ text: '1', color: 'red', description: 'a\u202Eb' }] }, 'description'],
     ['body', 'no json', 'body'],
   ];
   for (const [name, body, error] of bad) {

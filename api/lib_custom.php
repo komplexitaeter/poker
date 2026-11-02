@@ -179,7 +179,7 @@ function read_json_body(): ?array
 /*
  * Free text from the JSON body, like get_text_param(): trimmed, otherwise stored as entered (escaped on output).
  * Returns null if the value is no string (or missing and not $optional), longer than $max_length characters or
- * contains control characters; '' for a missing optional value.
+ * contains control or format characters (\p{Cc}, \p{Cf}: bidi overrides, zero-width characters); '' for a missing optional value.
  */
 function body_text(array $data, string $name, int $max_length, bool $optional = true): ?string
 {
@@ -187,7 +187,8 @@ function body_text(array $data, string $name, int $max_length, bool $optional = 
     if (!is_string($data[$name])) return null;
     $value = trim($data[$name]);
     if (cut_text($value, $max_length) !== $value) return null; // too long or invalid UTF-8
-    if (preg_match('/\p{Cc}/u', $value)) return null;
+    // control and format characters (bidi overrides, zero-width characters) could spoof names on the board
+    if (preg_match('/[\p{Cc}\p{Cf}]/u', $value)) return null;
     return $value;
 }
 
