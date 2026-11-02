@@ -283,7 +283,10 @@ function cardFace(card, level, texts = true) {
     else if (!status) {
         const value = String(card.text || card.key);
         const tv = textElement('span', 'tv', value);
-        if (textGraphemes(value) > 3) tv.classList.add('tv-long'); // up to 6 characters (custom values, emoji count 1)
+        const graphemes = textGraphemes(value);
+        if (graphemes > 3) tv.classList.add('tv-long'); // up to 6 characters (custom values, emoji count 1)
+        // R3 (Andreas): an emoji as the text as large as our symbols (one: large, two or three: a bit smaller)
+        else if (/\p{Extended_Pictographic}/u.test(value)) tv.classList.add('tv-emoji', 'tv-n' + graphemes);
         face.appendChild(tv);
     }
     if (level === 'mini') return face;

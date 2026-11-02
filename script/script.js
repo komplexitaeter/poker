@@ -238,12 +238,16 @@ function deckElement(card) {
         keyLabel.className = "ctl-key";
         keyLabel.setAttribute("aria-hidden", "true");
         slot.append(element, keyLabel);
-        entry = { slot, card: element, keyLabel, texts: null };
+        entry = { slot, card: element, keyLabel, texts: null, model: card };
         gDeckElements.set(card.key, entry);
     }
-    if (entry.texts !== gDeckTexts) {
+    // R3 fix (Andreas): a custom card keeps its key when only its set's style changes; addCustomCards() then builds
+    // a new card model, so a new model means a new face
+    if (entry.texts !== gDeckTexts || entry.model !== card) {
         entry.texts = gDeckTexts;
+        entry.model = card;
         entry.card.replaceChildren(cardFace(card, 'deck', true)); // F7: control cards show their heading in every set
+        entry.card.setAttribute('aria-label', cardAriaLabel(card, false));
     }
     return entry;
 }
@@ -364,6 +368,11 @@ function setDeck(deck) {
     const texts = deckHasTexts(deck);
     const textSize = deckTextSize(deck);
     const textsChanged = texts !== gDeckTexts || textSize !== gDeckTextSize;
+    // R3 fix: a card of the deck with a new model (style of a custom set changed, same key): table and result anew
+    const restyled = deck.cards.some(card => {
+        const entry = gDeckElements.get(card.key);
+        return entry !== undefined && entry.model !== card;
+    });
     gDeckTexts = texts;
     gDeckTextSize = textSize;
     ctl.classList.toggle('deck-texts', texts);
@@ -372,7 +381,13 @@ function setDeck(deck) {
     if (cbox !== null) cbox.dataset.textSize = textSize;
     ctl.replaceChildren(...deck.cards.map(card => deckElement(card).slot));
     updateDeckTabStop();
-    if (textsChanged) refreshTableFaces();
+    if (textsChanged || restyled) refreshTableFaces();
+    if (restyled) {
+        // the spread labels, the range and the tip show small faces of the cards: built anew on the next update
+        ['spread_bars', 'spread_range'].forEach(id => document.getElementById(id)?.removeAttribute(id === 'spread_bars' ? 'data-keys' : 'data-shows'));
+        const tip = document.getElementById('round_tip');
+        if (tip !== null) delete tip.dataset.key;
+    }
 }
 
 /* R3 F4: the team's deck from dao ("deck", card data from card_catalog.json); without it (catalog missing or
