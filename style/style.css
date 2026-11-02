@@ -4617,40 +4617,24 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .dm .hint.warn { color: var(--warn); }
 
-.dm-refusal-x {
-    min-width: 28px;
-    min-height: 28px;
-    padding: 0;
-    color: inherit;
-}
-
-@media (pointer: coarse) {
-    .dm-refusal-x {
-        min-width: var(--tap);
-        min-height: var(--tap);
-    }
-}
-
-.dm-refusal-x .i { width: 16px; height: 16px; }
-
-/* a refused toggle (fewer than two cards): the reason right below the cards, until fixed or dismissed */
+/* R3 review (Andreas): as few messages as possible, plain red text, no box, no close button.
+ * A refused toggle (fewer than two cards): the reason right below the cards, the second line muted. */
 .dm-refusal {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-1);
     margin-top: var(--space-2);
-    padding: 6px 4px 6px 10px;
-    border: 1px solid var(--danger);
-    border-radius: var(--radius-m);
     color: var(--danger);
     font-size: var(--fs-xs);
 }
 
-.dm-refusal p { flex: 1; margin: 0; }
-
 .dm-refusal b { display: block; }
 
 .dm-refusal small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--fs-xs); }
+
+/* a failed write: at the very bottom of the deck tab, nothing above moves */
+.dm-error {
+    margin: var(--space-2) 0 0;
+    color: var(--danger);
+    font-size: var(--fs-xs);
+}
 
 .dm-tgs .dm-tg.is-refused { border-color: var(--danger); animation: dm-refuse 0.4s ease-in-out; }
 
@@ -4693,13 +4677,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-t b { font-size: var(--fs-m); color: var(--text); }
 
 .dm-t small { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-/* R3 review (Andreas, variant 1): the caption "Card set" shows the result of the own change, one line, no jump;
- * --ok / --danger on the box (--bg): light 4.99:1 / 5.46:1, dark 13.9:1 / 6.9:1 */
-.dm-setbtn .dm-cap.is-ok { color: var(--ok); }
-.dm-setbtn .dm-cap.is-error { color: var(--danger); }
-/* while a status shows, the fan gives its width to the caption (one line, not cut off), its height stays */
-.dm-setbtn.has-status .dm-fan { visibility: hidden; width: 0; padding: 0; overflow: hidden; }
 
 /* R3 review V10: in the list of card sets the line about the set may take two lines (the "Card set" button stays one) */
 .dm-prow-b .dm-t small {

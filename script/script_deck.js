@@ -31,9 +31,8 @@ const gDeckMenu = {
     serverRev: null,  // rev of the server's deck the local copy is based on
     sig: null,        // what the menu was last built from
     variantKeyMove: false, // the next change of the variant radios comes from an arrow key
-    refusal: null,    // R3 review V1: a refused toggle, shown below the cards until fixed or dismissed ({ key, text })
-    status: null,     // R3 review: the result of the own change, shown in the card set box ({ text, short, error })
-    statusTimer: 0,
+    refusal: null,    // R3 review V1: a refused toggle, shown below the cards until fixed or the next action ({ key, text })
+    error: false,     // R3 review: the last write failed, shown at the bottom of the overview until the next action
 };
 
 function deckMenuGroups() {
@@ -117,25 +116,13 @@ function dmRoundNote() {
     return note;
 }
 
-/* R3 review V1: a refused toggle, right below the cards (not a toast): stays until fixed or dismissed (×) */
+/* R3 review (Andreas): a refused toggle, right below the cards, plain text (not a toast, no box, no ×);
+ * goes with the next action, once the deck has more cards again or when the menu opens again */
 function dmRefusal(refusal) {
     const box = dmEl('div', 'dm-refusal');
     box.id = 'deck_refusal';
     box.setAttribute('role', 'alert');
-    const text = dmEl('p', null);
-    text.append(dmEl('b', null, refusal.text), dmEl('small', null, refusal.help));
-    const close = dmEl('button', 'icon-btn dm-refusal-x');
-    close.type = 'button';
-    close.setAttribute('data-f', 'refusal-x');
-    close.setAttribute('aria-label', 'Dismiss');
-    close.appendChild(dmIcon('x'));
-    close.addEventListener('click', () => {
-        gDeckMenu.refusal = null;
-        renderDeckMenu(true);
-        const toggle = document.querySelector('#deck_menu [data-f="card:' + CSS.escape(refusal.key) + '"]');
-        if (toggle !== null) toggle.focus({ preventScroll: true });
-    });
-    box.append(text, close);
+    box.append(dmEl('b', null, refusal.text), dmEl('small', null, refusal.help));
     return box;
 }
 
@@ -153,13 +140,10 @@ function deckMainView(deck, group, variant) {
     change.id = 'deck_change';
     change.setAttribute('data-f', 'change');
     const title = dmEl('span', 'dm-t');
-    const caption = dmEl('small', 'dm-cap', 'Card set');
-    caption.id = 'deck_caption';
-    title.append(caption, dmEl('b', null, group.name));
+    title.append(dmEl('small', null, 'Card set'), dmEl('b', null, group.name));
     change.append(title, dmFan(variant.cards), dmEl('span', 'cm', 'Change'), dmIcon('next'));
     change.setAttribute('aria-label', 'Card set: ' + group.name + '. Change');
     change.addEventListener('click', () => showDeckView('pick'));
-    paintDeckStatus(caption);
     parts.push(change);
 
     // the variant (Fibonacci)
@@ -249,6 +233,14 @@ function deckMainView(deck, group, variant) {
     controls.appendChild(ctlGrid);
     parts.push(controls);
 
+    // R3 review (Andreas): a failed write, at the very bottom (nothing above moves), until the next action;
+    // screen readers hear it from #deck_status_live
+    if (gDeckMenu.error) {
+        const error = dmEl('p', 'dm-error', 'Not saved \u2013 please try again');
+        error.id = 'deck_error';
+        parts.push(error);
+    }
+
     return parts;
 }
 
@@ -306,7 +298,7 @@ function renderDeckMenu(force = false) {
     const deck = gDeckMenu.deck;
     // a refusal goes once it is fixed: the deck has more than the minimum again (also by someone else)
     if (gDeckMenu.refusal !== null && (deck === null || deck.cards.length > DECK_MIN_CARDS)) gDeckMenu.refusal = null;
-    const sig = JSON.stringify([gDeckMenu.view, deck, deckRoundRunning(), gDeckMenu.refusal]);
+    const sig = JSON.stringify([gDeckMenu.view, deck, deckRoundRunning(), gDeckMenu.refusal, gDeckMenu.error]);
     if (!force && sig === gDeckMenu.sig) return;
     gDeckMenu.sig = sig;
 
@@ -346,12 +338,15 @@ function updateDeckMenu(json) {
 function resetDeckMenu() {
     gDeckMenu.view = 'main';
     gDeckMenu.refusal = null;
-    setDeckStatus(null);
+    gDeckMenu.error = false;
+    announceDeck('');
     renderDeckMenu(true);
 }
 
 function showDeckView(view) {
     gDeckMenu.view = view;
+    gDeckMenu.refusal = null; // the next action ends a message
+    gDeckMenu.error = false;
     renderDeckMenu(true);
     const target = document.getElementById(view === 'pick' ? 'deck_pick_title' : 'deck_change');
     if (target !== null) target.focus();
@@ -359,59 +354,37 @@ function showDeckView(view) {
 
 /* ------------------------------------------------------------------ writes */
 
-/* B-99 (F7, Andreas): the result of a change. R3 review (Andreas, variant 1): no line of its own; the small caption
- * "Card set" of the card set box shows it: a success for 3 s, an error until the next change or until the menu
- * opens again. Kept in gDeckMenu.status (the box is built again with every render); screen readers hear the full
- * text from the live region #deck_status_live. */
+/* B-99 (F7, Andreas): the result of a change. R3 review (Andreas): as few messages as possible. A success shows
+ * nowhere (the cards show it, the others get a toast, V6); screen readers hear it from the live region
+ * #deck_status_live. An error shows at the bottom of the overview (gDeckMenu.error). */
 const DECK_DONE = { set: 'Card set changed for everyone', variant: 'Cards changed for everyone',
     card: 'Cards changed for everyone', control: 'Cards changed for everyone' };
-const DECK_STATUS_MS = 3000;
 
-/* the caption of the card set box: "Card set" or the status */
-function paintDeckStatus(caption = document.getElementById('deck_caption')) {
-    if (caption === null) return;
-    const status = gDeckMenu.status;
-    caption.classList.toggle('is-ok', status !== null && !status.error);
-    caption.classList.toggle('is-error', status !== null && status.error);
-    // the status needs the width of the fan (CSS), the height of the box stays
-    const box = caption.closest('.dm-setbtn');
-    if (box !== null) box.classList.toggle('has-status', status !== null);
-    caption.textContent = status === null ? 'Card set' : (status.error ? '! ' : '\u2713 ') + status.short;
-}
-
-/* status: null (none) | { text, short, error } */
-function setDeckStatus(status) {
-    clearTimeout(gDeckMenu.statusTimer);
-    gDeckMenu.status = status;
-    if (status !== null && !status.error) {
-        gDeckMenu.statusTimer = setTimeout(() => {
-            if (gDeckMenu.status === status) setDeckStatus(null);
-        }, DECK_STATUS_MS);
-    }
-    paintDeckStatus();
+function announceDeck(text) {
     const live = document.getElementById('deck_status_live');
-    if (live !== null) live.textContent = status === null ? '' : status.text;
+    if (live !== null) live.textContent = text;
 }
 
 /* a write of the menu; the local copy shows it at once, the next board state from the server wins.
- * kind: 'set' | 'variant' | 'card' | 'control' (the text of the status line) */
+ * kind: 'set' | 'variant' | 'card' | 'control' (the text of the live region) */
 function writeDeck(url, local, kind) {
     gDeckMenu.deck = local;
     gDeckMenu.refusal = null;
+    gDeckMenu.error = false;
     renderDeckMenu();
     const done = DECK_DONE[kind] || 'Saved';
-    setDeckStatus(null);
+    announceDeck('');
     apiWrite(url, {}, null).then(response => {
         if (response === null || !response.ok) {
             gDeckMenu.serverRev = null; // take the server's deck again with the next board state
-            setDeckStatus({ text: 'Not saved – please try again', short: 'Not saved – please try again', error: true });
+            gDeckMenu.error = true;
+            renderDeckMenu(true);
+            announceDeck('Not saved \u2013 please try again');
             return;
         }
         response.json().then(answer => {
-            const round = answer && answer.new_round;
-            setDeckStatus({ text: done + (round ? ' \u2013 new round started' : ''),
-                short: round ? 'Changed \u2013 new round started' : 'Changed for everyone', error: false });
-        }).catch(() => setDeckStatus({ text: done, short: 'Changed for everyone', error: false }));
+            announceDeck(done + (answer && answer.new_round ? ' \u2013 new round started' : ''));
+        }).catch(() => announceDeck(done));
     });
 }
 
@@ -452,7 +425,8 @@ function toggleDeckCard(group, variant, key) {
         if (on.size <= DECK_MIN_CARDS) {
             // R3 review V1: the refusal shows right below the cards, the toggle shakes once
             gDeckMenu.refusal = { key, text: 'A card set needs at least two cards.', help: 'Switch another card on first.' };
-            setDeckStatus(null); // one message at a time: the refusal
+            gDeckMenu.error = false; // one message at a time: the refusal
+            announceDeck('');
             renderDeckMenu(true);
             const toggle = document.querySelector('#deck_menu [data-f="card:' + CSS.escape(key) + '"]');
             if (toggle !== null) toggle.classList.add('is-refused');

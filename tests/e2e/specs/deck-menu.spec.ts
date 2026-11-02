@@ -7,8 +7,14 @@ import { teamWithTwoPlayers, deckCard, deckCards, pickCard, expectTableCard, tab
 const trayKeys = (page: Page) => deckCards(page).evaluateAll(cards => cards.map(c => c.getAttribute('data-card')));
 const toggle = (page: Page, key: string) => page.locator(`#deck_cards [data-card="${key}"]`);
 const control = (page: Page, key: string) => page.locator(`#deck_controls [data-card="${key}"]`);
-// R3 review (variant 1): the result of the own change shows in the caption of the card set box
-const caption = (page: Page) => page.locator('#deck_change #deck_caption');
+// R3 review (Andreas): as few messages as possible; an error at the bottom of the deck tab
+const deckError = (page: Page) => page.locator('#deck_menu #deck_error');
+// no success message in the menu: the caption of the card set box stays, the fan too
+const calm = async (page: Page) => {
+  await expect(page.locator('#deck_change .dm-t small')).toHaveText('Card set');
+  await expect(page.locator('#deck_change .dm-fan')).toBeVisible();
+  await expect(deckError(page)).toHaveCount(0);
+};
 
 test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for everybody', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Sets');
@@ -39,10 +45,9 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
 
   // back on the overview; both trays hold the set plus the team's control cards
   await expect(alice.locator('#deck_change')).toContainText('J.U.D.G.E.');
-  // F7, R3 review (variant 1): the result in the caption of the card set box, in green, no toast
-  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
-  await expect(caption(alice)).toHaveClass(/is-ok/);
-  await expect(alice.locator('#deck_status')).toHaveCount(0); // no line of its own any more
+  // F7, R3 review (Andreas): no visible success message (the cards show it), no toast for the own change
+  await calm(alice);
+  await expect(alice.locator('#deck_status')).toHaveCount(0);
   // screen readers: a live region that is always there (not switched by hidden), with the full text
   await expect(alice.locator('#deck_status_live')).toHaveText('Card set changed for everyone');
   await expect(alice.locator('#deck_status_live')).toHaveAttribute('role', 'status');
@@ -85,7 +90,7 @@ test('variant and single cards: Short, a card off and on again, at least two car
   expect(deckWrites).toBe(1);
   // mouse: back to Classic and to Short again
   await variant('Classic').check();
-  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
+  await expect(alice.locator('#deck_status_live')).toHaveText('Cards changed for everyone');
   await expect.poll(() => trayKeys(bob)).toContain('hundro1');
   await variant('Short').check();
   for (const page of [alice, bob]) {
@@ -114,12 +119,13 @@ test('variant and single cards: Short, a card off and on again, at least two car
   await expect(deckCard(bob, 'red0001')).toHaveCount(0);
   await toggle(alice, 'yellow1').click();
   await expect(toggle(alice, 'yellow1')).toHaveAttribute('aria-pressed', 'true');
-  // R3 review V1: the refusal right below the cards (not a toast), the toggle marked; it stays
+  // R3 review: the refusal right below the cards (not a toast, no box, no ×), the toggle marked; it stays
   const refusal = alice.locator('#deck_cards #deck_refusal');
   await expect(refusal).toBeVisible();
   await expect(refusal).toHaveAttribute('role', 'alert');
   await expect(refusal).toContainText('A card set needs at least two cards.');
-  await expect(caption(alice)).toHaveText('Card set'); // one message at a time
+  await expect(refusal.getByRole('button')).toHaveCount(0);
+  await expect(refusal).toHaveCSS('border-top-style', 'none');
   await expect(toggle(alice, 'yellow1')).toHaveClass(/is-refused/);
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   await expect(deckCard(bob, 'yellow1')).toHaveCount(1);
@@ -129,14 +135,20 @@ test('variant and single cards: Short, a card off and on again, at least two car
   await toggle(alice, 'red0001').click();
   await expect(refusal).toHaveCount(0);
   await expect(deckCard(bob, 'red0001')).toHaveCount(1);
-  // refused again and dismissed with ×: gone, the focus back on the toggle
+  // refused again, then the next action (a special card): gone
   await toggle(alice, 'red0001').click();
   await expect(deckCard(bob, 'red0001')).toHaveCount(0);
   await toggle(alice, 'yellow1').click();
   await expect(refusal).toBeVisible();
-  await refusal.getByRole('button', { name: 'Dismiss' }).click();
+  await control(alice, 'xclam01').click();
   await expect(refusal).toHaveCount(0);
-  await expect(toggle(alice, 'yellow1')).toBeFocused();
+  // refused again, then the menu opens again: gone
+  await toggle(alice, 'yellow1').click();
+  await expect(refusal).toBeVisible();
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#cset_btn').click();
+  await expect(toggle(alice, 'yellow1')).toBeVisible();
+  await expect(refusal).toHaveCount(0);
 });
 
 test('control cards per team: switched on and off, they stay when the set changes', async ({ browser }) => {
@@ -173,13 +185,13 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   // a control card does not end the round
   await alice.locator('#deck_menu .dm-back').click();
   await control(alice, 'xclam01').click();
-  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
+  await expect(alice.locator('#deck_status_live')).toHaveText('Cards changed for everyone');
   await expect(deckCard(bob, 'xclam01')).toHaveCount(1);
   await expectTableCard(alice, 'Bob', 'done001');
 
   // a card of the set does
   await toggle(alice, 'zero001').click();
-  await expect(caption(alice)).toHaveText('\u2713 Changed – new round started');
+  await calm(alice);
   await expect(alice.locator('#deck_status_live')).toHaveText('Cards changed for everyone – new round started');
   for (const page of [alice, bob]) {
     await expectTableCard(page, 'Bob', 'prgrss1');
@@ -295,91 +307,70 @@ test('shruggie: off by default, switched on and placed; Emotions: Short and Full
   await expectTableCard(bob, 'Alice', 'shrug01');
 });
 
-test('a failed deck write: the error stays red in the card set box until the next change (R3 review)', async ({ browser }) => {
+test('a failed deck write: the error at the bottom of the deck tab until the next action (R3 review)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Error');
   await alice.locator('#cset_btn').click();
   await alice.route('**/api/update_controls.php*', route => route.fulfill({ status: 500, body: '' }));
   await control(alice, 'veto').click();
-  await expect(caption(alice)).toHaveText('! Not saved – please try again');
-  await expect(caption(alice)).toHaveClass(/is-error/);
+  await expect(deckError(alice)).toHaveText('Not saved – please try again');
+  await expect(deckError(alice).getByRole('button')).toHaveCount(0);
+  // below the special cards, the last thing in the menu
+  const [err, ctl] = [(await deckError(alice).boundingBox())!, (await alice.locator('#deck_controls').boundingBox())!];
+  expect(err.y).toBeGreaterThanOrEqual(ctl.y + ctl.height - 1);
+  expect(await alice.locator('#deck_menu > :last-child').getAttribute('id')).toBe('deck_error');
   await expect(alice.locator('#deck_status_live')).toHaveText('Not saved – please try again');
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   await expect(deckCard(bob, 'veto')).toHaveCount(0);
-  // no timer: still there later, also after the board state has built the menu again
+  // no timer: still there later, also after a board state
   await alice.waitForTimeout(3500);
-  await expect(caption(alice)).toHaveText('! Not saved – please try again');
-  // the next change replaces it; a success goes back to "Card set" after about 3 s
+  await expect(deckError(alice)).toBeVisible();
+  // the next action ends it; a success shows nowhere
   await alice.unroute('**/api/update_controls.php*');
   await control(alice, 'veto').click();
-  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
-  await expect(caption(alice)).not.toHaveClass(/is-error/);
-  await expect(caption(alice)).toHaveText('Card set', { timeout: 6000 });
-  await expect(caption(alice)).not.toHaveClass(/is-ok/);
   await expect(deckCard(bob, 'veto')).toHaveCount(1);
+  await calm(alice);
 
   // an error ends when the menu opens again
   await alice.route('**/api/update_controls.php*', route => route.fulfill({ status: 500, body: '' }));
   await control(alice, 'veto').click();
-  await expect(caption(alice)).toHaveClass(/is-error/);
+  await expect(deckError(alice)).toBeVisible();
   await alice.locator('#cset_btn').click();
   await alice.locator('#cset_btn').click();
-  await expect(caption(alice)).toHaveText('Card set');
+  await expect(alice.locator('#deck_change')).toBeVisible();
+  await calm(alice);
 });
 
-test('the deck menu does not jump: the caption of the card set box shows the status, empty, done or error (R3 review)', async ({ browser }) => {
+test('the deck menu does not jump: nothing above the cards moves, done or error (R3 review)', async ({ browser }) => {
   const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Steady');
   await alice.locator('#cset_btn').click();
   const where = async () => {
-    const [box, cards, variants] = [(await alice.locator('#deck_change').boundingBox())!,
-      (await alice.locator('#deck_cards').boundingBox())!, (await alice.locator('#deck_variant').boundingBox())!];
-    return { boxY: box.y, boxH: box.height, cardsY: cards.y, cardsH: cards.height, variantsY: variants.y };
+    const [box, cards, variants, ctl] = [(await alice.locator('#deck_change').boundingBox())!,
+      (await alice.locator('#deck_cards').boundingBox())!, (await alice.locator('#deck_variant').boundingBox())!,
+      (await alice.locator('#deck_controls').boundingBox())!];
+    return { boxY: box.y, boxH: box.height, cardsY: cards.y, cardsH: cards.height, variantsY: variants.y, ctlY: ctl.y };
   };
   const same = (a: Awaited<ReturnType<typeof where>>, b: typeof a) => {
     for (const k of Object.keys(a) as (keyof typeof a)[]) expect(Math.abs(a[k] - b[k])).toBeLessThanOrEqual(1);
   };
-  await expect(caption(alice)).toHaveText('Card set');
+  await calm(alice);
   const before = await where();
 
-  // a card off: the caption says so, nothing moves; no variant checked, no extra line below the variants
+  // a card off: no message, nothing moves; no variant checked, no extra line below the variants
   await toggle(alice, 'hundro1').click();
-  await expect(caption(alice)).toHaveText('✓ Changed for everyone');
+  await expect(alice.locator('#deck_status_live')).toHaveText('Cards changed for everyone');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
+  await calm(alice);
   same(before, await where());
   // on again: Classic again, still in place
   await toggle(alice, 'hundro1').click();
   await expect(alice.locator('#deck_variant').getByRole('radio', { name: 'Classic' })).toBeChecked();
   same(before, await where());
 
-  // an error: the same height, one line
+  // an error: at the bottom, nothing above it moves
   await alice.route('**/api/update_deck.php*', route => route.fulfill({ status: 500, body: '' }));
   await toggle(alice, 'zero001').click();
-  await expect(caption(alice)).toHaveText('! Not saved – please try again');
+  await expect(deckError(alice)).toBeVisible();
   same(before, await where());
-});
-
-test('a phone (360 px): the status fits into the caption on one line, nothing moves', async ({ browser }) => {
-  const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Phone');
-  await alice.setViewportSize({ width: 360, height: 740 });
-  await alice.locator('#menu_btn').click();
-  await alice.locator('#menu_index').getByRole('button', { name: /^Board settings/ }).click();
-  await expect(caption(alice)).toHaveText('Card set');
-  const height = async () => (await alice.locator('#deck_change').boundingBox())!.height;
-  const capHeight = async () => (await caption(alice).boundingBox())!.height;
-  const [box, cap] = [await height(), await capHeight()];
-  await alice.route('**/api/update_deck.php*', route => route.fulfill({ status: 500, body: '' }));
-  await toggle(alice, 'zero001').click();
-  await expect(caption(alice)).toHaveText('! Not saved – please try again');
-  expect(Math.abs(await height() - box)).toBeLessThanOrEqual(1);
-  expect(Math.abs(await capHeight() - cap)).toBeLessThanOrEqual(1);
-  // not cut off: the fan gives its width while the status shows
-  expect(await caption(alice).evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-  await alice.unroute('**/api/update_deck.php*');
-  await toggle(alice, 'zero001').click();
-  await expect(caption(alice)).toHaveText('\u2713 Changed for everyone');
-  expect(Math.abs(await height() - box)).toBeLessThanOrEqual(1);
-  expect(await caption(alice).evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-  await expect(caption(alice)).toHaveText('Card set', { timeout: 6000 });
-  await expect(alice.locator('#deck_change .dm-fan')).toBeVisible();
 });
 
 test('the list of card sets fits on a desktop screen: the last set visible without scrolling', async ({ browser }) => {
