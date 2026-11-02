@@ -898,7 +898,8 @@ Backlog-Liste (B-57)? – noch klären.
 ### B-59 Aufdecken, bevor alle gewählt haben
 Feedback (3×): Button „reveal now“, wenn jemand abwesend ist, statt ihn zu entfernen. Andreas: ins Backlog + öffentlich;
 refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns Smarteres ein.
-Stand (Andreas, 2026-11-01): noch nicht reif. Andreas ist von „Reveal now“ als Button nicht überzeugt (Roadmap: 5 👍 / 1 👎);
+Stand (Andreas, 2026-11-01): noch nicht reif. R3-Review (2026-11-02): Abwesende blockieren das Aufdecken; mit der away-Erkennung aus B-110
+könnte „Reveal now“ bzw. „Abwesende nicht mitzählen“ jetzt sinnvoll gelöst werden. Andreas ist von „Reveal now“ als Button nicht überzeugt (Roadmap: 5 👍 / 1 👎);
 Problem dahinter (jemand ist kurz weg) bleibt, Lösung offen – Ideen: „Away“-Status, Abwesende automatisch ausnehmen.
 
 ### B-60 Spaß-Funktionen
@@ -1511,6 +1512,20 @@ Variante (Andreas, 2026-11-01): **C** – zwei Kreise an der Karte (Smiley → E
 Hover. Touch-Geräte (wie heute `(hover: none), (pointer: coarse)`, Tablets inklusive): Kreise erst nach Antippen der
 Karte, mit einmaligem Hinweis; Rückfrage beim Entfernen immer (Desktop und Touch, Andreas 2026-11-01). Getrennte Spieler: Verbindungssymbol (WLAN
 durchgestrichen, neutral) und Mülleimer dauerhaft sichtbar.
+### B-111 Setgruppen erklären: Kurztext, 2-Minuten-Video, „Train your team“
+Status: neu, nicht priorisiert. Idee Andreas (R3-Review, 2026-11-02): Jede Setgruppe zielt auf eine Workshop-Methode
+(Estimation, J.U.D.G.E., Delegation Poker, Team Assessment …), wird in der App aber nicht erklärt. Je Setgruppe ein
+kurzes Video (ca. 2 min, auch synthetisch, im eigenen Stil): was ist es, wozu, grober Ablauf. Darunter „Training für
+dein Team buchen“ mit Preisindikation (Trainings = Online-Kurse verschiedener Länge, immer fürs ganze Team; vgl.
+Monetarisierungs-Ideen). Vorschlag Team (Delia/Fred): in Stufen – (1) drei Zeilen Text je Set im Deck-Menü, (2) „▶ 2 min“
+je Set (kein Autoplay, selbst gehostet bzw. erst nach Klick laden – Datenschutz), (3) ruhiger Link „Train your team“;
+nie während einer Abstimmung (Board wird oft geteilt). Offen: Produktion, Hosting, Preis in der App oder auf der Landingpage.
+
+### B-112 Einladen am leeren Tisch
+Status: neu, nicht priorisiert. Aus dem R3-Review (Delia, 2026-11-02): Solange weniger als zwei Spieler am Tisch sind,
+zeigt ein leerer Platz „Invite your team“ (Link kopieren bzw. Teilen-Menü am Handy). Hängt mit V2 (Copy link → Invite)
+zusammen.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
