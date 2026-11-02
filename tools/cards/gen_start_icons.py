@@ -32,22 +32,22 @@ def stadium(cx, cy, length, r, angle, steps=10):
     return pts_d([(cx + x * ca - y * sa, cy + x * sa + y * ca) for x, y in pts])
 
 
-# pencil: axis from the tip (20, 100) up to the right; body width 24
+# pencil: axis from the tip (10, 106) up to the right; body width 30 (as much room as the chain link and the card)
 ux, uy = 1 / math.sqrt(2), -1 / math.sqrt(2)     # along the pencil
 px, py = 1 / math.sqrt(2), 1 / math.sqrt(2)      # across
 def at(s, w):
-    return (20 + ux * s + px * w, 100 + uy * s + py * w)
+    return (10 + ux * s + px * w, 106 + uy * s + py * w)
 
-g.DIG["st_body"] = f'<path d="{pts_d([at(22, -12), at(80, -12), at(80, 12), at(22, 12)])}"/>'
-g.DIG["st_cap"] = f'<path d="{pts_d([at(80, -12), at(96, -12), at(96, 12), at(80, 12)])}"/>'
-g.DIG["st_wood"] = f'<path d="{pts_d([at(0, 0), at(22, -12), at(22, 12)])}"/>'
-g.DIG["st_lead"] = f'<path d="{pts_d([at(0, 0), at(8, -4.4), at(8, 4.4)])}"/>'
-g.DIG["st_link1"] = f'<path d="{stadium(37, 74, 50, 14, -45)}"/>'
-g.DIG["st_link2"] = f'<path d="{stadium(63, 48, 50, 14, -45)}"/>'
+g.DIG["st_body"] = f'<path d="{pts_d([at(26, -15), at(88, -15), at(88, 15), at(26, 15)])}"/>'
+g.DIG["st_cap"] = f'<path d="{pts_d([at(88, -15), at(104, -15), at(104, 15), at(88, 15)])}"/>'
+g.DIG["st_wood"] = f'<path d="{pts_d([at(0, 0), at(26, -15), at(26, 15)])}"/>'
+g.DIG["st_lead"] = f'<path d="{pts_d([at(0, 0), at(9, -5.2), at(9, 5.2)])}"/>'
+g.DIG["st_link1"] = f'<path d="{stadium(35, 76, 58, 16, -45)}"/>'
+g.DIG["st_link2"] = f'<path d="{stadium(65, 46, 58, 16, -45)}"/>'
 
 g.SYM["st-name"] = ([g.S("st_body"), g.E("st_cap"), g.E("st_wood"), g.P("st_lead", fill=g.INK),
-                     g.T("M40 112c5-4 8 2 13-1s8-4 12 0 7 1 11-2", 2.6)], "pencil")
-g.SYM["st-invite"] = ([g.L("st_link1", w=9), g.L("st_link2", w=9)], "chain link")
+                     g.T("M44 113c5-4 8 2 13-1s8-4 12 0 7 1 11-2", 3)], "pencil")
+g.SYM["st-invite"] = ([g.L("st_link1", w=11), g.L("st_link2", w=11)], "chain link")
 
 if __name__ == "__main__":
     for sid in ("st-name", "st-invite"):

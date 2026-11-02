@@ -497,15 +497,15 @@ textarea.field {
 }
 .team-err[hidden] { display: none; }
 
-/* R3 start page: how it works - three steps in a row, each a sketched picture in the card style (pencil and chain
- * link from init.html's sprite, real deck cards for the vote), a word and a short line; a hand-drawn dashed line
- * leads from one picture to the next. Phones keep the row (three narrow columns). */
+/* R3 start page: how it works - three equal steps in a row: a picture in the card style (pencil and chain link from
+ * init.html's sprite, one real deck card for the vote), all in the same box and of about the same weight, a word
+ * and a short one-line text; a hand-drawn dashed line leads from one picture to the next. Phones keep the row. */
 .start-steps {
     --pic-h: 64px;
+    --gap: var(--space-2);
     list-style: none;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    --gap: var(--space-2);
     gap: var(--gap);
     margin: 52px 0 0;
     padding: 0;
@@ -520,6 +520,7 @@ textarea.field {
     min-width: 0;
 }
 
+/* the same box for all three pictures */
 .start-pic {
     display: block;
     width: calc(var(--pic-h) * 100 / 120);
@@ -532,17 +533,13 @@ textarea.field {
     content: "";
     position: absolute;
     top: calc(var(--pic-h) / 2 - 6px);
-    --from: calc(var(--pic-h) * 0.55); /* half the picture before it plus some air */
-    --to: calc(var(--pic-h) * 0.55);   /* the same before this picture */
-    right: calc(50% + var(--to));
-    width: calc(100% + var(--gap) - var(--from) - var(--to));
+    right: calc(50% + var(--pic-h) * 0.55);
+    width: calc(100% + var(--gap) - var(--pic-h) * 1.1);
     height: 12px;
     background: var(--line-strong);
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
-
-.start-step:nth-child(3)::before { --to: calc(var(--pic-h) * 0.9); } /* the fan is wider */
 
 .start-step b {
     font-size: var(--fs-m);
@@ -557,33 +554,25 @@ textarea.field {
 }
 
 .start-step > span:last-child {
-    text-wrap: balance;
     margin-top: 2px;
     font-size: var(--fs-xs);
     line-height: 1.45;
     color: var(--muted);
+    white-space: nowrap; /* the texts are short (15 characters at most): one line each, also at 360 px */
 }
 
-.start-step .nowrap { white-space: nowrap; }
-
-/* the vote: a small fan of three real deck cards from three sets (Fibonacci, T-shirt, question card) */
-.start-fan {
-    position: relative;
-    width: calc(var(--pic-h) * 1.5);
+/* the vote: one real deck card, a little smaller than the box and slightly tilted, so it weighs like the drawings */
+.start-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.start-fan .dkc {
-    position: absolute;
-    bottom: 0;
-    left: calc(50% - var(--pic-h) * 0.3);
-    width: calc(var(--pic-h) * 0.6);
-    border-radius: 5px;
-    transform-origin: 50% 120%;
+.start-card .dkc {
+    width: 64%;
+    border-radius: 4px;
+    transform: rotate(8deg);
 }
-
-.start-fan .dkc:nth-child(1) { transform: translateX(-46%) rotate(-12deg); }
-.start-fan .dkc:nth-child(2) { bottom: 4px; }
-.start-fan .dkc:nth-child(3) { transform: translateX(46%) rotate(12deg); }
 
 @media (max-width: 799.98px) {
     .start { padding-top: 40px; }
