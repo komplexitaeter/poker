@@ -71,7 +71,7 @@ function newRound() {
     apiWrite(url);
 }
 
-function playerTypeUpdate(playerType, name) {
+function playerTypeUpdate(playerType, name, teamName) {
     let ctl = document.getElementById("ctl");
     let overlayNameInput = document.getElementById("overlay_name_input");
     let privacyLink = document.getElementById("overlay_privacy_link");
@@ -84,16 +84,22 @@ function playerTypeUpdate(playerType, name) {
     else {
         let nameinput = document.getElementById("nameinput");
         let removedMsg = document.getElementById("removed_msg");
+        // R3 review V4: "Join <team>" above the field (not when removed: that state has its own heading)
+        let joinTitle = document.getElementById("join_title");
+        const joinText = teamName ? 'Join ' + teamName : 'Join';
+        if (joinTitle.textContent !== joinText) joinTitle.textContent = joinText;
 
         updateBecomeUserButtons(nameinput);
 
         if (playerType === 'REMOVED') {
             toggleStyleClass(nameinput, 'display_none', 'display_unset');
+            toggleStyleClass(joinTitle, 'display_none', 'display_unset');
             toggleStyleClass(removedMsg, 'display_unset', 'display_none');
             toggleStyleClass(privacyLink, 'hidden', 'visible');
 
         } else {
             toggleStyleClass(nameinput, 'display_unset', 'display_none');
+            toggleStyleClass(joinTitle, 'display_unset', 'display_none');
             toggleStyleClass(removedMsg, 'display_none', 'display_unset');
             toggleStyleClass(privacyLink, 'visible', 'hidden');
         }
@@ -1910,7 +1916,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
 
-    playerTypeUpdate(myJson.player_type, myJson.name);
+    playerTypeUpdate(myJson.player_type, myJson.name, myJson.team_name);
 
     if (topic.getAttribute("data-hash") !== topicHash) {
 

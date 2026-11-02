@@ -22,6 +22,11 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
   const rows = alice.locator('#deck_menu .dm-prow-b');
   await expect(rows).toHaveCount(8);
   await expect(rows.filter({ hasText: 'Fibonacci' })).toHaveAttribute('aria-current', 'true');
+  // the current set: the check icon (#i-check), fully inside its row (Andreas: it was cut off on the right)
+  const tick = rows.filter({ hasText: 'Fibonacci' }).locator('.dm-tick');
+  await expect(tick.locator('use')).toHaveAttribute('href', '#i-check');
+  const [tickBox, rowBox] = [(await tick.boundingBox())!, (await rows.filter({ hasText: 'Fibonacci' }).boundingBox())!];
+  expect(tickBox.x + tickBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width - 4);
   await expect(rows.filter({ hasText: 'J.U.D.G.E.' }).locator('.dm-fan .dkc')).toHaveCount(4);
   await expect(alice.locator('#deck_pick_title')).toBeFocused();
   await rows.filter({ hasText: 'J.U.D.G.E.' }).click();

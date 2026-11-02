@@ -467,6 +467,16 @@ textarea.field {
     color: var(--muted);
 }
 
+/* R3 review V5: a board link that does not work (index.php shows the start page with ?t=…, script_team.js) */
+.link-err {
+    margin: 60px auto 0;
+    padding: 0 var(--space-3);
+    max-width: 36rem;
+    color: var(--warn);
+}
+.link-err[hidden] { display: none; }
+.link-err:not([hidden]) + .team-lead { margin-top: var(--space-3); }
+
 /* R3 review V10 (L17): an empty team name says so below the field (script_team.js) */
 .team-err {
     margin: var(--space-2) auto 0;
@@ -4127,6 +4137,16 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 #nameinput { margin: 60px 0 var(--space-4); }
 
+/* R3 review V4: "Join <team>" above the name field (link opened); styled like the heading of #removed_msg */
+.join-title {
+    box-sizing: border-box;
+    width: 450px;
+    max-width: calc(100% - 2 * var(--space-3));
+    margin: 50px 0 0;
+    overflow-wrap: anywhere;
+}
+.join-title:not(.display_none) + label + #nameinput { margin-top: var(--space-4); }
+
 .privacy_link {
     display: flex;
     justify-content: center;
@@ -4712,7 +4732,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     gap: 10px;
     width: 100%;
     min-height: 64px;
-    padding: 6px 4px;
+    padding: 6px 8px 6px 4px; /* R3 review: room on the right, the tick / arrow is never cut off */
     border: 0;
     background: none;
     color: var(--text);
@@ -4726,7 +4746,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-prow.sel b,
 .dm-tick { color: var(--accent); }
 
-.dm-tick { font-weight: bold; text-align: center; }
+.dm-tick { stroke-width: 2.5; } /* the current set: the check icon of Invite (#i-check), in the accent colour */
 
 /* phones: larger taps */
 @media (max-width: 799.98px) {

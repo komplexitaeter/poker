@@ -56,6 +56,7 @@ test('removed: the overlay says "You were removed from the table" (E3)', async (
   const msg = alice.locator('#removed_msg');
   await expect(msg).toBeVisible();
   await expect(msg.locator('h1')).toHaveText('You were removed from the table');
+  await expect(alice.locator('#join_title')).toBeHidden(); // R3 review V4: not when removed
   await expect(msg.locator('span')).toHaveText(
     'Usually a teammate does this when you have been away for a while. What do you want to do now?');
 });

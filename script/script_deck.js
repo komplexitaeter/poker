@@ -300,7 +300,7 @@ function deckPickView(deck) {
         const variants = group.variants.length > 1 ? ' · ' + group.variants.map(v => v.name).join(', ') : '';
         text.append(dmEl('b', null, group.name), dmEl('small', null, note + variants));
         const keys = current ? deck.cards : group.variants[0].cards;
-        const mark = current ? dmEl('span', 'dm-tick', '✓') : dmIcon('next');
+        const mark = current ? dmIcon('check', 'dm-tick') : dmIcon('next');
         if (current) mark.setAttribute('aria-hidden', 'true');
         button.append(text, dmFan(keys), mark);
         button.addEventListener('click', () => pickDeckGroup(group));

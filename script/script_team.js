@@ -33,3 +33,14 @@ function addTeam() {
             });
     }
 }
+
+/* R3 review V5: index.php shows the start page for a board link that does not work (unknown or cut-off ?t=);
+ * then a line says so. Static text only, the team id is not shown. */
+function showLinkError() {
+    const error = document.getElementById('link_err');
+    if (error === null) return;
+    const t = new URLSearchParams(location.search).get('t');
+    error.hidden = t === null || t.trim() === '';
+}
+
+document.addEventListener('DOMContentLoaded', showLinkError);
