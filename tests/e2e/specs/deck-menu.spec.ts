@@ -32,6 +32,9 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
   await expect(alice.locator('#deck_status')).toBeVisible();
   await expect(alice.locator('#deck_status')).toHaveText('\u2713 Deck changed – everyone sees it');
   await expect(alice.locator('#deck_status .dm-status-x')).toBeHidden(); // only errors are closed by hand
+  // screen readers: a live region that is always there (not switched by hidden)
+  await expect(alice.locator('#deck_status_live')).toHaveText('Deck changed – everyone sees it');
+  await expect(alice.locator('#deck_status_live')).toHaveAttribute('role', 'status');
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   const judge = ['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4', 'jdg5', 'jdg6', 'break01', 'qstmrk1'];
   for (const page of [alice, bob]) {

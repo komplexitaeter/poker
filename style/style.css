@@ -865,10 +865,13 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     font-weight: bold;
 }
 
-.invite-btn:hover {
-    border-color: var(--accent);
-    background: transparent;
-    color: var(--accent);
+/* hover only where a pointer hovers: after a tap on a phone it would stay */
+@media (hover: hover) {
+    .invite-btn:hover {
+        border-color: var(--accent);
+        background: transparent;
+        color: var(--accent);
+    }
 }
 
 .invite-btn .i-check,
@@ -4498,14 +4501,15 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     margin: 0 0 var(--space-3);
     padding: 4px 4px 4px 10px;
     border-left: 2px solid var(--ok);
-    background: var(--bg-3);
+    background: transparent; /* --ok on --bg-3 is too weak in light mode */
     color: var(--ok);
     font-size: var(--fs-xs);
     min-height: 28px;
     box-sizing: border-box;
 }
 
-.dm-status[hidden],
+/* empty: no line (the live region #deck_status_live stays, see board.html) */
+.dm-status:has(.dm-status-t:empty),
 .dm-status-x[hidden] { display: none; }
 
 .dm-status-t { flex: 1; }
@@ -4521,6 +4525,14 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     min-height: 28px;
     padding: 0;
     color: inherit;
+}
+
+@media (pointer: coarse) {
+    .dm-status-x,
+    .dm-refusal-x {
+        min-width: var(--tap);
+        min-height: var(--tap);
+    }
 }
 
 .dm-status-x .i,

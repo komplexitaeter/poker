@@ -101,7 +101,7 @@ test('touch: a tap next to the emoji bar closes it and the circles, the team nam
   // nothing open: the team name copies the link
   await alice.locator('#team_name').tap();
   // R3 review V1: confirmed at the Invite button, not as a toast
-  await expect(alice.locator('#invite_btn')).toHaveText('Link copied \u2713');
+  await expect(alice.locator('#invite_btn')).toHaveText('Copied');
   await expect(toast).not.toHaveClass(/toast-on/);
 });
 

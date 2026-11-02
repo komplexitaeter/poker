@@ -376,11 +376,13 @@ function setDeckStatus(status) {
     const line = document.getElementById('deck_status');
     if (line === null) return;
     const close = line.querySelector('.dm-status-x');
-    line.hidden = status === null;
+    // the line hides itself while empty (CSS); screen readers hear it from a live region that is always there
     line.classList.toggle('is-error', status !== null && status.error);
     close.hidden = status === null || !status.error;
     close.onclick = () => setDeckStatus(null);
     line.querySelector('.dm-status-t').textContent = status === null ? '' : (status.error ? '! ' : '\u2713 ') + status.text;
+    const live = document.getElementById('deck_status_live');
+    if (live !== null) live.textContent = status === null ? '' : status.text;
 }
 
 /* a write of the menu; the local copy shows it at once, the next board state from the server wins.

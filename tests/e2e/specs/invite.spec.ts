@@ -4,7 +4,7 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 /**
  * R3 review V1/V2 (Andreas, 2026-11-02): "Invite" is the primary action in the header (accent, share icon, label on
  * every width). With navigator.share a click opens the native share menu; without it (or when sharing fails) the
- * link is copied and the button itself says "Link copied ✓" for 2 s (no toast). Cancelling the share menu does
+ * link is copied and the button itself says "Copied" (check icon) for 2 s, screen readers hear "Link copied" (no toast). Cancelling the share menu does
  * nothing. The team name still copies the link, confirmed at the button. The tip in the column names the button.
  * V8: the average pointer switch has no lock and the board no red flash.
  */
@@ -51,7 +51,7 @@ test('desktop without share: Invite copies the link and confirms at the button, 
   await expect(invite).toBeVisible();
   await expect(invite).toHaveText('Invite');
   // label in name (WCAG 2.5.3)
-  await expect(alice.getByRole('button', { name: 'Invite – copy board link' })).toHaveCount(1);
+  await expect(alice.getByRole('button', { name: 'Invite – share board link' })).toHaveCount(1);
   // accent fill: the primary action of the header
   const colors = await invite.evaluate(el => {
     const s = getComputedStyle(el);
@@ -62,8 +62,11 @@ test('desktop without share: Invite copies the link and confirms at the button, 
   // alone on the board: the tip names the button
   await expect(alice.locator('#round_tip')).toHaveText('Invite your team: click Invite and share the link.');
 
+  const before = (await invite.boundingBox())!.width;
   await invite.click();
-  await expect(invite).toHaveText('Link copied ✓');
+  await expect(invite).toHaveText('Copied');
+  // same width: the header does not jump (small phones)
+  expect(Math.abs((await invite.boundingBox())!.width - before)).toBeLessThanOrEqual(1);
   await expect(invite).toHaveClass(/is-done/);
   await expect(alice.locator('#invite_status')).toHaveText('Link copied');
   expect(await copied(alice)).toEqual([url]);
@@ -74,7 +77,7 @@ test('desktop without share: Invite copies the link and confirms at the button, 
 
   // the team name still copies, confirmed at the Invite button
   await alice.locator('.team-name').click();
-  await expect(invite).toHaveText('Link copied ✓');
+  await expect(invite).toHaveText('Copied');
   expect(await copied(alice)).toEqual([url, url]);
 });
 
@@ -106,7 +109,7 @@ test('share menu cancelled: nothing happens; share refused: the link is copied i
       expect(await copied(alice)).toEqual([]);
       await expect(alice.locator('#invite_btn')).toHaveText('Invite');
     } else {
-      await expect(alice.locator('#invite_btn')).toHaveText('Link copied ✓');
+      await expect(alice.locator('#invite_btn')).toHaveText('Copied');
       expect(await copied(alice)).toEqual([url]);
     }
     await alice.context().close();

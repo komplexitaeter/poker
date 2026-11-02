@@ -2465,18 +2465,19 @@ function copyLink() {
     });
 }
 
-/* the Invite button reads "Link copied ✓" for 2 s (class is-done: check icon, green), screen readers hear it once */
+/* the Invite button reads "Copied" for 2 s (class is-done: check icon, green; short, so the header does not jump on
+ * small phones), screen readers hear "Link copied" once */
 let gInviteTimer = null;
-function confirmInvite(text) {
+function confirmInvite(text, label = 'Copied') {
     let button = document.getElementById('invite_btn');
-    let label = button.querySelector('.lbl');
+    let lbl = button.querySelector('.lbl');
     let status = document.getElementById('invite_status');
-    label.textContent = text + ' \u2713';
+    lbl.textContent = label;
     button.classList.add('is-done');
     status.textContent = text;
     clearTimeout(gInviteTimer);
     gInviteTimer = setTimeout(function () {
-        label.textContent = 'Invite';
+        lbl.textContent = 'Invite';
         button.classList.remove('is-done');
         status.textContent = '';
     }, 2000);

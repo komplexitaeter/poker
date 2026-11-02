@@ -8,15 +8,15 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=1.99" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.00" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.34" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.14" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.3" type="text/javascript"></script>
-    <script defer src="script/script_deck.js?v=1.9" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.88" type="text/javascript"></script>
+    <script defer src="script/script_deck.js?v=1.10" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.89" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -76,7 +76,7 @@
             <button type="button" class="team-name" onclick="copyLink()"><span id="team_name"></span><span class="caret" aria-hidden="true"><span id="prompt_user" class="you-tag"></span></span></button>
             <!-- R3 review V2: "Invite" is the primary action of the header (accent); with navigator.share the native
                  share menu opens, else the link is copied and the button itself confirms it (V1, inviteTeam()) -->
-            <button type="button" id="invite_btn" class="icon-btn invite-btn" onclick="inviteTeam()" aria-label="Invite – copy board link"><svg class="i i-share" aria-hidden="true"><use href="#i-share"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg><span class="lbl">Invite</span></button>
+            <button type="button" id="invite_btn" class="icon-btn invite-btn" onclick="inviteTeam()" aria-label="Invite – share board link"><svg class="i i-share" aria-hidden="true"><use href="#i-share"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg><span class="lbl">Invite</span></button>
             <span id="invite_status" class="sr-only" role="status" aria-live="polite"></span>
             <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
         </div>
@@ -251,7 +251,8 @@
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
                     <!-- R3 F5 (B-98): the deck menu, built by script_deck.js (overview / list of card sets) -->
                     <!-- R3 review V1: the result of the own change stays here until the next one (writeDeck()) -->
-                    <div id="deck_status" class="dm-status" role="status" aria-live="polite" hidden><span class="dm-status-t"></span><button type="button" class="dm-status-x icon-btn" aria-label="Dismiss" hidden><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+                    <span id="deck_status_live" class="sr-only" role="status" aria-live="polite"></span>
+                    <div id="deck_status" class="dm-status"><span class="dm-status-t"></span><button type="button" class="dm-status-x icon-btn" aria-label="Dismiss" hidden><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
                     <div id="deck_menu" class="dm"></div>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>

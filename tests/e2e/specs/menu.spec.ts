@@ -386,7 +386,7 @@ test('Invite and the QR overlay work as before, also with the panel open (B-51)'
   // Invite in the header (no navigator.share in this browser): the link in the clipboard, confirmed at the button
   await alice.evaluate(() => Object.defineProperty(navigator, 'share', { configurable: true, value: undefined }));
   await alice.locator('#invite_btn').click();
-  await expect(alice.locator('#invite_btn')).toHaveText('Link copied \u2713');
+  await expect(alice.locator('#invite_btn')).toHaveText('Copied');
   expect(await alice.evaluate(() => navigator.clipboard.readText())).toBe(url);
 
   // the QR icon shows the large QR code over everything, a click closes it
