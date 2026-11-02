@@ -4541,12 +4541,17 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     background: transparent; /* --ok on --bg-3 is too weak in light mode */
     color: var(--ok);
     font-size: var(--fs-xs);
-    min-height: 28px;
+    min-height: 36px; /* R3 review: as high as the error line with its close button (28px + padding), always */
     box-sizing: border-box;
 }
 
+@media (pointer: coarse) {
+    .dm-status { min-height: calc(var(--tap) + 8px); }
+}
+
 /* empty: no line (the live region #deck_status_live stays, see board.html) */
-.dm-status:has(.dm-status-t:empty),
+/* R3 review (Andreas): an empty line keeps its room (the deck menu does not jump), border and text invisible */
+.dm-status:has(.dm-status-t:empty) { visibility: hidden; }
 .dm-status-x[hidden] { display: none; }
 
 .dm-status-t { flex: 1; }
