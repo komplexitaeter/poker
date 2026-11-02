@@ -1862,8 +1862,8 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  *   .is-away  no connection for a while: card paler (opaque, a veil in .pc::after), name grey, "no connection"
  *             symbol before the name (CSS only), trash can always visible. Name it for screen readers in the delete label.
  *   .is-open  touch only: the card was tapped, its circles show (one card at a time; a tap elsewhere closes).
- *             Touch devices = (hover: none), (pointer: coarse). The tap mode starts once a card has a .react
- *             (#table:has(.react), cards or observers); without one, touch keeps the trash can on every card (as before B-110).
+ *             Touch devices = (hover: none), (pointer: coarse). The tap mode is #table.tap-mode, set by script.js on
+ *             every touch device (R3 review E6: also alone at the table, the own trash can only after a tap).
  *
  * observers (the row below the cards, inside main#table after #cbox, board.html):
  *   <div id="observers" class="observers" hidden>
@@ -1949,8 +1949,8 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 
 /* touch: the circles only on the tapped card (.is-open); the trash can of an away player always */
 @media (hover: none), (pointer: coarse) {
-    #table:has(.react) .c:not(.is-open) :is(.delete, .react, .nudge) { opacity: 0; pointer-events: none; }
-    #table:has(.react) .c.is-away:not(.is-open) .delete { opacity: 1; pointer-events: auto; }
+    #table.tap-mode .c:not(.is-open) :is(.delete, .react, .nudge) { opacity: 0; pointer-events: none; }
+    #table.tap-mode .c.is-away:not(.is-open) .delete { opacity: 1; pointer-events: auto; }
     .c.is-open > .pc { border-color: var(--accent); }
 }
 
