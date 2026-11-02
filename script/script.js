@@ -906,7 +906,10 @@ function noteDeckGroup(json, seq) {
     const before = gShownDeckGroup;
     gShownDeckGroup = group;
     if (before === null || before === group || own) return;
-    showToast('Card set changed to ' + (json.deck.group === 'custom' ? customSetName(json) : deckGroupName(group)));
+    const name = json.deck.group === 'custom' ? customSetName(json) : deckGroupName(group);
+    // B-98: who switched (dao deck.changed_by, free text: showToast() sets it with textContent)
+    const by = typeof json.deck.changed_by === 'string' ? json.deck.changed_by.trim() : '';
+    showToast(by !== '' ? by + ' changed the card set to ' + name : 'Card set changed to ' + name);
 }
 
 /* B-98 S5: the name of the team's custom set in play (free text: only ever shown with textContent) */
