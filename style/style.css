@@ -4818,11 +4818,14 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     inset: 0;
     width: 100%;
     height: 100%;
-    max-width: none;
+    height: 100dvh; /* iOS: the visible height, the foot with Save above Safari's toolbar */
+    max-width: 100%;
     max-height: none;
     margin: 0;
     padding: 0;
     border: 0;
+    box-sizing: border-box;
+    overflow: hidden;
     background: var(--bg);
     color: var(--text);
     text-align: left;
@@ -4841,6 +4844,12 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     padding: 4px 16px;
 }
 .cs-ovl .field { width: 100%; min-height: var(--tap); font-size: var(--fs-m); }
+/* R3 fix (Andreas, iPhone): 16px on touch and small screens, else iOS zooms into the focused name field and the
+ * editor is cut off on the right (×, style) and at the bottom (Save) */
+@media (max-width: 799.98px), (pointer: coarse) {
+    .cs-ovl .field, .cs-ovl input, .cs-ovl textarea, .cs-ovl select { font-size: var(--fs-l); }
+}
+.cs-head > *, .cs-foot > * { min-width: 0; }
 .cs-ovl textarea.field { display: block; padding: 8px 10px; line-height: 1.4; }
 .cs-ovl .f { margin: 0 0 14px; padding: 0; border: 0; min-width: 0; }
 .cs-ovl .hint { margin-top: 4px; }
@@ -4858,7 +4867,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     background: var(--bg-2);
 }
 .cs-head h2 { margin: 0; font-size: var(--fs-l); }
-.cs-sub { flex: 1; min-width: 12em; font-size: var(--fs-xs); color: var(--muted); }
+.cs-sub { flex: 1; min-width: min(12em, 100%); font-size: var(--fs-xs); color: var(--muted); overflow-wrap: anywhere; }
 .cs-sub.bad { color: var(--danger); font-weight: bold; }
 .cs-x .i { width: 20px; height: 20px; }
 
