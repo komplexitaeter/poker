@@ -110,7 +110,6 @@ body {
     --ok: #5af78e;          /* prompt user@host */
     --danger: #ff6b66;
     --warn: #ffb547;        /* B-67: timer over its timebox (T+) */
-    --flash-red-background: #340000;
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
     /* B-68: the deck tray floating over the table: a deep shadow and a faint light edge, so it
@@ -144,7 +143,6 @@ body.light-theme {
     --ok: #1b7a37;
     --danger: #c0262d;
     --warn: #9a5800;
-    --flash-red-background: #ffd9d9;
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
     --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
@@ -856,8 +854,36 @@ textarea.field {
 body:has(#timer:not(.display_none)) #timer_btn .lbl::after,
 body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { background: var(--ok); }
 
-#copy_link_btn { color: var(--muted); }
-#copy_link_btn:hover { color: var(--accent); }
+/* R3 review V2: "Invite" is the primary action of the header: accent fill, share icon, label on every width.
+ * After copying (V1) it reads "Link copied ✓" in green for 2 s (.is-done, script.js confirmInvite()). */
+.invite-btn {
+    margin-left: var(--space-1);
+    padding: 0 12px;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+/* hover only where a pointer hovers: after a tap on a phone it would stay */
+@media (hover: hover) {
+    .invite-btn:hover {
+        border-color: var(--accent);
+        background: transparent;
+        color: var(--accent);
+    }
+}
+
+.invite-btn .i-check,
+.invite-btn.is-done .i-share { display: none; }
+.invite-btn.is-done .i-check { display: block; }
+
+.invite-btn.is-done,
+.invite-btn.is-done:hover {
+    border-color: var(--ok);
+    background: var(--ok);
+    color: var(--on-accent);
+}
 
 /* color mode: moon in dark mode, sun in light mode */
 #cmode_btn .i-sun,
@@ -885,8 +911,7 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 
 /* medium screens: icons only (name via aria-label) */
 @media (min-width: 800px) and (max-width: 1179.98px) {
-    .topnav-bar .lbl,
-    #copy_link_btn .lbl { display: none; }
+    .topnav-bar .lbl { display: none; }
 }
 
 @media (max-width: 799.98px) {
@@ -904,8 +929,9 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 
     .team-name { font-size: var(--fs-m); }
 
-    #show_qr_code,
-    #copy_link_btn .lbl { display: none; }
+    #show_qr_code { display: none; }
+
+    .invite-btn { padding: 0 10px; }
 
     /* board: the header buttons move into the menu sheet (index) */
     .container .topnav-bar { display: none; }
@@ -1088,6 +1114,10 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     text-wrap: pretty; /* no single word alone in the last line */
 }
 
+/* R3 review V1: the confirmation of an own switch below it (timer), instead of a toast */
+.hint.ok-status { color: var(--ok); }
+.hint.ok-status:empty { margin: 0; }
+
 .row {
     display: flex;
     align-items: center;
@@ -1209,14 +1239,6 @@ fieldset:disabled .seg input:checked + span {
     background: var(--bg-4);
     color: var(--muted);
 }
-
-/* average pointer: a lock on "Show" while it is hidden ("join the dark side") */
-.seg .i-lock {
-    width: 14px;
-    height: 14px;
-}
-
-.seg input:checked + span .i-lock { display: none; }
 
 /* Tabs in a menu section (board settings: Deck | Results | Team; feedback: New issue | Backlog;
  * role=tab, aria-selected) above the content of the
@@ -4310,8 +4332,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* ---------- Animations ---------- */
 
-.flash-red { animation: flashRed 1.5s ease-in-out; }
-
 @keyframes fade-in {
     0% { opacity: 0; }
     75% { opacity: 0; }
@@ -4339,12 +4359,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 @keyframes caret-pulse {
     0%, 100% { opacity: 0.9; }
     50% { opacity: 0.15; }
-}
-
-@keyframes flashRed {
-    0% { background-color: var(--background-color); }
-    50% { background-color: var(--flash-red-background); }
-    100% { background-color: var(--background-color); }
 }
 
 /* ---------- Rotate hint (B-78) ---------- */
@@ -4478,6 +4492,83 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-card .dkc .dh { font-size: 7px; }
 
 .dm .hint.warn { color: var(--warn); }
+
+/* R3 review V1: the result of the own change, at the top of the deck tab until the next change (#deck_status) */
+.dm-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin: 0 0 var(--space-3);
+    padding: 4px 4px 4px 10px;
+    border-left: 2px solid var(--ok);
+    background: transparent; /* --ok on --bg-3 is too weak in light mode */
+    color: var(--ok);
+    font-size: var(--fs-xs);
+    min-height: 28px;
+    box-sizing: border-box;
+}
+
+/* empty: no line (the live region #deck_status_live stays, see board.html) */
+.dm-status:has(.dm-status-t:empty),
+.dm-status-x[hidden] { display: none; }
+
+.dm-status-t { flex: 1; }
+
+.dm-status.is-error {
+    border-left-color: var(--danger);
+    color: var(--danger);
+}
+
+.dm-status-x,
+.dm-refusal-x {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    color: inherit;
+}
+
+@media (pointer: coarse) {
+    .dm-status-x,
+    .dm-refusal-x {
+        min-width: var(--tap);
+        min-height: var(--tap);
+    }
+}
+
+.dm-status-x .i,
+.dm-refusal-x .i { width: 16px; height: 16px; }
+
+/* a refused toggle (fewer than two cards): the reason right below the cards, until fixed or dismissed */
+.dm-refusal {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+    padding: 6px 4px 6px 10px;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-m);
+    color: var(--danger);
+    font-size: var(--fs-xs);
+}
+
+.dm-refusal p { flex: 1; margin: 0; }
+
+.dm-refusal b { display: block; }
+
+.dm-refusal small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--fs-xs); }
+
+.dm-tgs .dm-tg.is-refused { border-color: var(--danger); animation: dm-refuse 0.4s ease-in-out; }
+
+@keyframes dm-refuse {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dm-tgs .dm-tg.is-refused { animation: none; }
+}
 
 .dm-round { margin: 0 0 var(--space-3); }
 

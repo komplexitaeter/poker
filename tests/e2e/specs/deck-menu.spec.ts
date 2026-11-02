@@ -28,10 +28,14 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
 
   // back on the overview; both trays hold the set plus the team's control cards
   await expect(alice.locator('#deck_change')).toContainText('J.U.D.G.E.');
-  // F7: the result as a toast (like "Board link copied"), no status line in the menu
-  await expect(alice.locator('#toast')).toHaveText('Deck changed – everyone sees it');
-  await expect(alice.locator('#toast')).toHaveClass(/toast-on/);
-  await expect(alice.locator('#deck_status')).toHaveCount(0);
+  // F7, R3 review V1: the result in the status line of the menu (where the click was), no toast
+  await expect(alice.locator('#deck_status')).toBeVisible();
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Deck changed – everyone sees it');
+  await expect(alice.locator('#deck_status .dm-status-x')).toBeHidden(); // only errors are closed by hand
+  // screen readers: a live region that is always there (not switched by hidden)
+  await expect(alice.locator('#deck_status_live')).toHaveText('Deck changed – everyone sees it');
+  await expect(alice.locator('#deck_status_live')).toHaveAttribute('role', 'status');
+  await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   const judge = ['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4', 'jdg5', 'jdg6', 'break01', 'qstmrk1'];
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(judge);
@@ -70,7 +74,7 @@ test('variant and single cards: Short, a card off and on again, at least two car
   expect(deckWrites).toBe(1);
   // mouse: back to Classic and to Short again
   await variant('Classic').check();
-  await expect(alice.locator('#toast')).toHaveText('Variant changed – everyone sees it');
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Variant changed – everyone sees it');
   await expect.poll(() => trayKeys(bob)).toContain('hundro1');
   await variant('Short').check();
   for (const page of [alice, bob]) {
@@ -99,8 +103,29 @@ test('variant and single cards: Short, a card off and on again, at least two car
   await expect(deckCard(bob, 'red0001')).toHaveCount(0);
   await toggle(alice, 'yellow1').click();
   await expect(toggle(alice, 'yellow1')).toHaveAttribute('aria-pressed', 'true');
-  await expect(alice.locator('#toast')).toHaveText('A deck needs at least two cards');
+  // R3 review V1: the refusal right below the cards (not a toast), the toggle marked; it stays
+  const refusal = alice.locator('#deck_cards #deck_refusal');
+  await expect(refusal).toBeVisible();
+  await expect(refusal).toHaveAttribute('role', 'alert');
+  await expect(refusal).toContainText('A card set needs at least two cards.');
+  await expect(alice.locator('#deck_status')).toBeHidden(); // one message at a time
+  await expect(toggle(alice, 'yellow1')).toHaveClass(/is-refused/);
+  await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   await expect(deckCard(bob, 'yellow1')).toHaveCount(1);
+  await alice.waitForTimeout(2500); // no timer: still there after a toast would be gone
+  await expect(refusal).toBeVisible();
+  // fixed: a card on again, the refusal goes
+  await toggle(alice, 'red0001').click();
+  await expect(refusal).toHaveCount(0);
+  await expect(deckCard(bob, 'red0001')).toHaveCount(1);
+  // refused again and dismissed with ×: gone, the focus back on the toggle
+  await toggle(alice, 'red0001').click();
+  await expect(deckCard(bob, 'red0001')).toHaveCount(0);
+  await toggle(alice, 'yellow1').click();
+  await expect(refusal).toBeVisible();
+  await refusal.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(refusal).toHaveCount(0);
+  await expect(toggle(alice, 'yellow1')).toBeFocused();
 });
 
 test('control cards per team: switched on and off, they stay when the set changes', async ({ browser }) => {
@@ -137,13 +162,13 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   // a control card does not end the round
   await alice.locator('#deck_menu .dm-back').click();
   await control(alice, 'xclam01').click();
-  await expect(alice.locator('#toast')).toHaveText('Special cards changed – everyone sees it');
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Special cards changed – everyone sees it');
   await expect(deckCard(bob, 'xclam01')).toHaveCount(1);
   await expectTableCard(alice, 'Bob', 'done001');
 
   // a card of the set does
   await toggle(alice, 'zero001').click();
-  await expect(alice.locator('#toast')).toHaveText('Cards changed – new round started');
+  await expect(alice.locator('#deck_status')).toHaveText('\u2713 Cards changed – new round started');
   for (const page of [alice, bob]) {
     await expectTableCard(page, 'Bob', 'prgrss1');
     await expect(deckCard(page, 'zero001')).toHaveCount(0);
@@ -256,4 +281,20 @@ test('shruggie: off by default, switched on and placed; Emotions: Team Assessmen
   await pickCard(alice, 'shrug01');
   await expectTableCard(alice, 'Bob', 'worri01');
   await expectTableCard(bob, 'Alice', 'shrug01');
+});
+
+test('a failed deck write: the error stays in the status line until dismissed (R3 review V1)', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Error');
+  await alice.locator('#cset_btn').click();
+  await alice.route('**/api/update_controls.php*', route => route.fulfill({ status: 500, body: '' }));
+  await control(alice, 'veto').click();
+  const status = alice.locator('#deck_status');
+  await expect(status).toHaveText('! Not saved – please try again');
+  await expect(status).toHaveClass(/is-error/);
+  await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
+  await alice.waitForTimeout(2500);
+  await expect(status).toBeVisible();
+  await status.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(status).toBeHidden();
+  await expect(deckCard(bob, 'veto')).toHaveCount(0);
 });

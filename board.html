@@ -8,15 +8,15 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=1.98" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.00" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.33" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.34" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.14" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.3" type="text/javascript"></script>
-    <script defer src="script/script_deck.js?v=1.8" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.87" type="text/javascript"></script>
+    <script defer src="script/script_deck.js?v=1.10" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.89" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -26,6 +26,8 @@
 <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
 <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
     <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v1M14 20h1M18 18h3v3"/></symbol>
     <symbol id="i-watch" viewBox="0 0 24 24"><circle cx="12" cy="14" r="7"/><path d="M12 14V10M10 3h4M12 3v4M18 7l1.5-1.5"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
@@ -38,7 +40,6 @@
     <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
     <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
-    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
     <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
@@ -73,7 +74,10 @@
              the tag is hidden and only the team name and the cursor show. -->
         <div class="head-title">
             <button type="button" class="team-name" onclick="copyLink()"><span id="team_name"></span><span class="caret" aria-hidden="true"><span id="prompt_user" class="you-tag"></span></span></button>
-            <button type="button" id="copy_link_btn" class="icon-btn" onclick="copyLink()" aria-label="Copy board link"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy Link</span></button>
+            <!-- R3 review V2: "Invite" is the primary action of the header (accent); with navigator.share the native
+                 share menu opens, else the link is copied and the button itself confirms it (V1, inviteTeam()) -->
+            <button type="button" id="invite_btn" class="icon-btn invite-btn" onclick="inviteTeam()" aria-label="Invite – share board link"><svg class="i i-share" aria-hidden="true"><use href="#i-share"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg><span class="lbl">Invite</span></button>
+            <span id="invite_status" class="sr-only" role="status" aria-live="polite"></span>
             <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
         </div>
 
@@ -246,6 +250,9 @@
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
                     <!-- R3 F5 (B-98): the deck menu, built by script_deck.js (overview / list of card sets) -->
+                    <!-- R3 review V1: the result of the own change stays here until the next one (writeDeck()) -->
+                    <span id="deck_status_live" class="sr-only" role="status" aria-live="polite"></span>
+                    <div id="deck_status" class="dm-status"><span class="dm-status-t"></span><button type="button" class="dm-status-x icon-btn" aria-label="Dismiss" hidden><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
                     <div id="deck_menu" class="dm"></div>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
@@ -269,9 +276,9 @@
                         <legend class="lab">Average pointer</legend>
                         <div class="seg">
                             <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
-                            <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span><svg class="i i-lock" aria-hidden="true"><use href="#i-lock"/></svg>Show</span></label>
+                            <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span>Show</span></label>
                         </div>
-                        <p class="hint">Join the dark side: a pointer under the spread shows the average.</p>
+                        <p class="hint">A pointer under the spread shows the average.</p>
                     </fieldset>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
@@ -305,6 +312,7 @@
                         <label><input type="radio" name="tmr_visibility" value="1" onchange="setTimerVisibility(this.value)"/><span>On</span></label>
                     </div>
                     <p class="hint">Shown to everyone at the round button, with play/pause and reset.</p>
+                    <p id="tmr_status" class="hint ok-status" role="status" aria-live="polite"></p>
                 </fieldset>
                 <fieldset class="f" id="tmr_mode">
                     <legend class="lab">Mode</legend>

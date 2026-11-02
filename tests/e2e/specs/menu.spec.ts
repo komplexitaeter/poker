@@ -375,7 +375,7 @@ test('phone: a toast is visible above the modal sheet and goes back to the page 
   expect(await toast.evaluate(el => el.parentElement === document.body)).toBe(true);
 });
 
-test('Copy Link and the QR overlay work as before, also with the panel open (B-51)', async ({ browser }) => {
+test('Invite and the QR overlay work as before, also with the panel open (B-51)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: LARGE, permissions: ['clipboard-read', 'clipboard-write'] });
   const url = await createTeam(alice, 'Menu QR');
   await joinAsPlayer(alice, url, 'Alice');
@@ -383,9 +383,10 @@ test('Copy Link and the QR overlay work as before, also with the panel open (B-5
   await alice.locator('#topic_btn').click();
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 
-  // Copy Link in the header: the link in the clipboard, a toast
-  await alice.locator('#copy_link_btn').click();
-  await expect(alice.locator('#toast')).toHaveText('Board link copied');
+  // Invite in the header (no navigator.share in this browser): the link in the clipboard, confirmed at the button
+  await alice.evaluate(() => Object.defineProperty(navigator, 'share', { configurable: true, value: undefined }));
+  await alice.locator('#invite_btn').click();
+  await expect(alice.locator('#invite_btn')).toHaveText('Copied');
   expect(await alice.evaluate(() => navigator.clipboard.readText())).toBe(url);
 
   // the QR icon shows the large QR code over everything, a click closes it

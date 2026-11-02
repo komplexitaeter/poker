@@ -331,7 +331,7 @@ function initMenu() {
 
 document.addEventListener('DOMContentLoaded', initMenu);
 
-// B-51: "Average pointer" Hide/Show (radio group); the lock on "Show" is CSS
+// B-51: "Average pointer" Hide/Show (radio group); R3 review V8: no lock, no red flash any more
 function updateJediBtn() {
     checkRadio('cet_dark_side', gLastJson.show_avg === 1 ? '1' : '0');
 }
