@@ -115,9 +115,9 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   }).toBe(true);
   await alice.keyboard.press('Escape');
 
-  // B-99 F8: every card has a letter key below it; with 14 cards the last key lies too far right for the hint,
+  // B-99 F8: every card has a letter key below it (QWERTY without a layout map in English, R3 review E9); with 14 cards the last key lies too far right for the hint,
   // which then hides (the row keeps its height; "deck tray" below shows it level with the keys)
-  await expect(alice.locator('#ctl .ctl-key')).toHaveText([...'QWERTZUIOPASDF']);
+  await expect(alice.locator('#ctl .ctl-key')).toHaveText([...'QWERTYUIOPASDF']);
   await expect(alice.locator('#down-container')).toHaveClass(/hint-off/);
   await expect(alice.locator('.deck-hint')).toBeHidden();
 
