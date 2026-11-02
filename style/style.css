@@ -1639,8 +1639,9 @@ div#cbox {
 
 /* B-99 D16: remove a player from the table – a round button with a sketched trash can (the stroke of the card
  * symbols): card paper, ink outline, tinted and hatched body. Hover: red, the lid tilts.
- * B-110: the reaction button (.react, a sketched smiley) sits left of it in the same style; hover: blue.
- * Left of the smiley the nudge (.nudge, a sketched wobbling card); hover: amber (--warn), the card wobbles.
+ * B-110: the reaction circles in the same style sit apart from it at the lower left corner (Andreas: removing and
+ * fun apart): the nudge (.nudge, a sketched wobbling card; hover: amber (--warn), the card wobbles), right of it
+ * the smiley (.react; hover: blue).
  * Only visible on hover (large screens with a mouse), see the media queries below. Hidden by opacity, not by
  * display: it stays in the tab order, keyboard focus shows it (:has(:focus-visible)). */
 .c :is(.delete, .react, .nudge) {
@@ -1665,10 +1666,19 @@ div#cbox {
     cursor: pointer;
     --del-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
 }
-/* B-110: one circle further left each, with a small gap (--circ-step: a circle plus the gap) */
-.c { --circ-gap: max(4px, var(--card-w) * 0.04); --circ-step: calc(var(--card-del) + var(--circ-gap)); }
-.c .react { right: calc(5% + var(--circ-step)); }
-.c .nudge { right: calc(5% + 2 * var(--circ-step)); }
+/* B-110: nudge and smiley from the left edge, with a small gap (--circ-step: a circle plus the gap).
+ * Where the three circles do not fit side by side (touch-sized circles on a small card, below about 103px), the
+ * pair moves up onto the card, clear of the trash can: --circ-lift is 0 or a full step (a step function: the
+ * overlap times 1000, clamped). So the circles never reach beyond the card into a neighbour (Tessa: the nudge
+ * fires without a confirm); the trash can keeps its place. Desktop circles (20% of the card) always fit. */
+.c {
+    --circ-gap: max(4px, var(--card-w) * 0.04);
+    --circ-step: calc(var(--card-del) + var(--circ-gap));
+    --circ-lift: clamp(0px, (3 * var(--card-del) + 2 * var(--circ-gap) - var(--card-w) * 0.9) * 1000, var(--circ-step));
+}
+.c :is(.react, .nudge) { right: auto; bottom: calc(var(--card-del) / -2 + var(--circ-lift)); }
+.c .nudge { left: 5%; }
+.c .react { left: calc(5% + var(--circ-step)); }
 .c :is(.delete, .react, .nudge) svg { display: block; width: 72%; height: 72%; overflow: visible; pointer-events: none; }
 .c :is(.react, .nudge) svg { width: 76%; height: 76%; transition: transform 0.15s ease-out; }
 .c :is(.delete, .react, .nudge) .body { fill: var(--del-tint); }
@@ -1681,16 +1691,17 @@ div#cbox {
 .c:hover :is(.delete, .react, .nudge),
 .c:has(:focus-visible) :is(.delete, .react, .nudge) { opacity: 1; pointer-events: auto; }
 /* B-110: the circles hang half below the card; between them the pointer would leave the card and all vanish.
- * A bridge below the card spans the circles and their gaps, only while the card is hovered (it never catches the
- * pointer otherwise, so it blocks nothing below). Absolute: no effect on the layout or the fit. */
+ * A bridge below the card spans the whole lower edge from the nudge on the left to the trash can on the right,
+ * only while the card is hovered (it never catches the pointer otherwise, so it blocks nothing below; it stays
+ * within the width of the card). Absolute: no effect on the layout or the fit. */
 @media (hover: hover) {
     .c:has(.react, .nudge)::after {
         content: "";
         position: absolute;
+        left: 5%;
         right: 5%;
         bottom: calc(var(--card-del) / -2);
         z-index: 1; /* below the circles (2) */
-        width: calc(3 * var(--card-del) + 2 * var(--circ-gap)); /* nudge, smiley, trash can */
         height: calc(var(--card-del) / 2);
         pointer-events: none;
     }
@@ -1868,8 +1879,8 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  *   away observers are left out (no symbol). Desktop: nudge and smiley on hover/focus; touch: after a tap (.is-open).
  *   The two circles sit centred in a room above the name tag that the row always keeps (variant C: nothing over
  *   the cards, the names never move); hover/focus/tap draws one frame around the tag and its circles.
- *   Circles from the right: trash can, smiley, nudge (desktop: right-aligned below the card; touch: centred below
- *   the open card, as three touch-sized circles are wider than a small card). A click on .nudge shakes the card on
+ *   Circles: nudge and smiley at the lower left corner, the trash can at the lower right (on a small touch card the
+ *   pair sits a step higher, on the card, see --circ-lift). A click on .nudge shakes the card on
  *   every board (.is-nudged / .is-nudged-me, anonymous: no name lands).
  *
  * popovers (board.html, one of each, position: fixed): script.js sets style.left / style.top (the box, px),
@@ -1939,11 +1950,6 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 /* touch: the circles only on the tapped card (.is-open); the trash can of an away player always */
 @media (hover: none), (pointer: coarse) {
     #table:has(.react) .c:not(.is-open) :is(.delete, .react, .nudge) { opacity: 0; pointer-events: none; }
-    /* three touch-sized circles do not fit below a small card: centred below the open card (a little wider than
-     * the card at --card-min, over the gap); the trash can of a closed away card stays on the right */
-    #table:has(.react) .c .nudge { right: auto; left: calc(50% - var(--card-del) * 1.5 - var(--circ-gap)); }
-    #table:has(.react) .c .react { right: auto; left: calc(50% - var(--card-del) / 2); }
-    #table:has(.react) .c:is(.is-open, :not(.is-away)) .delete { right: auto; left: calc(50% + var(--card-del) / 2 + var(--circ-gap)); }
     #table:has(.react) .c.is-away:not(.is-open) .delete { opacity: 1; pointer-events: auto; }
     .c.is-open > .pc { border-color: var(--accent); }
 }
