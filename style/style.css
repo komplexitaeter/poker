@@ -411,7 +411,6 @@ textarea.field {
 
 /* ---------- Start page ---------- */
 
-/* R3 review V10 (L15): the line about the app above the field keeps the former 60px gap below the header */
 #teaminput {
     margin-top: var(--space-4);
     width: 250px;
@@ -452,34 +451,42 @@ textarea.field {
     #teaminput[aria-invalid="true"] { margin-bottom: var(--space-2); }
 }
 
-.instruction {
-    color: var(--text-color);
-    width: fit-content;
-    text-align: left;
-    margin: var(--space-4) auto 1em;
-    line-height: 1.6;
+/* R3 start page (Andreas): one calm, centred column for everything - the V5 hint, the heading, the form and the
+ * three steps (was: a centred line, a centred form and a left-aligned numbered list on different edges) */
+.start {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    margin: 0 auto;
+    padding: 60px var(--space-3) var(--space-4);
 }
 
+/* the heading: the claim in the text colour, the second sentence quieter below (one line each when there is room) */
 .team-lead {
-    margin: 60px auto 0;
-    padding: 0 var(--space-3);
-    max-width: 36rem;
-    color: var(--muted);
+    margin: 0;
+    font-size: var(--fs-l);
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text);
     text-wrap: balance; /* very narrow screens: no single word alone in the last line */
 }
 
-/* one line, or one sentence per line: the break only between the two sentences */
 .team-lead > span { display: inline-block; }
+
+.team-lead > span + span {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--fs-m);
+    font-weight: 400;
+    color: var(--muted);
+}
 
 /* R3 review V5: a board link that does not work (index.php shows the start page with ?t=…, script_team.js) */
 .link-err {
-    margin: 60px auto 0;
-    padding: 0 var(--space-3);
-    max-width: 36rem;
+    margin: 0 0 var(--space-3);
     color: var(--warn);
 }
 .link-err[hidden] { display: none; }
-.link-err:not([hidden]) + .team-lead { margin-top: var(--space-3); }
 
 /* R3 review V10 (L17): an empty team name says so below the field (script_team.js) */
 .team-err {
@@ -490,7 +497,98 @@ textarea.field {
 }
 .team-err[hidden] { display: none; }
 
-.instruction li::marker { color: var(--muted); }
+/* R3 start page: how it works - three steps in a row, each a sketched picture in the card style (pencil and chain
+ * link from init.html's sprite, real deck cards for the vote), a word and a short line; a hand-drawn dashed line
+ * leads from one picture to the next. Phones keep the row (three narrow columns). */
+.start-steps {
+    --pic-h: 64px;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    --gap: var(--space-2);
+    gap: var(--gap);
+    margin: 52px 0 0;
+    padding: 0;
+    counter-reset: step;
+}
+
+.start-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+.start-pic {
+    display: block;
+    width: calc(var(--pic-h) * 100 / 120);
+    height: var(--pic-h);
+    margin-bottom: var(--space-2);
+}
+
+/* the dashed, slightly wobbly line between two pictures (a mask, so it takes the theme colour) */
+.start-step + .start-step::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--pic-h) / 2 - 6px);
+    --from: calc(var(--pic-h) * 0.55); /* half the picture before it plus some air */
+    --to: calc(var(--pic-h) * 0.55);   /* the same before this picture */
+    right: calc(50% + var(--to));
+    width: calc(100% + var(--gap) - var(--from) - var(--to));
+    height: 12px;
+    background: var(--line-strong);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.start-step:nth-child(3)::before { --to: calc(var(--pic-h) * 0.9); } /* the fan is wider */
+
+.start-step b {
+    font-size: var(--fs-m);
+    color: var(--text);
+}
+
+.start-step b::before {
+    counter-increment: step;
+    content: counter(step) " ";
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.start-step > span:last-child {
+    text-wrap: balance;
+    margin-top: 2px;
+    font-size: var(--fs-xs);
+    line-height: 1.45;
+    color: var(--muted);
+}
+
+.start-step .nowrap { white-space: nowrap; }
+
+/* the vote: a small fan of three real deck cards from three sets (Fibonacci, T-shirt, question card) */
+.start-fan {
+    position: relative;
+    width: calc(var(--pic-h) * 1.5);
+}
+
+.start-fan .dkc {
+    position: absolute;
+    bottom: 0;
+    left: calc(50% - var(--pic-h) * 0.3);
+    width: calc(var(--pic-h) * 0.6);
+    border-radius: 5px;
+    transform-origin: 50% 120%;
+}
+
+.start-fan .dkc:nth-child(1) { transform: translateX(-46%) rotate(-12deg); }
+.start-fan .dkc:nth-child(2) { bottom: 4px; }
+.start-fan .dkc:nth-child(3) { transform: translateX(46%) rotate(12deg); }
+
+@media (max-width: 799.98px) {
+    .start { padding-top: 40px; }
+    .start-steps { --pic-h: 52px; --gap: var(--space-1); margin-top: 40px; }
+}
 
 /* ---------- Board layout (B-46) ---------- */
 

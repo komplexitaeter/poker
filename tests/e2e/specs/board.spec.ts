@@ -14,7 +14,9 @@ test('start page: an empty team name says so below the field, no feedback menu (
   const page = await newPlayer(browser);
   await page.goto('/');
   await expect(page).toHaveTitle('Agile Poker – free planning poker for teams');
-  await expect(page.locator('.team-lead')).toHaveText('Free planning poker for agile teams. No sign-up – just share a link.');
+  await expect(page.locator('h1.team-lead')).toHaveText('Free planning poker for agile teams. No sign-up – just share a link.');
+  // R3 start page: how it works in three steps (the pictures are decorative)
+  await expect(page.locator('.start-steps > li > b')).toHaveText(['Name', 'Invite', 'Vote']);
   await expect(page.locator('#teambtn')).toHaveValue('Create board');
   await expect(page.locator('#feedback_btn')).toHaveCount(0);
   await expect(page.locator('dialog#menu')).toHaveCount(0);
