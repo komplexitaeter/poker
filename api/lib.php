@@ -166,8 +166,8 @@ function normalize_results_order($results_order) {
 
 /*
  * Sorts revealed players by their card (sort_order of cards.json and card_catalog.json), players with the same card
- * keep their order (by name). B-98 S4: custom cards ($custom_rank, custom_card_rank()) come first, by numeric value,
- * then set position. Players with a card key unknown to all of them are never dropped: they come last, in their
+ * keep their order (by name). B-98 S4: custom cards ($custom_rank, custom_card_rank()) come first, by their position
+ * in the set (not by value). Players with a card key unknown to all of them are never dropped: they come last, in their
  * incoming order.
  */
 function sort_players_by_sequence(array $players, array $custom_rank = array()): array
@@ -466,7 +466,7 @@ function lock_team_deck($link, string $t, array $catalog): ?array
 /*
  * B-98: the lazy migration of a team without deck_id; the caller holds the lock on the team row (select ... for
  * update). The deck is derived from cardset_flags (deck_from_cardset_flags()). B-98 S4: an old mixed deck becomes a
- * custom set "Previous deck" (migrate_mixed_deck()) and is stored right away, as it created rows. Other decks are only
+ * custom set "Our deck" (migrate_mixed_deck()) and is stored right away, as it created rows. Other decks are only
  * stored if $store (getDao(); lock_team_deck() callers store them with their change, as before).
  * Returns deck_id, deck_cards, deck_controls.
  */

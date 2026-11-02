@@ -22,7 +22,7 @@ const CUSTOM_VALUE_MAX = 6;
 const CUSTOM_HEADING_MAX = 16;
 const CUSTOM_DESCRIPTION_MAX = 160;
 const CUSTOM_NUMERIC_MAX = 99999999;  // decimal(10,2)
-const CUSTOM_MIGRATED_SET_NAME = 'Previous deck';
+const CUSTOM_MIGRATED_SET_NAME = 'Our deck'; // Andreas 2026-11-02 (sets migrated before keep "Previous deck")
 const CUSTOM_BODY_MAX_BYTES = 65536;
 
 /* B-98/B-100: sets per team; _CUSTOM_SETS_MAX in config.php overrides the default of 5 (later maybe a paid feature) */
@@ -60,6 +60,20 @@ function catalog_symbol_values(array $catalog): array
         foreach ($group['cards'] as $card)
             if (isset($card['symbol']) && !isset($values[$card['symbol']])) $values[$card['symbol']] = (string)($card['value'] ?? '');
     return $values;
+}
+
+/*
+ * Numeric value of a card migrated from the catalog (and the editor's default for a symbol, same map):
+ * card_catalog.json "custom_symbol_values" by symbol (e.g. stars 0-5, T-shirt 1-7, faces null), otherwise the
+ * catalog's numeric_value. As string '1.50' or null.
+ */
+function custom_symbol_value(array $entry, array $catalog): ?string
+{
+    $map = isset($catalog['custom_symbol_values']) && is_array($catalog['custom_symbol_values'])
+        ? $catalog['custom_symbol_values'] : array();
+    $symbol = $entry['symbol'] ?? null;
+    $value = is_string($symbol) && array_key_exists($symbol, $map) ? $map[$symbol] : ($entry['numeric_value'] ?? null);
+    return is_int($value) || is_float($value) ? sprintf('%.2f', (float)$value) : null;
 }
 
 function custom_symbols(array $catalog): array
@@ -365,8 +379,10 @@ function store_custom_cards($link, int $set_id, array $active, array $cards): ar
 
 /*
  * B-98 S4: the cards of an old mixed deck (deck_from_cardset_flags() 'mixed') as a set of the team, for the lazy
- * migration. The caller holds the lock on the team row. An existing set with exactly these cards is reused
- * (idempotent, e.g. after the old deck menu chose the same cards again); otherwise a new set "Previous deck" (style
+ * migration. The caller holds the lock on the team row. The numeric value of a symbol card comes from
+ * custom_symbol_value() (stars 0-5 instead of the catalog's sort values). An existing set with exactly these cards (any
+ * name) is reused
+ * (idempotent, e.g. after the old deck menu chose the same cards again); otherwise a new set "Our deck" (style
  * plain, no card limit) is created unless the team has custom_sets_max() sets already. Returns
  * array('deck_id' => 'c-<id>', 'deck_cards' => keys) or null (then the team keeps the default deck).
  */
@@ -378,7 +394,7 @@ function migrate_mixed_deck($link, string $t, array $mixed, array $catalog): ?ar
             'text' => isset($entry['symbol']) ? null : cut_text((string)($entry['value'] ?? ''), CUSTOM_VALUE_MAX),
             'heading' => isset($entry['heading']) ? cut_text((string)$entry['heading'], CUSTOM_HEADING_MAX) : null,
             'description' => isset($entry['description']) ? cut_text((string)$entry['description'], CUSTOM_DESCRIPTION_MAX) : null,
-            'numeric' => isset($entry['numeric_value']) ? sprintf('%.2f', (float)$entry['numeric_value']) : null,
+            'numeric' => custom_symbol_value($entry, $catalog),
             'color' => (string)($entry['color'] ?? 'grey'));
     }
     if (count($cards) === 0) return null;
@@ -399,14 +415,14 @@ function migrate_mixed_deck($link, string $t, array $mixed, array $catalog): ?ar
 }
 
 /*
- * card_key => sort rank of custom cards for sort_players_by_sequence(): by numeric value (cards without value last),
- * then by set and position.
+ * card_key => sort rank of custom cards for sort_players_by_sequence(): strictly by position in the set (the order of
+ * the editor), never by numeric value - a value that contradicts the position is ignored (Andreas, 2026-11-02).
+ * Average and spread still use numeric_value (frontend), cards without a value do not count there.
  */
 function custom_card_rank(array $cards): array
 {
     usort($cards, function ($a, $b) {
-        return [$a['numeric_value'] === null ? 1 : 0, $a['numeric_value'] ?? 0, $a['set_id'], $a['sort_order']]
-           <=> [$b['numeric_value'] === null ? 1 : 0, $b['numeric_value'] ?? 0, $b['set_id'], $b['sort_order']];
+        return [$a['set_id'], $a['sort_order']] <=> [$b['set_id'], $b['sort_order']];
     });
     $rank = array();
     foreach ($cards as $card) if (!isset($rank[$card['card_key']])) $rank[$card['card_key']] = count($rank);

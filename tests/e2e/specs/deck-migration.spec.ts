@@ -112,7 +112,7 @@ test('presets, subsets and mixed decks are derived from the bitmask', async ({ b
       { id: 'traffic', cards: ['green01', 'yellow1', 'red0001'], controls: ['break01'] }],
     // only in Numbers: 4 6 7
     ['numbers subset', flags([5, 7, 8]), { id: 'numbers', cards: ['four001', 'six0001', 'seven01'] }],
-    // Fibonacci + an emotion: no single group -> B-98 S4: a custom set "Previous deck" (custom-sets.spec.ts), controls kept
+    // Fibonacci + an emotion: no single group -> B-98 S4: a custom set "Our deck" (custom-sets.spec.ts), controls kept
     ['mixed', flags([2, 3, 4, 18, 43]), { group: 'custom', controls: ['qstmrk1'] }],
   ];
   for (const [name, cardsetFlags, expected] of cases) {

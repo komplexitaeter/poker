@@ -6,7 +6,7 @@
  * - The server compares the list with the active cards: a card with its key and unchanged content keeps its key (only
  *   its position follows the list); a changed card becomes a new card (new key), the old one is kept inactive (cards
  *   are immutable); active cards missing in the list are switched off.
- * - Card limit CUSTOM_CARDS_MAX (16) only when cards are added: a set with more cards (migrated "Previous deck") may
+ * - Card limit CUSTOM_CARDS_MAX (16) only when cards are added: a set with more cards (migrated "Our deck") may
  *   keep them, but not grow.
  * - Optimistic lock: rev must be the rev the editor started from. Otherwise 409 {error: 'conflict', set: current set}
  *   ("Someone else changed this set"); saving again with force: true (or the new rev) overwrites.

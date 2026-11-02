@@ -5,7 +5,7 @@ import { newPlayer, createTeam, addPlayersViaApi } from './helpers';
 /**
  * B-98 S4: custom sets of a team (api/custom_set_create.php, custom_set_save.php, custom_set_delete.php, deck
  * 'c-<set id>' in update_deck.php, custom_sets in dao.php) and the migration of old mixed decks into a set
- * "Previous deck". API level only (the editor comes with Fred's part).
+ * "Our deck". API level only (the editor comes with Fred's part).
  */
 
 // same credentials as the test config written by tests/e2e/setup.sh
@@ -234,7 +234,7 @@ test('custom sets: validation, limits, other teams', async ({ browser }) => {
   expect(await activated.json()).toMatchObject({ changed: true, deck: { id: big.deck_id, group: 'custom' } });
 });
 
-test('old mixed decks become a custom set "Previous deck" (idempotent, parallel loads)', async ({ browser }) => {
+test('old mixed decks become a custom set "Our deck" (idempotent, parallel loads)', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Mixed Deck');
   const t = teamIdOf(url);
@@ -251,7 +251,7 @@ test('old mixed decks become a custom set "Previous deck" (idempotent, parallel 
   const dao = loads[0];
   for (const other of loads) expect(other.deck).toEqual(dao.deck);
   const set = dao.custom_sets[0];
-  expect(set).toMatchObject({ name: 'Previous deck', style: 'plain' });
+  expect(set).toMatchObject({ name: 'Our deck', style: 'plain' });
   expect(set.cards.map((c: Record<string, unknown>) => [c.symbol, c.value, c.numeric_value, c.color, c.description]))
     .toEqual([['s-1', '1', 1, 'v1', null], ['s-2', '2', 2, 'v2', null], ['s-3', '3', 3, 'v3', null],
               ['s-face-satisfied', '🙂', null, 'esatis', 'satisfied']]);
@@ -290,9 +290,17 @@ test('old mixed decks become a custom set "Previous deck" (idempotent, parallel 
   // an edited copy of a migrated card may keep its catalog colour and symbol
   const cards3 = set3.cards.map((c: Record<string, unknown>) => asRequest(c));
   cards3[0] = { ...cards3[0], heading: 'nothing' };
-  const saved = await a.save(set3.set_id, { name: 'Previous deck', style: 'plain', rev: set3.rev, cards: cards3 });
+  const saved = await a.save(set3.set_id, { name: 'Our deck', style: 'plain', rev: set3.rev, cards: cards3 });
   expect(saved.status()).toBe(200);
   expect((await saved.json()).set.cards[0]).toMatchObject({ symbol: 's-0', color: 'v0', heading: 'nothing' });
+
+  // Fibonacci + stars + T-shirt: values of custom_symbol_values (stars 0-5, T-shirt 1-7), not the catalog's sort values
+  reset(flags([2, 3, 28, 32, 35]));
+  const daoStars = await a.dao(anna);
+  const setStars = daoStars.custom_sets.find((s: { deck_id: string }) => s.deck_id === daoStars.deck.id);
+  expect(setStars.cards.map((c: Record<string, unknown>) => [c.symbol, c.numeric_value]))
+    .toEqual([['s-1', 1], ['s-2', 2], ['s-m', 4], ['s-stars-0', 0], ['s-stars-3', 3]]);
+  sql(`update pok_custom_sets_tbl set deleted = 1 where id = ${setStars.set_id}`);
 
   // a huge mixed deck (37 cards): migrated as well, the keys do not fit into deck_cards (null), the deck still works
   // (keys of live length: 'c-' + 5 base36 characters)
@@ -311,4 +319,24 @@ test('old mixed decks become a custom set "Previous deck" (idempotent, parallel 
   reset(flags([2, 3, 4, 18, 43]));
   expect((await a.dao(anna)).deck).toMatchObject({ id: 'fib-classic', controls: ['qstmrk1'] });
   expect(setCount()).toBe('5');
+});
+
+test('revealed custom cards are ordered by their position in the set, not by value', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Custom Order');
+  const t = teamIdOf(url);
+  const [anna, ben, cleo] = await addPlayersViaApi(page, url, ['Anna', 'Ben', 'Cleo']);
+  const a = api(page, t);
+  // the values contradict the positions on purpose; the card without value is in the middle
+  const res = await a.create({ name: 'Order', style: 'plain', activate: true, cards: [
+    { text: 'big', numeric_value: 100, color: 'red' }, { text: 'none', color: 'grey' },
+    { text: 'small', numeric_value: 1, color: 'green' }] });
+  expect(res.status()).toBe(200);
+  const keys: string[] = (await res.json()).set.cards.map((c: { card_key: string }) => c.card_key);
+  expect((await a.setc(anna, keys[2])).ok()).toBeTruthy();
+  expect((await a.setc(ben, keys[1])).ok()).toBeTruthy();
+  expect((await a.setc(cleo, keys[0])).ok()).toBeTruthy();
+  const dao = await a.dao(anna);
+  expect(dao.deck.cards).toEqual(keys);
+  expect(dao.players.map((p: { name: string }) => p.name)).toEqual(['Cleo', 'Ben', 'Anna']);
 });
