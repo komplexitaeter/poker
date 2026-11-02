@@ -120,8 +120,11 @@ function cardSmallKind(card) {
 
 /* the value of a card for small places: span.sm-text (mono text), span.mini.sm-draw with the symbol or
  * span.mini.sm-inv with the inverted square (F8; named: plus its
- * name for screen readers and as tooltip; not where its heading follows anyway). A text that is a system emoji
- * (a legacy card without a library symbol) never shows: its name instead. */
+ * name for screen readers and as tooltip; not where its heading follows anyway).
+ * R3 (Andreas): a text card shows what was entered as its text, never its heading or description: the first
+ * CARD_SMALL_GRAPHEMES user-perceived characters, without "…" (an emoji of an own set shows as it is; the
+ * built-in faces stay mini symbols). The whole text as tooltip when it is cut. */
+const CARD_SMALL_GRAPHEMES = 3;
 function cardSmall(card, named = true) {
     const kind = cardSmallKind(card);
     if (kind === 'drawing' || kind === 'inverted') {
@@ -134,12 +137,27 @@ function cardSmall(card, named = true) {
         return face;
     }
     const text = String(card.text || card.label || card.key);
-    return textElement('span', 'sm-text', /\p{Extended_Pictographic}/u.test(text) ? cardName(card) : text);
+    const short = textStart(text, CARD_SMALL_GRAPHEMES);
+    const element = textElement('span', 'sm-text', short);
+    if (short !== text) element.title = text;
+    return element;
 }
 
 /* B-98: the number of user-perceived characters (an emoji sequence counts as one); code points without Intl.Segmenter */
 const TEXT_SEGMENTER = typeof Intl === 'object' && typeof Intl.Segmenter === 'function'
     ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+/* the first n user-perceived characters of a text (code points without Intl.Segmenter) */
+function textStart(text, n) {
+    const value = String(text);
+    if (TEXT_SEGMENTER === null) return [...value].slice(0, n).join('');
+    let start = '';
+    let count = 0;
+    for (const part of TEXT_SEGMENTER.segment(value)) {
+        if (count++ === n) break;
+        start += part.segment;
+    }
+    return start;
+}
 function textGraphemes(text) {
     const value = String(text);
     if (TEXT_SEGMENTER === null) return [...value].length;

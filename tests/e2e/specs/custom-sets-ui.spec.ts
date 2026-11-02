@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { teamWithTwoPlayers, deckCards, pickCard, tableCard, newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { teamWithTwoPlayers, deckCard, deckCards, pickCard, tableCard, newPlayer, createTeam, joinAsPlayer } from './helpers';
 
 /* B-98 S5: own card sets in the board (script/script_deck.js "Your sets", script/script_custom.js editor): create a
  * set (name, style, a text card with heading and description, a symbol card from the picker, moved with ↑), "Save &
@@ -359,4 +359,47 @@ test('a team with a migrated "Our deck" sees its cards', async ({ browser }) => 
   await page.locator('#cset_btn').click();
   await expect(page.locator('#deck_change')).toContainText('Our deck');
   await expect(page.locator('#deck_cards .cs-rocard')).toHaveCount(4);
+});
+
+/* R3 (Andreas): the small places (spread labels, range, deck info, tips) show what was entered as the card's text,
+ * cut to its first three characters (an emoji counts as one, no "…"), or the symbol; never heading or description */
+test('own set: the small places show the entered text (first 3 characters) or the symbol, never the heading', async ({ browser }) => {
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Small');
+  const t = new URL(url).searchParams.get('t') as string;
+  const res = await alice.request.post(`/api/custom_set_create.php?${new URLSearchParams({ t }).toString()}`, {
+    data: JSON.stringify({ name: 'Small', style: 'plain', activate: true, cards: [
+      { text: '🎉', heading: 'party', description: 'Time to celebrate.', numeric_value: 2, color: 'pink' },
+      { text: 'SPLIT', heading: 'split it', description: 'Too big, split the story.', numeric_value: 8, color: 'red' },
+      { symbol: 's-face-sad', heading: 'gloomy', color: 'blue' },
+      { symbol: 's-5', heading: 'five', numeric_value: 5, color: 'green' },
+    ] }),
+    headers: { 'Content-Type': 'application/json' } });
+  expect(res.ok()).toBeTruthy();
+  const keys: string[] = (await res.json()).set.cards.map((c: { card_key: string }) => c.card_key);
+  const [party, split, sad, five] = keys;
+  await expect.poll(() => trayKeys(alice)).toEqual(expect.arrayContaining(keys));
+
+  // the spread labels: before the reveal already (the columns follow the deck)
+  const value = (key: string) => alice.locator(`#spread_bars [data-card="${key}"] .spread-value`);
+  await expect(value(party).locator('.sm-text')).toHaveText('🎉');
+  await expect(value(split).locator('.sm-text')).toHaveText('SPL');
+  await expect(value(split).locator('.sm-text')).toHaveAttribute('title', 'SPLIT');
+  await expect(value(sad).locator('.mini use')).toHaveAttribute('href', /#s-face-sad$/);
+  await expect(value(sad).locator('.sm-text')).toHaveCount(0);
+  await expect(value(five).locator('.sm-text')).toHaveText('5');
+
+  // the deck info: the chip shows the value, the heading only in the text next to it
+  await deckCard(alice, split).hover();
+  await expect(alice.locator('#deck_info .deck-info-value')).toHaveText('SPL');
+  await deckCard(alice, party).hover();
+  await expect(alice.locator('#deck_info .deck-info-value')).toHaveText('🎉');
+
+  // play and reveal: labels and range without any heading
+  await pickCard(alice, split);
+  await pickCard(bob, party);
+  await expect(alice.locator('#spread_range')).toHaveText('range 🎉–SPL');
+  const labels = await alice.locator('#spread_bars .spread-value').allTextContents();
+  for (const heading of ['party', 'split it', 'five']) expect(labels.join('|')).not.toContain(heading);
+  await expect(alice.locator(`#spread_bars [data-card="${split}"] .spread-count`)).toHaveText('1');
+  if (process.env.SMALL_SHOT) await alice.screenshot({ path: process.env.SMALL_SHOT });
 });
