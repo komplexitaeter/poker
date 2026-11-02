@@ -32,8 +32,8 @@ async function withLayout(page: Page, layout: Record<string, string> | null): Pr
 
 const KEY_LABELS = (page: Page) => page.locator('#ctl .ctl-key').allTextContents();
 
-test('letter keys pick the cards row by row; labels QWERTZ without a layout map (F8, 22)', async ({ browser }) => {
-  const alice = await newPlayer(browser, { viewport: DESKTOP });
+test('letter keys pick the cards row by row; labels QWERTZ without a layout map in German (F8, 22)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP, locale: 'de-DE' });
   await withLayout(alice, null);
   const url = await createTeam(alice, 'Letter Keys');
   await setTeamDeck(alice, url, 'fib-classic', FIB_ALL, CONTROLS_ALL); // 21 cards
@@ -67,6 +67,18 @@ test('letter keys pick the cards row by row; labels QWERTZ without a layout map 
   await topic.press('KeyQ');
   await expect(topic).toHaveValue('q');
   await expect(deckCards(alice).nth(20)).toHaveClass(/selected/);
+});
+
+test('labels QWERTY without a layout map in other languages (R3 review E9)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP, locale: 'en-US' });
+  await withLayout(alice, null);
+  const url = await createTeam(alice, 'Qwerty Keys');
+  await setTeamDeck(alice, url, 'fib-classic', FIB_ALL, CONTROLS_ALL);
+  await joinAsPlayer(alice, url, 'Alice');
+  await expect(deckCards(alice)).toHaveCount(21);
+  expect((await KEY_LABELS(alice)).join('')).toBe('QWERTYUIOPASDFGHJKLZX');
+  await alice.keyboard.press('KeyY'); // the 6th card, labelled Y
+  await expect(deckCards(alice).nth(5)).toHaveClass(/selected/);
 });
 
 test('labels follow the layout map, the key stays physical (QWERTY, AZERTY) (F8, 22)', async ({ browser }) => {
