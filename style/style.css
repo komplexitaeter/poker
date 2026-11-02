@@ -4828,3 +4828,255 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 @media (max-width: 799.98px) {
     .dm-tg .dm-card { --deck-w: 42px; }
 }
+
+/* ---------- Own card sets (B-98 S5; script/script_deck.js "Your sets", script/script_custom.js editor) ---------- */
+
+/* deck menu: "Your sets (n / max)", a row per set with its pen, "+ New set" */
+.cs-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 2px; }
+.cs-sec2 { margin-top: 18px; }
+.cs-count { font-size: var(--fs-xs); color: var(--muted); }
+.cs-count.full { color: var(--warn); }
+.cs-prow { display: flex; align-items: center; }
+.cs-prow .dm-prow-b { flex: 1; min-width: 0; }
+.cs-edit {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    margin-left: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+}
+.cs-edit:hover { color: var(--accent); border-color: var(--accent); }
+.cs-edit .i { width: 16px; height: 16px; }
+.cs-new {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    margin: 8px 0 0;
+    padding: 6px 10px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.cs-new:enabled:hover { border-color: var(--accent); }
+.cs-new:enabled:hover b { color: var(--accent); }
+.cs-new:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+.cs-new:disabled b { color: var(--disabled); }
+.cs-plus { font-size: 22px; line-height: 1; width: 26px; text-align: center; }
+.cs-limit { color: var(--warn); }
+.cs-labrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.cs-labrow .lab { margin: 0; }
+.dm .cs-editbtn { min-height: 32px; padding: 2px 12px; }
+.cs-editbtn .i, .cs-ovl .btn-box .i { width: 16px; height: 16px; }
+.cs-ro .dm-tg { cursor: default; border: 1px solid transparent; }
+.cs-edit:focus-visible, .cs-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the editor: a full-screen modal dialog */
+.cs-ovl {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--bg);
+    color: var(--text);
+    text-align: left;
+    font-size: var(--fs-m);
+}
+.cs-ovl[open] { display: flex; flex-direction: column; }
+.cs-ovl::backdrop { background: var(--bg); }
+.cs-top {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 24px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+}
+.cs-top h2 { margin: 0; font-size: var(--fs-l); }
+.cs-dirty { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); text-align: right; }
+.cs-dirty.bad { color: var(--danger); font-weight: bold; }
+.cs-ovl .btn-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--tap);
+    margin: 0;
+    padding: 4px 16px;
+}
+.cs-top .btn-box.primary { min-width: 96px; }
+.cs-body {
+    flex: 1;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+    align-items: start;
+    gap: 40px;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 24px 40px;
+    box-sizing: border-box;
+}
+.cs-ovl .field { width: 100%; min-height: var(--tap); box-sizing: border-box; font-size: var(--fs-m); }
+.cs-ovl .cs-num { max-width: 140px; }
+.cs-mono { font-weight: bold; letter-spacing: .04em; }
+.cs-f { margin-bottom: var(--space-3); }
+.cs-h { margin: 0 0 10px; font-size: var(--fs-s); color: var(--muted); font-weight: normal; }
+.has-err .field { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.cs-err { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--danger); font-weight: bold; }
+.cs-cnt { font-size: var(--fs-xs); color: var(--muted); }
+
+.cs-cards { margin-top: 18px; }
+.cs-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.cs-tile {
+    position: relative;
+    padding: 4px;
+    border: 2px solid transparent;
+    border-radius: 9px;
+    background: none;
+    cursor: pointer;
+}
+.cs-tile .dm-card { --deck-w: 52px; }
+.cs-tile:hover { border-color: var(--line-strong); }
+.cs-tile.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cs-tile.bad { border-color: var(--danger); }
+.cs-bang {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--danger);
+    color: var(--bg);
+    font-size: 12px;
+    font-weight: bold;
+}
+.cs-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--tap);
+    margin: 0 0 10px;
+    padding: 2px 12px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--text);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+.cs-add:enabled:hover { border-color: var(--accent); color: var(--accent); }
+.cs-add:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+.cs-moves { display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-ovl .cs-ico { padding: 4px 10px; }
+.cs-ico .i { width: 18px; height: 18px; }
+
+.cs-preview { display: flex; justify-content: center; margin: 0 0 var(--space-3); }
+.cs-preview .pc { width: 120px; }
+
+.cs-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.cs-chip {
+    min-height: 30px;
+    padding: 2px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: none;
+    color: var(--muted);
+    font: var(--fs-xs) var(--font);
+    cursor: pointer;
+}
+.cs-chip.on { background: var(--text); border-color: var(--text); color: var(--bg); font-weight: bold; }
+.cs-syms { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+.cs-sym {
+    display: grid;
+    place-items: center;
+    height: 46px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: var(--cardc-face, var(--bg-2));
+    cursor: pointer;
+}
+.cs-sym .mini .mot { width: 26px; height: 32px; }
+.cs-sym:hover { border-color: var(--accent); }
+.cs-sym.on { border: 2px solid var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.cs-sym.taken { opacity: .4; }
+.cs-sw { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cs-swatch {
+    aspect-ratio: 1;
+    min-height: 34px;
+    border: 2px solid transparent;
+    border-radius: var(--radius-m);
+    background: var(--a);
+    cursor: pointer;
+}
+.cs-swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
+.cs-swatch:focus-visible, .cs-sym:focus-visible, .cs-tile:focus-visible, .cs-chip:focus-visible,
+.cs-add:focus-visible, .cs-del:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.cs-detail { grid-column: 2; grid-row: 1 / span 2; }
+.cs-delrow { grid-column: 1; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cs-delrow:empty { display: none; }
+.cs-del {
+    min-height: var(--tap);
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--danger);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+/* the question (discard, delete) over the editor */
+.cs-scrim { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
+.cs-scrim[hidden] { display: none; }
+.cs-dlg {
+    width: min(440px, 100%);
+    box-sizing: border-box;
+    padding: 20px 22px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+    box-shadow: 0 12px 32px var(--shadow-color);
+}
+.cs-dlg h3 { margin: 0 0 10px; font-size: var(--fs-l); overflow-wrap: anywhere; }
+.cs-dlg p { margin: 0 0 10px; font-size: var(--fs-s); line-height: 1.5; color: var(--muted); }
+.cs-dlg .cs-warnp { color: var(--warn); }
+.cs-dlgbtns { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.btn-box.danger.strong:enabled { background: var(--danger); border-color: var(--danger); color: var(--bg); font-weight: bold; }
+
+/* phones: one column, the top bar stays on top (the body scrolls) */
+@media (max-width: 799.98px) {
+    .cs-top { padding: 6px 10px; min-height: 52px; gap: 6px; }
+    .cs-top h2 { font-size: var(--fs-m); }
+    .cs-top .btn-box.primary { min-width: 0; padding: 4px 12px; }
+    .cs-ovl .btn-box { padding: 4px 10px; }
+    .cs-body { display: flex; flex-direction: column; align-items: stretch; gap: 20px; padding: 14px 14px 32px; }
+    .cs-dirty { font-size: 11px; }
+    .cs-tile .dm-card { --deck-w: 44px; }
+    .cs-detail { grid-row: auto; }
+    .cs-delrow { margin-top: 12px; }
+}
