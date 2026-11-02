@@ -883,7 +883,6 @@ function csDone(answer, kind) {
         gCs.opener = 'edit';
     }
     if (kind === 'deleted' && gDeckMenu.view === 'main') gCs.opener = 'change';
-    gDeckMenu.refusal = null;
     renderDeckMenu(true);
     gCs.busy = false;
     csClose();
