@@ -66,22 +66,6 @@ function deckMatchingVariant(group, cards) {
     return group.variants.find(v => v.cards.length === on.size && v.cards.every(key => on.has(key))) || null;
 }
 
-/* B-107: the values of cards for the variant hint, separated by spaces: plain text where the card is shown as text
- * small (0 1 2 3 …), a mini symbol for drawings (the faces of "Mood" and "Team Assessment": never a system emoji) */
-function deckValueParts(keys) {
-    return keys.map(key => gCardByKey.get(key)).filter(card => card !== undefined)
-        .flatMap((card, i) => [...(i > 0 ? [' '] : []), cardSmallKind(card) === 'text' ? String(card.text) : cardSmall(card)]);
-}
-
-/* a custom selection, told against its last chosen variant: "True + 100 ∞ − 0" (as parts, see deckValueParts) */
-function deckCustomParts(variant, cards) {
-    const on = new Set(cards);
-    const base = new Set(variant.cards);
-    const added = deckValueParts(cards.filter(key => !base.has(key)));
-    const removed = deckValueParts(variant.cards.filter(key => !on.has(key)));
-    return [variant.name, ...(added.length ? [' + ', ...added] : []), ...(removed.length ? [' \u2212 ', ...removed] : [])];
-}
-
 function deckRoundRunning() {
     return !!(gDeckMenu.json && gDeckMenu.json.one_ore_more_player_ready);
 }
@@ -209,12 +193,9 @@ function deckMainView(deck, group, variant) {
             label.append(input, dmEl('span', null, v.name));
             seg.appendChild(label);
         });
-        // the preset's values, or what differs from the last chosen variant
-        const values = match !== null ? deckValueParts(match.cards) : ['Custom: ', ...deckCustomParts(variant, deck.cards)];
-        const hint = dmEl('p', 'hint');
-        hint.append(...values);
-        hint.id = 'deck_variant_hint';
-        field.append(seg, hint);
+        // R3 review (Andreas): no line below the variants ("Custom: …", the preset's values); the cards below show
+        // what is on, and no variant is checked while the selection differs from all of them
+        field.appendChild(seg);
         parts.push(field);
     }
 

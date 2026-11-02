@@ -212,7 +212,7 @@ test('a variant is a preset: Pure, then 100 on as well (custom), Classic sets it
   await toggle(alice, 'hundro1').click();
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
-  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: Pure + 100');
+  await expect(alice.locator('#deck_variant_hint')).toHaveCount(0); // R3 review: no "Custom: …" line
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(['zero001', 'one0001', 'two0001', 'three01', 'five001', 'eight01',
       'thrtn01', '2tyone1', '3tyfr01', '5tyfve1', 'hundro1', 'break01', 'qstmrk1']);
@@ -248,7 +248,8 @@ test('the selection decides the variant: Short plus the Classic cards is Classic
   await variant('Short').check();
   await expect.poll(deckId).toBe('fib-short');
   await toggle(alice, '1pnt501').click();
-  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: Short + ½');
+  await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
+  await expect(alice.locator('#deck_variant_hint')).toHaveCount(0);
   await toggle(alice, 'hundro1').click();
   await toggle(alice, 'infin01').click();
   await expect(variant('Classic')).toBeChecked();
@@ -275,13 +276,12 @@ test('shruggie: off by default, switched on and placed; Emotions: Short and Full
   const assessment = ['satis01', 'annoy01', 'sad0001', 'unint01', 'angry01', 'enthu01'];
   for (const page of [alice, bob])
     await expect.poll(() => trayKeys(page)).toEqual([...assessment, 'break01', 'qstmrk1', 'shrug01']);
-  // the variant hint shows the faces as mini drawings, never as system emoji (B-107)
-  const hint = alice.locator('#deck_variant_hint');
-  await expect(hint.locator('.mini.sm-draw')).toHaveCount(6);
-  expect(await hint.textContent()).not.toMatch(/\p{Extended_Pictographic}/u);
+  // the faces switched on below the variants (R3 review: no line with the values any more)
+  const on = alice.locator('#deck_cards .dm-tg[aria-pressed="true"]');
+  await expect(on).toHaveCount(6);
+  await expect(alice.locator('#deck_variant_hint')).toHaveCount(0);
   await variant('Full').check();
-  await expect(hint.locator('.mini.sm-draw')).toHaveCount(12);
-  await expect(hint.locator('.mini use').nth(6)).toHaveAttribute('href', /#s-face-curious$/);
+  await expect(on).toHaveCount(12);
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual([...assessment, 'curio01', 'confu01', 'worri01', 'surpr01',
       'tired01', 'relie01', 'break01', 'qstmrk1', 'shrug01']);
@@ -306,4 +306,40 @@ test('a failed deck write: the error stays in the status line until dismissed (R
   await status.getByRole('button', { name: 'Dismiss' }).click();
   await expect(status).toBeHidden();
   await expect(deckCard(bob, 'veto')).toHaveCount(0);
+});
+
+test('the deck menu does not jump: the status line keeps its room, empty, done or error (R3 review)', async ({ browser }) => {
+  const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Steady');
+  await alice.locator('#cset_btn').click();
+  const status = alice.locator('#deck_status');
+  const where = async () => {
+    const [cards, variants] = [(await alice.locator('#deck_cards').boundingBox())!, (await alice.locator('#deck_variant').boundingBox())!];
+    return { cardsY: cards.y, cardsH: cards.height, variantsY: variants.y };
+  };
+  const same = (a: { cardsY: number; cardsH: number; variantsY: number }, b: typeof a) => {
+    expect(Math.abs(a.cardsY - b.cardsY)).toBeLessThanOrEqual(1);
+    expect(Math.abs(a.cardsH - b.cardsH)).toBeLessThanOrEqual(1);
+    expect(Math.abs(a.variantsY - b.variantsY)).toBeLessThanOrEqual(1);
+  };
+  await expect(status).toBeHidden();
+  const before = await where();
+
+  // a card off: the line shows, nothing moves; no variant checked, no extra line below the variants
+  await toggle(alice, 'hundro1').click();
+  await expect(status).toHaveText('✓ Cards changed for everyone');
+  await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
+  same(before, await where());
+  // on again: Classic again, still in place
+  await toggle(alice, 'hundro1').click();
+  await expect(alice.locator('#deck_variant').getByRole('radio', { name: 'Classic' })).toBeChecked();
+  same(before, await where());
+
+  // an error with its close button: the same height
+  await alice.route('**/api/update_deck.php*', route => route.fulfill({ status: 500, body: '' }));
+  await toggle(alice, 'zero001').click();
+  await expect(status).toHaveText('! Not saved – please try again');
+  same(before, await where());
+  await status.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(status).toBeHidden();
+  same(before, await where());
 });
