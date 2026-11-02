@@ -403,3 +403,73 @@ test('own set: the small places show the entered text (first 3 characters) or th
   await expect(alice.locator(`#spread_bars [data-card="${split}"] .spread-count`)).toHaveText('1');
   if (process.env.SMALL_SHOT) await alice.screenshot({ path: process.env.SMALL_SHOT });
 });
+
+/* R3 fix (Andreas, iPhone Safari): the editor fits a phone. Its fields are at least 16px (else iOS zooms into the
+ * focused name field and cuts off the right side and the foot), nothing is wider than the screen, Save is in view */
+for (const phone of [{ width: 375, height: 667 }, { width: 390, height: 844 }]) {
+  test(`editor on a phone ${phone.width}×${phone.height}: no zoom, no overflow, Save in view`, async ({ browser }) => {
+    const alice = await newPlayer(browser, { viewport: phone, isMobile: true, hasTouch: true });
+    const url = await createTeam(alice, 'Own Sets Phone');
+    await joinAsPlayer(alice, url, 'Alice');
+    await alice.locator('#menu_btn').click();
+    await alice.locator('#menu_index').getByRole('button', { name: /^Board settings/ }).click();
+    await alice.locator('#deck_change').click();
+    await alice.locator('#deck_new_set').click();
+
+    const fits = async () => {
+      const m = await alice.evaluate(() => {
+        const dialog = document.getElementById('cs_editor')!.getBoundingClientRect();
+        const wide = Array.from(document.querySelectorAll('#cs_editor *')).filter(el => {
+          const r = el.getBoundingClientRect();
+          // inside a scroller (the card strip) a card may lie beyond the edge
+          return r.width > 0 && r.right > innerWidth + 0.5 && el.closest('.cs-list') === null;
+        }).map(el => el.id || el.className);
+        return { sw: document.documentElement.scrollWidth, w: innerWidth, h: innerHeight,
+          dialog: [dialog.left, dialog.top, dialog.right, dialog.bottom], wide };
+      });
+      expect(m.sw).toBeLessThanOrEqual(m.w);
+      expect(m.dialog[0]).toBeGreaterThanOrEqual(0);
+      expect(m.dialog[1]).toBeGreaterThanOrEqual(0);
+      expect(m.dialog[2]).toBeLessThanOrEqual(m.w);
+      expect(m.dialog[3]).toBeLessThanOrEqual(m.h);
+      expect(m.wide).toEqual([]);
+      return m;
+    };
+
+    // the choice first: in view as well
+    await expect(alice.locator('#cs_scratch')).toBeVisible();
+    await fits();
+    if (phone.width === 375) await alice.screenshot({ path: `${process.env.PHONE_SHOTS || 'test-results'}/start-375x667.png` });
+    await alice.locator('#cs_scratch').click();
+    await expect(alice.locator('#cs_name')).toBeFocused();
+
+    // no iOS zoom: every field of the editor at least 16px
+    const sizes = await alice.locator('#cs_editor input:not([type="radio"]):not([type="checkbox"]), #cs_editor textarea, #cs_editor select')
+      .evaluateAll(els => els.map(el => [el.id, parseFloat(getComputedStyle(el).fontSize)] as [string, number]));
+    expect(sizes.length).toBeGreaterThan(0);
+    expect(sizes.filter(([, size]) => size < 16)).toEqual([]);
+
+    const m = await fits();
+    // the close button and Save in view
+    for (const id of ['#cs_save', '#cs_editor .cs-x']) {
+      const box = (await alice.locator(id).boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(m.w);
+      expect(box.y + box.height).toBeLessThanOrEqual(m.h);
+    }
+    if (phone.width === 375) await alice.screenshot({ path: `${process.env.PHONE_SHOTS || 'test-results'}/editor-top-375x667.png` });
+
+    // the symbol picker's search field (opens with focus) is 16px, too
+    await alice.locator('[data-f="card:0"]').click();
+    await alice.locator('#cs_sym').click();
+    await expect(alice.locator('#cs_sym_search')).toBeFocused();
+    expect(await alice.locator('#cs_sym_search').evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
+    await alice.keyboard.press('Escape');
+    await fits();
+
+    // scrolled to the bottom: Save still there
+    await alice.locator('#cs_editor .cs-body').evaluate(el => el.scrollTo(0, el.scrollHeight));
+    await expect(alice.locator('#cs_save')).toBeInViewport({ ratio: 1 });
+    if (phone.width === 375) await alice.screenshot({ path: `${process.env.PHONE_SHOTS || 'test-results'}/editor-bottom-375x667.png` });
+  });
+}
