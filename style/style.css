@@ -4886,7 +4886,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     margin-bottom: 14px;
 }
 .cs-lab { display: flex; align-items: baseline; gap: 6px; }
-.cs-opt { font-size: var(--fs-xs); color: var(--muted); opacity: .8; }
+.cs-opt { font-size: var(--fs-xs); color: var(--muted); }
 .cs-ctr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
 .cs-err { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--danger); font-weight: bold; }
 .cs-f.has-err .field { border-color: var(--danger); }
@@ -4970,8 +4970,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 }
 .cs-acts { display: flex; gap: 4px; }
 .cs-mv {
-    min-width: 34px;
-    min-height: 34px;
+    min-width: var(--tap);
+    min-height: var(--tap);
     padding: 0;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-m);
@@ -5060,7 +5060,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 40px;
+    min-height: var(--tap);
     padding: 2px 8px;
     border-radius: var(--radius-m);
     cursor: pointer;
@@ -5068,7 +5068,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-option:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .cs-option.active { background: color-mix(in srgb, var(--accent) 20%, transparent); outline: 1px solid var(--accent); }
 .cs-option[aria-selected="true"] .cs-optname { font-weight: bold; }
-.cs-option.taken .cs-mini, .cs-option.taken .cs-optname { opacity: .45; }
+.cs-option.taken .cs-mini { opacity: .45; }
+.cs-option.taken .cs-optname { color: var(--muted); }
 .cs-optname { flex: 1; min-width: 0; }
 .cs-optnote { font-size: var(--fs-xs); color: var(--muted); }
 .cs-optcheck { width: 16px; height: 16px; color: var(--accent); stroke-width: 2.5; }
@@ -5088,6 +5089,10 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
 .cs-swatch:focus-visible, .cs-card:focus-visible, .cs-row:focus-visible, .cs-mv:focus-visible, .cs-add:focus-visible, .cs-del:focus-visible,
 .cs-symbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cs-row:focus-visible { outline-offset: -2px; } /* inside: the strip would cut it on the left */
+@media (pointer: coarse) {
+    .cs-swatch { width: 44px; height: 44px; }
+}
 
 .cs-foot {
     flex: none;
@@ -5160,11 +5165,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     .cs-add { width: 56px; margin: 0; flex-direction: column; }
     .cs-cards { margin-bottom: 14px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
     .cs-detail { overflow: visible; max-width: none; padding-bottom: 16px; }
-    .cs-mv { min-width: 44px; min-height: 44px; }
-    .cs-option { min-height: 44px; }
     .cs-plist { max-height: 50vh; }
     .cs-foot { padding: 8px 14px; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
     .cs-foot .btn-box { flex: 1 1 auto; padding: 4px 10px; }
     .cs-fill { display: none; }
-    .cs-swatch { width: 40px; height: 40px; }
 }
