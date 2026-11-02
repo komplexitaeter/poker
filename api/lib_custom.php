@@ -9,7 +9,7 @@
  *   active = 0. Rows are never deleted, so historic rounds and cards still on the table keep their data.
  *   Only position (the order in the set) is updated in place, it is no card content.
  * - A card has either a symbol of the symbol library (card_catalog.json "custom_symbols") or a text value (at most 6
- *   characters, no emoji), optional heading/description, an optional numeric value (spread, sorting, average) and a
+ *   graphemes, emoji allowed), optional heading/description, an optional numeric value (spread, sorting, average) and a
  *   colour of the palette (card_catalog.json "custom_colors"). Cards migrated from an old mixed deck may keep their
  *   catalog symbol/colour; an edited copy of such a card may keep them as well. A card copied from a catalog card
  *   (editor template, request key = catalog card_key) may keep that card's symbol/colour, too.
@@ -18,7 +18,8 @@
 const CUSTOM_DECK_PREFIX = 'c-';
 const CUSTOM_DECK_GROUP = 'custom';
 const CUSTOM_SET_NAME_MAX = 24;
-const CUSTOM_VALUE_MAX = 6;
+const CUSTOM_VALUE_MAX = 6;            // graphemes (user-perceived characters, an emoji sequence counts as one)
+const CUSTOM_VALUE_CODEPOINTS_MAX = 48; // code points of a text value (column value_text varchar(48))
 const CUSTOM_HEADING_MAX = 16;
 const CUSTOM_DESCRIPTION_MAX = 160;
 const CUSTOM_NUMERIC_MAX = 99999999;  // decimal(10,2)
@@ -212,7 +213,8 @@ function read_json_body(): ?array
 /*
  * Free text from the JSON body, like get_text_param(): trimmed, otherwise stored as entered (escaped on output).
  * Returns null if the value is no string (or missing and not $optional), longer than $max_length characters or
- * contains control or format characters (\p{Cc}, \p{Cf}: bidi overrides, zero-width characters); '' for a missing optional value.
+ * contains spoofing characters (has_spoofing_chars(): bidi overrides, zero-width spaces; the emoji joiner U+200D is
+ * fine); '' for a missing optional value. Length in code points (the varchar columns), as before.
  */
 function body_text(array $data, string $name, int $max_length, bool $optional = true): ?string
 {
@@ -220,16 +222,64 @@ function body_text(array $data, string $name, int $max_length, bool $optional = 
     if (!is_string($data[$name])) return null;
     $value = trim($data[$name]);
     if (cut_text($value, $max_length) !== $value) return null; // too long or invalid UTF-8
-    // control and format characters (bidi overrides, zero-width characters) could spoof names on the board
-    if (preg_match('/[\p{Cc}\p{Cf}]/u', $value)) return null;
+    if (has_spoofing_chars($value)) return null;
     return $value;
 }
 
-/* a text value of a card: 1 to 6 characters, no emoji (pictographs, flags, keycaps, variation selectors, ZWJ) */
+/*
+ * Control and format characters could spoof texts on the board (bidi overrides/isolates, zero-width spaces), so
+ * \p{Cc} and \p{Cf} are refused - except the zero-width joiner U+200D, which composed emoji need (family, profession).
+ * Variation selectors (U+FE0F), skin tones, regional indicators (flags) and the keycap U+20E3 are no Cf and allowed.
+ */
+function has_spoofing_chars(string $value): bool
+{
+    return (bool)preg_match('/\p{Cc}|(?!\x{200D})\p{Cf}/u', $value);
+}
+
+/*
+ * Number of user-perceived characters of a (valid UTF-8) text, simplified UAX #29 for emoji, the same on every server
+ * (PCRE \X differs between library versions, e.g. 10.42 joins consecutive emoji; intl is not installed everywhere):
+ * combining marks (incl. variation selectors U+FE0F, keycap U+20E3), skin tones U+1F3FB-1F3FF, tag characters
+ * U+E0020-E007F and the joiner U+200D belong to the character before, a character after U+200D as well, and two
+ * regional indicators form one flag.
+ */
+function custom_grapheme_count(string $value): int
+{
+    preg_match_all('/./su', $value, $m);
+    $count = 0;
+    $joined = false;   // previous code point was U+200D
+    $open_flag = false; // previous code point was a single regional indicator
+    foreach ($m[0] as $char) {
+        $b = array_values(unpack('C*', $char)); // one valid UTF-8 code point (1-4 bytes)
+        $cp = match (count($b)) {
+            1 => $b[0],
+            2 => ($b[0] & 0x1F) << 6 | $b[1] & 0x3F,
+            3 => ($b[0] & 0x0F) << 12 | ($b[1] & 0x3F) << 6 | $b[2] & 0x3F,
+            default => ($b[0] & 0x07) << 18 | ($b[1] & 0x3F) << 12 | ($b[2] & 0x3F) << 6 | $b[3] & 0x3F,
+        };
+        $is_ri = $cp >= 0x1F1E6 && $cp <= 0x1F1FF;
+        $extends = $count > 0 && ($joined || $cp === 0x200D || $cp >= 0x1F3FB && $cp <= 0x1F3FF
+            || $cp >= 0xE0020 && $cp <= 0xE007F || preg_match('/^\p{M}$/u', $char) || $is_ri && $open_flag);
+        if (!$extends) $count++;
+        $open_flag = $is_ri && !($extends && $open_flag);
+        $joined = $cp === 0x200D;
+    }
+    return $count;
+}
+
+/*
+ * A text value of a card (Andreas 2026-11-02: emoji allowed): 1 to 6 graphemes (custom_grapheme_count(), an emoji sequence like a family,
+ * a flag or a keycap counts as one), at most CUSTOM_VALUE_CODEPOINTS_MAX code points, no spoofing characters
+ * (has_spoofing_chars()), no private-use or surrogate code points, at least one visible character (not only
+ * spaces, joiners or combining marks). Expects a trimmed value.
+ */
 function is_custom_value_text(string $value): bool
 {
-    return $value !== '' && cut_text($value, CUSTOM_VALUE_MAX) === $value
-        && !preg_match('/[\p{Extended_Pictographic}\x{1F1E6}-\x{1F1FF}\x{FE00}-\x{FE0F}\x{20E3}\p{Cc}\p{Cf}\p{Co}\p{Cs}]/u', $value);
+    $codepoints = preg_match_all('/./su', $value); // false for invalid UTF-8
+    if ($value === '' || $codepoints === false || $codepoints > CUSTOM_VALUE_CODEPOINTS_MAX) return false;
+    if (custom_grapheme_count($value) > CUSTOM_VALUE_MAX) return false;
+    if (has_spoofing_chars($value) || preg_match('/[\p{Co}\p{Cs}]/u', $value)) return false;
+    return (bool)preg_match('/[^\s\x{200D}\p{M}]/u', $value);
 }
 
 /*

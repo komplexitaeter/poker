@@ -168,8 +168,13 @@ test('custom sets: validation, limits, other teams', async ({ browser }) => {
   const ok = { name: 'Set', style: 'plain', cards: RISK };
 
   const bad: [string, unknown, string][] = [
-    ['emoji text', { ...ok, cards: [{ text: '🙂', color: 'red' }] }, 'text'],
-    ['flag text', { ...ok, cards: [{ text: '🇩🇪', color: 'red' }] }, 'text'],
+    // emoji are fine (see below), but at most 6 graphemes and no spoofing characters
+    ['7 emoji', { ...ok, cards: [{ text: '🎉🎉🎉🎉🎉🎉🎉', color: 'red' }] }, 'text'],
+    ['7 graphemes with families', { ...ok, cards: [{ text: '👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧x', color: 'red' }] }, 'text'],
+    ['bidi override in text', { ...ok, cards: [{ text: 'a\u202Eb', color: 'red' }] }, 'text'],
+    ['bidi isolate in text', { ...ok, cards: [{ text: '\u2066ab', color: 'red' }] }, 'text'],
+    ['zero-width space in text', { ...ok, cards: [{ text: '1\u200B', color: 'red' }] }, 'text'],
+    ['only a joiner', { ...ok, cards: [{ text: '\u200D', color: 'red' }] }, 'text'],
     ['text too long', { ...ok, cards: [{ text: '1234567', color: 'red' }] }, 'text'],
     ['symbol not in the library', { ...ok, cards: [{ symbol: 's-coffee', color: 'red' }] }, 'symbol'],
     ['symbol and text', { ...ok, cards: [{ symbol: 's-1', text: '1', color: 'red' }] }, 'symbol_or_text'],
@@ -208,6 +213,19 @@ test('custom sets: validation, limits, other teams', async ({ browser }) => {
   const res21 = await a.save(big.set_id, { name: 'Set', style: 'plain', rev: 1, cards: more });
   expect(res21.status()).toBe(400);
   expect(await res21.json()).toMatchObject({ error: 'too_many_cards', max: 20 });
+
+  // emoji as card text (Andreas 2026-11-02): single, ZWJ sequence, flag, keycap, skin tone, 6 families; joiner and
+  // variation selector also in name, heading and description
+  const emoji = ['🎉', '👨‍👩‍👧', '🇩🇪', '1️⃣', '👍🏽x', '👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧'];
+  const fun = await a.create({ name: 'Fun 👩‍💻', style: 'plain',
+    cards: emoji.map((text, i) => ({ text, color: 'grey', heading: i === 0 ? '❤️ it' : null,
+      description: i === 0 ? 'Team 👨‍👩‍👧 ✔️' : null })) });
+  expect(fun.status()).toBe(200);
+  const funSet = (await fun.json()).set;
+  expect(funSet.name).toBe('Fun 👩‍💻');
+  expect(funSet.cards.map((card: { value: string }) => card.value)).toEqual(emoji);
+  expect(funSet.cards[0]).toMatchObject({ heading: '❤️ it', description: 'Team 👨‍👩‍👧 ✔️' });
+  expect((await a.remove(funSet.set_id)).ok()).toBeTruthy();
 
   // GET is refused, a wrong team gets 403
   expect((await page.request.get(`/api/custom_set_create.php?t=${t}`)).status()).toBe(405);

@@ -406,14 +406,14 @@ create table if not exists pok_custom_sets_tbl (
 
 /* cards of a custom set. Immutable: a changed card is a new row with a new card_key, the old row gets active = 0 and
    is never deleted (historic rounds keep showing what was played). card_key = 'c-' + base36(id), set right after the
-   insert (unique, at most 7 characters). Either symbol_id (symbol library) or value_text (at most 6 characters). */
+   insert (unique, at most 7 characters). Either symbol_id (symbol library) or value_text (at most 6 graphemes, 48 code points). */
 create table if not exists pok_custom_cards_tbl (
   id int unsigned not null auto_increment primary key,
   set_id int unsigned not null,
   card_key varchar(7) character set ascii collate ascii_bin null,
   position tinyint unsigned not null,
   symbol_id varchar(32) character set ascii collate ascii_bin null,
-  value_text varchar(6) null,
+  value_text varchar(48) null,
   heading varchar(16) null,
   description varchar(160) null,
   numeric_value decimal(10,2) null,
@@ -564,3 +564,21 @@ prepare b98v6_stmt from @b98v6_sql;
 execute b98v6_stmt;
 deallocate prepare b98v6_stmt;
 /* end B-98 V6 */
+
+/* B-98 emoji: card texts may be emoji (Andreas 2026-11-02), 6 graphemes, a family emoji alone has 5 code points.
+   pok_custom_cards_tbl.value_text varchar(6) -> varchar(48) (code points, API limit CUSTOM_VALUE_CODEPOINTS_MAX).
+   Widening within the 1-byte length prefix (48 * 4 = 192 bytes < 256): in place, no table copy. Idempotent, BEFORE
+   deploying the code. Run only this block: sed -n '/^\/\* B-98 emoji:/,/^\/\* end B-98 emoji/p' db_schema_pok_inc.sql */
+set session lock_wait_timeout = 5;
+set @b98e_sql = if((select character_maximum_length from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_custom_cards_tbl'
+                       and column_name = 'value_text') < 48,
+  'alter table pok_custom_cards_tbl modify value_text varchar(48) null, algorithm = inplace, lock = none',
+  'select 1');
+prepare b98e_stmt from @b98e_sql;
+execute b98e_stmt;
+deallocate prepare b98e_stmt;
+
+select table_name, column_name, column_type, character_set_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_custom_cards_tbl' and column_name = 'value_text';
+/* end B-98 emoji */

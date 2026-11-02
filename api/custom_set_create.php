@@ -2,7 +2,7 @@
 /*
  * B-98 S4: creates a custom set of the team.
  * POST ?t=<team>&id=<player id, optional>, JSON body: {name, style, cards: [card, ...], activate: bool (optional, default false)}
- *   card: {symbol: id of card_catalog.json custom_symbols | text: 1-6 characters, no emoji (exactly one of both),
+ *   card: {symbol: id of card_catalog.json custom_symbols | text: 1-6 graphemes, emoji allowed, see is_custom_value_text() (exactly one of both),
  *          heading?: <= 16, description?: <= 160, numeric_value?: number | null, color: card_catalog.json custom_colors,
  *          key?: card_key of a catalog group card (template, e.g. 'infin01'): then symbol and color of that catalog card
  *          are allowed even if they are not in custom_symbols/custom_colors}
