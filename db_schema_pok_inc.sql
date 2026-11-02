@@ -542,3 +542,25 @@ select table_name, column_name, column_type, character_set_name, collation_name,
  where table_schema = database() and table_name in ('pok_teams_tbl', 'pok_roundstats_tbl')
    and column_name = 'deck_controls';
 /* end B-106 */
+
+/* B-98 V6: who changed the card set of a team last (the board shows "Alice changed the card set to J.U.D.G.E.").
+   pok_teams_tbl.deck_changed_by = player id (pok_players_tbl.id, as get_id_param() reads it) of the writer, set by
+   update_deck.php, update_cardset.php and custom_set_delete.php only when the set group changes; dao.php joins the
+   name (deck.changed_by). Additive, instant, idempotent (run it again any time), BEFORE deploying the code.
+   Run only this block: sed -n '/^\/\* B-98 V6:/,/^\/\* end B-98 V6/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'deck_changed_by';
+
+set session lock_wait_timeout = 5;
+set @b98v6_sql = if((select count(1) from information_schema.columns
+                      where table_schema = database() and table_name = 'pok_teams_tbl'
+                        and column_name = 'deck_changed_by') = 0,
+  'alter table pok_teams_tbl
+     add column deck_changed_by varchar(16) character set ascii collate ascii_bin null
+       comment ''B-98 V6: player id of the last change of the set group, null = unknown'',
+     algorithm = instant',
+  'select 1');
+prepare b98v6_stmt from @b98v6_sql;
+execute b98v6_stmt;
+deallocate prepare b98v6_stmt;
+/* end B-98 V6 */

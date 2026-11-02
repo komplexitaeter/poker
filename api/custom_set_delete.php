@@ -1,7 +1,7 @@
 <?php
 /*
  * B-98 S4: deletes a custom set of the team (soft delete: deleted = 1, its cards stay for the round history and for
- * cards still on the table). POST ?t=<team>&set=<set id>, no body.
+ * cards still on the table). POST ?t=<team>&set=<set id>&id=<player id, optional>, no body.
  * - The set is the team's deck: the team falls back to the default deck (all its cards, control cards unchanged);
  *   if a card is down, a new round starts first (the client asks before, B-98).
  * - 404 {error: 'not_found'}: no set of this team (or already deleted).
@@ -13,6 +13,7 @@ require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL) ?? '', 0, 80);
 $set_id = get_set_param();
+$player_id = get_id_param('id'); // B-98 V6: who changes the card set (deleting the active set), optional
 
 $link = db_init();
 require_team($t, $link);
@@ -38,7 +39,7 @@ $sql->execute();
 
 $result = array('deck' => $team['deck'], 'new_round' => false);
 if ($team['deck']['id'] === custom_deck_id($set_id))
-    $result = custom_update_team_deck($link, $t, $team, $catalog, (string)$catalog['default_deck'], true);
+    $result = custom_update_team_deck($link, $t, $team, $catalog, (string)$catalog['default_deck'], true, $player_id);
 $link->commit();
 $link->close();
 

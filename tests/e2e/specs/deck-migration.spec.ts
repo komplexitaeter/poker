@@ -67,7 +67,7 @@ test('a team with an old bitmask is migrated on load and the board keeps working
   expect(data.deck).toEqual({
     id: 'fib-classic', group: 'fib',
     cards: ['one0001', 'two0001', 'three01', 'five001', 'eight01', 'thrtn01'],
-    controls: ['break01', 'veto'], rev: 0,
+    controls: ['break01', 'veto'], rev: 0, changed_by: null, // B-98 V6: nobody changed the set yet
   });
   expect(storedDeck(teamId)).toBe('fib-classic|one0001,two0001,three01,five001,eight01,thrtn01|break01,veto|0');
   expect(sql(`select cardset_flags from pok_teams_tbl where id = '${teamId}'`)).toBe(legacy);

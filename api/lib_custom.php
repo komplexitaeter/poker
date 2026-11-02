@@ -450,10 +450,12 @@ function get_set_param(): int
  * set or the default deck with all its cards; the control cards stay). If the cards of the deck change (not just their
  * order) while a card is down, a new round starts first (snapshot with the old deck), like a deck change in
  * update_deck.php. The deck is stored (deck_rev + 1) if anything changed or $force_store (e.g. name or style of the
- * active set). The caller holds the team row lock ($team from lock_team_deck()).
+ * active set). The caller holds the team row lock ($team from lock_team_deck()). B-98 V6: $player_id is remembered
+ * as the one who changed the card set if the set group changes.
  * Returns array('deck' => resolved deck, 'changed' => bool, 'new_round' => bool).
  */
-function custom_update_team_deck($link, string $t, array $team, array $catalog, string $deck_id, bool $force_store): array
+function custom_update_team_deck($link, string $t, array $team, array $catalog, string $deck_id, bool $force_store,
+                                 string $player_id = ''): array
 {
     $sets = load_custom_sets($link, $t, $catalog);
     $old = $team['deck'];
@@ -472,6 +474,8 @@ function custom_update_team_deck($link, string $t, array $team, array $catalog, 
     $changed = $cards_changed || $force_store || $new['cards'] !== $old['cards'] || $team['deck_id'] !== $old['id'];
     if ($changed) {
         store_team_deck($link, $t, $new, $catalog, true);
+        // B-98 V6: activating a new set or the fallback after a delete changes the set group
+        if (deck_group_key($new) !== deck_group_key($old)) set_deck_changed_by($link, $t, $player_id);
         $new['rev']++;
     }
     return array('deck' => $new, 'changed' => $changed, 'new_round' => $new_round);
