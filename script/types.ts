@@ -47,7 +47,7 @@ export interface myJsonType {
     deck: Deck | null; // R3 (B-98): null without card_catalog.json on the server (fallback: cardset_flags)
     custom_sets: CustomSet[];          // B-98 S4: the team's own sets (not deleted), in their order
     custom_cards_played: CustomCard[]; // B-98 S4: custom cards on the table that are in no active set any more
-    custom_limits: { sets: number; cards: number }; // B-98 S4: sets per team, cards per set (when adding)
+    custom_limits: { sets: number; cards: number }; // B-98 S4: sets per team, cards per set (when adding, default 20)
 }
 
 /* B-98 S4: an own card set of the team (api/lib_custom.php load_custom_sets()) */

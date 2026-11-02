@@ -9,16 +9,17 @@
  *   active = 0. Rows are never deleted, so historic rounds and cards still on the table keep their data.
  *   Only position (the order in the set) is updated in place, it is no card content.
  * - A card has either a symbol of the symbol library (card_catalog.json "custom_symbols") or a text value (at most 6
- *   characters, no emoji), optional heading/description, an optional numeric value (spread, sorting, average) and a
+ *   graphemes, emoji allowed), optional heading/description, an optional numeric value (spread, sorting, average) and a
  *   colour of the palette (card_catalog.json "custom_colors"). Cards migrated from an old mixed deck may keep their
- *   catalog symbol/colour; an edited copy of such a card may keep them as well.
+ *   catalog symbol/colour; an edited copy of such a card may keep them as well. A card copied from a catalog card
+ *   (editor template, request key = catalog card_key) may keep that card's symbol/colour, too.
  */
 
 const CUSTOM_DECK_PREFIX = 'c-';
 const CUSTOM_DECK_GROUP = 'custom';
-const CUSTOM_CARDS_MAX = 16;          // cards per set when cards are added (B-98); migrated sets may have more
 const CUSTOM_SET_NAME_MAX = 24;
-const CUSTOM_VALUE_MAX = 6;
+const CUSTOM_VALUE_MAX = 6;            // graphemes (user-perceived characters, an emoji sequence counts as one)
+const CUSTOM_VALUE_CODEPOINTS_MAX = 48; // code points of a text value (column value_text varchar(48))
 const CUSTOM_HEADING_MAX = 16;
 const CUSTOM_DESCRIPTION_MAX = 160;
 const CUSTOM_NUMERIC_MAX = 99999999;  // decimal(10,2)
@@ -29,6 +30,25 @@ const CUSTOM_BODY_MAX_BYTES = 65536;
 function custom_sets_max(): int
 {
     return defined('_CUSTOM_SETS_MAX') ? max(0, (int)constant('_CUSTOM_SETS_MAX')) : 5;
+}
+
+/*
+ * B-98: cards per set when cards are added (migrated sets may have more); _CUSTOM_CARDS_MAX in config.php overrides
+ * the default of 20 (Fibonacci has 17 cards and can be copied as a template, Andreas 2026-11-02)
+ */
+function custom_cards_max(): int
+{
+    return defined('_CUSTOM_CARDS_MAX') ? max(1, (int)constant('_CUSTOM_CARDS_MAX')) : 20;
+}
+
+/* card_key => card of all cards of the catalog groups (templates of the editor; no control or status cards) */
+function catalog_group_cards(array $catalog): array
+{
+    $cards = array();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['cards'] as $card)
+            if (isset($card['card_key']) && is_string($card['card_key'])) $cards[$card['card_key']] = $card;
+    return $cards;
 }
 
 /*
@@ -193,7 +213,8 @@ function read_json_body(): ?array
 /*
  * Free text from the JSON body, like get_text_param(): trimmed, otherwise stored as entered (escaped on output).
  * Returns null if the value is no string (or missing and not $optional), longer than $max_length characters or
- * contains control or format characters (\p{Cc}, \p{Cf}: bidi overrides, zero-width characters); '' for a missing optional value.
+ * contains spoofing characters (has_spoofing_chars(): bidi overrides, zero-width spaces; the emoji joiner U+200D is
+ * fine); '' for a missing optional value. Length in code points (the varchar columns), as before.
  */
 function body_text(array $data, string $name, int $max_length, bool $optional = true): ?string
 {
@@ -201,24 +222,94 @@ function body_text(array $data, string $name, int $max_length, bool $optional = 
     if (!is_string($data[$name])) return null;
     $value = trim($data[$name]);
     if (cut_text($value, $max_length) !== $value) return null; // too long or invalid UTF-8
-    // control and format characters (bidi overrides, zero-width characters) could spoof names on the board
-    if (preg_match('/[\p{Cc}\p{Cf}]/u', $value)) return null;
+    if (has_spoofing_chars($value)) return null;
     return $value;
 }
 
-/* a text value of a card: 1 to 6 characters, no emoji (pictographs, flags, keycaps, variation selectors, ZWJ) */
+/*
+ * Control and format characters could spoof texts on the board (bidi overrides/isolates, zero-width spaces), so
+ * \p{Cc}, \p{Cf} and the line/paragraph separators \p{Zl}, \p{Zp} are refused - except the zero-width joiner U+200D, which composed emoji need (family, profession).
+ * Variation selectors (U+FE0F), skin tones, regional indicators (flags) and the keycap U+20E3 are no Cf and allowed.
+ */
+function has_spoofing_chars(string $value): bool
+{
+    return (bool)preg_match('/[\p{Cc}\p{Zl}\p{Zp}]|(?!\x{200D})\p{Cf}/u', $value);
+}
+
+/*
+ * Number of user-perceived characters of a (valid UTF-8) text, simplified UAX #29 for emoji, the same on every server
+ * (PCRE \X differs between library versions, e.g. 10.42 joins consecutive emoji; intl is not installed everywhere):
+ * combining marks (incl. variation selectors U+FE0F, keycap U+20E3), skin tones U+1F3FB-1F3FF and the joiner U+200D
+ * belong to the character before; a pictograph after U+200D joins a pictograph before it (emoji ZWJ sequence, UAX #29
+ * GB11), any other character after U+200D starts a new one ('A' ZWJ 'B' are two); two regional indicators form one
+ * flag. Tag characters U+E0020-E007F are counted with the character before as well, but card texts refuse them
+ * (has_spoofing_chars(), \p{Cf}), so subdivision flags are not allowed.
+ */
+function is_pictographic_codepoint(int $cp): bool
+{
+    // Extended_Pictographic by ranges (\p{Extended_Pictographic} needs PCRE2 >= 10.40, not on every server);
+    // regional indicators and skin tones lie in these blocks but are no pictographs
+    if ($cp >= 0x1F1E6 && $cp <= 0x1F1FF || $cp >= 0x1F3FB && $cp <= 0x1F3FF) return false;
+    return in_array($cp, array(0x00A9, 0x00AE, 0x203C, 0x2049, 0x2122, 0x2139, 0x3030, 0x303D, 0x3297, 0x3299), true)
+        || $cp >= 0x2194 && $cp <= 0x21AA || $cp >= 0x231A && $cp <= 0x23FF || $cp >= 0x25AA && $cp <= 0x25FE
+        || $cp >= 0x2600 && $cp <= 0x27BF || $cp >= 0x2934 && $cp <= 0x2935 || $cp >= 0x2B05 && $cp <= 0x2B55
+        || $cp >= 0x1F000 && $cp <= 0x1FAFF || $cp >= 0x1FC00 && $cp <= 0x1FFFD;
+}
+
+function custom_grapheme_count(string $value): int
+{
+    preg_match_all('/./su', $value, $m);
+    $count = 0;
+    $joined = false;   // previous code point was U+200D
+    $open_flag = false; // previous code point was a single regional indicator
+    $pictograph = false; // the current grapheme ends with a pictograph (before marks, skin tones, joiner)
+    foreach ($m[0] as $char) {
+        $b = array_values(unpack('C*', $char)); // one valid UTF-8 code point (1-4 bytes)
+        $cp = match (count($b)) {
+            1 => $b[0],
+            2 => ($b[0] & 0x1F) << 6 | $b[1] & 0x3F,
+            3 => ($b[0] & 0x0F) << 12 | ($b[1] & 0x3F) << 6 | $b[2] & 0x3F,
+            default => ($b[0] & 0x07) << 18 | ($b[1] & 0x3F) << 12 | ($b[2] & 0x3F) << 6 | $b[3] & 0x3F,
+        };
+        $is_ri = $cp >= 0x1F1E6 && $cp <= 0x1F1FF;
+        $is_pict = is_pictographic_codepoint($cp);
+        $mark = $cp === 0x200D || $cp >= 0x1F3FB && $cp <= 0x1F3FF || $cp >= 0xE0020 && $cp <= 0xE007F
+            || preg_match('/^\p{M}$/u', $char);
+        $extends = $count > 0 && ($mark || $joined && $is_pict && $pictograph || $is_ri && $open_flag);
+        if (!$extends) $count++;
+        if (!$mark) $pictograph = $is_pict;
+        $open_flag = $is_ri && !($extends && $open_flag);
+        $joined = $cp === 0x200D;
+    }
+    return $count;
+}
+
+/*
+ * A text value of a card (Andreas 2026-11-02: emoji allowed): 1 to 6 graphemes (custom_grapheme_count(), an emoji sequence like a family,
+ * a flag or a keycap counts as one), at most CUSTOM_VALUE_CODEPOINTS_MAX code points, no spoofing characters
+ * (has_spoofing_chars()), no private-use or surrogate code points, at least one visible character (not only
+ * spaces, joiners or combining marks). Expects a trimmed value.
+ */
 function is_custom_value_text(string $value): bool
 {
-    return $value !== '' && cut_text($value, CUSTOM_VALUE_MAX) === $value
-        && !preg_match('/[\p{Extended_Pictographic}\x{1F1E6}-\x{1F1FF}\x{FE00}-\x{FE0F}\x{20E3}\p{Cc}\p{Cf}\p{Co}\p{Cs}]/u', $value);
+    $codepoints = preg_match_all('/./su', $value); // false for invalid UTF-8
+    if ($value === '' || $codepoints === false || $codepoints > CUSTOM_VALUE_CODEPOINTS_MAX) return false;
+    if (custom_grapheme_count($value) > CUSTOM_VALUE_MAX) return false;
+    // invisible letters (Hangul fillers U+115F, U+1160, U+3164, U+FFA0, blank Braille U+2800) could fake an empty card
+    if (has_spoofing_chars($value) || preg_match('/[\p{Co}\p{Cs}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}]/u', $value))
+        return false;
+    return (bool)preg_match('/[^\s\x{200D}\p{M}]/u', $value);
 }
 
 /*
  * Validates the card list of a create/save request. $known: cards of this set by key (active and inactive rows) -
  * a card that refers to one of them may keep its symbol and colour even if they are not in the custom whitelists
- * (cards migrated from an old deck). Returns array('cards' => [normalized cards]) or array('error' => code,
- * 'index' => position of the card).
- * A normalized card: key (given key or null), symbol, text, heading, description, numeric (string '1.50' or null), color.
+ * (cards migrated from an old deck). Likewise a card whose key is the card_key of a catalog group card (template of
+ * the editor, e.g. 'infin01') may take that card's symbol and colour; it is a new card (normalized key null).
+ * Other keys (other sets, other teams, unknown) give no exception. Content is validated as usual.
+ * Returns array('cards' => [normalized cards]) or array('error' => code, 'index' => position of the card).
+ * A normalized card: key (given custom key or null), symbol, text, heading, description, numeric (string '1.50' or
+ * null), color.
  */
 function validate_custom_cards($input, array $known, array $catalog): array
 {
@@ -227,6 +318,7 @@ function validate_custom_cards($input, array $known, array $catalog): array
 
     $symbols = array_flip(custom_symbols($catalog));
     $colors = array_flip(custom_colors($catalog));
+    $templates = catalog_group_cards($catalog);
     $cards = array();
     $seen = array();
     foreach ($input as $i => $card) {
@@ -234,10 +326,16 @@ function validate_custom_cards($input, array $known, array $catalog): array
         if (!is_array($card) || array_is_list($card) && count($card) > 0) return $error('card');
 
         $key = $card['key'] ?? null;
-        if ($key !== null && (!is_string($key) || !preg_match('/^c-[a-z0-9]{1,5}$/D', $key))) return $error('key');
-        if ($key !== null && isset($seen[$key])) return $error('duplicate_key');
-        if ($key !== null) $seen[$key] = true;
-        $ref = $key !== null ? ($known[$key] ?? null) : null;
+        $ref = null;
+        if ($key !== null && is_string($key) && isset($templates[$key])) {
+            $ref = $templates[$key]; // copy of a catalog card: a new card, catalog keys may repeat
+            $key = null;
+        } else {
+            if ($key !== null && (!is_string($key) || !preg_match('/^c-[a-z0-9]{1,5}$/D', $key))) return $error('key');
+            if ($key !== null && isset($seen[$key])) return $error('duplicate_key');
+            if ($key !== null) $seen[$key] = true;
+            $ref = $key !== null ? ($known[$key] ?? null) : null;
+        }
 
         $symbol = $card['symbol'] ?? null;
         $symbol = $symbol === '' ? null : $symbol;
@@ -246,7 +344,7 @@ function validate_custom_cards($input, array $known, array $catalog): array
         $text = $text === '' ? null : $text;
         if (($symbol === null) === ($text === null)) return $error('symbol_or_text');
         if ($symbol !== null && (!is_string($symbol)
-                || !isset($symbols[$symbol]) && ($ref === null || $ref['symbol'] !== $symbol))) return $error('symbol');
+                || !isset($symbols[$symbol]) && ($ref === null || ($ref['symbol'] ?? null) !== $symbol))) return $error('symbol');
         if ($text !== null && (!is_string($text) || !is_custom_value_text($text))) return $error('text');
 
         $heading = body_text($card, 'heading', CUSTOM_HEADING_MAX);
@@ -264,7 +362,7 @@ function validate_custom_cards($input, array $known, array $catalog): array
         }
 
         $color = $card['color'] ?? null;
-        if (!is_string($color) || !isset($colors[$color]) && ($ref === null || $ref['color'] !== $color)) return $error('color');
+        if (!is_string($color) || !isset($colors[$color]) && ($ref === null || ($ref['color'] ?? null) !== $color)) return $error('color');
 
         $cards[] = array('key' => $key, 'symbol' => $symbol, 'text' => $text,
             'heading' => $heading === '' ? null : $heading, 'description' => $description === '' ? null : $description,

@@ -8,7 +8,7 @@
  * rev}). Every change is written at once (api/update_deck.php, api/update_controls.php, apiWrite()); the menu shows
  * it right away (a local copy of the deck) and takes the server's deck again when its rev changes.
  * While cards are down a note says that a new deck starts a new round (the server starts it in the same request).
- * B-98 S5: the team's own sets (dao custom_sets, deck group 'custom'): "Your sets" on top of the list (choose, edit,
+ * B-98 S5: the team's own sets (dao custom_sets, deck group 'custom'): "Your sets" below the built-in sets (choose, edit,
  * "+ New set"), an own set in play shows its name, its cards and "Edit set" (editor: script_custom.js).
  * Only createElement / textContent (set names are free text); keys in URLs encoded. */
 
@@ -34,7 +34,7 @@ const gDeckMenu = {
     sig: null,        // what the menu was last built from
     variantKeyMove: false, // the next change of the variant radios comes from an arrow key
     sets: [],         // B-98 S5: the team's own sets (dao custom_sets)
-    limits: { sets: 5, cards: 16 }, // B-98 S5: dao custom_limits
+    limits: { sets: 5, cards: 20 }, // B-98 S5: dao custom_limits
 };
 
 /* B-98 S5: an own set of the team by its deck id 'c-<id>' */
@@ -302,9 +302,8 @@ function deckPickView(deck) {
     const note = dmRoundNote();
     if (note !== null) parts.push(note);
 
-    parts.push(...dmOwnSets(deck));
-
-    const builtIn = dmEl('h4', 'lab cs-sec cs-sec2', 'Built-in sets');
+    // Andreas: the built-in sets first, "Your sets" and "+ New set" below them
+    const builtIn = dmEl('h4', 'lab cs-sec', 'Built-in sets');
     builtIn.id = 'deck_builtin_title';
     parts.push(builtIn);
     const list = dmEl('ul', 'dm-plist');
@@ -331,6 +330,7 @@ function deckPickView(deck) {
         list.appendChild(item);
     });
     parts.push(list);
+    parts.push(...dmOwnSets(deck));
     return parts;
 }
 
@@ -340,7 +340,7 @@ function dmOwnSets(deck) {
     const parts = [];
     const max = gDeckMenu.limits.sets;
     const count = gDeckMenu.sets.length;
-    const head = dmEl('h4', 'lab cs-sec');
+    const head = dmEl('h4', 'lab cs-sec cs-sec2');
     head.id = 'deck_own_title';
     head.append('Your sets ', dmEl('span', 'cs-count' + (count >= max ? ' full' : ''), count + ' / ' + max));
     parts.push(head);

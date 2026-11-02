@@ -3,15 +3,20 @@
  * (script_deck.js): the pen of a set, "Edit set" or "+ New set". Full screen (Andreas), head and foot fixed. Large
  * screens: the card strip on the left in full height, the fields of the card on the right (only these two scroll);
  * phones: one column, the strip scrolls sideways above the fields.
+ * - B-98 copy (Andreas): "+ New set" first shows a choice in the same overlay (csRenderStart()): "Start from scratch"
+ *   (cards 1 and 2) or one of the built-in sets (a row per catalog group: name, note, fan). A built-in set fills the
+ *   editor with all cards of its group (every variant, catalog order, no control cards) with symbol, heading,
+ *   description, value, colour and the group's style; each card sends its catalog card_key as key. The name stays
+ *   empty (required). Esc / × / Cancel close the choice; nothing is stored before Save.
  * - Head: title, "The team sees changes after Save" (unsaved / errors, live region), × (= Cancel).
  * - Top: set name (24, counter), Style (card_catalog.json styles: plain | badge | banner | inverted).
- * - Left: "Cards (n of 16)", a strip of the cards in the set's style: the selected one large as it looks on the
+ * - Left: "Cards (n of max)" (max: dao custom_limits.cards), a strip of the cards in the set's style: the selected one large as it looks on the
  *   table (cardFace()) with ↑ ↓ ×, the others as compact rows (small card, name, value; phones: small cards only),
- *   at the end "+ Add card" (up to 16 - a bigger migrated set keeps its size but does not grow -, × down to 2 cards).
+ *   at the end "+ Add card" (up to the limit - a bigger migrated set keeps its size but does not grow -, × down to 2 cards).
  * - Right, the selected card: Symbol (a button with the symbol and its name opens a picker: search field and a list
  *   grouped by Numbers, Sizes, Lights, Faces, Stars, "Text" on top; next to the button the text field of a text card,
- *   1-6 characters, no emoji), Heading (16), Description (160), Numeric value (default from custom_symbol_values, may
- *   be empty, decimals), Colour (custom_colors).
+ *   1-6 characters counted as graphemes, emoji allowed (Andreas), see csTextProblem()), Heading (16), Description
+ *   (160), Numeric value (default from custom_symbol_values, may be empty, decimals), Colour (custom_colors).
  * - Foot: Delete set (asks first), Cancel (asks first with unsaved changes; Esc the same), "Save & play" (only when the
  *   set is not in play: save and put it in play), Save. A hint when saving starts a new round.
  * - Save: api/custom_set_create.php (activate with "Save & play") or api/custom_set_save.php with rev; a 409 (someone
@@ -21,7 +26,8 @@
  * Only createElement / textContent / setAttribute (name and texts are free text); symbols and colours only from the
  * whitelists of the catalog; requests as JSON body. */
 
-const CS_TEXT_MAX = 6;
+const CS_TEXT_MAX = 6;            // graphemes (an emoji sequence counts as one)
+const CS_TEXT_CODEPOINTS_MAX = 48; // as api/lib_custom.php CUSTOM_VALUE_CODEPOINTS_MAX
 const CS_NAME_MAX = 24;
 const CS_HEADING_MAX = 16;
 const CS_DESCRIPTION_MAX = 160;
@@ -42,7 +48,7 @@ const CS_CATEGORIES = [
 const CS_ERRORS = {
     name: 'Give the set a name.',
     style: 'Choose a style.',
-    text: 'Up to 6 letters, digits or signs – no emoji.',
+    text: 'Up to 6 characters – letters, digits, signs or emoji.',
     symbol: 'Choose a symbol.',
     symbol_or_text: 'Choose a symbol or enter a text.',
     heading: 'Up to 16 characters, no control characters.',
@@ -66,7 +72,8 @@ const gCs = {
     cards: [],        // { key, mode: 'symbol'|'text', symbol, text, heading, description, value (string), color, colorSet }
     sel: 0,
     pick: null,       // the open symbol picker: { query, active } or null
-    maxCards: 16,
+    maxCards: 20,
+    view: 'edit',     // 'start' (the choice of "+ New set") | 'edit'
     start: '',        // signature of the state when opened (unsaved changes)
     errors: {},       // { name, text, heading, description, value, card: index, general }
     opener: null,     // data-f of the element that opened the editor (focus back)
@@ -181,12 +188,22 @@ function csSymbolColor(symbol) {
     return best;
 }
 
-/* a text of a card: 1 to 6 characters, no emoji (as is_custom_value_text() in api/lib_custom.php) */
-function csTextOk(text) {
-    const length = [...text].length;
-    return length >= 1 && length <= CS_TEXT_MAX
-        && !/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE00}-\u{FE0F}\u{20E3}\p{Cc}\p{Cf}\p{Co}\p{Cs}]/u.test(text);
+/* the problem of a (trimmed) text of a card, null if fine (as is_custom_value_text() in api/lib_custom.php):
+ * 'empty'; 'long': more than 6 graphemes or 48 code points; 'chars': control / format characters (bidi, zero-width
+ * spaces; the emoji joiner U+200D is fine), private use, lone surrogates, or nothing visible */
+function csTextProblem(text) {
+    if (text === '') return 'empty';
+    if (textGraphemes(text) > CS_TEXT_MAX || [...text].length > CS_TEXT_CODEPOINTS_MAX) return 'long';
+    if (/[\p{Cc}\p{Co}\p{Cs}\p{Zl}\p{Zp}\u115F\u1160\u3164\uFFA0\u2800]|(?!\u200D)\p{Cf}/u.test(text)) return 'chars';
+    if (!/[^\p{Z}\p{M}\s\u200D]/u.test(text)) return 'chars';
+    return null;
 }
+
+function csTextOk(text) {
+    return csTextProblem(text) === null;
+}
+
+const CS_TEXT_ERRORS = { empty: 'Enter a text.', long: 'Up to 6 characters.', chars: 'Use visible characters only.' };
 
 /* the value field as a number: '' -> null, '1,5' -> 1.5, undefined if it is no number */
 function csNumber(value) {
@@ -303,13 +320,15 @@ function csDialog() {
         if (event.key !== 'Escape') return;
         event.preventDefault();
         event.stopPropagation();
-        if (gCs.ask !== null) csCloseQuestion();
+        if (gCs.view === 'start') csClose();
+        else if (gCs.ask !== null) csCloseQuestion();
         else if (gCs.pick !== null) csClosePicker(true);
         else csCancel();
     });
     dialog.addEventListener('cancel', event => {
         event.preventDefault();
-        if (gCs.ask === null && gCs.pick === null) csCancel();
+        if (gCs.view === 'start') csClose();
+        else if (gCs.ask === null && gCs.pick === null) csCancel();
     });
     // a press outside the picker (and its button) closes it
     dialog.addEventListener('pointerdown', event => {
@@ -321,19 +340,48 @@ function csDialog() {
     return dialog;
 }
 
-/* set: an own set (dao custom_sets) or null for a new one (cards 1 and 2); opener: the button (gets the focus back) */
+/* the card limit of the team (dao custom_limits.cards) */
+function csCardLimit() {
+    const max = gDeckMenu.limits && gDeckMenu.limits.cards;
+    return typeof max === 'number' && max >= CS_MIN_CARDS ? max : 20;
+}
+
+/* set: an own set (dao custom_sets) or null for a new one (first the choice: from scratch or a built-in set);
+ * opener: the button (gets the focus back) */
 function openCustomEditor(set, opener) {
+    gCs.opener = opener ? opener.getAttribute('data-f') : null;
+    if (set) {
+        csStartEditor(set, null);
+        return;
+    }
+    gCs.set = null;
+    gCs.view = 'start';
+    gCs.pick = null;
+    gCs.ask = null;
+    gCs.busy = null;
+    gCs.errors = {};
+    const dialog = csDialog();
+    csRenderStart();
+    if (!dialog.open) dialog.showModal();
+    const first = document.getElementById('cs_scratch');
+    if (first !== null) first.focus();
+}
+
+/* the editor: set (an own set) or null for a new one; group: a catalog group to start from (null: cards 1 and 2) */
+function csStartEditor(set, group) {
+    gCs.view = 'edit';
     gCs.set = set;
     gCs.name = set ? set.name : '';
-    gCs.style = set && CARD_STYLES.has(set.style) ? set.style : 'plain';
-    gCs.cards = set ? set.cards.map(csFromStored) : [csNewCard('s-1'), csNewCard('s-2')];
+    if (set) gCs.style = CARD_STYLES.has(set.style) ? set.style : 'plain';
+    else gCs.style = group && CARD_STYLES.has(group.style) ? group.style : 'plain';
+    gCs.maxCards = Math.max(csCardLimit(), set ? set.cards.length : 0);
+    gCs.cards = set ? set.cards.map(csFromStored)
+        : group ? csGroupCards(group).slice(0, gCs.maxCards) : [csNewCard('s-1'), csNewCard('s-2')];
     gCs.sel = 0;
     gCs.pick = null;
-    gCs.maxCards = Math.max(gDeckMenu.limits.cards || 16, set ? set.cards.length : 0);
     gCs.errors = {};
     gCs.busy = null;
     gCs.ask = null;
-    gCs.opener = opener ? opener.getAttribute('data-f') : null;
     gCs.start = csSignature();
     const dialog = csDialog();
     csRender();
@@ -342,10 +390,40 @@ function openCustomEditor(set, opener) {
     if (first !== null) first.focus();
 }
 
+/* every card of a catalog group (the union of its variants, catalog order, no control cards) as editor cards */
+function csGroupCards(group) {
+    const entries = new Map(group.cards.map(entry => [entry.card_key, entry]));
+    return deckGroupKeys(group).map(key => entries.get(key)).filter(Boolean).map(entry => csFromCatalog(entry, group));
+}
+
+/* an editor card from a catalog card: its symbol (else its value as text), heading, description, the value of the
+ * symbol in own sets (custom_symbol_values; the catalog sorts T-shirts etc. by values like 10000), its colour;
+ * key: the catalog card_key (the API takes symbol and colour of the catalog card) */
+function csFromCatalog(entry, group) {
+    const look = cardLook({ symbol: entry.symbol || null, text: entry.value, color: entry.color || null, group: group.id });
+    const symbol = look.symbol;
+    const values = csCatalog().custom_symbol_values || {};
+    const value = symbol !== null && Object.hasOwn(values, symbol) ? csSymbolValue(symbol)
+        : typeof entry.numeric_value === 'number' ? String(entry.numeric_value) : '';
+    const text = typeof entry.value === 'string' ? entry.value : '';
+    return {
+        key: entry.card_key,
+        mode: symbol !== null ? 'symbol' : 'text',
+        symbol: symbol !== null ? symbol : 's-1',
+        text: symbol === null && csTextOk(text) ? text : '',
+        heading: catalogText(entry.heading) || '',
+        description: catalogText(entry.description) || '',
+        value,
+        color: look.color !== null ? look.color : symbol !== null ? csSymbolColor(symbol) : csColors()[0],
+        colorSet: true,
+    };
+}
+
 function csClose() {
     const dialog = gCs.dialog;
     if (dialog === null || !dialog.open) return;
     dialog.close();
+    gCs.view = 'edit';
     gCs.ask = null;
     gCs.pick = null;
     // back to the opener (the menu may have been built anew meanwhile), else to the card set
@@ -356,6 +434,10 @@ function csClose() {
 }
 
 function csCancel() {
+    if (gCs.view === 'start') {
+        csClose();
+        return;
+    }
     if (gCs.busy !== null) return;
     if (csDirty()) csAsk('discard');
     else csClose();
@@ -418,6 +500,56 @@ function csClearError(key, input) {
     else input.removeAttribute('aria-describedby');
     const box = input.closest('.has-err');
     if (box !== null) box.classList.remove('has-err');
+}
+
+/* the choice of "+ New set" (Andreas): from scratch or from a built-in set (a row per group as in the deck menu) */
+function csRenderStart() {
+    const dialog = csDialog();
+    const head = csEl('div', 'cs-head');
+    const title = csEl('h2', null, 'New card set');
+    title.id = 'cs_title';
+    const fill = csEl('span', 'cs-sub');
+    const close = csButton('icon-btn cs-x', null, 'x', csClose);
+    close.id = 'cs_x';
+    close.setAttribute('aria-label', 'Cancel');
+    close.appendChild(dmIcon('x'));
+    head.append(title, fill, close);
+
+    const body = csEl('div', 'cs-body cs-start');
+    body.id = 'cs_body';
+    const scratch = csButton('cs-new cs-scratch', null, 'scratch', () => csStartEditor(null, null));
+    scratch.id = 'cs_scratch';
+    const text = csEl('span', 'dm-t');
+    text.append(csEl('b', null, 'Start from scratch'), csEl('small', null, 'Two cards to begin with'));
+    scratch.append(csEl('span', 'cs-plus', '+'), text);
+
+    const from = csEl('h3', 'lab cs-sec cs-sec2', 'Start from a built-in set');
+    from.id = 'cs_from_title';
+    const list = csEl('ul', 'dm-plist cs-from');
+    list.id = 'cs_from';
+    list.setAttribute('aria-labelledby', from.id);
+    deckMenuGroups().forEach(group => {
+        const item = csEl('li', 'dm-prow');
+        const button = csButton('dm-prow-b', null, 'from:' + group.id, () => csStartEditor(null, group));
+        button.setAttribute('data-group', group.id);
+        const note = typeof group.description === 'string' && group.description !== ''
+            ? group.description : DECK_GROUP_NOTES[group.id] || '';
+        const label = csEl('span', 'dm-t');
+        label.append(csEl('b', null, group.name), csEl('small', null, note));
+        button.append(label, dmFan(group.variants[0].cards), dmIcon('next'));
+        item.appendChild(button);
+        list.appendChild(item);
+    });
+    body.append(scratch, from, list);
+
+    const foot = csEl('div', 'cs-foot');
+    foot.id = 'cs_foot';
+    foot.appendChild(csEl('span', 'cs-fill'));
+    const cancel = csButton('btn-box', 'Cancel', 'cancel', csClose);
+    cancel.id = 'cs_cancel';
+    foot.appendChild(cancel);
+
+    dialog.replaceChildren(head, body, foot);
 }
 
 /* builds the whole editor; the focus stays on the same control (data-f), the scroll positions too */
@@ -645,7 +777,7 @@ function csRenderCards() {
     add.id = 'cs_add';
     add.disabled = gCs.cards.length >= gCs.maxCards;
     add.append(csEl('span', 'cs-plus', '+'), csEl('span', null, 'Add card'));
-    if (add.disabled) add.title = gCs.maxCards > (gDeckMenu.limits.cards || 16)
+    if (add.disabled) add.title = gCs.maxCards > csCardLimit()
         ? 'This set keeps its ' + gCs.maxCards + ' cards; it cannot grow.' : 'At most ' + gCs.maxCards + ' cards';
     addItem.appendChild(add);
     list.appendChild(addItem);
@@ -704,20 +836,30 @@ function csSymbolField(card) {
         input.type = 'text';
         input.id = 'cs_text';
         input.className = 'field cs-mono';
-        input.maxLength = 12; // the check counts characters, not UTF-16 units
+        input.maxLength = CS_TEXT_CODEPOINTS_MAX * 2; // UTF-16 units; the check counts graphemes and code points
         input.autocomplete = 'off';
         input.placeholder = 'e.g. XL';
         input.value = card.text;
         input.setAttribute('data-f', 'text');
-        input.setAttribute('aria-label', 'Text (up to 6 characters, no emoji)');
+        input.setAttribute('aria-label', 'Text');
+        const help = csEl('p', 'hint cs-texthelp');
+        help.id = 'cs_text_help';
+        const helpText = csEl('span', null, 'Up to 6 characters – letters, digits, signs or emoji.');
+        const counter = csEl('span', 'cs-ctr', textGraphemes(card.text.trim()) + '/' + CS_TEXT_MAX);
+        counter.id = 'cs_text_count';
+        counter.setAttribute('aria-hidden', 'true');
+        help.append(helpText, counter);
+        input.setAttribute('aria-describedby', help.id);
         input.addEventListener('input', () => {
             card.text = input.value;
+            counter.textContent = textGraphemes(input.value.trim()) + '/' + CS_TEXT_MAX;
             if (csTextOk(input.value.trim())) csClearError('text', input);
             csRefreshCard();
         });
         row.appendChild(input);
         box.appendChild(row);
-        csFieldError(box, input, 'text', null);
+        csFieldError(box, input, 'text', help.id);
+        box.appendChild(help);
     } else {
         box.appendChild(row);
     }
@@ -1161,7 +1303,7 @@ function csCheck() {
         };
         if (Object.values(bad).some(Boolean)) {
             gCs.errors.card = i;
-            if (bad.text) gCs.errors.text = card.text.trim() === '' ? 'Enter a text.' : CS_ERRORS.text;
+            if (bad.text) gCs.errors.text = CS_TEXT_ERRORS[csTextProblem(card.text.trim())];
             if (bad.heading) gCs.errors.heading = CS_ERRORS.heading;
             if (bad.description) gCs.errors.description = CS_ERRORS.description;
             if (bad.value) gCs.errors.value = CS_ERRORS.numeric_value;

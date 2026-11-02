@@ -137,6 +137,17 @@ function cardSmall(card, named = true) {
     return textElement('span', 'sm-text', /\p{Extended_Pictographic}/u.test(text) ? cardName(card) : text);
 }
 
+/* B-98: the number of user-perceived characters (an emoji sequence counts as one); code points without Intl.Segmenter */
+const TEXT_SEGMENTER = typeof Intl === 'object' && typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+function textGraphemes(text) {
+    const value = String(text);
+    if (TEXT_SEGMENTER === null) return [...value].length;
+    let count = 0;
+    for (const _ of TEXT_SEGMENTER.segment(value)) count++;
+    return count;
+}
+
 /* the name of a card for screen readers: the value (a word for ½, ∞), else heading / description */
 function cardName(card) {
     if (card.status) return card.aria;
@@ -254,7 +265,7 @@ function cardFace(card, level, texts = true) {
     else if (!status) {
         const value = String(card.text || card.key);
         const tv = textElement('span', 'tv', value);
-        if ([...value].length > 3) tv.classList.add('tv-long'); // up to 6 characters (custom values)
+        if (textGraphemes(value) > 3) tv.classList.add('tv-long'); // up to 6 characters (custom values, emoji count 1)
         face.appendChild(tv);
     }
     if (level === 'mini') return face;
