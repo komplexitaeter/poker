@@ -3,13 +3,15 @@ import { execFileSync } from 'node:child_process';
 import { teamWithTwoPlayers, deckCards, pickCard, tableCard, newPlayer, createTeam, joinAsPlayer } from './helpers';
 
 /* B-98 S5: own card sets in the board (script/script_deck.js "Your sets", script/script_custom.js editor): create a
- * set (name, a text card, a symbol card with a value, moved), it is in play for everybody in its order, play and
- * reveal (range from the values), edit, delete (back to Fibonacci); a migrated "Our deck" shows its cards. */
+ * set (name, style, a text card with heading and description, a symbol card from the picker, moved with ↑), "Save &
+ * play" puts it in play for everybody in its order and style, play and reveal (range from the values), edit, delete
+ * (back to Fibonacci); Save alone does not play; a migrated "Our deck" shows its cards. */
 
 const trayKeys = (page: Page) => deckCards(page).evaluateAll(cards => cards.map(c => c.getAttribute('data-card')));
 
-type Set = { set_id: number; deck_id: string; name: string; rev: number;
-  cards: { card_key: string; symbol: string | null; value: string; numeric_value: number | null; color: string }[] };
+type Set = { set_id: number; deck_id: string; name: string; style: string; rev: number;
+  cards: { card_key: string; symbol: string | null; value: string; numeric_value: number | null; color: string;
+    heading: string | null }[] };
 
 /** the board state shown last (gLastJson, a script-level let of script.js) */
 async function lastJson(page: Page): Promise<{ deck: { id: string; cards: string[]; controls: string[] }; custom_sets: Set[] }> {
@@ -30,9 +32,10 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
 
   // the editor: full screen, the focus in the name, two cards 1 and 2
   await expect(editor(alice)).toBeVisible();
-  await expect(alice.locator('#cs_title')).toHaveText('New set');
+  await expect(alice.locator('#cs_title')).toHaveText('New card set');
   await expect(alice.locator('#cs_name')).toBeFocused();
-  await expect(alice.locator('#cs_cards .cs-tile')).toHaveCount(2);
+  await expect(alice.locator('#cs_list .cs-card')).toHaveCount(2);
+  await expect(alice.locator('#cs_cards_label')).toHaveText('Cards (2 of 16)');
   await expect(alice.locator('#cs_value')).toHaveValue('1');
   await expect(alice.locator('#cs_remove')).toBeDisabled(); // at least two cards
 
@@ -41,25 +44,45 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(alice.locator('#cs_name_err')).toHaveText('Give the set a name.');
   await expect(alice.locator('#cs_name')).toBeFocused();
   await alice.locator('#cs_name').fill('Risk');
+  // the style of the set: every card follows it
+  await alice.locator('[data-f="style:badge"]').check({ force: true });
+  await expect(alice.locator('[data-f="card:0"] .pc')).toHaveClass(/sty-badge/);
 
-  // card 2 becomes the text "M" with value 5
-  await alice.locator('[data-f="tile:1"]').click();
-  await alice.locator('#cs_symbols').waitFor();
-  await alice.locator('[data-f="mode:text"]').check({ force: true });
+  // card 2 becomes the text "M" (picker: "Text") with a heading, a description and the value 5
+  await alice.locator('[data-f="card:1"]').click();
+  await alice.locator('#cs_sym').click();
+  await expect(alice.locator('#cs_sym_search')).toBeFocused();
+  await alice.locator('#cs_opt_text').click();
+  await expect(alice.locator('#cs_pick')).toHaveCount(0);
   await expect(alice.locator('#cs_text')).toBeFocused();
   await alice.locator('#cs_text').fill('M');
+  await alice.locator('#cs_heading').fill('medium');
+  await alice.locator('#cs_desc').fill('Some risk, we can handle it.');
   await alice.locator('#cs_value').fill('5');
-  await expect(alice.locator('[data-f="tile:1"] .tv')).toHaveText('M');
+  await expect(alice.locator('[data-f="card:1"] .tv')).toHaveText('M');
+  await expect(alice.locator('[data-f="card:1"] .ttl')).toHaveText('medium');
 
-  // a third card: the symbol 3 (value 3 from the library), moved to the front
+  // a third card; the picker: search, Esc closes only the picker, Enter picks
   await alice.locator('#cs_add').click();
-  await expect(alice.locator('#cs_cards .cs-tile')).toHaveCount(3);
-  await alice.locator('[data-f="cat:numbers"]').click();
-  await alice.locator('[data-f="sym:s-3"]').click();
+  await expect(alice.locator('#cs_list .cs-card')).toHaveCount(3);
+  await alice.locator('#cs_sym').click();
+  await alice.locator('#cs_sym_search').fill('sat');
+  await expect(alice.locator('#cs_sym_list [role="option"]')).toHaveText(['satisfied']);
+  await alice.keyboard.press('Escape');
+  await expect(alice.locator('#cs_pick')).toHaveCount(0);
+  await expect(editor(alice)).toBeVisible();
+  await expect(alice.locator('#cs_sym')).toBeFocused();
+  await alice.locator('#cs_sym').click();
+  await alice.locator('#cs_sym_search').fill('3');
+  await alice.keyboard.press('Enter'); // the first match: the number 3
   await expect(alice.locator('#cs_value')).toHaveValue('3');
-  await alice.locator('#cs_left').click();
-  await alice.locator('#cs_left').click();
-  await expect(alice.locator('[data-f="tile:0"]')).toHaveClass(/sel/);
+  await expect(alice.locator('#cs_sym')).toBeFocused();
+  await expect(alice.locator('#cs_sym')).toContainText('3');
+  // moved to the front with ↑
+  await alice.locator('#cs_up').click();
+  await alice.locator('#cs_up').click();
+  await expect(alice.locator('[data-f="card:0"]')).toHaveAttribute('aria-current', 'true');
+  await expect(alice.locator('#cs_up')).toBeDisabled();
 
   // Esc with unsaved changes asks first; "Keep editing" goes back
   await alice.keyboard.press('Escape');
@@ -68,23 +91,27 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(alice.locator('#cs_ask')).toBeHidden();
   await expect(editor(alice)).toBeVisible();
 
-  await alice.locator('#cs_save').click();
+  // "Save & play": saved and in play for everybody
+  await alice.locator('#cs_play').click();
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#deck_change')).toContainText('Risk');
   // the result as a toast (Andreas: messages of the deck menu as toasts)
-  await expect(alice.locator('#toast')).toHaveText('Set created and in play');
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
   await expect(alice.locator('#deck_edit')).toBeFocused();
 
-  // the deck of everybody: the set in its order, then the control cards
+  // the deck of everybody: the set in its order and style, then the control cards
   let json = await lastJson(alice);
   const set = json.custom_sets[0];
   expect(set.name).toBe('Risk');
-  expect(set.cards.map(c => [c.symbol, c.value, c.numeric_value])).toEqual([['s-3', '3', 3], ['s-1', '1', 1], [null, 'M', 5]]);
+  expect(set.style).toBe('badge');
+  expect(set.cards.map(c => [c.symbol, c.value, c.numeric_value, c.heading])).toEqual(
+    [['s-3', '3', 3, null], ['s-1', '1', 1, null], [null, 'M', 5, 'medium']]);
   const keys = set.cards.map(c => c.card_key);
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual([...keys, ...json.deck.controls]);
   }
   await expect(bob.locator(`#ctl .ctl[data-card="${keys[2]}"] .tv`)).toHaveText('M');
+  await expect(bob.locator(`#ctl .ctl[data-card="${keys[2]}"] .sty-badge`)).toHaveCount(1);
   // V6: Bob hears who put the set in play (deck.changed_by; the own user id goes with the write)
   await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Risk');
 
@@ -96,17 +123,17 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(tableCard(alice, 'Alice').locator('.pc .tv')).toHaveText('M');
   await expect(alice.locator('#spread_range')).toHaveText('range 1–M');
 
-  // edit: one card less while cards are down -> "Save and start new round"
+  // edit: one card less while cards are down -> the hint "Save starts a new round"
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_edit').click();
-  await expect(alice.locator('#cs_title')).toHaveText('Edit set');
-  await expect(alice.locator('[data-f="tile:0"]')).toBeFocused();
-  await expect(alice.locator('#cs_save')).toHaveText('Save');
+  await expect(alice.locator('#cs_title')).toHaveText('Edit card set');
+  await expect(alice.locator('[data-f="card:0"]')).toBeFocused();
+  await expect(alice.locator('#cs_play')).toHaveCount(0); // in play already
+  await expect(alice.locator('#cs_round')).toHaveCount(0);
   await alice.locator('#cs_name').fill('Risk level');
-  await expect(alice.locator('#cs_save')).toHaveText('Save'); // the name alone changes no cards
-  await alice.locator('[data-f="tile:0"]').click();
+  await expect(alice.locator('#cs_round')).toHaveCount(0); // the name alone changes no cards
   await alice.locator('#cs_remove').click();
-  await expect(alice.locator('#cs_save')).toHaveText('Save and start new round');
+  await expect(alice.locator('#cs_round')).toHaveText('Cards are down – Save starts a new round.');
   await alice.locator('#cs_save').click();
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#toast')).toHaveText('Set saved – new round started');
@@ -134,6 +161,30 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
     await expect.poll(async () => (await lastJson(page)).deck.id).toBe('fib-classic');
     await expect.poll(() => trayKeys(page)).toContain('three01');
   }
+});
+
+test('Save creates a set without playing it; "Save & play" of a saved set puts it in play', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Play');
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_change').click();
+  await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_name').fill('Later');
+  await alice.locator('#cs_save').click();
+  await expect(editor(alice)).toBeHidden();
+  await expect(alice.locator('#toast')).toHaveText('Set created');
+  expect((await lastJson(alice)).deck.id).toBe('fib-classic');
+  // the focus on the pen of the new set in the list
+  const pen = alice.locator('#deck_own_sets .cs-edit');
+  await expect(pen).toBeFocused();
+
+  await pen.click();
+  await expect(alice.locator('#cs_play')).toBeVisible();
+  await alice.locator('#cs_play').click(); // no changes: only put in play
+  await expect(editor(alice)).toBeHidden();
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
+  await expect(alice.locator('#deck_change')).toContainText('Later');
+  await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Later');
+  await expect.poll(async () => (await lastJson(bob)).deck.id).toBe((await lastJson(alice)).custom_sets[0].deck_id);
 });
 
 test('the limit of sets disables "+ New set"; Cancel without changes closes at once', async ({ browser }) => {

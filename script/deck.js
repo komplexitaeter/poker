@@ -145,9 +145,10 @@ function catalogV2Cards(catalog) {
 }
 
 /* B-98 S5: the card model of a custom card (dao custom_sets[].cards, custom_cards_played; api/lib_custom.php
- * custom_card_out()). Always style plain, no talk / control rules (the tips stay general). A text card gets
- * symbol '' so cardLook() does not turn a text like "5" into the symbol s-5 (Delia). */
-function cardFromCustom(entry) {
+ * custom_card_out()) in the style of its set (plain | badge | banner | inverted, editor "Style"); no talk / control
+ * rules (the tips stay general). A text card gets symbol '' so cardLook() does not turn a text like "5" into the
+ * symbol s-5 (Delia). */
+function cardFromCustom(entry, style = 'plain') {
     const symbol = catalogText(entry.symbol);
     const text = typeof entry.value === 'string' && entry.value !== '' ? entry.value : String(entry.card_key);
     const heading = catalogText(entry.heading);
@@ -168,23 +169,30 @@ function cardFromCustom(entry) {
         symbol: symbol === null ? '' : symbol,
         color: catalogText(entry.color),
         group: 'custom',
-        style: 'plain',
+        style: CARD_STYLES.has(style) ? style : 'plain',
         custom: true,
     };
 }
 
 /* B-98 S5: adds the custom cards of a board state (the team's sets and custom cards still on the table) to the cards
- * by key. Custom cards never change (a changed card gets a new key), so a known key stays as it is. */
+ * by key. A custom card never changes its content (a changed card gets a new key), but its set may get another
+ * style: a known key is only built again when the style of its set changed. Cards of deleted sets: plain. */
 function addCustomCards(json, cardsByKey) {
     if (!json || typeof json !== 'object') return;
+    const styles = new Map(); // set_id -> style
     const entries = [];
     (Array.isArray(json.custom_sets) ? json.custom_sets : []).forEach(set => {
-        if (set && Array.isArray(set.cards)) entries.push(...set.cards);
+        if (!set || !Array.isArray(set.cards)) return;
+        styles.set(set.set_id, typeof set.style === 'string' ? set.style : 'plain');
+        entries.push(...set.cards);
     });
     if (Array.isArray(json.custom_cards_played)) entries.push(...json.custom_cards_played);
     entries.forEach(entry => {
-        if (entry && typeof entry.card_key === 'string' && !cardsByKey.has(entry.card_key)) {
-            cardsByKey.set(entry.card_key, cardFromCustom(entry));
+        if (!entry || typeof entry.card_key !== 'string') return;
+        const style = styles.get(entry.set_id) || 'plain';
+        const known = cardsByKey.get(entry.card_key);
+        if (known === undefined || (known.custom === true && known.style !== style && styles.has(entry.set_id))) {
+            cardsByKey.set(entry.card_key, cardFromCustom(entry, style));
         }
     });
 }

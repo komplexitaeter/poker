@@ -55,7 +55,7 @@ interface CustomSet {
     set_id: number;
     deck_id: string;     // 'c-<set_id>', the deck id when the set is in play
     name: string;        // free text: output with textContent only
-    style: string;       // always 'plain' from the editor (Version 1)
+    style: string;       // plain | badge | banner | inverted (editor "Style"), the look of its cards
     rev: number;         // optimistic lock of custom_set_save.php
     cards: CustomCard[]; // active cards in position order
 }
