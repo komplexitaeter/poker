@@ -2569,9 +2569,15 @@ body.light-theme .react-fly { filter: var(--react-outline) drop-shadow(0 6px 8px
 
 .pc .mot { flex: 1 1 auto; min-height: 0; width: 100%; }
 
-.pc .tv { flex: 1 1 auto; font-size: calc(var(--card-w) * 0.3); }
+.pc .tv { flex: 1 1 auto; min-height: 0; font-size: calc(var(--card-w) * 0.3); }
 
 .pc .tv-long { font-size: calc(var(--card-w) * 0.16); }
+
+/* R3 (Andreas): an emoji as the card's text (custom sets) about as large as a symbol; letters keep their size */
+.pc > .tv-emoji { font-size: calc(var(--card-w) * 0.5); }
+.pc > .tv-emoji, .dkc > .tv-emoji { white-space: nowrap; overflow-wrap: normal; }
+.pc > .tv-emoji.tv-n2 { font-size: calc(var(--card-w) * 0.28); }
+.pc > .tv-emoji.tv-n3 { font-size: calc(var(--card-w) * 0.2); }
 
 .pc.is-status .mot { padding: calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.06) 0; box-sizing: border-box; }
 
@@ -2619,10 +2625,10 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
     overflow-wrap: anywhere;
 }
 
-.pc.has-info .mot { flex: 0 0 calc(var(--card-w) * 0.4); }
+.pc.has-info :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.4); }
 
 /* a description but no heading (emotions): the symbol keeps its room, the word reads like a heading */
-.pc.has-info:not(.has-head) .mot { flex: 1 1 0; }
+.pc.has-info:not(.has-head) :is(.mot, .tv) { flex: 1 1 0; }
 
 .pc .txt {
     display: -webkit-box;
@@ -2647,7 +2653,7 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
  *   long   (J.U.D.G.E.): the layout above */
 #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.1); }
 
-#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.72); }
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.72); }
 
 /* the word in the middle of the room below the symbol (lower quarter of the card) */
 #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc :is(.ttl, .txt) { margin-block: auto; }
@@ -2658,17 +2664,17 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc .hd-badge { padding-inline: 0.5em; }
 
 @container (min-width: 120px) {
-    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) .mot { flex: 0 0 calc(var(--card-w) * 0.84); }
+    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.84); }
 
     #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) { padding-top: calc(var(--card-w) * 0.16); }
 
-    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) .mot { flex: 0 0 calc(var(--card-w) * 0.56); }
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.56); }
 
     /* R3 review E4: J.U.D.G.E. (sty-inverted, a two-line heading frame) a bit smaller, so its descriptions keep
      * three whole lines below it (they were cut on 120-140 px cards) */
     #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) { padding-top: calc(var(--card-w) * 0.12); }
 
-    #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) .mot { flex: 0 0 calc(var(--card-w) * 0.48); }
+    #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.48); }
 }
 
 /* R3 review E4: descriptions of the short decks (traffic lights, Delegation) end on a whole line with an ellipsis
@@ -2801,6 +2807,10 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 .dkc .tv { font-size: calc(var(--deck-w) * 0.3); }
 
 .dkc .tv-long { font-size: calc(var(--deck-w) * 0.16); }
+
+.dkc > .tv-emoji { font-size: calc(var(--deck-w) * 0.5); }
+.dkc > .tv-emoji.tv-n2 { font-size: calc(var(--deck-w) * 0.28); }
+.dkc > .tv-emoji.tv-n3 { font-size: calc(var(--deck-w) * 0.2); }
 
 .dkc.has-head .mot,
 .dkc.has-head .tv { top: 7%; height: 58%; }

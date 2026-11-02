@@ -473,3 +473,120 @@ for (const phone of [{ width: 375, height: 667 }, { width: 390, height: 844 }]) 
     if (phone.width === 375) await alice.screenshot({ path: `${process.env.PHONE_SHOTS || 'test-results'}/editor-bottom-375x667.png` });
   });
 }
+
+/* R3 fix (Andreas): saving the active set with another style (same card keys) or another heading (new keys) changes
+ * deck, table and result for everybody at once, without a reload */
+test('a new style or heading of the active set shows at once for everybody', async ({ browser }) => {
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Restyle');
+  const t = new URL(url).searchParams.get('t') as string;
+  const res = await alice.request.post(`/api/custom_set_create.php?${new URLSearchParams({ t }).toString()}`, {
+    data: JSON.stringify({ name: 'Restyle', style: 'plain', activate: true, cards: [
+      { text: 'M', heading: 'medium', color: 'red' },
+      { symbol: 's-3', heading: 'three', numeric_value: 3, color: 'green' },
+    ] }),
+    headers: { 'Content-Type': 'application/json' } });
+  expect(res.ok()).toBeTruthy();
+  const [m, three] = (await res.json()).set.cards.map((c: { card_key: string }) => c.card_key) as string[];
+  await expect.poll(() => trayKeys(bob)).toEqual(expect.arrayContaining([m, three]));
+  await pickCard(alice, m);
+  await pickCard(bob, three);
+  for (const page of [alice, bob]) {
+    await expect(tableCard(page, 'Alice').locator('.pc')).toHaveClass(/sty-plain/);
+    await expect(page.locator(`#spread_bars [data-card="${three}"] .sm-text`)).toHaveText('3');
+  }
+
+  // the style: inverted (keys stay)
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_edit').click();
+  await alice.locator('[data-f="style:inverted"]').check({ force: true });
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#toast')).toHaveText('Set saved');
+  for (const page of [alice, bob]) {
+    await expect(page.locator(`#ctl .ctl[data-card="${m}"] .dkc`)).toHaveClass(/sty-inverted/);
+    await expect(page.locator(`#ctl .ctl[data-card="${three}"] .dkc`)).toHaveClass(/sty-inverted/);
+    await expect(tableCard(page, 'Alice').locator('.pc')).toHaveClass(/sty-inverted/);
+    await expect(tableCard(page, 'Bob').locator('.pc')).toHaveClass(/sty-inverted/);
+    await expect(page.locator(`#spread_bars [data-card="${three}"] .sm-inv`)).toHaveCount(1);
+  }
+
+  // a heading (a new card key): the deck of both shows it
+  await alice.locator('#deck_edit').click();
+  await alice.locator('[data-f="card:0"]').click();
+  await alice.locator('#cs_heading').fill('MEDIUM');
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#toast')).toHaveText('Set saved');
+  for (const page of [alice, bob]) {
+    await expect(page.locator('#ctl .ctl .dh').first()).toHaveText('MEDIUM');
+    await expect(page.locator(`#ctl .ctl[data-card="${m}"]`)).toHaveCount(0);
+  }
+});
+
+/* R3 fix (Andreas): every change of the active set (name, add, remove, move, symbol <-> text, text, heading,
+ * description, value, colour) shows for the writer and the others without a reload: deck, menu overview, table, result */
+test('changes of the active set show everywhere for everybody without a reload', async ({ browser }) => {
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Live');
+  const t = new URL(url).searchParams.get('t') as string;
+  type Out = { set: { set_id: number; rev: number; cards: { card_key: string }[] }; deck: { controls: string[] }; new_round: boolean };
+  const post = async (path: string, params: Record<string, string>, body: unknown): Promise<Out> => {
+    const res = await alice.request.post(`/api/${path}?${new URLSearchParams({ t, ...params }).toString()}`,
+      { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+    expect(res.ok()).toBeTruthy();
+    return res.json();
+  };
+  const M = { text: 'M', heading: 'medium', numeric_value: 5, color: 'red' };
+  const THREE = { symbol: 's-3', heading: 'three', numeric_value: 3, color: 'green' };
+  let out = await post('custom_set_create.php', {}, { name: 'Live', style: 'badge', activate: true, cards: [M, THREE] });
+  const id = String(out.set.set_id);
+  const save = async (name: string, cards: unknown[]) => {
+    out = await post('custom_set_save.php', { set: id }, { name, style: 'badge', rev: out.set.rev, cards });
+    return out.set.cards.map(c => c.card_key);
+  };
+  const [m, three] = out.set.cards.map(c => c.card_key);
+  // both see the set; Bob keeps the menu open on its overview
+  await bob.locator('#cset_btn').click();
+  await expect(bob.locator('#deck_change')).toContainText('Live');
+  const expectEverywhere = async (keys: string[]) => {
+    for (const page of [alice, bob]) await expect.poll(() => trayKeys(page)).toEqual([...keys, ...out.deck.controls]);
+    await expect.poll(() => bob.locator('#deck_cards [data-card]').evaluateAll(els => els.map(el => el.getAttribute('data-card'))))
+      .toEqual(keys);
+  };
+
+  // name, move, add
+  let keys = await save('Live 2', [{ ...THREE, key: three }, { ...M, key: m }, { text: 'XL', heading: 'huge', numeric_value: 13, color: 'violet' }]);
+  expect(keys.slice(0, 2)).toEqual([three, m]); // unchanged cards keep their keys
+  await expectEverywhere(keys);
+  await expect(bob.locator('#deck_change')).toContainText('Live 2');
+  await expect(alice.locator(`#ctl .ctl[data-card="${keys[2]}"] .tv`)).toHaveText('XL');
+
+  // remove, symbol -> text, text, heading, description, value, colour
+  keys = await save('Live 2', [{ text: 'T3', heading: 'three', numeric_value: 3, color: 'green' },
+    { text: 'L', heading: 'large', description: 'Large one', numeric_value: 8, color: 'blue' }]);
+  await expectEverywhere(keys);
+  const [t3, l] = keys;
+  for (const page of [alice, bob]) {
+    await expect(page.locator(`#ctl .ctl[data-card="${t3}"] .tv`)).toHaveText('T3');
+    await expect(page.locator(`#ctl .ctl[data-card="${t3}"] svg.mot`)).toHaveCount(0);
+    await expect(page.locator(`#ctl .ctl[data-card="${l}"] .dh`)).toHaveText('large');
+  }
+  await expect(bob.locator('#deck_cards [data-card]')).toHaveCount(2);
+
+  // table and result
+  await bob.locator('#menu_close').click();
+  await pickCard(alice, l);
+  await pickCard(bob, t3);
+  for (const page of [alice, bob]) {
+    await expect(tableCard(page, 'Alice').locator('.pc .tv')).toHaveText('L');
+    await expect(tableCard(page, 'Alice').locator('.pc .txt')).toHaveText('Large one');
+    await expect(page.locator('#spread_range')).toHaveText('range T3–L');
+  }
+
+  // text -> symbol, value and colour while cards are down: a new round, the new cards for both
+  keys = await save('Live 2', [{ symbol: 's-4', heading: 'four', numeric_value: 4, color: 'teal' },
+    { text: 'L', heading: 'large', description: 'Large one', numeric_value: 1, color: 'red' }]);
+  expect(out.new_round).toBe(true);
+  await expectEverywhere(keys);
+  for (const page of [alice, bob]) {
+    await expect(page.locator(`#ctl .ctl[data-card="${keys[0]}"] svg.mot use`)).toHaveAttribute('href', /#s-4$/);
+    await expect(tableCard(page, 'Alice')).not.toHaveAttribute('data-card', l);
+  }
+});
