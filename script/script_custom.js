@@ -53,6 +53,7 @@ const gCs = {
     opener: null,     // data-f of the element that opened the editor (focus back)
     busy: false,
     ask: null,        // the open question: 'discard' | 'delete' | null
+    state: null,      // #cs_state (role status), built once
 };
 
 function csCatalog() {
@@ -315,9 +316,13 @@ function csRender() {
     const top = csEl('div', 'cs-top');
     const title = csEl('h2', null, gCs.set ? 'Edit set' : 'New set');
     title.id = 'cs_title';
-    const state = csEl('span', 'cs-dirty');
-    state.id = 'cs_state';
-    state.setAttribute('role', 'status');
+    // the live region stays the same node (a new one would not be announced reliably); only its text changes
+    if (gCs.state === null) {
+        gCs.state = csEl('span', 'cs-dirty');
+        gCs.state.id = 'cs_state';
+        gCs.state.setAttribute('role', 'status');
+    }
+    const state = gCs.state;
     const cancel = csButton('btn-box', 'Cancel', 'cancel', csCancel);
     cancel.id = 'cs_cancel';
     const save = csButton('btn-box primary', '', 'save', csSave);
@@ -429,11 +434,15 @@ function csCardsField() {
         });
         grid.appendChild(tile);
     });
+    // "Add card": a dashed last tile of the grid (Delia, review)
     const add = csButton('cs-add', null, 'add', csAddCard);
     add.id = 'cs_add';
     add.append(csEl('span', 'cs-plus', '+'), csEl('span', null, 'Add card'));
     add.disabled = gCs.cards.length >= gCs.maxCards;
     if (add.disabled) add.title = 'At most ' + gCs.maxCards + ' cards';
+    const addWrap = csEl('div', 'cs-addwrap');
+    addWrap.appendChild(add);
+    grid.appendChild(addWrap);
 
     const actions = csEl('div', 'cs-moves');
     const back = csButton('btn-box cs-ico', null, 'left', () => csMove(-1));
@@ -451,7 +460,7 @@ function csCardsField() {
     remove.disabled = gCs.cards.length <= CS_MIN_CARDS;
     actions.append(back, next, remove);
 
-    box.append(label, grid, add, actions);
+    box.append(label, grid, actions);
     if (gCs.cards.length <= CS_MIN_CARDS) box.appendChild(csEl('p', 'hint', 'A set needs at least two cards.'));
     else if (gCs.maxCards > (gDeckMenu.limits.cards || 16) && add.disabled) {
         box.appendChild(csEl('p', 'hint', 'This set keeps its ' + gCs.maxCards + ' cards; it cannot grow.'));
