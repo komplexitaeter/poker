@@ -343,3 +343,36 @@ test('the deck menu does not jump: the status line keeps its room, empty, done o
   await expect(status).toBeHidden();
   same(before, await where());
 });
+
+test('the list of card sets fits on a desktop screen: no status line, the last set visible without scrolling', async ({ browser }) => {
+  const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Compact');
+  await alice.setViewportSize({ width: 1280, height: 800 });
+  await alice.locator('#cset_btn').click();
+  // overview: the empty status line keeps its room (see "does not jump")
+  await expect(alice.locator('#deck_status')).toHaveCSS('display', 'flex');
+  await alice.locator('#deck_change').click();
+  const rows = alice.locator('#deck_menu .dm-prow-b');
+  await expect(rows).toHaveCount(8);
+  // the list: no room for the status line above "< Deck"; the live region stays
+  await expect(alice.locator('#deck_status')).toHaveCSS('display', 'none');
+  await expect(alice.locator('#deck_status_live')).toHaveCount(1);
+  // every row is a full tap target, the last one inside the viewport without scrolling
+  for (const box of await rows.evaluateAll(els => els.map(e => e.getBoundingClientRect().height))) {
+    expect(box).toBeGreaterThanOrEqual(44);
+  }
+  const last = rows.last();
+  const scrolled = await alice.locator('#deck_menu').evaluate(el => {
+    let n: Element | null = el;
+    let top = 0;
+    while (n !== null) { top += n.scrollTop; n = n.parentElement; }
+    return top;
+  });
+  expect(scrolled).toBe(0);
+  const box = (await last.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(800);
+  await expect(last).toBeInViewport({ ratio: 1 });
+
+  // back on the overview the status line has its room again
+  await alice.locator('#deck_back').click();
+  await expect(alice.locator('#deck_status')).toHaveCSS('display', 'flex');
+});
