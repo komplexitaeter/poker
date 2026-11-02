@@ -509,15 +509,26 @@ test('a new style or heading of the active set shows at once for everybody', asy
     await expect(page.locator(`#spread_bars [data-card="${three}"] .sm-inv`)).toHaveCount(1);
   }
 
-  // a heading (a new card key): the deck of both shows it
+  // the style alone keeps the cards: both still down, no new round
+  for (const page of [alice, bob]) {
+    await expect(tableCard(page, 'Alice')).toHaveAttribute('data-card', m);
+    await expect(tableCard(page, 'Bob')).toHaveAttribute('data-card', three);
+  }
+
+  // a heading makes a new card (new key) while cards are down: the editor says so, Save starts a new round
+  // (the toast keeps its last text when it fades; the exact new text tells the two saves apart)
   await alice.locator('#deck_edit').click();
   await alice.locator('[data-f="card:0"]').click();
   await alice.locator('#cs_heading').fill('MEDIUM');
+  await expect(alice.locator('#cs_round')).toBeVisible();
   await alice.locator('#cs_save').click();
-  await expect(alice.locator('#toast')).toHaveText('Set saved');
+  await expect(alice.locator('#toast')).toHaveText('Set saved \u2013 new round started');
+  await expect(alice.locator('#toast')).toHaveClass(/toast-on/);
   for (const page of [alice, bob]) {
     await expect(page.locator('#ctl .ctl .dh').first()).toHaveText('MEDIUM');
     await expect(page.locator(`#ctl .ctl[data-card="${m}"]`)).toHaveCount(0);
+    await expect(tableCard(page, 'Alice')).not.toHaveAttribute('data-card', m);
+    await expect(tableCard(page, 'Bob')).not.toHaveAttribute('data-card', three);
   }
 });
 
