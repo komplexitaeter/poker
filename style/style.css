@@ -465,7 +465,11 @@ textarea.field {
     padding: 0 var(--space-3);
     max-width: 36rem;
     color: var(--muted);
+    text-wrap: balance; /* very narrow screens: no single word alone in the last line */
 }
+
+/* one line, or one sentence per line: the break only between the two sentences */
+.team-lead > span { display: inline-block; }
 
 /* R3 review V5: a board link that does not work (index.php shows the start page with ?t=…, script_team.js) */
 .link-err {
