@@ -8,8 +8,8 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWi
  * foot New Round and the timer, next to the deck (side-column.spec.ts); on phones the spread and
  * the round actions sit in a strip right above the deck (the spread only once revealed, no status line).
  * On phones the topic is a one-line strip that unfolds with its arrow button.
- * Copy Link and the own timer switch (B-67: in the timer panel) confirm with a toast from the bottom edge (showToast);
- * the header has no hover hints any more.
+ * The own timer switch (B-67: in the timer panel) confirms below the switch (R3 review V1, no toast; Invite:
+ * invite.spec.ts); the header has no hover hints any more.
  * B-51: without a topic there is no topic bar at all (the topic is set in the menu).
  */
 const SMALL = { width: 375, height: 667 };
@@ -79,36 +79,6 @@ test('phone: the topic strip shows one line and unfolds with its button (B-46)',
   await expect.poll(async () => (await strip.boundingBox())!.height).toBe(collapsed);
 });
 
-test('Copy Link shows a toast instead of growing the button', async ({ browser }) => {
-  const alice = await newPlayer(browser, { permissions: ['clipboard-read', 'clipboard-write'] });
-  const url = await createTeam(alice, 'Layout Toast');
-  await joinAsPlayer(alice, url, 'Alice');
-
-  const toast = alice.locator('#toast');
-  await expect(toast).not.toHaveClass(/toast-on/);
-  // the toast is up for 2.2 s only: watch it inside the page (every frame) instead of polling from the test,
-  // which can miss the window on a slow runner. Resolves true once it is fully inside the screen.
-  const rose = alice.evaluate(() => new Promise<boolean>((resolve) => {
-    const el = document.getElementById('toast')!;
-    const start = performance.now();
-    let seenOn = false;
-    const check = () => {
-      const on = el.classList.contains('toast-on');
-      seenOn = seenOn || on;
-      if (on && el.getBoundingClientRect().bottom <= window.innerHeight) return resolve(true);
-      if ((seenOn && !on) || performance.now() - start > 5000) return resolve(false);
-      requestAnimationFrame(check);
-    };
-    check();
-  }));
-  await alice.locator('#copy_link_btn').click();
-  // inside the screen once it is up, then it drops back
-  expect(await rose).toBe(true);
-  await expect(toast).toHaveText('Board link copied');
-  expect(await alice.evaluate(() => navigator.clipboard.readText())).toBe(url);
-  await expect(toast).not.toHaveClass(/toast-on/, { timeout: 5000 });
-});
-
 test('large screen: topic in the column, New Round at its foot next to the deck (B-46, B-66, B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1100, height: 800 } });
   const url = await createTeam(alice, 'Layout Topic Bar');
@@ -165,23 +135,29 @@ test('large screen: topic in the column, New Round at its foot next to the deck 
   await alice.context().close();
 });
 
-test('timer switch: a toast for the own click only (B-46, B-67)', async ({ browser }) => {
+test('timer switch: confirmed below the switch for the own click only, no toast (B-46, B-67, R3 review V1)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Layout Timer Toast');
   const aliceToast = alice.locator('#toast');
   const bobToast = bob.locator('#toast');
+  const status = alice.locator('#tmr_status');
 
   await openTimerPanel(alice);
   await alice.locator('input[name=tmr_visibility][value="1"]').check();
-  await expect(aliceToast).toHaveClass(/toast-on/);
-  await expect(aliceToast).toHaveText('Timer on \u2013 everyone on the board sees it');
-  // Bob sees the timer, but no toast
+  await expect(status).toHaveText('\u2713 Timer on \u2013 everyone on the board sees it');
+  await expect(aliceToast).not.toHaveClass(/toast-on/);
+  // Bob sees the timer, but no message
   await expect(bob.locator('#timer')).toBeVisible();
   await expect(bobToast).not.toHaveClass(/toast-on/);
 
   await alice.locator('input[name=tmr_visibility][value="0"]').check();
-  await expect(aliceToast).toHaveText('Timer off');
+  await expect(status).toHaveText('\u2713 Timer off');
   await expect(bob.locator('#timer')).toBeHidden();
   await expect(bobToast).not.toHaveClass(/toast-on/);
+  // someone else switches it on: the own "Timer off" goes
+  await openTimerPanel(bob);
+  await bob.locator('input[name=tmr_visibility][value="1"]').check();
+  await expect(alice.locator('#timer')).toBeVisible();
+  await expect(status).toHaveText('');
   await alice.context().close();
   await bob.context().close();
 });

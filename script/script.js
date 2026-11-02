@@ -23,7 +23,6 @@ let gJsonBefore = null;
 let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
-let gLastShowAvg = null;
 // B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard).
 // B-75/B-77: on these the deck is a carousel at any width (same query as style.css "Card deck");
 // a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
@@ -1989,7 +1988,6 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateAnonymityConfig(myJson.anonymous_request_toggle);
     checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
 
-    activateJediMode(myJson.show_avg);
     updateJediBtn();
 
     if (isOnLoad) {
@@ -2011,18 +2009,6 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     }
 
 
-}
-
-function activateJediMode(showAvg) {
-    if (showAvg === 1 && gLastShowAvg !== null && gLastShowAvg === 0) {
-        let body = document.body;
-        body.classList.add('flash-red');
-
-        body.addEventListener('animationend', () => {
-            body.classList.remove('flash-red');
-        }, { once: true });
-    }
-    gLastShowAvg = showAvg;
 }
 
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
@@ -2440,8 +2426,30 @@ function toggleTopic(event) {
     button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
 }
 
-/* copies the board link; where the browser refuses (no permission, http, a web view) the link shows in a field,
- * selected, to copy by hand (R3 review E7) */
+/* R3 review V2: "Invite" in the header. Where the browser can share (navigator.share: phones, tablets, some desktops)
+ * the native share menu opens; else, or when sharing fails, the link is copied (copyLink). Cancelling the share
+ * menu does nothing. */
+function inviteTeam() {
+    let url = window.location.href;
+    if (typeof navigator.share === 'function') {
+        let name = document.getElementById('team_name').textContent;
+        let data = { title: name ? name + ' – Agile Poker' : 'Agile Poker', url: url };
+        let share;
+        try {
+            share = navigator.share(data);
+        } catch (e) {
+            share = Promise.reject(e);
+        }
+        share.catch(function (e) {
+            if (!e || e.name !== 'AbortError') copyLink(); // not supported here, not allowed: copy instead
+        });
+        return;
+    }
+    copyLink();
+}
+
+/* copies the board link; the Invite button confirms it (V1: feedback where the click was). Where the browser
+ * refuses (no permission, http, a web view) the link shows in a field, selected, to copy by hand (R3 review E7) */
 function copyLink() {
     let text = window.location.href;
     let done;
@@ -2451,13 +2459,32 @@ function copyLink() {
         done = Promise.reject(e); // no navigator.clipboard (http)
     }
     done.then(function () {
-        showToast('Board link copied');
+        confirmInvite('Link copied');
     }, function () {
         window.prompt('Copy the board link:', text);
     });
 }
 
+/* the Invite button reads "Link copied ✓" for 2 s (class is-done: check icon, green), screen readers hear it once */
+let gInviteTimer = null;
+function confirmInvite(text) {
+    let button = document.getElementById('invite_btn');
+    let label = button.querySelector('.lbl');
+    let status = document.getElementById('invite_status');
+    label.textContent = text + ' \u2713';
+    button.classList.add('is-done');
+    status.textContent = text;
+    clearTimeout(gInviteTimer);
+    gInviteTimer = setTimeout(function () {
+        label.textContent = 'Invite';
+        button.classList.remove('is-done');
+        status.textContent = '';
+    }, 2000);
+}
+
 /* Short message that pops up from the bottom edge for a moment (style.css, .toast).
+ * R3 review V1: only for things without a trigger on the own screen (sent feedback is gone from the form);
+ * the result of an own click shows at that control (Invite button, deck status line, timer status).
  * Plain text only (textContent). Calling it again replaces the text and restarts the timer. */
 let gToastTimer = null;
 function showToast(text) {
@@ -2631,6 +2658,9 @@ function renderTimer(elapsed) {
 function updateTimerConfig(force = false) {
     if (gTimer === null || document.getElementById('timer_box') === null) return;
     checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
+    // R3 review V1: the status of the own switch goes when the menu opens again or the board says otherwise
+    let status = document.getElementById('tmr_status');
+    if (force || (status.textContent !== '' && status.dataset.on !== (gTimer.visible ? '1' : '0'))) status.textContent = '';
     checkRadio('tmr_mode', gTimer.mode);
     checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
     document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
@@ -2664,9 +2694,12 @@ function timerAction(action, value = null) {
 }
 
 function setTimerVisibility(value) {
-    // B-46: confirm the own change with a toast (others just see the timer appear)
+    // B-46: confirm the own change (others just see the timer appear); R3 review V1: below the switch, not as a toast
+    let status = document.getElementById('tmr_status');
+    status.textContent = '';
     timerAction('set_visibility', value).then(() => {
-        showToast(value === '1' ? 'Timer on – everyone on the board sees it' : 'Timer off');
+        status.dataset.on = value;
+        status.textContent = value === '1' ? '\u2713 Timer on \u2013 everyone on the board sees it' : '\u2713 Timer off';
     }).catch(() => {}); // the board loaded itself (apiWrite)
     measureEvent("TOGGLE_TIMER");
 }
@@ -3084,7 +3117,7 @@ function cardRank(card) {
 function tipText(json, revealed) {
     // B-102: a player who joined in after the reveal (late001) has no vote: not in any tip after the reveal
     const players = (json.players || []).filter(player => !revealed || !isLateCardKey(player.display_card_key));
-    if (json.players_count < 2) return ['Copy the board link and invite your team.'];
+    if (json.players_count < 2) return ['Invite your team: ' + (gTouchQuery.matches ? 'tap' : 'click') + ' Invite and share the link.'];
 
     if (!revealed) {
         if (json.player_type === 'PLAYER' && !json.selected_card_key) {

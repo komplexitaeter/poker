@@ -40,7 +40,7 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
   const tip = alice.locator('#round_tip');
 
   // alone on the board
-  await expect(tip).toHaveText('Copy the board link and invite your team.');
+  await expect(tip).toHaveText('Invite your team: click Invite and share the link.');
   await expect(tip).toBeVisible();
 
   // two more players, nobody has voted: pick a card
