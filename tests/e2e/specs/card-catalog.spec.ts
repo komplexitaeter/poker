@@ -108,8 +108,10 @@ test('texts per group as decided (B-99, Andreas 2026-10-31)', () => {
   expect(group('delegation').cards.map(c => c.heading)).toEqual(
     ['Tell', 'Sell', 'Consult', 'Agree', 'Advise', 'Inquire', 'Delegate']);
   expect(catalog.controls.map(c => c.heading)).toEqual(['break', 'question', 'important', 'veto', 'shruggie']);
-  for (const id of ['traffic', 'judge', 'delegation'])
+  for (const id of ['judge', 'delegation'])
     for (const card of group(id).cards) expect(card.description, `${id} ${card.card_key}`).toBeTruthy();
+  // traffic lights: no descriptions (Andreas: the lights are used for many different formats)
+  for (const card of group('traffic').cards) expect(card.description, card.card_key).toBeUndefined();
 });
 
 test('shruggie: a control card without value, off by default (B-106)', () => {

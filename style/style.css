@@ -4902,14 +4902,17 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     overscroll-behavior: contain;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 12px;
+    gap: 2px;
+    width: 220px;
     margin: 0;
-    padding: 4px 10px 16px;
+    padding: 2px 6px 16px 2px;
+    box-sizing: border-box;
     list-style: none;
-    --card-w: 104px;
+    --card-w: 96px;
 }
-.cs-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.cs-item { position: relative; display: flex; flex-direction: column; flex: none; }
+.cs-item.sel { align-items: center; gap: 6px; margin-block: 6px; }
+/* the card being edited: large, as on the table */
 .cs-card {
     position: relative;
     display: block;
@@ -4924,7 +4927,31 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     box-sizing: border-box;
 }
 .cs-card .pc { width: var(--card-w); }
-.cs-card:hover { border-color: var(--line-strong); }
+/* the other cards: a compact row (small card, name, value) */
+.cs-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--tap);
+    padding: 2px 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.cs-row .dm-card { flex: none; --deck-w: 26px; width: var(--deck-w); }
+.cs-row-t { display: flex; flex-direction: column; min-width: 0; }
+.cs-row-t b { font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-row-t small { font-size: var(--fs-xs); color: var(--muted); }
+.cs-row:hover { border-color: var(--line-strong); }
+.cs-item.bad .cs-row { border-color: var(--danger); }
+.cs-row .cs-bang { top: 50%; right: 6px; transform: translateY(-50%); }
 .cs-item.sel .cs-card { border: 2px solid var(--accent); padding: 3px; background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .cs-item.bad .cs-card { border-color: var(--danger); }
 .cs-bang {
@@ -4960,14 +4987,14 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-additem { flex: none; }
 .cs-add {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    width: calc(var(--card-w) + 10px);
-    height: calc(var(--card-w) * 0.8);
+    gap: 6px;
+    width: 100%;
+    min-height: var(--tap);
+    margin-top: 4px;
     border: 1px dashed var(--line-strong);
-    border-radius: calc(var(--card-w) * 0.11 + 5px);
+    border-radius: var(--radius-m);
     background: none;
     color: var(--muted);
     font: var(--fs-s) var(--font);
@@ -5059,7 +5086,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     cursor: pointer;
 }
 .cs-swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
-.cs-swatch:focus-visible, .cs-card:focus-visible, .cs-mv:focus-visible, .cs-add:focus-visible, .cs-del:focus-visible,
+.cs-swatch:focus-visible, .cs-card:focus-visible, .cs-row:focus-visible, .cs-mv:focus-visible, .cs-add:focus-visible, .cs-del:focus-visible,
 .cs-symbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .cs-foot {
@@ -5111,18 +5138,26 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     .cs-sub { order: 3; flex-basis: 100%; padding-bottom: 4px; }
     .cs-body { display: block; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 0; }
     .cs-topf { grid-template-columns: minmax(0, 1fr); }
+    /* the strip sideways: the card being edited larger, the others small cards only */
     .cs-list {
         flex-direction: row;
         align-items: flex-start;
+        gap: 6px;
+        width: auto;
         overflow-x: auto;
         overflow-y: hidden;
         margin: 0 -14px;
-        padding: 4px 14px 10px;
+        padding: 4px 14px 60px;
         --card-w: 72px;
     }
-    .cs-add { height: calc(var(--card-w) * 1.48 + 10px); }
-    .cs-list { padding-bottom: 60px; }
+    .cs-item.sel { margin: 0; }
     .cs-acts { position: absolute; top: 100%; left: 0; margin-top: 6px; }
+    .cs-row { flex-direction: column; width: auto; padding: 4px 3px; }
+    .cs-row .dm-card { --deck-w: 44px; }
+    .cs-row-t { display: none; }
+    .cs-row .cs-bang { top: -4px; right: -4px; transform: none; }
+    .cs-additem { align-self: stretch; display: flex; }
+    .cs-add { width: 56px; margin: 0; flex-direction: column; }
     .cs-cards { margin-bottom: 14px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
     .cs-detail { overflow: visible; max-width: none; padding-bottom: 16px; }
     .cs-mv { min-width: 44px; min-height: 44px; }

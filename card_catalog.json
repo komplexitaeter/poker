@@ -88,9 +88,9 @@
       "name": "Traffic lights",
       "style": "badge",
       "cards": [
-        {"card_key": "green01", "value": "🟢", "symbol": "s-light-green", "color": "agreen", "numeric_value": 1000, "sort_order": 1600, "heading": "green", "description": "All good from my side.", "legacy_index": 15},
-        {"card_key": "yellow1", "value": "🟡", "symbol": "s-light-yellow", "color": "ayellow", "numeric_value": 2000, "sort_order": 1700, "heading": "yellow", "description": "Doable, but I have concerns we should hear.", "legacy_index": 16},
-        {"card_key": "red0001", "value": "🔴", "symbol": "s-light-red", "color": "ared", "numeric_value": 3000, "sort_order": 1800, "heading": "red", "description": "I see a blocker. Let's talk before we go on.", "legacy_index": 17}
+        {"card_key": "green01", "value": "🟢", "symbol": "s-light-green", "color": "agreen", "numeric_value": 1000, "sort_order": 1600, "heading": "green", "legacy_index": 15},
+        {"card_key": "yellow1", "value": "🟡", "symbol": "s-light-yellow", "color": "ayellow", "numeric_value": 2000, "sort_order": 1700, "heading": "yellow", "legacy_index": 16},
+        {"card_key": "red0001", "value": "🔴", "symbol": "s-light-red", "color": "ared", "numeric_value": 3000, "sort_order": 1800, "heading": "red", "legacy_index": 17}
       ],
       "variants": [
         {"id": "traffic", "name": "Traffic lights", "cards": ["green01", "yellow1", "red0001"], "preset_mapping": "Traffic"}

@@ -34,7 +34,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(editor(alice)).toBeVisible();
   await expect(alice.locator('#cs_title')).toHaveText('New card set');
   await expect(alice.locator('#cs_name')).toBeFocused();
-  await expect(alice.locator('#cs_list .cs-card')).toHaveCount(2);
+  await expect(alice.locator('#cs_list [data-f^="card:"]')).toHaveCount(2);
   await expect(alice.locator('#cs_cards_label')).toHaveText('Cards (2 of 16)');
   await expect(alice.locator('#cs_value')).toHaveValue('1');
   await expect(alice.locator('#cs_remove')).toBeDisabled(); // at least two cards
@@ -64,7 +64,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
 
   // a third card; the picker: search, Esc closes only the picker, Enter picks
   await alice.locator('#cs_add').click();
-  await expect(alice.locator('#cs_list .cs-card')).toHaveCount(3);
+  await expect(alice.locator('#cs_list [data-f^="card:"]')).toHaveCount(3);
   await alice.locator('#cs_sym').click();
   await alice.locator('#cs_sym_search').fill('sat');
   await expect(alice.locator('#cs_sym_list [role="option"]')).toHaveText(['satisfied']);

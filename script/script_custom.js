@@ -5,9 +5,9 @@
  * phones: one column, the strip scrolls sideways above the fields.
  * - Head: title, "The team sees changes after Save" (unsaved / errors, live region), × (= Cancel).
  * - Top: set name (24, counter), Style (card_catalog.json styles: plain | badge | banner | inverted).
- * - Left: "Cards (n of 16)", a strip with every card as it looks (cardFace() in the set's style), the selected one
- *   with ↑ ↓ ×, at the end "+ Add card" (up to 16 - a bigger migrated set keeps its size but does not grow -,
- *   × down to 2 cards).
+ * - Left: "Cards (n of 16)", a strip of the cards in the set's style: the selected one large as it looks on the
+ *   table (cardFace()) with ↑ ↓ ×, the others as compact rows (small card, name, value; phones: small cards only),
+ *   at the end "+ Add card" (up to 16 - a bigger migrated set keeps its size but does not grow -, × down to 2 cards).
  * - Right, the selected card: Symbol (a button with the symbol and its name opens a picker: search field and a list
  *   grouped by Numbers, Sizes, Lights, Faces, Stars, "Text" on top; next to the button the text field of a text card,
  *   1-6 characters, no emoji), Heading (16), Description (160), Numeric value (default from custom_symbol_values, may
@@ -600,16 +600,24 @@ function csRenderCards() {
     gCs.cards.forEach((card, i) => {
         const selected = i === gCs.sel;
         const item = csEl('li', 'cs-item' + (selected ? ' sel' : '') + (gCs.errors.card === i ? ' bad' : ''));
-        const pick = csButton('cs-card', null, 'card:' + i, () => csSelect(i));
+        // Andreas: only the card being edited is large; the others are compact rows (small card, name, value)
+        const pick = csButton(selected ? 'cs-card' : 'cs-row', null, 'card:' + i, () => csSelect(i));
         if (selected) pick.setAttribute('aria-current', 'true');
         const number = csNumber(card.value);
         pick.setAttribute('aria-label', 'Card ' + (i + 1) + ': ' + csCardTitle(card)
             + (typeof number === 'number' ? ', value ' + number : '') + (gCs.errors.card === i ? ' (please check)' : ''));
-        const face = cardFace(csCardModel(card, i), 'table');
-        face.removeAttribute('role'); // the button carries the name
-        face.removeAttribute('aria-label');
-        face.setAttribute('aria-hidden', 'true');
-        pick.appendChild(face);
+        if (selected) {
+            const face = cardFace(csCardModel(card, i), 'table');
+            face.removeAttribute('role'); // the button carries the name
+            face.removeAttribute('aria-label');
+            face.setAttribute('aria-hidden', 'true');
+            pick.appendChild(face);
+        } else {
+            const text = csEl('span', 'cs-row-t');
+            text.append(csEl('b', null, csCardTitle(card)),
+                csEl('small', null, typeof number === 'number' ? 'value ' + number : 'no value'));
+            pick.append(dmCard(csCardModel(card, i), false), text);
+        }
         if (gCs.errors.card === i) pick.appendChild(csEl('span', 'cs-bang', '!'));
         item.appendChild(pick);
         if (selected) {
