@@ -424,20 +424,20 @@ function updateDeckKeys() {
         const label = labels.get(key) || '';
         if (keyLabel.textContent !== label) keyLabel.textContent = label;
     });
-    // the hint names the first and the last key in use: "keys Q–P pick a card"
+    // the hint names the first and the last key in use, lower case like a console line: "press q–p to pick a card"
     const hint = document.querySelector('.deck-hint');
     const used = Math.min(gDeck.cards.length, DECK_KEY_CODES.length);
     if (hint !== null && used > 0) {
-        const first = deckKeyLabel(DECK_KEY_CODES[0]);
-        const text = used === 1 ? 'key ' + first + ' picks the card'
-            : 'keys ' + first + '–' + deckKeyLabel(DECK_KEY_CODES[used - 1]) + ' pick a card';
+        const first = deckKeyLabel(DECK_KEY_CODES[0]).toLowerCase();
+        const text = used === 1 ? 'press ' + first + ' to pick the card'
+            : 'press ' + first + '\u2013' + deckKeyLabel(DECK_KEY_CODES[used - 1]).toLowerCase() + ' to pick a card';
         if (hint.textContent !== text) hint.textContent = text;
     }
     updateDeckRoom();
     syncCarousel(); // B-75
 }
 
-/* B-68: the hint "keys Q–P pick a card" sits in the row of the keys; it is hidden (class
+/* B-68: the hint "press q–p to pick a card" sits in the row of the keys; it is hidden (class
  * hint-off) when the deck scrolls or its last key does not stay clear of it, so the tray keeps its
  * height. Only where the keys show (style.css "Card deck"). */
 function updateDeckRoom() {
@@ -970,8 +970,12 @@ function updateCards(cardsDiv, players) {
         // B-99 (F1): compared by the card key (data-card), not by the image
         const oldKey = card.getAttribute('data-card');
         const newKey = String(player.display_card_key);
+        const awayFace = player.away === true && isThinkingCardKey(newKey);
+        if (oldKey === newKey && (card.getAttribute('data-away-face') === 'true') !== awayFace) {
+            setTableCardFace(card, newKey, player.away === true); // L30a: thinking <-> away, same card
+        }
         if (oldKey !== newKey) {
-            setTableCardFace(card, newKey);
+            setTableCardFace(card, newKey, player.away === true);
             removeStyleClass(card, 'cardValueChanged');
             if (!isStatusCardKey(oldKey) && !isStatusCardKey(newKey)) {
                 valueChangedCards.push(card);
@@ -1001,13 +1005,20 @@ function updateCards(cardsDiv, players) {
 /* B-99: the face of a card on the table for a card key (a card of the deck or a status card:
  * prgrss1/prgrss2 thinking, done001 ready). The key is kept in data-card; F2: the face is rendered
  * (cards.js). A key the client does not know (e.g. a newer card) shows as its key. */
-function tableCardModel(key) {
+function tableCardModel(key, away = false) {
+    // R3 review V10 (L30a): no card yet and no connection: "away" instead of "thinking"
+    if (away && isThinkingCardKey(key)) return { ...STATUS_CARDS[key], caption: 'away', aria: 'away \u2013 no connection' };
     return STATUS_CARDS[key] || cardByKey(key) || { key, text: key, heading: null, info: null, style: 'plain' };
 }
 
-function setTableCardFace(cardDiv, key) {
+function isThinkingCardKey(key) {
+    return key === 'prgrss1' || key === 'prgrss2';
+}
+
+function setTableCardFace(cardDiv, key, away = false) {
     cardDiv.setAttribute('data-card', key);
-    const card = tableCardModel(key);
+    cardDiv.setAttribute('data-away-face', away && isThinkingCardKey(key) ? 'true' : 'false');
+    const card = tableCardModel(key, away);
     // F8 (Andreas): every card on the table shows all its texts; control cards heading and description in
     // every set (small cards shorten the description, style.css "Rendered cards")
     const face = cardFace(card, 'table', true);
@@ -1068,7 +1079,7 @@ function setTableCardOriginal(cardDiv, key, animate) {
 function refreshTableFaces() {
     document.querySelectorAll('#cbox .c').forEach(card => {
         const original = card.getAttribute('data-original');
-        setTableCardFace(card, card.getAttribute('data-card'));
+        setTableCardFace(card, card.getAttribute('data-card'), card.classList.contains('is-away'));
         card.removeAttribute('data-original'); // the original face anew, too
         setTableCardOriginal(card, original, false);
     });
@@ -1675,7 +1686,7 @@ function showTapHint() {
     const hint = document.getElementById('tap_hint');
     if (card === null || hint === null) return;
     gTapHintShown = true;
-    hint.querySelector('p').textContent = 'Tap a card to throw a reaction or to remove a player.';
+    hint.querySelector('p').textContent = 'Tap someone\'s card to nudge them, throw an emoji or remove them from the table.';
     hint.querySelector('.tap-hint-ok').textContent = 'Got it';
     hint.hidden = false;
     placePopover(hint, card);
@@ -1762,7 +1773,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     // B-110: the click is handled by onTableClick (always asks first, #rm_confirm)
     newCard.appendChild(cardDeleteBtn);
     if (player.away === true) newCard.classList.add('is-away');
-    setTableCardFace(newCard, String(player.display_card_key));
+    setTableCardFace(newCard, String(player.display_card_key), player.away === true);
     setTableCardOriginal(newCard, player.original_card_key, false); // B-104
 
     return newCard;
@@ -1931,8 +1942,9 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
         || myJson.players_count !== gJsonBefore.players_count
         || myJson.ready_players_count !== gJsonBefore.ready_players_count
     ) {
-        document.title = "" + myJson.ready_players_count + "|" + myJson.players_count +""
-        + " Agile Estimations: " + myJson.team_name;
+        // R3 review V10 (L7): "2/5 voted · Team Phoenix – Agile Poker"
+        document.title = myJson.ready_players_count + '/' + myJson.players_count + ' voted \u00b7 '
+            + myJson.team_name + ' \u2013 Agile Poker';
         document.getElementById("team_name").innerText = myJson.team_name;
     }
 
@@ -2012,11 +2024,11 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 }
 
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
-    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Cancel Round")
+    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Restart round")
     let newRoundBtn = document.getElementById('newroundbtn');
-    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New Round' : 'Cancel Round';
+    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New round' : 'Restart round';
     newRoundBtn.disabled = !oneOreMorePlayerReady;
-    newRoundBtn.classList.toggle('primary', newButtonText === 'New Round'); // all cards revealed
+    newRoundBtn.classList.toggle('primary', newButtonText === 'New round'); // all cards revealed
     if (newRoundBtn.value !== newButtonText) {
         newRoundBtn.value = newButtonText;
     }
@@ -2849,7 +2861,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=5'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=6'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
@@ -2970,7 +2982,7 @@ function updateSide(json, glide = true) {
     const revealed = json.all_players_ready && json.players_count > 0;
     let text = 'waiting for players';
     if (revealed) text = 'revealed';
-    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + '/' + json.players_count + ' voted';
+    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + ' of ' + json.players_count + ' voted';
     if (status.textContent !== text) status.textContent = text;
 
     spread.hidden = !revealed;
@@ -3033,10 +3045,11 @@ function updateSide(json, glide = true) {
         grown.forEach(seg => seg.classList.remove('in'));
     }
 
-    // the range of the chosen numeric values (B-79: infinity as the top end): "2 – 20", "3 – ∞",
-    // or "5" when all agree; B-99 (F6): each end as mono text or mini symbol (cardSmall)
+    // the range of the chosen numeric values (B-79: infinity as the top end): "range 2–20", "range 3–∞",
+    // or "5" when all agree; B-99 (F6): each end as mono text (cardSmall). R3 review V10 (L22): number cards
+    // only – traffic lights, emotions, stars, T-shirt sizes show the chart alone
     let ends = [];
-    if (chosen.length > 0) {
+    if (chosen.length > 0 && chosen.every(entry => isNumberCard(entry.card))) {
         chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
         const low = chosen[0].card;
         const high = chosen[chosen.length - 1].card;
@@ -3046,7 +3059,9 @@ function updateSide(json, glide = true) {
     const rangeKey = ends.map(card => card.key).join(',');
     if (rangeElement.getAttribute('data-shows') !== rangeKey) {
         rangeElement.setAttribute('data-shows', rangeKey);
-        rangeElement.replaceChildren(...ends.flatMap((card, i) => i === 0 ? [cardSmall(card)] : [' – ', cardSmall(card)]));
+        rangeElement.replaceChildren(...(ends.length === 2
+            ? ['range ', cardSmall(ends[0]), '\u2013', cardSmall(ends[1])]
+            : ends.map(card => cardSmall(card))));
     }
 
     let left = null;
@@ -3118,6 +3133,11 @@ function tipSide(players, card) {
     return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : ''), card: card.key };
 }
 
+/* R3 review V10 (L22): a card whose value is a number (0, ½, 13, ∞); the range of the result shows for these only */
+function isNumberCard(card) {
+    return !!card && /^(\d+(\.\d+)?|½|∞)$/.test(String(card.text));
+}
+
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
  * ("too big to estimate"), null for cards without a value (veto, control cards). Not for the
  * average: infinity stays out of it. */
@@ -3139,6 +3159,12 @@ function tipText(json, revealed) {
         }
         const missing = players.filter(player => String(player.display_card_key).startsWith('prgrss'));
         if (missing.length === 0) return [];
+        // R3 review V10 (L30a): everyone missing is away (no connection): only removing them reveals the cards
+        if (missing.every(player => player.away === true)) {
+            const away = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
+            const them = missing.length > 3 ? ['them'] : away;
+            return ['Waiting for ', ...away, ' (away). Remove ', ...them, ' from the table to reveal.'];
+        }
         const who = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
         return ['Waiting for ', ...who, '. Once everyone has voted, cards are revealed automatically.'];
     }
@@ -3254,31 +3280,48 @@ function isJudgeDeck(json) {
  * configs: [{ player, config }] of the table; returns the tip parts (tipText) */
 function judgeTip(configs, anonymous) {
     const of = keys => configs.filter(entry => entry.config && keys.includes(entry.config.key));
-    // one group per card: "Bob, Cleo (5)", "Dan (?)"; anonymous: "2 × need to talk"
-    const groups = (keys, what) => {
-        if (anonymous) {
-            const n = of(keys).length;
-            return n === 0 ? [] : [n + ' \u00d7 ' + what];
-        }
-        return keys.map(key => of([key])).filter(entries => entries.length > 0)
-            .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config));
+    // R3 review V10 (L28): anonymous mode counts in words, "2 people need to talk", "1 veto"
+    const count = (keys, one, many) => {
+        const n = of(keys).length;
+        return n === 0 ? null : n + ' ' + (n === 1 ? one : many);
     };
+    // one group per card: "Bob, Cleo (5)", "Dan (?)"
+    const groups = keys => keys.map(key => of([key])).filter(entries => entries.length > 0)
+        .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config));
     // "A", "A and B", "A, B and C"
     const join = list => list.flatMap((group, i) =>
         i === 0 ? [group] : [i === list.length - 1 ? ' and ' : ', ', group]);
 
-    const talk = groups(['jdg5', 'qstmrk1', 'xclam01'], 'need to talk');
-    const veto = groups(['jdg6', 'veto'], 'veto');
-    if (talk.length > 0) {
-        const parts = ['Let them talk first: ', ...join(talk)];
-        return veto.length > 0 ? [...parts, '. Then hear the veto: ', ...join(veto)] : parts;
+    const talkKeys = ['jdg5', 'qstmrk1', 'xclam01'];
+    const vetoKeys = ['jdg6', 'veto'];
+    if (anonymous) {
+        const talk = count(talkKeys, 'person needs to talk', 'people need to talk');
+        const veto = count(vetoKeys, 'veto', 'vetoes');
+        if (talk !== null) return veto !== null ? [talk + ' first. Then hear ' + veto + '.'] : [talk + ' first.'];
+        if (veto !== null) return ['Hear ' + veto + ' first.'];
+    } else {
+        const talk = groups(talkKeys);
+        const veto = groups(vetoKeys);
+        if (talk.length > 0) {
+            const parts = ['Let them talk first: ', ...join(talk)];
+            return veto.length > 0 ? [...parts, '. Then hear the veto: ', ...join(veto)] : parts;
+        }
+        if (veto.length > 0) return ['Hear the veto: ', ...join(veto)];
     }
-    if (veto.length > 0) return ['Hear the veto: ', ...join(veto)];
     // no vote of the deck at all (only coffee): no tip
     if (of(['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4']).length === 0) return [];
-    const concerns = groups(['jdg3', 'jdg4'], 'concerns');
+    if (anonymous) {
+        const concerns = count(['jdg3', 'jdg4'], 'person has concerns', 'people have concerns');
+        return concerns === null ? ['Decision accepted.'] : ['Decision accepted. ' + concerns + ' \u2013 want to hear them?'];
+    }
+    // L29: "Bob (3) has concerns, Eve (4) steps out" – 4 is no concern, it is not taking part
+    const said = (keys, one, many) => groups(keys).map(group => {
+        const n = of(keys).length;
+        return [group, n === 1 ? one : many];
+    });
+    const concerns = [...said(['jdg3'], ' has concerns', ' have concerns'), ...said(['jdg4'], ' steps out', ' step out')];
     if (concerns.length === 0) return ['Decision accepted.'];
-    return [anonymous ? 'Decision accepted. ' : 'Decision accepted. Concerns from ', ...join(concerns),
+    return ['Decision accepted. ', ...concerns.flatMap((parts, i) => i === 0 ? parts : [', ', ...parts]),
         ' \u2013 want to hear them?'];
 }
 

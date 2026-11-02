@@ -1,6 +1,6 @@
 /* R3 F5 (B-98): the deck menu (Board settings -> Deck), mock-up "Deck menu R3", variant C.
- * Overview: the deck as small cards, the card set ("change" opens the list of sets), the variant (Fibonacci:
- * Classic / Short / True, only a preset: it switches its cards on and the others off), every card of the set to
+ * Overview: the deck as small cards, the card set ("Change" opens the list of sets), the variant (Fibonacci:
+ * Classic / Short / Pure Fibonacci, only a preset: it switches its cards on and the others off), every card of the set to
  * switch off or on (a selection that matches no variant is "custom"), and the control cards (☕ ? ! ✋, per team,
  * with every set). The list: every set group with a fan of its cards.
  * The variant is saved on click, Space or Enter only; arrow keys just move the choice (Sina, PR #113).
@@ -12,10 +12,16 @@
 
 const DECK_MIN_CARDS = 2; // a deck keeps at least two cards of its set
 
-/* a short line per set group where the catalog has none */
+/* a short line per set group where the catalog has none: what the set is for (R3 review V10, L40) */
 const DECK_GROUP_NOTES = {
-    fib: 'Planning poker, the classic', numbers: 'Plain scale', tshirt: 'Rough sizing', traffic: 'Quick check',
-    emotions: 'Team mood', stars: 'Rate it', judge: 'Decide together', delegation: 'Who decides? Seven levels',
+    fib: 'Estimate effort in story points',
+    numbers: 'Simple scale, e.g. confidence or value',
+    tshirt: 'Rough sizing for big items',
+    traffic: 'Quick go / no-go check',
+    emotions: 'How does the team feel? For retros and check-ins',
+    stars: 'Rate something from 0 to 5',
+    judge: 'Make a team decision by consent',
+    delegation: 'Who decides? 7 levels of delegation',
 };
 
 const gDeckMenu = {
@@ -119,7 +125,7 @@ function dmFan(keys) {
 
 function dmRoundNote() {
     if (!deckRoundRunning()) return null;
-    const note = dmEl('p', 'hint warn dm-round', 'Cards are down · changing the deck starts a new round.');
+    const note = dmEl('p', 'hint warn dm-round', 'Cards have been played \u2013 changing the card set starts a new round.');
     note.id = 'deck_round_hint';
     note.setAttribute('role', 'note');
     return note;
@@ -155,14 +161,14 @@ function deckMainView(deck, group, variant) {
     const note = dmRoundNote();
     if (note !== null) parts.push(note);
 
-    // the card set, "change" opens the list
+    // the card set, "Change" opens the list
     const change = dmEl('button', 'dm-setbtn');
     change.type = 'button';
     change.id = 'deck_change';
     change.setAttribute('data-f', 'change');
     const title = dmEl('span', 'dm-t');
     title.append(dmEl('small', null, 'Card set'), dmEl('b', null, group.name));
-    change.append(title, dmFan(variant.cards), dmEl('span', 'cm', 'change'), dmIcon('next'));
+    change.append(title, dmFan(variant.cards), dmEl('span', 'cm', 'Change'), dmIcon('next'));
     change.setAttribute('aria-label', 'Card set: ' + group.name + '. Change');
     change.addEventListener('click', () => showDeckView('pick'));
     parts.push(change);
@@ -216,7 +222,7 @@ function deckMainView(deck, group, variant) {
     const on = new Set(deck.cards);
     const toggles = dmEl('fieldset', 'f');
     toggles.id = 'deck_cards';
-    toggles.appendChild(dmEl('legend', 'lab', 'Cards (tap to switch off or on)'));
+    toggles.appendChild(dmEl('legend', 'lab', 'Cards in this set \u2013 ' + (gTouchQuery.matches ? 'tap' : 'click') + ' to turn on or off'));
     const grid = dmEl('div', 'dm-tgs');
     deckGroupKeys(group).forEach(key => {
         const card = gCardByKey.get(key);
@@ -323,7 +329,7 @@ function renderDeckMenu(force = false) {
 
     const group = deck ? deckMenuGroup(deck.group) : undefined;
     if (!deck || group === undefined) {
-        box.replaceChildren(dmEl('p', 'hint', 'The deck cannot be changed right now. Please reload the page later.'));
+        box.replaceChildren(dmEl('p', 'hint', 'Card sets can\'t be loaded right now. Please reload the page in a moment.'));
         return;
     }
     const variant = deckMenuVariant(group, deck.id);
@@ -369,7 +375,8 @@ function showDeckView(view) {
 
 /* B-99 (F7, Andreas): the result of a change; R3 review V1: in a status line at the top of the deck menu (#deck_status)
  * instead of a toast. It stays until the next change or until the menu opens again; an error gets a close button. */
-const DECK_DONE = { set: 'Deck changed', variant: 'Variant changed', card: 'Cards changed', control: 'Special cards changed' };
+const DECK_DONE = { set: 'Card set changed for everyone', variant: 'Cards changed for everyone',
+    card: 'Cards changed for everyone', control: 'Cards changed for everyone' };
 
 /* status: null (none) | { text, error } */
 function setDeckStatus(status) {
@@ -400,7 +407,7 @@ function writeDeck(url, local, kind) {
             return;
         }
         response.json().then(answer => {
-            setDeckStatus({ text: done + (answer && answer.new_round ? ' – new round started' : ' – everyone sees it'), error: false });
+            setDeckStatus({ text: done + (answer && answer.new_round ? ' \u2013 new round started' : ''), error: false });
         }).catch(() => setDeckStatus({ text: done, error: false }));
     });
 }

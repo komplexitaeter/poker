@@ -11,7 +11,7 @@ test('team name with special characters is shown as entered', async ({ browser }
 
   await expect(page.locator('#team_name')).toHaveText(teamName);
   await expect(page.locator('#team_name b')).toHaveCount(0);
-  await expect(page).toHaveTitle(new RegExp(`Agile Estimations: ${escapeRegExp(teamName)}$`));
+  await expect(page).toHaveTitle(new RegExp(` voted · ${escapeRegExp(teamName)} – Agile Poker$`));
 });
 
 test('renamed team keeps special characters', async ({ browser }) => {

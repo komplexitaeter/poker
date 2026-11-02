@@ -1,6 +1,6 @@
 let gTopicChangePending = false;
 
-/* B-51: the menu (#menu, a <dialog>, board.html and init.html). One section (section.menu_sec[data-sec])
+/* B-51: the menu (#menu, a <dialog>, board.html). One section (section.menu_sec[data-sec])
  * is visible at a time. Large screens: a non-modal side panel (show()), it stays put and a click on the
  * table does not close it. Phones (breakpoint as in style.css): a modal bottom sheet (showModal()) that
  * starts at the index (#menu_btn) and has a back button. Openers carry data-open="<section>", the close
@@ -70,7 +70,7 @@ function prepareMenuSection(sec) {
     }
 }
 
-/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: New issue | Backlog).
+/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: New issue | Roadmap).
  * The tab buttons carry role="tab" and data-tab, the panels role="tabpanel" and data-tab as well; the
  * selected tab has aria-selected="true" and is the only one in the tab order, the other panels are
  * hidden. box: the section element; focusTab: move the focus to the tab. */
@@ -529,16 +529,11 @@ function feedback_submit() {
     showToast('Thanks – we read every message.');
 }
 
-/* B-57: "Backlog" tab - our public list (api/get_roadmap.php) with status and reactions (api/vote_roadmap.php).
+/* B-57: "Roadmap" tab (id backlog) - our public list (api/get_roadmap.php) with status and reactions (api/vote_roadmap.php).
  * Loaded each time the tab is shown; entries are clones of #fb_item_tpl, filled via textContent only.
- * Pull updates of the board do not touch it. On the start page (#fb_react_hint present) the user may not be
- * known yet (vote_roadmap.php: 403), so the reactions are shown, but disabled. */
+ * Pull updates of the board do not touch it. R3 review V10: the start page has no feedback menu any more. */
 const gFbStatusText = {PLANNED: 'planned', IN_PROGRESS: 'in progress', DONE: 'done'};
 let gFbBacklogRequest = 0; // only the latest load fills the list
-
-function fbCanReact() {
-    return document.getElementById('fb_react_hint') === null;
-}
 
 function fillBacklogItem(li, item) {
     li.dataset.item = item.id;
@@ -551,7 +546,7 @@ function fillBacklogItem(li, item) {
         let reaction = btn.dataset.reaction;
         btn.setAttribute('aria-pressed', item.my_reaction === reaction ? 'true' : 'false');
         btn.querySelector('.fb-count').textContent = (item.reactions && item.reactions[reaction]) || 0;
-        btn.disabled = !fbCanReact();
+        btn.disabled = false;
     });
 }
 
@@ -586,7 +581,7 @@ function loadFeedbackBacklog() {
 /* a click on a reaction: set it, or remove it when it is the own one already (NONE) */
 function reactOnBacklogItem(btn) {
     let li = btn.closest('li.fb-item');
-    if (li === null || !fbCanReact()) return;
+    if (li === null) return;
     let reaction = btn.getAttribute('aria-pressed') === 'true' ? 'NONE' : btn.dataset.reaction;
     let buttons = li.querySelectorAll('.fb-react-btn');
     buttons.forEach(b => { b.disabled = true; });
@@ -596,7 +591,6 @@ function reactOnBacklogItem(btn) {
         + '&reaction=' + encodeURIComponent(reaction), { method: 'POST' })
         .then(response => {
             if (response.ok) return response.json();
-            if (response.status === 403) showToast('Join a board to react.');
             return Promise.reject(response.status);
         })
         .then(item => fillBacklogItem(li, item))

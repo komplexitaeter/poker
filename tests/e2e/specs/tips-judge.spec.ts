@@ -48,8 +48,14 @@ test('J.U.D.G.E.: decision accepted, concerns offered (B-101)', async ({ browser
 
   // 3 and 4: accepted, the concerns are offered by name; coffee adds a break
   await vote(['jdg1', 'jdg3', 'jdg4', 'break01']);
-  await expect(tip).toHaveText(`Decision accepted. Concerns from Bob (3) and Cleo (4) – want to hear them? ${BREAK}`);
+  // R3 review V10 (L29): 3 has concerns, 4 steps out (not a concern)
+  await expect(tip).toHaveText(`Decision accepted. Bob (3) has concerns, Cleo (4) steps out – want to hear them? ${BREAK}`);
   await expect(tip.locator('b')).toHaveText(['Bob (3)', 'Cleo (4)']);
+  // several on one card: plural
+  await vote(['jdg3', 'jdg3', 'jdg1', 'jdg1']);
+  await expect(tip).toHaveText('Decision accepted. Alice, Bob (3) have concerns – want to hear them?');
+  await vote(['jdg1', 'jdg4', 'jdg4', 'jdg1']);
+  await expect(tip).toHaveText('Decision accepted. Bob, Cleo (4) step out – want to hear them?');
 
   // B-106: the shruggie is ok, not like ? and !: no talk, nobody named
   await vote(['jdg1', 'shrug01', 'jdg2', 'jdg1']);
@@ -93,10 +99,15 @@ test('J.U.D.G.E. in anonymous mode: counts, nobody named (B-101)', async ({ brow
   await vote(['jdg1', 'jdg2', 'jdg1', 'jdg0']);
   await expect(tip).toHaveText('Decision accepted.');
   await vote(['jdg1', 'jdg3', 'jdg4', 'jdg1']);
-  await expect(tip).toHaveText('Decision accepted. 2 × concerns – want to hear them?');
+  // R3 review V10 (L28): counts in words, singular and plural
+  await expect(tip).toHaveText('Decision accepted. 2 people have concerns – want to hear them?');
+  await vote(['jdg1', 'jdg3', 'jdg1', 'jdg1']);
+  await expect(tip).toHaveText('Decision accepted. 1 person has concerns – want to hear them?');
   await vote(['jdg5', 'qstmrk1', 'jdg6', 'jdg1']);
-  await expect(tip).toHaveText('Let them talk first: 2 × need to talk. Then hear the veto: 1 × veto');
+  await expect(tip).toHaveText('2 people need to talk first. Then hear 1 veto.');
+  await vote(['jdg5', 'jdg1', 'jdg6', 'jdg6']);
+  await expect(tip).toHaveText('1 person needs to talk first. Then hear 2 vetoes.');
   await vote(['jdg6', 'jdg1', 'jdg1', 'jdg1']);
-  await expect(tip).toHaveText('Hear the veto: 1 × veto');
+  await expect(tip).toHaveText('Hear 1 veto first.');
   await expect(tip.locator('b')).toHaveCount(0);
 });

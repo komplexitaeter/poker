@@ -43,8 +43,16 @@ test('keyboard: topic box opens with Enter, Escape closes it, timer panel by key
   await expect(alice.locator('#cet_usr_name')).toBeFocused();
 
   // "Delete my data" shows its overlay and closes the menu under it
+  const dangerColor = await alice.locator('#delete_user_btn').evaluate(el => getComputedStyle(el).color);
   await alice.locator('#delete_user_btn').click();
   await expect(alice.locator('#overlay_delete_user')).not.toHaveClass(/hidden/);
+  // R3 review V10 (L61): one name for it, the confirming button in the danger colour
+  await expect(alice.locator('#delete_user_msg h1')).toHaveText('Delete your data?');
+  await expect(alice.locator('#delete_user_msg span')).toHaveText(
+    "This permanently deletes your name, settings, votes and feedback. It can't be undone.");
+  const confirm = alice.locator('#overlay_delete_user').getByRole('button', { name: 'Delete my data' });
+  await expect(confirm).toHaveCSS('color', dangerColor);
+  await expect(confirm).toHaveCSS('border-top-color', dangerColor);
   // a key does not pick a card behind the overlay (B-68)
   const pickedBefore = await selectedDeckCards(alice).count();
   await alice.keyboard.press('KeyQ');
@@ -121,12 +129,12 @@ test('start page: Tab goes from the team name field to its button, then to the h
   await page.keyboard.press('Shift+Tab');
   await expect(page.locator('#teaminput')).toBeFocused();
 
-  // after the button the header follows: logo, feedback, color mode
+  // after the button the header follows: logo, color mode (R3 review V10: no feedback on the start page)
   await page.locator('#teambtn').focus();
   const order: string[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     await page.keyboard.press('Tab');
     order.push(await page.evaluate(() => document.activeElement?.id || document.activeElement?.className || ''));
   }
-  expect(order).toEqual(['brand', 'feedback_btn', 'cmode_btn']);
+  expect(order).toEqual(['brand', 'cmode_btn']);
 });

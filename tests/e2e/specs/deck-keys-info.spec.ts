@@ -40,7 +40,7 @@ test('letter keys pick the cards row by row; labels QWERTZ without a layout map 
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(21);
   expect((await KEY_LABELS(alice)).join('')).toBe('QWERTZUIOPASDFGHJKLYX');
-  await expect(alice.locator('.deck-hint')).toHaveText('keys Q–X pick a card');
+  await expect(alice.locator('.deck-hint')).toHaveText('press q–x to pick a card');
   // shown in small letters like the rest of the app (CSS text-transform, Andreas #25)
   await expect(alice.locator('#ctl .ctl-key').first()).toHaveText('q', { useInnerText: true });
   await expect(alice.locator('.deck-hint')).toHaveCSS('text-transform', 'lowercase'); // hidden here (hint-off)
@@ -92,7 +92,7 @@ test('labels follow the layout map, the key stays physical (QWERTY, AZERTY) (F8,
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(21);
   await expect.poll(async () => (await KEY_LABELS(alice)).join('')).toBe('AZERTYUIOPQSDFGHJKLWX');
-  await expect(alice.locator('.deck-hint')).toHaveText('keys A–X pick a card');
+  await expect(alice.locator('.deck-hint')).toHaveText('press a–x to pick a card');
   await expect(alice.locator('#ctl .ctl-key').first()).toHaveText('a', { useInnerText: true });
   // the key in the top left corner picks the first card, whatever is printed on it
   await alice.keyboard.press('KeyQ');
@@ -147,7 +147,7 @@ test('control cards on the table: heading and description in every set, whole li
   await expect(alice.locator('#cbox')).toHaveAttribute('data-text-size', 'none');
   const question = tableCard(alice, 'Bob').locator('.pc');
   await expect(question.locator('.ttl')).toHaveText('question');
-  await expect(question.locator('.txt')).toHaveText('I have a question before I can estimate.');
+  await expect(question.locator('.txt')).toHaveText('I have a question first.');
   await expect(tableCard(alice, 'Alice').locator('.pc :is(.ttl, .txt)')).toHaveCount(0); // numbers stay without text
 
   // every description ends inside its card, on a whole line (line clamp), at any card size
