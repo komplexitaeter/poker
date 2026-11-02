@@ -248,6 +248,45 @@ test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills 
   await expect(bob.locator(`#ctl .ctl[data-card="${set.cards[16].card_key}"] svg.mot`)).toHaveCount(1);
 });
 
+test('an emoji as card text: counted as one character, played and shown on the table', async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Emoji');
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_change').click();
+  await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_scratch').click();
+  await alice.locator('#cs_name').fill('Party');
+
+  // card 1 becomes the text 🎉 (one character of 6, the hint without "no emoji")
+  await alice.locator('#cs_sym').click();
+  await alice.locator('#cs_opt_text').click();
+  await expect(alice.locator('#cs_text_help')).toContainText('letters, digits, signs or emoji');
+  await alice.locator('#cs_text').fill('🎉🎉🎉🎉🎉🎉🎉');
+  await expect(alice.locator('#cs_text_count')).toHaveText('7/6');
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#cs_text_err')).toHaveText('Up to 6 characters.');
+  await expect(alice.locator('#cs_text')).toBeFocused();
+  await alice.locator('#cs_text').fill('a\u202Eb');
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#cs_text_err')).toHaveText('Use visible characters only.');
+  await alice.locator('#cs_text').fill('🎉');
+  await expect(alice.locator('#cs_text_count')).toHaveText('1/6');
+  await expect(alice.locator('#cs_text_err')).toHaveCount(0);
+  await expect(alice.locator('[data-f="card:0"] .tv')).toHaveText('🎉');
+  await alice.locator('#cs_play').click();
+  await expect(editor(alice)).toBeHidden();
+  await expect(alice.locator('#toast')).toHaveText('Set saved and in play');
+
+  const set = (await lastJson(alice)).custom_sets[0];
+  expect(set.cards.map(c => [c.symbol, c.value])).toEqual([[null, '🎉'], ['s-2', '2']]);
+  const key = set.cards[0].card_key;
+  await expect(bob.locator(`#ctl .ctl[data-card="${key}"] .tv`)).toHaveText('🎉');
+  await alice.locator('#menu_close').click();
+  await pickCard(alice, key);
+  await pickCard(bob, set.cards[1].card_key);
+  await expect(tableCard(alice, 'Alice')).toHaveAttribute('data-card', key);
+  await expect(tableCard(alice, 'Alice').locator('.pc .tv')).toHaveText('🎉');
+});
+
 test('the limit of sets disables "+ New set"; Cancel without changes closes at once', async ({ browser }) => {
   const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Limit');
   const t = new URL(url).searchParams.get('t') as string;

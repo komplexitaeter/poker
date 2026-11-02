@@ -5122,6 +5122,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-body.cs-start { display: block; max-width: 640px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 16px; }
 .cs-start .cs-scratch { margin: 0; }
 .cs-start .dm-prow-b:focus-visible { outline-offset: -2px; }
+.cs-texthelp { display: flex; align-items: baseline; gap: 8px; }
 
 /* the question (discard, delete) over the editor */
 .cs-scrim { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: var(--scrim); }

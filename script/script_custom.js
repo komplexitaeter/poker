@@ -15,8 +15,8 @@
  *   at the end "+ Add card" (up to the limit - a bigger migrated set keeps its size but does not grow -, × down to 2 cards).
  * - Right, the selected card: Symbol (a button with the symbol and its name opens a picker: search field and a list
  *   grouped by Numbers, Sizes, Lights, Faces, Stars, "Text" on top; next to the button the text field of a text card,
- *   1-6 characters, no emoji), Heading (16), Description (160), Numeric value (default from custom_symbol_values, may
- *   be empty, decimals), Colour (custom_colors).
+ *   1-6 characters counted as graphemes, emoji allowed (Andreas), see csTextProblem()), Heading (16), Description
+ *   (160), Numeric value (default from custom_symbol_values, may be empty, decimals), Colour (custom_colors).
  * - Foot: Delete set (asks first), Cancel (asks first with unsaved changes; Esc the same), "Save & play" (only when the
  *   set is not in play: save and put it in play), Save. A hint when saving starts a new round.
  * - Save: api/custom_set_create.php (activate with "Save & play") or api/custom_set_save.php with rev; a 409 (someone
@@ -26,7 +26,8 @@
  * Only createElement / textContent / setAttribute (name and texts are free text); symbols and colours only from the
  * whitelists of the catalog; requests as JSON body. */
 
-const CS_TEXT_MAX = 6;
+const CS_TEXT_MAX = 6;            // graphemes (an emoji sequence counts as one)
+const CS_TEXT_CODEPOINTS_MAX = 48; // as api/lib_custom.php CUSTOM_VALUE_CODEPOINTS_MAX
 const CS_NAME_MAX = 24;
 const CS_HEADING_MAX = 16;
 const CS_DESCRIPTION_MAX = 160;
@@ -47,7 +48,7 @@ const CS_CATEGORIES = [
 const CS_ERRORS = {
     name: 'Give the set a name.',
     style: 'Choose a style.',
-    text: 'Up to 6 letters, digits or signs – no emoji.',
+    text: 'Up to 6 characters – letters, digits, signs or emoji.',
     symbol: 'Choose a symbol.',
     symbol_or_text: 'Choose a symbol or enter a text.',
     heading: 'Up to 16 characters, no control characters.',
@@ -187,12 +188,22 @@ function csSymbolColor(symbol) {
     return best;
 }
 
-/* a text of a card: 1 to 6 characters, no emoji (as is_custom_value_text() in api/lib_custom.php) */
-function csTextOk(text) {
-    const length = [...text].length;
-    return length >= 1 && length <= CS_TEXT_MAX
-        && !/[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE00}-\u{FE0F}\u{20E3}\p{Cc}\p{Cf}\p{Co}\p{Cs}]/u.test(text);
+/* the problem of a (trimmed) text of a card, null if fine (as is_custom_value_text() in api/lib_custom.php):
+ * 'empty'; 'long': more than 6 graphemes or 48 code points; 'chars': control / format characters (bidi, zero-width
+ * spaces; the emoji joiner U+200D is fine), private use, lone surrogates, or nothing visible */
+function csTextProblem(text) {
+    if (text === '') return 'empty';
+    if (textGraphemes(text) > CS_TEXT_MAX || [...text].length > CS_TEXT_CODEPOINTS_MAX) return 'long';
+    if (/[\p{Cc}\p{Co}\p{Cs}]|(?!\u200D)\p{Cf}/u.test(text)) return 'chars';
+    if (!/[^\p{Z}\p{M}\s\u200D]/u.test(text)) return 'chars';
+    return null;
 }
+
+function csTextOk(text) {
+    return csTextProblem(text) === null;
+}
+
+const CS_TEXT_ERRORS = { empty: 'Enter a text.', long: 'Up to 6 characters.', chars: 'Use visible characters only.' };
 
 /* the value field as a number: '' -> null, '1,5' -> 1.5, undefined if it is no number */
 function csNumber(value) {
@@ -825,20 +836,30 @@ function csSymbolField(card) {
         input.type = 'text';
         input.id = 'cs_text';
         input.className = 'field cs-mono';
-        input.maxLength = 12; // the check counts characters, not UTF-16 units
+        input.maxLength = CS_TEXT_CODEPOINTS_MAX * 2; // UTF-16 units; the check counts graphemes and code points
         input.autocomplete = 'off';
         input.placeholder = 'e.g. XL';
         input.value = card.text;
         input.setAttribute('data-f', 'text');
-        input.setAttribute('aria-label', 'Text (up to 6 characters, no emoji)');
+        input.setAttribute('aria-label', 'Text');
+        const help = csEl('p', 'hint cs-texthelp');
+        help.id = 'cs_text_help';
+        const helpText = csEl('span', null, 'Up to 6 characters – letters, digits, signs or emoji.');
+        const counter = csEl('span', 'cs-ctr', textGraphemes(card.text.trim()) + '/' + CS_TEXT_MAX);
+        counter.id = 'cs_text_count';
+        counter.setAttribute('aria-hidden', 'true');
+        help.append(helpText, counter);
+        input.setAttribute('aria-describedby', help.id);
         input.addEventListener('input', () => {
             card.text = input.value;
+            counter.textContent = textGraphemes(input.value.trim()) + '/' + CS_TEXT_MAX;
             if (csTextOk(input.value.trim())) csClearError('text', input);
             csRefreshCard();
         });
         row.appendChild(input);
         box.appendChild(row);
-        csFieldError(box, input, 'text', null);
+        csFieldError(box, input, 'text', help.id);
+        box.appendChild(help);
     } else {
         box.appendChild(row);
     }
@@ -1282,7 +1303,7 @@ function csCheck() {
         };
         if (Object.values(bad).some(Boolean)) {
             gCs.errors.card = i;
-            if (bad.text) gCs.errors.text = card.text.trim() === '' ? 'Enter a text.' : CS_ERRORS.text;
+            if (bad.text) gCs.errors.text = CS_TEXT_ERRORS[csTextProblem(card.text.trim())];
             if (bad.heading) gCs.errors.heading = CS_ERRORS.heading;
             if (bad.description) gCs.errors.description = CS_ERRORS.description;
             if (bad.value) gCs.errors.value = CS_ERRORS.numeric_value;
