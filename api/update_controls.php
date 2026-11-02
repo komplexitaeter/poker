@@ -34,7 +34,8 @@ if ($team === null) {
     exit;
 }
 $old = $team['deck'];
-$new = resolve_deck($old['id'], implode(',', $old['cards']), implode(',', $keys), (int)$team['deck_rev'], $catalog);
+$new = resolve_deck($old['id'], implode(',', $old['cards']), implode(',', $keys), (int)$team['deck_rev'], $catalog,
+                   $team['custom_sets']);
 $changed = $new['controls'] !== $old['controls'] || $team['deck_id'] !== $old['id'];
 if ($changed) {
     store_team_deck($link, $t, $new, $catalog, false);

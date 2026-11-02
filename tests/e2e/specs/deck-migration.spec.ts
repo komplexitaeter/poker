@@ -112,10 +112,8 @@ test('presets, subsets and mixed decks are derived from the bitmask', async ({ b
       { id: 'traffic', cards: ['green01', 'yellow1', 'red0001'], controls: ['break01'] }],
     // only in Numbers: 4 6 7
     ['numbers subset', flags([5, 7, 8]), { id: 'numbers', cards: ['four001', 'six0001', 'seven01'] }],
-    // Fibonacci + an emotion: no single group -> default deck with all cards, controls kept
-    ['mixed', flags([2, 3, 4, 18, 43]),
-      { id: 'fib-classic', cards: ['zero001', '1pnt501', 'one0001', 'two0001', 'three01', 'five001', 'eight01',
-        'thrtn01', 'twnty01', '4ty0001', 'hundro1', 'infin01'], controls: ['qstmrk1'] }],
+    // Fibonacci + an emotion: no single group -> B-98 S4: a custom set "Previous deck" (custom-sets.spec.ts), controls kept
+    ['mixed', flags([2, 3, 4, 18, 43]), { group: 'custom', controls: ['qstmrk1'] }],
   ];
   for (const [name, cardsetFlags, expected] of cases) {
     setLegacyFlags(teamId, cardsetFlags);
