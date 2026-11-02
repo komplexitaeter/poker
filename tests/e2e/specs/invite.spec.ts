@@ -3,8 +3,8 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 
 /**
  * R3 review V1/V2 (Andreas, 2026-11-02): "Invite" is the primary action in the header (accent, share icon, label on
- * every width). With navigator.share a click opens the native share menu; without it (or when sharing fails) the
- * link is copied and the button itself says "Copied" (check icon) for 2 s, screen readers hear "Link copied" (no toast). Cancelling the share menu does
+ * every width). On touch devices with navigator.share a click opens the native share menu; on desktops (Andreas,
+ * 2026-11-02: the share menu hides copying there), without it or when sharing fails the link is copied and the button itself says "Copied" (check icon) for 2 s, screen readers hear "Link copied" (no toast). Cancelling the share menu does
  * nothing. The team name still copies the link, confirmed at the button. The tip in the column names the button.
  * V8: the average pointer switch has no lock and the board no red flash.
  */
@@ -40,9 +40,9 @@ async function stubClipboard(page: Page): Promise<void> {
 const shared = (page: Page) => page.evaluate(() => (window as unknown as { shared: { url: string; title: string }[] }).shared);
 const copied = (page: Page) => page.evaluate(() => (window as unknown as { copied: string[] }).copied);
 
-test('desktop without share: Invite copies the link and confirms at the button, no toast (V1, V2)', async ({ browser }) => {
+test('desktop, even with navigator.share: Invite copies the link and confirms at the button, no toast (V1, V2)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
-  await stubShare(alice, 'none');
+  await stubShare(alice, 'ok');
   await stubClipboard(alice);
   const url = await createTeam(alice, 'Invite Copy');
   await joinAsPlayer(alice, url, 'Alice');
@@ -51,7 +51,7 @@ test('desktop without share: Invite copies the link and confirms at the button, 
   await expect(invite).toBeVisible();
   await expect(invite).toHaveText('Invite');
   // label in name (WCAG 2.5.3)
-  await expect(alice.getByRole('button', { name: 'Invite – share board link' })).toHaveCount(1);
+  await expect(alice.getByRole('button', { name: 'Invite – copy board link' })).toHaveCount(1);
   // accent fill: the primary action of the header
   const colors = await invite.evaluate(el => {
     const s = getComputedStyle(el);
@@ -70,6 +70,7 @@ test('desktop without share: Invite copies the link and confirms at the button, 
   await expect(invite).toHaveClass(/is-done/);
   await expect(alice.locator('#invite_status')).toHaveText('Link copied');
   expect(await copied(alice)).toEqual([url]);
+  expect(await shared(alice)).toEqual([]); // no share menu on desktops
   await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   // back after 2 s
   await expect(invite).toHaveText('Invite', { timeout: 4000 });
@@ -81,28 +82,29 @@ test('desktop without share: Invite copies the link and confirms at the button, 
   expect(await copied(alice)).toEqual([url, url]);
 });
 
-test('with navigator.share: Invite opens the share menu, nothing is copied (V2)', async ({ browser }) => {
-  const alice = await newPlayer(browser, { viewport: DESKTOP });
+test('touch tablet with navigator.share: Invite opens the share menu, nothing is copied (V2)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: TABLET, hasTouch: true });
   await stubShare(alice, 'ok');
   await stubClipboard(alice);
   const url = await createTeam(alice, 'Invite Share');
   await joinAsPlayer(alice, url, 'Alice');
 
-  await alice.locator('#invite_btn').click();
+  await expect(alice.getByRole('button', { name: 'Invite – share board link' })).toHaveCount(1);
+  await alice.locator('#invite_btn').tap();
   await expect.poll(() => shared(alice)).toEqual([{ title: 'Invite Share – Agile Poker', url }]);
   expect(await copied(alice)).toEqual([]);
   await expect(alice.locator('#invite_btn')).toHaveText('Invite');
 });
 
-test('share menu cancelled: nothing happens; share refused: the link is copied instead (V2)', async ({ browser }) => {
+test('touch: share menu cancelled: nothing happens; share refused: the link is copied instead (V2)', async ({ browser }) => {
   for (const mode of ['abort', 'refused'] as const) {
-    const alice = await newPlayer(browser, { viewport: DESKTOP });
+    const alice = await newPlayer(browser, { viewport: TABLET, hasTouch: true });
     await stubShare(alice, mode);
     await stubClipboard(alice);
     const url = await createTeam(alice, 'Invite ' + mode);
     await joinAsPlayer(alice, url, 'Alice');
 
-    await alice.locator('#invite_btn').click();
+    await alice.locator('#invite_btn').tap();
     await expect.poll(async () => (await shared(alice)).length).toBe(1);
     if (mode === 'abort') {
       await alice.waitForTimeout(300);

@@ -2426,12 +2426,25 @@ function toggleTopic(event) {
     button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
 }
 
-/* R3 review V2: "Invite" in the header. Where the browser can share (navigator.share: phones, tablets, some desktops)
- * the native share menu opens; else, or when sharing fails, the link is copied (copyLink). Cancelling the share
- * menu does nothing. */
+/* R3 review V2: "Invite" in the header. On touch devices (gTouchQuery, as for the "tap" tip) with navigator.share the
+ * native share menu opens; elsewhere (Andreas: on desktops the share menu hides copying), or when sharing fails, the
+ * link is copied (copyLink). Cancelling the share menu does nothing. */
+function inviteShares() {
+    return gTouchQuery.matches && typeof navigator.share === 'function';
+}
+
+/* the accessible name says what a click does: share (touch) or copy */
+function updateInviteLabel() {
+    let button = document.getElementById('invite_btn');
+    if (button === null) return;
+    button.setAttribute('aria-label', inviteShares() ? 'Invite – share board link' : 'Invite – copy board link');
+}
+document.addEventListener('DOMContentLoaded', updateInviteLabel);
+gTouchQuery.addEventListener('change', updateInviteLabel);
+
 function inviteTeam() {
     let url = window.location.href;
-    if (typeof navigator.share === 'function') {
+    if (inviteShares()) {
         let name = document.getElementById('team_name').textContent;
         let data = { title: name ? name + ' – Agile Poker' : 'Agile Poker', url: url };
         let share;
