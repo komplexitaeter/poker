@@ -56,6 +56,33 @@ test('start page on a phone: the empty-name message sits between the field and t
   expect(button.y).toBeGreaterThanOrEqual(error.y + error.height);
 });
 
+test('a board link names the team above the name field (R3 review V4)', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Team <b>Phoenix</b>');
+  await expect(alice.locator('#join_title')).toHaveText('Join Team <b>Phoenix</b>'); // as text
+  await expect(alice.locator('#join_title b')).toHaveCount(0);
+  const bob = await newPlayer(browser);
+  await bob.goto(url);
+  await expect(bob.locator('#join_title')).toBeVisible();
+  await expect(bob.locator('#join_title')).toHaveText('Join Team <b>Phoenix</b>');
+  await joinAsPlayer(bob, url, 'Bob');
+  await expect(bob.locator('#join_title')).toBeHidden();
+});
+
+test('a board link that does not work: the start page says so (R3 review V5)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  await page.goto('/?t=NoSuchBoard42');
+  await expect(page.locator('#teaminput')).toBeVisible();
+  const error = page.locator('#link_err');
+  await expect(error).toBeVisible();
+  await expect(error).toHaveText("This board link doesn't work. Ask your team for the link again or create a new board.");
+  await expect(error).not.toContainText('NoSuchBoard42');
+  // the start page without a link: no message
+  await page.goto('/');
+  await expect(page.locator('#teaminput')).toBeVisible();
+  await expect(error).toBeHidden();
+});
+
 test('two players join and see each other', async ({ browser }) => {
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'Join Team');

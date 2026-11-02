@@ -22,6 +22,11 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
   const rows = alice.locator('#deck_menu .dm-prow-b');
   await expect(rows).toHaveCount(8);
   await expect(rows.filter({ hasText: 'Fibonacci' })).toHaveAttribute('aria-current', 'true');
+  // the current set: the check icon (#i-check), fully inside its row (Andreas: it was cut off on the right)
+  const tick = rows.filter({ hasText: 'Fibonacci' }).locator('.dm-tick');
+  await expect(tick.locator('use')).toHaveAttribute('href', '#i-check');
+  const [tickBox, rowBox] = [(await tick.boundingBox())!, (await rows.filter({ hasText: 'Fibonacci' }).boundingBox())!];
+  expect(tickBox.x + tickBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width - 4);
   await expect(rows.filter({ hasText: 'J.U.D.G.E.' }).locator('.dm-fan .dkc')).toHaveCount(4);
   await expect(alice.locator('#deck_pick_title')).toBeFocused();
   await rows.filter({ hasText: 'J.U.D.G.E.' }).click();
@@ -177,7 +182,7 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   await expect(alice.locator('#deck_round_hint')).toHaveCount(0);
 });
 
-test('a variant is a preset: Pure Fibonacci, then 100 on as well (custom), Classic sets its cards again', async ({ browser }) => {
+test('a variant is a preset: Pure, then 100 on as well (custom), Classic sets its cards again', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Preset');
   await alice.locator('#cset_btn').click();
   const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
@@ -193,8 +198,8 @@ test('a variant is a preset: Pure Fibonacci, then 100 on as well (custom), Class
   await expect(toggle(alice, 'sixty01')).toHaveAttribute('aria-pressed', 'false');
   await expect(toggle(alice, 'eighty9')).toHaveAttribute('aria-pressed', 'false');
 
-  // Pure Fibonacci: its cards on, the others off
-  await variant('Pure Fibonacci').check();
+  // Pure: its cards on, the others off
+  await variant('Pure').check();
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'false');
   await expect(toggle(alice, '2tyone1')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => trayKeys(bob)).not.toContain('hundro1');
@@ -203,7 +208,7 @@ test('a variant is a preset: Pure Fibonacci, then 100 on as well (custom), Class
   await toggle(alice, 'hundro1').click();
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
-  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: Pure Fibonacci + 100');
+  await expect(alice.locator('#deck_variant_hint')).toHaveText('Custom: Pure + 100');
   for (const page of [alice, bob]) {
     await expect.poll(() => trayKeys(page)).toEqual(['zero001', 'one0001', 'two0001', 'three01', 'five001', 'eight01',
       'thrtn01', '2tyone1', '3tyfr01', '5tyfve1', 'hundro1', 'break01', 'qstmrk1']);
@@ -214,9 +219,9 @@ test('a variant is a preset: Pure Fibonacci, then 100 on as well (custom), Class
   await expect(toggle(alice, 'hundro1')).toHaveAttribute('aria-pressed', 'true');
   await expect(alice.locator('#deck_variant input:checked')).toHaveCount(0);
 
-  // 100 off again: exactly Pure Fibonacci, marked again
+  // 100 off again: exactly Pure, marked again
   await toggle(alice, 'hundro1').click();
-  await expect(variant('Pure Fibonacci')).toBeChecked();
+  await expect(variant('Pure')).toBeChecked();
 
   // Classic sets its cards again
   await toggle(alice, 'infin01').click();
