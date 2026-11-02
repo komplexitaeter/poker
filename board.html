@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=1.96" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=1.97" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -16,7 +16,7 @@
     <script defer src="script/cards.js?v=1.14" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.3" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.8" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.86" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.87" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -229,7 +229,7 @@
 
             <section id="topic_box" class="menu_sec" data-sec="topic" data-title="Topic" hidden>
                 <label class="lab" for="topic_txt">What are you estimating? (optional, Markdown works)</label>
-                <textarea maxlength="1800" rows="7" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="field" onkeydown="topicChanged()"></textarea>
+                <textarea maxlength="1800" rows="7" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="field" oninput="topicChanged()"></textarea>
                 <div class="row end">
                     <button type="button" id="topic_reset" class="btn-box" onclick="reset_topic()">Undo</button>
                     <button type="button" id="topic_save" class="btn-box primary" onclick="save_topic()">Save</button>
@@ -464,8 +464,8 @@
 <div id="overlay_name_input" class="overlay overlay_panel hidden topnav">
     <label for="nameinput"></label><input id="nameinput" class="topnav" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
     <div id="removed_msg" class="overlay_msg">
-        <h1>You were temporarily kicked out of the game</h1>
-        <span>This usually happens when you have been off for a while and someone removes you from the table. What do you want to do now?</span>
+        <h1>You were removed from the table</h1>
+        <span>This usually happens when you have been away for a while. What do you want to do now?</span>
     </div>
     <input id="become_player_btn" class="btn topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
     <input id="become_observer_btn" class="btn topnav" type="button" value="Become Observer" tabindex="3" disabled />

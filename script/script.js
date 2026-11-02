@@ -375,17 +375,26 @@ const DECK_KEY_CODES = [
 ];
 
 /* the label under a card: the character of the key in the user's layout. navigator.keyboard.getLayoutMap()
- * tells it (Chromium); where it is missing (Firefox, Safari) the labels follow QWERTZ: most teams on the
- * board work with German keyboards (komplexitaeter.de), and for QWERTY only Y and Z swap places. */
-const DECK_KEY_LABELS_QWERTZ = {
-    KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyT: 'T', KeyY: 'Z', KeyU: 'U', KeyI: 'I', KeyO: 'O', KeyP: 'P',
+ * tells it (Chromium); where it is missing (Firefox, Safari) the browser language guesses it (R3 review E9):
+ * QWERTZ for German and the other QWERTZ languages, QWERTY otherwise (only Y and Z swap places). */
+const DECK_KEY_LABELS_QWERTY = {
+    KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyT: 'T', KeyY: 'Y', KeyU: 'U', KeyI: 'I', KeyO: 'O', KeyP: 'P',
     KeyA: 'A', KeyS: 'S', KeyD: 'D', KeyF: 'F', KeyG: 'G', KeyH: 'H', KeyJ: 'J', KeyK: 'K', KeyL: 'L',
-    KeyZ: 'Y', KeyX: 'X', KeyC: 'C', KeyV: 'V', KeyB: 'B', KeyN: 'N', KeyM: 'M',
+    KeyZ: 'Z', KeyX: 'X', KeyC: 'C', KeyV: 'V', KeyB: 'B', KeyN: 'N', KeyM: 'M',
 };
-let gDeckKeyLabels = DECK_KEY_LABELS_QWERTZ;
+const DECK_KEY_LABELS_QWERTZ = { ...DECK_KEY_LABELS_QWERTY, KeyY: 'Z', KeyZ: 'Y' };
+const QWERTZ_LANGS = ['de', 'cs', 'sk', 'hu', 'sl', 'hr', 'sq'];
+
+function defaultDeckKeyLabels() {
+    const lang = String(navigator.language || '').toLowerCase().split('-')[0];
+    return QWERTZ_LANGS.includes(lang) ? DECK_KEY_LABELS_QWERTZ : DECK_KEY_LABELS_QWERTY;
+}
+
+const DECK_KEY_LABELS_DEFAULT = defaultDeckKeyLabels();
+let gDeckKeyLabels = DECK_KEY_LABELS_DEFAULT;
 
 function deckKeyLabel(code) {
-    return gDeckKeyLabels[code] || DECK_KEY_LABELS_QWERTZ[code];
+    return gDeckKeyLabels[code] || DECK_KEY_LABELS_DEFAULT[code];
 }
 
 /* reads the layout (again: on load and when the window gets the focus back, the user may have switched it) */
@@ -396,14 +405,14 @@ function loadDeckKeyLayout() {
         const labels = {};
         DECK_KEY_CODES.forEach(code => {
             const char = map.get(code);
-            // one printable character only; anything else keeps the QWERTZ label
+            // one printable character only; anything else keeps the default label
             labels[code] = typeof char === 'string' && [...char].length === 1 && char.trim() !== ''
-                ? char.toUpperCase() : DECK_KEY_LABELS_QWERTZ[code];
+                ? char.toUpperCase() : DECK_KEY_LABELS_DEFAULT[code];
         });
         if (DECK_KEY_CODES.every(code => labels[code] === gDeckKeyLabels[code])) return;
         gDeckKeyLabels = labels;
         updateDeckKeys();
-    }).catch(() => {}); // e.g. not allowed in a frame: QWERTZ
+    }).catch(() => {}); // e.g. not allowed in a frame: the default labels
 }
 
 function updateDeckKeys() {
@@ -1264,9 +1273,28 @@ function holderName(holder) {
     return span === null ? '' : span.textContent;
 }
 
-/* touch: the tap mode starts once a card or an observer has a smiley (style.css: #cbox:has(.react)) */
+/* touch: the tap mode, also alone at the table (R3 review E6: the own trash can only after a tap, as with others).
+ * #table.tap-mode marks it for style.css; set on start and when the device changes (e.g. a mouse plugged in). */
 function tapMode() {
-    return gTapQuery.matches && document.querySelector('#cbox .react, #observers .react') !== null;
+    return gTapQuery.matches;
+}
+
+function syncTapModeClass() {
+    const table = document.getElementById('table');
+    if (table !== null) table.classList.toggle('tap-mode', tapMode());
+}
+
+/* touch: while a popover or the circles of a card are open, a tap into the header only closes them
+ * (R3 review E5: the team name would copy the link). Capture phase: before the onclick of the button. */
+function onHeadClickCapture(event) {
+    if (!tapMode()) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target === null || target.closest('header.head') === null) return;
+    if (gPop === null && document.querySelector('#cbox .c.is-open, #observers .obs.is-open') === null) return;
+    closePopover(false);
+    setOpenHolder(null);
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 function setOpenHolder(holder) {
@@ -1583,9 +1611,10 @@ function onTableClick(event) {
         return;
     }
 
-    // a tap elsewhere closes an open popover first (and does nothing else)
+    // a tap elsewhere closes an open popover first, with the circles of its card (and does nothing else)
     if (gPop !== null) {
         closePopover(false);
+        setOpenHolder(null);
         return;
     }
 
@@ -1697,6 +1726,14 @@ function afterTableUpdate() {
 
 function initTableInteraction() {
     document.addEventListener('click', onTableClick);
+    document.addEventListener('click', onHeadClickCapture, true);
+    syncTapModeClass();
+    const onTapQueryChange = () => {
+        syncTapModeClass();
+        if (!tapMode()) setOpenHolder(null);
+    };
+    if (typeof gTapQuery.addEventListener === 'function') gTapQuery.addEventListener('change', onTapQueryChange);
+    else if (typeof gTapQuery.addListener === 'function') gTapQuery.addListener(onTapQueryChange); // Safari < 14
     document.addEventListener('keydown', onPopoverKeydown, true);
     const reposition = () => { repositionPopover(); repositionTapHint(); };
     window.addEventListener('resize', reposition);
@@ -2403,10 +2440,20 @@ function toggleTopic(event) {
     button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
 }
 
+/* copies the board link; where the browser refuses (no permission, http, a web view) the link shows in a field,
+ * selected, to copy by hand (R3 review E7) */
 function copyLink() {
     let text = window.location.href;
-    navigator.clipboard.writeText(text).then(function() {
+    let done;
+    try {
+        done = navigator.clipboard.writeText(text);
+    } catch (e) {
+        done = Promise.reject(e); // no navigator.clipboard (http)
+    }
+    done.then(function () {
         showToast('Board link copied');
+    }, function () {
+        window.prompt('Copy the board link:', text);
     });
 }
 

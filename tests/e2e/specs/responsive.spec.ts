@@ -142,8 +142,11 @@ test('touch tablet: delete icon visible without hover (B-36), after a tap with o
   const alice = await newPlayer(browser, { viewport, hasTouch: true });
   const url = await createTeam(alice, 'RespTouch');
   await joinAsPlayer(alice, url, 'Alice');
-  // alone at the table: no smiley, the trash can shows as before
+  // alone at the table: the own trash can after a tap only, as with others (R3 review E6)
+  await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '0');
+  await tableCard(alice, 'Alice').locator('.pc').tap();
   await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
+  await tableCard(alice, 'Alice').locator('.pc').tap();
 
   // a mouse device of the same size shows it on hover only
   const bob = await newPlayer(browser, { viewport });
