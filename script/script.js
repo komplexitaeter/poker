@@ -2575,11 +2575,11 @@ function confirmInvite(text, label = 'Copied') {
 }
 
 /* Short message that pops up from the bottom edge for a moment (style.css, .toast).
- * R3 review V1: only for things without a trigger on the own screen (sent feedback is gone from the form);
- * the result of an own click shows at that control (Invite button, deck status line, timer status).
- * Plain text only (textContent). Calling it again replaces the text and restarts the timer. */
+ * R3 review V1: the result of an own click shows at that control (Invite button, timer status), else a toast
+ * (sent feedback, the deck menu: R3 review, Andreas). Plain text only (textContent). Calling it again replaces the
+ * text and restarts the timer; ms: how long it stays (the deck menu: a little longer). */
 let gToastTimer = null;
-function showToast(text) {
+function showToast(text, ms = 2200) {
     let toast = document.getElementById('toast');
     // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
     // (closeMenu() puts it back)
@@ -2591,7 +2591,7 @@ function showToast(text) {
     clearTimeout(gToastTimer);
     gToastTimer = setTimeout(function () {
         toast.classList.remove('toast-on');
-    }, 2200);
+    }, ms);
 }
 
 
