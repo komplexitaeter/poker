@@ -3,7 +3,10 @@
  * B-98 S4: creates a custom set of the team.
  * POST ?t=<team>&id=<player id, optional>, JSON body: {name, style, cards: [card, ...], activate: bool (optional, default false)}
  *   card: {symbol: id of card_catalog.json custom_symbols | text: 1-6 characters, no emoji (exactly one of both),
- *          heading?: <= 16, description?: <= 160, numeric_value?: number | null, color: card_catalog.json custom_colors}
+ *          heading?: <= 16, description?: <= 160, numeric_value?: number | null, color: card_catalog.json custom_colors,
+ *          key?: card_key of a catalog group card (template, e.g. 'infin01'): then symbol and color of that catalog card
+ *          are allowed even if they are not in custom_symbols/custom_colors}
+ * - at most custom_cards_max() cards (_CUSTOM_CARDS_MAX, default 20), otherwise 400 {error: 'too_many_cards', max}
  * - 400 {error, index?}: malformed body or card (error codes: body, name, style, cards, no_cards, too_many_cards, card,
  *   key, duplicate_key, symbol_or_text, symbol, text, heading, description, numeric_value, color), set_limit (the team
  *   has custom_sets_max() sets already), catalog (no valid card_catalog.json)
@@ -28,7 +31,7 @@ $head = validate_custom_set_head($data, $catalog);
 if (isset($head['error'])) custom_fail(400, $head['error']);
 $checked = validate_custom_cards($data['cards'] ?? null, array(), $catalog);
 if (isset($checked['error'])) custom_fail(400, $checked['error'], isset($checked['index']) ? array('index' => $checked['index']) : array());
-if (count($checked['cards']) > CUSTOM_CARDS_MAX) custom_fail(400, 'too_many_cards');
+if (count($checked['cards']) > custom_cards_max()) custom_fail(400, 'too_many_cards', array('max' => custom_cards_max()));
 $activate = ($data['activate'] ?? false) === true;
 
 $link->begin_transaction();

@@ -17,3 +17,7 @@ const _MYSQL_PORT = 3306;
 // B-81: UDP port of poker-msg for notifications from the API ("pull:<team_id>" to 127.0.0.1), default 8444.
 // Only needed if poker-msg runs with a different POKER_MSG_NOTIFY_PORT.
 // const _POKER_MSG_NOTIFY_PORT = 8444;
+
+// B-98: limits of custom card sets: sets per team (default 5) and cards per set (default 20)
+// const _CUSTOM_SETS_MAX = 5;
+// const _CUSTOM_CARDS_MAX = 20;

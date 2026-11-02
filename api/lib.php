@@ -1051,7 +1051,7 @@ function getDao($t, $id) {
         "deck"=>$deck, // B-98: {id, group, cards, controls, rev}, card data in card_catalog.json (B-98 S4: custom_sets)
         "custom_sets"=>array_values($custom_sets), // B-98 S4: [{set_id, deck_id, name, style, rev, cards}]
         "custom_cards_played"=>$custom_played, // B-98 S4: inactive custom cards still on the table
-        "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>CUSTOM_CARDS_MAX),
+        "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>custom_cards_max()),
         "topic"=>(String)$topic,
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
