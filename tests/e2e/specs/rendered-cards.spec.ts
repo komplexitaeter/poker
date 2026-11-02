@@ -44,10 +44,10 @@ test('table and deck cards are rendered with a symbol and an accessible name', a
   await expect(five).toHaveAttribute('aria-label', '5');
   await expect(five).toHaveAttribute('aria-pressed', 'false');
   await expect(five.locator('svg.mot use')).toHaveAttribute('href', /src\/cards\.svg\?v=\d+#s-5$/);
-  await expect(deckCard(alice, 'break01')).toHaveAttribute('aria-label', 'need a break');
+  await expect(deckCard(alice, 'break01')).toHaveAttribute('aria-label', 'break');
   await expect(deckCard(alice, '1pnt501')).toHaveAttribute('aria-label', 'one half');
   // F7: control cards show their heading in a Fibonacci deck too (numbers stay without text)
-  await expect(deckCard(alice, 'break01').locator('.dh')).toHaveText('need a break');
+  await expect(deckCard(alice, 'break01').locator('.dh')).toHaveText('break');
   await expect(five.locator('.dh')).toHaveCount(0);
 
   // status cards while voting: ready (check) and thinking (thought bubble), each with a name
@@ -70,10 +70,10 @@ test('table and deck cards are rendered with a symbol and an accessible name', a
   await expect(tableCard(alice, 'Bob').locator('.pc use')).toHaveAttribute('href', /#s-3$/);
   await expect(tableCard(alice, 'Bob').locator('.pc :is(.ttl, .txt)')).toHaveCount(0);
   const coffee = tableCard(alice, 'Carol').locator('.pc');
-  await expect(coffee).toHaveAttribute('aria-label', 'need a break. I need a short break before we go on.');
+  await expect(coffee).toHaveAttribute('aria-label', 'break. I need a short break.');
   await expect(coffee.locator('use')).toHaveAttribute('href', /#s-coffee$/);
-  await expect(coffee.locator('.ttl')).toHaveText('need a break');
-  await expect(coffee.locator('.txt')).toHaveText('I need a short break before we go on.');
+  await expect(coffee.locator('.ttl')).toHaveText('break');
+  await expect(coffee.locator('.txt')).toHaveText('I need a short break.');
   await expect(coffee).not.toHaveClass(/one-text/);
 });
 
@@ -99,27 +99,24 @@ test('picture symbols: headings and descriptions on the table, mini symbols in t
   await setDeck(alice, url, PICTURES);
   await expect(deckCards(alice)).toHaveCount(PICTURES.length);
   // a deck with texts: the deck cards show their headings, control cards too
-  await expect(deckCard(alice, 'green01').locator('.dh')).toHaveText('green light');
-  await expect(deckCard(alice, 'break01').locator('.dh')).toHaveText('need a break');
+  await expect(deckCard(alice, 'green01').locator('.dh')).toHaveText('green');
+  await expect(deckCard(alice, 'break01').locator('.dh')).toHaveText('break');
 
   await setCard(alice, url, bob, 'red0001');
   await pickCard(alice, 'green01');
   const red = tableCard(alice, 'Bob').locator('.pc');
-  await expect(red).toHaveAttribute('aria-label', 'red light. I see a blocker. Let\'s talk before we go on.');
-  await expect(red.locator('.ttl')).toHaveText('red light');
+  await expect(red).toHaveAttribute('aria-label', 'red. I see a blocker. Let\'s talk before we go on.');
+  await expect(red.locator('.ttl')).toHaveText('red');
   await expect(red.locator('.txt')).toHaveText('I see a blocker. Let\'s talk before we go on.');
   await expect(red.locator('use')).toHaveAttribute('href', /#s-light-red$/);
   await expect(red).not.toHaveClass(/one-text/); // heading and description: the description stays thin
 
   const spreadValue = alice.locator('#spread_bars [data-card="green01"] .spread-value');
   await expect(spreadValue.locator('.mini use')).toHaveAttribute('href', /#s-light-green$/);
-  await expect(spreadValue.locator('.mini')).toHaveAttribute('title', 'green light');
-  // the range: both ends as mini symbols (B-99 F6, no system emoji)
-  const range = alice.locator('#spread_range');
-  await expect(range.locator('.mini use')).toHaveCount(2);
-  await expect(range.locator('.mini use').first()).toHaveAttribute('href', /#s-light-green$/);
-  await expect(range.locator('.mini use').last()).toHaveAttribute('href', /#s-light-red$/);
-  await expect(range).toHaveText('green light – red light'); // the names for screen readers
+  await expect(spreadValue.locator('.mini')).toHaveAttribute('title', 'green');
+  // R3 review V10 (L22): traffic lights have no range, the chart says it all
+  await expect(alice.locator('#spread .side-label')).toHaveText('result');
+  await expect(alice.locator('#spread_range')).toHaveText('');
 });
 
 test('the info line shows heading and description on hover and keyboard focus; arrows move in the deck', async ({ browser }) => {
@@ -135,7 +132,7 @@ test('the info line shows heading and description on hover and keyboard focus; a
   await expect(info).toBeHidden();
   await deckCard(alice, 'break01').hover();
   await expect(info).toBeVisible();
-  await expect(info).toHaveText('need a break — I need a short break before we go on.');
+  await expect(info).toHaveText('break — I need a short break.');
   await expect(info.locator('.deck-info-value .mini use')).toHaveAttribute('href', /#s-coffee$/); // no emoji (F6)
   await alice.mouse.move(5, 5);
   await expect(info).toBeHidden();
@@ -145,7 +142,7 @@ test('the info line shows heading and description on hover and keyboard focus; a
   await expect(info).toBeHidden();
   await alice.keyboard.press('ArrowRight');
   await expect(deckCard(alice, 'break01')).toBeFocused();
-  await expect(info).toContainText('need a break');
+  await expect(info).toContainText('break');
   await alice.keyboard.press('ArrowRight');
   await expect(deckCard(alice, 'qstmrk1')).toBeFocused();
   await expect(info).toContainText('question');
@@ -164,7 +161,7 @@ test('touch: the hint line names the control card in the middle of the carousel'
   const line = alice.locator('#deck_pick');
   await expect(line).toHaveText('tap to pick a card');
   await deckCard(alice, 'break01').evaluate(el => el.parentElement!.scrollIntoView({ inline: 'center' }));
-  await expect(line).toHaveText('tap to pick · need a break');
+  await expect(line).toHaveText('tap to pick · break');
   await expect(line.locator('b .mini use')).toHaveAttribute('href', /#s-coffee$/); // no emoji (F6)
 });
 
@@ -258,7 +255,7 @@ test('one text on a card: bold like a heading on the table (emotions, stars), no
   expect(await uninterested.locator('.txt').evaluate(el => getComputedStyle(el).fontFamily)).toBe(await font('body'));
   // F8: the control card in a one-word deck: heading and description (the description thin, not one-text)
   const coffee = tableCard(alice, 'Carol').locator('.pc');
-  await expect(coffee.locator('.ttl')).toHaveText('need a break');
-  await expect(coffee.locator('.txt')).toHaveText('I need a short break before we go on.');
+  await expect(coffee.locator('.ttl')).toHaveText('break');
+  await expect(coffee.locator('.txt')).toHaveText('I need a short break.');
   await expect(coffee).not.toHaveClass(/one-text/);
 });

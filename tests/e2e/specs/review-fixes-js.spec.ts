@@ -56,6 +56,7 @@ test('removed: the overlay says "You were removed from the table" (E3)', async (
   const msg = alice.locator('#removed_msg');
   await expect(msg).toBeVisible();
   await expect(msg.locator('h1')).toHaveText('You were removed from the table');
+  await expect(alice.locator('#join_title')).toBeHidden(); // R3 review V4: not when removed
   await expect(msg.locator('span')).toHaveText(
     'Usually a teammate does this when you have been away for a while. What do you want to do now?');
 });
@@ -100,8 +101,9 @@ test('touch: a tap next to the emoji bar closes it and the circles, the team nam
 
   // nothing open: the team name copies the link
   await alice.locator('#team_name').tap();
-  await expect(toast).toHaveText('Board link copied');
-  await expect(toast).toHaveClass(/toast-on/);
+  // R3 review V1: confirmed at the Invite button, not as a toast
+  await expect(alice.locator('#invite_btn')).toHaveText('Copied');
+  await expect(toast).not.toHaveClass(/toast-on/);
 });
 
 test('touch: alone at the table the own trash can shows after a tap only (E6)', async ({ browser }) => {
@@ -129,6 +131,7 @@ for (const variant of ['refused', 'missing'] as const) {
         value: v === 'missing' ? undefined
           : { writeText: () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError')) },
       });
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined }); // the copy path (V2)
     }, variant);
     const url = await createTeam(alice, 'Copy Refused');
     await joinAsPlayer(alice, url, 'Alice');
@@ -137,9 +140,10 @@ for (const variant of ['refused', 'missing'] as const) {
       shown.push({ type: d.type(), message: d.message(), value: d.defaultValue() });
       await d.dismiss();
     });
-    await alice.locator('#copy_link_btn').click();
+    await alice.locator('#invite_btn').click();
     await expect.poll(() => shown.length).toBe(1);
     expect(shown[0]).toEqual({ type: 'prompt', message: 'Copy the board link:', value: alice.url() });
     await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
+    await expect(alice.locator('#invite_btn')).toHaveText('Invite');
   });
 }

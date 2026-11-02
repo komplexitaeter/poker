@@ -23,7 +23,6 @@ let gJsonBefore = null;
 let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
-let gLastShowAvg = null;
 // B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard).
 // B-75/B-77: on these the deck is a carousel at any width (same query as style.css "Card deck");
 // a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
@@ -72,7 +71,7 @@ function newRound() {
     apiWrite(url);
 }
 
-function playerTypeUpdate(playerType, name) {
+function playerTypeUpdate(playerType, name, teamName) {
     let ctl = document.getElementById("ctl");
     let overlayNameInput = document.getElementById("overlay_name_input");
     let privacyLink = document.getElementById("overlay_privacy_link");
@@ -85,16 +84,22 @@ function playerTypeUpdate(playerType, name) {
     else {
         let nameinput = document.getElementById("nameinput");
         let removedMsg = document.getElementById("removed_msg");
+        // R3 review V4: "Join <team>" above the field (not when removed: that state has its own heading)
+        let joinTitle = document.getElementById("join_title");
+        const joinText = teamName ? 'Join ' + teamName : 'Join';
+        if (joinTitle.textContent !== joinText) joinTitle.textContent = joinText;
 
         updateBecomeUserButtons(nameinput);
 
         if (playerType === 'REMOVED') {
             toggleStyleClass(nameinput, 'display_none', 'display_unset');
+            toggleStyleClass(joinTitle, 'display_none', 'display_unset');
             toggleStyleClass(removedMsg, 'display_unset', 'display_none');
             toggleStyleClass(privacyLink, 'hidden', 'visible');
 
         } else {
             toggleStyleClass(nameinput, 'display_unset', 'display_none');
+            toggleStyleClass(joinTitle, 'display_unset', 'display_none');
             toggleStyleClass(removedMsg, 'display_none', 'display_unset');
             toggleStyleClass(privacyLink, 'visible', 'hidden');
         }
@@ -217,6 +222,15 @@ function deckElement(card) {
         element.addEventListener("focus", showDeckInfoByFocus);
         element.addEventListener("blur", hideDeckInfo);
         element.addEventListener("keydown", moveDeckFocus);
+        element.addEventListener("pointerdown", () => {
+            gDeckPointerPress = element;
+            if (document.activeElement === element) gDeckPointerFocus = element;
+        });
+        element.addEventListener("focus", () => {
+            gDeckPointerFocus = gDeckPointerPress === element ? element : null;
+            gDeckPointerPress = null;
+        });
+        element.addEventListener("blur", () => { if (gDeckPointerFocus === element) gDeckPointerFocus = null; });
         // B-68: the card with its key below it (shown on devices with a mouse, style.css)
         const slot = document.createElement("span");
         slot.className = "ctl-slot";
@@ -317,6 +331,11 @@ function hideDeckInfo() {
     line.hidden = true;
     line.replaceChildren();
 }
+
+/* R3 (Andreas, 2026-11-02): the deck card that got the focus from a pointer press (mouse, finger), null when the
+ * focus came from the keyboard or left the card. A letter key then moves the focus along (pickCardByKey). */
+let gDeckPointerFocus = null;
+let gDeckPointerPress = null; // the card pressed last (Safari does not focus a button on a click)
 
 /* B-99 (F3): one tab stop for the deck; the arrow keys move between its cards */
 function moveDeckFocus(event) {
@@ -425,20 +444,20 @@ function updateDeckKeys() {
         const label = labels.get(key) || '';
         if (keyLabel.textContent !== label) keyLabel.textContent = label;
     });
-    // the hint names the first and the last key in use: "keys Q–P pick a card"
+    // the hint names the first and the last key in use, lower case like a console line: "press q–p to pick a card"
     const hint = document.querySelector('.deck-hint');
     const used = Math.min(gDeck.cards.length, DECK_KEY_CODES.length);
     if (hint !== null && used > 0) {
-        const first = deckKeyLabel(DECK_KEY_CODES[0]);
-        const text = used === 1 ? 'key ' + first + ' picks the card'
-            : 'keys ' + first + '–' + deckKeyLabel(DECK_KEY_CODES[used - 1]) + ' pick a card';
+        const first = deckKeyLabel(DECK_KEY_CODES[0]).toLowerCase();
+        const text = used === 1 ? 'press ' + first + ' to pick the card'
+            : 'press ' + first + '\u2013' + deckKeyLabel(DECK_KEY_CODES[used - 1]).toLowerCase() + ' to pick a card';
         if (hint.textContent !== text) hint.textContent = text;
     }
     updateDeckRoom();
     syncCarousel(); // B-75
 }
 
-/* B-68: the hint "keys Q–P pick a card" sits in the row of the keys; it is hidden (class
+/* B-68: the hint "press q–p to pick a card" sits in the row of the keys; it is hidden (class
  * hint-off) when the deck scrolls or its last key does not stay clear of it, so the tray keeps its
  * height. Only where the keys show (style.css "Card deck"). */
 function updateDeckRoom() {
@@ -799,7 +818,25 @@ function pickCardByKey(event) {
         else if (n === cards.length - 1) ctl.scrollTo({ left: ctl.scrollWidth, behavior });
         else card.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
     }
+    const focused = document.activeElement;
+    const focusInDeck = cards.includes(focused);
+    const pointerFocus = focusInDeck && gDeckPointerFocus === focused;
+    const wasPicked = card.classList.contains('selected');
     card.click();
+    // R3 (Andreas, 2026-11-02): the key switches the browser to showing the focus ring (:focus-visible); a deck
+    // card that kept the focus (from a click or Tab) would look picked as well. So the focus goes with the key
+    // to its card. A card taken back by key loses a focus that came from the pointer (it would still look
+    // picked); a keyboard focus stays on it.
+    if (!focusInDeck) return;
+    if (wasPicked && !card.classList.contains('selected')) {
+        if (pointerFocus) focused.blur();
+        else if (focused !== card) card.focus({ preventScroll: true });
+        return;
+    }
+    if (focused !== card) {
+        card.focus({ preventScroll: true });
+        if (pointerFocus) gDeckPointerFocus = card; // still the pointer's focus: a later take-back drops it
+    }
 }
 
 /* B-92: every board state asked for gets a number; an answer older than the one shown last is
@@ -971,8 +1008,12 @@ function updateCards(cardsDiv, players) {
         // B-99 (F1): compared by the card key (data-card), not by the image
         const oldKey = card.getAttribute('data-card');
         const newKey = String(player.display_card_key);
+        const awayFace = player.away === true && isThinkingCardKey(newKey);
+        if (oldKey === newKey && (card.getAttribute('data-away-face') === 'true') !== awayFace) {
+            setTableCardFace(card, newKey, player.away === true); // L30a: thinking <-> away, same card
+        }
         if (oldKey !== newKey) {
-            setTableCardFace(card, newKey);
+            setTableCardFace(card, newKey, player.away === true);
             removeStyleClass(card, 'cardValueChanged');
             if (!isStatusCardKey(oldKey) && !isStatusCardKey(newKey)) {
                 valueChangedCards.push(card);
@@ -1002,13 +1043,20 @@ function updateCards(cardsDiv, players) {
 /* B-99: the face of a card on the table for a card key (a card of the deck or a status card:
  * prgrss1/prgrss2 thinking, done001 ready). The key is kept in data-card; F2: the face is rendered
  * (cards.js). A key the client does not know (e.g. a newer card) shows as its key. */
-function tableCardModel(key) {
+function tableCardModel(key, away = false) {
+    // R3 review V10 (L30a): no card yet and no connection: "away" instead of "thinking"
+    if (away && isThinkingCardKey(key)) return { ...STATUS_CARDS[key], caption: 'away', aria: 'away \u2013 no connection' };
     return STATUS_CARDS[key] || cardByKey(key) || { key, text: key, heading: null, info: null, style: 'plain' };
 }
 
-function setTableCardFace(cardDiv, key) {
+function isThinkingCardKey(key) {
+    return key === 'prgrss1' || key === 'prgrss2';
+}
+
+function setTableCardFace(cardDiv, key, away = false) {
     cardDiv.setAttribute('data-card', key);
-    const card = tableCardModel(key);
+    cardDiv.setAttribute('data-away-face', away && isThinkingCardKey(key) ? 'true' : 'false');
+    const card = tableCardModel(key, away);
     // F8 (Andreas): every card on the table shows all its texts; control cards heading and description in
     // every set (small cards shorten the description, style.css "Rendered cards")
     const face = cardFace(card, 'table', true);
@@ -1069,7 +1117,7 @@ function setTableCardOriginal(cardDiv, key, animate) {
 function refreshTableFaces() {
     document.querySelectorAll('#cbox .c').forEach(card => {
         const original = card.getAttribute('data-original');
-        setTableCardFace(card, card.getAttribute('data-card'));
+        setTableCardFace(card, card.getAttribute('data-card'), card.classList.contains('is-away'));
         card.removeAttribute('data-original'); // the original face anew, too
         setTableCardOriginal(card, original, false);
     });
@@ -1676,7 +1724,7 @@ function showTapHint() {
     const hint = document.getElementById('tap_hint');
     if (card === null || hint === null) return;
     gTapHintShown = true;
-    hint.querySelector('p').textContent = 'Tap a card to throw a reaction or to remove a player.';
+    hint.querySelector('p').textContent = 'Tap someone\'s card to nudge them, throw an emoji or remove them from the table.';
     hint.querySelector('.tap-hint-ok').textContent = 'Got it';
     hint.hidden = false;
     placePopover(hint, card);
@@ -1763,7 +1811,7 @@ function createCardDiv(player, playersCount, isOnLoad) {
     // B-110: the click is handled by onTableClick (always asks first, #rm_confirm)
     newCard.appendChild(cardDeleteBtn);
     if (player.away === true) newCard.classList.add('is-away');
-    setTableCardFace(newCard, String(player.display_card_key));
+    setTableCardFace(newCard, String(player.display_card_key), player.away === true);
     setTableCardOriginal(newCard, player.original_card_key, false); // B-104
 
     return newCard;
@@ -1892,15 +1940,10 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
-    // B-51: the player's name as a tag on the cursor behind the team name in the header; plain text only
-    let promptUser = document.getElementById('prompt_user');
-    let promptText = myJson.name ? myJson.name : '';
-    if (promptUser.textContent !== promptText) promptUser.textContent = promptText;
-
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
 
-    playerTypeUpdate(myJson.player_type, myJson.name);
+    playerTypeUpdate(myJson.player_type, myJson.name, myJson.team_name);
 
     if (topic.getAttribute("data-hash") !== topicHash) {
 
@@ -1932,8 +1975,9 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
         || myJson.players_count !== gJsonBefore.players_count
         || myJson.ready_players_count !== gJsonBefore.ready_players_count
     ) {
-        document.title = "" + myJson.ready_players_count + "|" + myJson.players_count +""
-        + " Agile Estimations: " + myJson.team_name;
+        // R3 review V10 (L7): "2/5 voted · Team Phoenix – Agile Poker"
+        document.title = myJson.ready_players_count + '/' + myJson.players_count + ' voted \u00b7 '
+            + myJson.team_name + ' \u2013 Agile Poker';
         document.getElementById("team_name").innerText = myJson.team_name;
     }
 
@@ -1989,7 +2033,6 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateAnonymityConfig(myJson.anonymous_request_toggle);
     checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
 
-    activateJediMode(myJson.show_avg);
     updateJediBtn();
 
     if (isOnLoad) {
@@ -2013,24 +2056,12 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
 }
 
-function activateJediMode(showAvg) {
-    if (showAvg === 1 && gLastShowAvg !== null && gLastShowAvg === 0) {
-        let body = document.body;
-        body.classList.add('flash-red');
-
-        body.addEventListener('animationend', () => {
-            body.classList.remove('flash-red');
-        }, { once: true });
-    }
-    gLastShowAvg = showAvg;
-}
-
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
-    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Cancel Round")
+    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Restart round")
     let newRoundBtn = document.getElementById('newroundbtn');
-    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New Round' : 'Cancel Round';
+    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New round' : 'Restart round';
     newRoundBtn.disabled = !oneOreMorePlayerReady;
-    newRoundBtn.classList.toggle('primary', newButtonText === 'New Round'); // all cards revealed
+    newRoundBtn.classList.toggle('primary', newButtonText === 'New round'); // all cards revealed
     if (newRoundBtn.value !== newButtonText) {
         newRoundBtn.value = newButtonText;
     }
@@ -2440,8 +2471,43 @@ function toggleTopic(event) {
     button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
 }
 
-/* copies the board link; where the browser refuses (no permission, http, a web view) the link shows in a field,
- * selected, to copy by hand (R3 review E7) */
+/* R3 review V2: "Invite" in the header. On touch devices (gTouchQuery, as for the "tap" tip) with navigator.share the
+ * native share menu opens; elsewhere (Andreas: on desktops the share menu hides copying), or when sharing fails, the
+ * link is copied (copyLink). Cancelling the share menu does nothing. */
+function inviteShares() {
+    return gTouchQuery.matches && typeof navigator.share === 'function';
+}
+
+/* the accessible name says what a click does: share (touch) or copy */
+function updateInviteLabel() {
+    let button = document.getElementById('invite_btn');
+    if (button === null) return;
+    button.setAttribute('aria-label', inviteShares() ? 'Invite – share board link' : 'Invite – copy board link');
+}
+document.addEventListener('DOMContentLoaded', updateInviteLabel);
+gTouchQuery.addEventListener('change', updateInviteLabel);
+
+function inviteTeam() {
+    let url = window.location.href;
+    if (inviteShares()) {
+        let name = document.getElementById('team_name').textContent;
+        let data = { title: name ? name + ' – Agile Poker' : 'Agile Poker', url: url };
+        let share;
+        try {
+            share = navigator.share(data);
+        } catch (e) {
+            share = Promise.reject(e);
+        }
+        share.catch(function (e) {
+            if (!e || e.name !== 'AbortError') copyLink(); // not supported here, not allowed: copy instead
+        });
+        return;
+    }
+    copyLink();
+}
+
+/* copies the board link; the Invite button confirms it (V1: feedback where the click was). Where the browser
+ * refuses (no permission, http, a web view) the link shows in a field, selected, to copy by hand (R3 review E7) */
 function copyLink() {
     let text = window.location.href;
     let done;
@@ -2451,13 +2517,33 @@ function copyLink() {
         done = Promise.reject(e); // no navigator.clipboard (http)
     }
     done.then(function () {
-        showToast('Board link copied');
+        confirmInvite('Link copied');
     }, function () {
         window.prompt('Copy the board link:', text);
     });
 }
 
+/* the Invite button reads "Copied" for 2 s (class is-done: check icon, green; short, so the header does not jump on
+ * small phones), screen readers hear "Link copied" once */
+let gInviteTimer = null;
+function confirmInvite(text, label = 'Copied') {
+    let button = document.getElementById('invite_btn');
+    let lbl = button.querySelector('.lbl');
+    let status = document.getElementById('invite_status');
+    lbl.textContent = label;
+    button.classList.add('is-done');
+    status.textContent = text;
+    clearTimeout(gInviteTimer);
+    gInviteTimer = setTimeout(function () {
+        lbl.textContent = 'Invite';
+        button.classList.remove('is-done');
+        status.textContent = '';
+    }, 2000);
+}
+
 /* Short message that pops up from the bottom edge for a moment (style.css, .toast).
+ * R3 review V1: only for things without a trigger on the own screen (sent feedback is gone from the form);
+ * the result of an own click shows at that control (Invite button, deck status line, timer status).
  * Plain text only (textContent). Calling it again replaces the text and restarts the timer. */
 let gToastTimer = null;
 function showToast(text) {
@@ -2631,6 +2717,9 @@ function renderTimer(elapsed) {
 function updateTimerConfig(force = false) {
     if (gTimer === null || document.getElementById('timer_box') === null) return;
     checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
+    // R3 review V1: the status of the own switch goes when the menu opens again or the board says otherwise
+    let status = document.getElementById('tmr_status');
+    if (force || (status.textContent !== '' && status.dataset.on !== (gTimer.visible ? '1' : '0'))) status.textContent = '';
     checkRadio('tmr_mode', gTimer.mode);
     checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
     document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
@@ -2664,9 +2753,12 @@ function timerAction(action, value = null) {
 }
 
 function setTimerVisibility(value) {
-    // B-46: confirm the own change with a toast (others just see the timer appear)
+    // B-46: confirm the own change (others just see the timer appear); R3 review V1: below the switch, not as a toast
+    let status = document.getElementById('tmr_status');
+    status.textContent = '';
     timerAction('set_visibility', value).then(() => {
-        showToast(value === '1' ? 'Timer on – everyone on the board sees it' : 'Timer off');
+        status.dataset.on = value;
+        status.textContent = value === '1' ? '\u2713 Timer on \u2013 everyone on the board sees it' : '\u2713 Timer off';
     }).catch(() => {}); // the board loaded itself (apiWrite)
     measureEvent("TOGGLE_TIMER");
 }
@@ -2802,7 +2894,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=6'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=9'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
@@ -2923,7 +3015,7 @@ function updateSide(json, glide = true) {
     const revealed = json.all_players_ready && json.players_count > 0;
     let text = 'waiting for players';
     if (revealed) text = 'revealed';
-    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + '/' + json.players_count + ' voted';
+    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + ' of ' + json.players_count + ' voted';
     if (status.textContent !== text) status.textContent = text;
 
     spread.hidden = !revealed;
@@ -2986,10 +3078,11 @@ function updateSide(json, glide = true) {
         grown.forEach(seg => seg.classList.remove('in'));
     }
 
-    // the range of the chosen numeric values (B-79: infinity as the top end): "2 – 20", "3 – ∞",
-    // or "5" when all agree; B-99 (F6): each end as mono text or mini symbol (cardSmall)
+    // the range of the chosen numeric values (B-79: infinity as the top end): "range 2–20", "range 3–∞",
+    // or "5" when all agree; B-99 (F6): each end as mono text (cardSmall). R3 review V10 (L22): number cards
+    // only – traffic lights, emotions, stars, T-shirt sizes show the chart alone
     let ends = [];
-    if (chosen.length > 0) {
+    if (chosen.length > 0 && chosen.every(entry => isNumberCard(entry.card))) {
         chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
         const low = chosen[0].card;
         const high = chosen[chosen.length - 1].card;
@@ -2999,7 +3092,9 @@ function updateSide(json, glide = true) {
     const rangeKey = ends.map(card => card.key).join(',');
     if (rangeElement.getAttribute('data-shows') !== rangeKey) {
         rangeElement.setAttribute('data-shows', rangeKey);
-        rangeElement.replaceChildren(...ends.flatMap((card, i) => i === 0 ? [cardSmall(card)] : [' – ', cardSmall(card)]));
+        rangeElement.replaceChildren(...(ends.length === 2
+            ? ['range ', cardSmall(ends[0]), '\u2013', cardSmall(ends[1])]
+            : ends.map(card => cardSmall(card))));
     }
 
     let left = null;
@@ -3071,6 +3166,11 @@ function tipSide(players, card) {
     return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : ''), card: card.key };
 }
 
+/* R3 review V10 (L22): a card whose value is a number (0, ½, 13, ∞); the range of the result shows for these only */
+function isNumberCard(card) {
+    return !!card && /^(\d+(\.\d+)?|½|∞)$/.test(String(card.text));
+}
+
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
  * ("too big to estimate"), null for cards without a value (veto, control cards). Not for the
  * average: infinity stays out of it. */
@@ -3084,7 +3184,7 @@ function cardRank(card) {
 function tipText(json, revealed) {
     // B-102: a player who joined in after the reveal (late001) has no vote: not in any tip after the reveal
     const players = (json.players || []).filter(player => !revealed || !isLateCardKey(player.display_card_key));
-    if (json.players_count < 2) return ['Copy the board link and invite your team.'];
+    if (json.players_count < 2) return ['Invite your team: ' + (gTouchQuery.matches ? 'tap' : 'click') + ' Invite and share the link.'];
 
     if (!revealed) {
         if (json.player_type === 'PLAYER' && !json.selected_card_key) {
@@ -3092,6 +3192,12 @@ function tipText(json, revealed) {
         }
         const missing = players.filter(player => String(player.display_card_key).startsWith('prgrss'));
         if (missing.length === 0) return [];
+        // R3 review V10 (L30a): everyone missing is away (no connection): only removing them reveals the cards
+        if (missing.every(player => player.away === true)) {
+            const away = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
+            const them = missing.length > 3 ? ['them'] : away;
+            return ['Waiting for ', ...away, ' (away). Remove ', ...them, ' from the table to reveal.'];
+        }
         const who = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
         return ['Waiting for ', ...who, '. Once everyone has voted, cards are revealed automatically.'];
     }
@@ -3207,31 +3313,49 @@ function isJudgeDeck(json) {
  * configs: [{ player, config }] of the table; returns the tip parts (tipText) */
 function judgeTip(configs, anonymous) {
     const of = keys => configs.filter(entry => entry.config && keys.includes(entry.config.key));
-    // one group per card: "Bob, Cleo (5)", "Dan (?)"; anonymous: "2 × need to talk"
-    const groups = (keys, what) => {
-        if (anonymous) {
-            const n = of(keys).length;
-            return n === 0 ? [] : [n + ' \u00d7 ' + what];
-        }
-        return keys.map(key => of([key])).filter(entries => entries.length > 0)
-            .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config));
+    // R3 review V10 (L28): anonymous mode counts in words, "2 people need to talk", "1 veto"
+    const count = (keys, one, many) => {
+        const n = of(keys).length;
+        return n === 0 ? null : n + ' ' + (n === 1 ? one : many);
     };
+    // one group per card: "Bob, Cleo (5)", "Dan (?)"
+    const groups = keys => keys.map(key => of([key])).filter(entries => entries.length > 0)
+        .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config));
     // "A", "A and B", "A, B and C"
     const join = list => list.flatMap((group, i) =>
         i === 0 ? [group] : [i === list.length - 1 ? ' and ' : ', ', group]);
 
-    const talk = groups(['jdg5', 'qstmrk1', 'xclam01'], 'need to talk');
-    const veto = groups(['jdg6', 'veto'], 'veto');
-    if (talk.length > 0) {
-        const parts = ['Let them talk first: ', ...join(talk)];
-        return veto.length > 0 ? [...parts, '. Then hear the veto: ', ...join(veto)] : parts;
+    const talkKeys = ['jdg5', 'qstmrk1', 'xclam01'];
+    const vetoKeys = ['jdg6', 'veto'];
+    if (anonymous) {
+        const talk = count(talkKeys, 'person needs to talk', 'people need to talk');
+        const vetoes = of(vetoKeys).length;
+        const veto = vetoes === 0 ? null : (vetoes === 1 ? 'the veto' : 'the ' + vetoes + ' vetoes');
+        if (talk !== null) return veto !== null ? [talk + ' first, then hear ' + veto + '.'] : [talk + ' first.'];
+        if (veto !== null) return ['Hear ' + veto + ' first.'];
+    } else {
+        const talk = groups(talkKeys);
+        const veto = groups(vetoKeys);
+        if (talk.length > 0) {
+            const parts = ['Let them talk first: ', ...join(talk)];
+            return veto.length > 0 ? [...parts, '. Then hear the veto: ', ...join(veto)] : parts;
+        }
+        if (veto.length > 0) return ['Hear the veto: ', ...join(veto)];
     }
-    if (veto.length > 0) return ['Hear the veto: ', ...join(veto)];
     // no vote of the deck at all (only coffee): no tip
     if (of(['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4']).length === 0) return [];
-    const concerns = groups(['jdg3', 'jdg4'], 'concerns');
+    if (anonymous) {
+        const concerns = count(['jdg3', 'jdg4'], 'person has concerns', 'people have concerns');
+        return concerns === null ? ['Decision accepted.'] : ['Decision accepted. ' + concerns + ' \u2013 want to hear them?'];
+    }
+    // L29: "Bob (3) has concerns, Eve (4) steps out" – 4 is no concern, it is not taking part
+    const said = (keys, one, many) => groups(keys).map(group => {
+        const n = of(keys).length;
+        return [group, n === 1 ? one : many];
+    });
+    const concerns = [...said(['jdg3'], ' has concerns', ' have concerns'), ...said(['jdg4'], ' steps out', ' step out')];
     if (concerns.length === 0) return ['Decision accepted.'];
-    return [anonymous ? 'Decision accepted. ' : 'Decision accepted. Concerns from ', ...join(concerns),
+    return ['Decision accepted. ', ...concerns.flatMap((parts, i) => i === 0 ? parts : [', ', ...parts]),
         ' \u2013 want to hear them?'];
 }
 

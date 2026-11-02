@@ -3,20 +3,20 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Agile Estimations</title>
+    <title>Agile Poker</title>
     <link rel="icon" href="src/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=1.98" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.12" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.33" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.35" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.14" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.3" type="text/javascript"></script>
-    <script defer src="script/script_deck.js?v=1.8" type="text/javascript"></script>
-    <script defer src="script/script.js?v=2.88" type="text/javascript"></script>
+    <script defer src="script/script_deck.js?v=1.15" type="text/javascript"></script>
+    <script defer src="script/script.js?v=2.97" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -26,6 +26,8 @@
 <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
 <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
     <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v1M14 20h1M18 18h3v3"/></symbol>
     <symbol id="i-watch" viewBox="0 0 24 24"><circle cx="12" cy="14" r="7"/><path d="M12 14V10M10 3h4M12 3v4M18 7l1.5-1.5"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
@@ -38,7 +40,6 @@
     <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
     <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
-    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
     <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
@@ -58,7 +59,7 @@
 <!-- B-86: no connection to the server (script.js, showConnHint); not dismissable, vanishes when it is back -->
 <div id="conn_hint" class="conn-hint" role="alertdialog" aria-modal="true" aria-labelledby="conn_hint_msg" tabindex="-1" hidden>
     <svg class="i" aria-hidden="true"><use href="#i-reset"/></svg>
-    <p id="conn_hint_msg">Reconnecting to the server …</p>
+    <p id="conn_hint_msg">Connection lost – reconnecting …</p>
 </div>
 
 <!-- B-46: page grid (style.css, "Board layout"): header / topic / table / card deck. -->
@@ -67,13 +68,14 @@
     <header class="head">
         <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg?v=2" alt="Komplexitäter tools" loading="lazy"/><img id="brand_icon" src="src/brand_icon_dark.svg?v=1" alt="Komplexitäter tools" loading="lazy"/></a>
 
-        <!-- team name with a softly pulsing text cursor; the cursor carries the player's name as a small
-             tag (like the name flags of cursors in shared documents). Click copies the board link.
-             #prompt_user is filled from the DAO (textContent); empty until the player has a name, then
-             the tag is hidden and only the team name and the cursor show. -->
+        <!-- the team name (textContent from the DAO); a click copies the board link. R3 review polish (Andreas):
+             no own name in the header any more, the table shows who you are -->
         <div class="head-title">
-            <button type="button" class="team-name" onclick="copyLink()"><span id="team_name"></span><span class="caret" aria-hidden="true"><span id="prompt_user" class="you-tag"></span></span></button>
-            <button type="button" id="copy_link_btn" class="icon-btn" onclick="copyLink()" aria-label="Copy board link"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy Link</span></button>
+            <button type="button" class="team-name" onclick="copyLink()"><span id="team_name"></span></button>
+            <!-- R3 review V2: "Invite" is the primary action of the header (accent); with navigator.share the native
+                 share menu opens, else the link is copied and the button itself confirms it (V1, inviteTeam()) -->
+            <button type="button" id="invite_btn" class="icon-btn invite-btn" onclick="inviteTeam()" aria-label="Invite – copy board link"><svg class="i i-share" aria-hidden="true"><use href="#i-share"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg><span class="lbl">Invite</span></button>
+            <span id="invite_status" class="sr-only" role="status" aria-live="polite"></span>
             <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
         </div>
 
@@ -81,7 +83,7 @@
 
         <!-- B-51 large screens: each button opens its section of the menu panel (#menu) directly
              (data-open); same order and names as the phone menu index -->
-        <nav class="topnav-bar" aria-label="Board menu">
+        <nav class="topnav-bar" aria-label="Main menu">
             <button type="button" id="topic_btn" class="icon-btn" data-open="topic" aria-label="Topic" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><span class="lbl">topic</span></button>
             <button type="button" id="timer_btn" class="icon-btn" data-open="timer" aria-label="Timer" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span class="lbl">timer</span></button>
             <button type="button" id="cset_btn" class="icon-btn" data-open="cset" aria-label="Board settings" aria-expanded="false" aria-controls="menu"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span class="lbl">board</span></button>
@@ -115,7 +117,7 @@
     <aside class="side" aria-label="Round result">
         <section id="spread" class="spread" hidden>
             <div class="spread-head">
-                <h2 class="side-label">spread</h2>
+                <h2 class="side-label">result</h2>
                 <span id="spread_range" class="spread-range"></span>
             </div>
             <div class="spread-chart">
@@ -143,7 +145,7 @@
                 <button type="button" id="timer_reset" class="icon-btn timer-btn" onclick="timerReset()" aria-label="Reset timer"><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg></button>
             </div>
         </div>
-        <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Cancel Round" disabled />
+        <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Restart round" disabled />
     </div>
 
     <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide) -->
@@ -151,7 +153,7 @@
         <div id="cbox"></div>
         <!-- B-110: the observers below the cards, filled by script.js (markup: style.css "Table interaction") -->
         <div id="observers" class="observers" hidden>
-            <h2 class="obs-label">observing</h2>
+            <h2 class="obs-label">observers</h2>
             <ul class="obs-list"></ul>
         </div>
     </main>
@@ -185,7 +187,7 @@
 
         <!-- B-68, F8: devices with a mouse: the letter rows Q–P, A–L, Y–M pick the cards (keys under the cards;
              text set by updateDeckKeys() in script.js) -->
-        <p class="deck-hint" aria-hidden="true">keys Q–P pick a card</p>
+        <p class="deck-hint" aria-hidden="true">press q–p to pick a card</p>
 
         <footer class="survey-container" id="survey-container">
             <button id="survey-button" onclick="toggleSurvey()">Survey<i id="survey-arrow" class="arrow up"></i></button>
@@ -222,7 +224,8 @@
                     <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                 </ul>
                 <p class="m-links">
-                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a>
+                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
+                    <span aria-hidden="true">·</span>
                     <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a>
                 </p>
             </section>
@@ -246,6 +249,9 @@
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_deck" data-tab="deck" aria-labelledby="cset_tab_deck">
                     <!-- R3 F5 (B-98): the deck menu, built by script_deck.js (overview / list of card sets) -->
+                    <!-- R3 review V1: the result of the own change stays here until the next one (writeDeck()) -->
+                    <span id="deck_status_live" class="sr-only" role="status" aria-live="polite"></span>
+                    <div id="deck_status" class="dm-status"><span class="dm-status-t"></span><button type="button" class="dm-status-x icon-btn" aria-label="Dismiss" hidden><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
                     <div id="deck_menu" class="dm"></div>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_results" data-tab="results" aria-labelledby="cset_tab_results" hidden>
@@ -258,7 +264,7 @@
                         <p class="hint">Takes effect with the next round.</p>
                     </fieldset>
                     <fieldset class="f" id="cet_order_by">
-                        <legend class="lab">Arrange revealed cards by</legend>
+                        <legend class="lab">Sort revealed cards by</legend>
                         <div class="seg">
                             <label><input type="radio" name="cet_order_by" value="SEQUENCE" onchange="changeSortOrder(this.value)"/><span>Card value</span></label>
                             <label><input type="radio" name="cet_order_by" value="NAME" onchange="changeSortOrder(this.value)"/><span>Player name</span></label>
@@ -269,9 +275,9 @@
                         <legend class="lab">Average pointer</legend>
                         <div class="seg">
                             <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
-                            <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span><svg class="i i-lock" aria-hidden="true"><use href="#i-lock"/></svg>Show</span></label>
+                            <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span>Show</span></label>
                         </div>
-                        <p class="hint">Join the dark side: a pointer under the spread shows the average.</p>
+                        <p class="hint">A pointer under the spread shows the average.</p>
                     </fieldset>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
@@ -304,7 +310,8 @@
                         <label><input type="radio" name="tmr_visibility" value="0" onchange="setTimerVisibility(this.value)"/><span>Off</span></label>
                         <label><input type="radio" name="tmr_visibility" value="1" onchange="setTimerVisibility(this.value)"/><span>On</span></label>
                     </div>
-                    <p class="hint">Shown to everyone at the round button, with play/pause and reset.</p>
+                    <p class="hint">Everyone sees it next to the round button.</p>
+                    <p id="tmr_status" class="hint ok-status" role="status" aria-live="polite"></p>
                 </fieldset>
                 <fieldset class="f" id="tmr_mode">
                     <legend class="lab">Mode</legend>
@@ -325,7 +332,7 @@
                         <label><input type="radio" name="tmr_timebox" value="60" onchange="setTimerTimebox(this.value)"/><span>60</span></label>
                     </div>
                     <div class="row tmr-other" data-set="false">
-                        <label for="tmr_other" class="lab">other:</label>
+                        <label for="tmr_other" class="lab">Other:</label>
                         <input class="field" id="tmr_other" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="1–240" aria-describedby="tmr_other_hint" onkeydown="timerOtherKeydown(event)" onblur="timerOtherBlur()" oninput="showTimerOtherError(false)"/>
                         <span aria-hidden="true">min</span>
                     </div>
@@ -338,7 +345,7 @@
                         <label><input type="radio" name="tmr_auto_restart" value="0" onchange="setTimerAutoRestart(this.value)"/><span>Off</span></label>
                         <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>On</span></label>
                     </div>
-                    <p class="hint">New round and Cancel round reset it and start it.</p>
+                    <p class="hint">Restarts with every new round.</p>
                 </fieldset>
             </section>
 
@@ -366,7 +373,8 @@
                     </div>
                 </fieldset>
                 <p id="user_settings_privacy_link" class="m-links">
-                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy Policy</a>
+                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
+                    <span aria-hidden="true">·</span>
                     <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a>
                     <button type="button" id="delete_user_btn" class="btn-box danger" onclick="showDeleteUserOverlay()">Delete my data</button>
                 </p>
@@ -380,7 +388,7 @@
                 <p class="hint fb-intro">For the makers of this app – tell us what to fix or build next. Your team won't see this.</p>
                 <div class="m-tabs" role="tablist" aria-label="Feedback">
                     <button type="button" role="tab" id="fb_tab_send" data-tab="send" aria-selected="false" aria-controls="fb_panel_send" tabindex="-1">New issue</button>
-                    <button type="button" role="tab" id="fb_tab_backlog" data-tab="backlog" aria-selected="true" aria-controls="fb_panel_backlog">Backlog</button>
+                    <button type="button" role="tab" id="fb_tab_backlog" data-tab="backlog" aria-selected="true" aria-controls="fb_panel_backlog">Roadmap</button>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="fb_panel_send" data-tab="send" aria-labelledby="fb_tab_send" hidden>
                     <div id="feedback_form" class="fb-form">
@@ -395,7 +403,7 @@
                         <div class="f">
                             <label class="lab" for="feedback_txt">Your message</label>
                             <textarea maxlength="1800" rows="7" id="feedback_txt" class="field" placeholder="Anything you want to tell the Komplexitäter team?" aria-describedby="fb_hint fb_bug_hint"></textarea>
-                            <p id="fb_hint" class="hint">We read every message. Leave your email address if we may ask you for details.</p>
+                            <p id="fb_hint" class="hint">We read every message. Add your email address if you'd like us to get back to you.</p>
                             <p id="fb_bug_hint" class="hint fb-bug-only">With a bug we also send technical details (browser, window size, app version) to help us fix it.</p>
                         </div>
                         <div class="row end">
@@ -449,7 +457,7 @@
     </div>
 </div>
 <div id="tap_hint" class="tbl-pop tap-hint is-below" role="status" hidden>
-    <p>Tap a card to throw a reaction or to remove a player.</p>
+    <p>Tap someone's card to nudge them, throw an emoji or remove them from the table.</p>
     <button type="button" class="tap-hint-ok">Got it</button>
 </div>
 
@@ -462,17 +470,20 @@
 </div>
 
 <div id="overlay_name_input" class="overlay overlay_panel hidden topnav">
+    <!-- R3 review V4: whom you join (team name from the DAO, textContent; playerTypeUpdate() in script.js) -->
+    <h1 id="join_title" class="join-title">Join</h1>
     <label for="nameinput"></label><input id="nameinput" class="topnav" type="text" size="15" maxlength="15" placeholder=" What's your name?" name="searchName" autocomplete="off" spellcheck="false" tabindex="1" />
     <div id="removed_msg" class="overlay_msg">
         <h1>You were removed from the table</h1>
         <span>Usually a teammate does this when you have been away for a while. What do you want to do now?</span>
     </div>
-    <input id="become_player_btn" class="btn topnav" type="button" value="Participate as a Player" tabindex="2" disabled />
-    <input id="become_observer_btn" class="btn topnav" type="button" value="Become Observer" tabindex="3" disabled />
+    <input id="become_player_btn" class="btn topnav" type="button" value="Join as player" tabindex="2" disabled />
+    <input id="become_observer_btn" class="btn topnav" type="button" value="Join as observer" tabindex="3" aria-describedby="observer_note" disabled />
+    <p id="observer_note" class="observer-note">Observers watch but don't vote (e.g. PO, guests).</p>
 
     <div id="overlay_privacy_link" class="privacy_link">
-        <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy</a>
-        <span>|</span>
+        <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
+        <span aria-hidden="true">·</span>
         <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a>
     </div>
 
@@ -480,11 +491,12 @@
 
 <div id="overlay_delete_user" class="overlay overlay_panel hidden topnav">
     <div id="delete_user_msg" class="overlay_msg">
-        <h1>Delete your user data?</h1>
-        <span>Your privacy is key. By proceeding, all your user data, personal settings, voting results, and feedback will be permanently and irrevocably deleted.</span>
+        <h1>Delete your data?</h1>
+        <span>This permanently deletes your name, settings, votes and feedback. It can't be undone.</span>
     </div>
     <input class="btn topnav" type="button" value="Cancel" onclick="showDeleteUserOverlay(false)" />
-    <input class="btn topnav" type="button" value="Delete User" onclick="deleteUser()" />
+    <!-- R3 review V10 (L61): the dangerous one in red (style.css .btn.danger) -->
+    <input id="delete_user_ok" class="btn topnav danger" type="button" value="Delete my data" onclick="deleteUser()" />
 </div>
 
 <div id="promo-tab" class="promo-tab promo-hidden">

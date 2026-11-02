@@ -121,7 +121,7 @@ test('passive viewer, silent connection (no hb): rebuilt after 40 s, the hint un
   await alice.clock.runFor(2000);
   await expect(hint).toBeVisible();
   await expect(hint).toHaveAttribute('role', 'alertdialog');
-  await expect(hint).toContainText('Reconnecting to the server');
+  await expect(hint).toContainText('Connection lost – reconnecting');
   await expect(hint).toBeFocused();
 
   // not dismissable: a click on it changes nothing

@@ -127,12 +127,12 @@ test('resizing switches the layout and display type without a reload (B-36)', as
   expect(await legacyClassCount(alice)).toBe(0);
 });
 
-test('start page on a small screen shows logo, color switch and feedback (B-36)', async ({ browser }) => {
+test('start page on a small screen shows logo and color switch, no feedback (B-36, R3 review V10)', async ({ browser }) => {
   const page = await newPlayer(browser, { viewport: SMALL });
   await page.goto('/');
   await expect(page.locator('#brand')).toBeVisible();
   await expect(page.locator('#cmode_btn')).toBeVisible();
-  await expect(page.locator('#feedback_btn')).toBeVisible();
+  await expect(page.locator('#feedback_btn')).toHaveCount(0);
   await expect(page.locator('#teaminput')).toBeVisible();
   expect(await legacyClassCount(page)).toBe(0);
 });

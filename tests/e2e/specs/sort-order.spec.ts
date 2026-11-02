@@ -30,7 +30,7 @@ test('the menu setting arranges revealed cards by player name or by card value, 
 
   await openResults(alice);
   const group = alice.locator('#cet_order_by');
-  await expect(group.locator('legend')).toHaveText('Arrange revealed cards by');
+  await expect(group.locator('legend')).toHaveText('Sort revealed cards by');
   await expect(group.locator('label')).toHaveText(['Card value', 'Player name']);
   await expect(orderRadio(alice, 'SEQUENCE')).toBeChecked();
   await expect(alice.locator('#cet_order_by_hint')).toBeHidden();

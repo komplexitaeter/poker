@@ -28,7 +28,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   // the column on the right edge down to the bottom, the table left of it; the round actions at its foot
   const status = alice.locator('#round_status');
   await expect(status).toBeVisible();
-  await expect(status).toHaveText('voting · 0/2 voted');
+  await expect(status).toHaveText('voting · 0 of 2 voted');
   const side = await box(alice, '.side');
   const table = await box(alice, '#table');
   expect(Math.round(side.x + side.width)).toBe(DESKTOP.width);
@@ -69,7 +69,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   // goes on and off. Alice picks the 6th card (5) with its key.
   await alice.keyboard.press('KeyY'); // the 6th key of the top row (Z on QWERTZ, Y on QWERTY)
   await expect(deckCard(alice, 'five001')).toHaveClass(/selected/);
-  await expect(status).toHaveText('voting · 1/2 voted');
+  await expect(status).toHaveText('voting · 1 of 2 voted');
   await expect(alice.locator('#spread')).toBeHidden();
   const spreadBefore = await box(alice, '#spread');
   expect(spreadBefore.height).toBeGreaterThan(100);
@@ -184,7 +184,7 @@ test('deck tray: the hint never takes a row of its own, scrolling only as a last
   // wide: the hint in the row of the keys
   await expect(alice.locator('#down-container')).not.toHaveClass(/hint-off/);
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('keys Q–P pick a card'); // B-99 F8: first and last key of the deck
+  await expect(hint).toHaveText('press q–p to pick a card'); // B-99 F8: first and last key of the deck
   const keyBox = await box(alice, '#ctl .ctl-key >> nth=0');
   const hintBox = await box(alice, '.deck-hint');
   expect(Math.abs(keyBox.y + keyBox.height - (hintBox.y + hintBox.height))).toBeLessThan(2.5); // level with the keys

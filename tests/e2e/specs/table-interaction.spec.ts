@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, stopHbLoads } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, stopHbLoads, pickCard } from './helpers';
 
 /**
  * B-110 part 1 (board): the board loads dao.php on every hb; away players show with a dimmed card and the trash can
@@ -84,6 +84,11 @@ test('away: dimmed card, trash can without hover, named for screen readers (B-11
   await expect(bobCard.locator('.delete')).toHaveCSS('opacity', '1');
   await expect(bobCard.locator('.delete')).toHaveAttribute('aria-label', 'Remove Bob from the table (no connection)');
   await expect(tableCard(alice, 'Alice')).not.toHaveClass(/is-away/); // never the own card
+  // R3 review V10 (L30a): no card yet and away: "away" instead of "thinking"; the tip says who to remove
+  await expect(bobCard.locator('.pc .stl')).toHaveText('away');
+  await expect(bobCard.locator('.pc')).toHaveAttribute('aria-label', 'away \u2013 no connection');
+  await pickCard(alice, 'five001');
+  await expect(alice.locator('#round_tip')).toHaveText('Waiting for Bob (away). Remove Bob from the table to reveal.');
   await colorMode(alice, 'dark');
   await shot(alice, 'desktop-dark-away');
 
@@ -91,6 +96,8 @@ test('away: dimmed card, trash can without hover, named for screen readers (B-11
   expect((await alice.request.get(`/api/dao.php?${new URLSearchParams({ t, id: bob })}`)).ok()).toBeTruthy();
   await reload(alice);
   await expect(bobCard).not.toHaveClass(/is-away/);
+  await expect(bobCard.locator('.pc .stl')).toHaveText('thinking');
+  await expect(alice.locator('#round_tip')).toHaveText('Waiting for Bob. Once everyone has voted, cards are revealed automatically.');
   await expect(bobCard.locator('.delete')).toHaveCSS('opacity', '0');
   await expect(bobCard.locator('.delete')).toHaveAttribute('aria-label', 'Remove Bob from the table');
 });
@@ -275,7 +282,7 @@ test('touch: the tap hint shows once (B-110)', async ({ browser }) => {
   await addPlayersViaApi(alice, url, ['Bob']);
   await reload(alice);
   await expect(hint).toBeVisible();
-  await expect(hint).toContainText('Tap a card');
+  await expect(hint).toContainText("Tap someone's card to nudge them");
   await colorMode(alice, 'light');
   await shot(alice, 'touch-light-tap-hint');
   await hint.getByRole('button', { name: 'Got it' }).tap();

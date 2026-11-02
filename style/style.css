@@ -110,7 +110,6 @@ body {
     --ok: #5af78e;          /* prompt user@host */
     --danger: #ff6b66;
     --warn: #ffb547;        /* B-67: timer over its timebox (T+) */
-    --flash-red-background: #340000;
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
     /* B-68: the deck tray floating over the table: a deep shadow and a faint light edge, so it
@@ -144,7 +143,6 @@ body.light-theme {
     --ok: #1b7a37;
     --danger: #c0262d;
     --warn: #9a5800;
-    --flash-red-background: #ffd9d9;
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
     --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
@@ -414,12 +412,12 @@ textarea.field {
 /* ---------- Start page ---------- */
 
 #teaminput {
-    margin-top: 60px;
+    margin-top: var(--space-4);
     width: 250px;
 }
 
 #teambtn {
-    margin-top: 60px;
+    margin-top: var(--space-4);
     display: initial;
 }
 
@@ -430,7 +428,7 @@ textarea.field {
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-top: 60px;
+        margin-top: var(--space-4);
     }
 
     #teaminput,
@@ -446,18 +444,140 @@ textarea.field {
         margin-bottom: var(--space-4);
     }
 
-    #teambtn { min-height: 3rem; }
+    #teambtn { min-height: 3rem; order: 2; }
+
+    /* R3 review V10: the message for an empty name right below the field, above the button */
+    #team_err { order: 1; margin: 0 0 var(--space-4); }
+    #teaminput[aria-invalid="true"] { margin-bottom: var(--space-2); }
 }
 
-.instruction {
-    color: var(--text-color);
-    width: fit-content;
-    text-align: left;
-    margin: var(--space-4) auto 1em;
-    line-height: 1.6;
+/* R3 start page (Andreas): one calm, centred column for everything - the V5 hint, the heading, the form and the
+ * three steps (was: a centred line, a centred form and a left-aligned numbered list on different edges) */
+.start {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    margin: 0 auto;
+    padding: 60px var(--space-3) var(--space-4);
 }
 
-.instruction li::marker { color: var(--muted); }
+/* the heading: the claim in the text colour, the second sentence quieter below (one line each when there is room) */
+.team-lead {
+    margin: 0;
+    font-size: var(--fs-l);
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text);
+    text-wrap: balance; /* very narrow screens: no single word alone in the last line */
+}
+
+.team-lead > span { display: inline-block; }
+
+.team-lead > span + span {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--fs-m);
+    font-weight: 400;
+    color: var(--muted);
+}
+
+/* R3 review V5: a board link that does not work (index.php shows the start page with ?t=…, script_team.js) */
+.link-err {
+    margin: 0 0 var(--space-3);
+    color: var(--warn);
+}
+.link-err[hidden] { display: none; }
+
+/* R3 review V10 (L17): an empty team name says so below the field (script_team.js) */
+.team-err {
+    margin: var(--space-2) auto 0;
+    padding: 0 var(--space-3);
+    color: var(--danger);
+    font-size: var(--fs-s);
+}
+.team-err[hidden] { display: none; }
+
+/* R3 start page: how it works - three equal steps in a row: a picture in the card style (pencil and chain link from
+ * init.html's sprite, one real deck card for the vote), all in the same box and of about the same weight, a word
+ * and a short one-line text; a hand-drawn dashed line leads from one picture to the next. Phones keep the row. */
+.start-steps {
+    --pic-h: 64px;
+    --gap: var(--space-2);
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--gap);
+    margin: 52px 0 0;
+    padding: 0;
+    counter-reset: step;
+}
+
+.start-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+/* the same box for all three pictures */
+.start-pic {
+    display: block;
+    width: calc(var(--pic-h) * 100 / 120);
+    height: var(--pic-h);
+    margin-bottom: var(--space-2);
+}
+
+/* the dashed, slightly wobbly line between two pictures (a mask, so it takes the theme colour) */
+.start-step + .start-step::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--pic-h) / 2 - 6px);
+    right: calc(50% + var(--pic-h) * 0.55);
+    width: calc(100% + var(--gap) - var(--pic-h) * 1.1);
+    height: 12px;
+    background: var(--line-strong);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.start-step b {
+    font-size: var(--fs-m);
+    color: var(--text);
+}
+
+.start-step b::before {
+    counter-increment: step;
+    content: counter(step) " ";
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.start-step > span:last-child {
+    margin-top: 2px;
+    font-size: var(--fs-xs);
+    line-height: 1.45;
+    color: var(--muted);
+    white-space: nowrap; /* the texts are short (15 characters at most): one line each, also at 360 px */
+}
+
+/* the vote: one real deck card, a little smaller than the box and slightly tilted, so it weighs like the drawings */
+.start-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.start-card .dkc {
+    width: 64%;
+    border-radius: 4px;
+    transform: rotate(8deg);
+}
+
+@media (max-width: 799.98px) {
+    .start { padding-top: 40px; }
+    .start-steps { --pic-h: 52px; --gap: var(--space-1); margin-top: 40px; }
+}
 
 /* ---------- Board layout (B-46) ---------- */
 
@@ -697,22 +817,6 @@ textarea.field {
 
 .team-name:hover #team_name { color: var(--accent); }
 
-/* the name tag sits right of the cursor, vertically centred on the team name (inside .caret) */
-.you-tag {
-    min-width: 0;
-    max-width: 12ch;
-    padding: 1px 5px;
-    border-radius: var(--radius-m);
-    background: var(--accent);
-    color: var(--on-accent);
-    font: bold var(--fs-xs) / 1.35 var(--font);
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* no player name yet (name overlay): the team name and the cursor alone */
-.you-tag:empty { display: none; }
-
 /* start page: "poker" with the cursor */
 .prompt-line {
     display: inline-flex;
@@ -721,9 +825,7 @@ textarea.field {
     white-space: nowrap;
 }
 
-/* the cursor: a thin line that slowly dims and comes back (no hard blink); on the board it
- * carries the name tag, which stays steady. Tag and team name keep the same distance to the
- * cursor (gap = margin-left, both in the team name's font size). */
+/* the cursor of the start page ("poker"): a thin line that slowly dims and comes back (no hard blink) */
 .caret {
     flex: none; /* the team name shrinks first; the tag has its own maximum width */
     display: inline-flex;
@@ -734,26 +836,14 @@ textarea.field {
     top: -0.05em; /* the line box hangs below the letters (descender room): centre on the letters */
 }
 
-/* B-70 board: a bit more room around the line, so it reads as a deliberate divider between team
- * name and name tag; without the tag it would stand alone: hidden (no name yet, phones) */
-.team-name .caret {
-    gap: 0.5em;
-    margin-left: 0.5em;
-}
-
-.team-name .caret:has(.you-tag:empty) { display: none; }
-
-/* Centre cursor and tag on the lowercase letters of the team name, independent of font metrics
- * (SF Mono in Safari vs. other monospace fonts): the team name's box is trimmed to the x-height,
- * so flex centring hits the middle of the lowercase letters. The padding keeps ascenders and
- * descenders visible (overflow: hidden for the ellipsis) and is symmetric, so the centre stays.
- * Without text-box support (Firefox) the top: -0.05em approximation above remains. */
+/* The team name's box is trimmed to the x-height, so flex centring in the header hits the middle of its
+ * lowercase letters, independent of font metrics (SF Mono in Safari vs. other monospace fonts). The padding
+ * keeps ascenders and descenders visible (overflow: hidden for the ellipsis) and is symmetric. */
 @supports (text-box: trim-both ex alphabetic) {
     .team-name #team_name {
         text-box: trim-both ex alphabetic;
         padding-block: 0.35em;
     }
-    .team-name .caret { top: 0; }
 }
 
 .caret::before {
@@ -856,8 +946,36 @@ textarea.field {
 body:has(#timer:not(.display_none)) #timer_btn .lbl::after,
 body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { background: var(--ok); }
 
-#copy_link_btn { color: var(--muted); }
-#copy_link_btn:hover { color: var(--accent); }
+/* R3 review V2: "Invite" is the primary action of the header: accent fill, share icon, label on every width.
+ * After copying (V1) it reads "Link copied ✓" in green for 2 s (.is-done, script.js confirmInvite()). */
+.invite-btn {
+    margin-left: var(--space-1);
+    padding: 0 12px;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+/* hover only where a pointer hovers: after a tap on a phone it would stay */
+@media (hover: hover) {
+    .invite-btn:hover {
+        border-color: var(--accent);
+        background: transparent;
+        color: var(--accent);
+    }
+}
+
+.invite-btn .i-check,
+.invite-btn.is-done .i-share { display: none; }
+.invite-btn.is-done .i-check { display: block; }
+
+.invite-btn.is-done,
+.invite-btn.is-done:hover {
+    border-color: var(--ok);
+    background: var(--ok);
+    color: var(--on-accent);
+}
 
 /* color mode: moon in dark mode, sun in light mode */
 #cmode_btn .i-sun,
@@ -885,8 +1003,7 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 
 /* medium screens: icons only (name via aria-label) */
 @media (min-width: 800px) and (max-width: 1179.98px) {
-    .topnav-bar .lbl,
-    #copy_link_btn .lbl { display: none; }
+    .topnav-bar .lbl { display: none; }
 }
 
 @media (max-width: 799.98px) {
@@ -904,20 +1021,17 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 
     .team-name { font-size: var(--fs-m); }
 
-    #show_qr_code,
-    #copy_link_btn .lbl { display: none; }
+    #show_qr_code { display: none; }
+
+    .invite-btn { padding: 0 10px; }
 
     /* board: the header buttons move into the menu sheet (index) */
     .container .topnav-bar { display: none; }
     .container .menu-btn { display: inline-flex; }
 }
 
-/* phones (board): the team name gets the room, the name tag goes away completely,
- * the logo shrinks to its mark */
+/* phones (board): the team name gets the room, the logo shrinks to its mark */
 @media (max-width: 420px) {
-    .you-tag,
-    .team-name .caret { display: none; }
-
     .container #brand { display: none; }
     .container #brand_icon { display: block; }
 }
@@ -1088,6 +1202,10 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     text-wrap: pretty; /* no single word alone in the last line */
 }
 
+/* R3 review V1: the confirmation of an own switch below it (timer), instead of a toast */
+.hint.ok-status { color: var(--ok); }
+.hint.ok-status:empty { margin: 0; }
+
 .row {
     display: flex;
     align-items: center;
@@ -1142,6 +1260,11 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 .btn-box.danger { color: var(--danger); }
 
 .btn-box.danger:enabled:hover { border-color: var(--danger); color: var(--danger); }
+
+/* R3 review V10 (L61): a large button for a dangerous action ("Delete my data"), like .rm-row .btn-box.danger */
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger:enabled:hover,
+.btn.danger:active { background: var(--danger); border-color: var(--danger); color: var(--bg); }
 
 /* segment switch: a radio group that looks like one control (fieldset.f > .seg > label);
  * used where there are two or three values */
@@ -1209,14 +1332,6 @@ fieldset:disabled .seg input:checked + span {
     background: var(--bg-4);
     color: var(--muted);
 }
-
-/* average pointer: a lock on "Show" while it is hidden ("join the dark side") */
-.seg .i-lock {
-    width: 14px;
-    height: 14px;
-}
-
-.seg input:checked + span .i-lock { display: none; }
 
 /* Tabs in a menu section (board settings: Deck | Results | Team; feedback: New issue | Backlog;
  * role=tab, aria-selected) above the content of the
@@ -1441,6 +1556,9 @@ fieldset:disabled .seg input:checked + span {
 
 .m-links a:hover { color: var(--text); }
 
+/* R3 review V10 (L8): "Privacy policy · Imprint" */
+.m-links > span { color: var(--muted); }
+
 .menu .m-links .btn-box {
     margin-left: auto;
     min-height: 0;
@@ -1655,7 +1773,7 @@ div#cbox {
     text-overflow: ellipsis;
 }
 
-/* B-99 D8: the own name tag looks like the name tag in the header (.you-tag) */
+/* B-99 D8: the own name tag on the table, accent filled */
 .c.is-me .card_player_name {
     border-radius: var(--radius-m);
     background: var(--accent);
@@ -4076,6 +4194,23 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 #nameinput { margin: 60px 0 var(--space-4); }
 
+/* R3 review V4: "Join <team>" above the name field (link opened); styled like the heading of #removed_msg */
+.join-title {
+    box-sizing: border-box;
+    width: 450px;
+    max-width: calc(100% - 2 * var(--space-3));
+    margin: 50px 0 0;
+    overflow-wrap: anywhere;
+}
+/* both overlay headings: smaller on phones (the browser default 2em wrapped "Join Team Phoenix" at 360px) */
+.join-title,
+#removed_msg h1 {
+    font-size: clamp(1.25rem, 6vw, 2rem);
+    line-height: 1.25;
+}
+/* depends on the markup order in board.html: h1#join_title, then the (empty) label, then #nameinput */
+.join-title:not(.display_none) + label + #nameinput { margin-top: var(--space-4); }
+
 .privacy_link {
     display: flex;
     justify-content: center;
@@ -4096,6 +4231,17 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 .privacy_link span {
     margin: 0 2px; /* Same margin as links for even spacing */
+}
+
+/* R3 review V10 (L19): below "Join as observer", what observers do */
+.observer-note {
+    box-sizing: border-box;
+    width: 18rem;
+    max-width: calc(100% - 2 * var(--space-3));
+    margin: 0 0 var(--space-2);
+    font-size: var(--fs-s);
+    color: var(--muted);
+    text-align: center;
 }
 
 @media (max-width: 799.98px) {
@@ -4310,8 +4456,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* ---------- Animations ---------- */
 
-.flash-red { animation: flashRed 1.5s ease-in-out; }
-
 @keyframes fade-in {
     0% { opacity: 0; }
     75% { opacity: 0; }
@@ -4339,12 +4483,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 @keyframes caret-pulse {
     0%, 100% { opacity: 0.9; }
     50% { opacity: 0.15; }
-}
-
-@keyframes flashRed {
-    0% { background-color: var(--background-color); }
-    50% { background-color: var(--flash-red-background); }
-    100% { background-color: var(--background-color); }
 }
 
 /* ---------- Rotate hint (B-78) ---------- */
@@ -4479,6 +4617,91 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .dm .hint.warn { color: var(--warn); }
 
+/* R3 review V1: the result of the own change, at the top of the deck tab until the next change (#deck_status) */
+.dm-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin: 0 0 var(--space-3);
+    padding: 4px 4px 4px 10px;
+    border-left: 2px solid var(--ok);
+    background: transparent; /* --ok on --bg-3 is too weak in light mode */
+    color: var(--ok);
+    font-size: var(--fs-xs);
+    min-height: 36px; /* R3 review: as high as the error line with its close button (28px + padding), always */
+    box-sizing: border-box;
+}
+
+@media (pointer: coarse) {
+    .dm-status { min-height: calc(var(--tap) + 8px); }
+}
+
+/* empty: no line (the live region #deck_status_live stays, see board.html) */
+/* R3 review (Andreas): an empty line keeps its room (the deck menu does not jump), border and text invisible */
+.dm-status:has(.dm-status-t:empty) { visibility: hidden; }
+.dm-status-x[hidden] { display: none; }
+
+/* R3 review (Andreas): the list of card sets needs no status line and no reserved room above "< Deck" */
+#cset_panel_deck:has(#deck_menu .dm-plist) .dm-status { display: none; }
+
+.dm-status-t { flex: 1; }
+
+.dm-status.is-error {
+    border-left-color: var(--danger);
+    color: var(--danger);
+}
+
+.dm-status-x,
+.dm-refusal-x {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    color: inherit;
+}
+
+@media (pointer: coarse) {
+    .dm-status-x,
+    .dm-refusal-x {
+        min-width: var(--tap);
+        min-height: var(--tap);
+    }
+}
+
+.dm-status-x .i,
+.dm-refusal-x .i { width: 16px; height: 16px; }
+
+/* a refused toggle (fewer than two cards): the reason right below the cards, until fixed or dismissed */
+.dm-refusal {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+    padding: 6px 4px 6px 10px;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-m);
+    color: var(--danger);
+    font-size: var(--fs-xs);
+}
+
+.dm-refusal p { flex: 1; margin: 0; }
+
+.dm-refusal b { display: block; }
+
+.dm-refusal small { display: block; margin-top: 2px; color: var(--muted); font-size: var(--fs-xs); }
+
+.dm-tgs .dm-tg.is-refused { border-color: var(--danger); animation: dm-refuse 0.4s ease-in-out; }
+
+@keyframes dm-refuse {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dm-tgs .dm-tg.is-refused { animation: none; }
+}
+
 .dm-round { margin: 0 0 var(--space-3); }
 
 .dm-setbtn {
@@ -4508,6 +4731,16 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .dm-t small { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* R3 review V10: in the list of card sets the line about the set may take two lines (the "Card set" button stays one) */
+.dm-prow-b .dm-t small {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
 .dm-fan { display: flex; align-items: center; height: 46px; padding-right: 8px; }
 
 .dm-fan .dm-card { --deck-w: 26px; margin-right: -8px; box-shadow: 0 1px 3px var(--shadow-color); border-radius: 6px; }
@@ -4516,6 +4749,10 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-fan .dm-card:nth-child(2) { transform: rotate(-2.5deg); }
 .dm-fan .dm-card:nth-child(3) { transform: rotate(2.5deg); }
 .dm-fan .dm-card:nth-child(4) { transform: rotate(7deg); }
+
+/* in the list of card sets: a slightly smaller fan, so the rows stay low */
+.dm-prow-b .dm-fan { height: 42px; }
+.dm-prow-b .dm-fan .dm-card { --deck-w: 24px; }
 
 .dm-tgs { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -4570,8 +4807,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     align-items: center;
     gap: 10px;
     width: 100%;
-    min-height: 64px;
-    padding: 6px 4px;
+    min-height: 52px; /* R3 review (Andreas): all sets fit on a desktop screen; still above --tap */
+    padding: 3px 8px 3px 4px; /* R3 review: room on the right, the tick / arrow is never cut off */
     border: 0;
     background: none;
     color: var(--text);
@@ -4585,7 +4822,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-prow.sel b,
 .dm-tick { color: var(--accent); }
 
-.dm-tick { font-weight: bold; text-align: center; }
+.dm-tick { stroke-width: 2.5; } /* the current set: the check icon of Invite (#i-check), in the accent colour */
 
 /* phones: larger taps */
 @media (max-width: 799.98px) {

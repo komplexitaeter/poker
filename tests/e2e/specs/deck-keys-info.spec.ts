@@ -40,7 +40,7 @@ test('letter keys pick the cards row by row; labels QWERTZ without a layout map 
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(21);
   expect((await KEY_LABELS(alice)).join('')).toBe('QWERTZUIOPASDFGHJKLYX');
-  await expect(alice.locator('.deck-hint')).toHaveText('keys Q–X pick a card');
+  await expect(alice.locator('.deck-hint')).toHaveText('press q–x to pick a card');
   // shown in small letters like the rest of the app (CSS text-transform, Andreas #25)
   await expect(alice.locator('#ctl .ctl-key').first()).toHaveText('q', { useInnerText: true });
   await expect(alice.locator('.deck-hint')).toHaveCSS('text-transform', 'lowercase'); // hidden here (hint-off)
@@ -69,6 +69,58 @@ test('letter keys pick the cards row by row; labels QWERTZ without a layout map 
   await expect(deckCards(alice).nth(20)).toHaveClass(/selected/);
 });
 
+/* R3 (Andreas, 2026-11-02): a card clicked with the mouse kept the focus; a letter key then showed its focus ring
+ * next to the card picked by key: two cards looked picked. The focus goes with the key to its card. */
+const focusedCard = (page: Page) => page.evaluate(() => {
+  const el = document.activeElement;
+  return el !== null && el.matches('#ctl .ctl') ? el.getAttribute('data-card') : null;
+});
+const ringedCards = (page: Page) => page.evaluate(() =>
+  [...document.querySelectorAll('#ctl .ctl')].filter(el => el.matches(':focus-visible')).map(el => el.getAttribute('data-card')));
+
+test('a letter key after a click: focus and pick on the same card, take-back by key drops a click focus (R3)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP, locale: 'de-DE' });
+  await withLayout(alice, null);
+  const url = await createTeam(alice, 'Key Focus');
+  await setTeamDeck(alice, url, 'fib-classic', FIB_ALL, CONTROLS_ALL);
+  await joinAsPlayer(alice, url, 'Alice');
+  await addPlayersViaApi(alice, url, ['Bob']); // Bob has no card yet: a card can be taken back
+  await expect(deckCards(alice)).toHaveCount(21);
+
+  // mouse on 13, key O (20): only 20 is picked and only 20 holds the focus (ring)
+  await pickCard(alice, 'thrtn01');
+  expect(await focusedCard(alice)).toBe('thrtn01');
+  await alice.keyboard.press('KeyO');
+  await expect(deckCard(alice, 'twnty01')).toHaveClass(/selected/);
+  await expect(selectedDeckCards(alice)).toHaveCount(1);
+  expect(await focusedCard(alice)).toBe('twnty01');
+  expect(await ringedCards(alice)).toEqual(['twnty01']);
+
+  // taking 20 back by key: the focus came from the mouse, no ring is left on the deck
+  await alice.keyboard.press('KeyO');
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
+  expect(await focusedCard(alice)).toBeNull();
+  expect(await ringedCards(alice)).toEqual([]);
+
+  // the keyboard way stays: Tab to the deck, arrows, Enter; a letter key moves the focus along, a take-back keeps it
+  await pickCard(alice, 'five001');
+  await alice.locator('body').click({ position: { x: 5, y: 5 } }); // focus out of the deck
+  await expect(deckCard(alice, 'five001')).not.toBeFocused();
+  for (let i = 0; i < 40 && (await focusedCard(alice)) === null; i++) await alice.keyboard.press('Tab');
+  expect(await focusedCard(alice)).toBe('five001'); // the deck's tab stop: the picked card
+  await alice.keyboard.press('ArrowRight');
+  expect(await focusedCard(alice)).toBe('eight01');
+  await alice.keyboard.press('Enter');
+  await expect(deckCard(alice, 'eight01')).toHaveClass(/selected/);
+  await alice.keyboard.press('KeyI'); // 13
+  await expect(deckCard(alice, 'thrtn01')).toHaveClass(/selected/);
+  expect(await focusedCard(alice)).toBe('thrtn01');
+  await alice.keyboard.press('KeyI'); // take-back: the keyboard focus stays on 13
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
+  expect(await focusedCard(alice)).toBe('thrtn01');
+  expect(await ringedCards(alice)).toEqual(['thrtn01']);
+});
+
 test('labels QWERTY without a layout map in other languages (R3 review E9)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP, locale: 'en-US' });
   await withLayout(alice, null);
@@ -92,7 +144,7 @@ test('labels follow the layout map, the key stays physical (QWERTY, AZERTY) (F8,
   await joinAsPlayer(alice, url, 'Alice');
   await expect(deckCards(alice)).toHaveCount(21);
   await expect.poll(async () => (await KEY_LABELS(alice)).join('')).toBe('AZERTYUIOPQSDFGHJKLWX');
-  await expect(alice.locator('.deck-hint')).toHaveText('keys A–X pick a card');
+  await expect(alice.locator('.deck-hint')).toHaveText('press a–x to pick a card');
   await expect(alice.locator('#ctl .ctl-key').first()).toHaveText('a', { useInnerText: true });
   // the key in the top left corner picks the first card, whatever is printed on it
   await alice.keyboard.press('KeyQ');
@@ -147,7 +199,7 @@ test('control cards on the table: heading and description in every set, whole li
   await expect(alice.locator('#cbox')).toHaveAttribute('data-text-size', 'none');
   const question = tableCard(alice, 'Bob').locator('.pc');
   await expect(question.locator('.ttl')).toHaveText('question');
-  await expect(question.locator('.txt')).toHaveText('I have a question before I can estimate.');
+  await expect(question.locator('.txt')).toHaveText('I have a question first.');
   await expect(tableCard(alice, 'Alice').locator('.pc :is(.ttl, .txt)')).toHaveCount(0); // numbers stay without text
 
   // every description ends inside its card, on a whole line (line clamp), at any card size
