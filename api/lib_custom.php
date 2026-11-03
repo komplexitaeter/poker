@@ -5,6 +5,8 @@
  * - A custom set is a deck like a catalog variant: deck_id 'c-<set id>' (pok_teams_tbl.deck_id), group 'custom',
  *   its cards are the active cards of the set in position order (pok_teams_tbl.deck_cards keeps their keys for the
  *   round snapshot). Control cards stay team-wide (deck_controls).
+ * - B-98 (cards on/off): like a catalog variant, the team may switch single cards of the set off (update_deck.php
+ *   with cards); deck_cards then holds the switched-on keys. The set itself stays unchanged.
  * - A card whose identity (symbol, text, numeric value) changes is a new row with a new card_key ('c-' +
  *   base36(id)), the old row gets active = 0. Rows are never deleted, so cards still on the table keep their value.
  *   Position, heading, description and colour are updated in place (Andreas 2026-11-03), the key stays.
@@ -26,6 +28,7 @@ const CUSTOM_DESCRIPTION_MAX = 160;
 const CUSTOM_NUMERIC_MAX = 99999999;  // decimal(10,2)
 const CUSTOM_MIGRATED_SET_NAME = 'Our deck'; // Andreas 2026-11-02 (sets migrated before keep "Previous deck")
 const CUSTOM_BODY_MAX_BYTES = 65536;
+const CUSTOM_DECK_MIN_CARDS = 2;     // B-98: switched-on cards of a custom set (DECK_MIN_CARDS in script_deck.js)
 
 /* B-98/B-100: sets per team; _CUSTOM_SETS_MAX in config.php overrides the default of 5 (later maybe a paid feature) */
 function custom_sets_max(): int
@@ -60,6 +63,20 @@ function custom_deck_cards(array $keys): ?string
 {
     $value = implode(',', $keys);
     return strlen($value) <= 200 ? $value : null;
+}
+
+/*
+ * B-98 (cards on/off): the switched-on cards of a custom set (its active cards, see load_custom_sets()) for
+ * pok_teams_tbl.deck_cards $deck_cards (comma list of keys): the keys that are still active cards of the set, in
+ * position order. Fewer than CUSTOM_DECK_MIN_CARDS of them (or null/'') = all cards of the set.
+ */
+function custom_deck_selection(array $set_cards, ?string $deck_cards): array
+{
+    $all = array_column($set_cards, 'card_key');
+    if ($deck_cards === null || $deck_cards === '') return $all;
+    $wanted = array_flip(explode(',', $deck_cards));
+    $subset = array_values(array_filter($all, fn($key) => isset($wanted[$key])));
+    return count($subset) >= CUSTOM_DECK_MIN_CARDS ? $subset : $all;
 }
 
 function custom_deck_id(int $set_id): string
@@ -479,13 +496,15 @@ function insert_custom_set($link, string $t, string $name, string $style, array 
  * (custom_card_identity(): symbol, text, numeric value) keeps its key; its position, heading, description and colour
  * are updated in place (cards on the table show the new presentation). A card with a changed identity and new cards
  * become new rows (new keys), active cards missing in the list (or replaced) get active = 0 - those rows are kept, so
- * cards on the table keep their data. Returns the keys in the new order and whether anything changed.
+ * cards on the table keep their data. Returns the keys in the new order, whether anything changed and 'replaced'
+ * (old key => new key of a card whose identity changed, B-98: it keeps its on/off state).
  */
 function store_custom_cards($link, int $set_id, array $active, array $cards): array
 {
     $keys = array();
     $changed = false;
     $kept = array();
+    $replaced = array();
     foreach ($cards as $i => $card) {
         $old = $card['key'] !== null ? ($active[$card['key']] ?? null) : null;
         if ($old !== null && custom_card_identity($old) === custom_card_identity($card)) {
@@ -499,7 +518,9 @@ function store_custom_cards($link, int $set_id, array $active, array $cards): ar
             }
             $keys[] = $card['key'];
         } else {
-            $keys[] = insert_custom_card($link, $set_id, $i, $card);
+            $key = insert_custom_card($link, $set_id, $i, $card);
+            if ($old !== null) $replaced[$card['key']] = $key;
+            $keys[] = $key;
             $changed = true;
         }
     }
@@ -510,7 +531,7 @@ function store_custom_cards($link, int $set_id, array $active, array $cards): ar
         $sql->execute();
         $changed = true;
     }
-    return array('keys' => $keys, 'changed' => $changed);
+    return array('keys' => $keys, 'changed' => $changed, 'replaced' => $replaced);
 }
 
 /*
@@ -589,14 +610,25 @@ function get_set_param(): int
  * change in update_deck.php. The deck is stored (deck_rev + 1) if anything changed or $force_store (e.g. name or style of the
  * active set). The caller holds the team row lock ($team from lock_team_deck()). B-98 V6: $player_id is remembered
  * as the one who changed the card set if the set group changes.
+ * B-98 (cards on/off): another deck gets all its cards. The same custom set (saved in the editor) keeps the cards that
+ * were switched off ($replaced from store_custom_cards(): a replaced card keeps its state); removed cards drop out,
+ * added cards are on. Fewer than CUSTOM_DECK_MIN_CARDS on = all cards again (custom_deck_selection()).
  * Returns array('deck' => resolved deck, 'changed' => bool, 'new_round' => bool).
  */
 function custom_update_team_deck($link, string $t, array $team, array $catalog, string $deck_id, bool $force_store,
-                                 string $player_id = ''): array
+                                 string $player_id = '', array $replaced = array()): array
 {
     $sets = load_custom_sets($link, $t, $catalog);
     $old = $team['deck'];
-    $new = resolve_deck($deck_id, null, implode(',', $old['controls']), (int)$team['deck_rev'], $catalog, $sets);
+    $deck_cards = null;
+    $set_id = custom_set_id_of($deck_id);
+    if ($old['id'] === $deck_id && $set_id !== null && isset($team['custom_sets'][$set_id], $sets[$set_id])) {
+        $off = array_flip(array_diff(array_column($team['custom_sets'][$set_id]['cards'], 'card_key'), $old['cards']));
+        foreach ($replaced as $old_key => $new_key) if (isset($off[$old_key])) $off[$new_key] = true;
+        $on = array_filter(array_column($sets[$set_id]['cards'], 'card_key'), fn($key) => !isset($off[$key]));
+        $deck_cards = implode(',', $on);
+    }
+    $new = resolve_deck($deck_id, $deck_cards, implode(',', $old['controls']), (int)$team['deck_rev'], $catalog, $sets);
     $old_keys = $old['cards'];
     $new_keys = $new['cards'];
     sort($old_keys);
