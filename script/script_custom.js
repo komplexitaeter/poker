@@ -287,14 +287,17 @@ function csActive() {
     return gCs.set !== null && gDeckMenu.deck !== null && gDeckMenu.deck.id === gCs.set.deck_id;
 }
 
-/* Save starts a new round: the set is in play, cards are down and a card of the set is gone - removed, or its symbol,
- * text or value changed (new key). Added cards, heading, description, colour, order, name and style start none
- * (same rule as the server, Andreas 2026-11-03) */
+/* Save starts a new round: the set is in play, cards are down and the cards of the deck change - a card added (it is
+ * on), a card that is on removed, or its symbol, text or value changed (new key). Cards switched off stay off (also
+ * with a new key) and do not count; heading, description, colour, order, name and style start none
+ * (same rule as the server, Andreas 2026-11-03, variant b) */
 function csStartsRound() {
     if (!deckRoundRunning() || !csActive()) return false;
-    const kept = new Set(gCs.cards.map(csRequestCard).filter(card => card.key !== null && !csIdentityChanged(card))
-        .map(card => card.key));
-    return gCs.set.cards.some(card => !kept.has(card.card_key));
+    const on = new Set(gDeckMenu.deck.cards);
+    const requests = gCs.cards.map(csRequestCard);
+    if (requests.some(card => card.key === null || (on.has(card.key) && csIdentityChanged(card)))) return true;
+    const kept = new Set(requests.map(card => card.key));
+    return gCs.set.cards.some(card => on.has(card.card_key) && !kept.has(card.card_key));
 }
 
 /* symbol, text or numeric value of a request card differ from the stored card with its key (the card gets a new key) */

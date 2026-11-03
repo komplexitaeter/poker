@@ -11,8 +11,8 @@
  *   400 for a set of another team, a deleted or empty set.
  * - B-98 (cards on/off): with cards, a custom set gets only these of its active cards (in position order; the set
  *   itself stays unchanged). 400 for a key that is no active card of this set or fewer than CUSTOM_DECK_MIN_CARDS
- *   cards. A new round starts only if a card is down and a card leaves the deck (switching cards on starts none),
- *   as for a save of the set in the editor (custom_update_team_deck()).
+ *   cards. Switching cards on or off starts a new round if a card is down (any change of the set of cards, as for a
+ *   save of the set in the editor, custom_update_team_deck(); a mere change of order starts none).
  * - B-98 V6: id (player id, optional) is remembered as the one who changed the card set if the set group changes.
  * Answer (JSON): {deck: {id, group, cards, controls, rev}, changed: bool, new_round: bool}
  */
@@ -81,12 +81,10 @@ if ($set_id !== null && $deck_cards !== null) { // B-98: only active cards of th
 $new = resolve_deck($deck_id, $deck_cards, implode(',', $old['controls']), (int)$team['deck_rev'], $catalog,
                     $team['custom_sets']);
 $changed = $new['id'] !== $old['id'] || $new['cards'] !== $old['cards'];
-// B-98: within a custom set only a card that leaves the deck starts a new round (as custom_update_team_deck())
-$cards_lost = $set_id === null || $new['id'] !== $old['id'] || count(array_diff($old['cards'], $new['cards'])) > 0;
 
 $new_round = false;
 if ($changed || (int)$team['needs_setup'] === 1 || $team['deck_id'] !== $old['id']) {
-    if ($changed && $cards_lost && team_has_cards_down($link, $t)) {
+    if ($changed && team_has_cards_down($link, $t)) {
         start_new_round($link, $t); // snapshot with the old deck
         $new_round = true;
     }
