@@ -98,9 +98,9 @@ test('create, activate, play, save (diff, rev conflict, new round) and delete a 
   expect(dao.players.map((p: { name: string; display_card_key: string }) => [p.name, p.display_card_key]))
     .toEqual([['Ben', keys[0]], ['Anna', keys[2]]]);
 
-  // save: card 0 unchanged, card 1 with a new heading (new key), card 2 removed, a new card -> new round (cards down)
+  // save: card 0 unchanged, card 1 with a new text (new key), card 2 removed, a new card -> new round (cards down)
   let saved = await a.save(set.set_id, { name: 'Risk level', style: 'badge', rev: 1, cards: [
-    asRequest(set.cards[0]), asRequest(set.cards[1], { heading: 'medium' }),
+    asRequest(set.cards[0]), asRequest(set.cards[1], { text: 'Mid' }),
     { text: '½', numeric_value: 0.5, color: 'blue' },
   ] });
   expect(saved.status()).toBe(200);
@@ -158,6 +158,64 @@ test('create, activate, play, save (diff, rev conflict, new round) and delete a 
   expect(dao.deck).toMatchObject({ id: 'fib-classic', controls: ['break01', 'qstmrk1'] });
   expect((await a.remove(set.set_id)).status()).toBe(404);
   expect((await a.deck(set.deck_id)).status()).toBe(400);
+});
+
+/* Andreas 2026-11-03: heading, description and colour change in place (same key, no new round, the table shows the new
+ * texts), adding a card starts no new round either; a new symbol, text or value (new key) or a removed card does */
+test('save while cards are down: in-place changes and added cards keep the round, value/text/symbol/removal start a new one', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Custom In Place');
+  const t = teamIdOf(url);
+  const [anna, ben] = await addPlayersViaApi(page, url, ['Anna', 'Ben']);
+  const a = api(page, t);
+  const created = await (await a.create({ name: 'Risk', style: 'badge', cards: RISK, activate: true })).json();
+  const keys: string[] = created.set.cards.map((card: { card_key: string }) => card.card_key);
+  const rounds = () => sql(`select count(1) from pok_roundstats_tbl where team_id = '${t}'`);
+  const down = () => sql(`select group_concat(ifnull(card_key, '-') order by name) from pok_players_tbl
+                          where team_id = '${t}' and id in ('${anna}', '${ben}')`);
+  expect((await a.setc(anna, keys[1])).ok()).toBeTruthy();
+  expect((await a.setc(ben, keys[0])).ok()).toBeTruthy();
+  const before = rounds();
+
+  // heading, description and colour of a card that is down + a new card: keys stay, no new round, deck.rev + 1
+  let body = await (await a.save(created.set.set_id, { name: 'Risk', style: 'badge', rev: 1, cards: [
+    asRequest(created.set.cards[0], { color: 'teal' }),
+    asRequest(created.set.cards[1], { heading: 'medium', description: 'Somewhere in between.', color: 'blue' }),
+    asRequest(created.set.cards[2]), { text: 'XL', numeric_value: 5, color: 'violet' },
+  ] })).json();
+  expect(body).toMatchObject({ changed: true, new_round: false, set: { rev: 2 }, deck: { rev: created.deck.rev + 1 } });
+  let set = body.set;
+  expect(set.cards.slice(0, 3).map((card: { card_key: string }) => card.card_key)).toEqual(keys);
+  expect(set.cards[1]).toMatchObject({ card_key: keys[1], value: 'M', heading: 'medium',
+    description: 'Somewhere in between.', color: 'blue', numeric_value: 2, active: true });
+  expect(rounds()).toBe(before);
+  expect(down()).toBe(`${keys[1]},${keys[0]}`);
+  expect(sql(`select count(1) from pok_custom_cards_tbl where set_id = ${set.set_id} and active = 0`)).toBe('0');
+  let dao = await a.dao(anna);
+  expect(dao.deck.cards).toEqual(set.cards.map((card: { card_key: string }) => card.card_key));
+  expect(dao.custom_sets[0].cards[1]).toMatchObject({ card_key: keys[1], heading: 'medium', color: 'blue' });
+  expect(dao.custom_sets[0].cards[0]).toMatchObject({ card_key: keys[0], color: 'teal' });
+  expect(dao.players.find((p: { name: string }) => p.name === 'Anna').display_card_key).toBe(keys[1]);
+
+  // each of value, text, symbol of a card that is down, and removing a card: new key / gone -> new round
+  const variants: [string, (cards: Record<string, unknown>[]) => Card[]][] = [
+    ['value', cards => cards.map((card, i) => asRequest(card, i === 1 ? { numeric_value: 2.5 } : {}))],
+    ['text', cards => cards.map((card, i) => asRequest(card, i === 1 ? { text: 'Mid' } : {}))],
+    ['symbol', cards => cards.map((card, i) => asRequest(card, i === 0 ? { symbol: 's-2' } : {}))],
+    ['removed', cards => cards.filter((_card, i) => i !== 2).map(card => asRequest(card))],
+  ];
+  for (const [what, change] of variants) {
+    const played = what === 'symbol' ? set.cards[0].card_key : set.cards[what === 'removed' ? 2 : 1].card_key;
+    expect((await a.setc(anna, played)).ok()).toBeTruthy();
+    const count = Number(rounds());
+    body = await (await a.save(set.set_id, { name: 'Risk', style: 'badge', rev: set.rev, cards: change(set.cards) })).json();
+    expect(body, what).toMatchObject({ changed: true, new_round: true });
+    expect(Number(rounds()), what).toBe(count + 1);
+    expect(body.set.cards.map((card: { card_key: string }) => card.card_key), what).not.toContain(played);
+    expect(sql(`select active from pok_custom_cards_tbl where card_key = '${played}'`), what).toBe('0');
+    set = body.set;
+  }
+  expect(sql(`select count(card_key) from pok_players_tbl where team_id = '${t}'`)).toBe('0');
 });
 
 test('custom sets: validation, limits, other teams', async ({ browser }) => {

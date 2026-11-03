@@ -175,8 +175,9 @@ function cardFromCustom(entry, style = 'plain') {
 }
 
 /* B-98 S5: adds the custom cards of a board state (the team's sets and custom cards still on the table) to the cards
- * by key. A custom card never changes its content (a changed card gets a new key), but its set may get another
- * style: a known key is only built again when the style of its set changed. Cards of deleted sets: plain. */
+ * by key. A changed symbol, text or value gives a card a new key; heading, description and colour change in place
+ * (Andreas 2026-11-03) and its set may get another style: a known key is built again when one of these changed, so
+ * the tray and the table draw the new face (setDeck() sees the new model). Cards of deleted sets: plain. */
 function addCustomCards(json, cardsByKey) {
     if (!json || typeof json !== 'object') return;
     const styles = new Map(); // set_id -> style
@@ -191,9 +192,14 @@ function addCustomCards(json, cardsByKey) {
         if (!entry || typeof entry.card_key !== 'string') return;
         const style = styles.get(entry.set_id) || 'plain';
         const known = cardsByKey.get(entry.card_key);
-        if (known === undefined || (known.custom === true && known.style !== style && styles.has(entry.set_id))) {
+        if (known === undefined) {
             cardsByKey.set(entry.card_key, cardFromCustom(entry, style));
+            return;
         }
+        if (known.custom !== true) return;
+        const fresh = cardFromCustom(entry, styles.has(entry.set_id) ? style : known.style);
+        if (fresh.style !== known.style || fresh.heading !== known.heading || fresh.info !== known.info
+            || fresh.color !== known.color) cardsByKey.set(entry.card_key, fresh);
     });
 }
 

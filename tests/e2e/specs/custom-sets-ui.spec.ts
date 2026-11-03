@@ -474,8 +474,8 @@ for (const phone of [{ width: 375, height: 667 }, { width: 390, height: 844 }]) 
   });
 }
 
-/* R3 fix (Andreas): saving the active set with another style (same card keys) or another heading (new keys) changes
- * deck, table and result for everybody at once, without a reload */
+/* R3 fix (Andreas): saving the active set with another style or heading (same card keys, in place) changes deck,
+ * table and result for everybody at once, without a reload; a new value (new key) starts a new round */
 test('a new style or heading of the active set shows at once for everybody', async ({ browser }) => {
   const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Restyle');
   const t = new URL(url).searchParams.get('t') as string;
@@ -515,18 +515,33 @@ test('a new style or heading of the active set shows at once for everybody', asy
     await expect(tableCard(page, 'Bob')).toHaveAttribute('data-card', three);
   }
 
-  // a heading makes a new card (new key) while cards are down: the editor says so, Save starts a new round
-  // (the toast keeps its last text when it fades; the exact new text tells the two saves apart)
+  // a heading changes in place (Andreas 2026-11-03): same key, no hint, no new round, the cards stay down and
+  // everybody sees the new heading without a reload (the toast must fade first: the same text again tells nothing)
+  await expect(alice.locator('#toast')).not.toHaveClass(/toast-on/);
   await alice.locator('#deck_edit').click();
   await alice.locator('[data-f="card:0"]').click();
   await alice.locator('#cs_heading').fill('MEDIUM');
+  await expect(alice.locator('#cs_round')).toHaveCount(0);
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#toast')).toHaveText('Set saved');
+  await expect(alice.locator('#toast')).toHaveClass(/toast-on/);
+  for (const page of [alice, bob]) {
+    await expect(page.locator(`#ctl .ctl[data-card="${m}"] .dh`)).toHaveText('MEDIUM');
+    await expect(tableCard(page, 'Alice')).toHaveAttribute('data-card', m);
+    await expect(tableCard(page, 'Bob')).toHaveAttribute('data-card', three);
+  }
+  await expect(tableCard(alice, 'Alice').locator('.pc .ttl')).toContainText('MEDIUM');
+
+  // the value of a card that is down changes (new key): the editor says so, Save starts a new round
+  await alice.locator('#deck_edit').click();
+  await alice.locator('[data-f="card:1"]').click();
+  await alice.locator('#cs_value').fill('4');
   await expect(alice.locator('#cs_round')).toBeVisible();
   await alice.locator('#cs_save').click();
   await expect(alice.locator('#toast')).toHaveText('Set saved \u2013 new round started');
-  await expect(alice.locator('#toast')).toHaveClass(/toast-on/);
   for (const page of [alice, bob]) {
-    await expect(page.locator('#ctl .ctl .dh').first()).toHaveText('MEDIUM');
-    await expect(page.locator(`#ctl .ctl[data-card="${m}"]`)).toHaveCount(0);
+    await expect(page.locator(`#ctl .ctl[data-card="${three}"]`)).toHaveCount(0);
+    await expect(page.locator(`#ctl .ctl[data-card="${m}"]`)).toHaveCount(1);
     await expect(tableCard(page, 'Alice')).not.toHaveAttribute('data-card', m);
     await expect(tableCard(page, 'Bob')).not.toHaveAttribute('data-card', three);
   }
