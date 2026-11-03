@@ -2734,6 +2734,8 @@ function updateTimer(json) {
     let box = document.getElementById('timer');
     if (box !== null) {
         box.classList.toggle('display_none', !gTimer.visible);
+        // R3 (Andreas): phones without the timer: the round button takes the whole row (style.css .dock.no-timer)
+        if (box.parentElement !== null) box.parentElement.classList.toggle('no-timer', !gTimer.visible);
         // not started yet (or reset): "ready"; both ready and paused are shown dimmed
         box.setAttribute('data-state', running ? 'running' : (gTimer.time === 0 ? 'ready' : 'paused'));
         document.getElementById('timer_start').hidden = running;

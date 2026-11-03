@@ -3063,6 +3063,17 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     font-size: var(--fs-m);
 }
 
+/* R3 (Andreas): phones and small tablets with the timer off: no room kept for it, the button takes the whole row
+ * (script.js updateTimer() sets .no-timer); large screens keep the timer's row (the button never moves there) */
+@media (max-width: 799.98px) {
+    .dock.no-timer .timer.display_none { display: none; }
+
+    .dock.no-timer #newroundbtn {
+        max-width: none;
+        margin-left: 0;
+    }
+}
+
 /* B-67 (Andreas): always there. Disabled ("Cancel Round") until someone has voted, dashed like a
  * locked switch; "Cancel Round" while voting; "New Round" (all cards revealed) as the main action. */
 #newroundbtn.primary:enabled {
