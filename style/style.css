@@ -342,7 +342,7 @@ textarea.field {
     box-shadow: none !important;
 }
 
-.btn-box.no-ring:focus-visible { border-color: var(--light-border-color); }
+.btn-box.no-ring:focus-visible:not(:hover) { border-color: var(--light-border-color); }
 
 /* empty labels of the name overlay keep their spacing (the menu uses .lab) */
 .topnav label {
@@ -1330,6 +1330,8 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
+
+.seg input.no-ring:focus-visible + span { outline: none; } /* focusQuietly() after a click: the ring is on the label */
 
 /* locked (B-42: sort order in anonymous mode): the choice stays readable, the dashed border
  * marks it as locked */
