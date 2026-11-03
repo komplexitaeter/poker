@@ -55,11 +55,15 @@ test('hb: the board loads dao.php 0-5 s after a heartbeat, once (B-110)', async 
   await joinAsPlayer(alice, url, 'Alice');
   await expect(tableCard(alice, 'Alice')).toBeVisible();
   await alice.waitForTimeout(500);
+  // poker-msg sends a real 'hb' to all connections every 30 s (one timer for all): one arriving after the load below
+  // would load again, rightly. So the real ones are dropped and only the test sends 'hb' (the original handler).
+  // gConn is a global let (not on window): evaluated as a script in the page
+  await alice.evaluate(`window.e2eOnMessage = gConn.onmessage;
+    gConn.onmessage = e => { if (e.data !== 'hb') window.e2eOnMessage(e); };`);
   let loads = 0;
   alice.on('request', r => { if (r.url().includes('/api/dao.php')) loads++; });
   // three heartbeats in a row: one load (a pending one is not doubled)
-  // gConn is a global let (not on window): evaluated as a script in the page
-  await alice.evaluate(`for (let i = 0; i < 3; i++) gConn.onmessage(new MessageEvent('message', { data: 'hb' }))`);
+  await alice.evaluate(`for (let i = 0; i < 3; i++) e2eOnMessage(new MessageEvent('message', { data: 'hb' }))`);
   await expect.poll(() => loads, { timeout: 7000 }).toBe(1);
   await alice.waitForTimeout(1000);
   expect(loads).toBe(1);
