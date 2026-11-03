@@ -676,3 +676,53 @@ test('changes of the active set show everywhere for everybody without a reload',
     await expect(tableCard(page, 'Alice')).not.toHaveAttribute('data-card', l);
   }
 });
+
+/* R3 (Andreas, 2026-11-03): focus the app moves itself (the choice opens, the editor closes, "Change" / "‹ Deck")
+ * shows its ring only after a key, not after a mouse click (focusQuietly() in script.js) */
+test('focus moved by the deck menu and the editor: no ring after a click, a ring after a key', async ({ browser }) => {
+  const { alice } = await teamWithTwoPlayers(browser, 'Focus Ring');
+  const ring = (selector: string) => alice.locator(selector).evaluate(el => ({
+    focused: document.activeElement === el,
+    visible: el.matches(':focus-visible'),
+    outline: getComputedStyle(el).outlineStyle,
+  }));
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_change').click();
+  await expect(alice.locator('#deck_pick_title')).toBeFocused();
+  expect((await ring('#deck_pick_title')).visible).toBe(false);
+
+  // mouse: the choice opens with the focus on "Start from scratch", × closes, the focus back on "+ New set", no ring
+  await alice.locator('#deck_new_set').click();
+  await expect(alice.locator('#cs_scratch')).toBeFocused();
+  expect((await ring('#cs_scratch')).outline).toBe('none');
+  await alice.locator('#cs_x').click();
+  await expect(editor(alice)).toBeHidden();
+  await expect(alice.locator('#deck_new_set')).toBeFocused();
+  expect(await ring('#deck_new_set')).toEqual({ focused: true, visible: false, outline: 'none' });
+
+  // like Safari: the browser would show the ring after the click (Chrome does so after a key); the page hides it
+  await alice.keyboard.press('F2');
+  const safariClick = (selector: string) => alice.locator(selector).evaluate(el => {
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    (el as HTMLElement).click();
+  });
+  await safariClick('#deck_new_set');
+  await expect(alice.locator('#cs_scratch')).toBeFocused();
+  expect(await ring('#cs_scratch')).toEqual({ focused: true, visible: true, outline: 'none' });
+  await safariClick('#cs_x');
+  await expect(alice.locator('#deck_new_set')).toBeFocused();
+  expect(await ring('#deck_new_set')).toEqual({ focused: true, visible: true, outline: 'none' });
+  // a key brings the ring back
+  await alice.keyboard.press('F2');
+  expect((await ring('#deck_new_set')).outline).toBe('solid');
+
+  // keyboard: Enter opens the choice with the ring, Esc closes it, the focus with its ring back on "+ New set"
+  await alice.locator('#deck_new_set').focus();
+  await alice.keyboard.press('Enter');
+  await expect(alice.locator('#cs_scratch')).toBeFocused();
+  expect(await ring('#cs_scratch')).toEqual({ focused: true, visible: true, outline: 'solid' });
+  await alice.keyboard.press('Escape');
+  await expect(editor(alice)).toBeHidden();
+  await expect(alice.locator('#deck_new_set')).toBeFocused();
+  expect(await ring('#deck_new_set')).toEqual({ focused: true, visible: true, outline: 'solid' });
+});

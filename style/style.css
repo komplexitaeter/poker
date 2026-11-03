@@ -335,6 +335,15 @@ textarea.field {
     box-shadow: 0 0 8px 2px var(--focus-ring);
 }
 
+/* R3 (Andreas, 2026-11-03): focus the app moved after a mouse click or tap shows no ring (focusQuietly() in script.js;
+ * Safari would show it). A key brings it back. */
+.no-ring:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.btn-box.no-ring:focus-visible { border-color: var(--light-border-color); }
+
 /* empty labels of the name overlay keep their spacing (the menu uses .lab) */
 .topnav label {
     display: block;
@@ -2821,6 +2830,10 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
 
 .dkc.has-head .mot,
 .dkc.has-head .tv { top: 7%; height: 58%; }
+
+/* R3 (Andreas, 2026-11-03): traffic lights 10 % larger than the other deck symbols (coffee, ?); the drawing leaves
+ * room in its 100 x 120 box, so it stays inside the symbol's place. The table keeps its size. */
+.dkc .mot:has(use[href*="#s-light-"]) { transform: scale(1.1); }
 
 /* B-99 D6: the heading starts right below the symbol (top: 67 %, the symbol box ends at 65 %), so the first
  * lines of one- and two-line headings sit level across the deck and the gap to the symbol is the same on every card */
