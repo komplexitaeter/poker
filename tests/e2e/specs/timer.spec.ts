@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, teamWithTwoPlayers, openTimerPanel } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, teamWithTwoPlayers, openTimerPanel, setTimer } from './helpers';
 
 /**
  * B-66/B-67: timer instead of stopwatch (frontend). The header button :timer opens the timer panel:
@@ -375,4 +375,36 @@ test('an own change is not undone by an older board state (B-73, B-92)', async (
   await expect(display(alice)).toHaveText('T−05:00');
   await alice.context().close();
   await bob.context().close();
+});
+
+/* R3 (Andreas, staging): on a phone the round button takes the whole row while the timer is off (no room kept for
+ * it); with the timer on, timer left and the button (at most 200px) right as before */
+test('phone 390: the round button takes the whole row with the timer off', async ({ browser }) => {
+  const page = await newPlayer(browser, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const url = await createTeam(page, 'Timer Off Phone');
+  await joinAsPlayer(page, url, 'Alice');
+  const widths = () => page.evaluate(() => {
+    const dock = document.querySelector('.dock') as HTMLElement;
+    const style = getComputedStyle(dock);
+    return { inner: dock.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+      button: document.getElementById('newroundbtn')!.getBoundingClientRect().width };
+  });
+
+  // a new team: the timer is off
+  await expect(page.locator('#timer')).toBeHidden();
+  let w = await widths();
+  expect(w.button).toBeGreaterThan(300);
+  expect(Math.abs(w.button - w.inner)).toBeLessThan(1);
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/phone-390-timer-off.png` });
+
+  await setTimer(page, true);
+  w = await widths();
+  expect(w.button).toBeLessThanOrEqual(200);
+  const timer = (await page.locator('#timer').boundingBox())!;
+  const button = (await page.locator('#newroundbtn').boundingBox())!;
+  expect(timer.x + timer.width).toBeLessThanOrEqual(button.x);
+
+  await setTimer(page, false);
+  w = await widths();
+  expect(Math.abs(w.button - w.inner)).toBeLessThan(1);
 });

@@ -204,6 +204,9 @@ function switchMenuLayout() {
     let menu = getMenu();
     let sec = openMenuSection();
     if (sec === null) return;
+    // R3 (Andreas): another modal dialog above the menu (card set editor): reopening the menu would put it into the
+    // top layer above that dialog. The menu switches when the dialog closes (initMenu(), close listener).
+    if (otherModalOpen(menu)) return;
     if (sec === 'index' && !gPhoneQuery.matches) {
         closeMenu(false);
         return;
@@ -220,6 +223,18 @@ function switchMenuLayout() {
     if (focused !== null && focused.isConnected) focused.focus({preventScroll: true});
     else if (menu.contains(document.activeElement)) document.activeElement.blur();
     updateMenuExpanded();
+}
+
+/* true when a modal dialog other than the menu is open (e.g. the card set editor, script_custom.js) */
+function otherModalOpen(menu) {
+    return Array.from(document.querySelectorAll('dialog[open]')).some(dialog => {
+        if (dialog === menu) return false;
+        try {
+            return dialog.matches(':modal');
+        } catch (e) {
+            return true; // no :modal (old browsers): an open dialog besides the menu is the editor's
+        }
+    });
 }
 
 /* B-74: true when the event did not happen in the menu, an overlay (QR, delete user, name), another dialog,
@@ -327,6 +342,10 @@ function initMenu() {
     });
 
     gPhoneQuery.addEventListener('change', switchMenuLayout);
+    // a modal dialog above the menu closed: catch up on a breakpoint change meanwhile (close does not bubble)
+    document.addEventListener('close', function (event) {
+        if (event.target !== menu && event.target instanceof HTMLDialogElement) switchMenuLayout();
+    }, true);
 }
 
 document.addEventListener('DOMContentLoaded', initMenu);

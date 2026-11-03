@@ -738,3 +738,79 @@ test('focus moved by the deck menu and the editor: no ring after a click, a ring
   await expect(alice.locator('#deck_new_set')).toBeFocused();
   expect(await ring('#deck_new_set')).toEqual({ focused: true, visible: true, outline: 'solid' });
 });
+
+/* R3 (Andreas, staging): the own picked card of an own set is taken back like one of a built-in set: a second click,
+ * a second tap (phone, carousel) or the same letter key again */
+for (const way of ['click', 'tap', 'key'] as const) {
+  test(`own set: the picked card is taken back by a second ${way}`, async ({ browser }) => {
+    const phone = way === 'tap' ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {};
+    const alice = await newPlayer(browser, phone);
+    const url = await createTeam(alice, 'Own Sets Take Back');
+    await joinAsPlayer(alice, url, 'Alice');
+    const bob = await newPlayer(browser);
+    await joinAsPlayer(bob, url, 'Bob'); // Bob has no card: Alice's card can be taken back
+    const t = new URL(url).searchParams.get('t') as string;
+    const res = await alice.request.post(`/api/custom_set_create.php?t=${encodeURIComponent(t)}`, {
+      headers: { 'Content-Type': 'application/json' },
+      data: JSON.stringify({ name: 'Risk', style: 'badge', activate: true, cards: [
+        { symbol: 's-1', heading: 'low', numeric_value: 1, color: 'green' },
+        { text: 'M', heading: 'medium', description: 'Some risk.', numeric_value: 2, color: 'amber' },
+        { text: 'L', numeric_value: 3, color: 'red' }] }) });
+    expect(res.ok()).toBeTruthy();
+    const keys: string[] = (await res.json()).set.cards.map((c: { card_key: string }) => c.card_key);
+    const card = deckCard(alice, keys[1]);
+    await expect(card).toBeVisible();
+    const press = async () => {
+      if (way === 'tap') await card.tap();
+      else if (way === 'key') await alice.keyboard.press('KeyW'); // the second card of the deck
+      else await card.click();
+    };
+
+    await press();
+    await expect(card).toHaveClass(/selected/);
+    await expect(tableCard(bob, 'Alice')).toHaveAttribute('data-card', 'done001');
+    await alice.waitForTimeout(800); // a real second press, not a double click
+    await press();
+    await expect(card).not.toHaveClass(/selected/);
+    await expect(card).toHaveAttribute('aria-pressed', 'false');
+    await expect(tableCard(alice, 'Alice')).toHaveAttribute('data-card', 'prgrss1');
+    await expect(tableCard(bob, 'Alice')).toHaveAttribute('data-card', 'prgrss1');
+    expect((await lastJson(alice) as unknown as { selected_card_key: string | null }).selected_card_key).toBeFalsy();
+  });
+}
+
+/* R3 (Andreas, staging): the editor is open on a desktop and the window gets narrow (phone layout): the menu behind
+ * it does not come up above the editor (it would be reopened as a modal sheet in the top layer); it switches when
+ * the editor closes */
+test('editor open, window from 1280 to 390: the menu stays behind the editor', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: { width: 1280, height: 800 } });
+  const url = await createTeam(alice, 'Own Sets Resize');
+  await joinAsPlayer(alice, url, 'Alice');
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_change').click();
+  await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_scratch').click();
+  await expect(editor(alice)).toBeVisible();
+  await expect(alice.locator('#cs_name')).toBeFocused();
+  const menuModal = () => alice.locator('#menu').evaluate(el => el.matches(':modal'));
+  const top = () => alice.evaluate(() => {
+    const el = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return el === null ? null : el.closest('dialog')?.id ?? null;
+  });
+  expect(await menuModal()).toBe(false);
+
+  await alice.setViewportSize({ width: 390, height: 844 });
+  await alice.waitForTimeout(300);
+  await expect(editor(alice)).toBeVisible();
+  expect(await menuModal()).toBe(false);
+  expect(await top()).toBe('cs_editor');
+  await expect(alice.locator('#cs_name')).toBeFocused();
+  await alice.locator('#cs_name').fill('Narrow');
+
+  // back to wide and narrow again: still the editor on top
+  await alice.setViewportSize({ width: 1280, height: 800 });
+  await alice.setViewportSize({ width: 390, height: 844 });
+  await alice.waitForTimeout(300);
+  expect(await top()).toBe('cs_editor');
+  await expect(alice.locator('#cs_name')).toHaveValue('Narrow');
+});
