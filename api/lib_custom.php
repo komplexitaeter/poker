@@ -5,9 +5,9 @@
  * - A custom set is a deck like a catalog variant: deck_id 'c-<set id>' (pok_teams_tbl.deck_id), group 'custom',
  *   its cards are the active cards of the set in position order (pok_teams_tbl.deck_cards keeps their keys for the
  *   round snapshot). Control cards stay team-wide (deck_controls).
- * - Cards are immutable: a changed card is a new row with a new card_key ('c-' + base36(id)), the old row gets
- *   active = 0. Rows are never deleted, so historic rounds and cards still on the table keep their data.
- *   Only position (the order in the set) is updated in place, it is no card content.
+ * - A card whose identity (symbol, text, numeric value) changes is a new row with a new card_key ('c-' +
+ *   base36(id)), the old row gets active = 0. Rows are never deleted, so cards still on the table keep their value.
+ *   Position, heading, description and colour are updated in place (Andreas 2026-11-03), the key stays.
  * - A card has either a symbol of the symbol library (card_catalog.json "custom_symbols") or a text value (at most 6
  *   graphemes, emoji allowed), optional heading/description, an optional numeric value (spread, sorting, average) and a
  *   colour of the palette (card_catalog.json "custom_colors"). Cards migrated from an old mixed deck may keep their
@@ -381,7 +381,21 @@ function validate_custom_set_head(array $data, array $catalog): array
     return array('name' => $name, 'style' => $style);
 }
 
-/* content of a stored card (row of load_* / custom_card_out) or a normalized request card, comparable */
+/*
+ * Identity of a card (Andreas, 2026-11-03): symbol, text and numeric value. Changing one of them gives the card a new
+ * key (and a new round if cards are down); heading, description and colour are its presentation and change in place.
+ * Stored card (row of load_* / custom_card_out) or normalized request card, comparable.
+ */
+function custom_card_identity(array $card): string
+{
+    if (array_key_exists('numeric', $card)) { // normalized request card
+        return json_encode(array($card['symbol'], $card['symbol'] === null ? $card['text'] : null, $card['numeric']));
+    }
+    return json_encode(array($card['symbol'], $card['symbol'] === null ? $card['value'] : null,
+        $card['numeric_value'] === null ? null : sprintf('%.2f', $card['numeric_value'])));
+}
+
+/* complete content of a stored card (row of load_* / custom_card_out) or a normalized request card, comparable */
 function custom_card_signature(array $card): string
 {
     if (array_key_exists('numeric', $card)) { // normalized request card
@@ -440,9 +454,11 @@ function insert_custom_set($link, string $t, string $name, string $style, array 
 }
 
 /*
- * Stores the card list of a save request: unchanged cards (same key, active in the set, same content) keep their key
- * (only the position is updated), changed and new cards become new rows, active cards missing in the list get
- * active = 0. Returns the keys in the new order and whether anything changed.
+ * Stores the card list of a save request. A card with its key (active in the set) and the same identity
+ * (custom_card_identity(): symbol, text, numeric value) keeps its key; its position, heading, description and colour
+ * are updated in place (cards on the table show the new presentation). A card with a changed identity and new cards
+ * become new rows (new keys), active cards missing in the list (or replaced) get active = 0 - those rows are kept, so
+ * cards on the table keep their data. Returns the keys in the new order and whether anything changed.
  */
 function store_custom_cards($link, int $set_id, array $active, array $cards): array
 {
@@ -451,11 +467,12 @@ function store_custom_cards($link, int $set_id, array $active, array $cards): ar
     $kept = array();
     foreach ($cards as $i => $card) {
         $old = $card['key'] !== null ? ($active[$card['key']] ?? null) : null;
-        if ($old !== null && custom_card_signature($old) === custom_card_signature($card)) {
+        if ($old !== null && custom_card_identity($old) === custom_card_identity($card)) {
             $kept[$card['key']] = true;
-            if ($old['sort_order'] !== $i) {
-                $sql = $link->prepare("update pok_custom_cards_tbl set position = ? where set_id = ? and card_key = ?");
-                $sql->bind_param('iis', $i, $set_id, $card['key']);
+            if ($old['sort_order'] !== $i || custom_card_signature($old) !== custom_card_signature($card)) {
+                $sql = $link->prepare("update pok_custom_cards_tbl set position = ?, heading = ?, description = ?, color = ?
+                                        where set_id = ? and card_key = ?");
+                $sql->bind_param('isssis', $i, $card['heading'], $card['description'], $card['color'], $set_id, $card['key']);
                 $sql->execute();
                 $changed = true;
             }
@@ -546,8 +563,9 @@ function get_set_param(): int
 /*
  * After a custom set was created (and is to be activated), saved or deleted: the team's deck becomes $deck_id (a custom
  * set or the default deck with all its cards; the control cards stay). If the cards of the deck change (not just their
- * order) while a card is down, a new round starts first (snapshot with the old deck), like a deck change in
- * update_deck.php. The deck is stored (deck_rev + 1) if anything changed or $force_store (e.g. name or style of the
+ * order) while a card is down and a card of the old deck is gone (another deck, removed card, changed symbol/text/
+ * value = new key; added cards do not count), a new round starts first (snapshot with the old deck), like a deck
+ * change in update_deck.php. The deck is stored (deck_rev + 1) if anything changed or $force_store (e.g. name or style of the
  * active set). The caller holds the team row lock ($team from lock_team_deck()). B-98 V6: $player_id is remembered
  * as the one who changed the card set if the set group changes.
  * Returns array('deck' => resolved deck, 'changed' => bool, 'new_round' => bool).
@@ -563,9 +581,12 @@ function custom_update_team_deck($link, string $t, array $team, array $catalog, 
     sort($old_keys);
     sort($new_keys);
     $cards_changed = $new['id'] !== $old['id'] || $old_keys !== $new_keys;
+    // Andreas 2026-11-03: only a card that leaves the deck (removed, or new key after a change of symbol, text or
+    // value) or another deck starts a new round; added cards leave the cards on the table valid
+    $cards_lost = $new['id'] !== $old['id'] || count(array_diff($old_keys, $new_keys)) > 0;
 
     $new_round = false;
-    if ($cards_changed && team_has_cards_down($link, $t)) {
+    if ($cards_lost && team_has_cards_down($link, $t)) {
         start_new_round($link, $t); // snapshot with the old deck
         $new_round = true;
     }

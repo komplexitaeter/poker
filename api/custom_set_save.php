@@ -4,15 +4,16 @@
  * POST ?t=<team>&set=<set id>, JSON body: {name, style, rev, force: bool (optional), cards: [card, ...]}
  *   card as in custom_set_create.php plus key: the card_key of an existing card of the set (null/missing = new card;
  *   a catalog card_key = new card copied from that catalog card, as in custom_set_create.php).
- * - The server compares the list with the active cards: a card with its key and unchanged content keeps its key (only
- *   its position follows the list); a changed card becomes a new card (new key), the old one is kept inactive (cards
- *   are immutable); active cards missing in the list are switched off.
+ * - The server compares the list with the active cards: a card with its key and unchanged symbol, text and numeric
+ *   value keeps its key (position, heading, description and colour are updated in place); a change of symbol, text or
+ *   value makes a new card (new key), the old one is kept inactive; active cards missing in the list are switched off.
  * - Card limit custom_cards_max() (default 20) only when cards are added: a set with more cards (migrated "Our deck") may
  *   keep them, but not grow.
  * - Optimistic lock: rev must be the rev the editor started from. Otherwise 409 {error: 'conflict', set: current set}
  *   ("Someone else changed this set"); saving again with force: true (or the new rev) overwrites.
- * - The set is the team's deck and its cards change (not just the order) while a card is down: a new round starts
- *   (as a deck change). Any change of the active set raises deck.rev.
+ * - The set is the team's deck, a card is down and a card of the deck is gone (removed, or new key after a change of
+ *   symbol, text or value): a new round starts (as a deck change). Added cards, heading, description, colour, order,
+ *   name and style start none (Andreas 2026-11-03). Any change of the active set raises deck.rev.
  * - 404 {error: 'not_found'}: no set of this team (or deleted). 400 {error, index?} as in custom_set_create.php, plus rev.
  * Answer (JSON): {set, deck, changed, new_round}; nothing changed: changed false, no rev change, no notify.
  */
