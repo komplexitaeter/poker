@@ -3,7 +3,8 @@
  * B-98 S4: saves a custom set of the team (editor "Save"): name, style and the complete card list in order.
  * POST ?t=<team>&set=<set id>, JSON body: {name, style, rev, force: bool (optional), cards: [card, ...]}
  *   card as in custom_set_create.php plus key: the card_key of an existing card of the set (null/missing = new card;
- *   a catalog card_key = new card copied from that catalog card, as in custom_set_create.php).
+ *   a catalog card_key or the key of an active card of another own set = new card copied from that card, as in
+ *   custom_set_create.php).
  * - The server compares the list with the active cards: a card with its key and unchanged symbol, text and numeric
  *   value keeps its key (position, heading, description and colour are updated in place); a change of symbol, text or
  *   value makes a new card (new key), the old one is kept inactive; active cards missing in the list are switched off.
@@ -55,7 +56,8 @@ if ($rev !== $set['rev'] && !$force) {
     custom_fail(409, 'conflict', array('set' => $set));
 }
 
-$checked = validate_custom_cards($data['cards'] ?? null, load_set_cards_by_key($link, $set_id, $catalog), $catalog);
+$checked = validate_custom_cards($data['cards'] ?? null, load_set_cards_by_key($link, $set_id, $catalog), $catalog,
+                                 custom_source_cards($team['custom_sets'], $set_id));
 if (isset($checked['error'])) {
     $link->rollback();
     custom_fail(400, $checked['error'], isset($checked['index']) ? array('index' => $checked['index']) : array());

@@ -16,7 +16,7 @@ const calm = async (page: Page) => {
   await expect(page.locator('#deck_status, #deck_status_live, #deck_menu .dm-error, #deck_menu .dm-refusal')).toHaveCount(0);
 };
 
-test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for everybody', async ({ browser }) => {
+test('choose a card set: Consent decision and Delegation Poker with headings, for everybody', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Sets');
   await alice.locator('#cset_btn').click();
   await expect(alice.locator('#deck_change')).toBeFocused();
@@ -30,21 +30,21 @@ test('choose a card set: J.U.D.G.E. and Delegation Poker with headings, for ever
   const rows = alice.locator('#deck_menu .dm-prow-b');
   await expect(rows).toHaveCount(8);
   await expect(rows.filter({ hasText: 'Fibonacci' })).toHaveAttribute('aria-current', 'true');
-  // R3 review polish: one line per set about what it is for, no variant names
-  await expect(rows.locator('.dm-t small')).toHaveText(['Estimate effort in points', 'Confidence, value, scores',
-    'Rough sizing for big items', 'Quick go / no-go check', 'How does the team feel?', 'Ratings from 0 to 5',
-    'Team decisions by consent', 'Who decides?']);
+  // Andreas (compact list): one line per set, its name only, no line below it and no tooltip
+  await expect(rows.locator('.dm-t small')).toHaveCount(0);
+  await expect(alice.locator('#deck_menu .dm-plist [title]')).toHaveCount(0);
+  await expect(rows.first().locator('.dm-t')).toHaveText('Fibonacci');
   // the current set: the check icon (#i-check), fully inside its row (Andreas: it was cut off on the right)
   const tick = rows.filter({ hasText: 'Fibonacci' }).locator('.dm-tick');
   await expect(tick.locator('use')).toHaveAttribute('href', '#i-check');
   const [tickBox, rowBox] = [(await tick.boundingBox())!, (await rows.filter({ hasText: 'Fibonacci' }).boundingBox())!];
   expect(tickBox.x + tickBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width - 4);
-  await expect(rows.filter({ hasText: 'J.U.D.G.E.' }).locator('.dm-fan .dkc')).toHaveCount(4);
+  await expect(rows.filter({ hasText: 'Consent decision' }).locator('.dm-fan .dkc')).toHaveCount(4);
   await expect(alice.locator('#deck_pick_title')).toBeFocused();
-  await rows.filter({ hasText: 'J.U.D.G.E.' }).click();
+  await rows.filter({ hasText: 'Consent decision' }).click();
 
   // back on the overview; both trays hold the set plus the team's control cards
-  await expect(alice.locator('#deck_change')).toContainText('J.U.D.G.E.');
+  await expect(alice.locator('#deck_change')).toContainText('Consent decision');
   // F7, R3 review (Andreas, final): the result as a toast (role=status), nothing in the menu
   await expect(toast(alice)).toHaveText('Card set changed for everyone');
   await expect(toast(alice)).toHaveClass(/toast-on/);
@@ -156,7 +156,7 @@ test('a new deck while cards are down: the note, then a new round for everybody'
   await expect(alice.locator('#deck_round_hint')).toHaveCount(0);
 
   await pickCard(bob, 'five001');
-  await expect(alice.locator('#deck_round_hint')).toHaveText(/^Cards have been played – changing the card set starts a new round\.$/);
+  await expect(alice.locator('#deck_round_hint')).toHaveText(/^Changing the set starts a new round\.$/);
   await alice.locator('#deck_change').click();
   await expect(alice.locator('#deck_round_hint')).toBeVisible(); // also in the list of sets
 
@@ -335,18 +335,29 @@ test('the deck menu does not jump: no message in the menu, done or error (R3 rev
   same(before, await where());
 });
 
+/* Andreas (compact list): 1280×800, the 8 built-in sets and 5 own sets, the last one visible without scrolling */
 test('the list of card sets fits on a desktop screen: the last set visible without scrolling', async ({ browser }) => {
-  const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Compact');
+  const { alice, url } = await teamWithTwoPlayers(browser, 'Deck Menu Compact');
+  const t = new URL(url).searchParams.get('t') as string;
+  for (let i = 1; i <= 5; i++) {
+    const res = await alice.request.post(`/api/custom_set_create.php?t=${encodeURIComponent(t)}`, {
+      data: JSON.stringify({ name: `Set ${i}`, style: 'plain', cards: [{ symbol: 's-1', color: 'blue' }, { symbol: 's-2', color: 'blue' }] }),
+      headers: { 'Content-Type': 'application/json' } });
+    expect(res.ok()).toBeTruthy();
+  }
   await alice.setViewportSize({ width: 1280, height: 800 });
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
   const rows = alice.locator('#deck_menu .dm-prow-b');
-  await expect(rows).toHaveCount(8);
-  // every row is a full tap target, the last one inside the viewport without scrolling
-  for (const box of await rows.evaluateAll(els => els.map(e => e.getBoundingClientRect().height))) {
-    expect(box).toBeGreaterThanOrEqual(44);
+  await expect(rows).toHaveCount(13);
+  // every row is a full tap target (--tap) with its fan
+  const tap = await alice.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tap')));
+  for (const height of await rows.evaluateAll(els => els.map(e => e.getBoundingClientRect().height))) {
+    expect(height).toBeGreaterThanOrEqual(tap);
   }
+  await expect(rows.locator('.dm-fan')).toHaveCount(13);
   const last = rows.last();
+  await expect(last).toContainText('Set 5');
   const scrolled = await alice.locator('#deck_menu').evaluate(el => {
     let n: Element | null = el;
     let top = 0;

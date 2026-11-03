@@ -4676,16 +4676,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .dm-t small { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* R3 review V10: in the list of card sets the line about the set may take two lines (the "Card set" button stays one) */
-.dm-prow-b .dm-t small {
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-}
-
 .dm-fan { display: flex; align-items: center; height: 46px; padding-right: 8px; }
 
 .dm-fan .dm-card { --deck-w: 26px; margin-right: -8px; box-shadow: 0 1px 3px var(--shadow-color); border-radius: 6px; }
@@ -4695,9 +4685,10 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .dm-fan .dm-card:nth-child(3) { transform: rotate(2.5deg); }
 .dm-fan .dm-card:nth-child(4) { transform: rotate(7deg); }
 
-/* in the list of card sets: a slightly smaller fan, so the rows stay low */
-.dm-prow-b .dm-fan { height: 42px; }
-.dm-prow-b .dm-fan .dm-card { --deck-w: 24px; }
+/* in the list of card sets (Andreas, compact list): one line per set with a small fan, all sets fit on a desktop */
+.dm-prow-b .dm-t b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dm-prow-b .dm-fan { height: 34px; padding-right: 6px; }
+.dm-prow-b .dm-fan .dm-card { --deck-w: 20px; margin-right: -7px; border-radius: 5px; }
 
 .dm-tgs { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -4727,7 +4718,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     align-items: center;
     gap: 4px;
     min-height: var(--tap);
-    margin: 0 0 6px -6px;
+    margin: 0 0 2px -6px;
     padding: 0 8px 0 2px;
     border: 0;
     background: none;
@@ -4738,7 +4729,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .dm-back:hover { color: var(--accent); }
 
-.dm-sub { margin: 4px 0 10px; font-size: var(--fs-m); color: var(--text); }
+.dm-sub { margin: 0 0 6px; font-size: var(--fs-m); color: var(--text); }
 
 .dm-sub:focus { outline: none; }
 
@@ -4752,8 +4743,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     align-items: center;
     gap: 10px;
     width: 100%;
-    min-height: 52px; /* R3 review (Andreas): all sets fit on a desktop screen; still above --tap */
-    padding: 3px 8px 3px 4px; /* R3 review: room on the right, the tick / arrow is never cut off */
+    min-height: var(--tap); /* Andreas (compact list): all built-in and own sets fit on a desktop screen */
+    padding: 1px 8px 1px 4px; /* R3 review: room on the right, the tick / arrow is never cut off */
     border: 0;
     background: none;
     color: var(--text);
@@ -4778,7 +4769,28 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* deck menu: "Your sets (n / max)", a row per set with its pen, "+ New set" */
 .cs-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 2px; }
-.cs-sec2 { margin-top: 18px; }
+.cs-sec2 { margin-top: 6px; }
+/* "Your sets n / 5" with "+ New set" at the right */
+.cs-secrow { align-items: center; gap: 8px; }
+.cs-secrow .lab { margin: 0; }
+.cs-secrow .cs-count { margin-left: 6px; white-space: nowrap; }
+.cs-newset {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: var(--tap);
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: var(--fs-s) var(--font);
+    white-space: nowrap;
+    cursor: pointer;
+}
+.cs-newset:enabled:hover { text-decoration: underline; }
+.cs-newset:disabled { color: var(--disabled); cursor: not-allowed; }
+.cs-newset .cs-plus { width: auto; font-size: var(--fs-m); }
 .cs-count { font-size: var(--fs-xs); color: var(--muted); }
 .cs-count.full { color: var(--warn); }
 .cs-prow { display: flex; align-items: center; }
@@ -4798,34 +4810,14 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 }
 .cs-edit:hover { color: var(--accent); border-color: var(--accent); }
 .cs-edit .i { width: 16px; height: 16px; }
-.cs-new {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-height: 52px;
-    margin: 8px 0 0;
-    padding: 6px 10px;
-    border: 1px dashed var(--line-strong);
-    border-radius: var(--radius-m);
-    background: none;
-    color: var(--text);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-.cs-new:enabled:hover { border-color: var(--accent); }
-.cs-new:enabled:hover b { color: var(--accent); }
-.cs-new:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
-.cs-new:disabled b { color: var(--disabled); }
 .cs-plus { font-size: 22px; line-height: 1; width: 26px; text-align: center; }
-.cs-limit { color: var(--warn); }
+.cs-limit { color: var(--warn); margin: 0 0 4px; }
 .cs-labrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .cs-labrow .lab { margin: 0; }
 .dm .cs-editbtn { min-height: var(--tap); padding: 2px 12px; }
 .cs-editbtn .i, .cs-ovl .btn-box .i { width: 16px; height: 16px; }
 .cs-ro .dm-tg { cursor: default; border: 1px solid transparent; }
-.cs-edit:focus-visible, .cs-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cs-edit:focus-visible, .cs-newset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* the editor (script_custom.js): a full-screen modal dialog (Andreas). Head and foot fixed; large screens: name and
  * style on top, the card strip on the left in full height, the card's fields on the right (both scroll on their own);
@@ -5146,7 +5138,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* B-98 copy: the choice of "+ New set" (from scratch or a built-in set) in the same overlay, one calm column */
 .cs-body.cs-start { display: block; max-width: 640px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 16px; }
-.cs-start .cs-scratch { margin: 0; }
+
 .cs-start .dm-prow-b:focus-visible { outline-offset: -2px; }
 .cs-texthelp { display: flex; align-items: baseline; gap: 8px; }
 
