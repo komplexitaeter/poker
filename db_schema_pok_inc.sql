@@ -404,7 +404,8 @@ create table if not exists pok_custom_sets_tbl (
   key ix_custom_sets_team (team_id, deleted)
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
 
-/* cards of a custom set. Immutable: a changed card is a new row with a new card_key, the old row gets active = 0 and
+/* cards of a custom set. A change of symbol, text or numeric value is a new row with a new card_key (heading,
+   description, colour and position change in place, Andreas 2026-11-03), the old row gets active = 0 and
    is never deleted (historic rounds keep showing what was played). card_key = 'c-' + base36(id), set right after the
    insert (unique, at most 7 characters). Either symbol_id (symbol library) or value_text (at most 6 graphemes, 48 code points). */
 create table if not exists pok_custom_cards_tbl (

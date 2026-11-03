@@ -287,24 +287,24 @@ function csActive() {
     return gCs.set !== null && gDeckMenu.deck !== null && gDeckMenu.deck.id === gCs.set.deck_id;
 }
 
-/* Save starts a new round: the set is in play, cards are down and its cards change (not just their order, the name
- * or the style) */
+/* Save starts a new round: the set is in play, cards are down and a card of the set is gone - removed, or its symbol,
+ * text or value changed (new key). Added cards, heading, description, colour, order, name and style start none
+ * (same rule as the server, Andreas 2026-11-03) */
 function csStartsRound() {
     if (!deckRoundRunning() || !csActive()) return false;
-    const now = gCs.cards.map(csRequestCard).map(card => card.key !== null && !csCardChanged(card) ? card.key : '+').sort();
-    const before = gCs.set.cards.map(card => card.card_key).sort();
-    return JSON.stringify(now) !== JSON.stringify(before);
+    const kept = new Set(gCs.cards.map(csRequestCard).filter(card => card.key !== null && !csIdentityChanged(card))
+        .map(card => card.key));
+    return gCs.set.cards.some(card => !kept.has(card.card_key));
 }
 
-/* a request card differs from the stored card with its key */
-function csCardChanged(request) {
+/* symbol, text or numeric value of a request card differ from the stored card with its key (the card gets a new key) */
+function csIdentityChanged(request) {
     const stored = gCs.set.cards.find(card => card.card_key === request.key);
     if (!stored) return true;
     const symbol = typeof stored.symbol === 'string' && stored.symbol !== '' ? stored.symbol : null;
     const value = typeof stored.numeric_value === 'number' ? stored.numeric_value : null;
     return request.symbol !== symbol || (symbol === null && request.text !== stored.value)
-        || request.heading !== (stored.heading || null) || request.description !== (stored.description || null)
-        || request.numeric_value !== value || request.color !== stored.color;
+        || request.numeric_value !== value;
 }
 
 /* ------------------------------------------------------------------ open / close */
