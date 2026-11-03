@@ -4,9 +4,10 @@
  * screens: the card strip on the left in full height, the fields of the card on the right (only these two scroll);
  * phones: one column, the strip scrolls sideways above the fields.
  * - B-98 copy (Andreas): "+ New set" first shows a choice in the same overlay (csRenderStart()): "Start from scratch"
- *   (cards 1 and 2) or one of the built-in sets (a row per catalog group: name, note, fan). A built-in set fills the
- *   editor with all cards of its group (every variant, catalog order, no control cards) with symbol, heading,
- *   description, value, colour and the group's style; each card sends its catalog card_key as key. The name stays
+ *   (cards 1 and 2) or "Copy from an existing set" (a row per catalog group, then the team's own sets: name, fan).
+ *   A built-in set fills the editor with all cards of its group (every variant, catalog order, no control cards) with
+ *   symbol, heading, description, value, colour and the group's style; each card sends its catalog card_key as key.
+ *   An own set fills it with all its cards and its style; each card sends its card_key (c-...) as key. The name stays
  *   empty (required). Esc / × / Cancel close the choice; nothing is stored before Save.
  * - Head: title, "The team sees changes after Save" (unsaved / errors, live region), × (= Cancel).
  * - Top: set name (24, counter), Style (card_catalog.json styles: plain | badge | banner | inverted).
@@ -368,14 +369,16 @@ function openCustomEditor(set, opener) {
 }
 
 /* the editor: set (an own set) or null for a new one; group: a catalog group to start from (null: cards 1 and 2) */
-function csStartEditor(set, group) {
+function csStartEditor(set, group, copy = null) {
     gCs.view = 'edit';
     gCs.set = set;
     gCs.name = set ? set.name : '';
-    if (set) gCs.style = CARD_STYLES.has(set.style) ? set.style : 'plain';
-    else gCs.style = group && CARD_STYLES.has(group.style) ? group.style : 'plain';
+    const source = set || copy || group;
+    gCs.style = source && CARD_STYLES.has(source.style) ? source.style : 'plain';
     gCs.maxCards = Math.max(csCardLimit(), set ? set.cards.length : 0);
+    // Andreas: a copy of an own set takes all its cards; their keys (c-...) let the API keep symbol and colour
     gCs.cards = set ? set.cards.map(csFromStored)
+        : copy ? copy.cards.map(csFromStored).slice(0, gCs.maxCards)
         : group ? csGroupCards(group).slice(0, gCs.maxCards) : [csNewCard('s-1'), csNewCard('s-2')];
     gCs.sel = 0;
     gCs.pick = null;
@@ -524,11 +527,12 @@ function csRenderStart() {
     scratch.id = 'cs_scratch';
     const text = csEl('span', 'dm-t');
     text.appendChild(csEl('b', null, 'Start from scratch'));
-    scratch.append(text, csEl('span', 'cs-plus', '+'), dmIcon('next'));
+    scratch.append(text, csEl('span', 'cs-nofan'), dmIcon('next'));
     scratchItem.appendChild(scratch);
     scratchList.appendChild(scratchItem);
 
-    const from = csEl('h3', 'lab cs-sec cs-sec2', 'Start from a built-in set');
+    // Andreas: copy a built-in set or one of the team's own sets (below the built-in ones, without the pen)
+    const from = csEl('h3', 'lab cs-sec cs-sec2', 'Copy from an existing set');
     from.id = 'cs_from_title';
     const list = csEl('ul', 'dm-plist cs-from');
     list.id = 'cs_from';
@@ -540,6 +544,16 @@ function csRenderStart() {
         const label = csEl('span', 'dm-t');
         label.appendChild(csEl('b', null, group.name));
         button.append(label, dmFan(group.variants[0].cards), dmIcon('next'));
+        item.appendChild(button);
+        list.appendChild(item);
+    });
+    gDeckMenu.sets.forEach(set => {
+        const item = csEl('li', 'dm-prow');
+        const button = csButton('dm-prow-b', null, 'copy:' + set.set_id, () => csStartEditor(null, null, set));
+        button.setAttribute('data-set', String(set.set_id));
+        const label = csEl('span', 'dm-t');
+        label.appendChild(csEl('b', null, set.name));
+        button.append(label, dmFan(set.cards.map(card => card.card_key)), dmIcon('next'));
         item.appendChild(button);
         list.appendChild(item);
     });

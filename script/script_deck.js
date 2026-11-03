@@ -345,6 +345,13 @@ function dmOwnSets(deck) {
     }
     row.append(head, add);
     parts.push(row);
+    // Delia: at the limit the reason is visible as well (touch, keyboard, screen readers)
+    if (count >= max) {
+        const hint = dmEl('p', 'hint cs-limit', 'Delete one of your sets to create a new one.');
+        hint.id = 'deck_new_hint';
+        add.setAttribute('aria-describedby', hint.id);
+        parts.push(hint);
+    }
 
     const list = dmEl('ul', 'dm-plist');
     list.id = 'deck_own_sets';

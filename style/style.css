@@ -4718,7 +4718,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     align-items: center;
     gap: 4px;
     min-height: var(--tap);
-    margin: 0 0 6px -6px;
+    margin: 0 0 2px -6px;
     padding: 0 8px 0 2px;
     border: 0;
     background: none;
@@ -4729,7 +4729,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .dm-back:hover { color: var(--accent); }
 
-.dm-sub { margin: 4px 0 10px; font-size: var(--fs-m); color: var(--text); }
+.dm-sub { margin: 0 0 6px; font-size: var(--fs-m); color: var(--text); }
 
 .dm-sub:focus { outline: none; }
 
@@ -4769,7 +4769,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* deck menu: "Your sets (n / max)", a row per set with its pen, "+ New set" */
 .cs-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 2px; }
-.cs-sec2 { margin-top: 12px; }
+.cs-sec2 { margin-top: 6px; }
 /* "Your sets n / 5" with "+ New set" at the right */
 .cs-secrow { align-items: center; gap: 8px; }
 .cs-secrow .lab { margin: 0; }
@@ -4811,6 +4811,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-edit:hover { color: var(--accent); border-color: var(--accent); }
 .cs-edit .i { width: 16px; height: 16px; }
 .cs-plus { font-size: 22px; line-height: 1; width: 26px; text-align: center; }
+.cs-limit { color: var(--warn); margin: 0 0 4px; }
 .cs-labrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .cs-labrow .lab { margin: 0; }
 .dm .cs-editbtn { min-height: var(--tap); padding: 2px 12px; }
@@ -5137,7 +5138,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* B-98 copy: the choice of "+ New set" (from scratch or a built-in set) in the same overlay, one calm column */
 .cs-body.cs-start { display: block; max-width: 640px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 16px; }
-.cs-start .cs-scratch .cs-plus { color: var(--muted); padding-right: 6px; }
+
 .cs-start .dm-prow-b:focus-visible { outline-offset: -2px; }
 .cs-texthelp { display: flex; align-items: baseline; gap: 8px; }
 

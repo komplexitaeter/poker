@@ -253,6 +253,56 @@ test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills 
   await expect(bob.locator(`#ctl .ctl[data-card="${set.cards[16].card_key}"] svg.mot`)).toHaveCount(1);
 });
 
+/* Andreas: "Copy from an existing set" lists the team's own sets below the built-in ones; a copy takes every card
+ * (symbol / text, heading, description, value, colour, also a colour from a template outside the palette) and the
+ * style, the name stays empty */
+test('"+ New set" copies an own set with all its cards, a template colour included', async ({ browser }) => {
+  const { alice, url } = await teamWithTwoPlayers(browser, 'Own Sets Copy Own');
+  const t = new URL(url).searchParams.get('t') as string;
+  const res = await alice.request.post(`/api/custom_set_create.php?t=${encodeURIComponent(t)}`, {
+    data: JSON.stringify({ name: 'Source', style: 'badge', cards: [
+      { key: 'jdg3', symbol: 's-3', color: 'j3' },
+      { text: 'Hi', heading: 'Head', description: 'Desc', numeric_value: 7, color: 'blue' }] }),
+    headers: { 'Content-Type': 'application/json' } });
+  expect(res.ok()).toBeTruthy();
+  await alice.reload();
+  const source = (await lastJson(alice)).custom_sets[0];
+  expect(source.cards[0].color).toBe('j3');
+
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_change').click();
+  await alice.locator('#deck_new_set').click();
+  await expect(alice.locator('#cs_from_title')).toHaveText('Copy from an existing set');
+  // the built-in sets first, then the own set (a fan, no pen)
+  await expect(alice.locator('#cs_from .dm-prow-b').last()).toHaveAttribute('data-set', String(source.set_id));
+  const row = alice.locator(`#cs_from [data-set="${source.set_id}"]`);
+  await expect(row.locator('.dm-t')).toHaveText('Source');
+  await expect(row.locator('.dm-fan .dkc')).toHaveCount(2);
+  await expect(alice.locator('#cs_from .cs-edit')).toHaveCount(0);
+  await row.click();
+
+  await expect(alice.locator('#cs_title')).toHaveText('New card set');
+  await expect(alice.locator('#cs_name')).toHaveValue('');
+  await expect(alice.locator('#cs_list [data-f^="card:"]')).toHaveCount(2);
+  await expect(alice.locator('[data-f="style:badge"]')).toBeChecked();
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#cs_name_err')).toHaveText('Give the set a name.');
+  await alice.locator('#cs_name').fill('Copy');
+  await alice.locator('#cs_save').click();
+  await expect(editor(alice)).toBeHidden();
+
+  await expect.poll(async () => (await lastJson(alice)).custom_sets.length).toBe(2);
+  const copy = (await lastJson(alice)).custom_sets.find(set => set.name === 'Copy')!;
+  expect(copy.style).toBe('badge');
+  expect(copy.cards.map(c => [c.symbol, c.color])).toEqual([['s-3', 'j3'], [null, 'blue']]);
+  expect(copy.cards[1]).toMatchObject({ value: 'Hi', heading: 'Head', numeric_value: 7 });
+  expect((copy.cards[1] as unknown as { description: string }).description).toBe('Desc');
+  // new cards of their own, the source unchanged
+  expect(copy.cards.map(c => c.card_key)).not.toContain(source.cards[0].card_key);
+  const after = (await lastJson(alice)).custom_sets.find(set => set.name === 'Source')!;
+  expect(after.cards.map(c => [c.card_key, c.color])).toEqual(source.cards.map(c => [c.card_key, c.color]));
+});
+
 test('an emoji as card text: counted as one character, played and shown on the table', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Emoji');
   await alice.locator('#cset_btn').click();
@@ -308,6 +358,10 @@ test('the limit of sets disables "+ New set"; Cancel without changes closes at o
   await expect(alice.locator('#deck_new_set')).toBeDisabled();
   // Andreas (compact list): the hint as the title of the small button in the heading
   await expect(alice.locator('#deck_own_title + #deck_new_set')).toHaveAttribute('title', /^5 of 5 sets/);
+  // Delia: the reason visible as well (touch, keyboard, screen readers)
+  await expect(alice.locator('#deck_new_hint')).toHaveText('Delete one of your sets to create a new one.');
+  await expect(alice.locator('#deck_new_hint')).toBeVisible();
+  await expect(alice.locator('#deck_new_set')).toHaveAttribute('aria-describedby', 'deck_new_hint');
 
   // choosing an own set puts it in play
   await alice.locator('#deck_own_sets .dm-prow-b').filter({ hasText: 'Set 3' }).click();
