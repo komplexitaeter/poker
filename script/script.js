@@ -2634,8 +2634,8 @@ function confirmInvite(text, label = 'Copied') {
 }
 
 /* Short message that pops up from the bottom edge for a moment (style.css, .toast).
- * R3 review V1: the result of an own click shows at that control (Invite button, timer status), else a toast
- * (sent feedback, the deck menu: R3 review, Andreas). Plain text only (textContent). Calling it again replaces the
+ * R3 review V1: the result of an own click shows at that control (Invite button), else a toast (sent feedback, the
+ * deck and the timer menu: R3 review, Andreas). Plain text only (textContent). Calling it again replaces the
  * text and restarts the timer; ms: how long it stays (the deck menu: a little longer). */
 let gToastTimer = null;
 /* kind 'error' (R3, Andreas): refusals and failed writes show "!" instead of the ">" prompt (style.css .toast-error) */
@@ -2827,9 +2827,6 @@ function renderTimer(elapsed) {
 function updateTimerConfig(force = false) {
     if (gTimer === null || document.getElementById('timer_box') === null) return;
     checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
-    // R3 review V1: the status of the own switch goes when the menu opens again or the board says otherwise
-    let status = document.getElementById('tmr_status');
-    if (force || (status.textContent !== '' && status.dataset.on !== (gTimer.visible ? '1' : '0'))) status.textContent = '';
     checkRadio('tmr_mode', gTimer.mode);
     checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
     document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
@@ -2862,19 +2859,22 @@ function timerAction(action, value = null) {
     });
 }
 
+/* R3 (Andreas): a failed setting of the timer menu as an error toast, like the deck menu (the board loaded itself,
+ * apiWrite, so the menu shows the server's state again) */
+function timerSettingFailed() {
+    showToast('Not saved \u2013 please try again', DECK_TOAST_MS, 'error');
+}
+
 function setTimerVisibility(value) {
-    // B-46: confirm the own change (others just see the timer appear); R3 review V1: below the switch, not as a toast
-    let status = document.getElementById('tmr_status');
-    status.textContent = '';
+    // B-46: confirm the own change (others just see the timer appear); R3 (Andreas): as a toast like the deck menu
     timerAction('set_visibility', value).then(() => {
-        status.dataset.on = value;
-        status.textContent = value === '1' ? '\u2713 Timer on \u2013 everyone on the board sees it' : '\u2713 Timer off';
-    }).catch(() => {}); // the board loaded itself (apiWrite)
+        showToast(value === '1' ? 'Timer on \u2013 everyone on the board sees it' : 'Timer off', DECK_TOAST_MS);
+    }).catch(timerSettingFailed);
     measureEvent("TOGGLE_TIMER");
 }
 
 function setTimerMode(value) {
-    timerAction('set_mode', value).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_mode', value).catch(timerSettingFailed);
 }
 
 function setTimerTimebox(minutes) {
@@ -2882,7 +2882,7 @@ function setTimerTimebox(minutes) {
     other.value = '';
     other.closest('.tmr-other').setAttribute('data-set', 'false');
     showTimerOtherError(false);
-    timerAction('set_timebox', minutes).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_timebox', minutes).catch(timerSettingFailed);
 }
 
 /* "other: __ min" (whole minutes 1..240), a plain text field (no number field: Safari and Chrome
@@ -2937,12 +2937,12 @@ function saveTimerOther(showError) {
     gTimer.timebox = minutes * 60;
     gTimerTime = 0;
     gTimerBaseTime = new Date();
-    timerAction('set_timebox', String(minutes)).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_timebox', String(minutes)).catch(timerSettingFailed);
     return true;
 }
 
 function setTimerAutoRestart(value) {
-    timerAction('set_auto_restart', value).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_auto_restart', value).catch(timerSettingFailed);
 }
 
 function timerStart() {
