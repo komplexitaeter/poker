@@ -223,8 +223,8 @@ function dmControlsField(deck) {
     return controls;
 }
 
-/* B-98 S5: the overview while an own set is in play: its name and cards, "Edit set" (the editor changes the cards),
- * the control cards as with every set; no variants, no toggles */
+/* B-98 S5: the overview while an own set is in play: its name, its cards as switches (R3), "Edit set" (the editor
+ * changes the cards), the control cards as with every set; no variants */
 function deckCustomMainView(deck, set) {
     const parts = [];
     const note = dmRoundNote();
@@ -242,10 +242,15 @@ function deckCustomMainView(deck, set) {
     change.addEventListener('click', () => showDeckView('pick'));
     parts.push(change);
 
+    // B-98 (R3, Andreas): the cards of the set as switches, like a built-in set; "Edit set" changes the cards themselves
     const cards = dmEl('div', 'f');
     cards.id = 'deck_cards';
+    cards.setAttribute('role', 'group');
     const head = dmEl('div', 'cs-labrow');
-    head.appendChild(dmEl('span', 'lab', 'Cards (' + deck.cards.length + ')'));
+    const legend = dmEl('span', 'lab', 'Cards in this set \u2013 ' + (gTouchQuery.matches ? 'tap' : 'click') + ' to turn on or off');
+    legend.id = 'deck_cards_lab';
+    cards.setAttribute('aria-labelledby', legend.id);
+    head.appendChild(legend);
     if (set) {
         const edit = dmEl('button', 'btn-box cs-editbtn');
         edit.type = 'button';
@@ -256,14 +261,21 @@ function deckCustomMainView(deck, set) {
         head.appendChild(edit);
     }
     cards.appendChild(head);
-    const grid = dmEl('div', 'dm-tgs cs-ro');
-    deck.cards.forEach(key => {
+    const on = new Set(deck.cards);
+    const grid = dmEl('div', 'dm-tgs');
+    customSetKeys(deck, set).forEach(key => {
         const card = gCardByKey.get(key);
         if (card === undefined) return;
-        const item = dmEl('span', 'dm-tg cs-rocard');
-        item.setAttribute('data-card', key);
-        item.appendChild(dmCard(card, true));
-        grid.appendChild(item);
+        const button = dmEl('button', 'dm-tg');
+        button.type = 'button';
+        button.setAttribute('data-card', key);
+        button.setAttribute('data-f', 'card:' + key);
+        button.setAttribute('aria-pressed', on.has(key) ? 'true' : 'false');
+        button.setAttribute('aria-label', cardAriaLabel(card, false));
+        if (card.heading || card.info) button.title = card.heading || card.info;
+        button.appendChild(dmCard(card, true));
+        if (set) button.addEventListener('click', () => toggleCustomCard(set, key));
+        grid.appendChild(button);
     });
     cards.appendChild(grid);
     parts.push(cards);
@@ -513,20 +525,24 @@ function pickDeckVariant(group, variant) {
         { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() }, 'variant');
 }
 
+/* a card switched off below DECK_MIN_CARDS: refused with a toast, the toggle shakes once (again with every click) */
+function refuseDeckCard(key) {
+    showToast('A card set needs at least two cards.', DECK_TOAST_MS);
+    const toggle = document.querySelector('#deck_menu [data-f="card:' + CSS.escape(key) + '"]');
+    if (toggle !== null) {
+        toggle.classList.remove('is-refused');
+        void toggle.offsetWidth; // restart the animation
+        toggle.classList.add('is-refused');
+    }
+}
+
 function toggleDeckCard(group, variant, key) {
     const deck = gDeckMenu.deck;
     if (deck === null) return;
     const on = new Set(deck.cards);
     if (on.has(key)) {
         if (on.size <= DECK_MIN_CARDS) {
-            // refused: a toast, the toggle shakes once (again with every click)
-            showToast('A card set needs at least two cards.', DECK_TOAST_MS);
-            const toggle = document.querySelector('#deck_menu [data-f="card:' + CSS.escape(key) + '"]');
-            if (toggle !== null) {
-                toggle.classList.remove('is-refused');
-                void toggle.offsetWidth; // restart the animation
-                toggle.classList.add('is-refused');
-            }
+            refuseDeckCard(key);
             return;
         }
         on.delete(key);
@@ -538,6 +554,29 @@ function toggleDeckCard(group, variant, key) {
     const match = deckMatchingVariant(group, cards);
     const id = match !== null ? match.id : variant.id;
     writeDeck(deckUrl(id, cards), { id, group: group.id, cards, controls: deck.controls.slice() }, 'card');
+}
+
+/* the keys of an own set in its order (all its cards, on or off); without the set (not loaded) the deck's cards */
+function customSetKeys(deck, set) {
+    return set && Array.isArray(set.cards) ? set.cards.map(card => card.card_key) : deck.cards.slice();
+}
+
+/* B-98 (R3): a card of the own set in play on or off (update_deck.php deck=c-<set id>&cards=…, in the set's order) */
+function toggleCustomCard(set, key) {
+    const deck = gDeckMenu.deck;
+    if (deck === null || deck.id !== set.deck_id) return;
+    const on = new Set(deck.cards);
+    if (on.has(key)) {
+        if (on.size <= DECK_MIN_CARDS) {
+            refuseDeckCard(key);
+            return;
+        }
+        on.delete(key);
+    } else {
+        on.add(key);
+    }
+    const cards = customSetKeys(deck, set).filter(k => on.has(k));
+    writeDeck(deckUrl(set.deck_id, cards), { id: set.deck_id, group: 'custom', cards, controls: deck.controls.slice() }, 'card');
 }
 
 function toggleDeckControl(key) {

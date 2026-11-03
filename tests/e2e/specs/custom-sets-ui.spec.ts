@@ -422,7 +422,7 @@ test('a team with a migrated "Our deck" sees its cards', async ({ browser }) => 
 
   await page.locator('#cset_btn').click();
   await expect(page.locator('#deck_change')).toContainText('Our deck');
-  await expect(page.locator('#deck_cards .cs-rocard')).toHaveCount(4);
+  await expect(page.locator('#deck_cards .dm-tg')).toHaveCount(4);
 });
 
 /* R3 (Andreas): the small places (spread labels, range, deck info, tips) show what was entered as the card's text,
@@ -813,4 +813,60 @@ test('editor open, window from 1280 to 390: the menu stays behind the editor', a
   await alice.waitForTimeout(300);
   expect(await top()).toBe('cs_editor');
   await expect(alice.locator('#cs_name')).toHaveValue('Narrow');
+});
+
+/* B-98 (R3, Andreas): the cards of an own set in play are switches in the deck menu, as with a built-in set: off and
+ * on again for everybody (tray of Alice and Bob, in the set's order), at least two stay (toast, the toggle shakes),
+ * a card off while cards are down starts a new round; "Edit set" stays */
+test('own set in play: single cards are switched off and on, at least two stay', async ({ browser }) => {
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Toggle');
+  const t = new URL(url).searchParams.get('t') as string;
+  const res = await alice.request.post(`/api/custom_set_create.php?t=${encodeURIComponent(t)}`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: JSON.stringify({ name: 'Risk', style: 'badge', activate: true, cards: [
+      { symbol: 's-1', heading: 'low', numeric_value: 1, color: 'green' },
+      { text: 'M', heading: 'medium', numeric_value: 2, color: 'amber' },
+      { text: 'L', numeric_value: 3, color: 'red' }] }) });
+  expect(res.ok()).toBeTruthy();
+  const out = await res.json();
+  const keys: string[] = out.set.cards.map((c: { card_key: string }) => c.card_key);
+  const controls: string[] = out.deck.controls;
+  const toggle = (key: string) => alice.locator(`#deck_cards .dm-tg[data-card="${key}"]`);
+  await expect(deckCard(alice, keys[0])).toBeVisible();
+
+  await alice.locator('#cset_btn').click();
+  await expect(alice.locator('#deck_change')).toContainText('Risk');
+  await expect(alice.locator('#deck_cards_lab')).toHaveText('Cards in this set – click to turn on or off');
+  await expect(alice.locator('#deck_edit')).toBeVisible();
+  await expect(alice.locator('#deck_cards .dm-tg')).toHaveCount(3);
+  for (const key of keys) await expect(toggle(key)).toHaveAttribute('aria-pressed', 'true');
+
+  // off: the middle card goes from both trays, no new round (no card down)
+  await toggle(keys[1]).click();
+  await expect(toggle(keys[1])).toHaveAttribute('aria-pressed', 'false');
+  await expect(alice.locator('#toast')).toHaveText('Cards changed for everyone');
+  for (const page of [alice, bob]) await expect.poll(() => trayKeys(page)).toEqual([keys[0], keys[2], ...controls]);
+  if (process.env.SHOT_DIR) await alice.screenshot({ path: `${process.env.SHOT_DIR}/toggle.png` });
+
+  // the last two stay: refused with a toast, the toggle shakes, nothing written
+  await toggle(keys[0]).click();
+  await expect(alice.locator('#toast')).toHaveText('A card set needs at least two cards.');
+  await expect(toggle(keys[0])).toHaveClass(/is-refused/);
+  await expect(toggle(keys[0])).toHaveAttribute('aria-pressed', 'true');
+  await bob.waitForTimeout(300);
+  expect(await trayKeys(bob)).toEqual([keys[0], keys[2], ...controls]);
+
+  // on again: back in its place in the set's order
+  await toggle(keys[1]).click();
+  await expect(toggle(keys[1])).toHaveAttribute('aria-pressed', 'true');
+  for (const page of [alice, bob]) await expect.poll(() => trayKeys(page)).toEqual([...keys, ...controls]);
+
+  // a card off while cards are down: the note, then a new round
+  await pickCard(bob, keys[2]);
+  await expect(alice.locator('#deck_round_hint')).toHaveText('Changing the set starts a new round.');
+  await toggle(keys[0]).click();
+  await expect(alice.locator('#toast')).toHaveText('Cards changed for everyone – new round started');
+  for (const page of [alice, bob]) await expect.poll(() => trayKeys(page)).toEqual([keys[1], keys[2], ...controls]);
+  await expect(tableCard(alice, 'Bob')).toHaveAttribute('data-card', 'prgrss1');
+  await expect(bob.locator('#ctl .ctl.selected')).toHaveCount(0);
 });
