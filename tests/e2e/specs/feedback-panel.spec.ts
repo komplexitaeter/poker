@@ -178,6 +178,54 @@ test('send feedback: type and bug context (no team id, no name) are sent, empty 
   expect(requests).toHaveLength(2);
 });
 
+test('send feedback fails (500, network): error toast with icon, text and menu stay, retry works', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  await boardWithPlayer(page, 'Failsy');
+  await openNewIssue(page);
+  const txt = page.locator('#feedback_txt');
+  const sendBtn = page.getByRole('button', { name: 'Send feedback' });
+  const toast = page.locator('#toast');
+  const text = unique('Lost message');
+
+  // HTTP error: the button is disabled while waiting, then the error toast; nothing is cleared or closed
+  let release!: () => void;
+  const gate = new Promise<void>(r => { release = r; });
+  await page.route('**/api/feedback.php*', async route => { await gate; await route.fulfill({ status: 500, body: '' }); });
+  await page.locator('#fb_type label', { hasText: 'Feature' }).click();
+  await txt.fill(text);
+  await sendBtn.click();
+  await expect(sendBtn).toBeDisabled();
+  await expect(toast).not.toHaveClass(/toast-on/);
+  release();
+  await expect(toast).toHaveText('Not sent – please try again');
+  await expect(toast).toHaveClass(/toast-on/);
+  await expect(toast).toHaveClass(/toast-error/);
+  await expect(toast.locator('svg.toast-ico use')).toHaveAttribute('href', '#i-alert');
+  await expect(page.locator('dialog#menu[open]')).toBeVisible();
+  await expect(txt).toHaveValue(text);
+  await expect(page.locator('input[name=fb_type][value=FEATURE]')).toBeChecked();
+  await expect(sendBtn).toBeEnabled();
+
+  // network failure: the same
+  await page.unroute('**/api/feedback.php*');
+  await page.evaluate(() => { (document.getElementById('toast') as HTMLElement).textContent = ''; });
+  await page.route('**/api/feedback.php*', route => route.abort('failed'));
+  await sendBtn.click();
+  await expect(toast).toHaveText('Not sent – please try again');
+  await expect(toast).toHaveClass(/toast-error/);
+  await expect(txt).toHaveValue(text);
+  await expect(page.locator('dialog#menu[open]')).toBeVisible();
+
+  // retry with the server back: thanks, cleared and closed
+  await page.unroute('**/api/feedback.php*');
+  await sendBtn.click();
+  await expect(toast).toHaveText('Thanks – we read every message.');
+  await expect(toast).not.toHaveClass(/toast-error/);
+  await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
+  await openNewIssue(page);
+  await expect(txt).toHaveValue('');
+});
+
 test('backlog: seed entry with badge, titles as text, reactions set / change / remove', async ({ browser }) => {
   const page = await newPlayer(browser);
   await boardWithPlayer(page, 'Voter');

@@ -357,7 +357,7 @@ function updateJediBtn() {
 
 function pushJediBtn(showAvg) {
     let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + t;
-    apiWrite(url);
+    settingWrite(url);
 }
 
 function toggleSurvey(forceSurvey){
@@ -540,12 +540,24 @@ function feedback_submit() {
         + '&type=' + encodeURIComponent(type)
         + '&text=' + encodeURIComponent(fb_text);
     if (type === 'BUG') url += '&context=' + encodeURIComponent(bugContext());
-    fetch(url, { method: 'POST' }).then();
-
-    closeMenu();
-    txt.value = '';
-    setFeedbackType('OTHER');
-    showToast('Thanks – we read every message.');
+    // R3 (Andreas): wait for the answer; on success thank and close, on failure keep text and menu and say so
+    let sendBtn = document.getElementById('feedback_send');
+    sendBtn.disabled = true;
+    let options = { method: 'POST' };
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
+    }
+    fetch(url, options).then(response => response.ok, () => false).then(ok => {
+        sendBtn.disabled = false;
+        if (ok) {
+            closeMenu();
+            txt.value = '';
+            setFeedbackType('OTHER');
+            showToast('Thanks – we read every message.');
+        } else {
+            showToast('Not sent \u2013 please try again', DECK_TOAST_MS, 'error');
+        }
+    });
 }
 
 /* B-57: "Roadmap" tab (id backlog) - our public list (api/get_roadmap.php) with status and reactions (api/vote_roadmap.php).
@@ -666,20 +678,20 @@ function save_topic(){
 // B-51: called by the radio group with SEQUENCE or NAME
 function changeSortOrder(resultsOrder) {
     const url = './api/update_results_order.php?t='+t+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
-    apiWrite(url);
+    settingWrite(url);
 }
 
 // B-51: called by the radio group with 0 (show names) or 1 (anonymous)
 function changeAnonymity(anonymous) {
     const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
-    apiWrite(url);
+    settingWrite(url);
 }
 
 // B-96: called by the radio group with 0 (tips off) or 1 (tips on), for the whole team
 function changeShowTips(showTips) {
     const on = showTips === '1';
     measureEvent(on ? 'TIPS_ON' : 'TIPS_OFF');
-    apiWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
+    settingWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
 }
 
 function onChangeTeamNameInput() {
@@ -700,7 +712,7 @@ function updateTeamName() {
     document.getElementById('cet_change_name').disabled = true;
 
     let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + t;
-    apiWrite(url);
+    settingWrite(url);
 }
 
 function updateUserName() {
@@ -709,7 +721,7 @@ function updateUserName() {
     document.getElementById('cet_change_user').disabled = true;
 
     let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
-    apiWrite(url);
+    settingWrite(url);
 }
 
 // B-51: called by the radio group with PLAYER or OBSERVER
@@ -717,5 +729,5 @@ function toggleUserType(playerType) {
     if (playerType !== 'OBSERVER') playerType = 'PLAYER';
 
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
-    apiWrite(url);
+    settingWrite(url);
 }

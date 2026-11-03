@@ -2294,6 +2294,16 @@ function apiWrite(url, init = {}, beforeReload = null) {
     });
 }
 
+/* R3 (Andreas): a setting of the menu (board settings Results/Team, menu You) written with apiWrite; a failed write
+ * shows the error toast only (success needs no message: the board shows the new state). The board reloaded itself
+ * (apiWrite), so the radios show the server's state again. Deck and timer menu have their own handling. */
+function settingWrite(url, init = {}) {
+    return apiWrite(url, init).then(response => {
+        if (response === null || !response.ok) showToast('Not saved \u2013 please try again', DECK_TOAST_MS, 'error');
+        return response;
+    });
+}
+
 /* B-81: after an own write: load the board, and do not wait for a dead connection to be found */
 function afterWrite() {
     if (gConn === null) return; // no board on this page (start page)
