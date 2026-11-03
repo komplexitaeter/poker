@@ -142,6 +142,12 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(alice.locator('#cs_round')).toHaveCount(0);
   await alice.locator('#cs_name').fill('Risk level');
   await expect(alice.locator('#cs_round')).toHaveCount(0); // the name alone changes no cards
+  // an added card changes the cards in play as well (variant b, Andreas 2026-11-03); removed again: no hint
+  await alice.locator('#cs_add').click();
+  await expect(alice.locator('#cs_round')).toHaveText('Cards are down – Save starts a new round.');
+  await alice.locator('#cs_remove').click();
+  await expect(alice.locator('#cs_round')).toHaveCount(0);
+  await alice.locator('[data-f="card:0"]').click();
   await alice.locator('#cs_remove').click();
   await expect(alice.locator('#cs_round')).toHaveText('Cards are down – Save starts a new round.');
   await alice.locator('#cs_save').click();
@@ -817,7 +823,7 @@ test('editor open, window from 1280 to 390: the menu stays behind the editor', a
 
 /* B-98 (R3, Andreas): the cards of an own set in play are switches in the deck menu, as with a built-in set: off and
  * on again for everybody (tray of Alice and Bob, in the set's order), at least two stay (toast, the toggle shakes),
- * a card off while cards are down starts a new round; "Edit set" stays */
+ * a card off or on while cards are down starts a new round; "Edit set" stays */
 test('own set in play: single cards are switched off and on, at least two stay', async ({ browser }) => {
   const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Toggle');
   const t = new URL(url).searchParams.get('t') as string;
@@ -871,4 +877,12 @@ test('own set in play: single cards are switched off and on, at least two stay',
   for (const page of [alice, bob]) await expect.poll(() => trayKeys(page)).toEqual([keys[1], keys[2], ...controls]);
   await expect(tableCard(alice, 'Bob')).toHaveAttribute('data-card', 'prgrss1');
   await expect(bob.locator('#ctl .ctl.selected')).toHaveCount(0);
+
+  // a card on while cards are down: also a new round (variant b, Andreas 2026-11-03)
+  await pickCard(bob, keys[2]);
+  await expect(alice.locator('#deck_round_hint')).toHaveText('Changing the set starts a new round.');
+  await toggle(keys[0]).click();
+  await expect(alice.locator('#toast')).toHaveText('Cards changed for everyone – new round started');
+  for (const page of [alice, bob]) await expect.poll(() => trayKeys(page)).toEqual([...keys, ...controls]);
+  await expect(tableCard(alice, 'Bob')).toHaveAttribute('data-card', 'prgrss1');
 });

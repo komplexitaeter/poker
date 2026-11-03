@@ -605,8 +605,8 @@ function get_set_param(): int
 /*
  * After a custom set was created (and is to be activated), saved or deleted: the team's deck becomes $deck_id (a custom
  * set or the default deck with all its cards; the control cards stay). If the cards of the deck change (not just their
- * order) while a card is down and a card of the old deck is gone (another deck, removed card, changed symbol/text/
- * value = new key; added cards do not count), a new round starts first (snapshot with the old deck), like a deck
+ * order) while a card is down (another deck, added or removed card, changed symbol/text/value = new key), a new
+ * round starts first (snapshot with the old deck), like a deck
  * change in update_deck.php. The deck is stored (deck_rev + 1) if anything changed or $force_store (e.g. name or style of the
  * active set). The caller holds the team row lock ($team from lock_team_deck()). B-98 V6: $player_id is remembered
  * as the one who changed the card set if the set group changes.
@@ -634,12 +634,10 @@ function custom_update_team_deck($link, string $t, array $team, array $catalog, 
     sort($old_keys);
     sort($new_keys);
     $cards_changed = $new['id'] !== $old['id'] || $old_keys !== $new_keys;
-    // Andreas 2026-11-03: only a card that leaves the deck (removed, or new key after a change of symbol, text or
-    // value) or another deck starts a new round; added cards leave the cards on the table valid
-    $cards_lost = $new['id'] !== $old['id'] || count(array_diff($old_keys, $new_keys)) > 0;
-
+    // Andreas 2026-11-03 (variant b): any change of the set of cards (added, removed, new key after a change of
+    // symbol, text or value) or another deck starts a new round; order and looks (heading, colour, ...) do not
     $new_round = false;
-    if ($cards_lost && team_has_cards_down($link, $t)) {
+    if ($cards_changed && team_has_cards_down($link, $t)) {
         start_new_round($link, $t); // snapshot with the old deck
         $new_round = true;
     }

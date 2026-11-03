@@ -161,8 +161,9 @@ test('create, activate, play, save (diff, rev conflict, new round) and delete a 
 });
 
 /* Andreas 2026-11-03: heading, description and colour change in place (same key, no new round, the table shows the new
- * texts), adding a card starts no new round either; a new symbol, text or value (new key) or a removed card does */
-test('save while cards are down: in-place changes and added cards keep the round, value/text/symbol/removal start a new one', async ({ browser }) => {
+ * texts); any change of the cards of the deck starts a new round (variant b): an added card, a new symbol, text or
+ * value (new key) or a removed card */
+test('save while cards are down: in-place changes keep the round, added/value/text/symbol/removal start a new one', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Custom In Place');
   const t = teamIdOf(url);
@@ -177,15 +178,15 @@ test('save while cards are down: in-place changes and added cards keep the round
   expect((await a.setc(ben, keys[0])).ok()).toBeTruthy();
   const before = rounds();
 
-  // heading, description and colour of a card that is down + a new card: keys stay, no new round, deck.rev + 1
+  // heading, description and colour of a card that is down: keys stay, no new round, deck.rev + 1
   let body = await (await a.save(created.set.set_id, { name: 'Risk', style: 'badge', rev: 1, cards: [
     asRequest(created.set.cards[0], { color: 'teal' }),
     asRequest(created.set.cards[1], { heading: 'medium', description: 'Somewhere in between.', color: 'blue' }),
-    asRequest(created.set.cards[2]), { text: 'XL', numeric_value: 5, color: 'violet' },
+    asRequest(created.set.cards[2]),
   ] })).json();
   expect(body).toMatchObject({ changed: true, new_round: false, set: { rev: 2 }, deck: { rev: created.deck.rev + 1 } });
   let set = body.set;
-  expect(set.cards.slice(0, 3).map((card: { card_key: string }) => card.card_key)).toEqual(keys);
+  expect(set.cards.map((card: { card_key: string }) => card.card_key)).toEqual(keys);
   expect(set.cards[1]).toMatchObject({ card_key: keys[1], value: 'M', heading: 'medium',
     description: 'Somewhere in between.', color: 'blue', numeric_value: 2, active: true });
   expect(rounds()).toBe(before);
@@ -197,8 +198,9 @@ test('save while cards are down: in-place changes and added cards keep the round
   expect(dao.custom_sets[0].cards[0]).toMatchObject({ card_key: keys[0], color: 'teal' });
   expect(dao.players.find((p: { name: string }) => p.name === 'Anna').display_card_key).toBe(keys[1]);
 
-  // each of value, text, symbol of a card that is down, and removing a card: new key / gone -> new round
+  // an added card, each of value, text, symbol of a card that is down, and removing a card -> new round
   const variants: [string, (cards: Record<string, unknown>[]) => Card[]][] = [
+    ['added', cards => [...cards.map(card => asRequest(card)), { text: 'XL', numeric_value: 5, color: 'violet' }]],
     ['value', cards => cards.map((card, i) => asRequest(card, i === 1 ? { numeric_value: 2.5 } : {}))],
     ['text', cards => cards.map((card, i) => asRequest(card, i === 1 ? { text: 'Mid' } : {}))],
     ['symbol', cards => cards.map((card, i) => asRequest(card, i === 0 ? { symbol: 's-2' } : {}))],
@@ -211,8 +213,10 @@ test('save while cards are down: in-place changes and added cards keep the round
     body = await (await a.save(set.set_id, { name: 'Risk', style: 'badge', rev: set.rev, cards: change(set.cards) })).json();
     expect(body, what).toMatchObject({ changed: true, new_round: true });
     expect(Number(rounds()), what).toBe(count + 1);
-    expect(body.set.cards.map((card: { card_key: string }) => card.card_key), what).not.toContain(played);
-    expect(sql(`select active from pok_custom_cards_tbl where card_key = '${played}'`), what).toBe('0');
+    if (what !== 'added') {
+      expect(body.set.cards.map((card: { card_key: string }) => card.card_key), what).not.toContain(played);
+      expect(sql(`select active from pok_custom_cards_tbl where card_key = '${played}'`), what).toBe('0');
+    }
     set = body.set;
   }
   expect(sql(`select count(card_key) from pok_players_tbl where team_id = '${t}'`)).toBe('0');
@@ -252,15 +256,22 @@ test('B-98: single cards of a custom set on/off (update_deck.php cards), kept co
   expect(storedCards()).toBe(`${keys[0]},${keys[1]},${keys[3]}`);
   expect((await a.setc(anna, keys[2])).status()).toBe(400); // switched off: cannot be played
 
-  // cards down: switching a card on keeps the round, switching a card off that is down starts a new one
+  // cards down: switching a card on starts a new round (variant b, Andreas 2026-11-03), switching one off as well;
+  // the same selection again changes nothing
   expect((await a.setc(anna, keys[0])).ok()).toBeTruthy();
   const before = rounds();
   body = await (await a.deck(set.deck_id, `&cards=${keys[0]},${keys[1]},${keys[2]},${keys[3]}`)).json();
-  expect(body).toMatchObject({ changed: true, new_round: false, deck: { cards: keys } });
-  expect(rounds()).toBe(before);
+  expect(body).toMatchObject({ changed: true, new_round: true, deck: { cards: keys } });
+  expect(rounds()).toBe(before + 1);
+  expect(sql(`select deck_cards from pok_roundstats_tbl where team_id = '${t}' order by id desc limit 1`))
+    .toBe(`${keys[0]},${keys[1]},${keys[3]}`);
+  expect((await a.setc(anna, keys[0])).ok()).toBeTruthy();
+  body = await (await a.deck(set.deck_id, `&cards=${keys[3]},${keys[2]},${keys[1]},${keys[0]}`)).json();
+  expect(body).toMatchObject({ changed: false, new_round: false, deck: { cards: keys } });
+  expect(rounds()).toBe(before + 1);
   body = await (await a.deck(set.deck_id, `&cards=${keys[1]},${keys[2]}`)).json();
   expect(body).toMatchObject({ changed: true, new_round: true, deck: { cards: [keys[1], keys[2]] } });
-  expect(rounds()).toBe(before + 1);
+  expect(rounds()).toBe(before + 2);
   expect(sql(`select deck_cards from pok_roundstats_tbl where team_id = '${t}' order by id desc limit 1`)).toBe(keys.join(','));
   expect(sql(`select count(card_key) from pok_players_tbl where team_id = '${t}'`)).toBe('0');
 
