@@ -409,7 +409,7 @@ function renderDeckMenu(force = false) {
 
     if (focusKey !== null) {
         const again = box.querySelector('[data-f="' + CSS.escape(focusKey) + '"]');
-        if (again !== null) again.focus({ preventScroll: true });
+        focusQuietly(again, { preventScroll: true });
     }
 }
 
@@ -440,7 +440,7 @@ function showDeckView(view) {
     gDeckMenu.view = view;
     renderDeckMenu(true);
     const target = document.getElementById(view === 'pick' ? 'deck_pick_title' : 'deck_change');
-    if (target !== null) target.focus();
+    focusQuietly(target);
 }
 
 /* ------------------------------------------------------------------ writes */

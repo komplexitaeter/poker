@@ -101,6 +101,16 @@ test('picture symbols: headings on the table, mini symbols in the spread', async
   // a deck with texts: the deck cards show their headings, control cards too
   await expect(deckCard(alice, 'green01').locator('.dh')).toHaveText('green');
   await expect(deckCard(alice, 'break01').locator('.dh')).toHaveText('break');
+  // R3 (Andreas, 2026-11-03): the traffic light 10 % taller than the coffee cup, inside its card
+  const box = async (key: string) => {
+    const card = (await deckCard(alice, key).locator('.dkc').boundingBox())!;
+    const mot = (await deckCard(alice, key).locator('svg.mot').boundingBox())!;
+    expect(mot.y).toBeGreaterThanOrEqual(card.y);
+    expect(mot.x).toBeGreaterThanOrEqual(card.x);
+    expect(mot.x + mot.width).toBeLessThanOrEqual(card.x + card.width);
+    return mot.height;
+  };
+  expect((await box('green01')) / (await box('break01'))).toBeCloseTo(1.1, 2);
 
   await setCard(alice, url, bob, 'red0001');
   await pickCard(alice, 'green01');
@@ -109,6 +119,7 @@ test('picture symbols: headings on the table, mini symbols in the spread', async
   await expect(red.locator('.ttl')).toHaveText('red');
   await expect(red.locator('.txt')).toHaveCount(0); // traffic lights without descriptions (Andreas)
   await expect(red.locator('use')).toHaveAttribute('href', /#s-light-red$/);
+  await expect(red.locator('svg.mot')).toHaveCSS('transform', 'none'); // the table keeps its size
   await expect(red).toHaveClass(/one-text/);
   // laid out like the other one-word decks (stars, emotions): the light large, the word below it
   await expect(alice.locator('#cbox')).toHaveAttribute('data-text-size', 'word');

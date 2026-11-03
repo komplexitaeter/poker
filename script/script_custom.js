@@ -365,7 +365,7 @@ function openCustomEditor(set, opener) {
     csRenderStart();
     if (!dialog.open) dialog.showModal();
     const first = document.getElementById('cs_scratch');
-    if (first !== null) first.focus();
+    focusQuietly(first);
 }
 
 /* the editor: set (an own set) or null for a new one; group: a catalog group to start from (null: cards 1 and 2) */
@@ -390,7 +390,7 @@ function csStartEditor(set, group, copy = null) {
     csRender();
     if (!dialog.open) dialog.showModal();
     const first = set ? dialog.querySelector('[data-f="card:0"]') : document.getElementById('cs_name');
-    if (first !== null) first.focus();
+    focusQuietly(first);
 }
 
 /* every card of a catalog group (the union of its variants, catalog order, no control cards) as editor cards */
@@ -433,7 +433,7 @@ function csClose() {
     let target = gCs.opener !== null
         ? document.querySelector('#deck_menu [data-f="' + CSS.escape(gCs.opener) + '"]') : null;
     if (target === null || target.disabled) target = document.getElementById('deck_change') || document.getElementById('deck_pick_title');
-    if (target !== null) target.focus();
+    focusQuietly(target);
 }
 
 function csCancel() {
@@ -625,7 +625,7 @@ function csRender() {
     });
     if (focusKey !== null) {
         const again = dialog.querySelector('[data-f="' + CSS.escape(focusKey) + '"]');
-        if (again !== null) again.focus({ preventScroll: true });
+        focusQuietly(again, { preventScroll: true });
     }
 }
 
@@ -681,7 +681,7 @@ function csRenderFoot() {
     foot.replaceChildren(...parts);
     if (focusKey !== null) {
         const again = foot.querySelector('[data-f="' + CSS.escape(focusKey) + '"]');
-        if (again !== null) again.focus({ preventScroll: true });
+        focusQuietly(again, { preventScroll: true });
     }
 }
 
@@ -1023,7 +1023,7 @@ function csOpenPicker() {
     const pop = document.getElementById('cs_pick');
     if (pop !== null) pop.scrollIntoView({ block: 'nearest' });
     const search = document.getElementById('cs_sym_search');
-    if (search !== null) search.focus({ preventScroll: true });
+    focusQuietly(search, { preventScroll: true });
 }
 
 /* focus: back on the symbol button */
@@ -1035,7 +1035,7 @@ function csClosePicker(focus) {
     const button = document.getElementById('cs_sym');
     if (button !== null) {
         button.setAttribute('aria-expanded', 'false');
-        if (focus) button.focus({ preventScroll: true });
+        if (focus) focusQuietly(button, { preventScroll: true });
     }
 }
 
@@ -1154,7 +1154,7 @@ function csRefreshCard(detail = false) {
     csRenderState();
     if (focusKey !== null && focused !== document.activeElement) {
         const again = gCs.dialog.querySelector('[data-f="' + CSS.escape(focusKey) + '"]');
-        if (again !== null) again.focus({ preventScroll: true });
+        focusQuietly(again, { preventScroll: true });
     }
 }
 
@@ -1174,7 +1174,7 @@ function csSelect(index) {
     csRenderDetail();
     document.getElementById('cs_detail').scrollTop = 0;
     const card = csShowCard(index);
-    if (card !== null) card.focus({ preventScroll: true });
+    focusQuietly(card, { preventScroll: true });
 }
 
 /* the card becomes a text value (the symbol's value as a start when it is plain text: "3", "XL") */
@@ -1190,7 +1190,7 @@ function csSetText() {
     }
     csRefreshCard(true);
     const input = document.getElementById('cs_text');
-    if (input !== null) input.focus();
+    focusQuietly(input);
 }
 
 function csSetSymbol(symbol) {
@@ -1203,7 +1203,7 @@ function csSetSymbol(symbol) {
     if (gCs.errors.card === gCs.sel) delete gCs.errors.card;
     csRefreshCard(true);
     const button = document.getElementById('cs_sym');
-    if (button !== null) button.focus({ preventScroll: true });
+    focusQuietly(button, { preventScroll: true });
 }
 
 function csAddCard() {
@@ -1244,7 +1244,7 @@ function csMove(step) {
     // the same arrow keeps the focus while it can move on, else the card
     const arrow = document.getElementById(step < 0 ? 'cs_up' : 'cs_down');
     const target = arrow !== null && !arrow.disabled ? arrow : gCs.dialog.querySelector('[data-f="card:' + to + '"]');
-    if (target !== null) target.focus({ preventScroll: true });
+    focusQuietly(target, { preventScroll: true });
 }
 
 /* ------------------------------------------------------------------ questions (discard, delete) */
@@ -1288,7 +1288,7 @@ function csAsk(kind) {
     scrim.hidden = false;
     // the rest of the editor is out of reach while the question is open
     gCs.dialog.querySelectorAll(':scope > .cs-head, :scope > .cs-body, :scope > .cs-foot').forEach(part => { part.inert = true; });
-    keep.focus();
+    focusQuietly(keep);
 }
 
 function csCloseQuestion() {
@@ -1301,7 +1301,7 @@ function csCloseQuestion() {
     }
     gCs.dialog.querySelectorAll(':scope > .cs-head, :scope > .cs-body, :scope > .cs-foot').forEach(part => { part.inert = false; });
     const back = document.getElementById(kind === 'delete' ? 'cs_delete' : 'cs_cancel');
-    if (back !== null) back.focus();
+    focusQuietly(back);
 }
 
 /* ------------------------------------------------------------------ save, delete */
@@ -1341,7 +1341,7 @@ function csShowErrors() {
     if (gCs.errors.card !== undefined) csShowCard(gCs.errors.card);
     if (target !== null) {
         target.scrollIntoView({ block: 'nearest' });
-        target.focus({ preventScroll: true });
+        focusQuietly(target, { preventScroll: true });
     }
 }
 

@@ -223,13 +223,9 @@ function deckElement(card) {
         element.addEventListener("blur", hideDeckInfo);
         element.addEventListener("keydown", moveDeckFocus);
         element.addEventListener("pointerdown", () => {
-            gDeckPointerPress = element;
             if (document.activeElement === element) gDeckPointerFocus = element;
         });
-        element.addEventListener("focus", () => {
-            gDeckPointerFocus = gDeckPointerPress === element ? element : null;
-            gDeckPointerPress = null;
-        });
+        element.addEventListener("focus", () => { gDeckPointerFocus = gKeyboardInput ? null : element; });
         element.addEventListener("blur", () => { if (gDeckPointerFocus === element) gDeckPointerFocus = null; });
         // B-68: the card with its key below it (shown on devices with a mouse, style.css)
         const slot = document.createElement("span");
@@ -339,7 +335,37 @@ function hideDeckInfo() {
 /* R3 (Andreas, 2026-11-02): the deck card that got the focus from a pointer press (mouse, finger), null when the
  * focus came from the keyboard or left the card. A letter key then moves the focus along (pickCardByKey). */
 let gDeckPointerFocus = null;
-let gDeckPointerPress = null; // the card pressed last (Safari does not focus a button on a click)
+
+/* R3 (Andreas, 2026-11-03): did the last action come from the keyboard (true) or from a pointer (mouse, finger)?
+ * Focus the app moves itself (a dialog opens or closes, a view changes: focusQuietly) shows its ring only after a key.
+ * Chrome decides so on its own; Safari (a click does not focus a button) showed the ring after a click as well. */
+let gKeyboardInput = false;
+document.addEventListener('keydown', event => {
+    if (event.metaKey || event.ctrlKey || ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(event.key)) return;
+    gKeyboardInput = true;
+    // a key shows the ring on the focused control again (as browsers do after a click)
+    const focused = document.activeElement;
+    if (focused instanceof Element) focused.classList.remove('no-ring');
+}, true);
+document.addEventListener('pointerdown', () => { gKeyboardInput = false; }, true);
+
+// text fields show their ring after a click too: they are focused as usual
+const RING_ALWAYS = 'textarea, select, [contenteditable], input:not([type="button"], [type="submit"], [type="reset"], '
+    + '[type="checkbox"], [type="radio"], [type="range"], [type="color"])';
+
+/* focuses el (null: nothing); after a pointer action without the focus ring: FocusOptions.focusVisible where the
+ * browser knows it (Firefox), else the class no-ring until el loses the focus or a key is pressed (style.css) */
+function focusQuietly(el, options = {}) {
+    if (el === null || el === undefined) return;
+    if (gKeyboardInput || el.matches(RING_ALWAYS)) {
+        el.focus(options);
+        return;
+    }
+    el.focus({ ...options, focusVisible: false });
+    if (document.activeElement !== el || !el.matches(':focus-visible')) return;
+    el.classList.add('no-ring');
+    el.addEventListener('blur', () => el.classList.remove('no-ring'), { once: true });
+}
 
 /* B-99 (F3): one tab stop for the deck; the arrow keys move between its cards */
 function moveDeckFocus(event) {

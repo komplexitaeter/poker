@@ -133,11 +133,11 @@ function openMenu(sec, opener = null, focusField = true) {
             // a radio group (fieldset): its checked radio, as the arrow keys move from there
             if (element.tagName === 'FIELDSET') element = element.querySelector('input:checked') || element.querySelector('input');
             if (sec === 'topic') element.select();
-            else element.focus();
+            else focusQuietly(element);
         } else if (sec === 'index') {
             // back from a section: the focus on its entry, otherwise on the first entry
             let entry = previousSec !== null && menu.querySelector('#menu_index [data-open="' + previousSec + '"]');
-            (entry || menu.querySelector('#menu_index [data-open]')).focus();
+            focusQuietly(entry || menu.querySelector('#menu_index [data-open]'));
         }
     } else if (previousFocus !== null && previousFocus !== document.body && !menu.contains(previousFocus)) {
         previousFocus.focus({preventScroll: true}); // show() moves the focus into the dialog
@@ -192,7 +192,7 @@ function closeMenu(restoreFocus = true) {
     if (toast !== null && menu.contains(toast)) document.body.appendChild(toast);
     menu.close();
     updateMenuExpanded();
-    if (restoreFocus && gMenuOpener !== null && gMenuOpener.isConnected) gMenuOpener.focus();
+    if (restoreFocus && gMenuOpener !== null && gMenuOpener.isConnected) focusQuietly(gMenuOpener);
     gMenuOpener = null;
 }
 
