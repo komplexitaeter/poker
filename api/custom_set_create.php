@@ -4,8 +4,9 @@
  * POST ?t=<team>&id=<player id, optional>, JSON body: {name, style, cards: [card, ...], activate: bool (optional, default false)}
  *   card: {symbol: id of card_catalog.json custom_symbols | text: 1-6 graphemes, emoji allowed, see is_custom_value_text() (exactly one of both),
  *          heading?: <= 16, description?: <= 160, numeric_value?: number | null, color: card_catalog.json custom_colors,
- *          key?: card_key of a catalog group card (template, e.g. 'infin01'): then symbol and color of that catalog card
- *          are allowed even if they are not in custom_symbols/custom_colors}
+ *          key?: card_key of a catalog group card (template, e.g. 'infin01') or of an active card of another set of
+ *          this team that is not deleted (copy of an own set, 'c-...'): then symbol and color of that card are allowed
+ *          even if they are not in custom_symbols/custom_colors; the card is a new card (new key)}
  * - at most custom_cards_max() cards (_CUSTOM_CARDS_MAX, default 20), otherwise 400 {error: 'too_many_cards', max}
  * - 400 {error, index?}: malformed body or card (error codes: body, name, style, cards, no_cards, too_many_cards, card,
  *   key, duplicate_key, symbol_or_text, symbol, text, heading, description, numeric_value, color), set_limit (the team
@@ -29,9 +30,6 @@ $data = read_json_body();
 if ($data === null) custom_fail(400, 'body');
 $head = validate_custom_set_head($data, $catalog);
 if (isset($head['error'])) custom_fail(400, $head['error']);
-$checked = validate_custom_cards($data['cards'] ?? null, array(), $catalog);
-if (isset($checked['error'])) custom_fail(400, $checked['error'], isset($checked['index']) ? array('index' => $checked['index']) : array());
-if (count($checked['cards']) > custom_cards_max()) custom_fail(400, 'too_many_cards', array('max' => custom_cards_max()));
 $activate = ($data['activate'] ?? false) === true;
 
 $link->begin_transaction();
@@ -40,6 +38,16 @@ if ($team === null) {
     $link->rollback();
     http_response_code(403);
     exit;
+}
+// cards are validated under the lock: a card may copy an active card of another own set (custom_source_cards())
+$checked = validate_custom_cards($data['cards'] ?? null, array(), $catalog, custom_source_cards($team['custom_sets']));
+if (isset($checked['error'])) {
+    $link->rollback();
+    custom_fail(400, $checked['error'], isset($checked['index']) ? array('index' => $checked['index']) : array());
+}
+if (count($checked['cards']) > custom_cards_max()) {
+    $link->rollback();
+    custom_fail(400, 'too_many_cards', array('max' => custom_cards_max()));
 }
 if (count($team['custom_sets']) >= custom_sets_max()) {
     $link->rollback();

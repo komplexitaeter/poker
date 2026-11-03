@@ -12,7 +12,8 @@
  *   graphemes, emoji allowed), optional heading/description, an optional numeric value (spread, sorting, average) and a
  *   colour of the palette (card_catalog.json "custom_colors"). Cards migrated from an old mixed deck may keep their
  *   catalog symbol/colour; an edited copy of such a card may keep them as well. A card copied from a catalog card
- *   (editor template, request key = catalog card_key) may keep that card's symbol/colour, too.
+ *   (editor template, request key = catalog card_key) may keep that card's symbol/colour, too. Likewise a card copied
+ *   from an active card of another (not deleted) set of the same team (request key = its 'c-' card_key).
  */
 
 const CUSTOM_DECK_PREFIX = 'c-';
@@ -306,12 +307,15 @@ function is_custom_value_text(string $value): bool
  * a card that refers to one of them may keep its symbol and colour even if they are not in the custom whitelists
  * (cards migrated from an old deck). Likewise a card whose key is the card_key of a catalog group card (template of
  * the editor, e.g. 'infin01') may take that card's symbol and colour; it is a new card (normalized key null).
- * Other keys (other sets, other teams, unknown) give no exception. Content is validated as usual.
+ * $sources: active cards of the team's other sets that are not deleted, by key (custom_source_cards()) - a card whose
+ * key is one of them is a copy of that card (new set copied from an own set): it may take that card's symbol and
+ * colour and is a new card (normalized key null) as well. Other keys (other teams, deleted sets, inactive cards of
+ * other sets, unknown) give no exception. Content is validated as usual.
  * Returns array('cards' => [normalized cards]) or array('error' => code, 'index' => position of the card).
  * A normalized card: key (given custom key or null), symbol, text, heading, description, numeric (string '1.50' or
  * null), color.
  */
-function validate_custom_cards($input, array $known, array $catalog): array
+function validate_custom_cards($input, array $known, array $catalog, array $sources = array()): array
 {
     if (!is_array($input) || !array_is_list($input)) return array('error' => 'cards');
     if (count($input) === 0) return array('error' => 'no_cards');
@@ -329,6 +333,9 @@ function validate_custom_cards($input, array $known, array $catalog): array
         $ref = null;
         if ($key !== null && is_string($key) && isset($templates[$key])) {
             $ref = $templates[$key]; // copy of a catalog card: a new card, catalog keys may repeat
+            $key = null;
+        } elseif ($key !== null && is_string($key) && !isset($known[$key]) && isset($sources[$key])) {
+            $ref = $sources[$key]; // copy of a card of another own set: a new card, source keys may repeat
             $key = null;
         } else {
             if ($key !== null && (!is_string($key) || !preg_match('/^c-[a-z0-9]{1,5}$/D', $key))) return $error('key');
@@ -369,6 +376,20 @@ function validate_custom_cards($input, array $known, array $catalog): array
             'numeric' => $numeric, 'color' => $color);
     }
     return array('cards' => $cards);
+}
+
+/*
+ * Templates for copying from an own set: the active cards of the team's sets that are not deleted (load_custom_sets(),
+ * loaded under the team row lock) by card_key, except the set $except_set_id (the set being saved keeps its own logic).
+ */
+function custom_source_cards(array $sets, ?int $except_set_id = null): array
+{
+    $cards = array();
+    foreach ($sets as $set_id => $set) {
+        if ($set_id === $except_set_id) continue;
+        foreach ($set['cards'] as $card) $cards[$card['card_key']] = $card;
+    }
+    return $cards;
 }
 
 /* name and style of a create/save request: array('name' =>, 'style' =>) or array('error' => code) */

@@ -491,12 +491,12 @@ test('a new set can copy a catalog group as template (catalog keys allow its sym
   expect(saved.status()).toBe(200);
   expect((await saved.json()).set.cards[17]).toMatchObject({ symbol: 's-4', color: 'v4' });
 
-  // only the colour/symbol of the given catalog card; unknown keys, control cards and other custom keys give no exception
+  // only the colour/symbol of the given catalog card; unknown keys and control cards give no exception
   const bad: [string, Card, string][] = [
     ['colour of another catalog card', { key: 'infin01', symbol: 's-inf', color: 'v3' }, 'color'],
     ['control card key', { key: 'qstmrk1', text: '?', color: 'v3' }, 'key'],
     ['unknown key', { key: 'nope001', symbol: 's-inf', color: 'vinf' }, 'key'],
-    ['custom key of another set', { key: set.cards[16].card_key, symbol: 's-inf', color: 'vinf' }, 'color'],
+    ['custom key, but the colour of another card', { key: set.cards[16].card_key, symbol: 's-inf', color: 'v3' }, 'color'],
     ['content is validated', { key: 'infin01', symbol: 's-inf', color: 'vinf', heading: 'x'.repeat(17) }, 'heading'],
   ];
   for (const [name, card, error] of bad) {
@@ -504,4 +504,89 @@ test('a new set can copy a catalog group as template (catalog keys allow its sym
     expect(r.status(), name).toBe(400);
     expect((await r.json()).error, name).toBe(error);
   }
+});
+
+test('a new set can copy an own set (keys of active cards of own sets allow their symbols and colours)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const t = teamIdOf(await createTeam(page, 'Copy Own Set'));
+  const a = api(page, t);
+  const catalog = await (await page.request.get('/card_catalog.json')).json();
+  const fib = catalog.groups.find((g: { id: string }) => g.id === 'fib');
+  const values: Record<string, number | null> = catalog.custom_symbol_values;
+  const fromCatalog: Card[] = fib.cards.map((c: Record<string, string>) => ({ key: c.card_key, symbol: c.symbol,
+    numeric_value: values[c.symbol], color: c.color }));
+
+  // set A from the Fibonacci template (catalog colours v0 ... vinf)
+  const resA = await a.create({ name: 'A', style: fib.style, cards: fromCatalog });
+  expect(resA.status()).toBe(200);
+  const setA = (await resA.json()).set;
+  expect(setA.cards[16]).toMatchObject({ symbol: 's-inf', color: 'vinf' });
+
+  // set B copies A as the editor sends it: the keys of A's cards with their symbol, colour and texts
+  const copy = setA.cards.map((c: Record<string, unknown>) => asRequest(c));
+  copy[1] = { ...copy[1], heading: 'half' };
+  const resB = await a.create({ name: 'B', style: fib.style, cards: copy });
+  expect(resB.status()).toBe(200);
+  const setB = (await resB.json()).set;
+  expect(setB.cards.map((c: Record<string, unknown>) => [c.symbol, c.color, c.numeric_value]))
+    .toEqual(setA.cards.map((c: Record<string, unknown>) => [c.symbol, c.color, c.numeric_value]));
+  expect(setB.cards[1].heading).toBe('half');
+  expect(setB.cards[16]).toMatchObject({ symbol: 's-inf', color: 'vinf', infinite: true });
+  const keysA = setA.cards.map((c: { card_key: string }) => c.card_key);
+  for (const c of setB.cards) {
+    expect(c.card_key).toMatch(/^c-[a-z0-9]{1,5}$/);
+    expect(keysA).not.toContain(c.card_key); // new cards
+  }
+  // set A is unchanged
+  expect(sql(`select group_concat(card_key order by position) from pok_custom_cards_tbl
+               where set_id = ${setA.set_id} and active = 1`)).toBe(keysA.join(','));
+
+  // saving set B: a further card copied from A (another own set) is a new card with A's colour
+  const savedB = await a.save(setB.set_id, { name: 'B', style: fib.style, rev: setB.rev,
+    cards: [...setB.cards.map((c: Record<string, unknown>) => asRequest(c)), asRequest(setA.cards[4])] });
+  expect(savedB.status()).toBe(200);
+  const setBNow = (await savedB.json()).set;
+  const b17 = setBNow.cards[17];
+  expect(b17).toMatchObject({ symbol: 's-3', color: 'v3' });
+  expect(keysA).not.toContain(b17.card_key);
+
+  // an inactive card (removed from A by a save) is no template any more
+  const inf = setA.cards[16];
+  const savedA = await a.save(setA.set_id, { name: 'A', style: fib.style, rev: setA.rev,
+    cards: setA.cards.slice(0, 16).map((c: Record<string, unknown>) => asRequest(c)) });
+  expect(savedA.status()).toBe(200);
+  // a card of a deleted set neither
+  const resC = await a.create({ name: 'C', style: fib.style, cards: [asRequest(setA.cards[5])] });
+  expect(resC.status()).toBe(200);
+  const setC = (await resC.json()).set;
+  expect(setC.cards[0]).toMatchObject({ symbol: 's-5', color: 'v5' });
+  expect((await a.remove(setC.set_id)).ok()).toBeTruthy();
+  // nor a card of another team
+  const other = await newPlayer(browser);
+  const b = api(other, teamIdOf(await createTeam(other, 'Other Copy Team')));
+  const foreign = await b.create({ name: 'F', style: fib.style, cards: [fromCatalog[16]] });
+  expect(foreign.status()).toBe(200);
+  const foreignCard = (await foreign.json()).set.cards[0];
+  expect(foreignCard).toMatchObject({ symbol: 's-inf', color: 'vinf' });
+
+  const bad: [string, Card, string][] = [
+    ['inactive card of an own set', asRequest(inf), 'color'],
+    ['card of a deleted set', asRequest(setC.cards[0]), 'color'],
+    ['card of another team', asRequest(foreignCard), 'color'],
+    ['own key, colour of another card', { ...asRequest(setA.cards[2]), color: 'v3' }, 'color'],
+    ['malformed key', { key: 'c-TOOLONG', symbol: 's-1', color: 'v1' }, 'key'],
+  ];
+  for (const [name, card, error] of bad) {
+    const r = await a.create({ name: 'Bad', style: 'plain', cards: [card] });
+    expect(r.status(), name).toBe(400);
+    expect((await r.json()).error, name).toBe(error);
+  }
+  // the same keys in a save of another set of the team are refused as well
+  for (const [name, card, error] of bad) {
+    const r = await a.save(setB.set_id, { name: 'B', style: fib.style, rev: setBNow.rev, cards: [card] });
+    expect(r.status(), name).toBe(400);
+    expect((await r.json()).error, name).toBe(error);
+  }
+  // the foreign team's set is untouched
+  expect(sql(`select count(1) from pok_custom_cards_tbl where card_key = '${foreignCard.card_key}' and active = 1`)).toBe('1');
 });
