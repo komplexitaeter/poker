@@ -5017,6 +5017,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-mv.danger:enabled { color: var(--danger); }
 .cs-mv.danger:enabled:hover { border-color: var(--danger); }
 .cs-mv:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+/* the arrows follow the strip: ↑ ↓ in the column, ← → sideways on phones (R3, Andreas 2026-11-03) */
+.cs-mv-h { display: none; }
 .cs-additem { flex: none; }
 .cs-add {
     display: flex;
@@ -5196,6 +5198,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     }
     .cs-item.sel { margin: 0; }
     .cs-acts { position: absolute; top: 100%; left: 0; margin-top: 6px; }
+    .cs-mv-v { display: none; }
+    .cs-mv-h { display: inline; }
     .cs-row { flex-direction: column; width: auto; padding: 4px 3px; }
     .cs-row .dm-card { --deck-w: 44px; }
     .cs-row-t { display: none; }

@@ -771,13 +771,18 @@ function csRenderCards() {
         item.appendChild(pick);
         if (selected) {
             const actions = csEl('span', 'cs-acts');
-            const up = csButton('cs-mv', '↑', 'up', () => csMove(-1));
+            // R3 (Andreas, 2026-11-03): ↑ ↓ in the column (desktop), ← → in the strip sideways (phones, style.css)
+            const up = csButton('cs-mv', null, 'up', () => csMove(-1));
+            up.append(csEl('span', 'cs-mv-v', '↑'), csEl('span', 'cs-mv-h', '←'));
             up.id = 'cs_up';
-            up.setAttribute('aria-label', 'Move card up');
+            up.setAttribute('aria-label', 'Move card earlier');
+            up.title = 'Move card earlier';
             up.disabled = i === 0;
-            const down = csButton('cs-mv', '↓', 'down', () => csMove(1));
+            const down = csButton('cs-mv', null, 'down', () => csMove(1));
+            down.append(csEl('span', 'cs-mv-v', '↓'), csEl('span', 'cs-mv-h', '→'));
             down.id = 'cs_down';
-            down.setAttribute('aria-label', 'Move card down');
+            down.setAttribute('aria-label', 'Move card later');
+            down.title = 'Move card later';
             down.disabled = i === last;
             const remove = csButton('cs-mv danger', '×', 'remove', csRemoveCard);
             remove.id = 'cs_remove';

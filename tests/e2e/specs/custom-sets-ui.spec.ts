@@ -89,6 +89,10 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await alice.locator('#cs_up').click();
   await expect(alice.locator('[data-f="card:0"]')).toHaveAttribute('aria-current', 'true');
   await expect(alice.locator('#cs_up')).toBeDisabled();
+  // R3 (Andreas, 2026-11-03): the column on the desktop moves with ↑ ↓
+  await expect(alice.locator('#cs_up')).toHaveText('↑', { useInnerText: true });
+  await expect(alice.locator('#cs_down')).toHaveText('↓', { useInnerText: true });
+  await expect(alice.locator('#cs_up')).toHaveAttribute('aria-label', 'Move card earlier');
 
   // Esc with unsaved changes asks first; "Keep editing" goes back
   await alice.keyboard.press('Escape');
@@ -520,6 +524,14 @@ for (const phone of [{ width: 375, height: 667 }, { width: 390, height: 844 }]) 
     if (phone.width === 375) await alice.screenshot({ path: `${process.env.PHONE_SHOTS || 'test-results'}/editor-top-375x667.png` });
 
     // the symbol picker's search field (opens with focus) is 16px, too
+    await alice.locator('[data-f="card:0"]').click();
+    // R3 (Andreas, 2026-11-03): the strip runs sideways, its arrows too (← earlier, → later)
+    await expect(alice.locator('#cs_up')).toHaveText('←', { useInnerText: true });
+    await expect(alice.locator('#cs_down')).toHaveText('→', { useInnerText: true });
+    await expect(alice.locator('#cs_down')).toHaveAttribute('aria-label', 'Move card later');
+    await alice.locator('#cs_down').click();
+    await expect(alice.locator('[data-f="card:1"]')).toHaveAttribute('aria-current', 'true');
+    if (phone.width === 390) await alice.screenshot({ path: `${process.env.PHONE_SHOTS || 'test-results'}/arrows-phone.png` });
     await alice.locator('[data-f="card:0"]').click();
     await alice.locator('#cs_sym').click();
     await expect(alice.locator('#cs_sym_search')).toBeFocused();
