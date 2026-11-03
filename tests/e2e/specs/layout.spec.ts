@@ -135,29 +135,37 @@ test('large screen: topic in the column, New Round at its foot next to the deck 
   await alice.context().close();
 });
 
-test('timer switch: confirmed below the switch for the own click only, no toast (B-46, B-67, R3 review V1)', async ({ browser }) => {
+test('timer switch: the own click is confirmed as a toast, others get none; a failed write as an error toast (B-46, B-67, R3)', async ({ browser }) => {
   const { alice, bob } = await teamWithTwoPlayers(browser, 'Layout Timer Toast');
   const aliceToast = alice.locator('#toast');
   const bobToast = bob.locator('#toast');
-  const status = alice.locator('#tmr_status');
 
   await openTimerPanel(alice);
+  // R3 (Andreas): no status line in the menu any more, nothing moves
+  await expect(alice.locator('#tmr_status')).toHaveCount(0);
+  const modeBefore = (await alice.locator('#tmr_mode').boundingBox())!;
   await alice.locator('input[name=tmr_visibility][value="1"]').check();
-  await expect(status).toHaveText('\u2713 Timer on \u2013 everyone on the board sees it');
-  await expect(aliceToast).not.toHaveClass(/toast-on/);
+  await expect(aliceToast).toHaveText('Timer on \u2013 everyone on the board sees it');
+  await expect(aliceToast).toHaveClass(/toast-on/);
+  await expect(aliceToast).not.toHaveClass(/toast-error/);
+  expect(Math.abs((await alice.locator('#tmr_mode').boundingBox())!.y - modeBefore.y)).toBeLessThanOrEqual(1);
   // Bob sees the timer, but no message
   await expect(bob.locator('#timer')).toBeVisible();
   await expect(bobToast).not.toHaveClass(/toast-on/);
 
   await alice.locator('input[name=tmr_visibility][value="0"]').check();
-  await expect(status).toHaveText('\u2713 Timer off');
+  await expect(aliceToast).toHaveText('Timer off');
   await expect(bob.locator('#timer')).toBeHidden();
   await expect(bobToast).not.toHaveClass(/toast-on/);
-  // someone else switches it on: the own "Timer off" goes
-  await openTimerPanel(bob);
-  await bob.locator('input[name=tmr_visibility][value="1"]').check();
-  await expect(alice.locator('#timer')).toBeVisible();
-  await expect(status).toHaveText('');
+
+  // a failed write: an error toast with the icon, the switch shows the server's state again
+  await alice.route('**/api/timer.php*', route => route.fulfill({ status: 500, body: '' }));
+  await alice.locator('input[name=tmr_visibility][value="1"]').check();
+  await expect(aliceToast).toHaveText('Not saved \u2013 please try again');
+  await expect(aliceToast).toHaveClass(/toast-error/);
+  await expect(aliceToast.locator('svg.toast-ico')).toHaveCount(1);
+  await expect(alice.locator('input[name=tmr_visibility][value="0"]')).toBeChecked();
+  await expect(alice.locator('#timer')).toBeHidden();
   await alice.context().close();
   await bob.context().close();
 });

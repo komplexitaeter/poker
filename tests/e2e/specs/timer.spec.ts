@@ -116,6 +116,10 @@ test('timer mode 5 min: T−05:00, start, pause, reset; time up in amber (B-67)'
     await expect(page.getByRole('button', { name: 'Start timer' })).toBeHidden();
   }
 
+  // the server counts whole seconds (timestampdiff of start and pause): a pause within the first second of the
+  // run gives 0 s, which the board cannot tell from "not started" (data-state ready). So pause after >= 1.5 s:
+  // T−04:58 needs at least 1.5 s since the start
+  await expect(display(bob)).toHaveText(/^T−04:(5[0-8]|[0-4]\d)$/);
   await bob.getByRole('button', { name: 'Pause timer' }).click();
   await expect(alice.locator('#timer')).toHaveAttribute('data-state', 'paused');
   const paused = await display(alice).textContent();

@@ -1212,8 +1212,6 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 }
 
 /* R3 review V1: the confirmation of an own switch below it (timer), instead of a toast */
-.hint.ok-status { color: var(--ok); }
-.hint.ok-status:empty { margin: 0; }
 
 .row {
     display: flex;
