@@ -12,11 +12,11 @@ test('a new card set: a toast for the others, none for the one who switched, non
   await expect(deckCard(bob, 'five001')).toBeVisible();
   await expect(toast(bob)).not.toHaveClass(/toast-on/); // not on the first load
 
-  // Alice switches to J.U.D.G.E.: Bob sees it, Alice gets the toast of her own change
-  await chooseCardSet(alice, 'J.U.D.G.E.');
+  // Alice switches to Consent decision: Bob sees it, Alice gets the toast of her own change
+  await chooseCardSet(alice, 'Consent decision');
   await expect(deckCard(bob, 'jdg3')).toBeVisible();
   await expect(toast(bob)).toHaveClass(/toast-on/);
-  await expect(toast(bob)).toHaveText('Alice changed the card set to J.U.D.G.E.');
+  await expect(toast(bob)).toHaveText('Alice changed the card set to Consent decision');
   await expect(deckCard(alice, 'jdg3')).toBeVisible();
   await expect(toast(alice)).toHaveText('Card set changed for everyone');
   await expect(toast(bob)).not.toHaveClass(/toast-on/, { timeout: 5000 }); // gone again
@@ -48,5 +48,5 @@ test('a new card set without a known name: "Card set changed to ..." (V6)', asyn
   const t = encodeURIComponent(new URL(url).searchParams.get('t') ?? '');
   expect((await alice.request.post(`/api/update_deck.php?t=${t}&deck=judge`)).ok()).toBeTruthy();
   await expect(deckCard(bob, 'jdg3')).toBeVisible();
-  await expect(toast(bob)).toHaveText('Card set changed to J.U.D.G.E.');
+  await expect(toast(bob)).toHaveText('Card set changed to Consent decision');
 });

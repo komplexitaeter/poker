@@ -517,11 +517,16 @@ function csRenderStart() {
 
     const body = csEl('div', 'cs-body cs-start');
     body.id = 'cs_body';
-    const scratch = csButton('cs-new cs-scratch', null, 'scratch', () => csStartEditor(null, null));
+    // Andreas (compact list): "Start from scratch" first, a row like the sets below it
+    const scratchList = csEl('ul', 'dm-plist');
+    const scratchItem = csEl('li', 'dm-prow');
+    const scratch = csButton('dm-prow-b cs-scratch', null, 'scratch', () => csStartEditor(null, null));
     scratch.id = 'cs_scratch';
     const text = csEl('span', 'dm-t');
-    text.append(csEl('b', null, 'Start from scratch'), csEl('small', null, 'Two cards to begin with'));
-    scratch.append(csEl('span', 'cs-plus', '+'), text);
+    text.appendChild(csEl('b', null, 'Start from scratch'));
+    scratch.append(text, csEl('span', 'cs-plus', '+'), dmIcon('next'));
+    scratchItem.appendChild(scratch);
+    scratchList.appendChild(scratchItem);
 
     const from = csEl('h3', 'lab cs-sec cs-sec2', 'Start from a built-in set');
     from.id = 'cs_from_title';
@@ -532,15 +537,13 @@ function csRenderStart() {
         const item = csEl('li', 'dm-prow');
         const button = csButton('dm-prow-b', null, 'from:' + group.id, () => csStartEditor(null, group));
         button.setAttribute('data-group', group.id);
-        const note = typeof group.description === 'string' && group.description !== ''
-            ? group.description : DECK_GROUP_NOTES[group.id] || '';
         const label = csEl('span', 'dm-t');
-        label.append(csEl('b', null, group.name), csEl('small', null, note));
+        label.appendChild(csEl('b', null, group.name));
         button.append(label, dmFan(group.variants[0].cards), dmIcon('next'));
         item.appendChild(button);
         list.appendChild(item);
     });
-    body.append(scratch, from, list);
+    body.append(scratchList, from, list);
 
     const foot = csEl('div', 'cs-foot');
     foot.id = 'cs_foot';

@@ -137,7 +137,7 @@
     },
     {
       "id": "judge",
-      "name": "J.U.D.G.E.",
+      "name": "Consent decision",
       "style": "inverted",
       "cards": [
         {"card_key": "jdg0", "value": "0", "symbol": "s-0", "color": "j0", "numeric_value": 0, "sort_order": 100, "heading": "step aside", "description": "The others know this better. I'll go with their decision.", "legacy_index": 0},
@@ -149,7 +149,7 @@
         {"card_key": "jdg6", "value": "6", "symbol": "s-6", "color": "j6", "numeric_value": 6, "sort_order": 800, "heading": "veto", "description": "I block this. Let me explain why.", "legacy_index": 7}
       ],
       "variants": [
-        {"id": "judge", "name": "J.U.D.G.E.", "cards": ["jdg0", "jdg1", "jdg2", "jdg3", "jdg4", "jdg5", "jdg6"], "preset_mapping": "Judge"}
+        {"id": "judge", "name": "Consent decision", "cards": ["jdg0", "jdg1", "jdg2", "jdg3", "jdg4", "jdg5", "jdg6"], "preset_mapping": "Judge"}
       ]
     },
     {

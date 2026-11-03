@@ -27,6 +27,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
 
   // "Your sets (0 / 5)" above the built-in sets, "+ New set"
   await expect(alice.locator('#deck_own_title')).toHaveText('Your sets 0 / 5');
+  await expect(alice.locator('#deck_own_title + #deck_new_set')).toHaveText('+New set');
   await expect(alice.locator('#deck_builtin_title')).toBeVisible();
   await alice.locator('#deck_new_set').click();
 
@@ -203,6 +204,10 @@ test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills 
   await expect(editor(alice)).toBeVisible();
   await expect(alice.locator('#cs_from [data-group]')).toHaveCount(8);
   await expect(alice.locator('#cs_from [data-group="fib"]')).toContainText('Fibonacci');
+  // Andreas (compact list): one line per row, no line below the names, "Start from scratch" first
+  await expect(alice.locator('#cs_body small')).toHaveCount(0);
+  await expect(alice.locator('#cs_body .dm-prow-b').first()).toHaveAttribute('id', 'cs_scratch');
+  await expect(alice.locator('#cs_from [data-group] .dm-fan')).toHaveCount(8);
   await expect(alice.locator('#cs_save')).toHaveCount(0);
   await alice.keyboard.press('Escape');
   await expect(editor(alice)).toBeHidden();
@@ -301,7 +306,8 @@ test('the limit of sets disables "+ New set"; Cancel without changes closes at o
   await alice.locator('#deck_change').click();
   await expect(alice.locator('#deck_own_sets li')).toHaveCount(5);
   await expect(alice.locator('#deck_new_set')).toBeDisabled();
-  await expect(alice.locator('#deck_new_hint')).toContainText('5 of 5 sets');
+  // Andreas (compact list): the hint as the title of the small button in the heading
+  await expect(alice.locator('#deck_own_title + #deck_new_set')).toHaveAttribute('title', /^5 of 5 sets/);
 
   // choosing an own set puts it in play
   await alice.locator('#deck_own_sets .dm-prow-b').filter({ hasText: 'Set 3' }).click();

@@ -14,18 +14,6 @@
 
 const DECK_MIN_CARDS = 2; // a deck keeps at least two cards of its set
 
-/* a short line per set group where the catalog has none: what the set is for (R3 review V10, L40) */
-const DECK_GROUP_NOTES = {
-    fib: 'Estimate effort in points',
-    numbers: 'Confidence, value, scores',
-    tshirt: 'Rough sizing for big items',
-    traffic: 'Quick go / no-go check',
-    emotions: 'How does the team feel?',
-    stars: 'Ratings from 0 to 5',
-    judge: 'Team decisions by consent',
-    delegation: 'Who decides?',
-};
-
 const gDeckMenu = {
     view: 'main',     // 'main' (overview) | 'pick' (list of sets)
     json: null,       // the last board state
@@ -117,7 +105,7 @@ function dmFan(keys) {
 
 function dmRoundNote() {
     if (!deckRoundRunning()) return null;
-    const note = dmEl('p', 'hint warn dm-round', 'Cards have been played \u2013 changing the card set starts a new round.');
+    const note = dmEl('p', 'hint warn dm-round', 'Changing the set starts a new round.');
     note.id = 'deck_round_hint';
     note.setAttribute('role', 'note');
     return note;
@@ -316,11 +304,9 @@ function deckPickView(deck) {
         button.setAttribute('data-group', group.id);
         button.setAttribute('data-f', 'group:' + group.id);
         if (current) button.setAttribute('aria-current', 'true');
+        // Andreas (compact list): one line per set, its name only (no line below it, no tooltip)
         const text = dmEl('span', 'dm-t');
-        const note = typeof group.description === 'string' && group.description !== ''
-            ? group.description : DECK_GROUP_NOTES[group.id] || '';
-        // R3 review polish (Andreas): the line says what the set is for, without the variant names
-        text.append(dmEl('b', null, group.name), dmEl('small', null, note));
+        text.appendChild(dmEl('b', null, group.name));
         const keys = current ? deck.cards : group.variants[0].cards;
         const mark = current ? dmIcon('check', 'dm-tick') : dmIcon('next');
         if (current) mark.setAttribute('aria-hidden', 'true');
@@ -334,16 +320,31 @@ function deckPickView(deck) {
     return parts;
 }
 
-/* B-98 S5: "Your sets (n / max)": a row per own set (choose it; the pen opens the editor), then "+ New set"
- * (disabled with a hint at the limit) */
+/* B-98 S5: "Your sets (n / max)" with "+ New set" (disabled with a title at the limit), a row per own set (choose
+ * it; the pen opens the editor) */
 function dmOwnSets(deck) {
     const parts = [];
     const max = gDeckMenu.limits.sets;
     const count = gDeckMenu.sets.length;
-    const head = dmEl('h4', 'lab cs-sec cs-sec2');
+    // Andreas (compact list): "+ New set" is a small button at the right of the heading (disabled at the limit,
+    // its title says why)
+    const row = dmEl('div', 'cs-sec cs-sec2 cs-secrow');
+    const head = dmEl('h4', 'lab');
     head.id = 'deck_own_title';
     head.append('Your sets ', dmEl('span', 'cs-count' + (count >= max ? ' full' : ''), count + ' / ' + max));
-    parts.push(head);
+    const add = dmEl('button', 'cs-newset');
+    add.type = 'button';
+    add.id = 'deck_new_set';
+    add.setAttribute('data-f', 'new');
+    add.append(dmEl('span', 'cs-plus', '+'), 'New set');
+    if (count >= max) {
+        add.disabled = true;
+        add.title = count + ' of ' + max + ' sets \u2013 delete one of your sets to create a new one.';
+    } else {
+        add.addEventListener('click', () => openCustomEditor(null, add));
+    }
+    row.append(head, add);
+    parts.push(row);
 
     const list = dmEl('ul', 'dm-plist');
     list.id = 'deck_own_sets';
@@ -357,7 +358,7 @@ function dmOwnSets(deck) {
         button.setAttribute('data-f', 'set:' + set.set_id);
         if (current) button.setAttribute('aria-current', 'true');
         const text = dmEl('span', 'dm-t');
-        text.append(dmEl('b', null, set.name), dmEl('small', null, set.cards.length + ' cards'));
+        text.appendChild(dmEl('b', null, set.name));
         const mark = current ? dmIcon('check', 'dm-tick') : dmIcon('next');
         button.append(text, dmFan(set.cards.map(card => card.card_key)), mark);
         button.addEventListener('click', () => pickCustomSet(set));
@@ -372,24 +373,6 @@ function dmOwnSets(deck) {
     });
     parts.push(list);
 
-    const add = dmEl('button', 'cs-new');
-    add.type = 'button';
-    add.id = 'deck_new_set';
-    add.setAttribute('data-f', 'new');
-    const text = dmEl('span', 'dm-t');
-    text.append(dmEl('b', null, 'New set'), dmEl('small', null, 'Your own values, symbols and texts'));
-    add.append(dmEl('span', 'cs-plus', '+'), text);
-    add.setAttribute('aria-label', 'New set');
-    if (count >= max) {
-        add.disabled = true;
-        const hint = dmEl('p', 'hint cs-limit', count + ' of ' + max + ' sets \u2013 delete one of your sets to create a new one.');
-        hint.id = 'deck_new_hint';
-        add.setAttribute('aria-describedby', hint.id);
-        parts.push(add, hint);
-    } else {
-        add.addEventListener('click', () => openCustomEditor(null, add));
-        parts.push(add);
-    }
     return parts;
 }
 
