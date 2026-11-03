@@ -120,12 +120,24 @@ test('variant and single cards: Short, a card off and on again, at least two car
   // R3 review (Andreas, final): the refusal as a toast, the toggle shakes; nothing in the menu
   await expect(toast(alice)).toHaveText('A card set needs at least two cards.');
   await expect(toast(alice)).toHaveClass(/toast-on/);
+  // R3 (Andreas): an error toast shows the alert icon instead of the ">" prompt
+  await expect(toast(alice)).toHaveClass(/toast-error/);
+  await expect(toast(alice).locator('svg.toast-ico use')).toHaveAttribute('href', '#i-alert');
+  await expect(toast(alice).locator('svg.toast-ico')).toHaveAttribute('aria-hidden', 'true');
+  if (process.env.SHOT_DIR) await alice.screenshot({ path: `${process.env.SHOT_DIR}/toast-error.png` });
+  expect(await toast(alice).evaluate(el => getComputedStyle(el, '::before').content)).toBe('none');
   await expect(toggle(alice, 'yellow1')).toHaveClass(/is-refused/);
+  // R3 (Andreas): the red frame goes again after about a second, also after the menu is built anew
+  await alice.waitForTimeout(1500);
+  await expect(alice.locator('#deck_cards .is-refused')).toHaveCount(0);
   await calm(alice);
   await expect(deckCard(bob, 'yellow1')).toHaveCount(1);
   // a card on again: written as usual
   await toggle(alice, 'red0001').click();
   await expect(toast(alice)).toHaveText('Cards changed for everyone');
+  await expect(toast(alice)).not.toHaveClass(/toast-error/);
+  await expect(toast(alice).locator('svg')).toHaveCount(0);
+  expect(await toast(alice).evaluate(el => getComputedStyle(el, '::before').content)).toBe('"> "');
   await expect(deckCard(bob, 'red0001')).toHaveCount(1);
 });
 

@@ -472,7 +472,7 @@ function writeDeck(url, local, kind) {
     apiWrite(url, {}, null).then(response => {
         if (response === null || !response.ok) {
             gDeckMenu.serverRev = null; // take the server's deck again with the next board state
-            showToast('Not saved \u2013 please try again', DECK_TOAST_MS);
+            showToast('Not saved \u2013 please try again', DECK_TOAST_MS, 'error');
             return;
         }
         response.json().then(answer => {
@@ -525,14 +525,23 @@ function pickDeckVariant(group, variant) {
         { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() }, 'variant');
 }
 
-/* a card switched off below DECK_MIN_CARDS: refused with a toast, the toggle shakes once (again with every click) */
+/* a card switched off below DECK_MIN_CARDS: refused with a toast, the toggle shakes once (again with every click).
+ * R3 (Andreas): the red frame goes again after DECK_REFUSED_MS; a menu built anew has new toggles without it. */
+const DECK_REFUSED_MS = 1000;
+const gDeckRefusedTimers = new WeakMap(); // toggle -> timeout of its red frame
+
 function refuseDeckCard(key) {
-    showToast('A card set needs at least two cards.', DECK_TOAST_MS);
+    showToast('A card set needs at least two cards.', DECK_TOAST_MS, 'error');
     const toggle = document.querySelector('#deck_menu [data-f="card:' + CSS.escape(key) + '"]');
     if (toggle !== null) {
+        clearTimeout(gDeckRefusedTimers.get(toggle));
         toggle.classList.remove('is-refused');
         void toggle.offsetWidth; // restart the animation
         toggle.classList.add('is-refused');
+        gDeckRefusedTimers.set(toggle, setTimeout(() => {
+            toggle.classList.remove('is-refused');
+            gDeckRefusedTimers.delete(toggle);
+        }, DECK_REFUSED_MS));
     }
 }
 

@@ -4392,6 +4392,17 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     color: var(--muted);
 }
 
+.toast.toast-error::before { content: none; }
+
+/* R3 (Andreas): an error or a refusal shows the alert icon (#i-alert) instead of the ">" prompt */
+.toast .toast-ico {
+    width: 1.15em;
+    height: 1.15em;
+    margin-right: 0.45em;
+    vertical-align: -0.2em;
+    color: var(--danger);
+}
+
 .toast.toast-on {
     transform: translate(-50%, 0);
     /* pops up with a little overshoot */

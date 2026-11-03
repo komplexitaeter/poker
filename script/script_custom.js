@@ -1378,7 +1378,7 @@ function csApiError(answer) {
         toast = known ? CS_ERRORS[code] : 'Not saved – please try again';
     }
     csShowErrors();
-    if (toast !== null) showToast(toast, DECK_TOAST_MS); // after the editor was built anew (the toast lies in it)
+    if (toast !== null) showToast(toast, DECK_TOAST_MS, 'error'); // after the editor was built anew (the toast lies in it)
 }
 
 /* the result of a save / delete as a toast (Andreas: all messages of the deck menu as toasts at the bottom) */
@@ -1467,7 +1467,7 @@ function csSave(play) {
         apiWrite(deckUrl(set.deck_id, null), {}, null).then(response => {
             if (response === null || !response.ok) {
                 csDone(result.answer, 'saved', false);
-                showToast('Set saved – not in use, please try again', DECK_TOAST_MS);
+                showToast('Set saved – not in use, please try again', DECK_TOAST_MS, 'error');
                 return;
             }
             response.json().catch(() => null).then(answer => {
@@ -1491,6 +1491,6 @@ function csDelete() {
         gCs.busy = null;
         csCloseQuestion();
         csRenderFoot();
-        showToast('Not deleted – please try again', DECK_TOAST_MS);
+        showToast('Not deleted – please try again', DECK_TOAST_MS, 'error');
     });
 }
