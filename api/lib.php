@@ -361,6 +361,7 @@ function drop_veto_for_judge(array $result, string $group_id, array $card_keys):
  * a catalog change) fall back to the default deck and are ignored; at least one card always stays on.
  * B-98 S4: a custom set (deck id 'c-<set id>', $custom_sets from load_custom_sets()) gives
  * {id: 'c-<set id>', group: 'custom', set_id, cards: [keys of its active cards in position order], controls, rev}.
+ * B-98 (cards on/off): deck_cards of a custom set is the switched-on part of its cards (custom_deck_selection()).
  * A deleted, unknown or empty set falls back to the default deck.
  */
 function resolve_deck(?string $deck_id, ?string $deck_cards, ?string $deck_controls, int $deck_rev, array $catalog,
@@ -374,7 +375,7 @@ function resolve_deck(?string $deck_id, ?string $deck_cards, ?string $deck_contr
     $set_id = custom_set_id_of($deck_id);
     if ($set_id !== null && isset($custom_sets[$set_id]) && count($custom_sets[$set_id]['cards']) > 0) {
         return array('id' => $deck_id, 'group' => CUSTOM_DECK_GROUP, 'set_id' => $set_id,
-                     'cards' => array_column($custom_sets[$set_id]['cards'], 'card_key'),
+                     'cards' => custom_deck_selection($custom_sets[$set_id]['cards'], $deck_cards),
                      'controls' => $controls, 'rev' => $deck_rev);
     }
 
@@ -499,7 +500,8 @@ function migrate_team_deck_locked($link, string $t, ?string $cardset_flags, arra
 function store_team_deck($link, string $t, array $deck, array $catalog, bool $setup_done): void
 {
     if (isset($deck['set_id'])) {
-        $deck_cards = custom_deck_cards($deck['cards']); // B-98 S4: custom set, keys kept for the round snapshot
+        // B-98 S4: custom set, keys kept for the round snapshot; B-98: the switched-on cards (null = all)
+        $deck_cards = custom_deck_cards($deck['cards']);
     } else {
         $all = catalog_variants($catalog)[$deck['id']]['variant']['cards'];
         $deck_cards = (count($deck['cards']) === count($all) && count(array_diff($deck['cards'], $all)) === 0)

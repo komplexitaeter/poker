@@ -218,6 +218,83 @@ test('save while cards are down: in-place changes and added cards keep the round
   expect(sql(`select count(card_key) from pok_players_tbl where team_id = '${t}'`)).toBe('0');
 });
 
+test('B-98: single cards of a custom set on/off (update_deck.php cards), kept consistent by a save of the set', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Custom Toggle');
+  const t = teamIdOf(url);
+  const [anna, ben] = await addPlayersViaApi(page, url, ['Anna', 'Ben']);
+  const a = api(page, t);
+  const FOUR: Card[] = [...RISK, { text: 'XL', numeric_value: 5, color: 'violet' }];
+  const created = await (await a.create({ name: 'Risk', style: 'badge', cards: FOUR, activate: true })).json();
+  const set = created.set;
+  const keys: string[] = set.cards.map((card: { card_key: string }) => card.card_key);
+  const other = await (await a.create({ name: 'Other', style: 'plain', cards: RISK })).json();
+  const rounds = () => Number(sql(`select count(1) from pok_roundstats_tbl where team_id = '${t}'`));
+  const storedCards = () => sql(`select ifnull(deck_cards, 'NULL') from pok_teams_tbl where id = '${t}'`);
+  expect((await a.deck(other.set.deck_id, `&id=${anna}`)).ok()).toBeTruthy();
+  expect(await (await a.deck(set.deck_id, `&id=${anna}`)).json()).toMatchObject({ changed: true, deck: { cards: keys } });
+  expect((await a.dao(anna)).deck.changed_by).toBe('Anna');
+
+  // invalid: fewer than two cards, a key of another set, a catalog key, a removed key, malformed
+  for (const cards of [keys[0], `${keys[0]},${keys[0]}`, `${keys[0]},${other.set.cards[0].card_key}`,
+                       `${keys[0]},three01`, `${keys[0]},<b>`, ''])
+    expect((await a.deck(set.deck_id, `&cards=${encodeURIComponent(cards)}`)).status(), cards).toBe(400);
+  expect(storedCards()).toBe(keys.join(','));
+
+  // a selection in any order: deck in set order, the set stays complete, same group -> changed_by stays
+  let body = await (await a.deck(set.deck_id, `&id=${ben}&cards=${keys[3]},${keys[0]},${keys[1]}`)).json();
+  expect(body).toMatchObject({ changed: true, new_round: false, deck: { id: set.deck_id, cards: [keys[0], keys[1], keys[3]] } });
+  let dao = await a.dao(anna);
+  expect(dao.deck.cards).toEqual([keys[0], keys[1], keys[3]]);
+  expect(dao.deck.changed_by).toBe('Anna');
+  expect(dao.custom_sets.find((s: { set_id: number }) => s.set_id === set.set_id).cards.map((c: { card_key: string }) => c.card_key))
+    .toEqual(keys);
+  expect(storedCards()).toBe(`${keys[0]},${keys[1]},${keys[3]}`);
+  expect((await a.setc(anna, keys[2])).status()).toBe(400); // switched off: cannot be played
+
+  // cards down: switching a card on keeps the round, switching a card off that is down starts a new one
+  expect((await a.setc(anna, keys[0])).ok()).toBeTruthy();
+  const before = rounds();
+  body = await (await a.deck(set.deck_id, `&cards=${keys[0]},${keys[1]},${keys[2]},${keys[3]}`)).json();
+  expect(body).toMatchObject({ changed: true, new_round: false, deck: { cards: keys } });
+  expect(rounds()).toBe(before);
+  body = await (await a.deck(set.deck_id, `&cards=${keys[1]},${keys[2]}`)).json();
+  expect(body).toMatchObject({ changed: true, new_round: true, deck: { cards: [keys[1], keys[2]] } });
+  expect(rounds()).toBe(before + 1);
+  expect(sql(`select deck_cards from pok_roundstats_tbl where team_id = '${t}' order by id desc limit 1`)).toBe(keys.join(','));
+  expect(sql(`select count(card_key) from pok_players_tbl where team_id = '${t}'`)).toBe('0');
+
+  // save in the editor: off cards stay off (also with a new value = new key), removed cards drop out, new cards are on
+  body = await (await a.deck(set.deck_id, `&cards=${keys[0]},${keys[1]},${keys[2]}`)).json(); // keys[3] off
+  body = await (await a.save(set.set_id, { name: 'Risk', style: 'badge', rev: set.rev, cards: [
+    asRequest(set.cards[0]), asRequest(set.cards[2]), asRequest(set.cards[3], { text: 'XXL' }),
+    { text: 'S', numeric_value: 0, color: 'blue' },
+  ] })).json(); // keys[1] removed, keys[3] replaced, one new card
+  expect(body.changed).toBe(true);
+  const current = body.set;
+  const full: string[] = body.set.cards.map((card: { card_key: string }) => card.card_key);
+  expect(full.slice(0, 2)).toEqual([keys[0], keys[2]]);
+  expect(full[2]).not.toBe(keys[3]);
+  expect(body.deck.cards).toEqual([keys[0], keys[2], full[3]]);
+  expect((await a.dao(anna)).deck.cards).toEqual([keys[0], keys[2], full[3]]);
+
+  // a save that leaves fewer than two cards on (the second one removed): all cards on again
+  body = await (await a.deck(set.deck_id, `&cards=${full[0]},${full[1]}`)).json();
+  expect(body.deck.cards).toEqual([full[0], full[1]]);
+  body = await (await a.save(set.set_id, { name: 'Risk', style: 'badge', rev: current.rev,
+    cards: [asRequest(current.cards[0]), asRequest(current.cards[2]), asRequest(current.cards[3])] })).json();
+  expect(body.set.cards.map((card: { card_key: string }) => card.card_key)).toEqual([full[0], full[2], full[3]]);
+  expect(body.deck.cards).toEqual([full[0], full[2], full[3]]);
+  const rest = [full[0], full[2], full[3]];
+
+  // activating another set and back without cards: all its cards
+  body = await (await a.deck(set.deck_id, `&cards=${rest[0]},${rest[1]}`)).json();
+  expect(body.deck.cards).toEqual([rest[0], rest[1]]);
+  expect((await a.deck(other.set.deck_id)).ok()).toBeTruthy();
+  expect((await (await a.deck(set.deck_id)).json()).deck.cards).toEqual(rest);
+  expect((await a.dao(ben)).deck.cards).toEqual(rest);
+});
+
 test('custom sets: validation, limits, other teams', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Custom Limits');
@@ -311,7 +388,7 @@ test('custom sets: validation, limits, other teams', async ({ browser }) => {
   expect((await b.remove(big.set_id)).status()).toBe(404);
   expect((await b.deck(big.deck_id)).status()).toBe(400);
 
-  // own team: activate through update_deck.php, a cards parameter is refused
+  // own team: activate through update_deck.php; cards must be at least two active cards of this set
   expect((await a.deck(big.deck_id, '&cards=c-1')).status()).toBe(400);
   const activated = await a.deck(big.deck_id);
   expect(activated.status()).toBe(200);

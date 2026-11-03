@@ -7,8 +7,12 @@
  * - If the deck changes while at least one card is down, a new round starts in the same request (snapshot with the
  *   old deck, then all cards up); the client shows a hint before. Unchanged deck: no new round, no deck_rev change.
  * - Two parallel changes run one after the other (row lock), the second one never starts a second round.
- * - B-98 S4: deck = 'c-<set id>' chooses a custom set of the team (all its cards, no cards parameter);
+ * - B-98 S4: deck = 'c-<set id>' chooses a custom set of the team (without cards: all its cards);
  *   400 for a set of another team, a deleted or empty set.
+ * - B-98 (cards on/off): with cards, a custom set gets only these of its active cards (in position order; the set
+ *   itself stays unchanged). 400 for a key that is no active card of this set or fewer than CUSTOM_DECK_MIN_CARDS
+ *   cards. A new round starts only if a card is down and a card leaves the deck (switching cards on starts none),
+ *   as for a save of the set in the editor (custom_update_team_deck()).
  * - B-98 V6: id (player id, optional) is remembered as the one who changed the card set if the set group changes.
  * Answer (JSON): {deck: {id, group, cards, controls, rev}, changed: bool, new_round: bool}
  */
@@ -28,13 +32,20 @@ $catalog = card_catalog();
 $set_id = custom_set_id_of($deck_id);
 $entry = catalog_variants($catalog)[$deck_id] ?? null;
 if ($entry === null && $set_id === null || $catalog['default_deck'] === null
-    || (isset($cards_param) && !is_string($cards_param)) || $set_id !== null && isset($cards_param)) {
+    || (isset($cards_param) && !is_string($cards_param))) {
     http_response_code(400);
     exit;
 }
 
 $deck_cards = null; // all cards of the variant (custom set: all its active cards)
-if (is_string($cards_param)) {
+if (is_string($cards_param) && $set_id !== null) {
+    $keys = parse_card_keys($cards_param);
+    if ($keys === null || count($keys) < CUSTOM_DECK_MIN_CARDS) {
+        http_response_code(400);
+        exit;
+    }
+    $deck_cards = implode(',', $keys); // checked against the set below (team row lock)
+} elseif (is_string($cards_param)) {
     $keys = parse_card_keys($cards_param);
     $group_keys = array_column($entry['group']['cards'], 'card_key');
     if ($keys === null || count($keys) === 0 || count(array_diff($keys, $group_keys)) > 0) {
@@ -57,13 +68,25 @@ if ($set_id !== null && !isset($team['custom_sets'][$set_id]['cards'][0])) { // 
     http_response_code(400);
     exit;
 }
+if ($set_id !== null && $deck_cards !== null) { // B-98: only active cards of this set, and the list must fit
+    $set_keys = array_column($team['custom_sets'][$set_id]['cards'], 'card_key');
+    $keys = explode(',', $deck_cards);
+    if (count(array_diff($keys, $set_keys)) > 0
+        || count($keys) < count($set_keys) && custom_deck_cards($keys) === null) {
+        $link->rollback();
+        http_response_code(400);
+        exit;
+    }
+}
 $new = resolve_deck($deck_id, $deck_cards, implode(',', $old['controls']), (int)$team['deck_rev'], $catalog,
                     $team['custom_sets']);
 $changed = $new['id'] !== $old['id'] || $new['cards'] !== $old['cards'];
+// B-98: within a custom set only a card that leaves the deck starts a new round (as custom_update_team_deck())
+$cards_lost = $set_id === null || $new['id'] !== $old['id'] || count(array_diff($old['cards'], $new['cards'])) > 0;
 
 $new_round = false;
 if ($changed || (int)$team['needs_setup'] === 1 || $team['deck_id'] !== $old['id']) {
-    if ($changed && team_has_cards_down($link, $t)) {
+    if ($changed && $cards_lost && team_has_cards_down($link, $t)) {
         start_new_round($link, $t); // snapshot with the old deck
         $new_round = true;
     }

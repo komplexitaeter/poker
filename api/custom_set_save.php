@@ -15,6 +15,8 @@
  * - The set is the team's deck, a card is down and a card of the deck is gone (removed, or new key after a change of
  *   symbol, text or value): a new round starts (as a deck change). Added cards, heading, description, colour, order,
  *   name and style start none (Andreas 2026-11-03). Any change of the active set raises deck.rev.
+ * - B-98 (cards on/off): cards the team switched off stay off (also after a change of symbol, text or value), removed
+ *   cards drop out of the deck, added cards are on; fewer than 2 cards on = all cards on again.
  * - 404 {error: 'not_found'}: no set of this team (or deleted). 400 {error, index?} as in custom_set_create.php, plus rev.
  * Answer (JSON): {set, deck, changed, new_round}; nothing changed: changed false, no rev change, no notify.
  */
@@ -78,7 +80,8 @@ if ($changed) {
     $sql->bind_param('ssis', $head['name'], $head['style'], $set_id, $t);
     $sql->execute();
     if ($team['deck']['id'] === custom_deck_id($set_id))
-        $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true);
+        $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true, '',
+                                          $stored['replaced']);
 }
 $set = load_custom_sets($link, $t, $catalog)[$set_id];
 $link->commit();
