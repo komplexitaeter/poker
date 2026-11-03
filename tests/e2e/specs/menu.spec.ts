@@ -489,3 +489,53 @@ test('large screen: a click outside the panel closes it, the click still counts 
   await expect(menu(alice)).not.toHaveAttribute('open');
   await expect(topicBtn).toBeFocused();
 });
+
+test('settings (Results, Team, You): a failed write shows the error toast only, success shows nothing (R3)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: LARGE });
+  const url = await createTeam(alice, 'Menu Errors');
+  await joinAsPlayer(alice, url, 'Alice');
+  const toast = alice.locator('#toast');
+  const expectErrorToast = async () => {
+    await expect(toast).toHaveText('Not saved – please try again');
+    await expect(toast).toHaveClass(/toast-on/);
+    await expect(toast).toHaveClass(/toast-error/);
+    await expect(toast.locator('svg.toast-ico use')).toHaveAttribute('href', '#i-alert');
+  };
+  const hideToast = () => alice.evaluate(() => document.getElementById('toast')!.classList.remove('toast-on'));
+  const fail500 = (pattern: string) => alice.route(pattern, route => route.fulfill({ status: 500, body: '' }));
+
+  // Results: sort order; on failure the radio shows the server's state again
+  await alice.locator('#cset_btn').click();
+  await tab(alice, 'Results').click();
+  const bySequence = alice.locator('input[name=cet_order_by][value=SEQUENCE]');
+  const byName = alice.locator('input[name=cet_order_by][value=NAME]');
+  await expect(bySequence).toBeChecked();
+  await fail500('**/api/update_results_order.php*');
+  await alice.locator('#cset_panel_results label', { hasText: 'Player name' }).click();
+  await expectErrorToast();
+  await expect(bySequence).toBeChecked();
+  await alice.unroute('**/api/update_results_order.php*');
+  await hideToast();
+  await alice.locator('#cset_panel_results label', { hasText: 'Player name' }).click();
+  await expect(byName).toBeChecked();
+  await alice.waitForTimeout(500);
+  await expect(toast).not.toHaveClass(/toast-on/);   // success: no message
+
+  // Team: tips (network failure)
+  await hideToast();
+  await tab(alice, 'Team').click();
+  await alice.route('**/api/update_team.php*', route => route.abort('failed'));
+  await alice.locator('#cset_panel_team label', { hasText: 'Off' }).click();
+  await expectErrorToast();
+  await expect(alice.locator('input[name=cet_show_tips][value="1"]')).toBeChecked();
+  await alice.unroute('**/api/update_team.php*');
+
+  // You: player / observer
+  await hideToast();
+  await alice.locator('#user_settings_btn').click();
+  await fail500('**/api/name.php*');
+  await alice.locator('#user_settings_box label', { hasText: 'Observer' }).click();
+  await expectErrorToast();
+  await expect(alice.locator('input[name=cet_user_type][value=PLAYER]')).toBeChecked();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
+});
