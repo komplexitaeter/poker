@@ -2638,7 +2638,8 @@ function confirmInvite(text, label = 'Copied') {
  * (sent feedback, the deck menu: R3 review, Andreas). Plain text only (textContent). Calling it again replaces the
  * text and restarts the timer; ms: how long it stays (the deck menu: a little longer). */
 let gToastTimer = null;
-function showToast(text, ms = 2200) {
+/* kind 'error' (R3, Andreas): refusals and failed writes show "!" instead of the ">" prompt (style.css .toast-error) */
+function showToast(text, ms = 2200, kind = 'info') {
     let toast = document.getElementById('toast');
     // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
     // (closeMenu() puts it back)
@@ -2648,6 +2649,19 @@ function showToast(text, ms = 2200) {
     let host = editor !== null && editor.open ? editor : isModalOpen(menu) ? menu : document.body;
     if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
+    toast.classList.toggle('toast-error', kind === 'error');
+    if (kind === 'error') {
+        // the alert icon of the sprite (board.html) instead of the ">" prompt; the text stays plain text
+        const svgNs = 'http://www.w3.org/2000/svg';
+        const icon = document.createElementNS(svgNs, 'svg');
+        icon.setAttribute('class', 'i toast-ico');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('focusable', 'false');
+        const use = document.createElementNS(svgNs, 'use');
+        use.setAttribute('href', '#i-alert');
+        icon.appendChild(use);
+        toast.prepend(icon);
+    }
     toast.classList.add('toast-on');
     clearTimeout(gToastTimer);
     gToastTimer = setTimeout(function () {

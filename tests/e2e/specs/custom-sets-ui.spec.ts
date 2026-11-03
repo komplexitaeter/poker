@@ -853,7 +853,9 @@ test('own set in play: single cards are switched off and on, at least two stay',
   await expect(alice.locator('#toast')).toHaveText('A card set needs at least two cards.');
   await expect(toggle(keys[0])).toHaveClass(/is-refused/);
   await expect(toggle(keys[0])).toHaveAttribute('aria-pressed', 'true');
-  await bob.waitForTimeout(300);
+  // R3 (Andreas): the red frame goes again after about a second
+  await alice.waitForTimeout(1500);
+  await expect(alice.locator('#deck_cards .is-refused')).toHaveCount(0);
   expect(await trayKeys(bob)).toEqual([keys[0], keys[2], ...controls]);
 
   // on again: back in its place in the set's order

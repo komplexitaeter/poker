@@ -465,16 +465,22 @@ const DECK_TOAST_MS = 4200;
 
 /* a write of the menu; the local copy shows it at once, the next board state from the server wins.
  * kind: 'set' | 'variant' | 'card' | 'control' (the text of the live region) */
+let gDeckWriteSeq = 0; // the latest write of the menu
+
 function writeDeck(url, local, kind) {
     gDeckMenu.deck = local;
     renderDeckMenu();
     const done = DECK_DONE[kind] || 'Saved';
+    const seq = ++gDeckWriteSeq;
     apiWrite(url, {}, null).then(response => {
         if (response === null || !response.ok) {
             gDeckMenu.serverRev = null; // take the server's deck again with the next board state
-            showToast('Not saved \u2013 please try again', DECK_TOAST_MS);
+            showToast('Not saved \u2013 please try again', DECK_TOAST_MS, 'error');
             return;
         }
+        // R3: a write that answers after a newer one was started does not say "done" over that one's result
+        // (e.g. its "Not saved")
+        if (seq !== gDeckWriteSeq) return;
         response.json().then(answer => {
             showToast(done + (answer && answer.new_round ? ' \u2013 new round started' : ''), DECK_TOAST_MS);
         }).catch(() => showToast(done, DECK_TOAST_MS));
@@ -525,14 +531,23 @@ function pickDeckVariant(group, variant) {
         { id: variant.id, group: group.id, cards: variant.cards.slice(), controls: deck.controls.slice() }, 'variant');
 }
 
-/* a card switched off below DECK_MIN_CARDS: refused with a toast, the toggle shakes once (again with every click) */
+/* a card switched off below DECK_MIN_CARDS: refused with a toast, the toggle shakes once (again with every click).
+ * R3 (Andreas): the red frame goes again after DECK_REFUSED_MS; a menu built anew has new toggles without it. */
+const DECK_REFUSED_MS = 1000;
+const gDeckRefusedTimers = new WeakMap(); // toggle -> timeout of its red frame
+
 function refuseDeckCard(key) {
-    showToast('A card set needs at least two cards.', DECK_TOAST_MS);
+    showToast('A card set needs at least two cards.', DECK_TOAST_MS, 'error');
     const toggle = document.querySelector('#deck_menu [data-f="card:' + CSS.escape(key) + '"]');
     if (toggle !== null) {
+        clearTimeout(gDeckRefusedTimers.get(toggle));
         toggle.classList.remove('is-refused');
         void toggle.offsetWidth; // restart the animation
         toggle.classList.add('is-refused');
+        gDeckRefusedTimers.set(toggle, setTimeout(() => {
+            toggle.classList.remove('is-refused');
+            gDeckRefusedTimers.delete(toggle);
+        }, DECK_REFUSED_MS));
     }
 }
 

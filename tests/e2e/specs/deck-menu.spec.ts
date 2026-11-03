@@ -120,12 +120,24 @@ test('variant and single cards: Short, a card off and on again, at least two car
   // R3 review (Andreas, final): the refusal as a toast, the toggle shakes; nothing in the menu
   await expect(toast(alice)).toHaveText('A card set needs at least two cards.');
   await expect(toast(alice)).toHaveClass(/toast-on/);
+  // R3 (Andreas): an error toast shows the alert icon instead of the ">" prompt
+  await expect(toast(alice)).toHaveClass(/toast-error/);
+  await expect(toast(alice).locator('svg.toast-ico use')).toHaveAttribute('href', '#i-alert');
+  await expect(toast(alice).locator('svg.toast-ico')).toHaveAttribute('aria-hidden', 'true');
+  if (process.env.SHOT_DIR) await alice.screenshot({ path: `${process.env.SHOT_DIR}/toast-error.png` });
+  expect(await toast(alice).evaluate(el => getComputedStyle(el, '::before').content)).toBe('none');
   await expect(toggle(alice, 'yellow1')).toHaveClass(/is-refused/);
+  // R3 (Andreas): the red frame goes again after about a second, also after the menu is built anew
+  await alice.waitForTimeout(1500);
+  await expect(alice.locator('#deck_cards .is-refused')).toHaveCount(0);
   await calm(alice);
   await expect(deckCard(bob, 'yellow1')).toHaveCount(1);
   // a card on again: written as usual
   await toggle(alice, 'red0001').click();
   await expect(toast(alice)).toHaveText('Cards changed for everyone');
+  await expect(toast(alice)).not.toHaveClass(/toast-error/);
+  await expect(toast(alice).locator('svg')).toHaveCount(0);
+  expect(await toast(alice).evaluate(el => getComputedStyle(el, '::before').content)).toBe('"> "');
   await expect(deckCard(bob, 'red0001')).toHaveCount(1);
 });
 
@@ -303,12 +315,13 @@ test('a failed deck write: a toast, a little longer than others, nothing in the 
 test('the deck menu does not jump: no message in the menu, done or error (R3 review)', async ({ browser }) => {
   const { alice } = await teamWithTwoPlayers(browser, 'Deck Menu Steady');
   await alice.locator('#cset_btn').click();
+  // all four boxes in one go in the page: a re-render of the menu between single reads would give null boxes
   const where = async () => {
-    const [box, cards, variants, ctl] = [(await alice.locator('#deck_change').boundingBox())!,
-      (await alice.locator('#deck_cards').boundingBox())!, (await alice.locator('#deck_variant').boundingBox())!,
-      (await alice.locator('#deck_controls').boundingBox())!];
-    return { boxY: box.y, boxH: box.height, cardsY: cards.y, cardsH: cards.height, variantsY: variants.y,
-      ctlY: ctl.y, ctlH: ctl.height };
+    const r = await alice.evaluate(() => Object.fromEntries(['deck_change', 'deck_cards', 'deck_variant', 'deck_controls']
+      .map(id => { const el = document.getElementById(id); return [id, el === null ? null : el.getBoundingClientRect().toJSON()]; })));
+    for (const id of Object.keys(r)) expect(r[id], id).not.toBeNull();
+    return { boxY: r.deck_change.y, boxH: r.deck_change.height, cardsY: r.deck_cards.y, cardsH: r.deck_cards.height,
+      variantsY: r.deck_variant.y, ctlY: r.deck_controls.y, ctlH: r.deck_controls.height };
   };
   const same = (a: Awaited<ReturnType<typeof where>>, b: typeof a) => {
     for (const k of Object.keys(a) as (keyof typeof a)[]) expect(Math.abs(a[k] - b[k])).toBeLessThanOrEqual(1);
@@ -331,6 +344,8 @@ test('the deck menu does not jump: no message in the menu, done or error (R3 rev
   await alice.route('**/api/update_deck.php*', route => route.fulfill({ status: 500, body: '' }));
   await toggle(alice, 'zero001').click();
   await expect(toast(alice)).toHaveText('Not saved – please try again');
+  // the server's deck again (the write failed): the card is on
+  await expect(toggle(alice, 'zero001')).toHaveAttribute('aria-pressed', 'true');
   await calm(alice);
   same(before, await where());
 });
