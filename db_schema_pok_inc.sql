@@ -583,3 +583,36 @@ deallocate prepare b98e_stmt;
 select table_name, column_name, column_type, character_set_name from information_schema.columns
  where table_schema = database() and table_name = 'pok_custom_cards_tbl' and column_name = 'value_text';
 /* end B-98 emoji */
+
+/* B-115: team setting "See changed cards" (board menu Board -> Results) switches B-104 off: 1 = a card changed after the
+   reveal keeps its original card (stack), 0 = no original card is stored or shown. It takes effect with the next round
+   (Andreas), so nobody sees an original card by switching it on afterwards: show_card_changes is the team setting,
+   round_show_card_changes the snapshot of the running round (copied by start_new_round() in api/lib.php, or at once
+   while no card is down, like anonymous_request_toggle -> anonymous_mode). setc.php only stores original_card_key and
+   getDao() only shows it while round_show_card_changes = 1. Default 1: every team keeps B-104 as before.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code (dao.php reads the columns). The
+   release code never reads or writes them (it inserts into pok_teams_tbl with a column list).
+   Run only this block: sed -n '/^\/\* B-115:/,/^\/\* end B-115/p' db_schema_pok_inc.sql */
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl'
+   and column_name in ('show_card_changes', 'round_show_card_changes');
+
+set session lock_wait_timeout = 5;
+set @b115_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_teams_tbl'
+                       and column_name = 'show_card_changes') = 0,
+  'alter table pok_teams_tbl
+     add column show_card_changes tinyint not null default 1
+       comment ''B-115: 1 = keep the original card of a card changed after the reveal (B-104), team setting'',
+     add column round_show_card_changes tinyint not null default 1
+       comment ''B-115: show_card_changes of the running round (snapshot at the round start)'',
+     algorithm = instant',
+  'select 1');
+prepare b115_stmt from @b115_sql;
+execute b115_stmt;
+deallocate prepare b115_stmt;
+
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl'
+   and column_name in ('show_card_changes', 'round_show_card_changes');
+/* end B-115 */

@@ -568,7 +568,8 @@ function team_has_cards_down($link, string $t): bool
  * snapshot of the round in pok_roundstats_tbl (incl. the deck of the round: deck_id, deck_cards, deck_controls, so
  * callers that change the deck call this BEFORE storing the new deck) and pok_roundstat_details_tbl, then all cards
  * up. type_code NEW_ROUND if every player had a card down, else CANCEL_ROUND. B-104: the snapshot keeps
- * original_card_key (card at the reveal of a player who changed it afterwards), then it is cleared. Does not notify.
+ * original_card_key (card at the reveal of a player who changed it afterwards), then it is cleared. B-115: the new
+ * round takes over show_card_changes as round_show_card_changes. Does not notify.
  */
 function start_new_round($link, string $t): void
 {
@@ -622,8 +623,10 @@ function start_new_round($link, string $t): void
         $sql->execute();
     }
 
+    // B-115: the setting "See changed cards" takes effect with the new round (snapshot for setc.php and getDao())
     $sql = $link->prepare( "update pok_teams_tbl t
                                      set t.anonymous_mode = t.anonymous_request_toggle
+                                        ,t.round_show_card_changes = t.show_card_changes
                                    where t.id=?");
     $sql->bind_param('s', $t);
     $sql->execute();
@@ -763,6 +766,8 @@ function getDao($t, $id) {
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
     $show_tips = 1;
+    $show_card_changes = 1; // B-115: team setting
+    $round_show_card_changes = 1; // B-115: setting of the running round (original cards stored and shown)
     $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
@@ -799,6 +804,8 @@ function getDao($t, $id) {
                   ,t.anonymous_mode
                   ,t.anonymous_request_toggle
                   ,t.show_tips
+                  ,t.show_card_changes
+                  ,t.round_show_card_changes
                   ,t.needs_setup
                   ,t.deck_id
                   ,t.deck_cards
@@ -825,6 +832,8 @@ function getDao($t, $id) {
         $anonymous_mode = (int)$obj->anonymous_mode;
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
         $show_tips = (int)$obj->show_tips;
+        $show_card_changes = (int)$obj->show_card_changes;
+        $round_show_card_changes = (int)$obj->round_show_card_changes;
         $needs_setup = (bool)$obj->needs_setup;
         $deck_changed_by = $obj->deck_changed_by; // B-98 V6: player id, the name comes from the players below
 
@@ -1013,9 +1022,10 @@ function getDao($t, $id) {
             $display_card_key = 'done001';
 
         /* B-104: card at the reveal if the player changed it afterwards (stack "card changed"). Only while revealed
-           (nothing leaks before), also in anonymous mode; never under the system card or a taken back card. */
+           (nothing leaks before), also in anonymous mode; never under the system card or a taken back card.
+           B-115: never in a round with "See changed cards" off (switching it on later shows nothing either). */
         $original_card_key = null;
-        if ($all_players_ready && $obj->original_card_key !== null && $obj->card_key !== null
+        if ($all_players_ready && $round_show_card_changes === 1 && $obj->original_card_key !== null && $obj->card_key !== null
             && $obj->card_key !== LATE_CARD_KEY && $obj->original_card_key !== $obj->card_key) {
             $original_card_key = $obj->original_card_key;
         }
@@ -1066,6 +1076,8 @@ function getDao($t, $id) {
         "anonymous_mode"=>$anonymous_mode,
         "anonymous_request_toggle"=>$anonymous_request_toggle,
         "show_tips"=>$show_tips, // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
+        "show_card_changes"=>$show_card_changes, // B-115: team setting "See changed cards", 1 = on (default)
+        "round_show_card_changes"=>$round_show_card_changes, // B-115: the setting of the running round, 0 = no stacks
         "needs_setup"=>$needs_setup,
         "selected_card_key"=>$card_key,
         "player_type"=>$player_type,
