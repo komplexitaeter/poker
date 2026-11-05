@@ -332,38 +332,16 @@ function deckPickView(deck) {
     return parts;
 }
 
-/* B-98 S5: "Your sets (n / max)" with "+ New set" (disabled with a title at the limit), a row per own set (choose
- * it; the pen opens the editor) */
+/* B-98 S5: "Your sets (n / max)", a row per own set (choose it; the pen opens the editor), then "+ New set" as a
+ * dashed row (disabled with a visible hint at the limit) */
 function dmOwnSets(deck) {
     const parts = [];
     const max = gDeckMenu.limits.sets;
     const count = gDeckMenu.sets.length;
-    // Andreas (compact list): "+ New set" is a small button at the right of the heading (disabled at the limit,
-    // its title says why)
-    const row = dmEl('div', 'cs-sec cs-sec2 cs-secrow');
-    const head = dmEl('h4', 'lab');
+    const head = dmEl('h4', 'lab cs-sec cs-sec2');
     head.id = 'deck_own_title';
     head.append('Your sets ', dmEl('span', 'cs-count' + (count >= max ? ' full' : ''), count + ' / ' + max));
-    const add = dmEl('button', 'cs-newset');
-    add.type = 'button';
-    add.id = 'deck_new_set';
-    add.setAttribute('data-f', 'new');
-    add.append(dmEl('span', 'cs-plus', '+'), 'New set');
-    if (count >= max) {
-        add.disabled = true;
-        add.title = count + ' of ' + max + ' sets \u2013 delete one of your sets to create a new one.';
-    } else {
-        add.addEventListener('click', () => openCustomEditor(null, add));
-    }
-    row.append(head, add);
-    parts.push(row);
-    // Delia: at the limit the reason is visible as well (touch, keyboard, screen readers)
-    if (count >= max) {
-        const hint = dmEl('p', 'hint cs-limit', 'Delete one of your sets to create a new one.');
-        hint.id = 'deck_new_hint';
-        add.setAttribute('aria-describedby', hint.id);
-        parts.push(hint);
-    }
+    parts.push(head);
 
     const list = dmEl('ul', 'dm-plist');
     list.id = 'deck_own_sets';
@@ -392,6 +370,26 @@ function dmOwnSets(deck) {
     });
     parts.push(list);
 
+    // Andreas: "+ New set" as its own dashed row below the own sets (easy to find), one line high (--tap) so the
+    // compact list still fits on a desktop screen; at the limit it is disabled and says why in the same line
+    const add = dmEl('button', 'cs-new');
+    add.type = 'button';
+    add.id = 'deck_new_set';
+    add.setAttribute('data-f', 'new');
+    add.append(dmEl('span', 'cs-plus', '+'), dmEl('span', 'cs-newt', 'New set'));
+    if (count >= max) {
+        add.disabled = true;
+        add.title = count + ' of ' + max + ' sets \u2013 delete one of your sets to create a new one.';
+        add.setAttribute('aria-label', 'New set');
+        // Delia: the reason visible as well (touch, keyboard, screen readers)
+        const hint = dmEl('small', 'cs-limit', 'Delete one of your sets first.');
+        hint.id = 'deck_new_hint';
+        add.setAttribute('aria-describedby', hint.id);
+        add.appendChild(hint);
+    } else {
+        add.addEventListener('click', () => openCustomEditor(null, add));
+    }
+    parts.push(add);
     return parts;
 }
 

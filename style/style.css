@@ -4805,27 +4805,32 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 /* deck menu: "Your sets (n / max)", a row per set with its pen, "+ New set" */
 .cs-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 2px; }
 .cs-sec2 { margin-top: 6px; }
-/* "Your sets n / 5" with "+ New set" at the right */
-.cs-secrow { align-items: center; gap: 8px; }
-.cs-secrow .lab { margin: 0; }
-.cs-secrow .cs-count { margin-left: 6px; white-space: nowrap; }
-.cs-newset {
-    flex: none;
-    display: inline-flex;
+/* Andreas: "+ New set" as its own dashed row below the own sets, in the accent colour, one line high (--tap) like
+ * the rows above it, so the compact list still fits on a desktop screen */
+.cs-new {
+    display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    width: 100%;
     min-height: var(--tap);
-    padding: 0 8px;
-    border: 0;
+    margin: 4px 0 0;
+    padding: 0 10px 0 4px;
+    box-sizing: border-box;
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-m);
     background: none;
     color: var(--accent);
-    font: var(--fs-s) var(--font);
-    white-space: nowrap;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
     cursor: pointer;
 }
-.cs-newset:enabled:hover { text-decoration: underline; }
-.cs-newset:disabled { color: var(--disabled); cursor: not-allowed; }
-.cs-newset .cs-plus { width: auto; font-size: var(--fs-m); }
+.cs-new:enabled:hover { border-style: solid; }
+.cs-new:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+.cs-new .cs-plus { flex: none; width: 20px; font-size: var(--fs-l); font-weight: 400; }
+.cs-new .cs-newt { flex: none; }
+/* at the limit: the reason at the right of the same line (wraps on narrow panels) */
+.cs-new .cs-limit { flex: 1; min-width: 0; text-align: right; font-size: var(--fs-xs); font-weight: 400; line-height: 1.3; color: var(--warn); }
 .cs-count { font-size: var(--fs-xs); color: var(--muted); }
 .cs-count.full { color: var(--warn); }
 .cs-prow { display: flex; align-items: center; }
@@ -4846,13 +4851,12 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .cs-edit:hover { color: var(--accent); border-color: var(--accent); }
 .cs-edit .i { width: 16px; height: 16px; }
 .cs-plus { font-size: 22px; line-height: 1; width: 26px; text-align: center; }
-.cs-limit { color: var(--warn); margin: 0 0 4px; }
 .cs-labrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .cs-labrow .lab { margin: 0; }
 .dm .cs-editbtn { min-height: var(--tap); padding: 2px 12px; }
 .cs-editbtn .i, .cs-ovl .btn-box .i { width: 16px; height: 16px; }
 .cs-ro .dm-tg { cursor: default; border: 1px solid transparent; }
-.cs-edit:focus-visible, .cs-newset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cs-edit:focus-visible, .cs-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* the editor (script_custom.js): a full-screen modal dialog (Andreas). Head and foot fixed; large screens: name and
  * style on top, the card strip on the left in full height, the card's fields on the right (both scroll on their own);

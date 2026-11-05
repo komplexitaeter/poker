@@ -385,4 +385,13 @@ test('the list of card sets fits on a desktop screen: the last set visible witho
   const box = (await last.boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(800);
   await expect(last).toBeInViewport({ ratio: 1 });
+  // Andreas: "+ New set" as a dashed row of one line (--tap) below the own sets, with the limit hint, fits as well
+  const add = alice.locator('#deck_own_sets + #deck_new_set');
+  await expect(add).toBeDisabled();
+  const addBox = (await add.boundingBox())!;
+  expect(addBox.height).toBeGreaterThanOrEqual(tap);
+  expect(addBox.height).toBeLessThan(tap + 6);
+  expect(await add.evaluate(el => getComputedStyle(el).borderTopStyle)).toBe('dashed');
+  await expect(add).toBeInViewport({ ratio: 1 });
+  await expect(alice.locator('#deck_new_hint')).toBeInViewport({ ratio: 1 });
 });

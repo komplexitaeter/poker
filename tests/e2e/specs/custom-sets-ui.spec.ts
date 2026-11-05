@@ -26,9 +26,9 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
 
-  // "Your sets (0 / 5)" above the built-in sets, "+ New set"
+  // "Your sets (0 / 5)" below the built-in sets, "+ New set" as its own row below the own sets
   await expect(alice.locator('#deck_own_title')).toHaveText('Your sets 0 / 5');
-  await expect(alice.locator('#deck_own_title + #deck_new_set')).toHaveText('+New set');
+  await expect(alice.locator('#deck_own_sets + #deck_new_set')).toHaveText('+New set');
   await expect(alice.locator('#deck_builtin_title')).toBeVisible();
   await alice.locator('#deck_new_set').click();
 
@@ -372,12 +372,14 @@ test('the limit of sets disables "+ New set"; Cancel without changes closes at o
   await alice.locator('#deck_change').click();
   await expect(alice.locator('#deck_own_sets li')).toHaveCount(5);
   await expect(alice.locator('#deck_new_set')).toBeDisabled();
-  // Andreas (compact list): the hint as the title of the small button in the heading
-  await expect(alice.locator('#deck_own_title + #deck_new_set')).toHaveAttribute('title', /^5 of 5 sets/);
+  // Andreas: the dashed row below the own sets, the hint as its title as well
+  await expect(alice.locator('#deck_own_sets + #deck_new_set')).toHaveAttribute('title', /^5 of 5 sets/);
   // Delia: the reason visible as well (touch, keyboard, screen readers)
-  await expect(alice.locator('#deck_new_hint')).toHaveText('Delete one of your sets to create a new one.');
+  // Andreas: in the same line as the dashed row, so the list still fits on a desktop screen
+  await expect(alice.locator('#deck_new_set #deck_new_hint')).toHaveText('Delete one of your sets first.');
   await expect(alice.locator('#deck_new_hint')).toBeVisible();
   await expect(alice.locator('#deck_new_set')).toHaveAttribute('aria-describedby', 'deck_new_hint');
+  await expect(alice.getByRole('button', { name: 'New set', exact: true })).toBeDisabled();
 
   // choosing an own set puts it in play
   await alice.locator('#deck_own_sets .dm-prow-b').filter({ hasText: 'Set 3' }).click();
