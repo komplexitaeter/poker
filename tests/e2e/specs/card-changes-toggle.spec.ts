@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, pickCard } from './helpers';
 
 /**
  * B-115: team setting "See changed cards" (show_card_changes) switches B-104 off. It takes effect with the next round:
@@ -128,4 +128,87 @@ test('while no card is down the setting applies at once; invalid values change n
   // unknown team: 403, nothing written
   const res = await page.request.post('/api/update_team.php?t=nosuchteam0000&show_card_changes=1');
   expect(res.status()).toBe(403);
+});
+
+/**
+ * B-115 (frontend): Board settings → Results → "Changed cards" (Hide/Show). The switch follows the team setting on
+ * every board; while it differs from the running round (cards already down) a hint says "next round". A failed
+ * write shows the error toast and the switch keeps the server's state.
+ */
+const DESKTOP = { width: 1400, height: 800 };
+const SCREENSHOT_DIR = process.env.B115_SCREENSHOT_DIR;
+
+async function openResultsTab(page: Page) {
+  await page.locator('#cset_btn').click();
+  await page.locator('#cset_box').getByRole('tab', { name: 'Results' }).click();
+  await expect(page.locator('#cet_show_card_changes')).toBeVisible();
+}
+
+const changesRadio = (page: Page, value: '0' | '1') =>
+  page.locator(`input[name=cet_show_card_changes][value="${value}"]`);
+const nextRoundHint = (page: Page) => page.locator('#cet_show_card_changes_hint');
+const clickChanges = (page: Page, label: 'Hide' | 'Show') =>
+  page.locator('#cet_show_card_changes label', { hasText: label }).click();
+
+test('the "Changed cards" switch follows the team setting on every board, "next round" with cards down (B-115)',
+  async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Changed Cards Switch');
+  await joinAsPlayer(alice, url, 'Alice');
+  const bob = await newPlayer(browser, { viewport: DESKTOP });
+  await joinAsPlayer(bob, url, 'Bob');
+
+  for (const page of [alice, bob]) {
+    await openResultsTab(page);
+    await expect(changesRadio(page, '1')).toBeChecked();   // default on
+    await expect(nextRoundHint(page)).toBeHidden();
+  }
+
+  // no card down: takes effect at once, no hint
+  await clickChanges(alice, 'Hide');
+  for (const page of [alice, bob]) {
+    await expect(changesRadio(page, '0')).toBeChecked();
+    await expect(nextRoundHint(page)).toBeHidden();
+  }
+  await clickChanges(bob, 'Show');
+  for (const page of [alice, bob]) await expect(changesRadio(page, '1')).toBeChecked();
+
+  // cards down: the running round keeps its setting, the hint shows on both boards
+  for (const page of [alice, bob]) await page.keyboard.press('Escape');
+  await pickCard(alice, 'five001');
+  await pickCard(bob, 'eight01');
+  await openResultsTab(alice);
+  await openResultsTab(bob);
+  await clickChanges(alice, 'Hide');
+  for (const page of [alice, bob]) {
+    await expect(changesRadio(page, '0')).toBeChecked();
+    await expect(nextRoundHint(page)).toBeVisible();
+    await expect(nextRoundHint(page)).toHaveText('Takes effect from the next round.');
+  }
+  if (SCREENSHOT_DIR) await alice.locator('#cset_box').screenshot({ path: `${SCREENSHOT_DIR}/results-next-round.png` });
+
+  // back to the round's setting: hint gone
+  await clickChanges(bob, 'Show');
+  for (const page of [alice, bob]) {
+    await expect(changesRadio(page, '1')).toBeChecked();
+    await expect(nextRoundHint(page)).toBeHidden();
+  }
+  if (SCREENSHOT_DIR) await alice.locator('#cset_box').screenshot({ path: `${SCREENSHOT_DIR}/results.png` });
+});
+
+test('the "Changed cards" switch: a failed write shows the error toast, the switch keeps the server state (B-115)',
+  async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Changed Cards Error');
+  await joinAsPlayer(alice, url, 'Alice');
+  await openResultsTab(alice);
+  await expect(changesRadio(alice, '1')).toBeChecked();
+
+  await alice.route('**/api/update_team.php*', route => route.fulfill({ status: 500, body: '' }));
+  await clickChanges(alice, 'Hide');
+  const toast = alice.locator('#toast');
+  await expect(toast).toHaveText('Not saved – please try again');
+  await expect(toast).toHaveClass(/toast-error/);
+  await expect(changesRadio(alice, '1')).toBeChecked();
+  await alice.unroute('**/api/update_team.php*');
 });
