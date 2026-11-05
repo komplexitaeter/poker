@@ -847,18 +847,25 @@ function getDao($t, $id) {
                 if (isset($migrated['mixed'])) {
                     /* B-98 S4: an old mixed deck becomes a custom set. That creates rows, so it runs under the lock
                        of the team row: a parallel dao.php waits and then finds the migrated deck (no second set). */
-                    $link->begin_transaction();
-                    $sql_m = $link->prepare("select cardset_flags, deck_id, deck_cards, deck_controls
-                                               from pok_teams_tbl where id = ? for update");
-                    $sql_m->bind_param('s', $t);
-                    $sql_m->execute();
-                    $locked = $sql_m->get_result()->fetch_assoc();
-                    if (is_array($locked) && $locked['deck_id'] === null) {
-                        $migrated = migrate_team_deck_locked($link, $t, $locked['cardset_flags'], $catalog, true);
-                    } else if (is_array($locked)) {
-                        $migrated = $locked;
+                    /* A lock wait timeout or deadlock must not break the board: roll back, deliver the derived deck,
+                       the next load migrates (B-116 review, Sina). */
+                    try {
+                        $link->begin_transaction();
+                        $sql_m = $link->prepare("select cardset_flags, deck_id, deck_cards, deck_controls
+                                                   from pok_teams_tbl where id = ? for update");
+                        $sql_m->bind_param('s', $t);
+                        $sql_m->execute();
+                        $locked = $sql_m->get_result()->fetch_assoc();
+                        if (is_array($locked) && $locked['deck_id'] === null) {
+                            $migrated = migrate_team_deck_locked($link, $t, $locked['cardset_flags'], $catalog, true);
+                        } else if (is_array($locked)) {
+                            $migrated = $locked;
+                        }
+                        $link->commit();
+                    } catch (mysqli_sql_exception $e) {
+                        $link->rollback();
+                        error_log('poker dao: deck migration of a team skipped, retried on the next load: ' . $e->getMessage());
                     }
-                    $link->commit();
                     $deck_id = $migrated['deck_id'];
                     $deck_cards = $migrated['deck_cards'];
                     $deck_controls = $migrated['deck_controls'];
@@ -875,11 +882,18 @@ function getDao($t, $id) {
             /* B-116: the example set, once per team, after the migration above (an old mixed deck gets its set
                "Our deck" before the example set counts against the limit). Not activated, no notify_team(). */
             if ((int)$obj->example_set_given === 0) {
-                $given = give_example_set($link, $t, $catalog);
-                if ($given !== null) {
-                    $deck_id = $given['deck_id'];
-                    $deck_cards = $given['deck_cards'];
-                    $deck_controls = $given['deck_controls'];
+                /* A lock wait timeout or deadlock must not break the board: roll back (the flag stays 0), the next
+                   load tries again (B-116 review, Sina). */
+                try {
+                    $given = give_example_set($link, $t, $catalog);
+                    if ($given !== null) {
+                        $deck_id = $given['deck_id'];
+                        $deck_cards = $given['deck_cards'];
+                        $deck_controls = $given['deck_controls'];
+                    }
+                } catch (mysqli_sql_exception $e) {
+                    $link->rollback();
+                    error_log('poker dao: example set of a team skipped, retried on the next load: ' . $e->getMessage());
                 }
             }
             $custom_sets = load_custom_sets($link, $t, $catalog);
