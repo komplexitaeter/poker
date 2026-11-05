@@ -1554,7 +1554,8 @@ verdeckt, kein Deck) und ein **zweiter Tab mit dem Bedienteil** (Deck, ggf. Men�
 Bedienteil in einen zweiten Tab „auslagern“. Man teilt den einen Tab und stimmt im anderen ab, niemand sieht die Wahl.
 Leitplanke: Beide Tabs gehören zur selben User-Session (gleiche User-ID/Name); es darf dadurch keinen Weg aufs Board
 ohne registrierten Spieler mit Namen geben (z. B. Presenter-Sicht nur aus einer bestehenden Session heraus öffnen).
-Offen: Was genau zeigt die Presenter-Sicht, was der Bedien-Tab; Handy; Zusammenspiel mit B-113 eher nicht.
+Offen: Was genau zeigt die Presenter-Sicht, was der Bedien-Tab; Handy. Abhängigkeit zu B-113 (Panel-Anordnung) nur lose:
+B-114 kann unabhängig davon gebaut werden; was die Präsentier-Ansicht vom Panel zeigt, folgt später B-113.
 Hinweis (Andreas, 2026-11-05): Zwei Tabs derselben Person funktionieren heute schon (gleiche User-ID, gleiche Sicht).
 B-114 ist damit im Kern nur ein Ansichtsmodus (z. B. aus dem Menü „Open presenter view“ → neuer Tab mit Parameter):
 eigene Karte am Tisch verdeckt bis zum Aufdecken, kein Deck, keine Hervorhebung – vermutlich kleiner Aufwand (Frontend).
