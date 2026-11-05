@@ -1548,10 +1548,15 @@ Gedanken für das Refinement (Andreas/Kai, 2026-11-05):
 ### B-114 Verdeckt wählen beim Bildschirmteilen
 Status: neu, nicht priorisiert. Roadmap-Eintrag „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
 Problem: Wer seinen Bildschirm teilt (oft Scrum Master/Moderation), verrät beim Abstimmen die eigene Wahl – die gewählte
-Karte ist im Deck hervorgehoben und liegt am eigenen Platz offen. Ideen: ein „Presenter“-Schalter (pro Person, gemerkt),
-der die eigene Wahl bis zum Aufdecken verbirgt (eigene Tischkarte verdeckt, Deck ohne Hervorhebung, nur dezente
-Bestätigung z. B. per Tastenkürzel/kurzem Hinweis); alternativ zweites Gerät (Handy) zum Abstimmen. Offen: Wie merkt
-man trotzdem sicher, was man gewählt hat? Zusammenspiel mit B-113 (geteilter Bildschirm).
+Karte ist im Deck hervorgehoben und liegt am eigenen Platz offen.
+Idee Andreas (2026-11-05): Zwei Tabs derselben Person – eine **Presenter-Sicht** zum Teilen (Tisch ohne eigene Wahl bzw.
+verdeckt, kein Deck) und ein **zweiter Tab mit dem Bedienteil** (Deck, ggf. Menüs) zum eigenen Abstimmen; oder das
+Bedienteil in einen zweiten Tab „auslagern“. Man teilt den einen Tab und stimmt im anderen ab, niemand sieht die Wahl.
+Leitplanke: Beide Tabs gehören zur selben User-Session (gleiche User-ID/Name); es darf dadurch keinen Weg aufs Board
+ohne registrierten Spieler mit Namen geben (z. B. Presenter-Sicht nur aus einer bestehenden Session heraus öffnen).
+Offen: Was genau zeigt die Presenter-Sicht, was der Bedien-Tab; Handy; Zusammenspiel mit B-113 eher nicht.
+Frühere Idee (Kai): „Presenter“-Schalter, der die eigene Wahl im selben Tab verbirgt – Nachteil: man sieht die eigene
+Wahl selbst nicht mehr.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
