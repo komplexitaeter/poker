@@ -1558,6 +1558,8 @@ Offen: Was genau zeigt die Presenter-Sicht, was der Bedien-Tab; Handy; Zusammens
 Hinweis (Andreas, 2026-11-05): Zwei Tabs derselben Person funktionieren heute schon (gleiche User-ID, gleiche Sicht).
 B-114 ist damit im Kern nur ein Ansichtsmodus (z. B. aus dem Menü „Open presenter view“ → neuer Tab mit Parameter):
 eigene Karte am Tisch verdeckt bis zum Aufdecken, kein Deck, keine Hervorhebung – vermutlich kleiner Aufwand (Frontend).
+Präzisierung Andreas (2026-11-05): reine Präsentier-Ansicht – keine Controls (Deck, Round-Button), Menüs weitgehend
+weg; statt „Open presenter view“ dort ein Knopf „Return to user view“ (falls der andere Tab geschlossen wurde).
 Frühere Idee (Kai): „Presenter“-Schalter, der die eigene Wahl im selben Tab verbirgt – Nachteil: man sieht die eigene
 Wahl selbst nicht mehr.
 
