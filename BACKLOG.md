@@ -1586,6 +1586,9 @@ Feuerwerk → Laser-Light-Show → Drohnenshow …).
 - Abschaltbar („Celebrations: On/Off“ in Board → Results), z. B. bei geteiltem Bildschirm oder ernsten Sessions
   (Consent decision).
 - Klein anfangen: zwei, drei Stufen, nur über Runden und Strikes; Badge-Übersicht und Regeln später.
+- Inkrementell ausbauen (Andreas, 2026-11-05): Stufen so anlegen, dass über die Zeit neue dazukommen (wie Level bei
+  Zwift) – die höchste Stufe ist nie „fertig“, neue Animationen kommen mit späteren Releases oben drauf. Schwellen so
+  wählen, dass bestehende Teams beim Hinzufügen neuer Stufen nicht sofort alles freigeschaltet haben.
 Offen: genaue Schwellen, wo/wie Badges sichtbar sind, wer die Animation auslöst (alle am Tisch gleichzeitig).
 
 ### B-52 Topics als Backlog-Items
