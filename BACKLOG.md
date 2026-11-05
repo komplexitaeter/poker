@@ -1573,6 +1573,21 @@ zusätzlich gilt die Prüfung „registrierter Spieler dieses Teams“.
 Frühere Idee (Kai): „Presenter“-Schalter, der die eigene Wahl im selben Tab verbirgt – Nachteil: man sieht die eigene
 Wahl selbst nicht mehr.
 
+### B-117 Badges und Feier-Animationen
+Status: neu, nicht priorisiert (Kandidat R4). Anlass: Live-Feedback zu R2 wünscht eine „fancier party animation“ (Laser +
+Konfetti), wenn alle dieselbe Karte legen. Idee Andreas (2026-11-05): nicht einfach einbauen, sondern als Bindungsmaßnahme –
+Teams „erarbeiten“ sich über die Zeit Badges, und mit jedem Badge kommt eine bessere Feier-Animation (z. B. Konfetti →
+Feuerwerk → Laser-Light-Show → Drohnenshow …).
+- Badges hängen am **Team** (Team-ID): Das belohnt, immer denselben Link zu nutzen – gewollt (Andreas).
+- Mögliche Kriterien (Details offen): Anzahl gespielter Runden, Anzahl Spieler, verschiedene genutzte Sets, Anzahl
+  „Strikes“ (alle legen dieselbe Karte). Daten liegen größtenteils schon in der Rundenstatistik.
+- Barrierefreiheit: kein echtes Stroboskop/Flackern (Epilepsie-Risiko, WCAG 2.3.1) – ersetzen (z. B. Disco-Kugel) oder
+  sanft; bei `prefers-reduced-motion` nur eine ruhige Variante.
+- Abschaltbar („Celebrations: On/Off“ in Board → Results), z. B. bei geteiltem Bildschirm oder ernsten Sessions
+  (Consent decision).
+- Klein anfangen: zwei, drei Stufen, nur über Runden und Strikes; Badge-Übersicht und Regeln später.
+Offen: genaue Schwellen, wo/wie Badges sichtbar sind, wer die Animation auslöst (alle am Tisch gleichzeitig).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
