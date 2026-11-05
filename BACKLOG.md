@@ -1560,6 +1560,11 @@ B-114 ist damit im Kern nur ein Ansichtsmodus (z. B. aus dem Menü „Open prese
 eigene Karte am Tisch verdeckt bis zum Aufdecken, kein Deck, keine Hervorhebung – vermutlich kleiner Aufwand (Frontend).
 Präzisierung Andreas (2026-11-05): reine Präsentier-Ansicht – keine Controls (Deck, Round-Button), Menüs weitgehend
 weg; statt „Open presenter view“ dort ein Knopf „Return to user view“ (falls der andere Tab geschlossen wurde).
+Zugang (Andreas, 2026-11-05): Voraussetzung ist ein angemeldeter Spieler dieses Teams. Umsetzung z. B. per URL-Parameter
+(`?t=…&view=presenter`): Der Client zeigt die Präsentier-Ansicht nur, wenn die eigene User-ID (localStorage, also pro
+Browser) in diesem Team bereits mit Namen am Tisch bzw. als Beobachter registriert ist; sonst wird der Parameter ignoriert
+und man landet im normalen Modus (Namensabfrage). Ein versehentlich weitergeschickter Link öffnet beim Empfänger also
+die normale Ansicht. Kein neuer Weg aufs Board ohne Namen.
 Frühere Idee (Kai): „Presenter“-Schalter, der die eigene Wahl im selben Tab verbirgt – Nachteil: man sieht die eigene
 Wahl selbst nicht mehr.
 
