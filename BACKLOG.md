@@ -1526,6 +1526,15 @@ Status: neu, nicht priorisiert. Aus dem R3-Review (Delia, 2026-11-02): Solange w
 zeigt ein leerer Platz „Invite your team“ (Link kopieren bzw. Teilen-Menü am Handy). Hängt mit V2 (Copy link → Invite)
 zusammen.
 
+### B-113 Seitenleiste je nach Phase: beim Abstimmen schmal, nach dem Aufdecken Ergebnis groß
+Status: neu, nicht priorisiert. Aus Live-Feedback zu R2 (2026-11-05, Scrum Master): Seitenleiste ein- und ausklappbar,
+damit mehr Platz für große Karten bleibt und alles Wichtige auf einen Bildschirm passt (neue Runde, Streuung, Mehrheit).
+Gedanke Andreas (2026-11-05): Beim Abstimmen braucht man die Seitenleiste kaum (besonders wer sich auskennt oder die Tipps
+abgeschaltet hat) – dann eingeklappt bzw. schmal. Nach dem Aufdecken ist das Ergebnis (Spanne, Durchschnitt, Verteilung)
+das Wichtigste und darf eher größer werden. Ideen: Ausklappen per Knopf, Zustand pro Person merken; eingeklappt „New round“
+im Dock und eine kurze Ergebniszeile am Tisch. Hängt mit B-53 (Ergebnisdarstellung, Sidebar zunächst eingeklappt) zusammen.
+Offen: automatisch je Phase oder nur manuell; Verhalten bei geteiltem Bildschirm; Handy unverändert.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
