@@ -38,6 +38,8 @@ export interface myJsonType {
     anonymous_mode: boolean;
     anonymous_request_toggle: boolean;
     show_tips: number; // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
+    show_card_changes: number; // B-115: team setting, 1 = keep the first card when changed after the reveal (B-104)
+    round_show_card_changes: number; // B-115: the running round's copy; 0 = original_card_key is always null
     needs_setup: boolean;
     needs_celebration: boolean;
     players_count: number;

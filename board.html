@@ -12,12 +12,12 @@
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.38" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.39" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.6" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.10" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.11" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -277,6 +277,17 @@
                             <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span>Show</span></label>
                         </div>
                         <p class="hint">A pointer under the spread shows the average.</p>
+                    </fieldset>
+                    <!-- B-115: B-104 "see changed cards" for the whole team (show_card_changes, changeShowCardChanges());
+                         the second hint shows while the setting differs from the running round (round_show_card_changes) -->
+                    <fieldset class="f" id="cet_show_card_changes">
+                        <legend class="lab">Changed cards</legend>
+                        <div class="seg">
+                            <label><input type="radio" name="cet_show_card_changes" value="0" onchange="changeShowCardChanges(this.value)"/><span>Hide</span></label>
+                            <label><input type="radio" name="cet_show_card_changes" value="1" onchange="changeShowCardChanges(this.value)"/><span>Show</span></label>
+                        </div>
+                        <p class="hint">After a change, the original card stays visible.</p>
+                        <p id="cet_show_card_changes_hint" class="hint display_none">Takes effect with the next round.</p>
                     </fieldset>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="cset_panel_team" data-tab="team" aria-labelledby="cset_tab_team" hidden>
