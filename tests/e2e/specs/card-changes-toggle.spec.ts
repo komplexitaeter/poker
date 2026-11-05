@@ -183,7 +183,7 @@ test('the "Changed cards" switch follows the team setting on every board, "next 
   for (const page of [alice, bob]) {
     await expect(changesRadio(page, '0')).toBeChecked();
     await expect(nextRoundHint(page)).toBeVisible();
-    await expect(nextRoundHint(page)).toHaveText('Takes effect from the next round.');
+    await expect(nextRoundHint(page)).toHaveText('Takes effect with the next round.');
   }
   if (SCREENSHOT_DIR) await alice.locator('#cset_box').screenshot({ path: `${SCREENSHOT_DIR}/results-next-round.png` });
 
