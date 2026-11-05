@@ -120,3 +120,43 @@ test('choosing "Anonymous" in the menu disables the choice at once and keeps the
   await expect(group).not.toHaveAttribute('aria-describedby');
   await expect(orderRadio(bob, 'NAME')).toBeChecked();
 });
+
+test('"Names on revealed cards": "Takes effect with the next round." only while a change is pending (R3)',
+  async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Anon Pending Hint');
+  await expect(tableCard(alice, 'Bob')).toBeVisible();
+  const anonRadio = (page: Page, value: '0' | '1') => page.locator(`input[name=cet_anonymous][value="${value}"]`);
+  const hint = (page: Page) => page.locator('#cet_anonymous_hint');
+  for (const page of [alice, bob]) {
+    await openResults(page);
+    await expect(anonRadio(page, '0')).toBeChecked();
+    await expect(hint(page)).toBeHidden();
+  }
+
+  // no card down: at once, nothing pending
+  await anonRadio(alice, '1').check();
+  for (const page of [alice, bob]) {
+    await expect(anonRadio(page, '1')).toBeChecked();
+    await expect(hint(page)).toBeHidden();
+  }
+  await anonRadio(bob, '0').check();
+  for (const page of [alice, bob]) await expect(anonRadio(page, '0')).toBeChecked();
+
+  // a card down: the change waits for the next round, the hint shows on both boards
+  await bob.keyboard.press('Escape');
+  await pickCard(bob, 'three01');
+  await openResults(bob);
+  await anonRadio(alice, '1').check();
+  for (const page of [alice, bob]) {
+    await expect(anonRadio(page, '1')).toBeChecked();
+    await expect(hint(page)).toBeVisible();
+    await expect(hint(page)).toHaveText('Takes effect with the next round.');
+  }
+
+  // back to the round's setting: hint gone
+  await anonRadio(bob, '0').check();
+  for (const page of [alice, bob]) {
+    await expect(anonRadio(page, '0')).toBeChecked();
+    await expect(hint(page)).toBeHidden();
+  }
+});

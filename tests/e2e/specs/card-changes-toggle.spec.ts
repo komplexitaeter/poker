@@ -132,8 +132,8 @@ test('while no card is down the setting applies at once; invalid values change n
 
 /**
  * B-115 (frontend): Board settings → Results → "Changed cards" (Hide/Show). The switch follows the team setting on
- * every board, also while cards are down; like "Names on revealed cards" it always says "Takes effect with the next
- * round." A failed write shows the error toast and the switch keeps the server's state.
+ * every board; "Takes effect with the next round." only shows while a change is pending (team setting differs from
+ * the running round, i.e. cards are down). A failed write shows the error toast and the switch keeps the server's state.
  */
 const DESKTOP = { width: 1400, height: 800 };
 const SCREENSHOT_DIR = process.env.B115_SCREENSHOT_DIR;
@@ -146,12 +146,11 @@ async function openResultsTab(page: Page) {
 
 const changesRadio = (page: Page, value: '0' | '1') =>
   page.locator(`input[name=cet_show_card_changes][value="${value}"]`);
-const nextRoundHint = (page: Page) =>
-  page.locator('#cet_show_card_changes .hint', { hasText: 'Takes effect with the next round.' });
+const nextRoundHint = (page: Page) => page.locator('#cet_show_card_changes_hint');
 const clickChanges = (page: Page, label: 'Hide' | 'Show') =>
   page.locator('#cet_show_card_changes label', { hasText: label }).click();
 
-test('the "Changed cards" switch follows the team setting on every board, the hint always shows (B-115)',
+test('the "Changed cards" switch follows the team setting on every board, "next round" only while pending (B-115)',
   async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Changed Cards Switch');
@@ -162,19 +161,19 @@ test('the "Changed cards" switch follows the team setting on every board, the hi
   for (const page of [alice, bob]) {
     await openResultsTab(page);
     await expect(changesRadio(page, '1')).toBeChecked();   // default on
-    await expect(nextRoundHint(page)).toBeVisible();
+    await expect(nextRoundHint(page)).toBeHidden();
   }
 
-  // no card down
+  // no card down: takes effect at once, no hint
   await clickChanges(alice, 'Hide');
   for (const page of [alice, bob]) {
     await expect(changesRadio(page, '0')).toBeChecked();
-    await expect(nextRoundHint(page)).toBeVisible();
+    await expect(nextRoundHint(page)).toBeHidden();
   }
   await clickChanges(bob, 'Show');
   for (const page of [alice, bob]) await expect(changesRadio(page, '1')).toBeChecked();
 
-  // cards down: the switch still follows the team setting, the hint stays
+  // cards down: the running round keeps its setting, the hint shows on both boards
   for (const page of [alice, bob]) await page.keyboard.press('Escape');
   await pickCard(alice, 'five001');
   await pickCard(bob, 'eight01');
@@ -184,13 +183,16 @@ test('the "Changed cards" switch follows the team setting on every board, the hi
   for (const page of [alice, bob]) {
     await expect(changesRadio(page, '0')).toBeChecked();
     await expect(nextRoundHint(page)).toBeVisible();
+    await expect(nextRoundHint(page)).toHaveText('Takes effect with the next round.');
   }
+  if (SCREENSHOT_DIR) await alice.locator('#cset_box').screenshot({ path: `${SCREENSHOT_DIR}/results-pending.png` });
+
+  // back to the round's setting: nothing pending, hint gone
   await clickChanges(bob, 'Show');
   for (const page of [alice, bob]) {
     await expect(changesRadio(page, '1')).toBeChecked();
-    await expect(nextRoundHint(page)).toBeVisible();
+    await expect(nextRoundHint(page)).toBeHidden();
   }
-  if (SCREENSHOT_DIR) await alice.locator('#cset_box').screenshot({ path: `${SCREENSHOT_DIR}/results-static-hint.png` });
 });
 
 test('the "Changed cards" switch: a failed write shows the error toast, the switch keeps the server state (B-115)',
