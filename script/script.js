@@ -2119,9 +2119,9 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     if (timerFresh) updateTimer(myJson);
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
-    updateAnonymityConfig(myJson.anonymous_request_toggle);
+    updateAnonymityConfig(myJson.anonymous_request_toggle, myJson.anonymous_mode);
     checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
-    checkRadio('cet_show_card_changes', myJson.show_card_changes === 0 ? '0' : '1'); // B-115, default on
+    updateCardChangesConfig(myJson.show_card_changes, myJson.round_show_card_changes); // B-115
 
     updateJediBtn();
 
@@ -2994,8 +2994,23 @@ function updateOrderByConfig(resultsOrder, anonymousMode) {
     }
 }
 
-function updateAnonymityConfig(anonymousRequestToggle) {
-    checkRadio('cet_anonymous', anonymousRequestToggle === 1 ? '1' : '0');
+/* R3 (Andreas): "Takes effect with the next round." under a Results setting only while a change is pending, i.e. the
+ * team setting differs from the one of the running round (the server applies it at once while no card is down) */
+function showPendingRoundHint(hintId, pending) {
+    document.getElementById(hintId).classList.toggle('display_none', !pending);
+}
+
+function updateAnonymityConfig(anonymousRequestToggle, anonymousMode) {
+    const team = anonymousRequestToggle === 1 ? 1 : 0;
+    checkRadio('cet_anonymous', String(team));
+    showPendingRoundHint('cet_anonymous_hint', team !== (anonymousMode === 1 ? 1 : 0));
+}
+
+/* B-115: the switch follows the team setting (default on), the round setting decides the hint */
+function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
+    const team = showCardChanges === 0 ? 0 : 1;
+    checkRadio('cet_show_card_changes', String(team));
+    showPendingRoundHint('cet_show_card_changes_hint', team !== (roundShowCardChanges === 0 ? 0 : 1));
 }
 
 
