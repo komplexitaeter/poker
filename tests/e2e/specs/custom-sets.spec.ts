@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, removeExampleSet } from './helpers';
 
 /**
  * B-98 S4: custom sets of a team (api/custom_set_create.php, custom_set_save.php, custom_set_delete.php, deck
@@ -68,6 +68,7 @@ const RISK: Card[] = [
 test('create, activate, play, save (diff, rev conflict, new round) and delete a custom set', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Custom Sets');
+  await removeExampleSet(url);
   const t = teamIdOf(url);
   const [anna, ben] = await addPlayersViaApi(page, url, ['Anna', 'Ben']);
   const a = api(page, t);
@@ -166,6 +167,7 @@ test('create, activate, play, save (diff, rev conflict, new round) and delete a 
 test('save while cards are down: in-place changes keep the round, added/value/text/symbol/removal start a new one', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Custom In Place');
+  await removeExampleSet(url);
   const t = teamIdOf(url);
   const [anna, ben] = await addPlayersViaApi(page, url, ['Anna', 'Ben']);
   const a = api(page, t);
@@ -309,6 +311,7 @@ test('B-98: single cards of a custom set on/off (update_deck.php cards), kept co
 test('custom sets: validation, limits, other teams', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Custom Limits');
+  await removeExampleSet(url);
   const t = teamIdOf(url);
   const a = api(page, t);
   const ok = { name: 'Set', style: 'plain', cards: RISK };
@@ -409,6 +412,7 @@ test('custom sets: validation, limits, other teams', async ({ browser }) => {
 test('old mixed decks become a custom set "Our deck" (idempotent, parallel loads)', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Mixed Deck');
+  await removeExampleSet(url);
   const t = teamIdOf(url);
   const [anna] = await addPlayersViaApi(page, url, ['Anna']);
   const a = api(page, t);
@@ -677,4 +681,75 @@ test('a new set can copy an own set (keys of active cards of own sets allow thei
   }
   // the foreign team's set is untouched
   expect(sql(`select count(1) from pok_custom_cards_tbl where card_key = '${foreignCard.card_key}' and active = 1`)).toBe('1');
+});
+
+/* B-116: every team gets the example set "Animals (Example)" once, on a load (dao.php), not in use */
+test('B-116: the example set once per team (parallel loads, deleted stays deleted, limit, migration first)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'Example Set');
+  const t = teamIdOf(url);
+  const [anna] = await addPlayersViaApi(page, url, ['Anna']);
+  const a = api(page, t);
+  const examples = () => sql(`select count(1) from pok_custom_sets_tbl where team_id = '${t}' and deleted = 0
+                                and name = 'Animals (Example)'`);
+  const given = () => sql(`select example_set_given from pok_teams_tbl where id = '${t}'`);
+  const reset = () => {
+    sql(`delete c from pok_custom_cards_tbl c join pok_custom_sets_tbl s on s.id = c.set_id where s.team_id = '${t}'`);
+    sql(`delete from pok_custom_sets_tbl where team_id = '${t}'`);
+    sql(`update pok_teams_tbl set example_set_given = 0 where id = '${t}'`);
+  };
+
+  let dao = await a.dao(anna);
+  expect(dao.custom_sets).toHaveLength(1);
+  const example = dao.custom_sets[0];
+  expect(example).toMatchObject({ name: 'Animals (Example)', style: 'banner' });
+  expect(example.cards.map((c: Record<string, unknown>) => [c.value, c.heading, c.numeric_value, c.color, c.symbol, c.description]))
+    .toEqual([['🐜', 'Ant', 1, 'brown', null, null], ['🐁', 'Mouse', 2, 'red', null, null],
+              ['🐕', 'Dog', 3, 'amber', null, null], ['🐎', 'Horse', 5, 'green', null, null],
+              ['🐘', 'Elephant', 8, 'grey', null, null], ['🐋', 'Whale', 13, 'cyan', null, null]]);
+  // not in use: the deck stays the default, no new round
+  expect(dao.deck).toMatchObject({ id: 'fib-classic' });
+  expect(sql(`select count(1) from pok_roundstats_tbl where team_id = '${t}'`)).toBe('0');
+  expect(given()).toBe('1');
+  // the editor can save it unchanged (texts and colours pass the validation)
+  const saved = await a.save(example.set_id, { name: example.name, style: example.style, rev: example.rev,
+    cards: example.cards.map((card: Record<string, unknown>) => asRequest(card)) });
+  expect(saved.status()).toBe(200);
+  expect(await saved.json()).toMatchObject({ changed: false });
+
+  // parallel loads: one set
+  reset();
+  await Promise.all(Array.from({ length: 6 }, () => a.dao(anna)));
+  expect(examples()).toBe('1');
+  expect(given()).toBe('1');
+
+  // deleted: it does not come back
+  dao = await a.dao(anna);
+  expect((await a.remove(dao.custom_sets[0].set_id)).ok()).toBeTruthy();
+  await a.dao(anna);
+  expect((await a.dao(anna)).custom_sets).toEqual([]);
+
+  // 5 own sets already: none, but marked as given
+  reset();
+  sql(`update pok_teams_tbl set example_set_given = 1 where id = '${t}'`);
+  for (let i = 1; i <= 5; i++) expect((await a.create({ name: `Set ${i}`, style: 'plain', cards: RISK })).ok()).toBeTruthy();
+  sql(`update pok_teams_tbl set example_set_given = 0 where id = '${t}'`);
+  dao = await a.dao(anna);
+  expect(dao.custom_sets).toHaveLength(5);
+  expect(examples()).toBe('0');
+  expect(given()).toBe('1');
+
+  // 4 own sets and an old mixed deck not migrated yet: "Our deck" first (in use), then the limit - no example set
+  sql(`delete c from pok_custom_cards_tbl c join pok_custom_sets_tbl s on s.id = c.set_id
+        where s.team_id = '${t}' and s.name = 'Set 5'`);
+  sql(`delete from pok_custom_sets_tbl where team_id = '${t}' and name = 'Set 5'`);
+  sql(`update pok_teams_tbl set example_set_given = 0, cardset_flags = '${flags([2, 3, 4, 18, 43])}',
+         deck_id = null, deck_cards = null, deck_controls = null where id = '${t}'`);
+  const loads = await Promise.all(Array.from({ length: 4 }, () => a.dao(anna)));
+  for (const load of loads) {
+    expect(load.custom_sets.map((s: { name: string }) => s.name)).toEqual(['Set 1', 'Set 2', 'Set 3', 'Set 4', 'Our deck']);
+    expect(load.deck.id).toBe(load.custom_sets[4].deck_id);
+  }
+  expect(examples()).toBe('0');
+  expect(given()).toBe('1');
 });

@@ -805,6 +805,7 @@ function getDao($t, $id) {
                   ,t.deck_controls
                   ,t.deck_rev
                   ,t.deck_changed_by
+                  ,t.example_set_given
             FROM pok_teams_tbl as t
              WHERE t.id = ?");
     $sql->bind_param('s', $t);
@@ -869,6 +870,16 @@ function getDao($t, $id) {
                                                 and cardset_flags <=> ?");
                     $sql_m->bind_param('sssss', $deck_id, $deck_cards, $deck_controls, $t, $obj->cardset_flags);
                     $sql_m->execute();
+                }
+            }
+            /* B-116: the example set, once per team, after the migration above (an old mixed deck gets its set
+               "Our deck" before the example set counts against the limit). Not activated, no notify_team(). */
+            if ((int)$obj->example_set_given === 0) {
+                $given = give_example_set($link, $t, $catalog);
+                if ($given !== null) {
+                    $deck_id = $given['deck_id'];
+                    $deck_cards = $given['deck_cards'];
+                    $deck_controls = $given['deck_controls'];
                 }
             }
             $custom_sets = load_custom_sets($link, $t, $catalog);
