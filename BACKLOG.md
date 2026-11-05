@@ -1534,6 +1534,24 @@ abgeschaltet hat) – dann eingeklappt bzw. schmal. Nach dem Aufdecken ist das E
 das Wichtigste und darf eher größer werden. Ideen: Ausklappen per Knopf, Zustand pro Person merken; eingeklappt „New round“
 im Dock und eine kurze Ergebniszeile am Tisch. Hängt mit B-53 (Ergebnisdarstellung, Sidebar zunächst eingeklappt) zusammen.
 Offen: automatisch je Phase oder nur manuell; Verhalten bei geteiltem Bildschirm; Handy unverändert.
+Gedanken für das Refinement (Andreas/Kai, 2026-11-05):
+- Leitplanke: Niemand soll die Panelgröße je Spielsituation selbst nachstellen müssen. Wenn, dann folgt das Panel der
+  Phase automatisch; man kann übersteuern, und das Board merkt sich die Wahl (einmal entscheiden, nicht jede Runde).
+- Ob nach dem Aufdecken die Zusammenfassung rechts oder die aufgedeckten Karten am Tisch wichtiger sind, ist vermutlich
+  individuell und kontextabhängig (Einigkeit, Ausreißer, geteilter Bildschirm). Eher den Tisch selbst lesbarer machen
+  (z. B. Ausreißer am Tisch hervorheben) statt das Panel wichtiger.
+- Mit Topics (B-52) ändert sich die Rolle des Panels (Agenda/Historie). B-113, B-53 und B-52 deshalb zusammen als ein
+  Thema „Board-Layout“ refinen.
+- Lernen statt raten: zwei, drei klickbare Varianten (wie das Deck-Menü-Mockup) in echten Sessions ausprobieren,
+  ggf. mit der Person, von der das Feedback kam.
+
+### B-114 Verdeckt wählen beim Bildschirmteilen
+Status: neu, nicht priorisiert. Roadmap-Eintrag „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
+Problem: Wer seinen Bildschirm teilt (oft Scrum Master/Moderation), verrät beim Abstimmen die eigene Wahl – die gewählte
+Karte ist im Deck hervorgehoben und liegt am eigenen Platz offen. Ideen: ein „Presenter“-Schalter (pro Person, gemerkt),
+der die eigene Wahl bis zum Aufdecken verbirgt (eigene Tischkarte verdeckt, Deck ohne Hervorhebung, nur dezente
+Bestätigung z. B. per Tastenkürzel/kurzem Hinweis); alternativ zweites Gerät (Handy) zum Abstimmen. Offen: Wie merkt
+man trotzdem sicher, was man gewählt hat? Zusammenspiel mit B-113 (geteilter Bildschirm).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
