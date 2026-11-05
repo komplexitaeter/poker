@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { teamWithTwoPlayers, deckCard, deckCards, pickCard, tableCard, newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { teamWithTwoPlayers, deckCard, deckCards, pickCard, tableCard, newPlayer, createTeam, joinAsPlayer, removeExampleSet } from './helpers';
 
 /* B-98 S5: own card sets in the board (script/script_deck.js "Your sets", script/script_custom.js editor): create a
  * set (name, style, a text card with heading and description, a symbol card from the picker, moved with ↑), "Save &
@@ -21,7 +21,8 @@ async function lastJson(page: Page): Promise<{ deck: { id: string; cards: string
 const editor = (page: Page) => page.locator('#cs_editor');
 
 test('create an own set in the editor, play it, edit it and delete it', async ({ browser }) => {
-  const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets UI');
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets UI');
+  await removeExampleSet(url, alice, bob);
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
 
@@ -180,7 +181,8 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
 });
 
 test('Save creates a set without playing it; "Save & use" of a saved set puts it in use', async ({ browser }) => {
-  const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Play');
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Play');
+  await removeExampleSet(url, alice, bob);
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
   await alice.locator('#deck_new_set').click();
@@ -205,7 +207,8 @@ test('Save creates a set without playing it; "Save & use" of a saved set puts it
 });
 
 test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills the editor', async ({ browser }) => {
-  const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Copy');
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Copy');
+  await removeExampleSet(url, alice, bob);
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
 
@@ -268,6 +271,7 @@ test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills 
  * style, the name stays empty */
 test('"+ New set" copies an own set with all its cards, a template colour included', async ({ browser }) => {
   const { alice, url } = await teamWithTwoPlayers(browser, 'Own Sets Copy Own');
+  await removeExampleSet(url, alice);
   const t = new URL(url).searchParams.get('t') as string;
   const res = await alice.request.post(`/api/custom_set_create.php?t=${encodeURIComponent(t)}`, {
     data: JSON.stringify({ name: 'Source', style: 'badge', cards: [
@@ -314,7 +318,8 @@ test('"+ New set" copies an own set with all its cards, a template colour includ
 });
 
 test('an emoji as card text: counted as one character, played and shown on the table', async ({ browser }) => {
-  const { alice, bob } = await teamWithTwoPlayers(browser, 'Own Sets Emoji');
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Emoji');
+  await removeExampleSet(url, alice, bob);
   await alice.locator('#cset_btn').click();
   await alice.locator('#deck_change').click();
   await alice.locator('#deck_new_set').click();
@@ -354,6 +359,7 @@ test('an emoji as card text: counted as one character, played and shown on the t
 
 test('the limit of sets disables "+ New set"; Cancel without changes closes at once', async ({ browser }) => {
   const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Own Sets Limit');
+  await removeExampleSet(url, alice, bob);
   const t = new URL(url).searchParams.get('t') as string;
   const card = (symbol: string) => ({ symbol, color: 'blue' });
   for (let i = 1; i <= 5; i++) {
@@ -409,6 +415,7 @@ test('the limit of sets disables "+ New set"; Cancel without changes closes at o
 test('a team with a migrated "Our deck" sees its cards', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Own Sets Migrated');
+  await removeExampleSet(url);
   await joinAsPlayer(page, url, 'Alice');
   const t = new URL(url).searchParams.get('t') as string;
   expect(t).toMatch(/^[A-Za-z0-9_-]+$/);
@@ -887,4 +894,15 @@ test('own set in play: single cards are switched off and on, at least two stay',
   await expect(alice.locator('#toast')).toHaveText('Cards changed for everyone – new round started');
   for (const page of [alice, bob]) await expect.poll(() => trayKeys(page)).toEqual([...keys, ...controls]);
   await expect(tableCard(alice, 'Bob')).toHaveAttribute('data-card', 'prgrss1');
+});
+
+/* B-116: a new team finds the example set under "Your sets", not in use */
+test('a new team has the example set "Animals (Example)" in its sets, Fibonacci stays in use', async ({ browser }) => {
+  const { alice } = await teamWithTwoPlayers(browser, 'Own Sets Example');
+  await alice.locator('#cset_btn').click();
+  await expect(alice.locator('#deck_change')).toContainText('Fibonacci');
+  await alice.locator('#deck_change').click();
+  await expect(alice.locator('#deck_own_title')).toHaveText('Your sets 1 / 5');
+  await expect(alice.locator('#deck_own_sets li')).toHaveCount(1);
+  await expect(alice.locator('#deck_own_sets li')).toContainText('Animals (Example)');
 });

@@ -217,3 +217,20 @@ export async function stopHbLoads(page: Page): Promise<void> {
     (0, eval)('clearTimeout(gHbLoadTimer); gHbLoadTimer = null;');
   });
 }
+
+/**
+ * B-116: every team gets the example set "Animals (Example)" on its first load (dao.php). Tests that count or index the
+ * own sets remove it (marked as given, rows deleted, so it does not come back) and reload the given pages.
+ */
+export async function removeExampleSet(boardUrl: string, ...pages: Page[]): Promise<void> {
+  const t = new URL(boardUrl).searchParams.get('t') as string;
+  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // safe to put into the SQL below
+  const mysql = (statement: string) => execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e',
+    '-N', '-B', '-e', statement], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  // marked as given first: a load still running re-reads the flag under the row lock and skips it
+  mysql(`update pok_teams_tbl set example_set_given = 1 where id = '${t}';
+         delete c from pok_custom_cards_tbl c join pok_custom_sets_tbl s on s.id = c.set_id
+          where s.team_id = '${t}' and s.name = 'Animals (Example)';
+         delete from pok_custom_sets_tbl where team_id = '${t}' and name = 'Animals (Example)'`);
+  for (const page of pages) await page.reload();
+}

@@ -572,6 +572,57 @@ function migrate_mixed_deck($link, string $t, array $mixed, array $catalog): ?ar
 }
 
 /*
+ * B-116: the example set every team gets once (Andreas 2026-11-05), so a team sees what own sets can do. Kept here as
+ * a constant, not in card_catalog.json: only the API needs it, and the texts/colours are fixed (no validation of a
+ * second source). Colours are tokens of card_catalog.json "custom_colors", texts are emoji (CUSTOM_VALUE_MAX).
+ */
+const EXAMPLE_SET_NAME = 'Animals (Example)';
+const EXAMPLE_SET_STYLE = 'banner';
+const EXAMPLE_SET_CARDS = array(
+    array('text' => "\u{1F41C}", 'heading' => 'Ant', 'numeric' => 1, 'color' => 'brown'),
+    array('text' => "\u{1F401}", 'heading' => 'Mouse', 'numeric' => 2, 'color' => 'red'),
+    array('text' => "\u{1F415}", 'heading' => 'Dog', 'numeric' => 3, 'color' => 'amber'),
+    array('text' => "\u{1F40E}", 'heading' => 'Horse', 'numeric' => 5, 'color' => 'green'),
+    array('text' => "\u{1F418}", 'heading' => 'Elephant', 'numeric' => 8, 'color' => 'grey'),
+    array('text' => "\u{1F40B}", 'heading' => 'Whale', 'numeric' => 13, 'color' => 'cyan'),
+);
+
+/*
+ * B-116: gives the team the example set once, lazily from getDao() (also new teams, on their first load). Runs in its
+ * own transaction under the lock of the team row, so parallel loads create one set only; pok_teams_tbl.example_set_given
+ * = 1 afterwards, also if the team has custom_sets_max() sets already (then no set) - a deleted example set never comes
+ * back. The set is not activated, deck and round stay as they are. A team not migrated yet (deck_id null, e.g. a
+ * parallel update_cardset.php) is migrated first under the same lock, so an old mixed deck still gets its set "Our
+ * deck" before the example set counts against the limit; then the migrated deck is returned (deck_id, deck_cards,
+ * deck_controls), else null. Does not notify (dao.php never notifies).
+ */
+function give_example_set($link, string $t, array $catalog): ?array
+{
+    $migrated = null;
+    $link->begin_transaction();
+    $sql = $link->prepare("select cardset_flags, deck_id, example_set_given from pok_teams_tbl where id = ? for update");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    if (is_array($row) && (int)$row['example_set_given'] === 0) {
+        if ($row['deck_id'] === null)
+            $migrated = migrate_team_deck_locked($link, $t, $row['cardset_flags'], $catalog, true);
+        if (count(load_custom_sets($link, $t, $catalog)) < custom_sets_max()) {
+            $cards = array();
+            foreach (EXAMPLE_SET_CARDS as $card)
+                $cards[] = array('key' => null, 'symbol' => null, 'text' => $card['text'], 'heading' => $card['heading'],
+                                 'description' => null, 'numeric' => (string)$card['numeric'], 'color' => $card['color']);
+            insert_custom_set($link, $t, EXAMPLE_SET_NAME, EXAMPLE_SET_STYLE, $cards);
+        }
+        $sql = $link->prepare("update pok_teams_tbl set example_set_given = 1 where id = ?");
+        $sql->bind_param('s', $t);
+        $sql->execute();
+    }
+    $link->commit();
+    return $migrated;
+}
+
+/*
  * card_key => sort rank of custom cards for sort_players_by_sequence(): strictly by position in the set (the order of
  * the editor), never by numeric value - a value that contradicts the position is ignored (Andreas, 2026-11-02).
  * Average and spread still use numeric_value (frontend), cards without a value do not count there.

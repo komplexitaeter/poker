@@ -616,3 +616,25 @@ select column_name, column_type, column_default from information_schema.columns
  where table_schema = database() and table_name = 'pok_teams_tbl'
    and column_name in ('show_card_changes', 'round_show_card_changes');
 /* end B-115 */
+
+/* B-116: every team gets the example set "Animals (Example)" once (api/lib_custom.php give_example_set_locked(), lazy
+   in getDao() like the migration "Our deck"). pok_teams_tbl.example_set_given = 1 once it was given (or skipped
+   because the team had custom_sets_max() sets already); a deleted example set is not given again.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code.
+   Run only this block: sed -n '/^\/\* B-116:/,/^\/\* end B-116/p' db_schema_pok_inc.sql */
+set session lock_wait_timeout = 5;
+set @b116_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_teams_tbl'
+                       and column_name = 'example_set_given') = 0,
+  'alter table pok_teams_tbl
+     add column example_set_given tinyint not null default 0
+       comment ''B-116: 1 = the example set was given (or skipped at the set limit)'',
+     algorithm = instant',
+  'select 1');
+prepare b116_stmt from @b116_sql;
+execute b116_stmt;
+deallocate prepare b116_stmt;
+
+select table_name, column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'example_set_given';
+/* end B-116 */

@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { teamWithTwoPlayers, deckCard, deckCards, pickCard, expectTableCard, tableCard, chooseCardSet } from './helpers';
+import { teamWithTwoPlayers, deckCard, deckCards, pickCard, expectTableCard, tableCard, chooseCardSet, removeExampleSet } from './helpers';
 
 /* R3 F5 (B-98): the deck menu (Board settings -> Deck, mock-up variant C). Every change is written at once
  * (api/update_deck.php, api/update_controls.php) and every board follows. */
@@ -17,7 +17,8 @@ const calm = async (page: Page) => {
 };
 
 test('choose a card set: Consent decision and Delegation Poker with headings, for everybody', async ({ browser }) => {
-  const { alice, bob } = await teamWithTwoPlayers(browser, 'Deck Menu Sets');
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Deck Menu Sets');
+  await removeExampleSet(url, alice, bob);
   await alice.locator('#cset_btn').click();
   await expect(alice.locator('#deck_change')).toBeFocused();
   await expect(alice.locator('#deck_change')).toContainText('Fibonacci');
@@ -350,11 +351,12 @@ test('the deck menu does not jump: no message in the menu, done or error (R3 rev
   same(before, await where());
 });
 
-/* Andreas (compact list): 1280×800, the 8 built-in sets and 5 own sets, the last one visible without scrolling */
+/* Andreas (compact list): 1280×800, the 8 built-in sets and 5 own sets, the last one visible without scrolling
+ * (B-116: the example set "Animals (Example)" is the first of them) */
 test('the list of card sets fits on a desktop screen: the last set visible without scrolling', async ({ browser }) => {
   const { alice, url } = await teamWithTwoPlayers(browser, 'Deck Menu Compact');
   const t = new URL(url).searchParams.get('t') as string;
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 2; i <= 5; i++) {
     const res = await alice.request.post(`/api/custom_set_create.php?t=${encodeURIComponent(t)}`, {
       data: JSON.stringify({ name: `Set ${i}`, style: 'plain', cards: [{ symbol: 's-1', color: 'blue' }, { symbol: 's-2', color: 'blue' }] }),
       headers: { 'Content-Type': 'application/json' } });
