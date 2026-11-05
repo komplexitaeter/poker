@@ -212,3 +212,43 @@ test('the "Changed cards" switch: a failed write shows the error toast, the swit
   await expect(changesRadio(alice, '1')).toBeChecked();
   await alice.unroute('**/api/update_team.php*');
 });
+
+test('switched off while no card is down: an original left from the same round is cleared (B-115)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const { t, bob, carol } = await setup(page, 'Card Changes Leftover');
+
+  // on: reveal, Bob changes (original stored), then both take their cards back
+  await post(page, 'setc.php', { t, id: bob, cardkey: 'five001' });
+  await post(page, 'setc.php', { t, id: carol, cardkey: 'eight01' });
+  await post(page, 'setc.php', { t, id: bob, cardkey: 'eight01' });
+  expect(original(t, bob)).toBe('five001');
+  await post(page, 'setc.php', { t, id: bob });
+  await post(page, 'setc.php', { t, id: carol });
+  expect(original(t, bob)).toBe('five001');
+
+  // off at once (no card down): the leftover original is gone; on again at once
+  await post(page, 'update_team.php', { t, show_card_changes: '0' });
+  expect((await dao(page, t, bob)).round_show_card_changes).toBe(0);
+  expect(original(t, bob)).toBe('NULL');
+  await post(page, 'update_team.php', { t, show_card_changes: '1' });
+  expect((await dao(page, t, bob)).round_show_card_changes).toBe(1);
+
+  // both lay again: no old stack, and none in the round snapshot
+  await post(page, 'setc.php', { t, id: bob, cardkey: 'three01' });
+  await post(page, 'setc.php', { t, id: carol, cardkey: 'eight01' });
+  expect(playerOf(await dao(page, t, carol), 'Bob').original_card_key).toBeNull();
+  await post(page, 'newround.php', { t, id: bob });
+  expect(sql(`select ifnull(d.original_card_key, 'NULL') from pok_roundstat_details_tbl d
+               where d.team_id = '${t}' and d.player_id = '${bob}'`)).toBe('NULL');
+});
+
+test('setc.php clears an original in a round with the setting off (B-115)', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const { t, bob, carol } = await setup(page, 'Card Changes Setc');
+  await post(page, 'setc.php', { t, id: bob, cardkey: 'five001' });
+  await post(page, 'setc.php', { t, id: carol, cardkey: 'eight01' });
+  sql(`update pok_teams_tbl set round_show_card_changes = 0 where id = '${t}'`);
+  sql(`update pok_players_tbl set original_card_key = 'two0001' where id = '${bob}' and team_id = '${t}'`);
+  await post(page, 'setc.php', { t, id: bob, cardkey: 'eight01' });
+  expect(original(t, bob)).toBe('NULL');
+});

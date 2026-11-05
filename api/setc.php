@@ -52,12 +52,8 @@ $sql = $link->prepare("select count(1) players_cnt, count(card_key) cards_cnt fr
 $sql->bind_param('s', $t);
 $sql->execute();
 $counts = $sql->get_result()->fetch_object();
-// B-115: the team row is locked by lock_team_deck(), so the round setting cannot change during this transaction
-$sql = $link->prepare("select round_show_card_changes from pok_teams_tbl where id = ?");
-$sql->bind_param('s', $t);
-$sql->execute();
-$round_setting = $sql->get_result()->fetch_object();
-$keep_original = $round_setting !== null && (int)$round_setting->round_show_card_changes === 1;
+// B-115: read with the lock on the team row (lock_team_deck()), so it cannot change during this transaction
+$keep_original = (int)$team['round_show_card_changes'] === 1;
 
 $revealed = $keep_original && $counts !== null && (int)$counts->players_cnt > 0 && (int)$counts->players_cnt === (int)$counts->cards_cnt;
 
@@ -69,7 +65,9 @@ $me = $sql->get_result()->fetch_object();
 
 if ($me !== null) {
     $original = $me->original_card_key;
-    if ($new_card !== null && $new_card === $original) {
+    if (!$keep_original) {
+        $original = null; // B-115: never an original in a round with "See changed cards" off (no leftover either)
+    } else if ($new_card !== null && $new_card === $original) {
         $original = null; // back to the card of the reveal
     } else if ($revealed && $me->player_type === 'PLAYER' && $original === null && $me->card_key !== null
                && $me->card_key !== LATE_CARD_KEY && $new_card !== $me->card_key) {

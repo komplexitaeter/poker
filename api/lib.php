@@ -444,7 +444,9 @@ function parse_card_keys(string $value, int $max_count = 60): ?array
  */
 function lock_team_deck($link, string $t, array $catalog): ?array
 {
+    // B-115: round_show_card_changes for setc.php, read under the same lock
     $sql = $link->prepare("select cardset_flags, needs_setup, deck_id, deck_cards, deck_controls, deck_rev
+                                , round_show_card_changes
                              from pok_teams_tbl
                             where id = ?
                               for update");

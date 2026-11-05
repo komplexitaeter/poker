@@ -50,9 +50,12 @@ if ($show_tips !== null) {
 
 /* B-115: takes effect with the next round (start_new_round() copies it into round_show_card_changes), so nobody sees
    an original card by switching it on afterwards. While no card is down the round has not started: at once, as the
-   anonymous mode above. Notify only if something changed. */
+   anonymous mode above. Notify only if something changed. Switched off at once, an original card left from an "on"
+   phase of the same round (cards taken back after a change) is cleared, so it neither shows up again nor goes into
+   the round snapshot. Same lock order as setc.php: team row first, then players. */
 $card_changes_changed = false;
 if ($show_card_changes !== null) {
+    $link->begin_transaction();
     $sql = $link->prepare("update pok_teams_tbl t
                               set t.show_card_changes=?
                                  ,t.round_show_card_changes = if(
@@ -67,6 +70,15 @@ if ($show_card_changes !== null) {
     $sql->bind_param('iis', $show_card_changes, $show_card_changes, $t);
     $sql->execute();
     $card_changes_changed = $sql->affected_rows > 0;
+    $sql = $link->prepare("update pok_players_tbl p
+                             join pok_teams_tbl t on t.id = p.team_id
+                              set p.original_card_key = null
+                            where p.team_id = ?
+                              and t.round_show_card_changes = 0
+                              and p.original_card_key is not null");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $link->commit();
 }
 
 $link->close();
