@@ -2121,6 +2121,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
     updateAnonymityConfig(myJson.anonymous_request_toggle);
     checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
+    updateCardChangesConfig(myJson.show_card_changes, myJson.round_show_card_changes); // B-115
 
     updateJediBtn();
 
@@ -2991,6 +2992,15 @@ function updateOrderByConfig(resultsOrder, anonymousMode) {
         toggleStyleClass(hint, "display_none", "display_block");
         dropDown.removeAttribute("aria-describedby");
     }
+}
+
+/* B-115: the switch follows the team setting; while it differs from the running round (cards already down),
+ * the hint says that it takes effect from the next round. Default on (also without the fields). */
+function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
+    const team = showCardChanges === 0 ? 0 : 1;
+    const round = roundShowCardChanges === 0 ? 0 : 1;
+    checkRadio('cet_show_card_changes', String(team));
+    document.getElementById('cet_show_card_changes_hint').classList.toggle('display_none', team === round);
 }
 
 function updateAnonymityConfig(anonymousRequestToggle) {

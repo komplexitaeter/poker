@@ -27,6 +27,8 @@ $new_card = strlen($cardkey) > 0 ? $cardkey : null;
  * original card -> null (no stack). Changes before the reveal and the system card LATE_CARD_KEY as "original" do not
  * count. Same lock order as newround.php/update_deck.php (team row first, then players), so two parallel changes
  * and "New Round" see a consistent table.
+ * B-115: only while "See changed cards" is on for the running round (round_show_card_changes, snapshot at the round
+ * start), otherwise the change is stored without original card.
  * B-103: a key that is neither in the team's deck nor in its active control cards -> 400, nothing written, no notify.
  */
 $link->begin_transaction();
@@ -50,7 +52,10 @@ $sql = $link->prepare("select count(1) players_cnt, count(card_key) cards_cnt fr
 $sql->bind_param('s', $t);
 $sql->execute();
 $counts = $sql->get_result()->fetch_object();
-$revealed = $counts !== null && (int)$counts->players_cnt > 0 && (int)$counts->players_cnt === (int)$counts->cards_cnt;
+// B-115: read with the lock on the team row (lock_team_deck()), so it cannot change during this transaction
+$keep_original = (int)$team['round_show_card_changes'] === 1;
+
+$revealed = $keep_original && $counts !== null && (int)$counts->players_cnt > 0 && (int)$counts->players_cnt === (int)$counts->cards_cnt;
 
 $sql = $link->prepare("select card_key, original_card_key, player_type from pok_players_tbl
                         where id = ? and team_id = ? for update");
@@ -60,7 +65,9 @@ $me = $sql->get_result()->fetch_object();
 
 if ($me !== null) {
     $original = $me->original_card_key;
-    if ($new_card !== null && $new_card === $original) {
+    if (!$keep_original) {
+        $original = null; // B-115: never an original in a round with "See changed cards" off (no leftover either)
+    } else if ($new_card !== null && $new_card === $original) {
         $original = null; // back to the card of the reveal
     } else if ($revealed && $me->player_type === 'PLAYER' && $original === null && $me->card_key !== null
                && $me->card_key !== LATE_CARD_KEY && $new_card !== $me->card_key) {

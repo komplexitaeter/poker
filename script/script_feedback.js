@@ -694,6 +694,13 @@ function changeShowTips(showTips) {
     settingWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
 }
 
+/* B-115: switch B-104 (the first card stays visible when someone changes theirs after the reveal) for the team */
+function changeShowCardChanges(show) {
+    const on = show === '1';
+    measureEvent(on ? 'CARD_CHANGES_ON' : 'CARD_CHANGES_OFF');
+    settingWrite('./api/update_team.php?t='+t+'&show_card_changes='+(on ? '1' : '0'));
+}
+
 function onChangeTeamNameInput() {
     document.getElementById('cet_change_name').disabled = document.getElementById('cet_team_name').value
         === document.getElementById('team_name').innerText
