@@ -1591,6 +1591,27 @@ Feuerwerk → Laser-Light-Show → Drohnenshow …).
   wählen, dass bestehende Teams beim Hinzufügen neuer Stufen nicht sofort alles freigeschaltet haben.
 Offen: genaue Schwellen, wo/wie Badges sichtbar sind, wer die Animation auslöst (alle am Tisch gleichzeitig).
 
+### B-118 Wachstum über Produktmechanismen (statt Werbung)
+Status: neu, nach R3 gemeinsam durchdenken. Andreas (2026-11-06): nicht selbst groß bewerben, sondern Mechanismen, die mit
+der Nutzung skalieren. Leitidee: Dinge anbieten, die Leute eher dazu bringen, sie öffentlich zu teilen – ausgelagerte,
+teilbare Seiten, immer mit Link im Header zurück zur SEO-Seite auf komplexitaeter.de.
+- Teilnehmer werden Gastgeber: dezenter Weg vom Board zu „Eigenes Board anlegen“ (5–6 Leute pro Session, nur einer
+  legt an); messbar über neue Teams, die von einem Board aus entstehen.
+- Geteilte Kartensets als öffentliche Seiten (z. B. „Animals – Planning Poker Kartenset“, „In meinem Team nutzen“);
+  Inhalte entstehen durch Nutzer, werden gefunden und verlinkt (vgl. Teilen-Idee, Animals-Set B-116).
+- Ergebnisse zum Teilen: kurze Session-Zusammenfassung als Bild/Link fürs Team-Wiki/Ticket, mit dezentem Absender.
+- Methoden-Seiten (Website) beschreiben, wofür man das Tool nutzt, und verweisen auf Teams/Tool – eigener Kanal.
+- Badges (B-117) zahlen darauf ein (Teams kommen mit demselben Link wieder).
+Daten: Search Console (Website) zeigt bisher ~500 Klicks/3 Monate, fast nur DE; Wachstum kommt heute über geteilte Links.
+Boards selbst bleiben `noindex` (seit R3).
+
+### B-119 T-Shape: Wissenstiefe schätzen, Breite im Team sehen
+Status: neu, Idee Andreas (2026-11-06), lose. Methode „T-Shape“: Jede Person schätzt, wie tief ihr Wissen in einem
+Thema/Skill ist; die Breite ergibt sich über die Verteilung im Team. Ist auf der Website noch nicht richtig beschrieben
+und im Tool nicht gut abgebildet (geht aus der Basisfunktion nicht hervor). Wäre eine neue Dimension des Tools:
+mehrere Themen nacheinander (vgl. B-52 Topics), Ergebnis als Team-Profil statt Einzelrunde. Offen: Kartenset (Tiefe-
+Stufen), Darstellung (Matrix/„T“), Speicherung über Runden hinweg, Methodenbeschreibung zuerst.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
