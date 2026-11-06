@@ -638,3 +638,35 @@ deallocate prepare b116_stmt;
 select table_name, column_name, column_type, column_default from information_schema.columns
  where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'example_set_given';
 /* end B-116 */
+
+/* B-98 backup: RUN ON LIVE BEFORE THE R3 DEPLOY (right before "git pull" of R3, after the R3 schema
+   blocks above, so the deck columns exist). Keeps the old deck of every team (cardset_flags, needs_setup and the R3
+   deck columns, still null on live) in pok_teams_deck_backup_r3: the lazy migration in getDao() and later
+   store_team_deck() overwrite cardset_flags. No names, only the team id (to compare or restore a single team).
+   Idempotent: create if missing, insert only teams not backed up yet (a second run never overwrites the first).
+   read committed: insert ... select does not lock the rows of pok_teams_tbl (boards keep writing).
+   Check after the deploy: tools/migration/README.md (check_deck_migration.php --verify).
+   Run only this block: sed -n '/^\/\* B-98 backup:/,/^\/\* end B-98 backup/p' db_schema_pok_inc.sql */
+create table if not exists pok_teams_deck_backup_r3 (
+  id varchar(80) character set utf8mb3 collate utf8mb3_general_ci not null primary key,
+  cardset_flags varchar(2000) character set utf8mb3 null,
+  needs_setup tinyint not null,
+  deck_id varchar(24) character set ascii collate ascii_bin null,
+  deck_cards varchar(200) character set ascii collate ascii_bin null,
+  deck_controls varchar(40) character set ascii collate ascii_bin null,
+  creation_date timestamp null,
+  backup_date timestamp not null default current_timestamp
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-98: decks of all teams before the R3 deploy (rollout 3)';
+
+set session transaction isolation level read committed;
+insert into pok_teams_deck_backup_r3(id, cardset_flags, needs_setup, deck_id, deck_cards, deck_controls, creation_date)
+select t.id, t.cardset_flags, t.needs_setup, t.deck_id, t.deck_cards, t.deck_controls, t.creation_date
+  from pok_teams_tbl t
+ where not exists (select 1 from pok_teams_deck_backup_r3 b where b.id = t.id);
+set session transaction isolation level repeatable read;
+
+select (select count(*) from pok_teams_tbl) teams, (select count(*) from pok_teams_deck_backup_r3) backed_up,
+       (select count(*) from pok_teams_deck_backup_r3 where deck_id is null) without_deck,
+       (select max(backup_date) from pok_teams_deck_backup_r3) last_backup;
+/* end B-98 backup */
