@@ -1653,6 +1653,13 @@ Status: neu, Idee Andreas (2026-11-06), Ausbaustufe nach B-52/B-121. Wenn Backlo
 B-122). Offen: Datenschutz (Topic-Texte sind die sensibelsten Daten – nur mit ausdrücklicher Zustimmung des Teams,
 Anbieter/Hosting), Kosten, wie die KI-Karte am Tisch und in der Statistik zählt (nicht in Durchschnitt/Einigkeit?).
 
+### B-124 Beta-Menü für neue Funktionen
+Status: neu, Idee Andreas (2026-11-06). Ein eigenes Menü (z. B. „:beta“ im Header), in dem Teams experimentelle Funktionen
+selbst einschalten (z. B. Schätzprämisse B-122, Bucket-Board B-120, T-Shape B-119, KI-Teammitglied B-123). So lassen sich
+große Ideen mit echten Teams ausprobieren, ohne die Standard-Oberfläche zu verändern; Feedback je Beta-Funktion direkt dort.
+Offen: Einstellung pro Team (Feature-Flags in pok_teams_tbl) oder pro Person; Sichtbarkeit (immer oder nur per Link);
+wann eine Beta-Funktion Standard wird oder wieder verschwindet.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
