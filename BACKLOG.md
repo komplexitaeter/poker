@@ -1667,6 +1667,7 @@ Status: neu, Idee Andreas (2026-11-06), nicht für R3.
 blockiert), will die Person aber auch nicht vom Tisch entfernen.
 **Lösung (Stand Andreas, 2026-11-06, ersetzt die erste Idee „Pause for this round“ im Entfernen-Dialog):**
 - Neben dem Mülleimer am Platz eines Mitspielers ein **Pause-Symbol**. Ein Klick pausiert die Person.
+- Man kann sich auch **selbst** auf Pause setzen (z. B. vor einer kurzen Unterbrechung), Andreas 2026-11-06.
 - Pausiert gilt **so lange, bis die Person selbst wieder aktiv wird** – nicht nur für eine Runde. Sie wird überall
   ignoriert (blockiert das Aufdecken nicht, `all_players_ready`), bleibt aber am Tisch.
 - Sie bekommt eine Systemkarte „Paused“ (neue Systemkarte wie `late001` aus B-102, kein Teil eines Decks, nicht legbar
