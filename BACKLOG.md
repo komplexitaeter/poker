@@ -901,7 +901,7 @@ refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns
 Stand (Andreas, 2026-11-01): noch nicht reif. R3-Review (2026-11-02): Abwesende blockieren das Aufdecken; mit der away-Erkennung aus B-110
 könnte „Reveal now“ bzw. „Abwesende nicht mitzählen“ jetzt sinnvoll gelöst werden. Andreas ist von „Reveal now“ als Button nicht überzeugt (Roadmap: 5 👍 / 1 👎);
 Problem dahinter (jemand ist kurz weg) bleibt, Lösung offen – Ideen: „Away“-Status, Abwesende automatisch ausnehmen.
-Lösungsidee Andreas (2026-11-06): „Pause for this round“ im Entfernen-Dialog, siehe B-125.
+Lösungsidee Andreas (2026-11-06): Mitspieler pausieren (Pause-Symbol neben dem Mülleimer), siehe B-125.
 
 ### B-60 Spaß-Funktionen
 Feedback (≈ 6×): Reaktionen/Emojis, Papierkugeln werfen, Fun-Karten, Emojis im Namen, Musik. Andreas: Backlog +
@@ -1661,14 +1661,21 @@ große Ideen mit echten Teams ausprobieren, ohne die Standard-Oberfläche zu ver
 Offen: Einstellung pro Team (Feature-Flags in pok_teams_tbl) oder pro Person; Sichtbarkeit (immer oder nur per Link);
 wann eine Beta-Funktion Standard wird oder wieder verschwindet.
 
-### B-125 „Pause for this round“ statt Entfernen (Lösung für B-59)
-Status: neu, Idee Andreas (2026-11-06), nicht für R3. Im Bestätigungsdialog „Remove … from the table?“ (Mülleimer am
-Platz eines Mitspielers) kommt eine dritte, freundliche Option in Blau dazu: **„Pause for this round“**. Die Person bleibt
-am Tisch, bekommt für die laufende Runde die Systemkarte „Paused“ und blockiert das Aufdecken nicht mehr
-(`all_players_ready`). Mit der nächsten Runde ist sie wieder normal dabei. Das ist Andreas' Lösung für „Reveal anyway“ (B-59).
-- Neue Systemkarte (wie `late001` aus B-102, kein Teil eines Decks, nicht legbar über `setc.php`).
+### B-125 Mitspieler pausieren statt entfernen (Lösung für B-59)
+Status: neu, Idee Andreas (2026-11-06), nicht für R3.
+**Use-Case:** Jemand hat den Bildschirm offen gelassen und ist kurz weg. Die Gruppe kommt nicht weiter (Aufdecken
+blockiert), will die Person aber auch nicht vom Tisch entfernen.
+**Lösung (Stand Andreas, 2026-11-06, ersetzt die erste Idee „Pause for this round“ im Entfernen-Dialog):**
+- Neben dem Mülleimer am Platz eines Mitspielers ein **Pause-Symbol**. Ein Klick pausiert die Person.
+- Pausiert gilt **so lange, bis die Person selbst wieder aktiv wird** – nicht nur für eine Runde. Sie wird überall
+  ignoriert (blockiert das Aufdecken nicht, `all_players_ready`), bleibt aber am Tisch.
+- Sie bekommt eine Systemkarte „Paused“ (neue Systemkarte wie `late001` aus B-102, kein Teil eines Decks, nicht legbar
+  über `setc.php`).
+- **Aufheben nur durch die Person selbst:** Legt sie eine Karte, ist die Pause einfach weg. Optional bekommt sie (analog
+  zum Hinweis nach dem Entfernen) ein Overlay „You were paused“ mit „OK, I'm back“.
+- Technisch: eine weitere Spalte in `pok_players_tbl` (z. B. `paused`), Ben.
 - Offen, wo überall angepasst werden muss: Ready-Status, Tipps (zählt nicht mit), Statistik/Historie
-  (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Rücknahme (legt die Person doch noch eine Karte?).
+  (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Verhalten bei neuer Runde (Pause bleibt), Beobachter.
 - Wer darf pausieren: jeder am Tisch (wie Entfernen) – vermutlich ja.
 
 ### B-52 Topics als Backlog-Items
