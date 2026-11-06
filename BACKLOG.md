@@ -1702,6 +1702,11 @@ Konsens/Ausreißer, Zeiger-Idee erhalten), ggf. mit gespeicherter Historie (pass
 Mockup (Delia).
 Idee Andreas (2026-10-24) zur Sidebar: Beim ersten Besuch gibt es noch kein Topic, keine Historie, keine Spreads →
 Sidebar zunächst eingeklappt, Board clean wie in Rollout 1; Lösung nötig für „New Round“ und eine aktivierte Stoppuhr.
+Idee Andreas (2026-11-06): **Median als zweiter Indikator** über den Balken, in einer anderen Farbe als der Average-Indikator.
+Der Median ist der mittlere Wert der sortierten Karten. Ausreißer verzerren ihn nicht, und er liegt immer auf einer
+echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shirt, Sterne und ∞ (als größter Wert).
+Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
+Wert zeigen oder den Bereich „3–5“).
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
