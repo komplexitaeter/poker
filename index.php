@@ -13,7 +13,11 @@ $text = get_text_param("text", 300);
 $preset = get_text_param("preset", 80);
 
 $link = db_init();
-if (validate_team($t, $link)) include('board.html');
+if (validate_team($t, $link)) {
+    // boards must never be indexed: the team ID in the URL is their only protection
+    header('X-Robots-Tag: noindex, nofollow');
+    include('board.html');
+}
 else {
     if (strlen($tool) > 0) {
         $t = add_team($link, $team, $text, $preset);
