@@ -1695,6 +1695,12 @@ Inaktivität (keine Eingabe) taugt nicht, weil Zuhörende ebenfalls nichts tippe
   (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Verhalten bei neuer Runde (Pause bleibt), Beobachter.
 - Wer darf pausieren: jeder am Tisch (wie Entfernen) – vermutlich ja.
 
+### B-126 nginx: `/tools/` nicht ausliefern
+Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, deshalb sind `tools/` (Migrations- und Kartenskripte,
+README) per URL erreichbar. Die PHP-Skripte antworten über das Web mit 404 (`tools/migration/common.php`), der Rest ist
+harmlos (öffentlich auf GitHub). Trotzdem sauberer: in nginx beider Server `location ^~ /tools/ { return 404; }`.
+Befehle bereitet Kai vor, Betreiber spielt sie ein.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
