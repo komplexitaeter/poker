@@ -1674,6 +1674,10 @@ blockiert), will die Person aber auch nicht vom Tisch entfernen.
   über `setc.php`).
 - **Aufheben nur durch die Person selbst:** Legt sie eine Karte, ist die Pause einfach weg. Optional bekommt sie (analog
   zum Hinweis nach dem Entfernen) ein Overlay „You were paused“ mit „OK, I'm back“.
+- **Liegt schon eine Karte, bleibt sie liegen** (Andreas, 2026-11-06). „Paused“ ist dann eher eine Überblendung der
+  Karte als eine Ersatzkarte: Die anderen sehen „X hatte gelegt, ist aber gerade kurz weg“, und das Aufdecken wartet
+  nicht auf X. Ohne gelegte Karte steht die Systemkarte „Paused“ am Platz. Offen: Zählt die überblendete Karte beim
+  Aufdecken mit (Tipps, Statistik)?
 - Technisch: eine weitere Spalte in `pok_players_tbl` (z. B. `paused`), Ben.
 - Offen, wo überall angepasst werden muss: Ready-Status, Tipps (zählt nicht mit), Statistik/Historie
   (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Verhalten bei neuer Runde (Pause bleibt), Beobachter.
