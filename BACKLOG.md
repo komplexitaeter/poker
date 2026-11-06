@@ -1627,7 +1627,15 @@ früherer Versuch mit Yjs hat nicht geklappt. Gedanken (Kai): Yjs braucht einen 
 Browsern weiterreicht, und eine Stelle, die den Stand speichert. Passend zu unserem Prinzip „poker-msg ist nur der Kanal“
 könnte poker-msg Yjs-Updates je Team einfach durchreichen (wie die Reaktionen, B-110), PHP speichert den zusammengeführten
 Stand. Einfachere Alternative ohne Yjs: „Alice is editing …“ mit Sperre oder „letzter gewinnt“ plus Live-Vorschau.
-Offen: Woran ist der Yjs-Versuch gescheitert? Zusammenspiel mit B-52 (mehrere Topics) und B-120 (Bucket-Board).
+Früherer Versuch (Andreas, 2026-11-06): Der Beispiel-Server von Yjs funktionierte technisch, schied aber aus – der Kanal war
+öffentlich, und die Topic-Texte (die einzig wirklich sensiblen Daten unserer Nutzer) lägen bei einem fremden Dienst.
+Der Versuch, das Yjs-Messaging in poker-msg nachzubauen, scheiterte technisch.
+Idee für einen neuen Anlauf (Kai): poker-msg muss das Yjs-Protokoll nicht verstehen. Es reicht ein dummer Relay je Team
+(Updates base64-kodiert durchreichen, wie bei den Reaktionen). Den Startzustand holt ein neuer Client von PHP (gespeicherte
+Updates als Log); verdichtet wird im Browser (ein Client führt das Log per Yjs zusammen und lädt einen Snapshot hoch). So
+bleibt alles auf unseren Servern und PHP braucht keine Yjs-Bibliothek. Erst als kleiner Prototyp prüfen.
+Offen: Zusammenspiel mit B-52 (mehrere Topics) und B-120 (Bucket-Board); Größe/Rate der Updates (heute 1 Nachricht/s pro
+Verbindung in poker-msg).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
