@@ -407,6 +407,10 @@ function setDeck(deck) {
     if (cbox !== null) cbox.dataset.textSize = textSize;
     ctl.replaceChildren(...deck.cards.map(card => deckElement(card).slot));
     updateDeckTabStop();
+    // R3 fix: the carousel's hint line caches by card key; a new deck (texts of a custom card changed, same key)
+    // builds it anew on the next frame
+    document.getElementById('deck_pick')?.removeAttribute('data-shows');
+    scheduleCarousel();
     if (textsChanged || restyled) refreshTableFaces();
     if (restyled) {
         // the spread labels, the range and the tip show small faces of the cards: built anew on the next update

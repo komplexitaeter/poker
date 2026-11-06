@@ -906,3 +906,40 @@ test('a new team has the example set "Animals (Example)" in its sets, Fibonacci 
   await expect(alice.locator('#deck_own_sets li')).toHaveCount(1);
   await expect(alice.locator('#deck_own_sets li')).toContainText('Animals (Example)');
 });
+
+/* R3 fix: a description added to a card of the set in play (same card key, new model) shows in the carousel's hint
+ * line at once, not only after swiping to another card */
+test('carousel hint line shows a description added in the editor at once', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+    reducedMotion: 'reduce' });
+  const url = await createTeam(alice, 'Own Sets Hint');
+  await removeExampleSet(url);
+  const t = new URL(url).searchParams.get('t')!;
+  const created = await alice.request.post(`/api/custom_set_create.php?t=${encodeURIComponent(t)}`, {
+    data: JSON.stringify({ name: 'Risk', style: 'badge', activate: true, cards: [
+      { symbol: 's-1', heading: 'low', numeric_value: 1, color: 'green' },
+      { text: 'high', description: 'We should split it.', numeric_value: 3, color: 'red' }] }),
+    headers: { 'Content-Type': 'application/json' } });
+  expect(created.ok()).toBeTruthy();
+  const first = (await created.json()).set.cards[0].card_key as string;
+  await joinAsPlayer(alice, url, 'Alice');
+
+  // the first card in the middle: heading, no description
+  await alice.locator('#ctl').evaluate(el => { el.scrollLeft = 0; });
+  const line = alice.locator('#deck_pick');
+  await expect(line).toHaveAttribute('data-shows', `m:${first}+`);
+  await expect(line).toContainText('low');
+  await expect(line.locator('.deck-pick-info')).toHaveCount(0);
+
+  // the editor: a description for the first card, saved
+  await alice.locator('#menu_btn').click();
+  await alice.locator('#menu_index').getByRole('button', { name: /^Board settings/ }).click();
+  await alice.locator('#deck_edit').click();
+  await alice.locator('[data-f="card:0"]').click();
+  await alice.locator('#cs_desc').fill('Easy going.');
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#cs_editor')).toBeHidden();
+
+  // the line shows it at once (the middle card is still the same)
+  await expect(line.locator('.deck-pick-info')).toHaveText('Easy going.');
+});
