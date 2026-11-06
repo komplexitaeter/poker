@@ -1703,7 +1703,8 @@ Mockup (Delia).
 Idee Andreas (2026-10-24) zur Sidebar: Beim ersten Besuch gibt es noch kein Topic, keine Historie, keine Spreads →
 Sidebar zunächst eingeklappt, Board clean wie in Rollout 1; Lösung nötig für „New Round“ und eine aktivierte Stoppuhr.
 Idee Andreas (2026-11-06): **Median als zweiter Indikator** über den Balken, in einer anderen Farbe als der Average-Indikator
-(oder als gestrichelte Linie).
+(oder als gestrichelte Linie, die die Stimmen in eine linke und eine rechte Hälfte teilt). Bei gerader Anzahl liegt
+die Linie dann einfach zwischen den beiden mittleren Karten – damit löst sich die Frage unten von selbst.
 Der Median ist der mittlere Wert der sortierten Karten. Ausreißer verzerren ihn nicht, und er liegt immer auf einer
 echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shirt, Sterne und ∞ (als größter Wert).
 Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
