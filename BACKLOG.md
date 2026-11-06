@@ -1612,6 +1612,15 @@ und im Tool nicht gut abgebildet (geht aus der Basisfunktion nicht hervor). Wär
 mehrere Themen nacheinander (vgl. B-52 Topics), Ergebnis als Team-Profil statt Einzelrunde. Offen: Kartenset (Tiefe-
 Stufen), Darstellung (Matrix/„T“), Speicherung über Runden hinweg, Methodenbeschreibung zuerst.
 
+### B-120 Bucket-Board: Items gemeinsam in Schätz-Buckets ziehen (Magic Estimation u. a.)
+Status: neu, Idee Andreas (2026-11-06), groß. Wiederverwendbare Mechanik: Die Werte eines Kartensets erscheinen als
+Buckets (Spalten) auf dem Board, Items (vgl. B-52 Topics) werden gemeinsam hineingezogen und verschoben. Damit ginge z. B.
+Magic Estimation (Affinity Estimation); ähnlich die Mechanik von Team as a Car (im Detail anders). Passt zur Linie
+„Methoden verkaufen sich, das Tool liefert den Rahmen“ (B-118, B-119).
+Offen: eigener Modus im Board oder eigenes Tool; Items-Datenmodell (B-52); gemeinsames Ziehen in Echtzeit (heute nur
+„pull“-Signale über poker-msg – reicht das für Drag & Drop, Konflikte bei gleichzeitigem Ziehen?); Handy-Bedienung;
+Ergebnis/Export.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
