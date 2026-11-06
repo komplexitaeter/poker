@@ -1636,6 +1636,22 @@ Updates als Log); verdichtet wird im Browser (ein Client führt das Log per Yjs 
 bleibt alles auf unseren Servern und PHP braucht keine Yjs-Bibliothek. Erst als kleiner Prototyp prüfen.
 Offen: Zusammenspiel mit B-52 (mehrere Topics) und B-120 (Bucket-Board); Größe/Rate der Updates (heute 1 Nachricht/s pro
 Verbindung in poker-msg).
+Kanal (Andreas/Kai, 2026-11-06): eher eigener Kanal für die Text-Synchronisation – eigene Route im selben poker-msg-Prozess
+(z. B. `/poker-msg-doc`) mit eigenen Grenzen, nur offen, solange jemand das Topic bearbeitet/liest, Abo pro Topic. So
+bleiben pull/hb/Reaktionen des Boards unberührt; kein zweiter Server nötig (später auslagerbar).
+
+### B-122 Schätzprämisse: kurze Begründung zur eigenen Karte (optionaler Modus)
+Status: neu, Idee Andreas (2026-11-06). Optionaler Modus: Wer eine Karte legt, gibt eine kurze Begründung ein (ca. 150
+Zeichen, „Twitter-artig“): unter welcher Annahme geschätzt wurde. Beim Aufdecken sieht man die Prämissen der anderen
+(ggf. nur die der Extremwerte). Variante: Erst werden alle Prämissen gezeigt, dann darf jede Person ihre Schätzung noch
+einmal anpassen, danach wird aufgedeckt. Offen: Pflicht oder freiwillig im Modus; Anonym-Modus; Darstellung am Tisch;
+Speicherung (sensibler Freitext, wie Topic-Texte behandeln); Zusammenspiel mit B-104/B-115 (geänderte Karten).
+
+### B-123 KI-Teammitglied schätzt mit (Ausbaustufe)
+Status: neu, Idee Andreas (2026-11-06), Ausbaustufe nach B-52/B-121. Wenn Backlog-Items einen erklärenden Text haben
+(ggf. gemeinsam bearbeitet, B-121), könnte optional ein KI-Teammitglied mitschätzen (eigene Karte, ggf. mit Prämisse wie
+B-122). Offen: Datenschutz (Topic-Texte sind die sensibelsten Daten – nur mit ausdrücklicher Zustimmung des Teams,
+Anbieter/Hosting), Kosten, wie die KI-Karte am Tisch und in der Statistik zählt (nicht in Durchschnitt/Einigkeit?).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
