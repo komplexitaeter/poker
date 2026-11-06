@@ -1665,6 +1665,8 @@ wann eine Beta-Funktion Standard wird oder wieder verschwindet.
 Status: neu, Idee Andreas (2026-11-06), nicht für R3.
 **Use-Case:** Jemand hat den Bildschirm offen gelassen und ist kurz weg. Die Gruppe kommt nicht weiter (Aufdecken
 blockiert), will die Person aber auch nicht vom Tisch entfernen.
+Die away-Erkennung aus B-110 hilft hier nicht: Ein offener Laptop mit sichtbarem Tab sieht „anwesend“ aus. Auch
+Inaktivität (keine Eingabe) taugt nicht, weil Zuhörende ebenfalls nichts tippen. Deshalb bewusst manuell durch das Team.
 **Lösung (Stand Andreas, 2026-11-06, ersetzt die erste Idee „Pause for this round“ im Entfernen-Dialog):**
 - Neben dem Mülleimer am Platz eines Mitspielers ein **Pause-Symbol**. Ein Klick pausiert die Person.
 - Man kann sich auch **selbst** auf Pause setzen (z. B. vor einer kurzen Unterbrechung), Andreas 2026-11-06.
