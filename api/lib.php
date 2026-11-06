@@ -1123,8 +1123,9 @@ const ROADMAP_STATUS = ['PLANNED', 'IN_PROGRESS', 'DONE'];
 const ROADMAP_REACTIONS = ['UP', 'DOWN'];
 
 /*
- * B-57: votes are stored per phase - WANT while an entry is PLANNED or IN_PROGRESS, DONE once it is DONE.
- * So an entry set to DONE starts again at 0 in the public list. Same rule in SQL: roadmap_phase_sql().
+ * B-57: votes are stored per phase - WANT while an entry is PLANNED or IN_PROGRESS, DONE once it is DONE - so stats.php
+ * can show both phases. The public list continues counting when an entry is set to DONE (Andreas, 2026-11-06):
+ * there, the latest row of a user over all phases counts (see get_roadmap_items()). Same rule in SQL: roadmap_phase_sql().
  */
 function roadmap_phase(string $status): string {
     return $status === 'DONE' ? 'DONE' : 'WANT';
@@ -1135,21 +1136,31 @@ function roadmap_phase_sql(string $status_column): string {
 }
 
 /*
- * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none),
- * both for the current phase of the entry only. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by
- * (UP - DOWN) descending, then sort_order, then newest first.
+ * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none).
+ * Per user only the latest row over all phases counts (creation_date is set on every write; on equal timestamps the
+ * row of the current phase wins, as vote_roadmap.php only writes that one). A latest row with reaction NONE (removed)
+ * counts nothing. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by (UP - DOWN) descending, then sort_order,
+ * then newest first.
  * $item_id limits the result to that entry (empty array if it is not visible).
  */
 function get_roadmap_items($link, string $user_id, ?int $item_id = null): array {
-    $phase = roadmap_phase_sql('r.status');
+    $phase = roadmap_phase_sql('ri.status');
     $sql = $link->prepare("select x.* from (
                                select r.id, r.item_type, r.title, r.description, r.status, r.sort_order
-                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'UP') as up_cnt
-                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'DOWN') as down_cnt
-                                     ,(select v.reaction from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.user_id = ?) as my_reaction
+                                     ,count(case when l.reaction = 'UP' then 1 end) as up_cnt
+                                     ,count(case when l.reaction = 'DOWN' then 1 end) as down_cnt
+                                     ,max(case when l.user_id = ? and l.reaction in ('UP', 'DOWN') then l.reaction end) as my_reaction
                                  from pok_roadmap_tbl r
+                                 left join (
+                                     select v.item_id, v.user_id, v.reaction
+                                           ,row_number() over (partition by v.item_id, v.user_id
+                                                               order by v.creation_date desc, v.phase = $phase desc) as rn
+                                       from pok_roadmap_votes_tbl v
+                                       join pok_roadmap_tbl ri on ri.id = v.item_id
+                                 ) l on l.item_id = r.id and l.rn = 1
                                 where r.visible = 1
                                   and (? is null or r.id = ?)
+                                group by r.id
                            ) x
                            order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED'), x.up_cnt - x.down_cnt desc, x.sort_order, x.id desc");
     $sql->bind_param('sii', $user_id, $item_id, $item_id);
