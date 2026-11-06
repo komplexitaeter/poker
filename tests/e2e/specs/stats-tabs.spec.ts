@@ -74,3 +74,22 @@ test('"Rounds per day" counts a new round for today (live and usage tab)', async
   expect(Number(await usageToday.locator('td').nth(1).textContent())).toBeGreaterThanOrEqual(1);   // rounds
   expect(Number(await usageToday.locator('td').nth(2).textContent())).toBeGreaterThanOrEqual(1);   // teams
 });
+
+test('times are shown in the time zone of the browser (cookie stats_tz), UTC for an unknown zone', async ({ browser }) => {
+  // the inline script stores the browser's zone in the cookie stats_tz before the login form is sent
+  const context = await browser.newContext({ timezoneId: 'Asia/Tokyo' });
+  const admin = await context.newPage();
+  await gotoStats(admin, '/stats.php?tab=tech');
+  const dbTime = admin.locator('dt:text-is("DB time") + dd');
+  await expect(dbTime).toContainText('times shown in Asia/Tokyo, UTC+09:00');
+  const shown = ((await dbTime.textContent()) as string).trim().slice(0, 19);
+  const tokyo = Date.now() + 9 * 3600 * 1000;
+  expect(Math.abs(Date.parse(shown.replace(' ', 'T') + 'Z') - tokyo)).toBeLessThan(120000);
+
+  // a zone PHP does not know: UTC (the request API sends the cookie without running the inline script)
+  await context.clearCookies({ name: 'stats_tz' });
+  await context.addCookies([{ name: 'stats_tz', value: 'Mars/Olympus', domain: new URL(admin.url()).hostname, path: '/stats.php' }]);
+  const html = await (await admin.request.get('./stats.php?tab=tech')).text();
+  expect(html).toContain('times shown in <span id="stats_tz">UTC</span>, UTC+00:00');
+  await context.close();
+});
