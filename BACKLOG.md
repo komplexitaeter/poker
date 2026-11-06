@@ -901,6 +901,7 @@ refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns
 Stand (Andreas, 2026-11-01): noch nicht reif. R3-Review (2026-11-02): Abwesende blockieren das Aufdecken; mit der away-Erkennung aus B-110
 könnte „Reveal now“ bzw. „Abwesende nicht mitzählen“ jetzt sinnvoll gelöst werden. Andreas ist von „Reveal now“ als Button nicht überzeugt (Roadmap: 5 👍 / 1 👎);
 Problem dahinter (jemand ist kurz weg) bleibt, Lösung offen – Ideen: „Away“-Status, Abwesende automatisch ausnehmen.
+Lösungsidee Andreas (2026-11-06): „Pause for this round“ im Entfernen-Dialog, siehe B-125.
 
 ### B-60 Spaß-Funktionen
 Feedback (≈ 6×): Reaktionen/Emojis, Papierkugeln werfen, Fun-Karten, Emojis im Namen, Musik. Andreas: Backlog +
@@ -1659,6 +1660,16 @@ selbst einschalten (z. B. Schätzprämisse B-122, Bucket-Board B-120, T-Shape B-
 große Ideen mit echten Teams ausprobieren, ohne die Standard-Oberfläche zu verändern; Feedback je Beta-Funktion direkt dort.
 Offen: Einstellung pro Team (Feature-Flags in pok_teams_tbl) oder pro Person; Sichtbarkeit (immer oder nur per Link);
 wann eine Beta-Funktion Standard wird oder wieder verschwindet.
+
+### B-125 „Pause for this round“ statt Entfernen (Lösung für B-59)
+Status: neu, Idee Andreas (2026-11-06), nicht für R3. Im Bestätigungsdialog „Remove … from the table?“ (Mülleimer am
+Platz eines Mitspielers) kommt eine dritte, freundliche Option in Blau dazu: **„Pause for this round“**. Die Person bleibt
+am Tisch, bekommt für die laufende Runde die Systemkarte „Paused“ und blockiert das Aufdecken nicht mehr
+(`all_players_ready`). Mit der nächsten Runde ist sie wieder normal dabei. Das ist Andreas' Lösung für „Reveal anyway“ (B-59).
+- Neue Systemkarte (wie `late001` aus B-102, kein Teil eines Decks, nicht legbar über `setc.php`).
+- Offen, wo überall angepasst werden muss: Ready-Status, Tipps (zählt nicht mit), Statistik/Historie
+  (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Rücknahme (legt die Person doch noch eine Karte?).
+- Wer darf pausieren: jeder am Tisch (wie Entfernen) – vermutlich ja.
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
