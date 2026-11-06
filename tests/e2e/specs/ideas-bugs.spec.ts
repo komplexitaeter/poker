@@ -156,11 +156,13 @@ test('public list: seed entry, one reaction per user (set, change, remove), hidd
   expect((await vote(page, sid, item, 'UP')).status()).toBe(404);
 });
 
-test('votes per phase: an entry set to DONE starts at 0, new votes count for DONE, stats.php shows both', async ({ browser }) => {
+test('votes per phase: the count continues when an entry is set to DONE, stats.php shows both phases', async ({ browser }) => {
   const page = await newPlayer(browser);
   const sid = await boardUser(page);
   const other = await newPlayer(browser);
   const otherSid = await boardUser(other);
+  const third = await newPlayer(browser);
+  const thirdSid = await boardUser(third);
   const title = unique('Phase entry');
   const item = await createItem(page, title, sid, 'PLANNED');
 
@@ -172,28 +174,30 @@ test('votes per phase: an entry set to DONE starts at 0, new votes count for DON
   await setStatus(page, title, 'IN_PROGRESS');
   expect((await roadmap(page, sid)).find(i => i.id === item)).toMatchObject({ reactions: { UP: 1, DOWN: 1 }, my_reaction: 'UP' });
 
-  // DONE: public counts and own reaction start again
+  // DONE: counts and own reactions continue (Andreas, 2026-11-06)
   await setStatus(page, title, 'DONE');
-  expect((await roadmap(page, sid)).find(i => i.id === item)).toMatchObject({ status: 'DONE', reactions: { UP: 0, DOWN: 0 }, my_reaction: null });
+  expect((await roadmap(page, sid)).find(i => i.id === item)).toMatchObject({ status: 'DONE', reactions: { UP: 1, DOWN: 1 }, my_reaction: 'UP' });
+  expect((await roadmap(other, otherSid)).find(i => i.id === item)).toMatchObject({ reactions: { UP: 1, DOWN: 1 }, my_reaction: 'DOWN' });
 
-  const res = await vote(page, sid, item, 'UP');
-  expect(await res.json()).toMatchObject({ status: 'DONE', reactions: { UP: 1, DOWN: 0 }, my_reaction: 'UP' });
-  expect((await roadmap(other, otherSid)).find(i => i.id === item)).toMatchObject({ reactions: { UP: 1, DOWN: 0 }, my_reaction: null });
+  // changing after DONE replaces the old vote, removing it does not bring back the WANT vote, new votes add up
+  expect(await (await vote(page, sid, item, 'DOWN')).json()).toMatchObject({ status: 'DONE', reactions: { UP: 0, DOWN: 2 }, my_reaction: 'DOWN' });
+  expect(await (await vote(other, otherSid, item, 'NONE')).json()).toMatchObject({ reactions: { UP: 0, DOWN: 1 }, my_reaction: null });
+  expect(await (await vote(third, thirdSid, item, 'UP')).json()).toMatchObject({ reactions: { UP: 1, DOWN: 1 }, my_reaction: 'UP' });
+  expect((await roadmap(other, otherSid)).find(i => i.id === item)).toMatchObject({ reactions: { UP: 1, DOWN: 1 }, my_reaction: null });
 
+  // stats.php keeps both phases apart (NONE is not counted)
   await gotoStats(page, '/stats.php?tab=ideas');
-  await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 1 · after done: 👍 1 👎 0');
+  await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 1 · after done: 👍 1 👎 1');
 
-  // removing the DONE vote keeps the WANT vote
-  expect(await (await vote(page, sid, item, 'NONE')).json()).toMatchObject({ reactions: { UP: 0, DOWN: 0 }, my_reaction: null });
-  await gotoStats(page, '/stats.php?tab=ideas');
-  await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 1 · after done: 👍 0 👎 0');
-
-  // back to PLANNED: the WANT votes are shown again
+  // back to PLANNED: a new vote (same value as the old WANT row) is the latest one again
   await setStatus(page, title, 'PLANNED');
-  expect((await roadmap(page, sid)).find(i => i.id === item)).toMatchObject({ reactions: { UP: 1, DOWN: 1 }, my_reaction: 'UP' });
+  expect(await (await vote(page, sid, item, 'UP')).json()).toMatchObject({ status: 'PLANNED', my_reaction: 'UP' });
+  expect((await roadmap(third, thirdSid)).find(i => i.id === item)).toMatchObject({ reactions: { UP: 2, DOWN: 0 }, my_reaction: 'UP' });
+  await gotoStats(page, '/stats.php?tab=ideas');
+  await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 1 · after done: 👍 1 👎 1');
 });
 
-test('public list is sorted by status, then thumbs up minus down of the current phase, then order', async ({ browser }) => {
+test('public list is sorted by status, then thumbs up minus down, then order', async ({ browser }) => {
   const page = await newPlayer(browser);
   const sid = await boardUser(page);
   const other = await newPlayer(browser);

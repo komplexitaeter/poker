@@ -1,8 +1,9 @@
 <?php
 /*
  * B-57: sets (UP / DOWN) or removes (NONE) the reaction of a user (id = SID) on a visible entry of the public list.
- * One reaction per user id, entry and phase; the phase follows from the current status of the entry (roadmap_phase()),
- * the client does not send it. Answers with the updated entry (same shape as in get_roadmap.php).
+ * One row per user id, entry and phase; the phase follows from the current status of the entry (roadmap_phase()),
+ * the client does not send it. NONE is stored as a row too (not deleted): the public list counts the latest row of a
+ * user over all phases, so after removing a vote on a DONE entry the old WANT vote must not count again. Answers with the updated entry (same shape as in get_roadmap.php).
  * 400: invalid parameters, 403: user id has not joined a board (not in pok_players_tbl), 404: entry does not exist or is not visible.
  */
 require '../config.php';
@@ -38,14 +39,11 @@ if (count($items) !== 1) {
 }
 $phase = roadmap_phase($items[0]['status']);
 
-if ($reaction === 'NONE') {
-    $sql = $link->prepare("delete from pok_roadmap_votes_tbl where item_id = ? and user_id = ? and phase = ?");
-    $sql->bind_param('iss', $item, $id, $phase);
-} else {
-    $sql = $link->prepare("insert into pok_roadmap_votes_tbl (item_id, user_id, phase, reaction) values (?, ?, ?, ?) as new
-                           on duplicate key update reaction = new.reaction");
-    $sql->bind_param('isss', $item, $id, $phase, $reaction);
-}
+// creation_date is set explicitly: "on update current_timestamp" alone would keep it when the reaction stays the same,
+// and then an older row of the other phase could still be the latest one
+$sql = $link->prepare("insert into pok_roadmap_votes_tbl (item_id, user_id, phase, reaction) values (?, ?, ?, ?) as new
+                       on duplicate key update reaction = new.reaction, creation_date = current_timestamp");
+$sql->bind_param('isss', $item, $id, $phase, $reaction);
 $sql->execute();
 
 $items = get_roadmap_items($link, $id, $item);

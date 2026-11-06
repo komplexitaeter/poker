@@ -72,9 +72,10 @@ create table if not exists pok_roadmap_tbl (
   update_date timestamp not null default current_timestamp on update current_timestamp
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
 
-/* one reaction per user id, item and phase (UP = thumbs up, DOWN = thumbs down in the frontend).
+/* one reaction per user id, item and phase (UP = thumbs up, DOWN = thumbs down in the frontend, NONE = removed).
    phase: WANT while the item is PLANNED or IN_PROGRESS, DONE once it is DONE (set by vote_roadmap.php from the
-   item status), so an item set to DONE starts again at 0 in the app, and stats.php shows both phases. */
+   item status), so stats.php shows both phases. The app counts the latest row per user over all phases, so the
+   count continues when an item is set to DONE (Andreas, 2026-11-06). */
 create table if not exists pok_roadmap_votes_tbl (
   item_id int not null,
   user_id varchar(16) not null,
