@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer, deckCard, deckCards, setLegacyDeck } from './helpers';
 
 /**
  * B-68: from 800px a column is always there on the right, as wide as the menu panel: where the round
@@ -10,8 +10,8 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, setTimer } from './helpe
  * is switched on or off and ends a little (--dock-lift, 20px) above the deck tray's bottom edge; the deck is a compact tray floating
  * over the table, a gap before the column; its cards shrink to fit before it scrolls. The menu panel covers the column. Phones: no status
  * line; the spread (once revealed) and the round actions are a strip right above the deck. The spread's bars are stacks of
- * blocks of a fixed height per round (bar height / players), votes fade whole blocks in and out. The deck is input only (no usage bars, no pointer); keys 1–9
- * and 0 pick a card.
+ * blocks of a fixed height per round (bar height / players), votes fade whole blocks in and out. The deck is input only (no usage bars, no pointer); the letter
+ * keys (Q–P, A–L, Y–M) pick a card.
  */
 const DESKTOP = { width: 1280, height: 800 };
 
@@ -28,7 +28,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   // the column on the right edge down to the bottom, the table left of it; the round actions at its foot
   const status = alice.locator('#round_status');
   await expect(status).toBeVisible();
-  await expect(status).toHaveText('voting · 0/2 voted');
+  await expect(status).toHaveText('voting · 0 of 2 voted');
   const side = await box(alice, '.side');
   const table = await box(alice, '#table');
   expect(Math.round(side.x + side.width)).toBe(DESKTOP.width);
@@ -54,7 +54,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   const LIFT = 20;
   await expect.poll(async () => Math.abs(await btnBottom() + LIFT - await trayBottom())).toBeLessThan(1.5);
   // compact: hardly any room above the cards
-  const cardTop = (await box(alice, '#ctl img.on >> nth=0')).y;
+  const cardTop = (await deckCards(alice).first().boundingBox())!.y;
   expect(cardTop - (await box(alice, '#down-container')).y).toBeLessThan(16);
 
   // the topic is in the column
@@ -66,10 +66,10 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   expect(topic.y).toBeGreaterThanOrEqual((await box(alice, '#round_status')).y);
 
   // voting: no spread yet, but its room is kept; the round button keeps its place when the timer
-  // goes on and off. Alice picks the 6th card (5) with the key 6.
-  await alice.keyboard.press('6');
-  await expect(alice.locator('#ctl img#five001')).toHaveClass(/selected/);
-  await expect(status).toHaveText('voting · 1/2 voted');
+  // goes on and off. Alice picks the 6th card (5) with its key.
+  await alice.keyboard.press('KeyY'); // the 6th key of the top row (Z on QWERTZ, Y on QWERTY)
+  await expect(deckCard(alice, 'five001')).toHaveClass(/selected/);
+  await expect(status).toHaveText('voting · 1 of 2 voted');
   await expect(alice.locator('#spread')).toBeHidden();
   const spreadBefore = await box(alice, '#spread');
   expect(spreadBefore.height).toBeGreaterThan(100);
@@ -115,17 +115,16 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   }).toBe(true);
   await alice.keyboard.press('Escape');
 
-  // the hint sits in the row of the keys (level with them) when it fits next to them
-  await expect(alice.locator('#down-container')).not.toHaveClass(/hint-off/);
-  await expect(alice.locator('.deck-hint')).toBeVisible();
-  const keyBox = await box(alice, '#ctl .ctl-key >> nth=0');
-  const hintBox = await box(alice, '.deck-hint');
-  expect(Math.abs(keyBox.y + keyBox.height - (hintBox.y + hintBox.height))).toBeLessThan(2.5);
+  // B-99 F8: every card has a letter key below it (QWERTY without a layout map in English, R3 review E9); with 14 cards the last key lies too far right for the hint,
+  // which then hides (the row keeps its height; "deck tray" below shows it level with the keys)
+  await expect(alice.locator('#ctl .ctl-key')).toHaveText([...'QWERTYUIOPASDF']);
+  await expect(alice.locator('#down-container')).toHaveClass(/hint-off/);
+  await expect(alice.locator('.deck-hint')).toBeHidden();
 
   // a key in the menu does not pick a card
   await alice.locator('#cset_btn').click();
-  await alice.keyboard.press('1');
-  await expect(alice.locator('#ctl img#five001')).toHaveClass(/selected/);
+  await alice.keyboard.press('KeyQ');
+  await expect(deckCard(alice, 'five001')).toHaveClass(/selected/);
   await alice.keyboard.press('Escape');
 
   // still the column at 820px, narrower (300-380px); all 15 cards fit without scrolling (they
@@ -171,28 +170,24 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   await bob.context().close();
 });
 
-/** sets the deck of a team straight in the database (card indexes of cards.json) */
-function setDeck(t: string, indexes: number[]) {
-  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // checked before it goes into the statement
-  const flags = Array(46).fill('0');
-  indexes.forEach(i => flags[i] = '1');
-  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
-    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
-}
 
 test('deck tray: the hint never takes a row of its own, scrolling only as a last resort (B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Deck Tray');
   const t = new URL(url).searchParams.get('t')!;
-  setDeck(t, [0, 2, 3, 4, 6, 9, 10, 11, 12, 13]); // 10 cards: the 10th key lies far right
+  await setLegacyDeck(alice, t, [0, 2, 3, 4, 6, 9, 10, 11, 12, 13]); // 10 cards: the 10th key lies far right
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#ctl img.on')).toHaveCount(10);
+  await expect(deckCards(alice)).toHaveCount(10);
   const hint = alice.locator('.deck-hint');
   const trayRoom = async () => (await box(alice, '#down-container')).height - (await box(alice, '#ctl')).height;
 
   // wide: the hint in the row of the keys
   await expect(alice.locator('#down-container')).not.toHaveClass(/hint-off/);
   await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('press q–p to pick a card'); // B-99 F8: first and last key of the deck
+  const keyBox = await box(alice, '#ctl .ctl-key >> nth=0');
+  const hintBox = await box(alice, '.deck-hint');
+  expect(Math.abs(keyBox.y + keyBox.height - (hintBox.y + hintBox.height))).toBeLessThan(2.5); // level with the keys
   const roomWide = await trayRoom();
 
   // narrower: the hint does not fit next to the keys: hidden, the tray keeps its height
@@ -204,11 +199,11 @@ test('deck tray: the hint never takes a row of its own, scrolling only as a last
   await expect(hint).toBeVisible();
 
   // a very large deck: the cards shrink to their minimum, only then the deck scrolls
-  setDeck(t, Array.from({ length: 46 }, (_, i) => i));
+  await setLegacyDeck(alice, t, Array.from({ length: 46 }, (_, i) => i));
   await alice.reload();
-  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  await expect(deckCards(alice)).toHaveCount(46);
   await expect.poll(() => alice.locator('#ctl').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
-  const w = (await box(alice, '#ctl img.on >> nth=0')).width;
+  const w = (await deckCards(alice).first().boundingBox())!.width;
   expect(w).toBeGreaterThanOrEqual(25.5);
   expect(w).toBeLessThan(30);
   await expect(hint).toBeHidden();

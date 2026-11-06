@@ -9,6 +9,11 @@
  * Tabs (B-64, ?tab=): live (default, reloads every 30 s), usage, ideas (moderation), tech.
  * Only the queries of the shown tab run. Every query has a time range on an indexed column and a
  * MAX_EXECUTION_TIME hint. Never output a team id: it is the access key of a board.
+ *
+ * Times are shown in the viewer's time zone: an inline script stores the browser's IANA zone in the cookie
+ * stats_tz, PHP and the MySQL session use it (UTC without a valid cookie). MySQL gets the current UTC offset of
+ * that zone instead of its name (the MySQL time zone tables may not be loaded), so timestamp columns convert with
+ * today's offset: on days before/after a daylight saving change, times and day boundaries are off by one hour.
  */
 require './config.php';
 require './api/lib.php';
@@ -27,6 +32,8 @@ const MILESTONES = array('2026-10-28' => 'Rollout 1');
 define('AUTH_FILE', defined('STATS_HTPASSWD') ? STATS_HTPASSWD : '/etc/nginx/poker-stats.htpasswd');
 const AUTH_COOKIE = 'pokstats_auth';
 const AUTH_DAYS = 30;
+/* time zone of the viewer (IANA name), set by the inline script in <head> */
+const TZ_COOKIE = 'stats_tz';
 /* analytics events the current app still sends (script/*.js: measureEvent, gMenuSections in script_feedback.js) */
 const EVENTS = array(
     'BOARD_ON_LOAD'          => 'Board loaded',
@@ -67,6 +74,31 @@ function rows($link, string $sql, string $types = '', array $params = array()): 
     $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
     return $result;
+}
+
+/* time zone from the cookie if PHP knows it (incl. old names like Asia/Calcutta that browsers still report), else UTC */
+function viewer_time_zone(): string {
+    $tz = $_COOKIE[TZ_COOKIE] ?? null;
+    return is_string($tz) && in_array($tz, DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC), true) ? $tz : 'UTC';
+}
+
+/* UTC offset in seconds as "+HH:MM" */
+function utc_offset(int $seconds): string {
+    return ($seconds < 0 ? '-' : '+') . sprintf('%02d:%02d', intdiv(abs($seconds), 3600), intdiv(abs($seconds) % 3600, 60));
+}
+
+/*
+ * Switches the MySQL session to the viewer's current UTC offset (now(), curdate() and timestamp columns then
+ * use it). Returns the offset the DB used before: datetime columns written by the event jobs
+ * (pok_active_user_stats) hold that DB time and are not converted by MySQL.
+ */
+function set_db_time_zone($link, string $offset): string {
+    $db_offset = utc_offset((int)rows($link, "select timestampdiff(second, utc_timestamp(), now()) as s")[0]['s']);
+    $stmt = $link->prepare('set time_zone = ?');
+    $stmt->bind_param('s', $offset);
+    $stmt->execute();
+    $stmt->close();
+    return $db_offset;
 }
 
 /* percentage of $part in $total, rounded, 0 if $total is 0 */
@@ -134,6 +166,10 @@ function auth_user(array $entries): ?string {
     if (!isset($entries[$user])) return null;
     return hash_equals(auth_signature($parts[0] . '|' . $parts[1], $entries[$user]), $parts[2]) ? $user : null;
 }
+
+$time_zone = viewer_time_zone();
+date_default_timezone_set($time_zone);
+$time_zone_offset = date('P');
 
 $tab = filter_input(INPUT_GET, 'tab');
 if (!is_string($tab) || !array_key_exists($tab, STATS_TABS)) $tab = 'live';
@@ -387,12 +423,14 @@ function release_info(): array {
 
 /* ---------- data of the shown tab (queries first, so an error never leaves half a page) ---------- */
 $link = null;
+$db_offset = '+00:00';
 $data = array();
 $error = null;
 $open_feedback_cnt = 0;
 
 if ($auth_user !== null) try {   // not logged in: login form only, no query
     $link = db_init('utf8mb4');
+    $db_offset = set_db_time_zone($link, $time_zone_offset);
     $open_feedback_cnt = rows($link, "select /*+ MAX_EXECUTION_TIME(2000) */ count(1) as cnt
                                         from pok_feedback_tbl where done_date is null")[0]['cnt'];
 
@@ -446,14 +484,17 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
         // course of the day: pok_active_user_stats is filled every minute by the event job (db_jobs_pok.sql);
         // max of "active within the last 10 minutes" per 15-minute slot
         // the table and its job exist only where the event jobs are installed (live, not staging): no chart then
+        // creation_date is a datetime in DB time ($db_offset): the start of today is converted in PHP (range on the
+        // column stays indexable), the slot is computed from the time converted to the viewer's offset
+        $today_db = (new DateTime($data['now']['today'] . ' 00:00:00', new DateTimeZone($time_zone_offset)))->setTimezone(new DateTimeZone($db_offset))->format('Y-m-d H:i:s');
         try {
             $data['history'] = rows($link, "select /*+ MAX_EXECUTION_TIME(3000) */
-                       hour(creation_date) * 4 + floor(minute(creation_date) / 15) as slot
+                       hour(convert_tz(creation_date, ?, ?)) * 4 + floor(minute(convert_tz(creation_date, ?, ?)) / 15) as slot
                       ,max(last_ten_minutes) as clients
                   from pok_active_user_stats
-                 where creation_date >= curdate()
+                 where creation_date >= ?
                  group by slot
-                 order by slot");
+                 order by slot", 'sssss', array($db_offset, $time_zone_offset, $db_offset, $time_zone_offset, $today_db));
         } catch (mysqli_sql_exception $e) {
             if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist
             $data['history'] = array();
@@ -461,7 +502,7 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
 
 
     } else if ($tab === 'usage') {
-        // all dates from the DB clock, which the stored timestamps use as well
+        // all dates from the DB clock (session time zone = viewer's offset), which the timestamp columns use as well
         $data['today'] = rows($link, "select curdate() as today")[0]['today'];
         $data['this_week'] = date('Y-m-d', strtotime('monday this week', strtotime($data['today'])));
         $data['week_start'] = date('Y-m-d', strtotime($data['this_week'] . ' -' . (USAGE_WEEKS - 1) . ' week'));
@@ -543,7 +584,7 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
               from information_schema.tables
              where table_schema = database()
              order by data_length + index_length desc");
-        $data['db'] = rows($link, "select version() as version, @@time_zone as time_zone, @@system_time_zone as system_time_zone
+        $data['db'] = rows($link, "select version() as version, @@global.time_zone as time_zone, @@system_time_zone as system_time_zone
                                          ,now() as now_time")[0];
         // oldest event: min() over the index on creation_date reads a single index entry
         $data['oldest_event'] = rows($link, "select /*+ MAX_EXECUTION_TIME(2000) */ min(creation_date) as oldest
@@ -567,6 +608,24 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 <?php if ($tab === 'live' && $auth_user !== null) { ?>
     <meta http-equiv="refresh" content="<?= LIVE_RELOAD_SEC ?>" />
 <?php } ?>
+    <script>
+        /* times in the viewer's time zone: store the browser's zone in a cookie for PHP; on a data page reload once
+           if it was missing or changed (only if the cookie could be set, so no reload loop without cookies) */
+        (function () {
+            try {
+                var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (!tz) return;
+                var read = function () {
+                    var m = document.cookie.match(/(?:^|; )<?= TZ_COOKIE ?>=([^;]*)/);
+                    return m ? decodeURIComponent(m[1]) : null;
+                };
+                if (read() === tz) return;
+                document.cookie = '<?= TZ_COOKIE ?>=' + encodeURIComponent(tz) + '; path=' + location.pathname
+                    + '; max-age=31536000; samesite=lax' + (location.protocol === 'https:' ? '; secure' : '');
+                if (read() === tz && <?= $auth_user !== null ? 'true' : 'false' ?>) location.reload();
+            } catch (e) { /* no Intl or no cookies: times stay in UTC */ }
+        })();
+    </script>
     <title><?= $auth_user === null ? 'Login' : h(STATS_TABS[$tab]) ?> - Agile Poker stats</title>
     <style>
         /* B-64: console look of the app (tokens from style/style.css), dark by default, light per OS setting */
@@ -845,7 +904,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 ?>
     <section class="live" aria-labelledby="live_h">
         <h2 id="live_h">Right now</h2>
-        <p class="note statusline"><span><span class="pulse" aria-hidden="true"></span><strong>live</strong> as of <?= h(hm($data['now']['now_time'])) ?>, reloads every <?= LIVE_RELOAD_SEC ?> s</span>
+        <p class="note statusline"><span><span class="pulse" aria-hidden="true"></span><strong>live</strong> as of <?= h(hm($data['now']['now_time'])) ?> <span class="muted"><?= h($time_zone) ?></span>, reloads every <?= LIVE_RELOAD_SEC ?> s</span>
             <span>active table = started a new round (finished one) within the last <?= ACTIVE_ROUND_MINUTES ?> minutes; clients = its players and observers whose board loaded data within the same <?= ACTIVE_ROUND_MINUTES ?> minutes (may include some who already left)</span></p>
         <dl class="kpis">
             <div class="kpi"><dt>active tables</dt><dd id="kpi_teams"><?= h(count($tables)) ?></dd></div>
@@ -1117,7 +1176,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 <?php } ?>
             <dt>PHP</dt><dd><?= h(PHP_VERSION) ?></dd>
             <dt>MySQL</dt><dd><?= h($data['db']['version']) ?></dd>
-            <dt>DB time</dt><dd><?= h($data['db']['now_time']) ?> <span class="muted">(time zone <?= h($data['db']['time_zone']) ?>, system <?= h($data['db']['system_time_zone']) ?>)</span></dd>
+            <dt>DB time</dt><dd><?= h($data['db']['now_time']) ?> <span class="muted">(times shown in <span id="stats_tz"><?= h($time_zone) ?></span>, UTC<?= h($time_zone_offset) ?>; DB time zone <?= h($data['db']['time_zone']) ?>, system <?= h($data['db']['system_time_zone']) ?>, UTC<?= h($db_offset) ?>)</span></dd>
             <dt>Oldest analytics event</dt><dd><?= h($data['oldest_event'] ?? '-') ?></dd>
         </dl>
 

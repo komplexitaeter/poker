@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/lib_custom.php'; // B-98 S4: custom sets
+
 /*
  * Connects with utf8mb4 (B-85), so emojis in names and topics reach the utf8mb4 columns unchanged. Reading the
  * remaining utf8mb3 columns works the same. $charset only for special cases.
@@ -135,6 +137,25 @@ function notify_teams(array $team_ids): void {
 }
 
 /*
+ * B-102: system card "joined in". api/name.php sets it instead of the former automatic coffee cup (break01) when a
+ * player joins (or an observer becomes a player) while the cards are revealed, i.e. every PLAYER of the team has a
+ * card down. It keeps the round revealed (counts as "has a card down", ready_players_count) but is NO vote: it is in
+ * no set/deck, cannot be picked (setc.php answers 400), does not count for the celebration (needs_celebration) and
+ * must be left out of histogram, spread, average and tips in the frontend. dao.php delivers it as display_card_key
+ * 'late001' once the cards are revealed; sort_players_by_sequence() puts it last (unknown to the card files).
+ * The round snapshot (pok_roundstat_details_tbl) stores it as its own key, so break01 statistics stay clean.
+ * Frontend (Fred): key 'late001', symbol 's-late' (Delia), label "joined in", also in anonymous mode.
+ */
+const LATE_CARD_KEY = 'late001';
+
+/*
+ * B-106: the shruggie ("can't say – and that's ok") is a control card, but no objection: like LATE_CARD_KEY it neither
+ * breaks nor makes a consensus for needs_celebration (the others still need at least two matching cards), the same
+ * rule as the "Everyone agrees" tip in the frontend.
+ */
+const SHRUG_CARD_KEY = 'shrug01';
+
+/*
  * Maps a stored pok_teams_tbl.results_order to the values the app still knows (B-42): NAME or SEQUENCE.
  * Legacy CHOOSE:* values (the removed in-game choice; live data only ever had CHOOSE:SEQUENCE) and anything
  * unexpected become SEQUENCE, the default for new teams.
@@ -143,21 +164,492 @@ function normalize_results_order($results_order) {
     return $results_order === 'NAME' ? 'NAME' : 'SEQUENCE';
 }
 
-function sort_players_by_sequence(array $players)
+/*
+ * Sorts revealed players by their card (sort_order of cards.json and card_catalog.json), players with the same card
+ * keep their order (by name). B-98 S4: custom cards ($custom_rank, custom_card_rank()) come first, by their position
+ * in the set (not by value). Players with a card key unknown to all of them are never dropped: they come last, in their
+ * incoming order.
+ */
+function sort_players_by_sequence(array $players, array $custom_rank = array()): array
 {
-    $ret_val = array();
-    $cards = json_decode(file_get_contents('../cards.json'), true)["cards"];
+    $rank = card_rank();
+    $order = function ($key) use ($rank, $custom_rank): array {
+        if (isset($custom_rank[$key])) return [0, $custom_rank[$key]];
+        if (isset($rank[$key])) return [1, $rank[$key]];
+        return [2, 0];
+    };
+    usort($players, function ($a, $b) use ($order) {
+        return $order((string)$a->display_card_key) <=> $order((string)$b->display_card_key);
+    });
+    return $players;
+}
 
-    usort($cards, function($a, $b) {
-        return $a["sort_order"] - $b["sort_order"];
+/* card_key => position when all known cards are ordered by sort_order (ties: cards.json first, then file order) */
+function card_rank(): array
+{
+    static $rank = null;
+    if ($rank !== null) return $rank;
+
+    $cards = array();
+    $v1 = json_decode((string)file_get_contents(dirname(__DIR__) . '/cards.json'), true);
+    foreach ($v1['cards'] ?? array() as $card) $cards[] = $card;
+    $catalog = card_catalog();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['cards'] as $card) $cards[] = $card;
+    foreach ($catalog['controls'] as $card) $cards[] = $card;
+
+    $i = 0;
+    foreach ($cards as &$card) $card['pos'] = $i++;
+    unset($card);
+    usort($cards, function ($a, $b) {
+        return [$a['sort_order'], $a['pos']] <=> [$b['sort_order'], $b['pos']];
     });
 
+    $rank = array();
     foreach ($cards as $card)
-        foreach ($players as $player)
-            if ($card["card_key"] == $player->display_card_key)
-                $ret_val[] = $player;
+        if (!isset($rank[$card['card_key']])) $rank[$card['card_key']] = count($rank);
+    return $rank;
+}
 
-    return $ret_val;
+/*
+ * B-98: card catalog v2 (card_catalog.json): set groups with variants, their cards and the control cards. Read once
+ * per request. legacy_index is the position of a card in the old cardset_flags (cards.json v1).
+ * A missing, broken or half deployed file yields empty groups/controls and default_deck = null (an unknown default
+ * deck counts as missing); callers must then neither migrate nor store a deck (see getDao()).
+ * Statistics by card value must use numeric_value (or legacy_index for old rounds) from R3 on, not card_key: the same
+ * value has its own card_key in several groups (e.g. five001 in Fibonacci vs. num5 in Numbers).
+ */
+function card_catalog(): array
+{
+    static $catalog = null;
+    if ($catalog === null) {
+        $raw = @file_get_contents(dirname(__DIR__) . '/card_catalog.json');
+        $catalog = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($catalog)) $catalog = array();
+        foreach (array('groups', 'controls') as $key)
+            if (!isset($catalog[$key]) || !is_array($catalog[$key])) $catalog[$key] = array();
+        foreach ($catalog['groups'] as $i => $group) {
+            if (!isset($group['cards']) || !is_array($group['cards'])) $catalog['groups'][$i]['cards'] = array();
+            if (!isset($group['variants']) || !is_array($group['variants'])) $catalog['groups'][$i]['variants'] = array();
+        }
+        $default = $catalog['default_deck'] ?? null;
+        if (!is_string($default) || !isset(catalog_variants($catalog)[$default])) $catalog['default_deck'] = null;
+    }
+    return $catalog;
+}
+
+/* B-98: variant id => array('group' => group, 'variant' => variant) */
+function catalog_variants(array $catalog): array
+{
+    $variants = array();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['variants'] as $variant)
+            $variants[$variant['id']] = array('group' => $group, 'variant' => $variant);
+    return $variants;
+}
+
+/*
+ * B-98: derives the deck of a team from its old cardset_flags (lazy migration in getDao()). Returns the values for
+ * pok_teams_tbl.deck_id, deck_cards (null = all cards of the variant) and deck_controls (comma list, '' = none).
+ * - Control card bits (☕ ? ! ✋) are taken over as they are (existing teams keep their choice), except ✋ (veto) for
+ *   teams that end up in J.U.D.G.E. with "6 veto" (jdg6): that card covers it (Andreas, 2026-10-31).
+ * - The other cards equal a variant exactly -> that variant.
+ * - Otherwise they are a subset of a group (first group in catalog order, so Fibonacci wins over Numbers) -> the
+ *   first variant containing all of them (else the one sharing the most cards) with these cards switched on.
+ * - Otherwise (no card at all, e.g. needs_setup) -> the default deck with all of its cards.
+ * - B-98 S4: mixed groups -> also the default deck, plus 'mixed' = the catalog entries of the old cards in the old
+ *   deck order (sort_order); the callers turn them into a custom set of the team (migrate_mixed_deck()).
+ *   An old card is taken from the first group that has its legacy_index (Fibonacci before Numbers).
+ * Bits at positions without a card (or beyond the string, old teams have shorter strings) count as off. Cards without
+ * legacy_index (added after cards.json v1, e.g. 60, 89, the Mood faces, shruggie) are never derived from the flags.
+ */
+function deck_from_cardset_flags(?string $flags, array $catalog): array
+{
+    $flags = (string)$flags;
+    $is_on = function (int $index) use ($flags): bool {
+        return isset($flags[$index]) && $flags[$index] === '1';
+    };
+
+    $controls = array();
+    $control_indexes = array();
+    foreach ($catalog['controls'] as $control) {
+        if (!isset($control['legacy_index'])) continue; // B-106: control cards added later (shrug01) are not in the flags
+        $control_indexes[(int)$control['legacy_index']] = true;
+        if ($is_on((int)$control['legacy_index'])) $controls[] = $control['card_key'];
+    }
+
+    $selected = array();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['cards'] as $card)
+            if (isset($card['legacy_index']) && $is_on((int)$card['legacy_index'])) $selected[(int)$card['legacy_index']] = true;
+    $selected = array_keys(array_diff_key($selected, $control_indexes));
+    sort($selected);
+
+    $result = array('deck_id' => (string)$catalog['default_deck'], 'deck_cards' => null,
+                    'deck_controls' => implode(',', $controls));
+    if (count($selected) === 0) return $result;
+
+    foreach ($catalog['groups'] as $group) {
+        $index_of = array_column($group['cards'], 'legacy_index', 'card_key');
+        foreach ($group['variants'] as $variant) {
+            // a variant with a card that has no legacy_index can never equal old flags
+            if (count(array_diff($variant['cards'], array_keys($index_of))) > 0) continue;
+            $indexes = array_map(function ($key) use ($index_of) { return $index_of[$key]; }, $variant['cards']);
+            sort($indexes);
+            if ($indexes === $selected) {
+                $result['deck_id'] = $variant['id'];
+                return drop_veto_for_judge($result, $group['id'], $variant['cards']);
+            }
+        }
+    }
+
+    foreach ($catalog['groups'] as $group) {
+        // only cards that exist in the old bitmask (60, 89 have no legacy_index; array_column would number them itself)
+        $legacy_cards = array_filter($group['cards'], fn($card) => isset($card['legacy_index']));
+        $key_of = array_column($legacy_cards, 'card_key', 'legacy_index');
+        if (count(array_diff($selected, array_keys($key_of))) > 0) continue;
+
+        $keys = array();
+        foreach ($group['cards'] as $card)
+            if (isset($card['legacy_index']) && in_array((int)$card['legacy_index'], $selected, true)) $keys[] = $card['card_key'];
+
+        $best = null;
+        $best_common = -1;
+        foreach ($group['variants'] as $variant) {
+            $common = count(array_intersect($keys, $variant['cards']));
+            if ($common === count($keys)) { $best = $variant; break; }
+            if ($common > $best_common) { $best = $variant; $best_common = $common; }
+        }
+        $result['deck_id'] = $best['id'];
+        $result['deck_cards'] = implode(',', $keys);
+        return drop_veto_for_judge($result, $group['id'], $keys);
+    }
+
+    $mixed = array();
+    foreach ($selected as $index) {
+        foreach ($catalog['groups'] as $group) {
+            foreach ($group['cards'] as $card) {
+                if (isset($card['legacy_index']) && (int)$card['legacy_index'] === $index) {
+                    $mixed[] = $card;
+                    continue 3;
+                }
+            }
+        }
+    }
+    usort($mixed, function ($a, $b) {
+        return [(int)($a['sort_order'] ?? 0), (int)$a['legacy_index']] <=> [(int)($b['sort_order'] ?? 0), (int)$b['legacy_index']];
+    });
+    $result['mixed'] = $mixed;
+    return $result;
+}
+
+/* B-98: a team migrated to J.U.D.G.E. including "6 veto" (jdg6) does not get the ✋ control card as well. */
+function drop_veto_for_judge(array $result, string $group_id, array $card_keys): array
+{
+    if ($group_id !== 'judge' || !in_array('jdg6', $card_keys, true)) return $result;
+    $controls = array_filter(explode(',', $result['deck_controls']), function ($key) {
+        return $key !== '' && $key !== 'veto';
+    });
+    $result['deck_controls'] = implode(',', $controls);
+    return $result;
+}
+
+/*
+ * B-98: the deck of a team as delivered by dao.php:
+ * {id: variant id, group: group id, cards: [active card keys in deck order], controls: [active control card keys], rev}
+ * Card data (value, heading, description, numeric value) comes from card_catalog.json. Unknown ids and keys (e.g. after
+ * a catalog change) fall back to the default deck and are ignored; at least one card always stays on.
+ * B-98 S4: a custom set (deck id 'c-<set id>', $custom_sets from load_custom_sets()) gives
+ * {id: 'c-<set id>', group: 'custom', set_id, cards: [keys of its active cards in position order], controls, rev}.
+ * B-98 (cards on/off): deck_cards of a custom set is the switched-on part of its cards (custom_deck_selection()).
+ * A deleted, unknown or empty set falls back to the default deck.
+ */
+function resolve_deck(?string $deck_id, ?string $deck_cards, ?string $deck_controls, int $deck_rev, array $catalog,
+                      array $custom_sets = array()): array
+{
+    $controls = array();
+    $wanted = array_flip(explode(',', (string)$deck_controls));
+    foreach ($catalog['controls'] as $control)
+        if (isset($wanted[$control['card_key']])) $controls[] = $control['card_key'];
+
+    $set_id = custom_set_id_of($deck_id);
+    if ($set_id !== null && isset($custom_sets[$set_id]) && count($custom_sets[$set_id]['cards']) > 0) {
+        return array('id' => $deck_id, 'group' => CUSTOM_DECK_GROUP, 'set_id' => $set_id,
+                     'cards' => custom_deck_selection($custom_sets[$set_id]['cards'], $deck_cards),
+                     'controls' => $controls, 'rev' => $deck_rev);
+    }
+
+    $variants = catalog_variants($catalog);
+    $entry = $variants[(string)$deck_id] ?? $variants[$catalog['default_deck']] ?? null;
+    if ($entry === null) return array('id' => null, 'group' => null, 'cards' => array(), 'controls' => array(), 'rev' => $deck_rev);
+
+    $cards = $entry['variant']['cards'];
+    if ($deck_cards !== null && $deck_cards !== '' && $entry['variant']['id'] === $deck_id) {
+        $wanted = array_flip(explode(',', $deck_cards));
+        $subset = array();
+        foreach ($entry['group']['cards'] as $card)
+            if (isset($wanted[$card['card_key']])) $subset[] = $card['card_key'];
+        if (count($subset) > 0) $cards = $subset;
+    }
+
+    return array('id' => $entry['variant']['id'], 'group' => $entry['group']['id'], 'cards' => $cards,
+                 'controls' => $controls, 'rev' => $deck_rev);
+}
+
+/*
+ * B-98 S2: the old bitmask (cardset_flags, cards.json v1) for a resolved deck, so boards and the old deck menu that
+ * still read cardset_flags show the same deck (until R3 S5). Cards without legacy_index (new cards, custom cards) are
+ * left out. J.U.D.G.E./Delegation cards map to the old number cards at the same positions.
+ * Known gap until boards reload (F5): an old board shows these decks as the old number cards, and choosing in the old
+ * deck menu (update_cardset.php) resets deck_id, so the deck is derived from the flags again (number cards).
+ */
+function deck_to_cardset_flags(array $deck, array $catalog): string
+{
+    $index_of = array();
+    foreach ($catalog['groups'] as $group)
+        foreach ($group['cards'] as $card)
+            if (($deck['group'] ?? null) === $group['id'] && isset($card['legacy_index']))
+                $index_of[$card['card_key']] = (int)$card['legacy_index'];
+    foreach ($catalog['controls'] as $control)
+        if (isset($control['legacy_index'])) $index_of[$control['card_key']] = (int)$control['legacy_index'];
+
+    $length = count($index_of) > 0 ? max(46, max($index_of) + 1) : 46;
+    $flags = str_repeat('0', $length);
+    foreach (array_merge($deck['cards'], $deck['controls']) as $key)
+        if (isset($index_of[$key])) $flags[$index_of[$key]] = '1';
+    return $flags;
+}
+
+/*
+ * B-98 S2: parses a comma list of card keys from a request ('' = empty list). null if any key does not look like a
+ * card key ([A-Za-z0-9_-], at most 7 characters) or the list is too long; duplicates are dropped.
+ */
+function parse_card_keys(string $value, int $max_count = 60): ?array
+{
+    if ($value === '') return array();
+    $keys = explode(',', $value);
+    if (count($keys) > $max_count) return null;
+    foreach ($keys as $key)
+        if (!preg_match('/^[A-Za-z0-9_-]{1,7}$/D', $key)) return null;
+    return array_values(array_unique($keys));
+}
+
+/*
+ * B-98 S2: reads the deck of a team and locks its row until the end of the caller's transaction, so two parallel deck
+ * changes run one after the other (the second sees the first one's deck and new round). A team that was not migrated
+ * yet (deck_id null) gets the deck derived from its cardset_flags (as in getDao()); the caller stores it with its change.
+ * B-98 S4: an old mixed deck becomes a custom set right here and is stored at once (migrate_team_deck_locked()), so
+ * every caller sees the same set. 'custom_sets' = the team's sets (load_custom_sets()), for resolve_deck().
+ * Returns null for an unknown team.
+ */
+function lock_team_deck($link, string $t, array $catalog): ?array
+{
+    // B-115: round_show_card_changes for setc.php, read under the same lock
+    $sql = $link->prepare("select cardset_flags, needs_setup, deck_id, deck_cards, deck_controls, deck_rev
+                                , round_show_card_changes
+                             from pok_teams_tbl
+                            where id = ?
+                              for update");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    if (!is_array($row)) return null;
+    if ($row['deck_id'] === null) {
+        $migrated = migrate_team_deck_locked($link, $t, $row['cardset_flags'], $catalog, false);
+        $row['deck_id'] = $migrated['deck_id'];
+        $row['deck_cards'] = $migrated['deck_cards'];
+        $row['deck_controls'] = $migrated['deck_controls'];
+    }
+    $row['custom_sets'] = load_custom_sets($link, $t, $catalog);
+    $row['deck'] = resolve_deck($row['deck_id'], $row['deck_cards'], $row['deck_controls'], (int)$row['deck_rev'],
+                                $catalog, $row['custom_sets']);
+    return $row;
+}
+
+/*
+ * B-98: the lazy migration of a team without deck_id; the caller holds the lock on the team row (select ... for
+ * update). The deck is derived from cardset_flags (deck_from_cardset_flags()). B-98 S4: an old mixed deck becomes a
+ * custom set "Our deck" (migrate_mixed_deck()) and is stored right away, as it created rows. Other decks are only
+ * stored if $store (getDao(); lock_team_deck() callers store them with their change, as before).
+ * Returns deck_id, deck_cards, deck_controls.
+ */
+function migrate_team_deck_locked($link, string $t, ?string $cardset_flags, array $catalog, bool $store): array
+{
+    $migrated = deck_from_cardset_flags($cardset_flags, $catalog);
+    if (isset($migrated['mixed'])) {
+        $custom = migrate_mixed_deck($link, $t, $migrated['mixed'], $catalog);
+        if ($custom !== null) {
+            $migrated['deck_id'] = $custom['deck_id'];
+            $migrated['deck_cards'] = $custom['deck_cards'];
+            $store = true;
+        }
+    }
+    if ($store) {
+        $sql = $link->prepare("update pok_teams_tbl set deck_id = ?, deck_cards = ?, deck_controls = ?
+                                where id = ? and deck_id is null");
+        $sql->bind_param('ssss', $migrated['deck_id'], $migrated['deck_cards'], $migrated['deck_controls'], $t);
+        $sql->execute();
+    }
+    return $migrated;
+}
+
+/*
+ * B-98 S2: stores a changed deck (variant, single cards, control cards) of a team: deck_rev + 1, cardset_flags kept in
+ * line for the old board (deck_to_cardset_flags()), needs_setup = 0 if $setup_done (a deck was chosen).
+ * $deck as returned by resolve_deck().
+ * deck_cards is stored as null when all cards of the variant are on.
+ */
+function store_team_deck($link, string $t, array $deck, array $catalog, bool $setup_done): void
+{
+    if (isset($deck['set_id'])) {
+        // B-98 S4: custom set, keys kept for the round snapshot; B-98: the switched-on cards (null = all)
+        $deck_cards = custom_deck_cards($deck['cards']);
+    } else {
+        $all = catalog_variants($catalog)[$deck['id']]['variant']['cards'];
+        $deck_cards = (count($deck['cards']) === count($all) && count(array_diff($deck['cards'], $all)) === 0)
+            ? null : implode(',', $deck['cards']);
+    }
+    $deck_controls = implode(',', $deck['controls']);
+    $flags = deck_to_cardset_flags($deck, $catalog);
+    $sql = $link->prepare("update pok_teams_tbl
+                              set deck_id = ?, deck_cards = ?, deck_controls = ?, deck_rev = deck_rev + 1
+                                 ,cardset_flags = ?, needs_setup = if(?, 0, needs_setup)
+                            where id = ?");
+    $done = $setup_done ? 1 : 0;
+    $sql->bind_param('ssssis', $deck['id'], $deck_cards, $deck_controls, $flags, $done, $t);
+    $sql->execute();
+}
+
+/*
+ * B-98 V6: the set group of a deck for "who changed the card set": the catalog group, for a custom set its deck id
+ * (every custom set counts as its own group). null for no deck.
+ */
+function deck_group_key(?array $deck): ?string
+{
+    if ($deck === null) return null;
+    return ($deck['group'] ?? null) === CUSTOM_DECK_GROUP ? (string)$deck['id'] : ($deck['group'] ?? null);
+}
+
+/*
+ * B-98 V6: remembers who changed the set group of the team last (player id from get_id_param('id'); '' = unknown,
+ * stored as null). dao.php delivers the name as deck.changed_by. Callers only call it when the group changes.
+ */
+function set_deck_changed_by($link, string $t, string $player_id): void
+{
+    $by = $player_id !== '' ? $player_id : null;
+    $sql = $link->prepare("update pok_teams_tbl set deck_changed_by = ? where id = ?");
+    $sql->bind_param('ss', $by, $t);
+    $sql->execute();
+}
+
+/*
+ * B-103: true if a player of the team may put the card $key down: it is one of the cards of the team's deck that are
+ * switched on ("cards on/off") or one of its active control cards. $deck as returned by resolve_deck() (e.g. via
+ * lock_team_deck(), which also covers teams not migrated yet). Status cards (prgrss*, done001) and LATE_CARD_KEY are
+ * in no deck, so they are never allowed. Without a valid card_catalog.json (default_deck null) getDao() delivers no
+ * deck and the board falls back to cards.json; then every key is allowed, as before B-103.
+ */
+function deck_allows_card(array $deck, string $key, array $catalog): bool
+{
+    if ($catalog['default_deck'] === null) return true;
+    return in_array($key, $deck['cards'], true) || in_array($key, $deck['controls'], true);
+}
+
+/* B-98 S2: true if at least one player of the team has a card down (B-102: cards of observers, e.g. late001, do not count) */
+function team_has_cards_down($link, string $t): bool
+{
+    $sql = $link->prepare("select count(card_key) cnt from pok_players_tbl where team_id = ? and player_type = 'PLAYER'");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_object();
+    return $row !== null && (int)$row->cnt > 0;
+}
+
+/*
+ * Starts a new round (newround.php; B-98 S2 also update_deck.php when the deck changes while cards are down):
+ * snapshot of the round in pok_roundstats_tbl (incl. the deck of the round: deck_id, deck_cards, deck_controls, so
+ * callers that change the deck call this BEFORE storing the new deck) and pok_roundstat_details_tbl, then all cards
+ * up. type_code NEW_ROUND if every player had a card down, else CANCEL_ROUND. B-104: the snapshot keeps
+ * original_card_key (card at the reveal of a player who changed it afterwards), then it is cleared. B-115: the new
+ * round takes over show_card_changes as round_show_card_changes. Does not notify.
+ */
+function start_new_round($link, string $t): void
+{
+    $sql = $link->prepare( "delete from pok_players_tbl
+                                   where team_id=?
+                                    and last_callback_time < TIMESTAMPADD(MONTH, -2, CURRENT_TIMESTAMP);
+                                ");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+
+    $sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, type_code, timer_start_time
+                            , timer_pause_time ,timer_visibility, topic, cardset_flags, results_order, show_avg
+                            , anonymous_mode, deck_id, deck_cards, deck_controls)
+                select p.team_id
+                     , count(1) players_count
+                     , IF(count(1) = count(p.card_key), 'NEW_ROUND', 'CANCEL_ROUND') type_code
+                     , t.timer_start_time
+                     , t.timer_pause_time
+                     , t.timer_visibility
+                     , t.topic
+                     , t.cardset_flags
+                     , t.results_order
+                     , t.show_avg
+                     , t.anonymous_mode
+                     , t.deck_id
+                     , t.deck_cards
+                     , t.deck_controls
+                  from pok_players_tbl p, pok_teams_tbl t
+                 where p.team_id = ?
+                   and p.player_type = 'PLAYER'
+                   and t.id = p.team_id
+                 group by p.team_id, t.timer_start_time, t.timer_pause_time, t.timer_visibility, t.topic");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+
+    $sql = $link->prepare( "select last_insert_id() as last_id");
+    $sql->execute();
+    $result = $sql->get_result();
+    $obj = $result->fetch_object();
+    if ($obj != null && $obj->last_id != 0) {
+        // B-104: column list, original_card_key is an invisible column (not covered by an insert without list)
+        $sql = $link->prepare( "insert into pok_roundstat_details_tbl
+                                        (roundstat_id, player_id, team_id, name, card_key, player_type, original_card_key)
+                                    select ? roundstat_id, t.id as player_id, t.team_id, t.name, t.card_key, t.player_type
+                                         , t.original_card_key
+                                    from pok_players_tbl t
+                                    where t.team_id = ?
+                                      and t.last_callback_time > TIMESTAMPADD(DAY, -1, CURRENT_TIMESTAMP);
+                                    ");
+        $sql->bind_param('is', $obj->last_id, $t);
+        $sql->execute();
+    }
+
+    // B-115: the setting "See changed cards" takes effect with the new round (snapshot for setc.php and getDao())
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.anonymous_mode = t.anonymous_request_toggle
+                                        ,t.round_show_card_changes = t.show_card_changes
+                                   where t.id=?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+
+    /* B-67: with "auto-start on new round" a visible timer restarts at 0 (TIMER mode: at T-timebox) and runs.
+       Applies to NEW_ROUND and CANCEL_ROUND; otherwise the timer stays untouched. */
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_start_time = current_timestamp
+                                        ,t.timer_pause_time = null
+                                   where t.id=?
+                                     and t.timer_visibility = 1
+                                     and t.timer_auto_restart = 1");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+
+    $sql = $link->prepare( "update pok_players_tbl p
+                                     set card_key = null
+                                        ,original_card_key = null
+                                   where p.team_id=?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
 }
 
 function name2id($name) {
@@ -242,6 +734,10 @@ function get_team_id($name, $link) {
 }
 
 
+/* B-110: a player is "away" when his board has not loaded dao.php for this many seconds. The board loads dao.php on
+   every hb of poker-msg (every 30 s, plus 0-5 s jitter), so 70 s = two missed heartbeats (Andreas, 2026-11-01). */
+const AWAY_AFTER_SEC = 70;
+
 function getDao($t, $id) {
     $all_players_ready = true;
     $one_ore_more_player_ready = false;
@@ -256,6 +752,10 @@ function getDao($t, $id) {
     $card_key = '';
     $player_type = null;
     $cardset_flags = null;
+    $deck = null;
+    $custom_sets = array(); // B-98 S4: set id => set (load_custom_sets())
+    $custom_played = array(); // B-98 S4: custom cards on the table that are in no active set any more
+    $deck_changed_by = null;
     $team_name = null;
     $color_mode = 'dark';
     $hide_teaser = 0;
@@ -264,13 +764,17 @@ function getDao($t, $id) {
     $results_order = 'NAME';
     $show_avg = 0;
     $players=array();
+    $observers = array(); // B-110: connected observers only (not away), {name, mkey}
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
     $show_tips = 1;
+    $show_card_changes = 1; // B-115: team setting
+    $round_show_card_changes = 1; // B-115: setting of the running round (original cards stored and shown)
     $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
     $ready_players_count = 0;
+    $voters_count = 0; // B-102, B-106: players with a real card (not LATE_CARD_KEY/SHRUG_CARD_KEY), for needs_celebration
 
     if ($id === null || strlen($id) < 10) die();
 
@@ -302,7 +806,15 @@ function getDao($t, $id) {
                   ,t.anonymous_mode
                   ,t.anonymous_request_toggle
                   ,t.show_tips
+                  ,t.show_card_changes
+                  ,t.round_show_card_changes
                   ,t.needs_setup
+                  ,t.deck_id
+                  ,t.deck_cards
+                  ,t.deck_controls
+                  ,t.deck_rev
+                  ,t.deck_changed_by
+                  ,t.example_set_given
             FROM pok_teams_tbl as t
              WHERE t.id = ?");
     $sql->bind_param('s', $t);
@@ -323,14 +835,94 @@ function getDao($t, $id) {
         $anonymous_mode = (int)$obj->anonymous_mode;
         $anonymous_request_toggle = (int)$obj->anonymous_request_toggle;
         $show_tips = (int)$obj->show_tips;
+        $show_card_changes = (int)$obj->show_card_changes;
+        $round_show_card_changes = (int)$obj->round_show_card_changes;
         $needs_setup = (bool)$obj->needs_setup;
+        $deck_changed_by = $obj->deck_changed_by; // B-98 V6: player id, the name comes from the players below
+
+        /* B-98: lazy migration - a team without deck_id gets the deck derived from its cardset_flags (also after the
+           old deck menu changed them, update_cardset.php resets deck_id). Only if the flags are still the ones read
+           here, so a parallel update_cardset.php is never overwritten. No notify_team(): dao.php must never notify. */
+        $catalog = card_catalog();
+        if (!isset($catalog['default_deck'])) {
+            $deck = null; // broken or half deployed card_catalog.json: deliver no deck, store nothing
+        } else {
+            $deck_id = $obj->deck_id;
+            $deck_cards = $obj->deck_cards;
+            $deck_controls = $obj->deck_controls;
+            if ($deck_id === null) {
+                $migrated = deck_from_cardset_flags($obj->cardset_flags, $catalog);
+                $deck_id = $migrated['deck_id'];
+                $deck_cards = $migrated['deck_cards'];
+                $deck_controls = $migrated['deck_controls'];
+                if (isset($migrated['mixed'])) {
+                    /* B-98 S4: an old mixed deck becomes a custom set. That creates rows, so it runs under the lock
+                       of the team row: a parallel dao.php waits and then finds the migrated deck (no second set). */
+                    /* A lock wait timeout or deadlock must not break the board: roll back, deliver the derived deck,
+                       the next load migrates (B-116 review, Sina). */
+                    try {
+                        $link->begin_transaction();
+                        $sql_m = $link->prepare("select cardset_flags, deck_id, deck_cards, deck_controls
+                                                   from pok_teams_tbl where id = ? for update");
+                        $sql_m->bind_param('s', $t);
+                        $sql_m->execute();
+                        $locked = $sql_m->get_result()->fetch_assoc();
+                        if (is_array($locked) && $locked['deck_id'] === null) {
+                            $migrated = migrate_team_deck_locked($link, $t, $locked['cardset_flags'], $catalog, true);
+                        } else if (is_array($locked)) {
+                            $migrated = $locked;
+                        }
+                        $link->commit();
+                    } catch (mysqli_sql_exception $e) {
+                        $link->rollback();
+                        error_log('poker dao: deck migration of a team skipped, retried on the next load: ' . $e->getMessage());
+                    }
+                    $deck_id = $migrated['deck_id'];
+                    $deck_cards = $migrated['deck_cards'];
+                    $deck_controls = $migrated['deck_controls'];
+                } else {
+                    $sql_m = $link->prepare("update pok_teams_tbl
+                                                set deck_id = ?, deck_cards = ?, deck_controls = ?
+                                              where id = ?
+                                                and deck_id is null
+                                                and cardset_flags <=> ?");
+                    $sql_m->bind_param('sssss', $deck_id, $deck_cards, $deck_controls, $t, $obj->cardset_flags);
+                    $sql_m->execute();
+                }
+            }
+            /* B-116: the example set, once per team, after the migration above (an old mixed deck gets its set
+               "Our deck" before the example set counts against the limit). Not activated, no notify_team(). */
+            if ((int)$obj->example_set_given === 0) {
+                /* A lock wait timeout or deadlock must not break the board: roll back (the flag stays 0), the next
+                   load tries again (B-116 review, Sina). */
+                try {
+                    $given = give_example_set($link, $t, $catalog);
+                    if ($given !== null) {
+                        $deck_id = $given['deck_id'];
+                        $deck_cards = $given['deck_cards'];
+                        $deck_controls = $given['deck_controls'];
+                    }
+                } catch (mysqli_sql_exception $e) {
+                    $link->rollback();
+                    error_log('poker dao: example set of a team skipped, retried on the next load: ' . $e->getMessage());
+                }
+            }
+            $custom_sets = load_custom_sets($link, $t, $catalog);
+            $deck = resolve_deck($deck_id, $deck_cards, $deck_controls, (int)$obj->deck_rev, $catalog, $custom_sets);
+            $deck['changed_by'] = null; // B-98 V6: name of the player who changed the set group last (null = unknown)
+        }
     }
 
-    $sql = $link->prepare("SELECT p.*
+    // B-104: original_card_key is an invisible column, not part of p.*
+    /* B-110: away is computed by the database (no clock skew between web and DB server); unix_timestamp() so a DST
+       switch of the session time zone cannot shift the comparison. Same query as before, no extra round trip. */
+    $sql = $link->prepare("SELECT p.*, p.original_card_key
+                  ,if(unix_timestamp(p.last_callback_time) < unix_timestamp() - ?, 1, 0) as away
               FROM pok_players_tbl p
              WHERE p.team_id = ?
              ORDER BY p.name");
-    $sql->bind_param('s', $t);
+    $away_after_sec = AWAY_AFTER_SEC;
+    $sql->bind_param('is', $away_after_sec, $t);
     $sql->execute();
     $objs = array();
     if ($result = $sql->get_result()) {
@@ -338,6 +930,11 @@ function getDao($t, $id) {
         $previous_card = null;
 
         while(  $obj = $result->fetch_object()) {
+
+            // B-110: the own board is loading right now, so the own person is never away
+            $obj->away = ($obj->id != $id && (int)$obj->away === 1);
+
+            if ($deck !== null && $obj->id === $deck_changed_by) $deck['changed_by'] = $obj->name; // B-98 V6
 
             if ($obj->id == $id) {
                 $name=$obj->name;
@@ -357,16 +954,38 @@ function getDao($t, $id) {
                 }
 
 
-                if ($players_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;
-                $previous_card = $obj->card_key;
+                /* B-102, B-106: "joined in" and the shruggie are no vote, so they neither break nor make a consensus */
+                if ($obj->card_key !== LATE_CARD_KEY && $obj->card_key !== SHRUG_CARD_KEY) {
+                    $voters_count++;
+                    if ($voters_count > 1 && $previous_card !== $obj->card_key) $needs_celebration = false;
+                    $previous_card = $obj->card_key;
+                }
 
 
                 $objs[] = $obj;
+            } elseif ($obj->player_type === 'OBSERVER' && !$obj->away) {
+                /* B-110: observers without connection are simply left out (Andreas, 2026-11-01). The own observer
+                   row is included (like the own card in players); the board finds it by mkey. Never the id. */
+                $observers[] = (object) array(
+                    "name"=>$obj->name,
+                    // mkey must stay a string in the JSON (compared with ===, see below)
+                    "mkey"=>(string)$obj->mkey);
             }
         }
 
-        if ($players_count<2) $needs_celebration = false;
+        if ($voters_count<2) $needs_celebration = false;
     }
+
+    /* B-98 S4: custom cards on the table (also the original card of B-104) that are no active card of a set any more
+       (changed, removed, set deleted): their data comes along, so the table can still draw them */
+    $active_custom = array();
+    foreach ($custom_sets as $set)
+        foreach ($set['cards'] as $card) $active_custom[$card['card_key']] = true;
+    $missing = array();
+    foreach ($objs as $obj)
+        foreach (array($obj->card_key, $obj->original_card_key) as $key)
+            if (is_string($key) && str_starts_with($key, CUSTOM_DECK_PREFIX) && !isset($active_custom[$key])) $missing[] = $key;
+    if (count($missing) > 0) $custom_played = array_values(load_custom_cards_by_key($link, $t, $missing, card_catalog()));
 
 
     $sql = $link->prepare("SELECT count(1) as user_exists
@@ -429,18 +1048,32 @@ function getDao($t, $id) {
         else
             $display_card_key = 'done001';
 
+        /* B-104: card at the reveal if the player changed it afterwards (stack "card changed"). Only while revealed
+           (nothing leaks before), also in anonymous mode; never under the system card or a taken back card.
+           B-115: never in a round with "See changed cards" off (switching it on later shows nothing either). */
+        $original_card_key = null;
+        if ($all_players_ready && $round_show_card_changes === 1 && $obj->original_card_key !== null && $obj->card_key !== null
+            && $obj->card_key !== LATE_CARD_KEY && $obj->original_card_key !== $obj->card_key) {
+            $original_card_key = $obj->original_card_key;
+        }
+
         $player = (object) array(
             "name"=>$obj->name
         // mkey must stay a string in the JSON: the frontend compares it with the DOM card id via ===
         ,"mkey"=>(string)$obj->mkey
         ,"display_card_key"=>$display_card_key
+        ,"original_card_key"=>$original_card_key // B-104: null = no stack
+        ,"away"=>$obj->away // B-110: no dao.php load for AWAY_AFTER_SEC seconds (never the own card)
         ,"i"=>(int)null);
         $players[] = $player;
 
     }
 
-    if ($all_players_ready and ($results_order === 'SEQUENCE' or $anonymous_mode == 1 ))
-        $players = sort_players_by_sequence($players);
+    if ($all_players_ready and ($results_order === 'SEQUENCE' or $anonymous_mode == 1 )) {
+        $custom_cards = $custom_played;
+        foreach ($custom_sets as $set) $custom_cards = array_merge($custom_cards, $set['cards']);
+        $players = sort_players_by_sequence($players, custom_card_rank($custom_cards));
+    }
 
     for ($i=0;$i<count($players);$i++) {
         $players[$i]->i= $i;
@@ -454,6 +1087,10 @@ function getDao($t, $id) {
         "survey"=>$survey,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
+        "deck"=>$deck, // B-98: {id, group, cards, controls, rev}, card data in card_catalog.json (B-98 S4: custom_sets)
+        "custom_sets"=>array_values($custom_sets), // B-98 S4: [{set_id, deck_id, name, style, rev, cards}]
+        "custom_cards_played"=>$custom_played, // B-98 S4: inactive custom cards still on the table
+        "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>custom_cards_max()),
         "topic"=>(String)$topic,
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
@@ -466,6 +1103,8 @@ function getDao($t, $id) {
         "anonymous_mode"=>$anonymous_mode,
         "anonymous_request_toggle"=>$anonymous_request_toggle,
         "show_tips"=>$show_tips, // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
+        "show_card_changes"=>$show_card_changes, // B-115: team setting "See changed cards", 1 = on (default)
+        "round_show_card_changes"=>$round_show_card_changes, // B-115: the setting of the running round, 0 = no stacks
         "needs_setup"=>$needs_setup,
         "selected_card_key"=>$card_key,
         "player_type"=>$player_type,
@@ -474,7 +1113,8 @@ function getDao($t, $id) {
         "needs_celebration"=>$needs_celebration,
         "players_count"=>$players_count,
         "ready_players_count"=>$ready_players_count,
-        "players"=>$players );
+        "players"=>$players,
+        "observers"=>$observers ); // B-110: connected observers, ordered by name
 }
 
 /* B-57: allowed values for feedback types, roadmap status and reactions (UP = thumbs up, DOWN = thumbs down) */
@@ -483,8 +1123,9 @@ const ROADMAP_STATUS = ['PLANNED', 'IN_PROGRESS', 'DONE'];
 const ROADMAP_REACTIONS = ['UP', 'DOWN'];
 
 /*
- * B-57: votes are stored per phase - WANT while an entry is PLANNED or IN_PROGRESS, DONE once it is DONE.
- * So an entry set to DONE starts again at 0 in the public list. Same rule in SQL: roadmap_phase_sql().
+ * B-57: votes are stored per phase - WANT while an entry is PLANNED or IN_PROGRESS, DONE once it is DONE - so stats.php
+ * can show both phases. The public list continues counting when an entry is set to DONE (Andreas, 2026-11-06):
+ * there, the latest row of a user over all phases counts (see get_roadmap_items()). Same rule in SQL: roadmap_phase_sql().
  */
 function roadmap_phase(string $status): string {
     return $status === 'DONE' ? 'DONE' : 'WANT';
@@ -495,21 +1136,31 @@ function roadmap_phase_sql(string $status_column): string {
 }
 
 /*
- * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none),
- * both for the current phase of the entry only. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by
- * (UP - DOWN) descending, then sort_order, then newest first.
+ * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none).
+ * Per user only the latest row over all phases counts (creation_date is set on every write; on equal timestamps the
+ * row of the current phase wins, as vote_roadmap.php only writes that one). A latest row with reaction NONE (removed)
+ * counts nothing. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by (UP - DOWN) descending, then sort_order,
+ * then newest first.
  * $item_id limits the result to that entry (empty array if it is not visible).
  */
 function get_roadmap_items($link, string $user_id, ?int $item_id = null): array {
-    $phase = roadmap_phase_sql('r.status');
+    $phase = roadmap_phase_sql('ri.status');
     $sql = $link->prepare("select x.* from (
                                select r.id, r.item_type, r.title, r.description, r.status, r.sort_order
-                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'UP') as up_cnt
-                                     ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.reaction = 'DOWN') as down_cnt
-                                     ,(select v.reaction from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = $phase and v.user_id = ?) as my_reaction
+                                     ,count(case when l.reaction = 'UP' then 1 end) as up_cnt
+                                     ,count(case when l.reaction = 'DOWN' then 1 end) as down_cnt
+                                     ,max(case when l.user_id = ? and l.reaction in ('UP', 'DOWN') then l.reaction end) as my_reaction
                                  from pok_roadmap_tbl r
+                                 left join (
+                                     select v.item_id, v.user_id, v.reaction
+                                           ,row_number() over (partition by v.item_id, v.user_id
+                                                               order by v.creation_date desc, v.phase = $phase desc) as rn
+                                       from pok_roadmap_votes_tbl v
+                                       join pok_roadmap_tbl ri on ri.id = v.item_id
+                                 ) l on l.item_id = r.id and l.rn = 1
                                 where r.visible = 1
                                   and (? is null or r.id = ?)
+                                group by r.id
                            ) x
                            order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED'), x.up_cnt - x.down_cnt desc, x.sort_order, x.id desc");
     $sql->bind_param('sii', $user_id, $item_id, $item_id);
@@ -591,17 +1242,42 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
 
     }
 
-    /* by default, all flow_control relevant cards should be set as active */
-    foreach ($cards_conf["cards"] as $card) {
-        if ($card["flow_control"]) {
-            $cardset_flags = substr_replace($cardset_flags, "1", $card["index"], 1);
+    /* B-98 S2: the deck of the new team from the preset (or the default deck for 'custom' and unknown presets) with
+       the default control cards of card_catalog.json (☕ ?, Andreas 2026-10-31); cardset_flags follows the deck for
+       boards that still read it. Without a valid catalog: all flow_control cards as before, deck_id stays null
+       (getDao() migrates later). */
+    $catalog = card_catalog();
+    $deck_id = null;
+    $deck_cards = null;
+    $deck_controls = null;
+    if ($catalog['default_deck'] !== null) {
+        $default_controls = array_intersect(array_column($catalog['controls'], 'card_key'),
+                                            (array)($catalog['default_controls'] ?? array()));
+        $deck = deck_from_cardset_flags($cardset_flags, $catalog);
+        $deck = resolve_deck($deck['deck_id'], $deck['deck_cards'], implode(',', $default_controls), 0, $catalog);
+        $deck_id = $deck['id'];
+        $variant_cards = catalog_variants($catalog)[$deck_id]['variant']['cards'];
+        $deck_cards = $deck['cards'] === $variant_cards ? null : implode(',', $deck['cards']);
+        $deck_controls = implode(',', $deck['controls']);
+        if ($needs_setup === 1) {
+            foreach ($catalog['controls'] as $control)
+                if (in_array($control['card_key'], $deck['controls'], true) && isset($control['legacy_index']))
+                    $cardset_flags = substr_replace($cardset_flags, "1", $control['legacy_index'], 1);
+        } else {
+            $cardset_flags = deck_to_cardset_flags($deck, $catalog);
+        }
+    } else {
+        foreach ($cards_conf["cards"] as $card) {
+            if ($card["flow_control"]) {
+                $cardset_flags = substr_replace($cardset_flags, "1", $card["index"], 1);
+            }
         }
     }
 
-
-    $sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order, topic, needs_setup)
-                                VALUES(?,?,?,'SEQUENCE',?,?)");
-    $sql->bind_param('ssssi', $id, $cardset_flags, $t, $topic, $needs_setup);
+    $sql = $link->prepare("INSERT INTO pok_teams_tbl(id, cardset_flags, name, results_order, topic, needs_setup
+                                                    ,deck_id, deck_cards, deck_controls)
+                                VALUES(?,?,?,'SEQUENCE',?,?,?,?,?)");
+    $sql->bind_param('ssssisss', $id, $cardset_flags, $t, $topic, $needs_setup, $deck_id, $deck_cards, $deck_controls);
 
     if ($sql->execute()) {
         $id_val = $id;

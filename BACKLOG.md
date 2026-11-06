@@ -898,8 +898,10 @@ Backlog-Liste (B-57)? – noch klären.
 ### B-59 Aufdecken, bevor alle gewählt haben
 Feedback (3×): Button „reveal now“, wenn jemand abwesend ist, statt ihn zu entfernen. Andreas: ins Backlog + öffentlich;
 refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns Smarteres ein.
-Stand (Andreas, 2026-11-01): noch nicht reif. Andreas ist von „Reveal now“ als Button nicht überzeugt (Roadmap: 5 👍 / 1 👎);
+Stand (Andreas, 2026-11-01): noch nicht reif. R3-Review (2026-11-02): Abwesende blockieren das Aufdecken; mit der away-Erkennung aus B-110
+könnte „Reveal now“ bzw. „Abwesende nicht mitzählen“ jetzt sinnvoll gelöst werden. Andreas ist von „Reveal now“ als Button nicht überzeugt (Roadmap: 5 👍 / 1 👎);
 Problem dahinter (jemand ist kurz weg) bleibt, Lösung offen – Ideen: „Away“-Status, Abwesende automatisch ausnehmen.
+Lösungsidee Andreas (2026-11-06): Mitspieler pausieren (Pause-Symbol neben dem Mülleimer), siehe B-125.
 
 ### B-60 Spaß-Funktionen
 Feedback (≈ 6×): Reaktionen/Emojis, Papierkugeln werfen, Fun-Karten, Emojis im Namen, Musik. Andreas: Backlog +
@@ -1322,7 +1324,8 @@ Entscheidungen Andreas zum Deck-Menü (2026-10-31, Mock-up „Deck-Menü R3“):
 - **Menü:** Variante C (erst Gruppe, dann Variante/Steuerkarten/Karten) mit Karten-Fächern aus B. „Eigenes Set definieren“
   als Vollbild-Overlay mit explizitem **Save**/Cancel (das Team sieht Änderungen erst nach Save).
 - **Migration:** `cardset_flags`, die genau einer Gruppe/Variante (+ Steuerkarten) entsprechen, werden übernommen; alle
-  anderen fallen auf den Standard zurück.
+  anderen fallen auf den Standard zurück. Fällt ein Team auf J.U.D.G.E. (mit „6 veto“), wird die Steuerkarte ✋ nicht
+  übernommen – „6 veto“ deckt sie ab; bei allen anderen Gruppen bleibt ✋ wie gewählt.
 - **Standard** für neue Teams und Rückfall: Fibonacci Classic + Steuerkarten.
 - **Steuerkarten** (☕ ? ! ✋) gelten **pro Team**, unabhängig vom Set; immer Stil `plain`. ✋ veto (Steuerkarte) und
   J.U.D.G.E. „6 veto“ sind verschiedene Karten. „!“ heißt **important**; Texte: need a break / question / important / veto.
@@ -1390,7 +1393,7 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Die Tipps (B-70/B-79) sind a
 keine offenen Fragen gibt.**
 - Keine 5 (need to talk), keine 6 (veto), kein „?“: „Decision accepted.“ – gibt es 3 (severe concerns) oder 4 (step out),
   zusätzlich als Angebot: „Concerns from <Name> (3) – want to hear them?“
-- 5 oder „?“ (zählt wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
+- 5, „?“ oder „!“ (zählen wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
 - Nur 6: Veto anhören.
 - Anonym-Modus: ohne Namen. Tipps abschaltbar wie bisher (B-96).
 Offen/später: ob Delegation, Ampel, Emotionen ebenfalls eigene Tipp-Regeln brauchen.
@@ -1407,6 +1410,10 @@ gewählt, ggf. nicht im Set, löst den Pausen-Tipp aus, verfälscht die ☕-Stat
 - Statistik: eigener Key, damit ☕-Zahlen künftig sauber sind (und man sieht, wie oft jemand später kommt).
 
 ### B-103 `setc.php`: gelegte Karte gegen das Deck des Teams prüfen
+Status: umgesetzt (rollout-3), freigegeben von Andreas (2026-11-01), Teil von R3. `setc.php` lehnt Keys außerhalb der
+eingeschalteten Deck-Karten und Steuerkarten des Teams mit 400 ab (ohne Schreiben/notify, Deck über `lock_team_deck()`
+inkl. Lazy-Migration, `deck_allows_card()` in `api/lib.php`); Karte zurücknehmen bleibt erlaubt. Ohne gültigen
+`card_catalog.json` keine Prüfung (Board nutzt dann `cards.json`).
 Hinweis Sina (Review B-102, 2026-10-31): `setc.php` speichert jeden formal gültigen `cardkey`, auch Karten außerhalb des
 aktiven Decks bzw. der Steuerkarten des Teams (z. B. per Direktaufruf); sie zählen dann in `getDao()` als Stimme. Kein
 XSS-Risiko (Ausgabe per textContent). Minimaler Fix: Keys ablehnen (400), die weder im Deck noch in den Steuerkarten des
@@ -1418,7 +1425,12 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Wer **nach dem Aufdecken** s
 - Änderungen vor dem Aufdecken zählen nicht.
 - Mehrere Änderungen: nur **Original + aktuell** (keine Zwischenstände).
 - Zurück auf die Originalkarte: **kein Stapel** mehr.
-- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte.
+- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte. Ausnahme „Let them explain“ (Andreas,
+  2026-10-31): Genannt werden die Extremwerte der Karten beim Aufdecken (Original, sonst aktuell) **und** der aktuellen
+  Karten – wer beim Aufdecken ein Extrem war, bleibt drin, wer neu auf ein Extrem wechselt, kommt dazu; Anzeige
+  „Name (5→8)“. „Everyone agrees“ nur nach aktuellen Karten; J.U.D.G.E. (B-101) nur aktuelle Karten.
+- Die Originalkarte zeigt **immer** oben links ihren Wert bzw. ihr Mini-Symbol (Andreas, 2026-10-31), auch Bild- und
+  Steuerkarten, J.U.D.G.E. und kleine Karten auf dem Phone.
 - **Statistik:** Originalkarte wird gespeichert (additive Spalte, Snapshot der Runde) – auswertbar, wie oft Teams nach
   der Diskussion umschwenken.
 - Anonym-Modus: Stapel ebenfalls (Namen sind dort ohnehin verborgen). Neue Runde: Original wird gelöscht.
@@ -1482,6 +1494,213 @@ Konto, Telefonnummer), die ID im Browser ist ohnehin flüchtig. **User-ID nach e
   **Local Storage**, nicht im „Session Store“ (bleibt also über das Schließen des Browsers hinaus); Rundenstatistik und
   Nutzungs-Events erwähnen; Hinweis, dass „Delete User“ alles umfasst, erst wenn der Fix live ist.
 
+
+### B-110 Tisch-Interaktion: „away“-Erkennung, Karten-Kontextmenü, Beobachter, Reaktionen
+Status: neu, nicht priorisiert (Ideen Andreas, 2026-11-01; Mockups Delia „Kontextmenü A/B/C“, Analyse Ben). Fasst
+B-56 (Players-Menü) und B-60 (Spaß-Funktionen) am Tisch zusammen. Für nach R3, in Schritten:
+1. **„away“ erkennen** (Andreas: Entfernen ist mission-critical): Board lädt bei jedem `hb` (30 s, mit 0–5 s Zufall)
+   einmal `dao.php`; `getDao()` liefert je Spieler `away`, wenn `last_callback_time` älter als ca. 2 verpasste `hb`
+   ist (Andreas; Schwelle als Konstante, ~70 s). Tab im Hintergrund zählt als „da“ (WebSocket bleibt offen),
+   gesperrtes Handy/eingefrorener Tab nach der Schwelle als „away“. Kein Schema. Neutrales Symbol „Verbindung gestört“
+   (kein 💤/Emoji), Mülleimer an dieser Karte dauerhaft sichtbar (auch ohne Hover). Risiko: Neu-Rendern alle 30 s
+   muss ruhig bleiben (kein Flackern, Eingaben/Fokus bleiben). poker-msg nach offenen Verbindungen fragen: vorerst nicht.
+2. **Beobachter sichtbar**: Zeile „observing: …“ unter dem Tisch (DAO liefert Beobachter mit Name/`mkey`); nur
+   verbundene Beobachter, ohne Mülleimer.
+3. **Kontextmenü / zweiter Kreis** auf Karten (Variante offen: A Popover, B Bottom-Sheet, C zweiter Kreis neben dem
+   Mülleimer): Entfernen, Reaktionen, eigene Karte (Name ändern, beobachten).
+4. **Reaktionen + Nudge**: Emoji fliegt von der eigenen zur gewählten Karte; feste 6 Emojis; kein Team-Schalter
+   (erst bei Bedarf). **Direkt über den WebSocket** (Andreas, 2026-11-01): Board sendet `react:<von-mkey>:<an-mkey>:<code>`,
+   poker-msg leitet es an **alle** Verbindungen derselben Team-Subscription weiter, auch an den Absender (Andreas:
+   alle im Team sehen den Wurf von A zu B; A animiert erst beim Echo, nichts vorab) (kein `react.php`, kein
+   Neuladen). poker-msg prüft das Format streng (nur Codes aus fester Liste, feste Länge) und bremst (z. B. 1/s je
+   Verbindung). „von“ ist fälschbar – bei einer Spaßfunktion vertretbar. Nichts in die DB, keine Statistik.
+   Stand Andreas (2026-11-01, abends): Emoji-Leiste 🎂 ❤️ 👏 🎉 🤔 👍 🐟 (☕ und 👋 raus). **Nudge** ist kein Emoji, sondern
+   ein eigener Kreis neben dem Smiley: Karte wackelt bei allen, ohne Absender (auch in der Nachricht: `react:0:<an>:nudge`).
+Entscheidungen Andreas: jeder darf jeden Spieler entfernen. **Beobachter** (Andreas, 2026-11-01): nicht entfernbar;
+ist ihre Verbindung weg („away“), werden sie in der Beobachter-Zeile einfach ausgeblendet (kein Symbol, kein Mülleimer); im Anonym-Modus dürfen Reaktionen geschickt
+und auch auf anonyme Karten geworfen werden.
+Variante (Andreas, 2026-11-01): **C** – zwei Kreise an der Karte (Smiley → Emoji-Leiste, Mülleimer). Desktop: beide beim
+Hover. Touch-Geräte (wie heute `(hover: none), (pointer: coarse)`, Tablets inklusive): Kreise erst nach Antippen der
+Karte, mit einmaligem Hinweis; Rückfrage beim Entfernen immer (Desktop und Touch, Andreas 2026-11-01). Getrennte Spieler: Verbindungssymbol (WLAN
+durchgestrichen, neutral) und Mülleimer dauerhaft sichtbar.
+### B-111 Setgruppen erklären: Kurztext, 2-Minuten-Video, „Train your team“
+Status: neu, nicht priorisiert. Idee Andreas (R3-Review, 2026-11-02): Jede Setgruppe zielt auf eine Workshop-Methode
+(Estimation, J.U.D.G.E., Delegation Poker, Team Assessment …), wird in der App aber nicht erklärt. Je Setgruppe ein
+kurzes Video (ca. 2 min, auch synthetisch, im eigenen Stil): was ist es, wozu, grober Ablauf. Darunter „Training für
+dein Team buchen“ mit Preisindikation (Trainings = Online-Kurse verschiedener Länge, immer fürs ganze Team; vgl.
+Monetarisierungs-Ideen). Vorschlag Team (Delia/Fred): in Stufen – (1) drei Zeilen Text je Set im Deck-Menü, (2) „▶ 2 min“
+je Set (kein Autoplay, selbst gehostet bzw. erst nach Klick laden – Datenschutz), (3) ruhiger Link „Train your team“;
+nie während einer Abstimmung (Board wird oft geteilt). Offen: Produktion, Hosting, Preis in der App oder auf der Landingpage.
+
+### B-112 Einladen am leeren Tisch
+Status: neu, nicht priorisiert. Aus dem R3-Review (Delia, 2026-11-02): Solange weniger als zwei Spieler am Tisch sind,
+zeigt ein leerer Platz „Invite your team“ (Link kopieren bzw. Teilen-Menü am Handy). Hängt mit V2 (Copy link → Invite)
+zusammen.
+
+### B-113 Seitenleiste je nach Phase: beim Abstimmen schmal, nach dem Aufdecken Ergebnis groß
+Status: neu, nicht priorisiert. Aus Live-Feedback zu R2 (2026-11-05, Scrum Master): Seitenleiste ein- und ausklappbar,
+damit mehr Platz für große Karten bleibt und alles Wichtige auf einen Bildschirm passt (neue Runde, Streuung, Mehrheit).
+Gedanke Andreas (2026-11-05): Beim Abstimmen braucht man die Seitenleiste kaum (besonders wer sich auskennt oder die Tipps
+abgeschaltet hat) – dann eingeklappt bzw. schmal. Nach dem Aufdecken ist das Ergebnis (Spanne, Durchschnitt, Verteilung)
+das Wichtigste und darf eher größer werden. Ideen: Ausklappen per Knopf, Zustand pro Person merken; eingeklappt „New round“
+im Dock und eine kurze Ergebniszeile am Tisch. Hängt mit B-53 (Ergebnisdarstellung, Sidebar zunächst eingeklappt) zusammen.
+Offen: automatisch je Phase oder nur manuell; Verhalten bei geteiltem Bildschirm; Handy unverändert.
+Gedanken für das Refinement (Andreas/Kai, 2026-11-05):
+- Leitplanke: Niemand soll die Panelgröße je Spielsituation selbst nachstellen müssen. Wenn, dann folgt das Panel der
+  Phase automatisch; man kann übersteuern, und das Board merkt sich die Wahl (einmal entscheiden, nicht jede Runde).
+- Ob nach dem Aufdecken die Zusammenfassung rechts oder die aufgedeckten Karten am Tisch wichtiger sind, ist vermutlich
+  individuell und kontextabhängig (Einigkeit, Ausreißer, geteilter Bildschirm). Eher den Tisch selbst lesbarer machen
+  (z. B. Ausreißer am Tisch hervorheben) statt das Panel wichtiger.
+- Mit Topics (B-52) ändert sich die Rolle des Panels (Agenda/Historie). B-113, B-53 und B-52 deshalb zusammen als ein
+  Thema „Board-Layout“ refinen.
+- Lernen statt raten: zwei, drei klickbare Varianten (wie das Deck-Menü-Mockup) in echten Sessions ausprobieren,
+  ggf. mit der Person, von der das Feedback kam.
+
+### B-114 Verdeckt wählen beim Bildschirmteilen
+Status: neu, nicht priorisiert. Roadmap-Eintrag „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
+Problem: Wer seinen Bildschirm teilt (oft Scrum Master/Moderation), verrät beim Abstimmen die eigene Wahl – die gewählte
+Karte ist im Deck hervorgehoben und liegt am eigenen Platz offen.
+Idee Andreas (2026-11-05): Zwei Tabs derselben Person – eine **Presenter-Sicht** zum Teilen (Tisch ohne eigene Wahl bzw.
+verdeckt, kein Deck) und ein **zweiter Tab mit dem Bedienteil** (Deck, ggf. Menüs) zum eigenen Abstimmen; oder das
+Bedienteil in einen zweiten Tab „auslagern“. Man teilt den einen Tab und stimmt im anderen ab, niemand sieht die Wahl.
+Leitplanke: Beide Tabs gehören zur selben User-Session (gleiche User-ID/Name); es darf dadurch keinen Weg aufs Board
+ohne registrierten Spieler mit Namen geben (z. B. Presenter-Sicht nur aus einer bestehenden Session heraus öffnen).
+Offen: Was genau zeigt die Presenter-Sicht, was der Bedien-Tab; Handy. Abhängigkeit zu B-113 (Panel-Anordnung) nur lose:
+B-114 kann unabhängig davon gebaut werden; was die Präsentier-Ansicht vom Panel zeigt, folgt später B-113.
+Hinweis (Andreas, 2026-11-05): Zwei Tabs derselben Person funktionieren heute schon (gleiche User-ID, gleiche Sicht).
+B-114 ist damit im Kern nur ein Ansichtsmodus (z. B. aus dem Menü „Open presenter view“ → neuer Tab mit Parameter):
+eigene Karte am Tisch verdeckt bis zum Aufdecken, kein Deck, keine Hervorhebung – vermutlich kleiner Aufwand (Frontend).
+Präzisierung Andreas (2026-11-05): reine Präsentier-Ansicht – keine Controls (Deck, Round-Button), Menüs weitgehend
+weg; statt „Open presenter view“ dort ein Knopf „Return to user view“ (falls der andere Tab geschlossen wurde).
+Zugang (Andreas, 2026-11-05): Voraussetzung ist ein angemeldeter Spieler dieses Teams. Umsetzung z. B. per URL-Parameter
+(`?t=…&view=presenter`): Der Client zeigt die Präsentier-Ansicht nur, wenn die eigene User-ID (localStorage, also pro
+Browser) in diesem Team bereits mit Namen am Tisch bzw. als Beobachter registriert ist; sonst wird der Parameter ignoriert
+und man landet im normalen Modus (Namensabfrage). Ein versehentlich weitergeschickter Link öffnet beim Empfänger also
+die normale Ansicht. Kein neuer Weg aufs Board ohne Namen.
+Nachtrag: Lieber gar keinen Parameter in der URL (kopierte Links bleiben normale Links). POST in neuen Tab ginge
+(Formular mit `target="_blank"`), macht aber Reload/Zurück unschön. Vorschlag Kai: Tab per `window.open(url, 'poker-presenter')`
+öffnen – der Tab-Name (`window.name`) markiert die Präsentier-Ansicht, steht nicht in der URL und überlebt Reloads;
+zusätzlich gilt die Prüfung „registrierter Spieler dieses Teams“.
+Frühere Idee (Kai): „Presenter“-Schalter, der die eigene Wahl im selben Tab verbirgt – Nachteil: man sieht die eigene
+Wahl selbst nicht mehr.
+
+### B-117 Badges und Feier-Animationen
+Status: neu, nicht priorisiert (Kandidat R4). Anlass: Live-Feedback zu R2 wünscht eine „fancier party animation“ (Laser +
+Konfetti), wenn alle dieselbe Karte legen. Idee Andreas (2026-11-05): nicht einfach einbauen, sondern als Bindungsmaßnahme –
+Teams „erarbeiten“ sich über die Zeit Badges, und mit jedem Badge kommt eine bessere Feier-Animation (z. B. Konfetti →
+Feuerwerk → Laser-Light-Show → Drohnenshow …).
+- Badges hängen am **Team** (Team-ID): Das belohnt, immer denselben Link zu nutzen – gewollt (Andreas).
+- Mögliche Kriterien (Details offen): Anzahl gespielter Runden, Anzahl Spieler, verschiedene genutzte Sets, Anzahl
+  „Strikes“ (alle legen dieselbe Karte). Daten liegen größtenteils schon in der Rundenstatistik.
+- Barrierefreiheit: kein echtes Stroboskop/Flackern (Epilepsie-Risiko, WCAG 2.3.1) – ersetzen (z. B. Disco-Kugel) oder
+  sanft; bei `prefers-reduced-motion` nur eine ruhige Variante.
+- Abschaltbar („Celebrations: On/Off“ in Board → Results), z. B. bei geteiltem Bildschirm oder ernsten Sessions
+  (Consent decision).
+- Klein anfangen: zwei, drei Stufen, nur über Runden und Strikes; Badge-Übersicht und Regeln später.
+- Inkrementell ausbauen (Andreas, 2026-11-05): Stufen so anlegen, dass über die Zeit neue dazukommen (wie Level bei
+  Zwift) – die höchste Stufe ist nie „fertig“, neue Animationen kommen mit späteren Releases oben drauf. Schwellen so
+  wählen, dass bestehende Teams beim Hinzufügen neuer Stufen nicht sofort alles freigeschaltet haben.
+Offen: genaue Schwellen, wo/wie Badges sichtbar sind, wer die Animation auslöst (alle am Tisch gleichzeitig).
+
+### B-118 Wachstum über Produktmechanismen (statt Werbung)
+Status: neu, nach R3 gemeinsam durchdenken. Andreas (2026-11-06): nicht selbst groß bewerben, sondern Mechanismen, die mit
+der Nutzung skalieren. Leitidee: Dinge anbieten, die Leute eher dazu bringen, sie öffentlich zu teilen – ausgelagerte,
+teilbare Seiten, immer mit Link im Header zurück zur SEO-Seite auf komplexitaeter.de.
+- Teilnehmer werden Gastgeber: dezenter Weg vom Board zu „Eigenes Board anlegen“ (5–6 Leute pro Session, nur einer
+  legt an); messbar über neue Teams, die von einem Board aus entstehen.
+- Geteilte Kartensets als öffentliche Seiten (z. B. „Animals – Planning Poker Kartenset“, „In meinem Team nutzen“);
+  Inhalte entstehen durch Nutzer, werden gefunden und verlinkt (vgl. Teilen-Idee, Animals-Set B-116).
+- Ergebnisse zum Teilen: kurze Session-Zusammenfassung als Bild/Link fürs Team-Wiki/Ticket, mit dezentem Absender.
+- Methoden-Seiten (Website) beschreiben, wofür man das Tool nutzt, und verweisen auf Teams/Tool – eigener Kanal.
+- Badges (B-117) zahlen darauf ein (Teams kommen mit demselben Link wieder).
+Daten: Search Console (Website) zeigt bisher ~500 Klicks/3 Monate, fast nur DE; Wachstum kommt heute über geteilte Links.
+Boards selbst bleiben `noindex` (seit R3).
+
+### B-119 T-Shape: Wissenstiefe schätzen, Breite im Team sehen
+Status: neu, Idee Andreas (2026-11-06), lose. Methode „T-Shape“: Jede Person schätzt, wie tief ihr Wissen in einem
+Thema/Skill ist; die Breite ergibt sich über die Verteilung im Team. Ist auf der Website noch nicht richtig beschrieben
+und im Tool nicht gut abgebildet (geht aus der Basisfunktion nicht hervor). Wäre eine neue Dimension des Tools:
+mehrere Themen nacheinander (vgl. B-52 Topics), Ergebnis als Team-Profil statt Einzelrunde. Offen: Kartenset (Tiefe-
+Stufen), Darstellung (Matrix/„T“), Speicherung über Runden hinweg, Methodenbeschreibung zuerst.
+
+### B-120 Bucket-Board: Items gemeinsam in Schätz-Buckets ziehen (Magic Estimation u. a.)
+Status: neu, Idee Andreas (2026-11-06), groß. Wiederverwendbare Mechanik: Die Werte eines Kartensets erscheinen als
+Buckets (Spalten) auf dem Board, Items (vgl. B-52 Topics) werden gemeinsam hineingezogen und verschoben. Damit ginge z. B.
+Magic Estimation (Affinity Estimation); ähnlich die Mechanik von Team as a Car (im Detail anders). Passt zur Linie
+„Methoden verkaufen sich, das Tool liefert den Rahmen“ (B-118, B-119).
+Offen: eigener Modus im Board oder eigenes Tool; Items-Datenmodell (B-52); gemeinsames Ziehen in Echtzeit (heute nur
+„pull“-Signale über poker-msg – reicht das für Drag & Drop, Konflikte bei gleichzeitigem Ziehen?); Handy-Bedienung;
+Ergebnis/Export.
+
+### B-121 Topic-Text gemeinsam bearbeiten (wie Google Docs)
+Status: neu, Idee Andreas (2026-11-06). Den Text hinter dem Schätz-Item (Topic) gleichzeitig bearbeiten können. Ein
+früherer Versuch mit Yjs hat nicht geklappt. Gedanken (Kai): Yjs braucht einen Kanal, der Änderungen zwischen den
+Browsern weiterreicht, und eine Stelle, die den Stand speichert. Passend zu unserem Prinzip „poker-msg ist nur der Kanal“
+könnte poker-msg Yjs-Updates je Team einfach durchreichen (wie die Reaktionen, B-110), PHP speichert den zusammengeführten
+Stand. Einfachere Alternative ohne Yjs: „Alice is editing …“ mit Sperre oder „letzter gewinnt“ plus Live-Vorschau.
+Früherer Versuch (Andreas, 2026-11-06): Der Beispiel-Server von Yjs funktionierte technisch, schied aber aus – der Kanal war
+öffentlich, und die Topic-Texte (die einzig wirklich sensiblen Daten unserer Nutzer) lägen bei einem fremden Dienst.
+Der Versuch, das Yjs-Messaging in poker-msg nachzubauen, scheiterte technisch.
+Idee für einen neuen Anlauf (Kai): poker-msg muss das Yjs-Protokoll nicht verstehen. Es reicht ein dummer Relay je Team
+(Updates base64-kodiert durchreichen, wie bei den Reaktionen). Den Startzustand holt ein neuer Client von PHP (gespeicherte
+Updates als Log); verdichtet wird im Browser (ein Client führt das Log per Yjs zusammen und lädt einen Snapshot hoch). So
+bleibt alles auf unseren Servern und PHP braucht keine Yjs-Bibliothek. Erst als kleiner Prototyp prüfen.
+Offen: Zusammenspiel mit B-52 (mehrere Topics) und B-120 (Bucket-Board); Größe/Rate der Updates (heute 1 Nachricht/s pro
+Verbindung in poker-msg).
+Kanal (Andreas/Kai, 2026-11-06): eher eigener Kanal für die Text-Synchronisation – eigene Route im selben poker-msg-Prozess
+(z. B. `/poker-msg-doc`) mit eigenen Grenzen, nur offen, solange jemand das Topic bearbeitet/liest, Abo pro Topic. So
+bleiben pull/hb/Reaktionen des Boards unberührt; kein zweiter Server nötig (später auslagerbar).
+
+### B-122 Schätzprämisse: kurze Begründung zur eigenen Karte (optionaler Modus)
+Status: neu, Idee Andreas (2026-11-06). Optionaler Modus: Wer eine Karte legt, gibt eine kurze Begründung ein (ca. 150
+Zeichen, „Twitter-artig“): unter welcher Annahme geschätzt wurde. Beim Aufdecken sieht man die Prämissen der anderen
+(ggf. nur die der Extremwerte). Variante: Erst werden alle Prämissen gezeigt, dann darf jede Person ihre Schätzung noch
+einmal anpassen, danach wird aufgedeckt. Offen: Pflicht oder freiwillig im Modus; Anonym-Modus; Darstellung am Tisch;
+Speicherung (sensibler Freitext, wie Topic-Texte behandeln); Zusammenspiel mit B-104/B-115 (geänderte Karten).
+
+### B-123 KI-Teammitglied schätzt mit (Ausbaustufe)
+Status: neu, Idee Andreas (2026-11-06), Ausbaustufe nach B-52/B-121. Wenn Backlog-Items einen erklärenden Text haben
+(ggf. gemeinsam bearbeitet, B-121), könnte optional ein KI-Teammitglied mitschätzen (eigene Karte, ggf. mit Prämisse wie
+B-122). Offen: Datenschutz (Topic-Texte sind die sensibelsten Daten – nur mit ausdrücklicher Zustimmung des Teams,
+Anbieter/Hosting), Kosten, wie die KI-Karte am Tisch und in der Statistik zählt (nicht in Durchschnitt/Einigkeit?).
+
+### B-124 „:labs“-Menü für neue Funktionen
+Status: neu, Idee Andreas (2026-11-06). Ein eigenes Menü „:labs“ im Header (Name entschieden, Andreas 2026-11-06; verworfen: „:beta“, „:experimental“), in dem Teams experimentelle Funktionen
+selbst einschalten (z. B. Schätzprämisse B-122, Bucket-Board B-120, T-Shape B-119, KI-Teammitglied B-123). So lassen sich
+große Ideen mit echten Teams ausprobieren, ohne die Standard-Oberfläche zu verändern; Feedback je Beta-Funktion direkt dort.
+Offen: Einstellung pro Team (Feature-Flags in pok_teams_tbl) oder pro Person; Sichtbarkeit (immer oder nur per Link);
+wann eine Beta-Funktion Standard wird oder wieder verschwindet.
+
+### B-125 Mitspieler pausieren statt entfernen (Lösung für B-59)
+Status: neu, Idee Andreas (2026-11-06), nicht für R3.
+**Use-Case:** Jemand hat den Bildschirm offen gelassen und ist kurz weg. Die Gruppe kommt nicht weiter (Aufdecken
+blockiert), will die Person aber auch nicht vom Tisch entfernen.
+Die away-Erkennung aus B-110 hilft hier nicht: Ein offener Laptop mit sichtbarem Tab sieht „anwesend“ aus. Auch
+Inaktivität (keine Eingabe) taugt nicht, weil Zuhörende ebenfalls nichts tippen. Deshalb bewusst manuell durch das Team.
+**Lösung (Stand Andreas, 2026-11-06, ersetzt die erste Idee „Pause for this round“ im Entfernen-Dialog):**
+- Neben dem Mülleimer am Platz eines Mitspielers ein **Pause-Symbol**. Ein Klick pausiert die Person.
+- Man kann sich auch **selbst** auf Pause setzen (z. B. vor einer kurzen Unterbrechung), Andreas 2026-11-06.
+- Pausiert gilt **so lange, bis die Person selbst wieder aktiv wird** – nicht nur für eine Runde. Sie wird überall
+  ignoriert (blockiert das Aufdecken nicht, `all_players_ready`), bleibt aber am Tisch.
+- Sie bekommt eine Systemkarte „Paused“ (neue Systemkarte wie `late001` aus B-102, kein Teil eines Decks, nicht legbar
+  über `setc.php`).
+- **Aufheben nur durch die Person selbst:** Legt sie eine Karte, ist die Pause einfach weg. Optional bekommt sie (analog
+  zum Hinweis nach dem Entfernen) ein Overlay „You were paused“ mit „OK, I'm back“.
+- **Liegt schon eine Karte, bleibt sie liegen** (Andreas, 2026-11-06). „Paused“ ist dann eher eine Überblendung der
+  Karte als eine Ersatzkarte: Die anderen sehen „X hatte gelegt, ist aber gerade kurz weg“, und das Aufdecken wartet
+  nicht auf X. Ohne gelegte Karte steht die Systemkarte „Paused“ am Platz. Offen: Zählt die überblendete Karte beim
+  Aufdecken mit (Tipps, Statistik)?
+- Technisch: eine weitere Spalte in `pok_players_tbl` (z. B. `paused`), Ben.
+- Offen, wo überall angepasst werden muss: Ready-Status, Tipps (zählt nicht mit), Statistik/Historie
+  (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Verhalten bei neuer Runde (Pause bleibt), Beobachter.
+- Wer darf pausieren: jeder am Tisch (wie Entfernen) – vermutlich ja.
+
+### B-126 nginx: `/tools/` nicht ausliefern
+Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, deshalb sind `tools/` (Migrations- und Kartenskripte,
+README) per URL erreichbar. Die PHP-Skripte antworten über das Web mit 404 (`tools/migration/common.php`), der Rest ist
+harmlos (öffentlich auf GitHub). Trotzdem sauberer: in nginx beider Server `location ^~ /tools/ { return 404; }`.
+Befehle bereitet Kai vor, Betreiber spielt sie ein.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
@@ -1499,6 +1718,13 @@ Konsens/Ausreißer, Zeiger-Idee erhalten), ggf. mit gespeicherter Historie (pass
 Mockup (Delia).
 Idee Andreas (2026-10-24) zur Sidebar: Beim ersten Besuch gibt es noch kein Topic, keine Historie, keine Spreads →
 Sidebar zunächst eingeklappt, Board clean wie in Rollout 1; Lösung nötig für „New Round“ und eine aktivierte Stoppuhr.
+Idee Andreas (2026-11-06): **Median als zweiter Indikator** über den Balken, in einer anderen Farbe als der Average-Indikator
+(oder als gestrichelte Linie, die die Stimmen in eine linke und eine rechte Hälfte teilt). Bei gerader Anzahl liegt
+die Linie dann einfach zwischen den beiden mittleren Karten – damit löst sich die Frage unten von selbst.
+Der Median ist der mittlere Wert der sortierten Karten. Ausreißer verzerren ihn nicht, und er liegt immer auf einer
+echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shirt, Sterne und ∞ (als größter Wert).
+Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
+Wert zeigen oder den Bereich „3–5“).
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von

@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, teamWithTwoPlayers, openTimerPanel } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, teamWithTwoPlayers, openTimerPanel, setTimer } from './helpers';
 
 /**
  * B-66/B-67: timer instead of stopwatch (frontend). The header button :timer opens the timer panel:
@@ -116,6 +116,10 @@ test('timer mode 5 min: T−05:00, start, pause, reset; time up in amber (B-67)'
     await expect(page.getByRole('button', { name: 'Start timer' })).toBeHidden();
   }
 
+  // the server counts whole seconds (timestampdiff of start and pause): a pause within the first second of the
+  // run gives 0 s, which the board cannot tell from "not started" (data-state ready). So pause after >= 1.5 s:
+  // T−04:58 needs at least 1.5 s since the start
+  await expect(display(bob)).toHaveText(/^T−04:(5[0-8]|[0-4]\d)$/);
   await bob.getByRole('button', { name: 'Pause timer' }).click();
   await expect(alice.locator('#timer')).toHaveAttribute('data-state', 'paused');
   const paused = await display(alice).textContent();
@@ -180,7 +184,7 @@ test('auto-start: New round and Cancel round restart the timer (B-67)', async ({
 
   // Cancel round starts it
   await pickCard(alice, 'three01');
-  await expect(alice.locator('#newroundbtn')).toHaveValue('Cancel Round');
+  await expect(alice.locator('#newroundbtn')).toHaveValue('Restart round');
   await alice.locator('#newroundbtn').click();
   for (const page of [alice, bob]) {
     await expect(page.locator('#timer')).toHaveAttribute('data-state', 'running');
@@ -194,7 +198,7 @@ test('auto-start: New round and Cancel round restart the timer (B-67)', async ({
   await expect(bob.locator('#timer')).toHaveAttribute('data-state', 'paused');
   await pickCard(alice, 'three01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator('#newroundbtn')).toHaveValue('New Round');
+  await expect(alice.locator('#newroundbtn')).toHaveValue('New round');
   await alice.locator('#newroundbtn').click();
   await expect(bob.locator('#timer')).toHaveAttribute('data-state', 'running');
   await expect(display(bob)).toHaveText(/^T−02:5\d|T−03:00$/);
@@ -370,9 +374,41 @@ test('an own change is not undone by an older board state (B-73, B-92)', async (
   await stateDelivered;
   // B-92: the older answer comes last and is dropped as a whole (it would show the marked name)
   await alice.evaluate(() => new Promise(resolve => setTimeout(resolve, 300)));
-  await expect(alice.locator('#prompt_user')).toHaveText('Alice');
+  expect(await alice.evaluate('gUserName')).toBe('Alice');
   await expect(radio(alice, 'tmr_mode', 'TIMER')).toBeChecked();
   await expect(display(alice)).toHaveText('T−05:00');
   await alice.context().close();
   await bob.context().close();
+});
+
+/* R3 (Andreas, staging): on a phone the round button takes the whole row while the timer is off (no room kept for
+ * it); with the timer on, timer left and the button (at most 200px) right as before */
+test('phone 390: the round button takes the whole row with the timer off', async ({ browser }) => {
+  const page = await newPlayer(browser, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const url = await createTeam(page, 'Timer Off Phone');
+  await joinAsPlayer(page, url, 'Alice');
+  const widths = () => page.evaluate(() => {
+    const dock = document.querySelector('.dock') as HTMLElement;
+    const style = getComputedStyle(dock);
+    return { inner: dock.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+      button: document.getElementById('newroundbtn')!.getBoundingClientRect().width };
+  });
+
+  // a new team: the timer is off
+  await expect(page.locator('#timer')).toBeHidden();
+  let w = await widths();
+  expect(w.button).toBeGreaterThan(300);
+  expect(Math.abs(w.button - w.inner)).toBeLessThan(1);
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/phone-390-timer-off.png` });
+
+  await setTimer(page, true);
+  w = await widths();
+  expect(w.button).toBeLessThanOrEqual(200);
+  const timer = (await page.locator('#timer').boundingBox())!;
+  const button = (await page.locator('#newroundbtn').boundingBox())!;
+  expect(timer.x + timer.width).toBeLessThanOrEqual(button.x);
+
+  await setTimer(page, false);
+  w = await widths();
+  expect(Math.abs(w.button - w.inner)).toBeLessThan(1);
 });

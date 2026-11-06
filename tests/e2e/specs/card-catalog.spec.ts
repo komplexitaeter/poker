@@ -1,0 +1,146 @@
+import { test, expect } from '@playwright/test';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+/**
+ * B-98 / B-99 (rollout 3, S3): card_catalog.json is consistent with the symbol library (src/cards.svg), the colour
+ * tokens (style/cards.css) and the whitelists of the client (script/cards.js). No browser needed.
+ */
+
+const ROOT = path.resolve(__dirname, '../../..');
+const read = (file: string) => fs.readFileSync(path.join(ROOT, file), 'utf8');
+
+type Card = {
+  card_key: string; value: string; symbol: string; color: string; numeric_value: number | null;
+  sort_order: number; heading?: string; description?: string; legacy_index?: number;
+};
+type Group = { id: string; name: string; style: string; cards: Card[]; variants: { id: string; cards: string[] }[] };
+
+const catalog = JSON.parse(read('card_catalog.json')) as {
+  styles: string[]; default_deck: string; default_controls: string[]; controls: Card[]; groups: Group[];
+};
+const spriteIds = new Set([...read('src/cards.svg').matchAll(/<symbol id="([^"]+)"/g)].map(m => m[1]));
+const colorTokens = new Set([...read('style/cards.css').matchAll(/--c-([A-Za-z0-9]+)\s*:/g)].map(m => m[1]));
+
+/* the string literals of a `const NAME = new Set([...])` in script/cards.js */
+function clientSet(name: string): Set<string> {
+  const m = new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]`).exec(read('script/cards.js'));
+  expect(m, `${name} in script/cards.js`).not.toBeNull();
+  return new Set([...(m as RegExpExecArray)[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
+}
+
+const allCards: Card[] = [...catalog.controls, ...catalog.groups.flatMap(g => g.cards)];
+
+test('every card has a unique short key, a known symbol and colour and valid texts (B-98, B-99)', () => {
+  const symbols = clientSet('CARD_SYMBOLS');
+  const colors = clientSet('CARD_COLORS');
+  const keys = new Set<string>();
+  expect(allCards.length).toBeGreaterThan(60);
+  for (const card of allCards) {
+    const where = `card ${card.card_key}`;
+    expect(card.card_key, where).toMatch(/^[a-z0-9]{1,7}$/); // varchar(7), '-' reserved for custom cards
+    expect(keys.has(card.card_key), `${where} is unique`).toBe(false);
+    keys.add(card.card_key);
+    expect(typeof card.value === 'string' && card.value !== '', where).toBe(true);
+    expect(spriteIds.has(card.symbol), `${where}: symbol ${card.symbol} in src/cards.svg`).toBe(true);
+    expect(symbols.has(card.symbol), `${where}: symbol ${card.symbol} in CARD_SYMBOLS`).toBe(true);
+    expect(colorTokens.has(card.color), `${where}: colour ${card.color} in style/cards.css`).toBe(true);
+    expect(colors.has(card.color), `${where}: colour ${card.color} in CARD_COLORS`).toBe(true);
+    expect(card.numeric_value === null || typeof card.numeric_value === 'number', where).toBe(true);
+    expect(Number.isInteger(card.sort_order), where).toBe(true);
+    if (card.heading !== undefined) expect(card.heading.length, where).toBeLessThanOrEqual(16);
+    if (card.description !== undefined) expect(card.description.length, where).toBeLessThanOrEqual(160);
+  }
+});
+
+test('every symbol has one way to be shown small: text or drawing (B-99 F6)', () => {
+  const symbols = clientSet('CARD_SYMBOLS');
+  const text = clientSet('CARD_SMALL_TEXT');
+  const drawing = clientSet('CARD_SMALL_DRAWING');
+  for (const id of spriteIds) expect(symbols.has(id), `${id} in CARD_SYMBOLS`).toBe(true);
+  for (const id of symbols) {
+    expect(text.has(id) !== drawing.has(id), `${id}: in exactly one of CARD_SMALL_TEXT / CARD_SMALL_DRAWING`).toBe(true);
+  }
+  for (const id of [...text, ...drawing]) expect(symbols.has(id), `${id} in CARD_SYMBOLS`).toBe(true);
+  // as decided (Andreas, 2026-10-31): coffee, hand, faces and (F7) ? and ! are drawn, numbers and sizes are text
+  for (const id of ['s-coffee', 's-hand', 's-face-sad', 's-light-red', 's-stars-3', 's-check', 's-question', 's-exclam']) {
+    expect(drawing.has(id), id).toBe(true);
+  }
+  for (const id of ['s-half', 's-inf', 's-100', 's-xxl']) expect(text.has(id), id).toBe(true);
+});
+
+test('groups have a style, variants use their own cards, one symbol at most once per group (B-98)', () => {
+  const styles = clientSet('CARD_STYLES');
+  const variantIds = new Set<string>();
+  for (const group of catalog.groups) {
+    expect(catalog.styles).toContain(group.style);
+    expect(styles.has(group.style), `${group.id}: style in CARD_STYLES`).toBe(true);
+    const own = new Set(group.cards.map(c => c.card_key));
+    const groupSymbols = group.cards.map(c => c.symbol);
+    expect(new Set(groupSymbols).size, `${group.id}: symbols unique`).toBe(groupSymbols.length);
+    expect(group.variants.length).toBeGreaterThan(0);
+    for (const variant of group.variants) {
+      variantIds.add(variant.id);
+      expect(variant.cards.length).toBeGreaterThan(0);
+      for (const key of variant.cards) expect(own.has(key), `${variant.id}: ${key} in ${group.id}`).toBe(true);
+    }
+  }
+  expect(variantIds.has(catalog.default_deck)).toBe(true);
+  const controls = new Set(catalog.controls.map(c => c.card_key));
+  for (const key of catalog.default_controls) expect(controls.has(key)).toBe(true);
+});
+
+test('texts per group as decided (B-99, Andreas 2026-10-31)', () => {
+  const group = (id: string) => catalog.groups.find(g => g.id === id) as Group;
+  for (const id of ['fib', 'numbers', 'tshirt'])
+    for (const card of group(id).cards) {
+      expect(card.heading, `${id} ${card.card_key}`).toBeUndefined();
+      expect(card.description, `${id} ${card.card_key}`).toBeUndefined();
+    }
+  for (const card of group('emotions').cards) {
+    expect(card.heading).toBeUndefined();
+    expect(card.description).toMatch(/^[a-z]+$/);
+  }
+  expect(group('traffic').cards.map(c => c.heading)).toEqual(['green', 'yellow', 'red']);
+  expect(group('stars').cards.map(c => c.heading)).toEqual(['0 stars', '1 star', '2 stars', '3 stars', '4 stars', '5 stars']);
+  expect(group('judge').cards.map(c => c.heading)).toEqual(
+    ['step aside', 'full support', 'minor concerns', 'serious concerns', 'step out', 'need to talk', 'veto']);
+  expect(group('delegation').cards.map(c => c.heading)).toEqual(
+    ['Tell', 'Sell', 'Consult', 'Agree', 'Advise', 'Inquire', 'Delegate']);
+  expect(catalog.controls.map(c => c.heading)).toEqual(['break', 'question', 'important', 'veto', 'shruggie']);
+  for (const id of ['judge', 'delegation'])
+    for (const card of group(id).cards) expect(card.description, `${id} ${card.card_key}`).toBeTruthy();
+  // traffic lights: no descriptions (Andreas: the lights are used for many different formats)
+  for (const card of group('traffic').cards) expect(card.description, card.card_key).toBeUndefined();
+});
+
+test('shruggie: a control card without value, off by default (B-106)', () => {
+  const shrug = catalog.controls.find(c => c.card_key === 'shrug01') as Card;
+  expect(shrug).toMatchObject({ symbol: 's-shrug', color: 'vshrug', numeric_value: null, heading: 'shruggie',
+    description: "I don't know – and that's fine. Let's find out." });
+  expect(shrug.legacy_index).toBeUndefined(); // not in the old cardset_flags
+  expect(catalog.default_controls).not.toContain('shrug01');
+  expect(clientSet('CARD_SMALL_DRAWING').has('s-shrug')).toBe(true);
+});
+
+test('Emotions: variants Short (the six known faces) and Full (all twelve) (B-107)', () => {
+  const group = catalog.groups.find(g => g.id === 'emotions') as Group;
+  const assessment = ['satis01', 'annoy01', 'sad0001', 'unint01', 'angry01', 'enthu01'];
+  const mood = [...assessment, 'curio01', 'confu01', 'worri01', 'surpr01', 'tired01', 'relie01'];
+  expect(group.variants.map(v => [v.id, (v as { name?: string }).name, v.cards])).toEqual([
+    ['emotions', 'Short', assessment], // id unchanged: stored as pok_teams_tbl.deck_id
+    ['mood', 'Full', mood],
+  ]);
+  expect(group.cards.map(c => c.card_key)).toEqual(mood);
+  expect(group.cards.slice(6).map(c => c.description)).toEqual(
+    ['curious', 'confused', 'worried', 'surprised', 'tired', 'relieved']);
+  for (const card of group.cards.slice(6)) {
+    expect(card.symbol).toBe(`s-face-${card.description}`);
+    expect(card.legacy_index, card.card_key).toBeUndefined();
+  }
+  // in catalog order and before the next group (Stars)
+  const orders = group.cards.map(c => c.sort_order);
+  expect(orders).toEqual([...orders].sort((a, b) => a - b));
+  const stars = catalog.groups.find(g => g.id === 'stars') as Group;
+  expect(Math.max(...orders)).toBeLessThan(Math.min(...stars.cards.map(c => c.sort_order)));
+});

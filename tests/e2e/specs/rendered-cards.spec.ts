@@ -1,0 +1,274 @@
+import { test, expect, Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCards, pickCard, tableCard, setTeamDeck } from './helpers';
+
+/* B-99 (R3, F2/F3): cards are rendered (script/cards.js, symbols from src/cards.svg) instead of images. */
+
+const FIB_WITH_CONTROLS = { deck: 'fib-classic', controls: ['break01', 'qstmrk1'], length: 14 }; // Fibonacci + ☕ ?
+const PICTURES = { deck: 'traffic', controls: ['break01'], length: 4 };                          // traffic lights, ☕
+
+function teamParam(url: string): string {
+  return encodeURIComponent(new URL(url).searchParams.get('t')!);
+}
+
+async function setDeck(page: Page, url: string, deck: { deck: string, controls: string[] }): Promise<void> {
+  await setTeamDeck(page, url, deck.deck, null, deck.controls);
+}
+
+// same credentials as the test config written by tests/e2e/setup.sh
+const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
+
+/** B-103: setc.php only takes cards of the deck; a key no catalog knows is put into the database directly */
+function setUnknownCard(url: string, id: string, key: string): void {
+  const t = new URL(url).searchParams.get('t')!;
+  for (const value of [t, id, key]) expect(value).toMatch(/^[A-Za-z0-9_-]+$/); // safe to put into the SQL below
+  execFileSync('mysql', [...DB_ARGS, '-e',
+    `update pok_players_tbl set card_key = '${key}' where id = '${id}' and team_id = '${t}'`], { stdio: 'ignore' });
+}
+
+async function setCard(page: Page, url: string, id: string, key: string): Promise<void> {
+  const res = await page.request.post(`/api/setc.php?id=${id}&cardkey=${key}&t=${teamParam(url)}`);
+  expect(res.ok()).toBeTruthy();
+}
+
+test('table and deck cards are rendered with a symbol and an accessible name', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Rendered Cards');
+  const [bob, carol] = await addPlayersViaApi(alice, url, ['Bob', 'Carol']);
+  await joinAsPlayer(alice, url, 'Alice');
+  await setDeck(alice, url, FIB_WITH_CONTROLS);
+  await setCard(alice, url, bob, 'three01');
+
+  // the deck: buttons with the symbol of the sprite, a name, not pressed
+  const five = deckCard(alice, 'five001');
+  await expect(five).toHaveAttribute('aria-label', '5');
+  await expect(five).toHaveAttribute('aria-pressed', 'false');
+  await expect(five.locator('svg.mot use')).toHaveAttribute('href', /src\/cards\.svg\?v=\d+#s-5$/);
+  await expect(deckCard(alice, 'break01')).toHaveAttribute('aria-label', 'break');
+  await expect(deckCard(alice, '1pnt501')).toHaveAttribute('aria-label', 'one half');
+  // F7: control cards show their heading in a Fibonacci deck too (numbers stay without text)
+  await expect(deckCard(alice, 'break01').locator('.dh')).toHaveText('break');
+  await expect(five.locator('.dh')).toHaveCount(0);
+
+  // status cards while voting: ready (check) and thinking (thought bubble), each with a name
+  await expect(tableCard(alice, 'Bob').locator('.pc')).toHaveAttribute('aria-label', 'card played');
+  await expect(tableCard(alice, 'Bob').locator('.pc use')).toHaveAttribute('href', /#s-check$/);
+  await expect(tableCard(alice, 'Carol').locator('.pc')).toHaveAttribute('aria-label', 'thinking, no card yet');
+  await expect(tableCard(alice, 'Carol').locator('.pc use')).toHaveAttribute('href', /#s-thought$/);
+  // F7: the status caption is the card's only text: set like a heading (mono, bold)
+  await expect(tableCard(alice, 'Carol').locator('.pc')).toHaveClass(/one-text/);
+  await expect(tableCard(alice, 'Carol').locator('.pc .stl')).toHaveCSS('font-weight', '700');
+
+  await pickCard(alice, 'five001');
+  await expect(five).toHaveAttribute('aria-pressed', 'true');
+  await setCard(alice, url, carol, 'break01');
+
+  // revealed: the value's symbol and name; F8 (Andreas): the control card in a Fibonacci deck shows symbol, heading
+  // and description (the numbers keep the layout "none")
+  await expect(alice.locator('#cbox')).toHaveAttribute('data-text-size', 'none');
+  await expect(tableCard(alice, 'Alice').locator('.pc[role="img"]')).toHaveAttribute('aria-label', '5');
+  await expect(tableCard(alice, 'Bob').locator('.pc use')).toHaveAttribute('href', /#s-3$/);
+  await expect(tableCard(alice, 'Bob').locator('.pc :is(.ttl, .txt)')).toHaveCount(0);
+  const coffee = tableCard(alice, 'Carol').locator('.pc');
+  await expect(coffee).toHaveAttribute('aria-label', 'break. I need a short break.');
+  await expect(coffee.locator('use')).toHaveAttribute('href', /#s-coffee$/);
+  await expect(coffee.locator('.ttl')).toHaveText('break');
+  await expect(coffee.locator('.txt')).toHaveText('I need a short break.');
+  await expect(coffee).not.toHaveClass(/one-text/);
+});
+
+test('a card without a symbol shows its value as text', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Text Value');
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await joinAsPlayer(alice, url, 'Alice');
+  // a key no catalog knows (like a custom card): the board keeps the player and shows the key as text
+  setUnknownCard(url, bob, 'c-zz1');
+  await pickCard(alice, 'three01');
+  const face = tableCard(alice, 'Bob').locator('.pc');
+  await expect(face.locator('.tv')).toHaveText('c-zz1');
+  await expect(face.locator('svg')).toHaveCount(0);
+  await expect(face).toHaveAttribute('aria-label', 'c-zz1');
+});
+
+test('picture symbols: headings on the table, mini symbols in the spread', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Pictures');
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await joinAsPlayer(alice, url, 'Alice');
+  await setDeck(alice, url, PICTURES);
+  await expect(deckCards(alice)).toHaveCount(PICTURES.length);
+  // a deck with texts: the deck cards show their headings, control cards too
+  await expect(deckCard(alice, 'green01').locator('.dh')).toHaveText('green');
+  await expect(deckCard(alice, 'break01').locator('.dh')).toHaveText('break');
+  // R3 (Andreas, 2026-11-03): the traffic light 10 % taller than the coffee cup, inside its card
+  const box = async (key: string) => {
+    const card = (await deckCard(alice, key).locator('.dkc').boundingBox())!;
+    const mot = (await deckCard(alice, key).locator('svg.mot').boundingBox())!;
+    expect(mot.y).toBeGreaterThanOrEqual(card.y);
+    expect(mot.x).toBeGreaterThanOrEqual(card.x);
+    expect(mot.x + mot.width).toBeLessThanOrEqual(card.x + card.width);
+    return mot.height;
+  };
+  expect((await box('green01')) / (await box('break01'))).toBeCloseTo(1.1, 2);
+
+  await setCard(alice, url, bob, 'red0001');
+  await pickCard(alice, 'green01');
+  const red = tableCard(alice, 'Bob').locator('.pc');
+  await expect(red).toHaveAttribute('aria-label', 'red');
+  await expect(red.locator('.ttl')).toHaveText('red');
+  await expect(red.locator('.txt')).toHaveCount(0); // traffic lights without descriptions (Andreas)
+  await expect(red.locator('use')).toHaveAttribute('href', /#s-light-red$/);
+  await expect(red.locator('svg.mot')).toHaveCSS('transform', 'none'); // the table keeps its size
+  await expect(red).toHaveClass(/one-text/);
+  // laid out like the other one-word decks (stars, emotions): the light large, the word below it
+  await expect(alice.locator('#cbox')).toHaveAttribute('data-text-size', 'word');
+
+  const spreadValue = alice.locator('#spread_bars [data-card="green01"] .spread-value');
+  await expect(spreadValue.locator('.mini use')).toHaveAttribute('href', /#s-light-green$/);
+  await expect(spreadValue.locator('.mini')).toHaveAttribute('title', 'green');
+  // R3 review V10 (L22): traffic lights have no range, the chart says it all
+  await expect(alice.locator('#spread .side-label')).toHaveText('result');
+  await expect(alice.locator('#spread_range')).toHaveText('');
+});
+
+test('the info line shows heading and description on hover and keyboard focus; arrows move in the deck', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Info Line');
+  await joinAsPlayer(alice, url, 'Alice');
+  await setDeck(alice, url, FIB_WITH_CONTROLS);
+  await expect(deckCards(alice)).toHaveCount(FIB_WITH_CONTROLS.length);
+  const info = alice.locator('#deck_info');
+
+  // Fibonacci: no texts for numbers, the control cards explain themselves
+  await deckCard(alice, 'five001').hover();
+  await expect(info).toBeHidden();
+  await deckCard(alice, 'break01').hover();
+  await expect(info).toBeVisible();
+  await expect(info).toHaveText('break — I need a short break.');
+  await expect(info.locator('.deck-info-value .mini use')).toHaveAttribute('href', /#s-coffee$/); // no emoji (F6)
+  await alice.mouse.move(5, 5);
+  await expect(info).toBeHidden();
+
+  // keyboard: one tab stop in the deck, the arrows move between its cards
+  await deckCard(alice, 'infin01').focus();
+  await expect(info).toBeHidden();
+  await alice.keyboard.press('ArrowRight');
+  await expect(deckCard(alice, 'break01')).toBeFocused();
+  await expect(info).toContainText('break');
+  await alice.keyboard.press('ArrowRight');
+  await expect(deckCard(alice, 'qstmrk1')).toBeFocused();
+  await expect(info).toContainText('question');
+  await expect(deckCards(alice).and(alice.locator('[tabindex="0"]'))).toHaveCount(1);
+  // Enter picks the focused card
+  await alice.keyboard.press('Enter');
+  await expect(deckCard(alice, 'qstmrk1')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('touch: the hint line names the control card in the middle of the carousel', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const url = await createTeam(alice, 'Hint Line');
+  await joinAsPlayer(alice, url, 'Alice');
+  await setDeck(alice, url, FIB_WITH_CONTROLS);
+  await expect(deckCards(alice)).toHaveCount(FIB_WITH_CONTROLS.length);
+  const line = alice.locator('#deck_pick');
+  await expect(line).toHaveText('tap to pick a card');
+  await deckCard(alice, 'break01').evaluate(el => el.parentElement!.scrollIntoView({ inline: 'center' }));
+  await expect(line).toHaveText('tap to pick · break');
+  await expect(line.locator('b .mini use')).toHaveAttribute('href', /#s-coffee$/); // no emoji (F6)
+});
+
+test('the card colours follow light and dark mode', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Card Colours');
+  await joinAsPlayer(alice, url, 'Alice');
+  const face = deckCard(alice, 'five001').locator('.dkc');
+  const colours = () => face.evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor].join('|'));
+  const dark = await colours();
+  await alice.locator('#cmode_btn').click();
+  await expect(alice.locator('body')).toHaveClass(/light-theme/);
+  await expect.poll(colours).not.toBe(dark);
+});
+
+/* B-99 (F6): small places show each value per symbol as mono text or as a mini symbol, never as a system emoji */
+const EMOJI = /\p{Extended_Pictographic}/u;
+
+test('spread labels: numbers as text, faces, coffee and hand as mini symbols, no emoji', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Small Symbols');
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await joinAsPlayer(alice, url, 'Alice');
+
+  await setTeamDeck(alice, url, 'emotions', null, ['break01', 'qstmrk1', 'xclam01', 'veto']);
+  await expect(deckCards(alice)).toHaveCount(10);
+  const value = (key: string) => alice.locator(`#spread_bars [data-card="${key}"] .spread-value`);
+  for (const [key, symbol] of [['sad0001', 's-face-sad'], ['break01', 's-coffee'], ['veto', 's-hand']]) {
+    await expect(value(key).locator('.mini use')).toHaveAttribute('href', new RegExp(`#${symbol}$`));
+    await expect(value(key).locator('.sm-text')).toHaveCount(0);
+  }
+  // F7 (Andreas): ? and ! as mini drawings too
+  await expect(value('qstmrk1').locator('.mini use')).toHaveAttribute('href', /#s-question$/);
+  await expect(value('xclam01').locator('.mini use')).toHaveAttribute('href', /#s-exclam$/);
+  await expect(value('qstmrk1').locator('.sm-text')).toHaveCount(0);
+  const labels = await alice.locator('#spread_bars .spread-value').allTextContents();
+  expect(labels.filter(text => EMOJI.test(text))).toEqual([]);
+
+  // J.U.D.G.E.: the tip names the hand as a mini symbol, "Hear the veto: Bob (✋)" without the emoji
+  await setTeamDeck(alice, url, 'judge', null, ['break01', 'veto']);
+  await expect(value('jdg3').locator('.mini.sm-inv')).toHaveText('3'); // F8: the inverted mini square
+  await setCard(alice, url, bob, 'veto');
+  await pickCard(alice, 'jdg1');
+  await expect(alice.locator('#round_tip b .mini use')).toHaveAttribute('href', /#s-hand$/);
+  // "(✋)" never wraps onto a line of its own: one line high, glued to the name
+  const tipValue = alice.locator('#round_tip b .tip-value');
+  await expect(tipValue).toHaveCSS('white-space', 'nowrap');
+  const tipRects = await tipValue.evaluate(el => el.getClientRects().length);
+  expect(tipRects).toBe(1);
+  expect(EMOJI.test(await alice.locator('aside.side').textContent() ?? '')).toBe(false);
+
+  await setTeamDeck(alice, url, 'fib-classic', null, ['break01', 'veto']);
+  await expect(value('five001').locator('.sm-text')).toHaveText('5');
+  await expect(value('1pnt501').locator('.sm-text')).toHaveText('½');
+  await expect(value('infin01').locator('.sm-text')).toHaveText('∞');
+  await expect(value('five001').locator('.mini')).toHaveCount(0);
+  await expect(value('break01').locator('.mini use')).toHaveAttribute('href', /#s-coffee$/);
+});
+
+test('info line: a face as mini symbol, no emoji', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Small Info');
+  await joinAsPlayer(alice, url, 'Alice');
+  await setTeamDeck(alice, url, 'emotions', null, ['break01']);
+  await expect(deckCards(alice)).toHaveCount(7);
+  const info = alice.locator('#deck_info');
+  await deckCard(alice, 'sad0001').hover();
+  await expect(info).toBeVisible();
+  await expect(info.locator('.deck-info-value .mini use')).toHaveAttribute('href', /#s-face-sad$/);
+  expect(EMOJI.test(await info.textContent() ?? '')).toBe(false);
+  await expect(info.locator('b')).toHaveText('sad'); // F7: the description alone reads like a heading
+});
+
+/* B-99 (F7, Andreas): a card with exactly one text sets it like a heading (mono, bold) */
+test('one text on a card: bold like a heading on the table (emotions, stars), not with heading and description', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'One Text');
+  const [bob, carol] = await addPlayersViaApi(alice, url, ['Bob', 'Carol']);
+  await joinAsPlayer(alice, url, 'Alice');
+  await setTeamDeck(alice, url, 'emotions', null, ['break01']);
+  await expect(deckCards(alice)).toHaveCount(7);
+  await setCard(alice, url, bob, 'unint01');
+  await setCard(alice, url, carol, 'break01');
+  await pickCard(alice, 'sad0001');
+
+  const uninterested = tableCard(alice, 'Bob').locator('.pc');
+  await expect(uninterested.locator('.txt')).toHaveText('uninterested');
+  await expect(uninterested).toHaveClass(/one-text/);
+  await expect(uninterested.locator('.txt')).toHaveCSS('font-weight', '700');
+  const font = (sel: string) => alice.locator(sel).first().evaluate(el => getComputedStyle(el).fontFamily);
+  expect(await uninterested.locator('.txt').evaluate(el => getComputedStyle(el).fontFamily)).toBe(await font('body'));
+  // F8: the control card in a one-word deck: heading and description (the description thin, not one-text)
+  const coffee = tableCard(alice, 'Carol').locator('.pc');
+  await expect(coffee.locator('.ttl')).toHaveText('break');
+  await expect(coffee.locator('.txt')).toHaveText('I need a short break.');
+  await expect(coffee).not.toHaveClass(/one-text/);
+});
