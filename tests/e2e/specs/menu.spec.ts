@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, expectTableCard, teamWithTwoPlayers } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, expectTableCard, teamWithTwoPlayers, deckCard } from './helpers';
 
 /**
  * B-51: one menu (dialog#menu) with one section per area: Topic, Board settings, You, Feedback.
@@ -59,7 +59,7 @@ test('large screen: the side panel opens and closes by click and Escape, the foc
   await expect(alice.locator('#topic_box')).toBeHidden();
   await expect(csetBtn).toHaveAttribute('aria-expanded', 'true');
   await expect(topicBtn).toHaveAttribute('aria-expanded', 'false');
-  await expect(alice.locator('#cet_pre')).toBeFocused();
+  await expect(alice.locator('#deck_change')).toBeFocused();
   expect((await menu(alice).boundingBox())!.x).toBe(panel.x); // the panel does not move
   await expect.poll(() => measured).toContain('OPEN_SETUP_BOX');
 
@@ -172,7 +172,7 @@ test('phone: index, section, back, close; the backdrop closes the sheet (B-51)',
   await expect(alice.locator('#cset_box')).toBeVisible();
   await expect(index).toBeHidden();
   await expect(back).toBeVisible();
-  await expect(alice.locator('#cet_pre')).toBeFocused();
+  await expect(alice.locator('#deck_change')).toBeFocused();
 
   // back to the index, the focus on the entry we came from
   await back.click();
@@ -316,7 +316,7 @@ test('board settings: tabs Deck | Results | Team by click and arrow keys, card s
   await tab(alice, 'Results').click();
   await expectTab('Results');
   await expect(alice.locator('#cet_order_by')).toBeVisible();
-  await expect(alice.locator('#cet_pre')).toBeHidden();
+  await expect(alice.locator('#deck_change')).toBeHidden();
   await tab(alice, 'Team').click();
   await expectTab('Team');
   await expect(alice.locator('#cet_team_name')).toHaveValue('Menu Tabs');
@@ -339,14 +339,14 @@ test('board settings: tabs Deck | Results | Team by click and arrow keys, card s
   await expect(menu(alice)).not.toHaveAttribute('open');
   await alice.locator('#cset_btn').click();
   await expectTab('Deck');
-  await expect(alice.locator('#cet_pre')).toBeFocused();
+  await expect(alice.locator('#deck_change')).toBeFocused();
 
-  // deck: a card thumbnail switches the card off in the deck
-  const three = alice.locator('#_three01');
-  await expect(three).toHaveClass(/cs_c_on/);
+  // deck: a card of the set switches the card off in the deck (R3 F5)
+  const three = alice.locator('#deck_cards [data-card="three01"]');
+  await expect(three).toHaveAttribute('aria-pressed', 'true');
   await three.click();
-  await expect(three).not.toHaveClass(/cs_c_on/);
-  await expect(alice.locator('#ctl img#three01')).toHaveClass(/\boff\b/);
+  await expect(three).toHaveAttribute('aria-pressed', 'false');
+  await expect(deckCard(alice, 'three01')).toHaveCount(0);
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 });
 
@@ -375,7 +375,7 @@ test('phone: a toast is visible above the modal sheet and goes back to the page 
   expect(await toast.evaluate(el => el.parentElement === document.body)).toBe(true);
 });
 
-test('Copy Link and the QR overlay work as before, also with the panel open (B-51)', async ({ browser }) => {
+test('Invite and the QR overlay work as before, also with the panel open (B-51)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: LARGE, permissions: ['clipboard-read', 'clipboard-write'] });
   const url = await createTeam(alice, 'Menu QR');
   await joinAsPlayer(alice, url, 'Alice');
@@ -383,9 +383,10 @@ test('Copy Link and the QR overlay work as before, also with the panel open (B-5
   await alice.locator('#topic_btn').click();
   await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 
-  // Copy Link in the header: the link in the clipboard, a toast
-  await alice.locator('#copy_link_btn').click();
-  await expect(alice.locator('#toast')).toHaveText('Board link copied');
+  // Invite in the header (no navigator.share in this browser): the link in the clipboard, confirmed at the button
+  await alice.evaluate(() => Object.defineProperty(navigator, 'share', { configurable: true, value: undefined }));
+  await alice.locator('#invite_btn').click();
+  await expect(alice.locator('#invite_btn')).toHaveText('Copied');
   expect(await alice.evaluate(() => navigator.clipboard.readText())).toBe(url);
 
   // the QR icon shows the large QR code over everything, a click closes it
@@ -403,9 +404,11 @@ test('Copy Link and the QR overlay work as before, also with the panel open (B-5
   await expect(overlay).toHaveClass(/hidden/);
 });
 
-test('feedback from the start page panel: text sent URL-encoded, panel closes (B-51, B-54)', async ({ browser }) => {
+// R3 review V10: the start page has no feedback menu any more; the same panel on the board
+test('feedback from the board panel: text sent URL-encoded, panel closes (B-51, B-54)', async ({ browser }) => {
   const page = await newPlayer(browser);
-  await page.goto('/');
+  const url = await createTeam(page, 'Menu Feedback');
+  await joinAsPlayer(page, url, 'Alice');
   const fbBtn = page.locator('#feedback_btn');
 
   await fbBtn.click();
@@ -485,4 +488,54 @@ test('large screen: a click outside the panel closes it, the click still counts 
   await alice.keyboard.press('Escape');
   await expect(menu(alice)).not.toHaveAttribute('open');
   await expect(topicBtn).toBeFocused();
+});
+
+test('settings (Results, Team, You): a failed write shows the error toast only, success shows nothing (R3)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: LARGE });
+  const url = await createTeam(alice, 'Menu Errors');
+  await joinAsPlayer(alice, url, 'Alice');
+  const toast = alice.locator('#toast');
+  const expectErrorToast = async () => {
+    await expect(toast).toHaveText('Not saved – please try again');
+    await expect(toast).toHaveClass(/toast-on/);
+    await expect(toast).toHaveClass(/toast-error/);
+    await expect(toast.locator('svg.toast-ico use')).toHaveAttribute('href', '#i-alert');
+  };
+  const hideToast = () => alice.evaluate(() => document.getElementById('toast')!.classList.remove('toast-on'));
+  const fail500 = (pattern: string) => alice.route(pattern, route => route.fulfill({ status: 500, body: '' }));
+
+  // Results: sort order; on failure the radio shows the server's state again
+  await alice.locator('#cset_btn').click();
+  await tab(alice, 'Results').click();
+  const bySequence = alice.locator('input[name=cet_order_by][value=SEQUENCE]');
+  const byName = alice.locator('input[name=cet_order_by][value=NAME]');
+  await expect(bySequence).toBeChecked();
+  await fail500('**/api/update_results_order.php*');
+  await alice.locator('#cset_panel_results label', { hasText: 'Player name' }).click();
+  await expectErrorToast();
+  await expect(bySequence).toBeChecked();
+  await alice.unroute('**/api/update_results_order.php*');
+  await hideToast();
+  await alice.locator('#cset_panel_results label', { hasText: 'Player name' }).click();
+  await expect(byName).toBeChecked();
+  await alice.waitForTimeout(500);
+  await expect(toast).not.toHaveClass(/toast-on/);   // success: no message
+
+  // Team: tips (network failure)
+  await hideToast();
+  await tab(alice, 'Team').click();
+  await alice.route('**/api/update_team.php*', route => route.abort('failed'));
+  await alice.locator('#cset_panel_team label', { hasText: 'Off' }).click();
+  await expectErrorToast();
+  await expect(alice.locator('input[name=cet_show_tips][value="1"]')).toBeChecked();
+  await alice.unroute('**/api/update_team.php*');
+
+  // You: player / observer
+  await hideToast();
+  await alice.locator('#user_settings_btn').click();
+  await fail500('**/api/name.php*');
+  await alice.locator('#user_settings_box label', { hasText: 'Observer' }).click();
+  await expectErrorToast();
+  await expect(alice.locator('input[name=cet_user_type][value=PLAYER]')).toBeChecked();
+  await expect(alice.locator('dialog#menu[open]')).toBeVisible();
 });

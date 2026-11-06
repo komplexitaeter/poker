@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { teamWithTwoPlayers, pickCard, expectTableCard } from './helpers';
+import { teamWithTwoPlayers, pickCard, expectTableCard, deckCard } from './helpers';
 
 /**
  * B-92: answers of api/dao.php may come in any order. An answer older than the board state shown last is dropped,
@@ -39,7 +39,7 @@ test('an older board state that comes last is dropped (B-92)', async ({ browser 
   await stateDelivered;
   await alice.evaluate(() => new Promise(resolve => setTimeout(resolve, 300)));
   await expect(alice.locator('#team_name')).toHaveText('Dao Order');
-  await expect(alice.locator('#ctl img#three01')).toHaveClass(/selected/);
+  await expect(deckCard(alice, 'three01')).toHaveClass(/selected/);
   await expectTableCard(alice, 'Alice', 'three01');
   await expectTableCard(alice, 'Bob', 'five001');
 });

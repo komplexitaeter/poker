@@ -81,7 +81,7 @@ test('anonymous mode: revealing the cards does not glide (B-41)', async ({ brows
   // anonymous results are sorted by value: Bob (3) moves in front of Alice (8)
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator(`#cbox .c[id="${bobId}"] img.card_image`)).toHaveAttribute('src', 'src/c_three01.png');
+  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveAttribute('data-card', 'three01');
   await expect(alice.locator('#cbox .c').first()).toHaveAttribute('id', bobId);
   await alice.waitForTimeout(300);
 

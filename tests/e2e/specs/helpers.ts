@@ -1,4 +1,5 @@
 import { test, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 
 /**
  * Contexts from newPlayer() are not closed by Playwright, and most specs do not close them either. A worker
@@ -20,11 +21,14 @@ async function closeContextsOfEarlierTests(testId: string): Promise<void> {
  * (B-15). The tests therefore block all external hosts and keep only 127.0.0.1/localhost reachable.
  * This also covers production analytics (plausible.io), which must stay blocked.
  */
-export async function newPlayer(browser: Browser, options: BrowserContextOptions = {}): Promise<Page> {
+export async function newPlayer(browser: Browser, options: BrowserContextOptions = {},
+                                { tapHint = false }: { tapHint?: boolean } = {}): Promise<Page> {
   const testId = test.info().testId;
   await closeContextsOfEarlierTests(testId);
   const context = await browser.newContext(options);
   playerContexts.push({ testId, context });
+  // B-110: touch devices show a hint once ("Tap a card ..."); seen already, unless a test is about it
+  if (!tapHint) await context.addInitScript(() => { try { localStorage.setItem('TAP_HINT_SEEN', '1'); } catch (e) { /* none */ } });
   await context.route(/^https?:\/\//, route => {
     const host = new URL(route.request().url()).hostname;
     if (host === '127.0.0.1' || host === 'localhost') return route.continue();
@@ -75,16 +79,31 @@ export function tableCard(page: Page, playerName: string): Locator {
   });
 }
 
-/** Expects the card image shown for a player, e.g. 'prgrss1' (not chosen), 'done001' (chosen, hidden), 'three01'. */
+/** Expects the card shown for a player, e.g. 'prgrss1' (not chosen), 'done001' (chosen, hidden), 'three01'.
+ * By its key (data-card), not by the way it is drawn (B-99). */
 export async function expectTableCard(page: Page, playerName: string, displayCardKey: string): Promise<void> {
-  await expect(tableCard(page, playerName).locator('img.card_image'))
-    .toHaveAttribute('src', `src/c_${displayCardKey}.png`);
+  await expect(tableCard(page, playerName)).toHaveAttribute('data-card', displayCardKey);
+}
+
+/** A card in the player's own deck (the tray only holds the cards of the team's deck, B-99). */
+export function deckCard(page: Page, cardKey: string): Locator {
+  return page.locator(`#ctl .ctl[data-card="${cardKey}"]`);
+}
+
+/** All cards in the player's own deck, in deck order. */
+export function deckCards(page: Page): Locator {
+  return page.locator('#ctl .ctl');
+}
+
+/** The picked card(s) in the player's own deck. */
+export function selectedDeckCards(page: Page): Locator {
+  return page.locator('#ctl .ctl.selected');
 }
 
 /** Picks a card from the player's own deck. */
 export async function pickCard(page: Page, cardKey: string): Promise<void> {
-  await page.locator(`#ctl img#${cardKey}`).click();
-  await expect(page.locator(`#ctl img#${cardKey}`)).toHaveClass(/selected/);
+  await deckCard(page, cardKey).click();
+  await expect(deckCard(page, cardKey)).toHaveClass(/selected/);
 }
 
 /** Team with two joined players, Alice (creator) and Bob. */
@@ -131,4 +150,87 @@ export async function setTimer(page: Page, on: boolean): Promise<void> {
   else await expect(page.locator('#timer')).toBeHidden();
   await page.locator('#menu_close').click();
   await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
+}
+
+/** R3 F5: sets the deck of a team through the API (api/update_deck.php, api/update_controls.php): a variant of
+ * card_catalog.json, optionally single cards of its group and the control cards (null: leave them). */
+export async function setTeamDeck(page: Page, boardUrl: string, deck: string, cards: string[] | null = null,
+                                  controls: string[] | null = null): Promise<void> {
+  const t = encodeURIComponent(new URL(boardUrl).searchParams.get('t') ?? '');
+  const cardsParam = cards === null ? '' : `&cards=${cards.join(',')}`;
+  expect((await page.request.post(`/api/update_deck.php?t=${t}&deck=${deck}${cardsParam}`)).ok()).toBeTruthy();
+  if (controls !== null) {
+    expect((await page.request.post(`/api/update_controls.php?t=${t}&controls=${controls.join(',')}`)).ok()).toBeTruthy();
+  }
+}
+
+/** R3 F5: all cards of the Fibonacci group (with 60 and 89 since B-98, Andreas 2026-10-31); with all control cards
+ * 21 cards, the largest deck */
+export const FIB_ALL = ['zero001', '1pnt501', 'one0001', 'two0001', 'three01', 'five001', 'eight01', 'thrtn01', 'twnty01',
+  '2tyone1', '3tyfr01', '4ty0001', '5tyfve1', 'sixty01', 'eighty9', 'hundro1', 'infin01'];
+export const CONTROLS_ALL = ['break01', 'qstmrk1', 'xclam01', 'veto'];
+
+/** R3 F5: chooses a card set in the deck menu (Board settings -> Deck -> change), menu open or closed */
+export async function chooseCardSet(page: Page, setName: string): Promise<void> {
+  if (!(await page.locator('#deck_menu').isVisible())) await page.locator('#cset_btn').click();
+  await page.locator('#deck_change').click();
+  await page.locator('#deck_menu .dm-prow-b').filter({ hasText: setName }).click();
+}
+
+/**
+ * R3 F4: decks from card_catalog.json have at most 21 cards and never mix groups. Specs about the tray layout that
+ * need larger or mixed decks set cardset_flags in the database and let the board use its fallback: dao.php without
+ * "deck" (as with a missing card_catalog.json on the server), so the deck comes from cardset_flags (deck.js adapter).
+ */
+const legacyDeckPages = new WeakSet<Page>();
+
+export async function setLegacyDeck(page: Page, t: string, indexes: number[]): Promise<void> {
+  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // checked before it goes into the statement
+  const flags = Array(46).fill('0');
+  indexes.forEach(i => flags[i] = '1');
+  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
+    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
+  if (legacyDeckPages.has(page)) return;
+  legacyDeckPages.add(page);
+  await page.route('**/api/dao.php*', async route => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.deck = null;
+    await route.fulfill({ response, json });
+  });
+}
+
+/** R3 F5: back to the server's deck (dao.php with "deck") after setLegacyDeck */
+export async function clearLegacyDeck(page: Page): Promise<void> {
+  await page.unroute('**/api/dao.php*');
+  legacyDeckPages.delete(page);
+}
+
+/**
+ * B-110: the board loads dao.php 0-5 s after every 'hb' of poker-msg (every 30 s). A test that checks that an action
+ * loads nothing ("loads === 0") hit such a load now and then; this stops them on the page (and drops a pending one).
+ * scheduleHbLoad is a top-level function of script.js (a window property); gHbLoadTimer a script-level let.
+ */
+export async function stopHbLoads(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (window as unknown as { scheduleHbLoad: () => void }).scheduleHbLoad = () => undefined;
+    (0, eval)('clearTimeout(gHbLoadTimer); gHbLoadTimer = null;');
+  });
+}
+
+/**
+ * B-116: every team gets the example set "Animals (Example)" on its first load (dao.php). Tests that count or index the
+ * own sets remove it (marked as given, rows deleted, so it does not come back) and reload the given pages.
+ */
+export async function removeExampleSet(boardUrl: string, ...pages: Page[]): Promise<void> {
+  const t = new URL(boardUrl).searchParams.get('t') as string;
+  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // safe to put into the SQL below
+  const mysql = (statement: string) => execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e',
+    '-N', '-B', '-e', statement], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  // marked as given first: a load still running re-reads the flag under the row lock and skips it
+  mysql(`update pok_teams_tbl set example_set_given = 1 where id = '${t}';
+         delete c from pok_custom_cards_tbl c join pok_custom_sets_tbl s on s.id = c.set_id
+          where s.team_id = '${t}' and s.name = 'Animals (Example)';
+         delete from pok_custom_sets_tbl where team_id = '${t}' and name = 'Animals (Example)'`);
+  for (const page of pages) await page.reload();
 }

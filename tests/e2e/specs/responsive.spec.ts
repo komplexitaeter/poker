@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, addPlayersViaApi, deckCards } from './helpers';
 
 /**
  * B-36: The layout switches purely by CSS media queries at 800 px (style/style.css,
@@ -53,7 +53,7 @@ async function expectLargeLayout(page: Page) {
   await expect(page.locator('#topic_btn')).toBeVisible();
   await expect(page.locator('#cset_btn')).toBeVisible();
   await expect(page.locator('#newroundbtn')).toBeVisible();
-  await expect(page.locator('#ctl img.on').first()).toHaveCSS('width', '45px');
+  await expect(deckCards(page).first()).toHaveCSS('width', '52px');
   // B-49: two players on a large table: the cards use the room up to --card-max (150px)
   await expect.poll(async () => (await tableCard(page, 'Alice').boundingBox())?.width).toBe(150);
 }
@@ -127,29 +127,39 @@ test('resizing switches the layout and display type without a reload (B-36)', as
   expect(await legacyClassCount(alice)).toBe(0);
 });
 
-test('start page on a small screen shows logo, color switch and feedback (B-36)', async ({ browser }) => {
+test('start page on a small screen shows logo and color switch, no feedback (B-36, R3 review V10)', async ({ browser }) => {
   const page = await newPlayer(browser, { viewport: SMALL });
   await page.goto('/');
   await expect(page.locator('#brand')).toBeVisible();
   await expect(page.locator('#cmode_btn')).toBeVisible();
-  await expect(page.locator('#feedback_btn')).toBeVisible();
+  await expect(page.locator('#feedback_btn')).toHaveCount(0);
   await expect(page.locator('#teaminput')).toBeVisible();
   expect(await legacyClassCount(page)).toBe(0);
 });
 
-test('touch tablet: delete icon visible without hover (B-36)', async ({ browser }) => {
+test('touch tablet: delete icon visible without hover (B-36), after a tap with others at the table (B-110)', async ({ browser }) => {
   const viewport = { width: 1024, height: 768 };
   const alice = await newPlayer(browser, { viewport, hasTouch: true });
   const url = await createTeam(alice, 'RespTouch');
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(tableCard(alice, 'Alice').locator('.delete')).toBeVisible();
+  // alone at the table: the own trash can after a tap only, as with others (R3 review E6)
+  await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '0');
+  await tableCard(alice, 'Alice').locator('.pc').tap();
+  await expect(tableCard(alice, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
+  await tableCard(alice, 'Alice').locator('.pc').tap();
 
   // a mouse device of the same size shows it on hover only
   const bob = await newPlayer(browser, { viewport });
   await joinAsPlayer(bob, url, 'Bob');
   await expect(tableCard(bob, 'Alice')).toBeVisible();
   await bob.mouse.move(0, 0);
-  await expect(tableCard(bob, 'Alice').locator('.delete')).toBeHidden();
+  await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '0');
   await tableCard(bob, 'Alice').hover();
-  await expect(tableCard(bob, 'Alice').locator('.delete')).toBeVisible();
+  await expect(tableCard(bob, 'Alice').locator('.delete')).toHaveCSS('opacity', '1');
+
+  // B-110: with Bob at the table the touch device shows the circles on the tapped card only
+  await expect(tableCard(alice, 'Bob').locator('.delete')).toHaveCSS('opacity', '0');
+  await tableCard(alice, 'Bob').locator('.pc').tap();
+  await expect(tableCard(alice, 'Bob').locator('.delete')).toHaveCSS('opacity', '1');
+  await expect(tableCard(alice, 'Bob').locator('.react')).toHaveCSS('opacity', '1');
 });

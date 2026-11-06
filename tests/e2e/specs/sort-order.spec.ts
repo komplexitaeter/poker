@@ -30,7 +30,7 @@ test('the menu setting arranges revealed cards by player name or by card value, 
 
   await openResults(alice);
   const group = alice.locator('#cet_order_by');
-  await expect(group.locator('legend')).toHaveText('Arrange revealed cards by');
+  await expect(group.locator('legend')).toHaveText('Sort revealed cards by');
   await expect(group.locator('label')).toHaveText(['Card value', 'Player name']);
   await expect(orderRadio(alice, 'SEQUENCE')).toBeChecked();
   await expect(alice.locator('#cet_order_by_hint')).toBeHidden();
@@ -42,7 +42,7 @@ test('the menu setting arranges revealed cards by player name or by card value, 
   // Alice 8, Bob 3: by name Alice comes first
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator(`#cbox .c[id="${bobId}"] img.card_image`)).toHaveAttribute('src', 'src/c_three01.png');
+  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveAttribute('data-card', 'three01');
   await expect(firstCard(alice)).toHaveAttribute('id', aliceId);
   await expect(firstCard(bob)).toHaveAttribute('id', aliceId);
 
@@ -85,7 +85,7 @@ test('anonymous mode: the choice is disabled, shows "Card value", a hint is show
   // Alice 8, Bob 3: arranged by card value although "Player name" is stored
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator(`#cbox .c[id="${bobId}"] img.card_image`)).toHaveAttribute('src', 'src/c_three01.png');
+  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveAttribute('data-card', 'three01');
   await expect(firstCard(alice)).toHaveAttribute('id', bobId);
   await expect(alice.locator('#order_by_div')).toHaveCount(0);
 });
@@ -119,4 +119,44 @@ test('choosing "Anonymous" in the menu disables the choice at once and keeps the
   await expect(hint).toBeHidden();
   await expect(group).not.toHaveAttribute('aria-describedby');
   await expect(orderRadio(bob, 'NAME')).toBeChecked();
+});
+
+test('"Names on revealed cards": "Takes effect with the next round." only while a change is pending (R3)',
+  async ({ browser }) => {
+  const { alice, bob } = await teamWithTwoPlayers(browser, 'Anon Pending Hint');
+  await expect(tableCard(alice, 'Bob')).toBeVisible();
+  const anonRadio = (page: Page, value: '0' | '1') => page.locator(`input[name=cet_anonymous][value="${value}"]`);
+  const hint = (page: Page) => page.locator('#cet_anonymous_hint');
+  for (const page of [alice, bob]) {
+    await openResults(page);
+    await expect(anonRadio(page, '0')).toBeChecked();
+    await expect(hint(page)).toBeHidden();
+  }
+
+  // no card down: at once, nothing pending
+  await anonRadio(alice, '1').check();
+  for (const page of [alice, bob]) {
+    await expect(anonRadio(page, '1')).toBeChecked();
+    await expect(hint(page)).toBeHidden();
+  }
+  await anonRadio(bob, '0').check();
+  for (const page of [alice, bob]) await expect(anonRadio(page, '0')).toBeChecked();
+
+  // a card down: the change waits for the next round, the hint shows on both boards
+  await bob.keyboard.press('Escape');
+  await pickCard(bob, 'three01');
+  await openResults(bob);
+  await anonRadio(alice, '1').check();
+  for (const page of [alice, bob]) {
+    await expect(anonRadio(page, '1')).toBeChecked();
+    await expect(hint(page)).toBeVisible();
+    await expect(hint(page)).toHaveText('Takes effect with the next round.');
+  }
+
+  // back to the round's setting: hint gone
+  await anonRadio(bob, '0').check();
+  for (const page of [alice, bob]) {
+    await expect(anonRadio(page, '0')).toBeChecked();
+    await expect(hint(page)).toBeHidden();
+  }
 });

@@ -49,10 +49,11 @@
     /* B-49: fluid card sizes. script.js fits the table cards to the table ("fit to table"):
      * the largest width between --card-min and --card-max at which all cards fit into #table,
      * set as --card-w on #cbox (inline style). Plain px values, script.js reads them.
-     * The images are 300 x 443px: sharp up to 150px on 2x screens. */
+     * B-99: the cards are rendered (cards.js), sharp at any size. */
     --card-min: 64px;     /* the name stays readable; on a 375x667 phone 20 cards fit without scrolling, more scroll */
     --card-max: 150px;    /* phones: 110px, see below */
     --card-ratio: 1.48;   /* height / width (100 x 148) */
+    --card-name-h: 24px;  /* B-99: the name tag above a card (20px line + 4px gap), part of the fit */
     /* side gutter of #cbox: the gap between two cards, at least this (large screens: plus the
      * 8px padding of .table) – the outer cards never touch the edge of the table */
     --card-gutter-min: 8px;
@@ -61,15 +62,18 @@
     --card-fluid: clamp(64px, min(22vw, max(100px, 6.94vw)), 140px);
     /* smallest delete icon on a card: none here, 28px on touch screens (see "Touch screens") */
     --card-del-min: 0px;
-    /* Deck cards: 45px as before, from about 1300px up 2.5vw + 13px (up to 64px). B-68 (large
-     * screens): the cards shrink together when they do not fit into the tray, down to --deck-min;
-     * only then the deck scrolls sideways. */
-    --deck-w: clamp(45px, 2.5vw + 13px, 64px);
+    /* Deck cards: 52px, from about 1300px up 2.5vw + 20px (up to 68px); wide enough for a heading
+     * word like "important" (B-99 D4). B-68 (large screens): the cards shrink together when they do
+     * not fit into the tray, down to --deck-min; only then the deck scrolls sideways. */
+    --deck-w: clamp(52px, 2.5vw + 20px, 68px);
     --deck-min: 26px;
 }
 
 @media (max-width: 799.98px) {
-    :root { --card-max: 110px; } /* few players: no giant cards on a phone */
+    :root {
+        --card-max: 110px;   /* few players: no giant cards on a phone */
+        --card-name-h: 17px; /* B-99: a slimmer name tag, 15 cards still fit on a 375x667 phone */
+    }
 }
 
 /* touch devices: the deck is a carousel (B-75, B-77 tablets too); the width of a card, the one in
@@ -106,7 +110,6 @@ body {
     --ok: #5af78e;          /* prompt user@host */
     --danger: #ff6b66;
     --warn: #ffb547;        /* B-67: timer over its timebox (T+) */
-    --flash-red-background: #340000;
     --focus-ring: rgba(132, 203, 255, 0.6);
     --shadow-color: rgba(0, 0, 0, 0.5);
     /* B-68: the deck tray floating over the table: a deep shadow and a faint light edge, so it
@@ -115,6 +118,12 @@ body {
         0 0 0 1px rgba(255, 255, 255, 0.12);
     --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
     --survey-voted_background: rgba(0, 0, 0, 0.67);
+    /* B-99 D6/D9: tinted cards (badge style: traffic lights, emotions, stars). Dark: neutral paper with a
+     * faint glow of the value colour from the top (--card-glow-end: how far it reaches) and a coloured inner
+     * rim, so symbols and texts keep the contrast of the plain card. Light: the whole card tinted. */
+    --card-tint: 16%;
+    --card-glow-end: 45%;
+    --card-rim: 40%;
 }
 
 body.light-theme {
@@ -134,12 +143,12 @@ body.light-theme {
     --ok: #1b7a37;
     --danger: #c0262d;
     --warn: #9a5800;
-    --flash-red-background: #ffd9d9;
     --focus-ring: rgba(10, 98, 179, 0.5);
     --shadow-color: rgba(0, 0, 0, 0.18);
     --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     --scrim: rgba(29, 32, 39, 0.4);
     --survey-voted_background: rgba(255, 255, 255, 0.67);
+    --card-tint: 13%;   /* light: the whole card flat (no glow, no rim) */
 }
 
 /* Former token names, kept as aliases so the rest of the sheet (and script.js, which uses
@@ -326,6 +335,15 @@ textarea.field {
     box-shadow: 0 0 8px 2px var(--focus-ring);
 }
 
+/* R3 (Andreas, 2026-11-03): focus the app moved after a mouse click or tap shows no ring (focusQuietly() in script.js;
+ * Safari would show it). A key brings it back. */
+.no-ring:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.btn-box.no-ring:focus-visible:not(:hover) { border-color: var(--light-border-color); }
+
 /* empty labels of the name overlay keep their spacing (the menu uses .lab) */
 .topnav label {
     display: block;
@@ -350,8 +368,11 @@ textarea.field {
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
-    background-color: var(--background-color);
-    opacity: 96%;
+    /* B-99 D12: only the backdrop is see-through (the board shines through faintly); buttons and
+     * the name field on it stay opaque. Was `opacity: 96%` on the whole panel, which made them
+     * see-through as well. */
+    background-color: var(--bg);
+    background-color: color-mix(in srgb, var(--bg) 96%, transparent);
 }
 
 .overlay_msg {
@@ -367,6 +388,10 @@ textarea.field {
     width: 18rem;
     max-width: calc(100% - 2 * var(--space-3));
 }
+
+/* B-99 D12: an opaque fill (the field color), so nothing behind the panel shows through */
+.overlay_panel .btn,
+.overlay_panel #nameinput { background: var(--bg-2); }
 
 .overlay_panel .btn {
     min-height: var(--tap);
@@ -396,24 +421,172 @@ textarea.field {
 /* ---------- Start page ---------- */
 
 #teaminput {
-    margin-top: 60px;
+    margin-top: var(--space-4);
     width: 250px;
 }
 
 #teambtn {
-    margin-top: 60px;
+    margin-top: var(--space-4);
     display: initial;
 }
 
-.instruction {
-    color: var(--text-color);
-    width: fit-content;
-    text-align: left;
-    margin: var(--space-4) auto 1em;
-    line-height: 1.6;
+/* phones: field and button one below the other in one column of the same width, like the name overlay
+ * (fix R3, iPhone: they wrapped as two centred boxes of different widths) */
+@media (max-width: 799.98px) {
+    #teamForm {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: var(--space-4);
+    }
+
+    #teaminput,
+    #teambtn {
+        box-sizing: border-box;
+        width: 18rem;
+        max-width: calc(100% - 2 * var(--space-3));
+        margin: 0;
+    }
+
+    #teaminput {
+        min-height: var(--tap); /* as high as the name field in the overlay on touch screens */
+        margin-bottom: var(--space-4);
+    }
+
+    #teambtn { min-height: 3rem; order: 2; }
+
+    /* R3 review V10: the message for an empty name right below the field, above the button */
+    #team_err { order: 1; margin: 0 0 var(--space-4); }
+    #teaminput[aria-invalid="true"] { margin-bottom: var(--space-2); }
 }
 
-.instruction li::marker { color: var(--muted); }
+/* R3 start page (Andreas): one calm, centred column for everything - the V5 hint, the heading, the form and the
+ * three steps (was: a centred line, a centred form and a left-aligned numbered list on different edges) */
+.start {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    margin: 0 auto;
+    padding: 60px var(--space-3) var(--space-4);
+}
+
+/* the heading: the claim in the text colour, the second sentence quieter below (one line each when there is room) */
+.team-lead {
+    margin: 0;
+    font-size: var(--fs-l);
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text);
+    text-wrap: balance; /* very narrow screens: no single word alone in the last line */
+}
+
+.team-lead > span { display: inline-block; }
+
+.team-lead > span + span {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--fs-m);
+    font-weight: 400;
+    color: var(--muted);
+}
+
+/* R3 review V5: a board link that does not work (index.php shows the start page with ?t=…, script_team.js) */
+.link-err {
+    margin: 0 0 var(--space-3);
+    color: var(--warn);
+}
+.link-err[hidden] { display: none; }
+
+/* R3 review V10 (L17): an empty team name says so below the field (script_team.js) */
+.team-err {
+    margin: var(--space-2) auto 0;
+    padding: 0 var(--space-3);
+    color: var(--danger);
+    font-size: var(--fs-s);
+}
+.team-err[hidden] { display: none; }
+
+/* R3 start page: how it works - three equal steps in a row: a picture in the card style (pencil and chain link from
+ * init.html's sprite, one real deck card for the vote), all in the same box and of about the same weight, a word
+ * and a short one-line text; a hand-drawn dashed line leads from one picture to the next. Phones keep the row. */
+.start-steps {
+    --pic-h: 64px;
+    --gap: var(--space-2);
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--gap);
+    margin: 52px 0 0;
+    padding: 0;
+    counter-reset: step;
+}
+
+.start-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+/* the same box for all three pictures */
+.start-pic {
+    display: block;
+    width: calc(var(--pic-h) * 100 / 120);
+    height: var(--pic-h);
+    margin-bottom: var(--space-2);
+}
+
+/* the dashed, slightly wobbly line between two pictures (a mask, so it takes the theme colour) */
+.start-step + .start-step::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--pic-h) / 2 - 6px);
+    right: calc(50% + var(--pic-h) * 0.55);
+    width: calc(100% + var(--gap) - var(--pic-h) * 1.1);
+    height: 12px;
+    background: var(--line-strong);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 7c10-3 18 2 28-1s18-3 28 0 18 2 28-1 18 1 32-1' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='5 5'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.start-step b {
+    font-size: var(--fs-m);
+    color: var(--text);
+}
+
+.start-step b::before {
+    counter-increment: step;
+    content: counter(step) " ";
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.start-step > span:last-child {
+    margin-top: 2px;
+    font-size: var(--fs-xs);
+    line-height: 1.45;
+    color: var(--muted);
+    white-space: nowrap; /* the texts are short (15 characters at most): one line each, also at 360 px */
+}
+
+/* the vote: one real deck card, a little smaller than the box and slightly tilted, so it weighs like the drawings */
+.start-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.start-card .dkc {
+    width: 64%;
+    border-radius: 4px;
+    transform: rotate(8deg);
+}
+
+@media (max-width: 799.98px) {
+    .start { padding-top: 40px; }
+    .start-steps { --pic-h: 52px; --gap: var(--space-1); margin-top: 40px; }
+}
 
 /* ---------- Board layout (B-46) ---------- */
 
@@ -653,22 +826,6 @@ textarea.field {
 
 .team-name:hover #team_name { color: var(--accent); }
 
-/* the name tag sits right of the cursor, vertically centred on the team name (inside .caret) */
-.you-tag {
-    min-width: 0;
-    max-width: 12ch;
-    padding: 1px 5px;
-    border-radius: var(--radius-m);
-    background: var(--accent);
-    color: var(--on-accent);
-    font: bold var(--fs-xs) / 1.35 var(--font);
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* no player name yet (name overlay): the team name and the cursor alone */
-.you-tag:empty { display: none; }
-
 /* start page: "poker" with the cursor */
 .prompt-line {
     display: inline-flex;
@@ -677,9 +834,7 @@ textarea.field {
     white-space: nowrap;
 }
 
-/* the cursor: a thin line that slowly dims and comes back (no hard blink); on the board it
- * carries the name tag, which stays steady. Tag and team name keep the same distance to the
- * cursor (gap = margin-left, both in the team name's font size). */
+/* the cursor of the start page ("poker"): a thin line that slowly dims and comes back (no hard blink) */
 .caret {
     flex: none; /* the team name shrinks first; the tag has its own maximum width */
     display: inline-flex;
@@ -690,26 +845,14 @@ textarea.field {
     top: -0.05em; /* the line box hangs below the letters (descender room): centre on the letters */
 }
 
-/* B-70 board: a bit more room around the line, so it reads as a deliberate divider between team
- * name and name tag; without the tag it would stand alone: hidden (no name yet, phones) */
-.team-name .caret {
-    gap: 0.5em;
-    margin-left: 0.5em;
-}
-
-.team-name .caret:has(.you-tag:empty) { display: none; }
-
-/* Centre cursor and tag on the lowercase letters of the team name, independent of font metrics
- * (SF Mono in Safari vs. other monospace fonts): the team name's box is trimmed to the x-height,
- * so flex centring hits the middle of the lowercase letters. The padding keeps ascenders and
- * descenders visible (overflow: hidden for the ellipsis) and is symmetric, so the centre stays.
- * Without text-box support (Firefox) the top: -0.05em approximation above remains. */
+/* The team name's box is trimmed to the x-height, so flex centring in the header hits the middle of its
+ * lowercase letters, independent of font metrics (SF Mono in Safari vs. other monospace fonts). The padding
+ * keeps ascenders and descenders visible (overflow: hidden for the ellipsis) and is symmetric. */
 @supports (text-box: trim-both ex alphabetic) {
     .team-name #team_name {
         text-box: trim-both ex alphabetic;
         padding-block: 0.35em;
     }
-    .team-name .caret { top: 0; }
 }
 
 .caret::before {
@@ -812,8 +955,36 @@ textarea.field {
 body:has(#timer:not(.display_none)) #timer_btn .lbl::after,
 body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { background: var(--ok); }
 
-#copy_link_btn { color: var(--muted); }
-#copy_link_btn:hover { color: var(--accent); }
+/* R3 review V2: "Invite" is the primary action of the header: accent fill, share icon, label on every width.
+ * After copying (V1) it reads "Link copied ✓" in green for 2 s (.is-done, script.js confirmInvite()). */
+.invite-btn {
+    margin-left: var(--space-1);
+    padding: 0 12px;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+/* hover only where a pointer hovers: after a tap on a phone it would stay */
+@media (hover: hover) {
+    .invite-btn:hover {
+        border-color: var(--accent);
+        background: transparent;
+        color: var(--accent);
+    }
+}
+
+.invite-btn .i-check,
+.invite-btn.is-done .i-share { display: none; }
+.invite-btn.is-done .i-check { display: block; }
+
+.invite-btn.is-done,
+.invite-btn.is-done:hover {
+    border-color: var(--ok);
+    background: var(--ok);
+    color: var(--on-accent);
+}
 
 /* color mode: moon in dark mode, sun in light mode */
 #cmode_btn .i-sun,
@@ -841,8 +1012,7 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 
 /* medium screens: icons only (name via aria-label) */
 @media (min-width: 800px) and (max-width: 1179.98px) {
-    .topnav-bar .lbl,
-    #copy_link_btn .lbl { display: none; }
+    .topnav-bar .lbl { display: none; }
 }
 
 @media (max-width: 799.98px) {
@@ -860,20 +1030,17 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 
     .team-name { font-size: var(--fs-m); }
 
-    #show_qr_code,
-    #copy_link_btn .lbl { display: none; }
+    #show_qr_code { display: none; }
+
+    .invite-btn { padding: 0 10px; }
 
     /* board: the header buttons move into the menu sheet (index) */
     .container .topnav-bar { display: none; }
     .container .menu-btn { display: inline-flex; }
 }
 
-/* phones (board): the team name gets the room, the name tag goes away completely,
- * the logo shrinks to its mark */
+/* phones (board): the team name gets the room, the logo shrinks to its mark */
 @media (max-width: 420px) {
-    .you-tag,
-    .team-name .caret { display: none; }
-
     .container #brand { display: none; }
     .container #brand_icon { display: block; }
 }
@@ -1044,6 +1211,8 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     text-wrap: pretty; /* no single word alone in the last line */
 }
 
+/* R3 review V1: the confirmation of an own switch below it (timer), instead of a toast */
+
 .row {
     display: flex;
     align-items: center;
@@ -1098,6 +1267,11 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
 .btn-box.danger { color: var(--danger); }
 
 .btn-box.danger:enabled:hover { border-color: var(--danger); color: var(--danger); }
+
+/* R3 review V10 (L61): a large button for a dangerous action ("Delete my data"), like .rm-row .btn-box.danger */
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger:enabled:hover,
+.btn.danger:active { background: var(--danger); border-color: var(--danger); color: var(--bg); }
 
 /* segment switch: a radio group that looks like one control (fieldset.f > .seg > label);
  * used where there are two or three values */
@@ -1155,6 +1329,8 @@ body:has(#timer:not(.display_none)) #menu_index [data-open="timer"] b::after { b
     outline-offset: 1px;
 }
 
+.seg input.no-ring:focus-visible + span { outline: none; } /* focusQuietly() after a click: the ring is on the label */
+
 /* locked (B-42: sort order in anonymous mode): the choice stays readable, the dashed border
  * marks it as locked */
 fieldset:disabled .seg { border-style: dashed; }
@@ -1165,14 +1341,6 @@ fieldset:disabled .seg input:checked + span {
     background: var(--bg-4);
     color: var(--muted);
 }
-
-/* average pointer: a lock on "Show" while it is hidden ("join the dark side") */
-.seg .i-lock {
-    width: 14px;
-    height: 14px;
-}
-
-.seg input:checked + span .i-lock { display: none; }
 
 /* Tabs in a menu section (board settings: Deck | Results | Team; feedback: New issue | Backlog;
  * role=tab, aria-selected) above the content of the
@@ -1397,6 +1565,9 @@ fieldset:disabled .seg input:checked + span {
 
 .m-links a:hover { color: var(--text); }
 
+/* R3 review V10 (L8): "Privacy policy · Imprint" */
+.m-links > span { color: var(--muted); }
+
 .menu .m-links .btn-box {
     margin-left: auto;
     min-height: 0;
@@ -1580,34 +1751,29 @@ div#cbox {
 
 
 .c {
-    /* relative: anchor for the absolutely positioned name and delete button */
+    /* relative: anchor for the absolutely positioned delete button */
     position: relative;
     text-align: left;
     display: inline-block;
     width: var(--card-w);
-    border-radius: calc(var(--card-w) * 0.15); /* 15px at 100px, the corners of the images */
-    background: var(--secondary-background-color);
 }
 
-.c .background {
+/* only with a real mouse: on touch a tap would leave the hover border on the card */
+@media (hover: hover) {
+    .c:hover .pc { border-color: var(--bluish); }
+}
+
+/* B-76/B-99: the name tag above the card (its height is part of the fit, --card-name-h) */
+.c .card_player_name {
     display: block;
+    width: fit-content;
+    max-width: 100%;
+    height: calc(var(--card-name-h) - 4px);
+    margin: 0 auto 4px;
+    padding: 0 6px;
     box-sizing: border-box;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / var(--card-ratio);
-    border: 1px solid var(--light-border-color);
-    border-radius: inherit;
-}
-
-.c:hover .background { border-color: var(--bluish); }
-
-.c span {
-    position: absolute;
-    top: calc(var(--card-w) * 0.04);
-    width: 100%;
-    line-height: 2em;
-    box-sizing: border-box;
-    padding: 0 10%; /* clear of the rounded corners; a longer name ends with an ellipsis */
+    border-radius: var(--radius-s);
+    line-height: calc(var(--card-name-h) - 4px);
     text-align: center;
     color: var(--text-color);
     font-size: clamp(10px, var(--card-w) * 0.11, 14px); /* 11px at 100px */
@@ -1616,51 +1782,1231 @@ div#cbox {
     text-overflow: ellipsis;
 }
 
-/* only visible on hover (large screens with a mouse), see the media queries below */
-.c .delete {
-    display: none;
+/* B-99 D8: the own name tag on the table, accent filled */
+.c.is-me .card_player_name {
+    border-radius: var(--radius-m);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+}
+
+/* B-99 D16: remove a player from the table – a round button with a sketched trash can (the stroke of the card
+ * symbols): card paper, ink outline, tinted and hatched body. Hover: red, the lid tilts.
+ * B-110: the reaction circles in the same style sit apart from it at the lower left corner (Andreas: removing and
+ * fun apart): the nudge (.nudge, a sketched wobbling card; hover: amber (--warn), the card wobbles), right of it
+ * the smiley (.react; hover: blue).
+ * Only visible on hover (large screens with a mouse), see the media queries below. Hidden by opacity, not by
+ * display: it stays in the tab order, keyboard focus shows it (:has(:focus-visible)). */
+.c :is(.delete, .react, .nudge) {
+    display: grid;
+    opacity: 0;
+    pointer-events: none;
     position: absolute;
     bottom: calc(var(--card-del) / -2);
     right: 5%;
     width: var(--card-del);
     height: var(--card-del);
-    border: 1px solid var(--bluish);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--line-strong);
     border-radius: 100%;
-    background: var(--background-color);
+    background: var(--cardc-face);
+    color: var(--muted);
+    font: inherit;
+    line-height: 1;
     cursor: pointer;
+    --del-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
 }
+/* B-110: nudge and smiley from the left edge, with a small gap (--circ-step: a circle plus the gap).
+ * Where the three circles do not fit side by side (touch-sized circles on a small card, below about 103px), the
+ * pair moves up onto the card, clear of the trash can: --circ-lift is 0 or a full step (a step function: the
+ * overlap times 1000, clamped). So the circles never reach beyond the card into a neighbour (Tessa: the nudge
+ * fires without a confirm); the trash can keeps its place. Desktop circles (20% of the card) always fit. */
+.c {
+    --circ-gap: max(4px, var(--card-w) * 0.04);
+    --circ-step: calc(var(--card-del) + var(--circ-gap));
+    --circ-lift: clamp(0px, (3 * var(--card-del) + 2 * var(--circ-gap) - var(--card-w) * 0.9) * 1000, var(--circ-step));
+}
+.c :is(.react, .nudge) { right: auto; bottom: calc(var(--card-del) / -2 + var(--circ-lift)); }
+.c .nudge { left: 5%; }
+.c .react { left: calc(5% + var(--circ-step)); }
+.c :is(.delete, .react, .nudge) svg { display: block; width: 72%; height: 72%; overflow: visible; pointer-events: none; }
+.c :is(.react, .nudge) svg { width: 76%; height: 76%; transition: transform 0.15s ease-out; }
+.c :is(.delete, .react, .nudge) .body { fill: var(--del-tint); }
+.c :is(.delete, .react, .nudge) .hatch { stroke: currentColor; }
+.c :is(.delete, .react, .nudge) .ink { stroke: var(--cardc-ink); }
+.c .delete .lid { transform-origin: 19px 7px; transition: transform 0.15s ease-out; }
 
 /* B-49: shown by input device, not by width: mouse = on hover (or keyboard focus inside the
  * card), touch = always (see below), whatever the window size */
-.c:hover .delete,
-.c:focus-within .delete { display: block; }
+.c:hover :is(.delete, .react, .nudge),
+.c:has(:focus-visible) :is(.delete, .react, .nudge) { opacity: 1; pointer-events: auto; }
+/* B-110: the circles hang half below the card; between them the pointer would leave the card and all vanish.
+ * A bridge below the card spans the whole lower edge from the nudge on the left to the trash can on the right,
+ * only while the card is hovered (it never catches the pointer otherwise, so it blocks nothing below; it stays
+ * within the width of the card). Absolute: no effect on the layout or the fit. */
+@media (hover: hover) {
+    .c:has(.react, .nudge)::after {
+        content: "";
+        position: absolute;
+        left: 5%;
+        right: 5%;
+        bottom: calc(var(--card-del) / -2);
+        z-index: 1; /* below the circles (2) */
+        height: calc(var(--card-del) / 2);
+        pointer-events: none;
+    }
+    .c:has(.react, .nudge):hover::after { pointer-events: auto; }
+}
 
-.c .delete:hover {
-    content: url('../src/delete_red.png');
-    border-color: var(--danger-color);
+.c .delete:hover,
+.c .delete:focus-visible { border-color: var(--danger); color: var(--danger); }
+.c .delete:hover .lid,
+.c .delete:focus-visible .lid { transform: rotate(14deg) translate(0, -1px); }
+/* B-110: the smiley tilts its head; it stays blue while its emoji bar is open */
+.c .react:hover,
+.c .react:focus-visible,
+.c .react[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.c .react:hover svg,
+.c .react:focus-visible svg,
+.c .react[aria-expanded="true"] svg { transform: rotate(-12deg); }
+.c .react[aria-expanded="true"],
+.c:has(.react[aria-expanded="true"]) :is(.delete, .nudge) { opacity: 1; pointer-events: auto; }
+/* B-110: the nudge: amber, the card wobbles */
+.c .nudge:hover,
+.c .nudge:focus-visible { border-color: var(--warn); color: var(--warn); }
+.c .nudge:hover svg,
+.c .nudge:focus-visible svg { animation: nudge-wobble 0.5s ease-in-out; }
+@keyframes nudge-wobble {
+    20% { transform: rotate(-14deg); }
+    45% { transform: rotate(11deg); }
+    70% { transform: rotate(-6deg); }
+    90% { transform: rotate(2deg); }
+}
+.c :is(.delete, .react, .nudge):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* B-110 (Andreas): on the trash can the other two circles fade out, the focus is on removing. Mouse: while it is
+ * hovered (only with a real hover, no sticky touch hover); keyboard: while it has the focus; always while the remove
+ * confirm of this card is open (#rm_confirm marks its card .is-open). Meanwhile the trash can stays, red.
+ * Only the opacity: they keep their place and their pointer events, so moving back to the smiley shows them again
+ * (the bridge below the card keeps the card hovered in the gaps). A smiley with its emoji bar open stays. */
+@media (hover: hover) and (pointer: fine) {
+    .c:has(.delete:hover) :is(.react:not([aria-expanded="true"]), .nudge) { opacity: 0; transition: opacity 0.15s ease-out; }
+}
+.c:has(.delete:focus-visible) :is(.react:not([aria-expanded="true"]), .nudge),
+body:has(#rm_confirm:not([hidden])) .c.is-open :is(.react, .nudge) { opacity: 0; transition: opacity 0.15s ease-out; }
+body:has(#rm_confirm:not([hidden])) .c.is-open .delete { opacity: 1; pointer-events: auto; border-color: var(--danger); color: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+    .c :is(.react, .nudge) { transition: none !important; }
+    .c .delete .lid,
+    .c :is(.react, .nudge) svg { transition: none; }
+    .c .delete:hover .lid,
+    .c .delete:focus-visible .lid,
+    .c :is(.react, .nudge) svg { transform: none !important; animation: none !important; }
 }
 
 .c_fade-in { animation: fade-in 0.9s forwards; }
 
 .cardValueChanged { animation: shake 1s ease-in-out; }
 
+/* B-104: a card changed after the reveal: both cards in the place of one table card (Andreas): the original of the
+ * reveal behind in the upper left (turned slightly, dimmed), the current card in front in the lower right, both
+ * --stack-w wide. Name tag, next card and delete icon stay clear. The visible upper rim of the original shows its
+ * symbol small like the corner index of a playing card (.pc-corner: cardFace(.., 'mini') in cards.js, full colour).
+ * The offset is at least 14px (small cards, phones: both cards a bit smaller), so the symbol stays readable;
+ * Andreas: rather large and its lower edge slightly covered by the current card than tiny. */
+.c.is-changed {
+    --stack-dx: max(var(--card-w) * 0.12, 14px);
+    --stack-w: calc(var(--card-w) - var(--stack-dx));
+    --stack-dy: calc(var(--stack-dx) * var(--card-ratio));
+    /* a column of flex items: the margin of the name tag does not collapse into the offset of the current card */
+    display: inline-flex;
+    flex-direction: column;
+}
+.c.is-changed .pc { --card-w: var(--stack-w); width: var(--stack-w); }
+.c.is-changed .pc:not(.pc-orig) {
+    z-index: 1;
+    margin: var(--stack-dy) 0 0 var(--stack-dx);
+    /* lifts the current card off the original: a short shadow on its upper and left edge only (Andreas) */
+    box-shadow: -5px -5px 8px -2px rgb(0 0 0 / 0.9);
+}
+body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2px rgb(0 0 0 / 0.4); }
+.c :is(.delete, .react, .nudge) { z-index: 2; }
+.c .pc-orig {
+    position: absolute;
+    top: var(--card-name-h);
+    left: 0;
+    transform: rotate(-2deg);
+}
+/* dimmed: everything but the corner symbol */
+.c .pc-orig > :not(.pc-corner) { opacity: 0.45; filter: saturate(0.6); }
+.c .pc-orig::before { opacity: 0.6; }
+.c .pc-corner {
+    /* a bit higher than the rim: its lower edge may hide behind the current card, its middle stays clear */
+    --corner-h: calc(var(--stack-dy) * 1.15);
+    position: absolute;
+    top: calc(max(3px, var(--stack-w) * 0.045) + 1px);
+    left: calc(var(--stack-w) * 0.04);
+    height: var(--corner-h);
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+.c .pc-corner .mini { display: block; width: auto; height: auto; }
+/* a block in a block: the flex sizes of the big symbol (.pc .mot, by style and text size) do not reach it */
+.c .pc-corner .mot { height: var(--corner-h); width: calc(var(--corner-h) * 100 / 120); }
+/* J.U.D.G.E.: the square a bit smaller, it fills its box (the digits leave air) */
+.c .pc-corner .sty-inverted .mot { height: calc(var(--corner-h) * 0.8); width: calc(var(--corner-h) * 0.8); }
+/* a value without a symbol (custom text): as on the card, in the mono font */
+.c .pc-corner .tv {
+    display: flex;
+    align-items: center;
+    font-family: var(--font);
+    font-size: calc(var(--corner-h) * 0.7);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+    white-space: nowrap;
+}
+.c .pc-orig-in { animation: card-orig-in 0.5s ease-out; }
+@keyframes card-orig-in {
+    from { transform: translate(var(--stack-dx), var(--stack-dy)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .c .pc-orig-in { animation: none; }
+}
+
 /* touch devices cannot hover: the delete icon on every card, no sticky hover color
  * (its size: --card-del-min, "Touch screens") */
 @media (hover: none), (pointer: coarse) {
-    .c .delete {
-        display: block;
+    .c :is(.delete, .react, .nudge) {
+        opacity: 1;
+        pointer-events: auto;
         cursor: auto;
     }
 
-    .c .delete:hover {
-        content: normal;
-        border-color: var(--bluish);
+    .c :is(.delete, .react, .nudge):hover { border-color: var(--line-strong); color: var(--muted); }
+    .c .delete:hover .lid,
+    .c .react:hover svg { transform: none; }
+    .c .nudge:hover svg { animation: none; }
+    /* the red (blue) while the finger is on it */
+    .c .delete:active { border-color: var(--danger); color: var(--danger); }
+    .c .react:active,
+    .c .react[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+    .c .nudge:active { border-color: var(--warn); color: var(--warn); }
+}
+
+/* ---------- Table interaction (B-110) ---------- */
+
+/* Markup contract (set by script.js; all names via textContent, emoji codes from the fixed list only):
+ *
+ * card on the table (createCardDiv):
+ *   <div class="c [is-me] [is-away] [is-open] [is-hit] [is-nudged] [is-nudged-me]" id="<mkey>">
+ *     <span class="card_player_name">Name</span>
+ *     <div class="pc">…</div>
+ *     <button type="button" class="nudge" aria-label="Nudge Name">nudgeIcon()</button>
+ *                                                                   – not on the own card (.is-me), before .react
+ *     <button type="button" class="react" aria-label="Throw a reaction at Name" aria-haspopup="menu"
+ *             aria-expanded="false">reactIcon()</button>          – not on the own card (.is-me)
+ *     <button type="button" class="delete" …>deleteIcon()</button> – last child, as before
+ *   </div>
+ *   .is-away  no connection for a while: card paler (opaque, a veil in .pc::after), name grey, "no connection"
+ *             symbol before the name (CSS only), trash can always visible. Name it for screen readers in the delete label.
+ *   .is-open  touch only: the card was tapped, its circles show (one card at a time; a tap elsewhere closes).
+ *             Touch devices = (hover: none), (pointer: coarse). The tap mode is #table.tap-mode, set by script.js on
+ *             every touch device (R3 review E6: also alone at the table, the own trash can only after a tap).
+ *
+ * observers (the row below the cards, inside main#table after #cbox, board.html):
+ *   <div id="observers" class="observers" hidden>
+ *     <h2 class="obs-label">observing</h2>
+ *     <ul class="obs-list">
+ *       <li class="obs [is-me] [is-open]" data-mkey="<mkey>">
+ *         <span class="obs-name">Name</span>
+ *         <button type="button" class="nudge" aria-label="Nudge Name">nudgeIcon()</button> – not for .is-me
+ *         <button type="button" class="react" …>reactIcon()</button>   – not for .is-me; no delete
+ *       </li>
+ *     </ul>
+ *   </div>
+ *   away observers are left out (no symbol). Desktop: nudge and smiley on hover/focus; touch: after a tap (.is-open).
+ *   The two circles sit centred in a room above the name tag that the row always keeps (variant C: nothing over
+ *   the cards, the names never move); hover/focus/tap draws one frame around the tag and its circles.
+ *   Circles: nudge and smiley at the lower left corner, the trash can at the lower right (on a small touch card the
+ *   pair sits a step higher, on the card, see --circ-lift). A click on .nudge shakes the card on
+ *   every board (.is-nudged / .is-nudged-me, anonymous: no name lands).
+ *
+ * popovers (board.html, one of each, position: fixed): script.js sets style.left / style.top (the box, px),
+ * --arrow-x (the arrow tip, px from the left edge of the box: the middle of the anchor) and .is-below when
+ * there is no room above the anchor (the arrow then points up). Show/hide with the hidden attribute.
+ *   #react_bar.tbl-pop.react-bar   above the smiley: "throw at <.react-bar-name>", seven button[data-react]:
+ *                                  cake heart clap party think thumbs fish
+ *   #rm_confirm.tbl-pop.rm-confirm  on every click on a trash can, above it: "Remove <.rm-name> from the table?",
+ *                                  small "<.rm-name> can rejoin at any time.", Cancel / Remove
+ *   #tap_hint.tbl-pop.tap-hint      touch only, once (localStorage): "Tap a card …", "Got it"
+ *
+ * reaction landing (the flight itself: Web Animations API in script.js, see "Reaction flight" below):
+ *   .react-fly                                   the flying emoji, appended to body, removed after the flight
+ *   <span class="react-land" aria-hidden="true" style="--land-i: 0..3">
+ *                                                appended to the target .c (or .obs), removed on animationend
+ *     <span class="react-emoji">🎂</span><span class="react-from">Name</span>
+ *   </span>                                      plus .is-hit on the target .c for the bump of the card */
+
+/* away: the card fades back, the name greys, a sketched "wifi off" before the name (neutral, no emoji).
+ * Paler, not transparent (Andreas): a veil in the page colour over the opaque card, so a card gliding over another
+ * one does not let it show through. Same look as the former opacity 0.45 on the page background. */
+.c.is-away > .pc { filter: saturate(0.4); }
+/* the veil leaves the border out: pale it the same way (hover and the tapped card keep their accent border) */
+.c.is-away:not(:hover, .is-open) > .pc {
+    border-color: color-mix(in srgb, var(--line-strong) 45%, var(--bg));
+}
+.c.is-away > .pc::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5; /* above the symbols and texts of the card (the filter makes .pc a stacking context) */
+    background: color-mix(in srgb, var(--bg) 55%, transparent);
+    pointer-events: none;
+}
+.c.is-away .card_player_name { color: var(--muted); }
+.c.is-away .card_player_name::before {
+    content: "";
+    display: inline-block;
+    width: 1.2em;
+    height: calc(var(--card-name-h) - 4px); /* the line of the name tag; the mask is centred in it */
+    margin-right: 3px;
+    vertical-align: top;
+    background: currentColor;
+    -webkit-mask: var(--icon-away) center / contain no-repeat;
+    mask: var(--icon-away) center / contain no-repeat;
+}
+/* the trash can stays, no hover needed (also in the touch tap mode, below) */
+.c.is-away .delete { opacity: 1; pointer-events: auto; }
+
+:root {
+    /* three arcs and a dot, struck through; the stroke cuts a gap into the arcs (a mask in the image) */
+    --icon-away: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-linecap='round' stroke-linejoin='round'%3E%3Cmask id='m'%3E%3Crect width='24' height='24' fill='%23fff'/%3E%3Cpath d='M4.6 3.6l15.1 16.9' stroke='%23000' stroke-width='4.4'/%3E%3C/mask%3E%3Cg mask='url(%23m)'%3E%3Cpath d='M3.5 9.2c4.9-4.3 12.1-4.4 17 .1' stroke-width='1.9'/%3E%3Cpath d='M6.6 12.7c3.1-2.8 7.7-2.7 10.8 0' stroke-width='1.9'/%3E%3Cpath d='M9.6 16c1.4-1.1 3.4-1.2 4.7.1' stroke-width='1.9'/%3E%3Ccircle cx='12' cy='19.4' r='1.4' fill='%23000' stroke='none'/%3E%3C/g%3E%3Cpath d='M4.6 3.6l15.1 16.9' stroke-width='2'/%3E%3C/svg%3E");
+    --icon-eye: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.2 12.2c2.6-4.6 6-7 9.9-7 3.8 0 7.2 2.4 9.7 6.8-2.6 4.6-6 7-9.8 7-3.9 0-7.3-2.3-9.8-6.8z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+    /* B-110: reactions */
+    --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    --react-size: 40px;       /* the flying emoji */
+    --react-fly-dur: 900ms;   /* script.js reads it for the flight (Web Animations API) */
+    --react-land-dur: 1.8s;   /* the landed emoji at the target, then it is removed */
+    --z-pop: 200;             /* emoji bar, remove confirm, tap hint: above the table and the menu panel */
+    --z-fly: 240;             /* a reaction in flight, below the toast */
+}
+
+@media (max-width: 799.98px) {
+    :root { --react-size: 32px; }
+}
+
+/* touch: the circles only on the tapped card (.is-open); the trash can of an away player always */
+@media (hover: none), (pointer: coarse) {
+    #table.tap-mode .c:not(.is-open) :is(.delete, .react, .nudge) { opacity: 0; pointer-events: none; }
+    #table.tap-mode .c.is-away:not(.is-open) .delete { opacity: 1; pointer-events: auto; }
+    .c.is-open > .pc { border-color: var(--accent); }
+}
+
+/* observers: one quiet line below the cards, like the labels of the column ("// observing").
+ * B-110 (variant C, Andreas): every name tag keeps room above it for its two circles (nudge, smiley), so they never
+ * lie over the cards; on hover/focus/tap one frame encloses the tag and its circles (they belong to that name).
+ * The room is part of the row at all times: the names never move and observersHeight() / fitCardsToTable see one
+ * constant height (also when the row wraps: every line has its room). */
+.observers {
+    /* name tag, circles, the gap between circles and tag, the padding of the frame */
+    --obs-name-h: 24px;
+    --obs-circ: 26px;
+    --obs-circ-gap: 4px;
+    --obs-pad: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end; /* the label on the line of the name tags, below the room for the circles */
+    justify-content: center;
+    gap: var(--space-1) var(--space-2);
+    margin: 0 auto var(--space-3);
+    padding: 0 var(--space-2) var(--obs-pad); /* bottom: the frame reaches below the tag */
+    font-size: var(--fs-s);
+}
+@media (pointer: coarse) {
+    .observers { --obs-name-h: 32px; --obs-circ: 32px; --obs-circ-gap: 6px; }
+}
+.observers[hidden] { display: none; }
+.obs-label {
+    margin: 0;
+    font-size: inherit;
+    font-weight: normal;
+    line-height: var(--obs-name-h);
+    color: var(--muted);
+}
+.obs-label::before { content: "// "; color: var(--line-strong); }
+.obs-list {
+    display: contents;
+    list-style: none;
+}
+.obs {
+    position: relative; /* anchor of a landed reaction, of the circles and of the frame */
+    isolation: isolate; /* the frame (z-index -1) stays behind the tag and the circles, inside the observer */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center; /* a very short tag stays below the middle of its circles */
+    min-width: calc(2 * var(--obs-circ) + var(--obs-circ-gap)); /* the circles never reach into the next observer */
+    padding-top: calc(var(--obs-pad) + var(--obs-circ) + var(--obs-circ-gap)); /* the room for the circles */
+}
+.obs.is-me { padding-top: 0; min-width: 0; } /* no circles; align-items: flex-end keeps it on the line */
+.obs-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 16ch;
+    height: var(--obs-name-h);
+    padding: 0 8px 0 6px;
+    box-sizing: border-box;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg-2);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.obs-name::before {
+    content: "";
+    flex: none;
+    width: 14px;
+    height: 14px;
+    background: var(--muted);
+    -webkit-mask: var(--icon-eye) center / contain no-repeat;
+    mask: var(--icon-eye) center / contain no-repeat;
+}
+.obs.is-me .obs-name { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: bold; }
+.obs.is-me .obs-name::before { background: var(--on-accent); }
+/* the nudge and the smiley: the same circles as on a card, centred in the room above the name tag */
+.obs :is(.react, .nudge) {
+    position: absolute;
+    top: var(--obs-pad);
+    left: calc(50% - var(--obs-circ) - var(--obs-circ-gap) / 2); /* the nudge; the smiley right of it */
+    display: grid;
+    place-items: center;
+    width: var(--obs-circ);
+    height: var(--obs-circ);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 100%;
+    background: var(--cardc-face);
+    color: var(--muted);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    --del-tint: color-mix(in srgb, currentColor 22%, var(--cardc-face));
+}
+.obs .react { left: calc(50% + var(--obs-circ-gap) / 2); }
+.obs :is(.react, .nudge) svg { display: block; width: 76%; height: 76%; overflow: visible; pointer-events: none; transition: transform 0.15s ease-out; }
+.obs :is(.react, .nudge) .body { fill: var(--del-tint); }
+.obs :is(.react, .nudge) .hatch { stroke: currentColor; }
+.obs :is(.react, .nudge) .ink { stroke: var(--cardc-ink); }
+/* the frame around the tag and its circles: at least as wide as the two circles (short names), never catches the
+ * pointer (the observer itself, with its room above the tag, is the hover area) */
+.obs:has(.react)::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: calc(-1 * var(--obs-pad));
+    left: min(-1 * var(--obs-pad), 50% - var(--obs-circ) - var(--obs-circ-gap) / 2 - var(--obs-pad));
+    right: min(-1 * var(--obs-pad), 50% - var(--obs-circ) - var(--obs-circ-gap) / 2 - var(--obs-pad));
+    z-index: -1;
+    border: 1px solid var(--bluish);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+    opacity: 0;
+    pointer-events: none;
+}
+:is(.obs:hover, .obs:has(:focus-visible), .obs:has(.react[aria-expanded="true"]), .obs.is-open) :is(.react, .nudge) {
+    opacity: 1;
+    pointer-events: auto;
+}
+:is(.obs:hover, .obs:has(:focus-visible), .obs:has(.react[aria-expanded="true"]), .obs.is-open):has(.react)::before { opacity: 1; }
+.obs:not(.is-me):hover .obs-name { border-color: var(--bluish); } /* like a hovered card */
+.obs .react:hover,
+.obs .react:focus-visible,
+.obs .react[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.obs .react:hover svg,
+.obs .react:focus-visible svg,
+.obs .react[aria-expanded="true"] svg { transform: rotate(-12deg); }
+.obs .nudge:hover,
+.obs .nudge:focus-visible { border-color: var(--warn); color: var(--warn); }
+.obs .nudge:hover svg,
+.obs .nudge:focus-visible svg { animation: nudge-wobble 0.5s ease-in-out; }
+.obs :is(.react, .nudge):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.obs.is-open .obs-name,
+.obs.is-open:has(.react)::before { border-color: var(--accent); }
+
+/* touch: circles and frame only on the tapped observer (.is-open); a hover left over from a tap changes nothing */
+@media (hover: none), (pointer: coarse) {
+    :is(.obs:hover, .obs:has(:focus-visible)):not(.is-open, :has(.react[aria-expanded="true"])) :is(.react, .nudge),
+    :is(.obs:hover, .obs:has(:focus-visible)):not(.is-open, :has(.react[aria-expanded="true"]))::before {
+        opacity: 0;
+        pointer-events: none;
     }
+    .obs:not(.is-me, .is-open):hover .obs-name { border-color: var(--line-strong); }
+    .obs .react:hover svg { transform: none; }
+    .obs .nudge:hover svg { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .obs :is(.react, .nudge) svg { transition: none; transform: none !important; animation: none !important; }
+}
+
+/* popovers at a card: a small box with an arrow to its anchor (position: see the contract above) */
+.tbl-pop {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--z-pop);
+    box-sizing: border-box;
+    max-width: calc(100vw - 2 * var(--space-2));
+    padding: 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-2);
+    color: var(--text);
+    font: var(--fs-s) var(--font);
+    text-align: left;
+    box-shadow: 0 12px 28px -6px var(--shadow-color);
+    animation: tbl-pop-in 0.15s ease-out;
+}
+.tbl-pop[hidden] { display: none; }
+.tbl-pop::after {
+    content: "";
+    position: absolute;
+    left: var(--arrow-x, 50%);
+    bottom: -7px;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    background: inherit;
+    border-right: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
+    transform: translateX(-50%) rotate(45deg);
+}
+.tbl-pop.is-below::after { bottom: auto; top: -7px; transform: translateX(-50%) rotate(225deg); }
+@keyframes tbl-pop-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.96); }
+}
+.tbl-pop.is-below { animation-name: tbl-pop-in-below; }
+@keyframes tbl-pop-in-below {
+    from { opacity: 0; transform: translateY(-4px) scale(0.96); }
+}
+
+/* the emoji bar: "throw at Name", seven emojis in a row */
+.react-bar-label {
+    margin: 0;
+    padding: 0 6px 4px;
+    font-size: var(--fs-xs);
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.react-bar-row { display: flex; gap: 2px; }
+.react-bar button {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-m);
+    background: transparent;
+    font-size: 22px;
+    line-height: 1;
+    font-family: var(--font-emoji);
+    cursor: pointer;
+    transition: transform 0.1s ease-out, background-color 0.1s;
+}
+.react-bar button:hover,
+.react-bar button:focus-visible { background: var(--bg-4); transform: scale(1.15); }
+.react-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (pointer: coarse) {
+    .react-bar button { width: 44px; height: 44px; font-size: 26px; }
+    .react-bar button:hover { background: transparent; transform: none; }
+    .react-bar button:active { background: var(--bg-4); transform: scale(1.15); }
+}
+
+/* touch: "Remove Name?" at the card, before the trash can removes anyone */
+.rm-confirm { padding: 8px 10px 10px; max-width: min(260px, calc(100vw - 2 * var(--space-2))); }
+.rm-confirm p { margin: 0 0 8px; line-height: 1.4; }
+.rm-confirm .rm-name { font-weight: bold; overflow-wrap: anywhere; }
+.rm-confirm small .rm-name { font-weight: inherit; }
+.rm-confirm small { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--muted); }
+.rm-row { display: flex; gap: var(--space-2); justify-content: flex-end; }
+.rm-row .btn-box { flex: 1; margin: 0; padding: 4px 10px; font-size: var(--fs-s); }
+.rm-row .btn-box.danger { border-color: var(--danger); }
+.rm-row .btn-box.danger:enabled:hover,
+.rm-row .btn-box.danger:active { background: var(--danger); color: var(--bg); }
+
+/* touch, once: how to reach the circles. In the accent colour like the own name tag */
+.tap-hint {
+    max-width: min(250px, calc(100vw - 2 * var(--space-2)));
+    padding: 10px 12px;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+    line-height: 1.4;
+}
+.tap-hint::after { border-color: var(--accent); }
+.tap-hint p { margin: 0 0 8px; }
+.tap-hint button {
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--on-accent);
+    border-radius: var(--radius-m);
+    background: transparent;
+    color: var(--on-accent);
+    font: bold var(--fs-s) var(--font);
+    cursor: pointer;
+}
+.tap-hint button:focus-visible { outline: 2px solid var(--on-accent); outline-offset: 2px; }
+
+/* Reaction flight: script.js moves .react-fly along a curve from the sender's card to the target (Web Animations
+ * API, transform only, --react-fly-dur). With prefers-reduced-motion it skips the flight and only lands.
+ * The emojis get an outline like a sticker (--react-halo, all around), so they stand out on any card: light on the
+ * dark theme, the ink of the cards on the light one. Chained drop-shadows add up: four straight ones (a = 1.1px)
+ * and four diagonal ones (d = 0.8px per axis) give an even octagon of about 2.7px in every direction
+ * (straight a + 2d, diagonal (a + d) * 1.41). */
+body {
+    --react-halo: #ffffff;
+    --react-outline: drop-shadow(1.1px 0 0 var(--react-halo)) drop-shadow(-1.1px 0 0 var(--react-halo))
+        drop-shadow(0 1.1px 0 var(--react-halo)) drop-shadow(0 -1.1px 0 var(--react-halo))
+        drop-shadow(0.8px 0.8px 0 var(--react-halo)) drop-shadow(-0.8px -0.8px 0 var(--react-halo))
+        drop-shadow(0.8px -0.8px 0 var(--react-halo)) drop-shadow(-0.8px 0.8px 0 var(--react-halo));
+}
+body.light-theme { --react-halo: #1d2027; }
+.react-fly {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--z-fly);
+    font-size: var(--react-size);
+    line-height: 1;
+    font-family: var(--font-emoji);
+    pointer-events: none;
+    will-change: transform;
+    filter: var(--react-outline) drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
+}
+body.light-theme .react-fly { filter: var(--react-outline) drop-shadow(0 6px 8px rgb(0 0 0 / 0.2)); }
+
+/* the landing: the emoji pops onto the middle of the card, wobbles, the sender's name below, then it fades */
+.react-land {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--card-name-h) + var(--card-w) * var(--card-ratio) / 2);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: react-land var(--react-land-dur) ease-out forwards;
+}
+.obs .react-land { top: calc(100% - var(--obs-name-h) / 2); } /* on the name tag, below the room for the circles */
+/* several landings on the same target at once (script.js sets --land-i 0..3, the first free slot): each one a bit
+ * off and tilted, the first one in the middle; more than four overlap (Andreas: "Gewusel ist ok"). Fred, minimal. */
+.react-land {
+    translate: calc(sin(var(--land-i, 0) * 130deg) * 18px) calc((cos(var(--land-i, 0) * 130deg) - 1) * 8px);
+}
+.react-land .react-emoji { rotate: calc(sin(var(--land-i, 0) * 130deg) * 14deg); }
+.react-emoji {
+    font-size: min(var(--react-size), var(--card-w, 64px) * 0.45);
+    line-height: 1;
+    font-family: var(--font-emoji);
+    filter: var(--react-outline) drop-shadow(0 3px 4px rgb(0 0 0 / 0.35));
+}
+.obs .react-emoji { font-size: 26px; }
+/* the sender: a small opaque name tag, framed in the outline colour of the emoji */
+.react-from {
+    max-width: 12ch;
+    padding: 1px 6px;
+    border: 1px solid var(--react-halo);
+    border-radius: var(--radius-s);
+    background: var(--bg-2);
+    color: var(--text);
+    font: bold var(--fs-xs) var(--font);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 6px -1px var(--shadow-color);
+}
+@keyframes react-land {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-18deg); }
+    12% { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(8deg); }
+    22% { transform: translate(-50%, -50%) scale(0.95) rotate(-4deg); }
+    32% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
+}
+/* the card takes the hit: a short bump */
+.c.is-hit > .pc:not(.pc-orig) { animation: react-hit 0.4s ease-out; }
+@keyframes react-hit {
+    30% { transform: translateY(3px) rotate(1.5deg); }
+    60% { transform: translateY(-1px) rotate(-1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tbl-pop,
+    .tbl-pop.is-below { animation: none; }
+    .react-bar button { transition: none; }
+    .react-bar button:hover,
+    .react-bar button:focus-visible,
+    .react-bar button:active { transform: none; }
+    .react-land { animation-name: react-land-still; }
+    .c.is-hit > .pc:not(.pc-orig) { animation: none; }
+}
+@keyframes react-land-still {
+    0%, 100% { opacity: 0; }
+    10%, 80% { opacity: 1; }
+}
+
+/* B-110 part 2 (Fred, minimal – Delia may restyle): a nudge (the .nudge circle) shakes the target, nothing lands
+ * (anonymous): .is-nudged on every board, plus .is-nudged-me on the board of the nudged one (harder, longer).
+ * prefers-reduced-motion: an accent frame blinks instead. No sound. */
+.c.is-nudged > .pc:not(.pc-orig),
+.obs.is-nudged .obs-name { animation: react-nudge 0.6s ease-in-out; }
+.c.is-nudged-me > .pc:not(.pc-orig),
+.obs.is-nudged-me .obs-name { animation: react-nudge-me 1s ease-in-out; }
+@keyframes react-nudge {
+    15% { transform: rotate(-4deg); }
+    35% { transform: rotate(4deg); }
+    55% { transform: rotate(-3deg); }
+    75% { transform: rotate(2deg); }
+}
+@keyframes react-nudge-me {
+    10%, 50% { transform: translateX(-6px) rotate(-6deg); }
+    30%, 70% { transform: translateX(6px) rotate(6deg); }
+    85% { transform: translateX(-2px) rotate(-2deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .c.is-nudged > .pc:not(.pc-orig),
+    .obs.is-nudged .obs-name { animation: react-nudge-blink 0.6s step-end; }
+    .c.is-nudged-me > .pc:not(.pc-orig),
+    .obs.is-nudged-me .obs-name { animation: react-nudge-blink 0.5s step-end 2; }
+}
+@keyframes react-nudge-blink {
+    0% { box-shadow: 0 0 0 2px var(--bg), 0 0 0 5px var(--accent); } /* a gap first: also on an accent name tag */
+    60%, 100% { box-shadow: none; }
 }
 
 /* phones: 8px (not 1em) – on a 375x667 touch phone 20 cards fit at --card-min without scrolling */
 @media (max-width: 799.98px) {
     div#cbox { margin-top: var(--space-2); }
+}
+
+/* ---------- Rendered cards (B-99) ---------- */
+
+/* A card face is built by cards.js: .pc on the table, .dkc in the deck, .mini in the spread. --a is the value
+ * colour, --on the text on it (tokens --c-* / --on-c-* of style/cards.css, light and dark). `color` is the value
+ * colour too: the symbols of src/cards.svg take their tint and hatching from currentColor. Paper and ink of
+ * the card: --cardc-face / --cardc-ink (cards.css). Values and headings in the mono font, descriptions in sans.
+ * Styles per set: sty-plain | sty-badge | sty-banner | sty-inverted (control and status cards: plain). */
+.pc,
+.dkc,
+.mini {
+    --a: var(--line-strong);
+    --on: var(--text);
+    color: var(--a);
+}
+
+.pc .mot,
+.dkc .mot,
+.mini .mot { display: block; overflow: visible; }
+
+/* J.U.D.G.E.: the value in white with a black ink outline on the coloured square (tools/cards/README.md) */
+.inv-frame {
+    --sym-tint: currentColor;
+    --sym-hatch: color-mix(in srgb, var(--cardc-ink) 18%, currentColor);
+}
+
+.inv-value {
+    --sym-ink: var(--inv-o);
+    --sym-tint: var(--on-inv);
+    --sym-hatch: transparent;
+}
+
+/* the value as text (no symbol for it) */
+.pc .tv,
+.dkc .tv {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+/* table: sizes follow the card width --card-w (B-49) */
+.pc {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 1 / var(--card-ratio);
+    padding: calc(var(--card-w) * 0.12) calc(var(--card-w) * 0.07) calc(var(--card-w) * 0.08);
+    background: var(--cardc-face);
+    border: 1px solid var(--line-strong);
+    border-radius: calc(var(--card-w) * 0.11);
+    overflow: hidden;
+}
+
+/* the coloured bar on top */
+.pc::before,
+.dkc::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: max(3px, calc(var(--card-w) * 0.045));
+    background: var(--a);
+}
+
+.pc .mot { flex: 1 1 auto; min-height: 0; width: 100%; }
+
+.pc .tv { flex: 1 1 auto; min-height: 0; font-size: calc(var(--card-w) * 0.3); }
+
+.pc .tv-long { font-size: calc(var(--card-w) * 0.16); }
+
+/* R3 (Andreas): an emoji as the card's text (custom sets) about as large as a symbol; letters keep their size */
+.pc > .tv-emoji { font-size: calc(var(--card-w) * 0.5); }
+.pc > .tv-emoji, .dkc > .tv-emoji { white-space: nowrap; overflow-wrap: normal; }
+.pc > .tv-emoji.tv-n2 { font-size: calc(var(--card-w) * 0.28); }
+.pc > .tv-emoji.tv-n3 { font-size: calc(var(--card-w) * 0.2); }
+
+.pc.is-status .mot { padding: calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.06) 0; box-sizing: border-box; }
+
+/* B-99 D8: status cards (thinking, ready): symbol and caption as one group in the middle of the card,
+ * the caption right below the symbol instead of on the bottom edge */
+.pc.is-status { justify-content: center; }
+
+.pc.is-status .mot { flex: 0 1 calc(var(--card-w) * 0.88); }
+
+/* B-99 D9: the group a bit above the middle (the symbols leave the top of their box empty, so the centred
+ * group looked low); the outline of the calm status symbols (ready, thinking, joined late) in the theme ink:
+ * dark ink in light, a light contour in dark - there with a deeper body, so the contour reads like on ?, ! or the hand */
+.pc.is-status {
+    padding-bottom: calc(var(--card-w) * 0.22);
+    --sym-face-ink: var(--cardc-ink);
+}
+
+body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentColor 60%, var(--cardc-face)); }
+
+/* B-99 D14 (Andreas): the word a little lower below its symbol (the room below the group looked a bit large); the
+ * gap grows by what the bottom padding gives up, so the symbol stays where it was */
+.pc.is-status .stl { margin-top: calc(var(--card-w) * 0.07); }
+
+.pc .stl {
+    flex: none;
+    margin-top: calc(var(--card-w) * 0.03);
+    font-size: clamp(9px, var(--card-w) * 0.085, 12px);
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.pc .ttl {
+    position: relative;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    margin-top: calc(var(--card-w) * 0.03);
+    font-size: clamp(9px, var(--card-w) * 0.1, 14px);
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+.pc.has-info :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.4); }
+
+/* a description but no heading (emotions): the symbol keeps its room, the word reads like a heading */
+.pc.has-info:not(.has-head) :is(.mot, .tv) { flex: 1 1 0; }
+
+/* R3 (Delia): one emoji in the smallest symbol box (0.4, long and short below 120 px) not larger than the box;
+ * 0.5 only in the large layouts (below) */
+.pc.has-info > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.4); }
+
+.pc .txt {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 6;
+    overflow: hidden;
+    margin-top: calc(var(--card-w) * 0.02);
+    font: clamp(9px, var(--card-w) * 0.088, 12px) / 1.25 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--muted);
+    text-align: center;
+}
+
+.pc.has-info:not(.has-head) .txt { font-size: clamp(10px, var(--card-w) * 0.1, 14px); color: var(--text); }
+
+/* B-99 D4/D5: the table cards of a deck share one layout, chosen by the deck's longest text (#cbox
+ * data-text-size, set by setDeck() in script.js), so the symbols stay level side by side:
+ *   none   (Fibonacci): the symbol alone, see above
+ *   word   (emotions, stars): one short word – the symbol large (about 57 % of the card from 120 px), the
+ *          word in the lower quarter; the control cards show their heading only (the description stays in the aria-label)
+ *   none also lays out the control cards like word: B-99 F7, they show symbol + heading in every set (cardShowsTexts)
+ *   short  (traffic lights, Delegation): descriptions up to 60 characters – a larger symbol from 120 px
+ *   long   (J.U.D.G.E.): the layout above */
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) { padding-top: calc(var(--card-w) * 0.1); }
+
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.72); }
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.5); }
+
+/* the word in the middle of the room below the symbol (lower quarter of the card) */
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc :is(.ttl, .txt) { margin-block: auto; }
+
+#cbox:is([data-text-size="word"], [data-text-size="none"], [data-text-size="short"]) .c { container-type: inline-size; } /* .c is --card-w wide anyway */
+
+/* small cards: room for a word or heading on two lines; from 120 px the symbol takes its full size */
+#cbox:is([data-text-size="word"], [data-text-size="none"]) .pc .hd-badge { padding-inline: 0.5em; }
+
+@container (min-width: 120px) {
+    #cbox:is([data-text-size="word"], [data-text-size="none"]) .pc:is(.has-info, .has-head) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.84); }
+
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) { padding-top: calc(var(--card-w) * 0.16); }
+
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.56); }
+    #cbox[data-text-size="short"] .pc:is(.has-info, .has-head):not(.is-ctl) > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.5); }
+
+    /* R3 review E4: J.U.D.G.E. (sty-inverted, a two-line heading frame) a bit smaller, so its descriptions keep
+     * three whole lines below it (they were cut on 120-140 px cards) */
+    #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) { padding-top: calc(var(--card-w) * 0.12); }
+
+    #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) :is(.mot, .tv) { flex: 0 0 calc(var(--card-w) * 0.48); }
+    #cbox[data-text-size="short"] .pc.sty-inverted:is(.has-info, .has-head):not(.is-ctl) > .tv-emoji:not(.tv-n2, .tv-n3) { font-size: calc(var(--card-w) * 0.46); }
+}
+
+/* R3 review E4: descriptions of the short decks (traffic lights, Delegation) end on a whole line with an ellipsis
+ * as well, instead of being cut by the card's edge on narrow cards (phones). As many lines as fit below the
+ * heading on every card of both decks (measured: 3 from an 81 px card, else 2; touch, with the room for the
+ * delete icon: 3 from 84 px, 2 from 75 px, else 1). Control cards keep their own room (--txt-lines, below). */
+#cbox[data-text-size="short"] .pc .txt { -webkit-line-clamp: 3; }
+
+@container (max-width: 80.98px) {
+    #cbox[data-text-size="short"] .pc .txt { -webkit-line-clamp: 2; }
+}
+
+@media (hover: none), (pointer: coarse) {
+    @container (max-width: 83.98px) {
+        #cbox[data-text-size="short"] .pc .txt { -webkit-line-clamp: 2; }
+    }
+
+    @container (max-width: 74.98px) {
+        #cbox[data-text-size="short"] .pc .txt { -webkit-line-clamp: 1; }
+    }
+}
+
+/* B-99 D9: long descriptions (J.U.D.G.E.) end on a whole line with an ellipsis instead of being cut by the card's
+ * edge: as many lines as fit below a two-line heading (measured: 4 from a 98 px card, 3 from 76 px, else 2).
+ * R3 review E4: J.U.D.G.E. (sty-inverted) keeps these clamps although its shortened descriptions (at most 60
+ * characters) make it a "short" deck now (deckTextSize() in script.js); measured again for that layout. */
+#cbox[data-text-size="long"] .c { container-type: inline-size; }
+
+:is(#cbox[data-text-size="long"] .pc, #cbox .pc.sty-inverted) .txt { -webkit-line-clamp: 4; }
+
+@container (max-width: 97.98px) {
+    :is(#cbox[data-text-size="long"] .pc, #cbox .pc.sty-inverted) .txt { -webkit-line-clamp: 3; }
+}
+
+@container (max-width: 75.98px) {
+    :is(#cbox[data-text-size="long"] .pc, #cbox .pc.sty-inverted) .txt { -webkit-line-clamp: 2; }
+}
+
+/* B-99 D14: J.U.D.G.E. (style inverted) only, below its two-line heading frame on every card (measured: 4 from a
+ * 98 px card, 3 from 81 px, else 2). Touch: the card keeps more room at the bottom for the delete icon, so one line
+ * less up to 141 px (4 from 142 px, 3 from 93 px, 2 from 79 px, else 1). Other sets keep the clamps above. */
+@container (max-width: 80.98px) {
+    #cbox .pc.sty-inverted .txt { -webkit-line-clamp: 2; }
+}
+
+@media (hover: none), (pointer: coarse) {
+    @container (max-width: 141.98px) {
+        #cbox .pc.sty-inverted .txt { -webkit-line-clamp: 3; }
+    }
+
+    @container (max-width: 92.98px) {
+        #cbox .pc.sty-inverted .txt { -webkit-line-clamp: 2; }
+    }
+
+    @container (max-width: 78.98px) {
+        #cbox .pc.sty-inverted .txt { -webkit-line-clamp: 1; }
+    }
+}
+
+/* B-99 F8 (Andreas): control cards on the table show heading and description in every set.
+ * B-99 D13 (Andreas): in every deck the description of a control card (plain: coffee, ?, !, hand, shruggie) gets a
+ * fixed room of --txt-lines lines below the heading and the symbol takes the rest of the card. So the card is filled
+ * like the "joined in" card, and symbols and headings of the control cards stay level side by side however long a
+ * description is (it runs top-down in its room and is cut to whole lines). --txt-lines follows the card width: what
+ * the longest control text (52 characters) needs, measured. The cards of the sets keep their layout (above). */
+#cbox .pc.is-ctl.has-info { --txt-lines: 3; padding-top: calc(var(--card-w) * 0.1); }
+
+#cbox .pc.is-ctl.has-info .mot { flex: 1 1 0; }
+
+#cbox .pc.is-ctl.has-info .ttl { margin-block: calc(var(--card-w) * 0.03) 0; }
+
+#cbox .pc.is-ctl.has-info .txt {
+    flex: none;
+    height: calc(var(--txt-lines) * 1.25em);
+    margin-block: calc(var(--card-w) * 0.02) 0;
+    -webkit-line-clamp: var(--txt-lines);
+}
+
+@container (max-width: 79.98px) {
+    #cbox .pc.is-ctl.has-info { --txt-lines: 2; }
+
+    /* a heading that wraps ("need a break") must not push its symbol up: room for two lines on every control card */
+    #cbox .pc.is-ctl.has-info .ttl { min-height: 2.3em; }
+}
+
+@container (min-width: 110px) and (max-width: 144.98px) {
+    #cbox .pc.is-ctl.has-info { --txt-lines: 4; }
+}
+
+/* B-99 F7 (Andreas): a card with exactly one text (only a heading, only a description like the emotions, a status
+ * caption like "thinking") sets it like a heading: mono, bold (one-text, cardFace() in cards.js) */
+.pc.one-text :is(.ttl, .txt, .stl) {
+    font-family: var(--font);
+    font-size: clamp(9px, var(--card-w) * 0.1, 14px);
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--text);
+}
+
+/* touch: the delete icon sits on the lower right corner; the caption keeps clear of it */
+@media (hover: none), (pointer: coarse) {
+    .pc { padding-bottom: calc(var(--card-del) / 2 + 2px); }
+}
+
+/* deck: the card fills its button; sizes in % (the cards shrink together when the tray is narrow) */
+.dkc {
+    position: relative;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 1 / var(--card-ratio);
+    background: var(--cardc-face);
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    container-type: inline-size; /* the heading follows the card's own width (cqi), see .dh */
+}
+
+.dkc::before { height: 3px; }
+
+.dkc .mot,
+.dkc .tv {
+    position: absolute;
+    left: 4%;
+    top: 10%;
+    width: 92%;
+    height: 84%;
+}
+
+.dkc .tv { font-size: calc(var(--deck-w) * 0.3); }
+
+.dkc .tv-long { font-size: calc(var(--deck-w) * 0.16); }
+
+.dkc > .tv-emoji { font-size: calc(var(--deck-w) * 0.5); }
+.dkc > .tv-emoji.tv-n2 { font-size: calc(var(--deck-w) * 0.28); }
+.dkc > .tv-emoji.tv-n3 { font-size: calc(var(--deck-w) * 0.2); }
+
+.dkc.has-head .mot,
+.dkc.has-head .tv { top: 7%; height: 58%; }
+
+/* R3 (Andreas, 2026-11-03): traffic lights 10 % larger than the other deck symbols (coffee, ?); the drawing leaves
+ * room in its 100 x 120 box, so it stays inside the symbol's place. The table keeps its size. */
+.dkc .mot:has(use[href*="#s-light-"]) { transform: scale(1.1); }
+
+/* B-99 D6: the heading starts right below the symbol (top: 67 %, the symbol box ends at 65 %), so the first
+ * lines of one- and two-line headings sit level across the deck and the gap to the symbol is the same on every card */
+.dkc .dh {
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: 67%;
+    display: flex;
+    justify-content: center;
+    /* B-99 D4: the longest heading word ("important", 9 mono characters, about 5.2em with the tighter
+     * spacing) fits into the card's width without cutting; longer headings wrap at spaces, 2 lines */
+    font-size: clamp(6px, (100cqi - 8px) / 5, 10px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-align: center;
+    color: var(--text);
+}
+
+/* variant "bottom-aligned" (headings end on the card's bottom edge, before D6): uncomment this one line */
+/* .dkc .dh { top: auto; bottom: 4%; } */
+
+.dkc .dh > span:last-child {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+/* spread: picture symbols small */
+.mini { display: inline-block; width: 16px; height: 19px; vertical-align: middle; }
+
+.mini .mot { width: 100%; height: 100%; }
+
+/* B-99 D6: a card's value in small places (spread, range, info line, "you picked", tips; cardSmall() in cards.js):
+ * .sm-text the value in the mono font, .sm-draw a mini symbol sized by the surrounding text (about a capital
+ * letter and a half high), never stretching the line. D7: its optical middle sits on the middle of the digits
+ * (about a third of an em above the baseline); the margins keep its margin box (and so the line) as before. */
+.sm-text { font-family: var(--font); }
+
+.mini.sm-draw {
+    --sm-h: 1.5em;
+    /* fix (R3, iPhone): the width spelled out, not via aspect-ratio: Safari sized the box around it (e.g. the spread's
+     * value row) from the svg's own width and so the symbol sat off the middle */
+    width: calc(var(--sm-h) * 100 / 120);
+    height: var(--sm-h);
+    margin-block: -0.36em -0.14em;
+    vertical-align: -0.27em;
+}
+
+/* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read */
+.spread-value .sm-draw { --sm-h: 1.7em; }
+
+/* R3 review E8: traffic lights in small places: the lit lamp solid in its colour (the card's light tint and hatching
+ * blur into the housing at this size), so green, yellow and red read at a glance. In the spread the light is taller:
+ * its value row grows (--spread-val-h, the same for all columns), the light fills it */
+.mini use[href*="#s-light-"] {
+    --sym-tint: currentColor;
+    --sym-hatch: transparent;
+}
+
+.spread:has(use[href*="#s-light-"]) { --spread-val-h: 1.875rem; }
+
+.spread-value .sm-draw:has(use[href*="#s-light-"]) {
+    --sm-h: 2.5em;
+    margin-block: -0.2em;
+    vertical-align: middle;
+}
+
+/* B-99 F8 (Andreas): sets in the style "inverted" (J.U.D.G.E.): a mini square in the card colour with the white value
+ * in a black outline, like on the card (cardSmall() in cards.js). As high as a capital letter and a half less its
+ * hatched rim, its middle on the middle of the digits like .sm-draw; the margins keep the line as before. */
+.mini.sm-inv {
+    --sm-h: 1.35em;
+    width: var(--sm-h); /* spelled out, see .sm-draw */
+    height: var(--sm-h);
+    margin-block: -0.3em -0.1em;
+    vertical-align: -0.33em;
+}
+
+.spread-value .sm-inv { --sm-h: 1.5em; }
+
+/* badge (traffic lights, emotions, stars): the card tinted (dark: a glow from the top and a coloured inner rim,
+ * light: flat, see --card-tint), the heading as a pill with a coloured rim */
+.pc.sty-badge,
+.dkc.sty-badge {
+    --tint: color-mix(in srgb, var(--a) var(--card-tint), var(--cardc-face));
+    background: linear-gradient(to bottom, var(--tint), var(--cardc-face) var(--card-glow-end));
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--a) var(--card-rim), transparent);
+}
+
+body.light-theme .pc.sty-badge,
+body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
+
+.pc .hd-badge {
+    padding: 0.15em 0.7em;
+    border: 1.5px solid var(--a);
+    border-radius: 999px;
+    background: var(--cardc-face);
+}
+
+/* banner (Delegation): no bar, the heading light on a band in the value colour */
+.pc.sty-banner::before,
+.dkc.sty-banner::before,
+.pc.sty-inverted::before,
+.dkc.sty-inverted::before { display: none; }
+
+.pc.sty-banner .ttl {
+    align-self: stretch;
+    max-width: none;
+    margin-inline: calc(var(--card-w) * -0.07);
+}
+
+.sty-banner .hd-banner {
+    display: block;
+    width: 100%;
+    padding: 0.3em 0.6em;
+    box-sizing: border-box;
+    background: var(--a);
+    /* B-99 D5: white with a dark ink outline on every band colour, like the J.U.D.G.E. values (instead of
+     * dark or light text per colour); text-shadow outline: crisp at small sizes, works in every browser */
+    color: var(--on-inv);
+    text-shadow:
+        1px 0 0 var(--inv-o), -1px 0 0 var(--inv-o), 0 1px 0 var(--inv-o), 0 -1px 0 var(--inv-o),
+        1px 1px 0 var(--inv-o), -1px 1px 0 var(--inv-o), 1px -1px 0 var(--inv-o), -1px -1px 0 var(--inv-o);
+}
+
+.dkc.sty-banner .dh { border-radius: 3px; background: var(--a); }
+
+/* the outlined letters a little apart and clear of the band's edges */
+.dkc.sty-banner .dh { letter-spacing: 0.01em; }
+
+.dkc.sty-banner .hd-banner { padding: 2px 0; }
+
+/* inverted (J.U.D.G.E.): the value on the square, the heading in a dash-dot frame as wide as the card */
+.pc.sty-inverted .mot { flex: 0 0 calc(var(--card-w) * 0.44); }
+
+.pc.sty-inverted .ttl { align-self: stretch; padding: 0.25em 0.35em; margin-block: calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.02); }
+
+/* B-99 D14 (Andreas): within a set symbol and heading stand level: every heading frame has room for two lines, a
+ * one-line heading ("step out") sits in its middle, so the frames and the descriptions below start level */
+.pc.sty-inverted .ttl { min-height: calc(2 * 1.15em + 0.5em); box-sizing: border-box; }
+
+.hd-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.hd-frame rect {
+    fill: none;
+    stroke: var(--cardc-ink);
+    stroke-width: 1.3;
+    stroke-dasharray: 7 3 1.5 3;
+}
+
+.hd-inverted { position: relative; }
+
+/* B-99 D5, deck: no frame around the heading (the table keeps it); the heading sits like the control cards' */
+.dkc .hd-frame { display: none; }
+
+/* a deck card shrunk below ~38 px (narrow tray, B-68); after all .dkc rules so it wins: the symbol alone, like in a deck without texts */
+@container (max-width: 37.98px) {
+    .dkc .dh { display: none; }
+
+    .dkc .mot,
+    .dkc .tv,
+    .dkc.has-head .mot,
+    .dkc.has-head .tv { top: 10%; height: 84%; }
 }
 
 /* ---------- New round button, timer (.dock, B-66/B-67/B-68) ---------- */
@@ -1713,6 +3059,17 @@ div#cbox {
     margin-left: auto;
     padding: 0.2rem 0.6rem;
     font-size: var(--fs-m);
+}
+
+/* R3 (Andreas): phones and small tablets with the timer off: no room kept for it, the button takes the whole row
+ * (script.js updateTimer() sets .no-timer); large screens keep the timer's row (the button never moves there) */
+@media (max-width: 799.98px) {
+    .dock.no-timer .timer.display_none { display: none; }
+
+    .dock.no-timer #newroundbtn {
+        max-width: none;
+        margin-left: 0;
+    }
 }
 
 /* B-67 (Andreas): always there. Disabled ("Cancel Round") until someone has voted, dashed like a
@@ -1775,11 +3132,11 @@ div#cbox {
 .timer[data-state=ready] .timer-display,
 .timer[data-state=paused] .timer-display { color: var(--muted); }
 
-/* time is up: T+ in amber and bold, with a dot, so it does not rely on the color alone
+/* time is up: T+ in amber and medium weight, with a dot, so it does not rely on the color alone
  * (no sound, no blinking). The dot sits outside the text: the row keeps its width. */
 .timer[data-over=true] .timer-display {
     color: var(--warn);
-    font-weight: bold;
+    font-weight: 500; /* medium (Mac); normal where the mono font has no such cut – bold was too heavy (Andreas) */
 }
 
 .timer[data-over=true] .timer-display::before {
@@ -1993,31 +3350,102 @@ div#cbox {
 
 .ctl-slot { display: contents; }
 
-.ctl-slot:has(> .off) { display: none; }
-
 .ctl-key { display: none; }
 
-.controls img {
+/* B-99: a deck card is a button with the rendered card (.dkc, see "Rendered cards"). Pointing at it lifts
+ * the card, the picked one stays lifted with the accent frame. */
+.controls .ctl {
     flex: none;
+    display: block;
     width: var(--deck-w);
     margin: 0 2px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid transparent;
-    border-top-left-radius: var(--radius-s);
-    border-top-right-radius: var(--radius-s);
+    padding: 0 0 6px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
     cursor: not-allowed;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.controls .ctl:focus { outline: none; }
+
+.controls .ctl:focus-visible .dkc {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .controls .ctl_hover { cursor: pointer; }
 
-.controls .ctl_hover:hover,
-.controls .selected { border-bottom: 1px solid var(--accent); }
+.controls .ctl .dkc { transition: transform 0.15s ease, border-color 0.15s ease; }
 
-.controls .off { display: none; }
+.controls .ctl_hover:hover .dkc,
+.controls .ctl:focus-visible .dkc {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+}
 
-.controls .on { display: unset; }
+.controls .selected .dkc {
+    transform: translateY(-4px);
+    border: 2px solid var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .controls .ctl .dkc { transition: none; }
+}
 
 .ctl_as_guest { filter: grayscale(100%); }
+
+/* B-99 (F3): the info line above the tray (value chip, heading — description), while pointing at / focusing a
+ * card that has texts. Floats above the tray, so the table keeps its room. */
+.deck-info {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    z-index: 3;
+    width: max-content;
+    max-width: min(640px, calc(100% - 2 * var(--space-3)));
+    box-sizing: border-box;
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    background: var(--bg-2);
+    box-shadow: var(--tray-shadow);
+    font-size: var(--fs-xs);
+    line-height: 20px;
+    color: var(--muted);
+    pointer-events: none;
+    display: flex;
+    align-items: flex-start;
+}
+
+/* B-99 F8 (Andreas): the block in the middle above the deck; in it the chip on the left, the text on the right, left-aligned:
+ * a second line starts below the first one's start (not centered). display: flex in .deck-info above, so [hidden] and
+ * the phone rule (display: none) still win */
+
+.deck-info-text {
+    min-width: 0;
+    text-align: left;
+}
+
+.deck-info[hidden] { display: none; }
+
+.deck-info-value {
+    display: inline-block;
+    flex: none;
+    margin-right: 6px;
+    padding: 0 6px;
+    border-left: 4px solid var(--a, var(--line-strong));
+    background: var(--bg-4);
+    color: var(--text);
+    font-weight: 700;
+}
+
+.deck-info b {
+    color: var(--text);
+}
 
 .deck-hint { display: none; }
 
@@ -2031,17 +3459,19 @@ div#cbox {
         padding: 10px 10px 6px;
     }
 
-    .controls img {
+    .controls .ctl {
         flex-shrink: 1;
         min-width: var(--deck-min);
     }
 }
 
-/* keys 1–9 and 0 pick a card (pickCardByKey() in script.js): the key small below each of the first
- * ten cards, the hint on the right in the same row; only with a mouse and a keyboard at hand,
+/* the letter keys pick a card (B-99 F8: Q–P, A–L, Y–M by physical position, pickCardByKey() in script.js): the
+ * key small below each of the first 26 cards, the hint on the right in the same row; only with a mouse and a keyboard at hand,
  * players only. The hint never takes a row of its own: when it does not fit next to the keys or
  * the deck scrolls, it is hidden (hint-off, set by updateDeckRoom() in script.js), so the tray
- * keeps its height. */
+ * keeps its height. Then pointing at the row of keys (not at a card) shows it after all and fades
+ * the keys out (Andreas, 2026-11-01): the keys only turn transparent, so they stay under the
+ * mouse and the hover does not end (no flicker); the hint lets the mouse through. */
 @media (min-width: 800px) and (hover: hover) and (pointer: fine) {
     /* the slot shrinks (down to --deck-min), the card follows it */
     .ctl-slot {
@@ -2050,9 +3480,10 @@ div#cbox {
         flex-direction: column;
         align-items: center;
         min-width: calc(var(--deck-min) + 4px);
+        position: relative; /* places the hover area of its key (.ctl-key::before) */
     }
 
-    .ctl-slot > img {
+    .ctl-slot > .ctl {
         min-width: 0;
         max-width: calc(100% - 4px);
     }
@@ -2064,6 +3495,7 @@ div#cbox {
         font-size: 10px;
         line-height: 1;
         color: var(--muted);
+        text-transform: lowercase; /* q w e r t z, like the rest of the app (Andreas #25); script.js keeps capitals */
     }
 
     .controls .selected + .ctl-key { color: var(--accent); }
@@ -2077,13 +3509,48 @@ div#cbox {
         font-size: 10px;
         line-height: 1;
         color: var(--line-strong);
+        text-transform: lowercase; /* "keys q–p pick a card", same as the keys */
+        pointer-events: none;
+        transition: opacity 150ms ease, visibility 150ms;
     }
 
-    .ctl_as_guest .ctl-key,
-    .down-container.hint-off .deck-hint { visibility: hidden; }
+    .ctl-key { transition: opacity 150ms ease; }
+
+    /* the area to point at: the key's row across the whole slot (the slots touch, so the row has no
+     * gaps) and the gap above it, but not the card. Placed by the slot, so it never sticks out of the
+     * deck (no scrolling) and the key's own box (measured by updateDeckRoom()) stays as it is. */
+    .ctl-key::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: calc(1em + 5px); /* the key (font-size 10px, line-height 1) and its margin */
+    }
+
+    .ctl_as_guest .ctl-key { visibility: hidden; }
+
+    .down-container.hint-off .deck-hint {
+        visibility: hidden;
+        opacity: 0;
+    }
+
+    /* pointing at the keys: the hint instead of the keys (separate rules, :has(), see below) */
+    .down-container.hint-off:has(.ctl-key:hover) .deck-hint {
+        visibility: visible;
+        opacity: 1;
+        color: var(--muted);
+    }
+
+    .down-container.hint-off:has(.ctl-key:hover) .ctl-key { opacity: 0; }
 
     /* separate rule: browsers without :has() drop a whole selector list that contains it */
     .down-container:has(.ctl_as_guest) .deck-hint { visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ctl-key,
+    .deck-hint { transition: none; }
 }
 
 /* B-75: the position dots and the "picked" line below the deck are for the carousel (touch devices) only */
@@ -2110,7 +3577,8 @@ div#cbox {
     }
 
     .deck-more,
-    .deck-hint { display: none; }
+    .deck-hint,
+    .deck-info { display: none; }
 
     .controls {
         position: relative; /* offsetParent of the cards (script.js measures against it) */
@@ -2137,11 +3605,9 @@ div#cbox {
         scroll-snap-stop: always; /* one card per swipe */
     }
 
-    .controls .ctl-slot > img {
+    .controls .ctl-slot > .ctl {
         display: block;
         width: 100%;
-        height: auto;
-        aspect-ratio: 300 / 443;
         margin: 0;
         padding: 0;
         border: 0;
@@ -2152,11 +3618,15 @@ div#cbox {
         -webkit-touch-callout: none;
     }
 
-    .controls .ctl_hover:hover { border: 0; }
+    /* no lift in the carousel (the carousel scales the cards); picked: the accent frame, the dot below is filled */
+    .controls .ctl_hover:hover .dkc,
+    .controls .ctl:focus-visible .dkc,
+    .controls .selected .dkc { transform: none; }
 
-    /* picked: the accent frame of the deck (B-68 tab), the dot below is filled */
-    .controls .ctl-slot > img.selected {
-        background-color: var(--secondary-background-color);
+    .controls .ctl_hover:hover .dkc { border-color: var(--line-strong); }
+
+    .controls .selected .dkc {
+        border: 1px solid var(--line-strong);
         outline: 2px solid var(--accent);
         outline-offset: 1px;
     }
@@ -2271,7 +3741,35 @@ div#cbox {
         text-overflow: ellipsis;
     }
 
-    .deck-pick::before { content: "> "; }
+    /* B-99 F8: the line's text as one block in the middle. D17 (Andreas): centred, the description below
+     * as well, so the line swings evenly around the middle while swiping */
+    .deck-pick-body {
+        display: inline-block;
+        max-width: 100%;
+        vertical-align: top;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .deck-pick-body::before { content: "> "; }
+
+    .deck-pick b { font-weight: 400; color: var(--text); }
+
+    /* B-99 (F3): sets with texts: the description of the card in the middle, two lines kept free */
+    .deck-pick-info.one-text { font-weight: 700; color: var(--text); }
+
+    .deck-pick-info {
+        display: block;
+        text-align: center;
+        white-space: normal;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .down-container:has(.deck-texts) .deck-pick { height: 48px; white-space: normal; }
 
     .down-container:has(.ctl_as_guest) .deck-pick { visibility: hidden; }
 }
@@ -2487,7 +3985,7 @@ div#cbox {
  * the pointer below them */
 .spread-chart {
     position: relative; /* anchor of the pointer */
-    padding-bottom: 12px;
+    padding-bottom: 9px; /* B-99 F8: the pointer (about 9.5 px high) close below the labels (was 12px) */
 }
 
 .spread-bars {
@@ -2498,10 +3996,11 @@ div#cbox {
 
 .spread-col {
     --bar: var(--line-strong);
+    container-type: inline-size; /* the value label scales to the column (100cqi) */
     flex: 1 1 0;
     min-width: 0;
     max-width: 32px;
-    height: calc(1rem + var(--spread-h) + 1.25rem + 6px);
+    height: calc(1rem + var(--spread-h) + var(--spread-val-h, 1.25rem) + 6px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2555,8 +4054,12 @@ div#cbox {
 .spread-value {
     flex: none;
     font-family: var(--font), "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-    font-size: var(--fs-xs);
-    line-height: 1.25rem;
+    /* B-99 D7: three digits ("100", bold when top) fit a narrow column (many cards, phones): mono digits are
+     * about 0.6em wide, less the tighter spacing 0.56em, so 3 digits need 1.7em; never above --fs-xs */
+    font-size: clamp(7.5px, 100cqi / 1.75, var(--fs-xs));
+    letter-spacing: -0.04em;
+    line-height: var(--spread-val-h, 1.25rem);
+    text-align: center; /* fix (R3, iPhone): the value in the middle below its bar, also if its box comes out wider */
     white-space: nowrap;
     max-width: 100%;
     overflow: hidden; /* a long label must never run into its neighbours */
@@ -2634,6 +4137,7 @@ div#cbox {
         color: var(--muted);
     }
     .round-tip b { font-weight: inherit; color: var(--text); }
+    .round-tip .tip-value { white-space: nowrap; } /* B-99 F7: "(symbol)" stays with the name (updateTip) */
 
     /* a small lightbulb in front of the tip (line icon like the sprite in board.html, drawn as a
      * mask in the muted text color), hanging left of the text; none while there is no tip. In CSS
@@ -2693,7 +4197,7 @@ div#cbox {
 
     .spread-head { margin-bottom: var(--space-2); }
 
-    .spread-chart { padding-bottom: 16px; }
+    .spread-chart { padding-bottom: 12px; } /* B-99 F8: the pointer close below the labels (was 16px) */
 }
 
 /* ---------- Overlays: QR code, privacy links ---------- */
@@ -2731,6 +4235,23 @@ div#cbox {
 
 #nameinput { margin: 60px 0 var(--space-4); }
 
+/* R3 review V4: "Join <team>" above the name field (link opened); styled like the heading of #removed_msg */
+.join-title {
+    box-sizing: border-box;
+    width: 450px;
+    max-width: calc(100% - 2 * var(--space-3));
+    margin: 50px 0 0;
+    overflow-wrap: anywhere;
+}
+/* both overlay headings: smaller on phones (the browser default 2em wrapped "Join Team Phoenix" at 360px) */
+.join-title,
+#removed_msg h1 {
+    font-size: clamp(1.25rem, 6vw, 2rem);
+    line-height: 1.25;
+}
+/* depends on the markup order in board.html: h1#join_title, then the (empty) label, then #nameinput */
+.join-title:not(.display_none) + label + #nameinput { margin-top: var(--space-4); }
+
 .privacy_link {
     display: flex;
     justify-content: center;
@@ -2751,6 +4272,17 @@ div#cbox {
 
 .privacy_link span {
     margin: 0 2px; /* Same margin as links for even spacing */
+}
+
+/* R3 review V10 (L19): below "Join as observer", what observers do */
+.observer-note {
+    box-sizing: border-box;
+    width: 18rem;
+    max-width: calc(100% - 2 * var(--space-3));
+    margin: 0 0 var(--space-2);
+    font-size: var(--fs-s);
+    color: var(--muted);
+    text-align: center;
 }
 
 @media (max-width: 799.98px) {
@@ -2856,6 +4388,17 @@ div#cbox {
 .toast::before {
     content: "> ";
     color: var(--muted);
+}
+
+.toast.toast-error::before { content: none; }
+
+/* R3 (Andreas): an error or a refusal shows the alert icon (#i-alert) instead of the ">" prompt */
+.toast .toast-ico {
+    width: 1.15em;
+    height: 1.15em;
+    margin-right: 0.45em;
+    vertical-align: -0.2em;
+    color: var(--danger);
 }
 
 .toast.toast-on {
@@ -2965,8 +4508,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* ---------- Animations ---------- */
 
-.flash-red { animation: flashRed 1.5s ease-in-out; }
-
 @keyframes fade-in {
     0% { opacity: 0; }
     75% { opacity: 0; }
@@ -2994,12 +4535,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 @keyframes caret-pulse {
     0%, 100% { opacity: 0.9; }
     50% { opacity: 0.15; }
-}
-
-@keyframes flashRed {
-    0% { background-color: var(--background-color); }
-    50% { background-color: var(--flash-red-background); }
-    100% { background-color: var(--background-color); }
 }
 
 /* ---------- Rotate hint (B-78) ---------- */
@@ -3114,4 +4649,591 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 @media (prefers-reduced-motion: reduce) {
     .conn-hint svg.i { animation: none; }
+}
+
+/* ---------- Deck menu (R3 F5, B-98; built by script/script_deck.js) ---------- */
+
+/* mock-up "Deck menu R3", variant C: the deck, the card set (opens the list), variant, cards, control cards.
+ * Small cards are rendered deck faces (.dkc) in a sized wrapper (.dm-card, --deck-w scales their text). */
+.dm .cm { color: var(--muted); }
+
+.dm-card {
+    --deck-w: 30px;
+    display: inline-block;
+    flex: none;
+    width: var(--deck-w);
+    vertical-align: top;
+}
+
+.dm-card .dkc .dh { font-size: 7px; }
+
+.dm .hint.warn { color: var(--warn); }
+
+.dm-tgs .dm-tg.is-refused { border-color: var(--danger); animation: dm-refuse 0.4s ease-in-out; }
+
+@keyframes dm-refuse {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dm-tgs .dm-tg.is-refused { animation: none; }
+}
+
+.dm-round { margin: 0 0 var(--space-3); }
+
+.dm-setbtn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 56px;
+    margin: 0 0 var(--space-3);
+    padding: 6px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dm-setbtn:hover { border-color: var(--accent); }
+
+.dm-setbtn:hover .cm { color: var(--accent); }
+
+.dm-t { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.dm-t b { font-size: var(--fs-m); color: var(--text); }
+
+.dm-t small { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.dm-fan { display: flex; align-items: center; height: 46px; padding-right: 8px; }
+
+.dm-fan .dm-card { --deck-w: 26px; margin-right: -8px; box-shadow: 0 1px 3px var(--shadow-color); border-radius: 6px; }
+
+.dm-fan .dm-card:nth-child(1) { transform: rotate(-7deg); }
+.dm-fan .dm-card:nth-child(2) { transform: rotate(-2.5deg); }
+.dm-fan .dm-card:nth-child(3) { transform: rotate(2.5deg); }
+.dm-fan .dm-card:nth-child(4) { transform: rotate(7deg); }
+
+/* in the list of card sets (Andreas, compact list): one line per set with a small fan, all sets fit on a desktop */
+.dm-prow-b .dm-t b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dm-prow-b .dm-fan { height: 34px; padding-right: 6px; }
+.dm-prow-b .dm-fan .dm-card { --deck-w: 20px; margin-right: -7px; border-radius: 5px; }
+
+.dm-tgs { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.dm-tg {
+    padding: 3px;
+    border: 1px dashed transparent;
+    border-radius: 7px;
+    background: none;
+    cursor: pointer;
+}
+
+.dm-tg .dm-card { --deck-w: 40px; }
+
+.dm-tg[aria-pressed="false"] .dkc { filter: grayscale(1); opacity: 0.38; border-style: dashed; }
+
+.dm-tg[aria-pressed="true"] { border: 1px solid var(--accent); }
+
+.dm-tg:hover .dkc { opacity: 1; }
+
+.dm-tg:focus-visible,
+.dm-setbtn:focus-visible,
+.dm-back:focus-visible,
+.dm-prow-b:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.dm-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: var(--tap);
+    margin: 0 0 2px -6px;
+    padding: 0 8px 0 2px;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+.dm-back:hover { color: var(--accent); }
+
+.dm-sub { margin: 0 0 6px; font-size: var(--fs-m); color: var(--text); }
+
+.dm-sub:focus { outline: none; }
+
+.dm-plist { margin: 0; padding: 0; list-style: none; }
+
+.dm-prow { border-bottom: 1px solid var(--line); }
+
+.dm-prow-b {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 20px;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--tap); /* Andreas (compact list): all built-in and own sets fit on a desktop screen */
+    padding: 1px 8px 1px 4px; /* R3 review: room on the right, the tick / arrow is never cut off */
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dm-prow-b:hover b { color: var(--accent); }
+
+.dm-prow.sel b,
+.dm-tick { color: var(--accent); }
+
+.dm-tick { stroke-width: 2.5; } /* the current set: the check icon of Invite (#i-check), in the accent colour */
+
+/* phones: larger taps */
+@media (max-width: 799.98px) {
+    .dm-tg .dm-card { --deck-w: 42px; }
+}
+
+/* ---------- Own card sets (B-98 S5; script/script_deck.js "Your sets", script/script_custom.js editor) ---------- */
+
+/* deck menu: "Your sets (n / max)", a row per set with its pen, "+ New set" */
+.cs-sec { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 2px; }
+.cs-sec2 { margin-top: 6px; }
+/* Andreas: "+ New set" as its own dashed row below the own sets, in the accent colour, one line high (--tap) like
+ * the rows above it, so the compact list still fits on a desktop screen */
+.cs-new {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: var(--tap);
+    margin: 4px 0 0;
+    padding: 0 10px 0 4px;
+    box-sizing: border-box;
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.cs-new:enabled:hover { border-style: solid; }
+.cs-new:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+.cs-new .cs-plus { flex: none; width: 20px; font-size: var(--fs-l); font-weight: 400; }
+.cs-new .cs-newt { flex: none; }
+/* at the limit: the reason at the right of the same line (wraps on narrow panels) */
+.cs-new .cs-limit { flex: 1; min-width: 0; text-align: right; font-size: var(--fs-xs); font-weight: 400; line-height: 1.3; color: var(--warn); }
+.cs-count { font-size: var(--fs-xs); color: var(--muted); }
+.cs-count.full { color: var(--warn); }
+.cs-prow { display: flex; align-items: center; }
+.cs-prow .dm-prow-b { flex: 1; min-width: 0; }
+.cs-edit {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    margin-left: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+}
+.cs-edit:hover { color: var(--accent); border-color: var(--accent); }
+.cs-edit .i { width: 16px; height: 16px; }
+.cs-plus { font-size: 22px; line-height: 1; width: 26px; text-align: center; }
+.cs-labrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.cs-labrow .lab { margin: 0; }
+.dm .cs-editbtn { min-height: var(--tap); padding: 2px 12px; }
+.cs-editbtn .i, .cs-ovl .btn-box .i { width: 16px; height: 16px; }
+.cs-ro .dm-tg { cursor: default; border: 1px solid transparent; }
+.cs-edit:focus-visible, .cs-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the editor (script_custom.js): a full-screen modal dialog (Andreas). Head and foot fixed; large screens: name and
+ * style on top, the card strip on the left in full height, the card's fields on the right (both scroll on their own);
+ * phones: one column that scrolls, the strip scrolls sideways */
+.cs-ovl {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh; /* iOS: the visible height, the foot with Save above Safari's toolbar */
+    max-width: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    text-align: left;
+    font-size: var(--fs-m);
+}
+.cs-ovl[open] { display: flex; flex-direction: column; }
+.cs-ovl::backdrop { background: var(--bg); }
+.cs-ovl .btn-box {
+    font-size: var(--fs-s);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--tap);
+    margin: 0;
+    padding: 4px 16px;
+}
+.cs-ovl .field { width: 100%; min-height: var(--tap); font-size: var(--fs-m); }
+/* R3 fix (Andreas, iPhone): 16px on touch and small screens, else iOS zooms into the focused name field and the
+ * editor is cut off on the right (×, style) and at the bottom (Save) */
+@media (max-width: 799.98px), (pointer: coarse) {
+    .cs-ovl .field, .cs-ovl input, .cs-ovl textarea, .cs-ovl select { font-size: var(--fs-l); }
+}
+.cs-head > *, .cs-foot > * { min-width: 0; }
+.cs-ovl textarea.field { display: block; padding: 8px 10px; line-height: 1.4; }
+.cs-ovl .f { margin: 0 0 14px; padding: 0; border: 0; min-width: 0; }
+.cs-ovl .hint { margin-top: 4px; }
+
+.cs-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    min-height: 52px;
+    padding: 4px 8px 4px 24px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+}
+.cs-head h2 { margin: 0; font-size: var(--fs-l); }
+.cs-sub { flex: 1; min-width: min(12em, 100%); font-size: var(--fs-xs); color: var(--muted); overflow-wrap: anywhere; }
+.cs-sub.bad { color: var(--danger); font-weight: bold; }
+.cs-x .i { width: 20px; height: 20px; }
+
+.cs-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 32px;
+    width: 100%;
+    max-width: 960px; /* the overlay is full screen, its content stays together on wide screens */
+    margin: 0 auto;
+    padding: 16px 24px 0;
+    box-sizing: border-box;
+}
+.cs-topf {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 360px) minmax(0, 420px);
+    gap: 0 24px;
+    align-items: start;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 14px;
+}
+.cs-lab { display: flex; align-items: baseline; gap: 6px; }
+.cs-opt { font-size: var(--fs-xs); color: var(--muted); }
+.cs-ctr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cs-err { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--danger); font-weight: bold; }
+.cs-f.has-err .field { border-color: var(--danger); }
+.cs-mono { font-weight: bold; letter-spacing: .04em; }
+
+/* the card strip: every card as it looks (cardFace 'table'), the selected one with ↑ ↓ × */
+.cs-cards { display: flex; flex-direction: column; min-height: 0; }
+.cs-cards > .lab { flex: none; }
+.cs-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 220px;
+    margin: 0;
+    padding: 2px 6px 16px 2px;
+    box-sizing: border-box;
+    list-style: none;
+    --card-w: 96px;
+}
+.cs-item { position: relative; display: flex; flex-direction: column; flex: none; }
+.cs-item.sel { align-items: center; gap: 6px; margin-block: 6px; }
+/* the card being edited: large, as on the table */
+.cs-card {
+    position: relative;
+    display: block;
+    width: calc(var(--card-w) + 10px);
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: calc(var(--card-w) * 0.11 + 5px);
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.cs-card .pc { width: var(--card-w); }
+/* the other cards: a compact row (small card, name, value) */
+.cs-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--tap);
+    padding: 2px 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.cs-row .dm-card { flex: none; --deck-w: 26px; width: var(--deck-w); }
+.cs-row-t { display: flex; flex-direction: column; min-width: 0; }
+.cs-row-t b { font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-row-t small { font-size: var(--fs-xs); color: var(--muted); }
+.cs-row:hover { border-color: var(--line-strong); }
+.cs-item.bad .cs-row { border-color: var(--danger); }
+.cs-row .cs-bang { top: 50%; right: 6px; transform: translateY(-50%); }
+.cs-item.sel .cs-card { border: 2px solid var(--accent); padding: 3px; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cs-item.bad .cs-card { border-color: var(--danger); }
+.cs-bang {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--danger);
+    color: var(--bg);
+    font-size: 13px;
+    font-weight: bold;
+}
+.cs-acts { display: flex; gap: 4px; }
+.cs-mv {
+    min-width: var(--tap);
+    min-height: var(--tap);
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg-2);
+    color: var(--text);
+    font: bold var(--fs-m) var(--font);
+    cursor: pointer;
+}
+.cs-mv:enabled:hover { border-color: var(--accent); color: var(--accent); }
+.cs-mv.danger:enabled { color: var(--danger); }
+.cs-mv.danger:enabled:hover { border-color: var(--danger); }
+.cs-mv:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+/* the arrows follow the strip: ↑ ↓ in the column, ← → sideways on phones (R3, Andreas 2026-11-03) */
+.cs-mv-h { display: none; }
+.cs-additem { flex: none; }
+.cs-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-height: var(--tap);
+    margin-top: 4px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-m);
+    background: none;
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+.cs-add:enabled:hover { border-color: var(--accent); color: var(--accent); }
+.cs-add:disabled { color: var(--disabled); border-color: var(--line); cursor: not-allowed; }
+
+/* the fields of the selected card */
+.cs-detail {
+    position: relative;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    max-width: 680px;
+    padding: 0 4px 24px;
+}
+.cs-h { margin: 0 0 12px; font-size: var(--fs-m); }
+.cs-symf { position: relative; }
+.cs-symrow { display: flex; gap: 8px; align-items: stretch; }
+.cs-symbtn {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: calc(var(--tap) + 8px);
+    padding: 4px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg-2);
+    color: var(--text);
+    font: var(--fs-m) var(--font);
+    text-align: left;
+    cursor: pointer;
+}
+.cs-symrow .field { flex: 1 1 0; min-width: 0; width: auto; }
+.cs-symbtn:hover, .cs-symbtn[aria-expanded="true"] { border-color: var(--accent); }
+.cs-symname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-symbtn .i { width: 16px; height: 16px; color: var(--muted); }
+/* a symbol drawn small and whole (the spread's .mini is 16 x 19) */
+.cs-ovl .mini.cs-mini { flex: none; display: grid; place-items: center; width: 26px; height: 31px; }
+.cs-ovl .mini.cs-mini .mot { width: 100%; height: 100%; }
+.cs-abc { font: bold 11px var(--font); color: var(--text); border: 1px solid var(--line-strong); border-radius: 3px; box-sizing: border-box; }
+
+/* the picker: a search field and the list below the button */
+.cs-pop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    z-index: 2;
+    padding: 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+    box-shadow: 0 12px 32px var(--shadow-color);
+}
+.cs-plist { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; margin: 8px 0 0; padding: 0; list-style: none; }
+.cs-pgroup { padding: 8px 8px 4px; font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.cs-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--tap);
+    padding: 2px 8px;
+    border-radius: var(--radius-m);
+    cursor: pointer;
+}
+.cs-option:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cs-option.active { background: color-mix(in srgb, var(--accent) 20%, transparent); outline: 1px solid var(--accent); }
+.cs-option[aria-selected="true"] .cs-optname { font-weight: bold; }
+.cs-option.taken .cs-mini { opacity: .45; }
+.cs-option.taken .cs-optname { color: var(--muted); }
+.cs-optname { flex: 1; min-width: 0; }
+.cs-optnote { font-size: var(--fs-xs); color: var(--muted); }
+.cs-optcheck { width: 16px; height: 16px; color: var(--accent); stroke-width: 2.5; }
+.cs-pnone { padding: 10px 8px; color: var(--muted); font-size: var(--fs-s); }
+
+.cs-ovl .cs-num { max-width: 160px; }
+.cs-sw { display: flex; flex-wrap: wrap; gap: 6px; }
+.cs-swatch {
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    background: var(--a);
+    box-shadow: 0 0 0 1px var(--line-strong);
+    cursor: pointer;
+}
+.cs-swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+.cs-swatch:focus-visible, .cs-card:focus-visible, .cs-row:focus-visible, .cs-mv:focus-visible, .cs-add:focus-visible, .cs-del:focus-visible,
+.cs-symbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cs-row:focus-visible { outline-offset: -2px; } /* inside: the strip would cut it on the left */
+@media (pointer: coarse) {
+    .cs-swatch { width: 44px; height: 44px; }
+}
+
+.cs-foot {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: var(--bg-2);
+}
+.cs-foot .cs-round { flex: 1 1 100%; margin: 0; }
+.cs-fill { flex: 1; }
+.cs-foot .btn-box.primary { min-width: 96px; }
+.cs-del {
+    min-height: var(--tap);
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--danger);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+/* B-98 copy: the choice of "+ New set" (from scratch or a built-in set) in the same overlay, one calm column */
+.cs-body.cs-start { display: block; max-width: 640px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 16px; }
+
+.cs-start .dm-prow-b:focus-visible { outline-offset: -2px; }
+.cs-texthelp { display: flex; align-items: baseline; gap: 8px; }
+
+/* the question (discard, delete) over the editor */
+.cs-scrim { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
+.cs-scrim[hidden] { display: none; }
+.cs-dlg {
+    width: min(440px, 100%);
+    box-sizing: border-box;
+    padding: 20px 22px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+    box-shadow: 0 12px 32px var(--shadow-color);
+}
+.cs-dlg h3 { margin: 0 0 10px; font-size: var(--fs-l); overflow-wrap: anywhere; }
+.cs-dlg p { margin: 0 0 10px; font-size: var(--fs-s); line-height: 1.5; color: var(--muted); }
+.cs-dlg .cs-warnp { color: var(--warn); }
+.cs-dlgbtns { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.btn-box.danger.strong:enabled { background: var(--danger); border-color: var(--danger); color: var(--bg); font-weight: bold; }
+
+/* phones: one column that scrolls (head and foot stay), the card strip sideways above the fields */
+@media (max-width: 799.98px) {
+    .cs-head { padding: 4px 4px 4px 14px; }
+    .cs-head h2 { flex: 1; font-size: var(--fs-m); }
+    .cs-sub { order: 3; flex-basis: 100%; padding-bottom: 4px; }
+    .cs-body { display: block; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 0; }
+    .cs-topf { grid-template-columns: minmax(0, 1fr); }
+    /* the strip sideways: the card being edited larger, the others small cards only */
+    .cs-list {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 6px;
+        width: auto;
+        overflow-x: auto;
+        overflow-y: hidden;
+        margin: 0 -14px;
+        padding: 4px 14px 60px;
+        --card-w: 72px;
+    }
+    .cs-item.sel { margin: 0; }
+    .cs-acts { position: absolute; top: 100%; left: 0; margin-top: 6px; }
+    .cs-mv-v { display: none; }
+    .cs-mv-h { display: inline; }
+    .cs-row { flex-direction: column; width: auto; padding: 4px 3px; }
+    .cs-row .dm-card { --deck-w: 44px; }
+    .cs-row-t { display: none; }
+    .cs-row .cs-bang { top: -4px; right: -4px; transform: none; }
+    .cs-additem { align-self: stretch; display: flex; }
+    .cs-add { width: 56px; margin: 0; flex-direction: column; }
+    .cs-cards { margin-bottom: 14px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+    .cs-detail { overflow: visible; max-width: none; padding-bottom: 16px; }
+    .cs-plist { max-height: 50vh; }
+    .cs-foot { padding: 8px 14px; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
+    .cs-foot .btn-box { flex: 1 1 auto; padding: 4px 10px; }
+    .cs-fill { display: none; }
 }

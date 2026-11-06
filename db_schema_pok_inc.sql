@@ -72,9 +72,10 @@ create table if not exists pok_roadmap_tbl (
   update_date timestamp not null default current_timestamp on update current_timestamp
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
 
-/* one reaction per user id, item and phase (UP = thumbs up, DOWN = thumbs down in the frontend).
+/* one reaction per user id, item and phase (UP = thumbs up, DOWN = thumbs down in the frontend, NONE = removed).
    phase: WANT while the item is PLANNED or IN_PROGRESS, DONE once it is DONE (set by vote_roadmap.php from the
-   item status), so an item set to DONE starts again at 0 in the app, and stats.php shows both phases. */
+   item status), so stats.php shows both phases. The app counts the latest row per user over all phases, so the
+   count continues when an item is set to DONE (Andreas, 2026-11-06). */
 create table if not exists pok_roadmap_votes_tbl (
   item_id int not null,
   user_id varchar(16) not null,
@@ -335,3 +336,338 @@ set @b96_sql = if((select count(1) from information_schema.columns
 prepare b96_stmt from @b96_sql;
 execute b96_stmt;
 deallocate prepare b96_stmt;
+
+/* B-98: deck = set group/variant + single cards on/off + control cards per team (rollout 3), custom sets per team.
+   Additive only: the release code never reads or writes the new columns and tables, cardset_flags stays as it is (old
+   boards keep using it). Teams are migrated lazily by the app: getDao() (api/lib.php) derives deck_id/deck_cards/
+   deck_controls from cardset_flags while deck_id is null, so no data update is needed here. pok_roundstats_tbl.deck_id
+   is the deck of a round (snapshot, written by newround.php). Custom card keys are 'c-' + base36 id (at most 7
+   characters like every card_key, never reused, rows are never deleted: changed cards become new rows).
+   Online: MySQL 8.0 adds nullable columns / columns with a default at the end of a table instantly (metadata only, no
+   table copy), so the size of pok_roundstats_tbl does not matter. Deploy order: run this BEFORE deploying the code
+   (dao.php reads the columns). Idempotent: run it again any time. */
+
+/* 1. check (read only): MySQL version (instant needs >= 8.0.12), row format (not COMPRESSED), sizes,
+   new columns and tables not there yet */
+select table_name, version(), row_format, table_rows, round((data_length + index_length) / 1048576) as mb
+  from information_schema.tables
+ where table_schema = database() and table_name in ('pok_teams_tbl', 'pok_roundstats_tbl');
+select table_name, column_name, column_type from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'deck_id'), ('pok_teams_tbl', 'deck_cards'),
+        ('pok_teams_tbl', 'deck_controls'), ('pok_teams_tbl', 'deck_rev'), ('pok_roundstats_tbl', 'deck_id'));
+select table_name from information_schema.tables
+ where table_schema = database() and table_name in ('pok_custom_sets_tbl', 'pok_custom_cards_tbl');
+
+/* 2. change: each ALTER only if the column is missing. If MySQL refuses algorithm = instant (ERROR 1845/1846), replace
+   it by "algorithm = inplace, lock = none" (online as well, rebuilds the table). The lock wait timeout makes the ALTER
+   give up after 5 s instead of queueing all dao.php calls behind a long query: just run it again. Not between 23:50
+   and 0:10 (nightly job reads pok_roundstats_tbl). */
+set session lock_wait_timeout = 5;
+set @b98_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'deck_id') = 0,
+  'alter table pok_teams_tbl
+     add column deck_id varchar(24) character set ascii collate ascii_bin null
+       comment ''B-98: variant id from card_catalog.json or c-<id> (custom set); null = not migrated yet'',
+     add column deck_cards varchar(200) character set ascii collate ascii_bin null
+       comment ''B-98: active card keys (comma list) if single cards are off; null = all cards of the variant'',
+     add column deck_controls varchar(40) character set ascii collate ascii_bin null
+       comment ''B-98: active control card keys (comma list), empty = none'',
+     add column deck_rev int not null default 0 comment ''B-98: +1 on every change of the deck or the active custom set'',
+     algorithm = instant',
+  'select 1');
+prepare b98_stmt from @b98_sql;
+execute b98_stmt;
+deallocate prepare b98_stmt;
+
+set @b98_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl' and column_name = 'deck_id') = 0,
+  'alter table pok_roundstats_tbl
+     add column deck_id varchar(24) character set ascii collate ascii_bin null comment ''B-98: deck of the round'',
+     algorithm = instant',
+  'select 1');
+prepare b98_stmt from @b98_sql;
+execute b98_stmt;
+deallocate prepare b98_stmt;
+
+/* custom sets of a team (rollout 3, S4). deleted = 1: soft delete (round history keeps its cards). rev: +1 per save
+   (hint "someone else changed this set"). team_id with the charset of pok_teams_tbl.id (utf8mb3) for the join. */
+create table if not exists pok_custom_sets_tbl (
+  id int unsigned not null auto_increment primary key,
+  team_id varchar(80) character set utf8mb3 collate utf8mb3_general_ci not null,
+  name varchar(24) not null,
+  style varchar(12) character set ascii collate ascii_bin not null default 'plain' comment 'style from card_catalog.json',
+  rev int unsigned not null default 1,
+  sort_order tinyint unsigned not null default 0,
+  deleted tinyint not null default 0,
+  creation_date timestamp not null default current_timestamp,
+  update_date timestamp not null default current_timestamp on update current_timestamp,
+  key ix_custom_sets_team (team_id, deleted)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
+
+/* cards of a custom set. A change of symbol, text or numeric value is a new row with a new card_key (heading,
+   description, colour and position change in place, Andreas 2026-11-03), the old row gets active = 0 and
+   is never deleted (historic rounds keep showing what was played). card_key = 'c-' + base36(id), set right after the
+   insert (unique, at most 7 characters). Either symbol_id (symbol library) or value_text (at most 6 graphemes, 48 code points). */
+create table if not exists pok_custom_cards_tbl (
+  id int unsigned not null auto_increment primary key,
+  set_id int unsigned not null,
+  card_key varchar(7) character set ascii collate ascii_bin null,
+  position tinyint unsigned not null,
+  symbol_id varchar(32) character set ascii collate ascii_bin null,
+  value_text varchar(48) null,
+  heading varchar(16) null,
+  description varchar(160) null,
+  numeric_value decimal(10,2) null,
+  color varchar(16) character set ascii collate ascii_bin not null comment 'colour token from card_catalog.json',
+  active tinyint not null default 1 comment '0 = replaced or removed version',
+  creation_date timestamp not null default current_timestamp,
+  unique key ux_custom_cards_key (card_key),
+  key ix_custom_cards_set (set_id, active)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci;
+
+/* B-98 S2: round snapshot of the whole deck. From the new deck menu on, cardset_flags no longer describes the deck
+   (single cards on/off, control cards, later custom sets), so pok_roundstats_tbl additionally keeps deck_cards and
+   deck_controls of the round next to deck_id (written by start_new_round() in api/lib.php). Additive, instant,
+   idempotent (run it again any time), BEFORE deploying the code (newround.php writes the columns).
+   Run only this block: sed -n '/^\/\* B-98 S2:/,/^\/\* end B-98 S2/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type from information_schema.columns
+ where table_schema = database() and table_name = 'pok_roundstats_tbl'
+   and column_name in ('deck_id', 'deck_cards', 'deck_controls');
+
+set session lock_wait_timeout = 5;
+set @b98s2_sql = if((select count(1) from information_schema.columns
+                      where table_schema = database() and table_name = 'pok_roundstats_tbl'
+                        and column_name = 'deck_cards') = 0,
+  'alter table pok_roundstats_tbl
+     add column deck_cards varchar(200) character set ascii collate ascii_bin null
+       comment ''B-98: active card keys of the round if single cards were off; null = all cards of the variant'',
+     add column deck_controls varchar(40) character set ascii collate ascii_bin null
+       comment ''B-98: active control card keys of the round (comma list)'',
+     algorithm = instant',
+  'select 1');
+prepare b98s2_stmt from @b98s2_sql;
+execute b98s2_stmt;
+deallocate prepare b98s2_stmt;
+/* end B-98 S2 */
+
+/* B-104: original card of a player who changes his card after the cards were revealed (stack "card changed" on the
+   board, statistics: how often teams change their estimate after the discussion). setc.php sets
+   pok_players_tbl.original_card_key, start_new_round() (api/lib.php) copies it into the round snapshot
+   pok_roundstat_details_tbl and clears it. Both columns are INVISIBLE: the old code inserts into
+   pok_roundstat_details_tbl without a column list (insert ... select) and reads p.*, so it keeps running unchanged.
+   Additive, instant (no table copy, also for the large pok_roundstat_details_tbl), idempotent (run it again any time),
+   BEFORE deploying the code. Needs MySQL >= 8.0.29.
+   Run only this block: sed -n '/^\/\* B-104:/,/^\/\* end B-104/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type, extra from information_schema.columns
+ where table_schema = database() and table_name in ('pok_players_tbl', 'pok_roundstat_details_tbl')
+   and column_name = 'original_card_key';
+
+set session lock_wait_timeout = 5;
+set @b104_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_players_tbl'
+                       and column_name = 'original_card_key') = 0,
+  'alter table pok_players_tbl
+     add column original_card_key varchar(7) character set ascii collate ascii_bin null invisible
+       comment ''B-104: card at the reveal if the player changed it afterwards, null = unchanged'',
+     algorithm = instant',
+  'select 1');
+prepare b104_stmt from @b104_sql;
+execute b104_stmt;
+deallocate prepare b104_stmt;
+
+set @b104_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_roundstat_details_tbl'
+                       and column_name = 'original_card_key') = 0,
+  'alter table pok_roundstat_details_tbl
+     add column original_card_key varchar(7) character set ascii collate ascii_bin null invisible
+       comment ''B-104: card at the reveal if the player changed it afterwards, null = unchanged'',
+     algorithm = instant',
+  'select 1');
+prepare b104_stmt from @b104_sql;
+execute b104_stmt;
+deallocate prepare b104_stmt;
+
+select table_name, column_name, column_type, extra from information_schema.columns
+ where table_schema = database() and table_name in ('pok_players_tbl', 'pok_roundstat_details_tbl')
+   and column_name = 'original_card_key';
+/* end B-104 */
+
+/* B-106: deck_controls (comma list of the active control card keys) gets more room: with the shruggie and further
+   control cards the list can grow beyond 40 characters. varchar(40) -> varchar(100) in pok_teams_tbl and
+   pok_roundstats_tbl. Additive (only longer), no data change, the old code keeps running unchanged. ascii stays below
+   256 bytes (1 length byte) -> "algorithm = inplace, lock = none" without a table rebuild (metadata only; instant is
+   not available for this change). The statement is built from information_schema, so character set, collation,
+   NULL/default, INVISIBLE and the comment stay as they are (MODIFY would drop them otherwise). Idempotent: only if the
+   column is shorter than 100 (run it again any time). Before or after deploying the code.
+   Run only this block: sed -n '/^\/\* B-106:/,/^\/\* end B-106/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type, character_set_name, collation_name, is_nullable, extra
+  from information_schema.columns
+ where table_schema = database() and table_name in ('pok_teams_tbl', 'pok_roundstats_tbl')
+   and column_name = 'deck_controls';
+
+set session lock_wait_timeout = 5;
+set @b106_sql = (select ifnull(max(if(character_maximum_length < 100,
+                   concat('alter table pok_teams_tbl modify column deck_controls varchar(100)',
+                          ' character set ', character_set_name, ' collate ', collation_name,
+                          if(is_nullable = 'YES', ' null', ' not null'),
+                          if(column_default is null, '', concat(' default ', quote(column_default))),
+                          if(extra like '%INVISIBLE%', ' invisible', ''),
+                          ' comment ', quote(column_comment),
+                          ', algorithm = inplace, lock = none'),
+                   'select 1')), 'select 1')
+                   from information_schema.columns
+                  where table_schema = database() and table_name = 'pok_teams_tbl'
+                    and column_name = 'deck_controls');
+prepare b106_stmt from @b106_sql;
+execute b106_stmt;
+deallocate prepare b106_stmt;
+
+set @b106_sql = (select ifnull(max(if(character_maximum_length < 100,
+                   concat('alter table pok_roundstats_tbl modify column deck_controls varchar(100)',
+                          ' character set ', character_set_name, ' collate ', collation_name,
+                          if(is_nullable = 'YES', ' null', ' not null'),
+                          if(column_default is null, '', concat(' default ', quote(column_default))),
+                          if(extra like '%INVISIBLE%', ' invisible', ''),
+                          ' comment ', quote(column_comment),
+                          ', algorithm = inplace, lock = none'),
+                   'select 1')), 'select 1')
+                   from information_schema.columns
+                  where table_schema = database() and table_name = 'pok_roundstats_tbl'
+                    and column_name = 'deck_controls');
+prepare b106_stmt from @b106_sql;
+execute b106_stmt;
+deallocate prepare b106_stmt;
+
+select table_name, column_name, column_type, character_set_name, collation_name, is_nullable, extra, column_comment
+  from information_schema.columns
+ where table_schema = database() and table_name in ('pok_teams_tbl', 'pok_roundstats_tbl')
+   and column_name = 'deck_controls';
+/* end B-106 */
+
+/* B-98 V6: who changed the card set of a team last (the board shows "Alice changed the card set to J.U.D.G.E.").
+   pok_teams_tbl.deck_changed_by = player id (pok_players_tbl.id, as get_id_param() reads it) of the writer, set by
+   update_deck.php, update_cardset.php and custom_set_delete.php only when the set group changes; dao.php joins the
+   name (deck.changed_by). Additive, instant, idempotent (run it again any time), BEFORE deploying the code.
+   Run only this block: sed -n '/^\/\* B-98 V6:/,/^\/\* end B-98 V6/p' db_schema_pok_inc.sql */
+select table_name, column_name, column_type from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'deck_changed_by';
+
+set session lock_wait_timeout = 5;
+set @b98v6_sql = if((select count(1) from information_schema.columns
+                      where table_schema = database() and table_name = 'pok_teams_tbl'
+                        and column_name = 'deck_changed_by') = 0,
+  'alter table pok_teams_tbl
+     add column deck_changed_by varchar(16) character set ascii collate ascii_bin null
+       comment ''B-98 V6: player id of the last change of the set group, null = unknown'',
+     algorithm = instant',
+  'select 1');
+prepare b98v6_stmt from @b98v6_sql;
+execute b98v6_stmt;
+deallocate prepare b98v6_stmt;
+/* end B-98 V6 */
+
+/* B-98 emoji: card texts may be emoji (Andreas 2026-11-02), 6 graphemes, a family emoji alone has 5 code points.
+   pok_custom_cards_tbl.value_text varchar(6) -> varchar(48) (code points, API limit CUSTOM_VALUE_CODEPOINTS_MAX).
+   Widening within the 1-byte length prefix (48 * 4 = 192 bytes < 256): in place, no table copy. Idempotent, BEFORE
+   deploying the code. Run only this block: sed -n '/^\/\* B-98 emoji:/,/^\/\* end B-98 emoji/p' db_schema_pok_inc.sql */
+set session lock_wait_timeout = 5;
+set @b98e_sql = if((select character_maximum_length from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_custom_cards_tbl'
+                       and column_name = 'value_text') < 48,
+  'alter table pok_custom_cards_tbl modify value_text varchar(48) null, algorithm = inplace, lock = none',
+  'select 1');
+prepare b98e_stmt from @b98e_sql;
+execute b98e_stmt;
+deallocate prepare b98e_stmt;
+
+select table_name, column_name, column_type, character_set_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_custom_cards_tbl' and column_name = 'value_text';
+/* end B-98 emoji */
+
+/* B-115: team setting "See changed cards" (board menu Board -> Results) switches B-104 off: 1 = a card changed after the
+   reveal keeps its original card (stack), 0 = no original card is stored or shown. It takes effect with the next round
+   (Andreas), so nobody sees an original card by switching it on afterwards: show_card_changes is the team setting,
+   round_show_card_changes the snapshot of the running round (copied by start_new_round() in api/lib.php, or at once
+   while no card is down, like anonymous_request_toggle -> anonymous_mode). setc.php only stores original_card_key and
+   getDao() only shows it while round_show_card_changes = 1. Default 1: every team keeps B-104 as before.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code (dao.php reads the columns). The
+   release code never reads or writes them (it inserts into pok_teams_tbl with a column list).
+   Run only this block: sed -n '/^\/\* B-115:/,/^\/\* end B-115/p' db_schema_pok_inc.sql */
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl'
+   and column_name in ('show_card_changes', 'round_show_card_changes');
+
+set session lock_wait_timeout = 5;
+set @b115_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_teams_tbl'
+                       and column_name = 'show_card_changes') = 0,
+  'alter table pok_teams_tbl
+     add column show_card_changes tinyint not null default 1
+       comment ''B-115: 1 = keep the original card of a card changed after the reveal (B-104), team setting'',
+     add column round_show_card_changes tinyint not null default 1
+       comment ''B-115: show_card_changes of the running round (snapshot at the round start)'',
+     algorithm = instant',
+  'select 1');
+prepare b115_stmt from @b115_sql;
+execute b115_stmt;
+deallocate prepare b115_stmt;
+
+select column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl'
+   and column_name in ('show_card_changes', 'round_show_card_changes');
+/* end B-115 */
+
+/* B-116: every team gets the example set "Animals (Example)" once (api/lib_custom.php give_example_set_locked(), lazy
+   in getDao() like the migration "Our deck"). pok_teams_tbl.example_set_given = 1 once it was given (or skipped
+   because the team had custom_sets_max() sets already); a deleted example set is not given again.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code.
+   Run only this block: sed -n '/^\/\* B-116:/,/^\/\* end B-116/p' db_schema_pok_inc.sql */
+set session lock_wait_timeout = 5;
+set @b116_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_teams_tbl'
+                       and column_name = 'example_set_given') = 0,
+  'alter table pok_teams_tbl
+     add column example_set_given tinyint not null default 0
+       comment ''B-116: 1 = the example set was given (or skipped at the set limit)'',
+     algorithm = instant',
+  'select 1');
+prepare b116_stmt from @b116_sql;
+execute b116_stmt;
+deallocate prepare b116_stmt;
+
+select table_name, column_name, column_type, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'example_set_given';
+/* end B-116 */
+
+/* B-98 backup: RUN ON LIVE BEFORE THE R3 DEPLOY (right before "git pull" of R3, after the R3 schema
+   blocks above, so the deck columns exist). Keeps the old deck of every team (cardset_flags, needs_setup and the R3
+   deck columns, still null on live) in pok_teams_deck_backup_r3: the lazy migration in getDao() and later
+   store_team_deck() overwrite cardset_flags. No names, only the team id (to compare or restore a single team).
+   Idempotent: create if missing, insert only teams not backed up yet (a second run never overwrites the first).
+   read committed: insert ... select does not lock the rows of pok_teams_tbl (boards keep writing).
+   Check after the deploy: tools/migration/README.md (check_deck_migration.php --verify).
+   Run only this block: sed -n '/^\/\* B-98 backup:/,/^\/\* end B-98 backup/p' db_schema_pok_inc.sql */
+create table if not exists pok_teams_deck_backup_r3 (
+  id varchar(80) character set utf8mb3 collate utf8mb3_general_ci not null primary key,
+  cardset_flags varchar(2000) character set utf8mb3 null,
+  needs_setup tinyint not null,
+  deck_id varchar(24) character set ascii collate ascii_bin null,
+  deck_cards varchar(200) character set ascii collate ascii_bin null,
+  deck_controls varchar(40) character set ascii collate ascii_bin null,
+  creation_date timestamp null,
+  backup_date timestamp not null default current_timestamp
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-98: decks of all teams before the R3 deploy (rollout 3)';
+
+set session transaction isolation level read committed;
+insert into pok_teams_deck_backup_r3(id, cardset_flags, needs_setup, deck_id, deck_cards, deck_controls, creation_date)
+select t.id, t.cardset_flags, t.needs_setup, t.deck_id, t.deck_cards, t.deck_controls, t.creation_date
+  from pok_teams_tbl t
+ where not exists (select 1 from pok_teams_deck_backup_r3 b where b.id = t.id);
+set session transaction isolation level repeatable read;
+
+select (select count(*) from pok_teams_tbl) teams, (select count(*) from pok_teams_deck_backup_r3) backed_up,
+       (select count(*) from pok_teams_deck_backup_r3 where deck_id is null) without_deck,
+       (select max(backup_date) from pok_teams_deck_backup_r3) last_backup;
+/* end B-98 backup */

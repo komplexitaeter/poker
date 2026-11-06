@@ -1,6 +1,6 @@
 let gTopicChangePending = false;
 
-/* B-51: the menu (#menu, a <dialog>, board.html and init.html). One section (section.menu_sec[data-sec])
+/* B-51: the menu (#menu, a <dialog>, board.html). One section (section.menu_sec[data-sec])
  * is visible at a time. Large screens: a non-modal side panel (show()), it stays put and a click on the
  * table does not close it. Phones (breakpoint as in style.css): a modal bottom sheet (showModal()) that
  * starts at the index (#menu_btn) and has a back button. Openers carry data-open="<section>", the close
@@ -12,7 +12,7 @@ let gTopicChangePending = false;
 const gMenuSections = {
     index:         {btn: 'menu_btn'},
     topic:         {btn: 'topic_btn',         event: 'OPEN_TOPIC_BOX',         focus: 'topic_txt'},
-    cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'cet_pre'},
+    cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'deck_change'}, // R3 F5: "Card set ... change"
     timer:         {btn: 'timer_btn',         event: 'OPEN_TIMER_BOX',         focus: 'tmr_visibility'}, // B-67: the checked radio
     user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'},
     feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'fb_tab_backlog'} // opens on the backlog tab
@@ -53,6 +53,7 @@ function openMenuSection() {
 function prepareMenuSection(sec) {
     if (sec === 'cset') {
         showCsetTab('deck');
+        resetDeckMenu(); // R3 F5: the deck tab starts at its overview (script_deck.js)
         document.getElementById('cet_team_name').value = document.getElementById('team_name').innerText;
         document.getElementById('cet_change_name').disabled = true;
     }
@@ -69,7 +70,7 @@ function prepareMenuSection(sec) {
     }
 }
 
-/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: New issue | Backlog).
+/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: New issue | Roadmap).
  * The tab buttons carry role="tab" and data-tab, the panels role="tabpanel" and data-tab as well; the
  * selected tab has aria-selected="true" and is the only one in the tab order, the other panels are
  * hidden. box: the section element; focusTab: move the focus to the tab. */
@@ -128,14 +129,15 @@ function openMenu(sec, opener = null, focusField = true) {
         let field = gMenuSections[sec].focus;
         if (field) {
             let element = document.getElementById(field);
+            if (element === null) element = section.querySelector('button, input, [tabindex]') || section; // R3 F5: deck not loaded yet
             // a radio group (fieldset): its checked radio, as the arrow keys move from there
             if (element.tagName === 'FIELDSET') element = element.querySelector('input:checked') || element.querySelector('input');
             if (sec === 'topic') element.select();
-            else element.focus();
+            else focusQuietly(element);
         } else if (sec === 'index') {
             // back from a section: the focus on its entry, otherwise on the first entry
             let entry = previousSec !== null && menu.querySelector('#menu_index [data-open="' + previousSec + '"]');
-            (entry || menu.querySelector('#menu_index [data-open]')).focus();
+            focusQuietly(entry || menu.querySelector('#menu_index [data-open]'));
         }
     } else if (previousFocus !== null && previousFocus !== document.body && !menu.contains(previousFocus)) {
         previousFocus.focus({preventScroll: true}); // show() moves the focus into the dialog
@@ -190,7 +192,7 @@ function closeMenu(restoreFocus = true) {
     if (toast !== null && menu.contains(toast)) document.body.appendChild(toast);
     menu.close();
     updateMenuExpanded();
-    if (restoreFocus && gMenuOpener !== null && gMenuOpener.isConnected) gMenuOpener.focus();
+    if (restoreFocus && gMenuOpener !== null && gMenuOpener.isConnected) focusQuietly(gMenuOpener);
     gMenuOpener = null;
 }
 
@@ -202,6 +204,9 @@ function switchMenuLayout() {
     let menu = getMenu();
     let sec = openMenuSection();
     if (sec === null) return;
+    // R3 (Andreas): another modal dialog above the menu (card set editor): reopening the menu would put it into the
+    // top layer above that dialog. The menu switches when the dialog closes (initMenu(), close listener).
+    if (otherModalOpen(menu)) return;
     if (sec === 'index' && !gPhoneQuery.matches) {
         closeMenu(false);
         return;
@@ -218,6 +223,18 @@ function switchMenuLayout() {
     if (focused !== null && focused.isConnected) focused.focus({preventScroll: true});
     else if (menu.contains(document.activeElement)) document.activeElement.blur();
     updateMenuExpanded();
+}
+
+/* true when a modal dialog other than the menu is open (e.g. the card set editor, script_custom.js) */
+function otherModalOpen(menu) {
+    return Array.from(document.querySelectorAll('dialog[open]')).some(dialog => {
+        if (dialog === menu) return false;
+        try {
+            return dialog.matches(':modal');
+        } catch (e) {
+            return true; // no :modal (old browsers): an open dialog besides the menu is the editor's
+        }
+    });
 }
 
 /* B-74: true when the event did not happen in the menu, an overlay (QR, delete user, name), another dialog,
@@ -325,18 +342,22 @@ function initMenu() {
     });
 
     gPhoneQuery.addEventListener('change', switchMenuLayout);
+    // a modal dialog above the menu closed: catch up on a breakpoint change meanwhile (close does not bubble)
+    document.addEventListener('close', function (event) {
+        if (event.target !== menu && event.target instanceof HTMLDialogElement) switchMenuLayout();
+    }, true);
 }
 
 document.addEventListener('DOMContentLoaded', initMenu);
 
-// B-51: "Average pointer" Hide/Show (radio group); the lock on "Show" is CSS
+// B-51: "Average pointer" Hide/Show (radio group); R3 review V8: no lock, no red flash any more
 function updateJediBtn() {
     checkRadio('cet_dark_side', gLastJson.show_avg === 1 ? '1' : '0');
 }
 
 function pushJediBtn(showAvg) {
     let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + t;
-    apiWrite(url);
+    settingWrite(url);
 }
 
 function toggleSurvey(forceSurvey){
@@ -519,24 +540,31 @@ function feedback_submit() {
         + '&type=' + encodeURIComponent(type)
         + '&text=' + encodeURIComponent(fb_text);
     if (type === 'BUG') url += '&context=' + encodeURIComponent(bugContext());
-    fetch(url, { method: 'POST' }).then();
-
-    closeMenu();
-    txt.value = '';
-    setFeedbackType('OTHER');
-    showToast('Thanks – we read every message.');
+    // R3 (Andreas): wait for the answer; on success thank and close, on failure keep text and menu and say so
+    let sendBtn = document.getElementById('feedback_send');
+    sendBtn.disabled = true;
+    let options = { method: 'POST' };
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
+    }
+    fetch(url, options).then(response => response.ok, () => false).then(ok => {
+        sendBtn.disabled = false;
+        if (ok) {
+            closeMenu();
+            txt.value = '';
+            setFeedbackType('OTHER');
+            showToast('Thanks – we read every message.');
+        } else {
+            showToast('Not sent \u2013 please try again', DECK_TOAST_MS, 'error');
+        }
+    });
 }
 
-/* B-57: "Backlog" tab - our public list (api/get_roadmap.php) with status and reactions (api/vote_roadmap.php).
+/* B-57: "Roadmap" tab (id backlog) - our public list (api/get_roadmap.php) with status and reactions (api/vote_roadmap.php).
  * Loaded each time the tab is shown; entries are clones of #fb_item_tpl, filled via textContent only.
- * Pull updates of the board do not touch it. On the start page (#fb_react_hint present) the user may not be
- * known yet (vote_roadmap.php: 403), so the reactions are shown, but disabled. */
+ * Pull updates of the board do not touch it. R3 review V10: the start page has no feedback menu any more. */
 const gFbStatusText = {PLANNED: 'planned', IN_PROGRESS: 'in progress', DONE: 'done'};
 let gFbBacklogRequest = 0; // only the latest load fills the list
-
-function fbCanReact() {
-    return document.getElementById('fb_react_hint') === null;
-}
 
 function fillBacklogItem(li, item) {
     li.dataset.item = item.id;
@@ -549,7 +577,7 @@ function fillBacklogItem(li, item) {
         let reaction = btn.dataset.reaction;
         btn.setAttribute('aria-pressed', item.my_reaction === reaction ? 'true' : 'false');
         btn.querySelector('.fb-count').textContent = (item.reactions && item.reactions[reaction]) || 0;
-        btn.disabled = !fbCanReact();
+        btn.disabled = false;
     });
 }
 
@@ -584,7 +612,7 @@ function loadFeedbackBacklog() {
 /* a click on a reaction: set it, or remove it when it is the own one already (NONE) */
 function reactOnBacklogItem(btn) {
     let li = btn.closest('li.fb-item');
-    if (li === null || !fbCanReact()) return;
+    if (li === null) return;
     let reaction = btn.getAttribute('aria-pressed') === 'true' ? 'NONE' : btn.dataset.reaction;
     let buttons = li.querySelectorAll('.fb-react-btn');
     buttons.forEach(b => { b.disabled = true; });
@@ -594,7 +622,6 @@ function reactOnBacklogItem(btn) {
         + '&reaction=' + encodeURIComponent(reaction), { method: 'POST' })
         .then(response => {
             if (response.ok) return response.json();
-            if (response.status === 403) showToast('Join a board to react.');
             return Promise.reject(response.status);
         })
         .then(item => fillBacklogItem(li, item))
@@ -648,81 +675,30 @@ function save_topic(){
 }
 
 
-function setCharAt(str, index, chr) {
-    return str.slice(0, index) + chr + str.slice(index + 1);
-}
-
-function toggleCSet(e) {
-    let str = localStorage.getItem('cSet');
-    let cardIdx = gCardsConfig.find(card => card.card_key === e.target.getAttribute("data-card_key")).index;
-
-    if (str.charAt(cardIdx) === '1') {
-        str = setCharAt(str, cardIdx, '0');
-    }
-    else {
-        str = setCharAt(str, cardIdx, '1');
-    }
-
-    for (let i=gCardsConfig.length - str.length; i>0 ; i--) str = str + "0";
-    updateCardset(str);
-
-}
-
-function updateCardset(cardSetDec) {
-    let url = './api/update_cardset.php?cardset_flags=' + cardSetDec + '&t=' + t;
-    apiWrite(url);
-}
-
-function preSet() {
-    let preSetElement = document.getElementById("cet_pre");
-
-    if  (preSetElement.value !== "0") {
-
-        let str = "";
-        let indexList = gCardsPresets.find(preSet => preSet.id.toString() === preSetElement.value).index_list;
-        let cardsConfig = gCardsConfig;
-        cardsConfig.sort((a,b) => a.index - b.index);
-
-        cardsConfig.forEach(card => {
-            let s;
-            if (card.flow_control) {
-                if (card.index + 1 <= localStorage.getItem('cSet').length) {
-                    s = localStorage.getItem('cSet').charAt(card.index);
-                } else {
-                    s = "0";
-                }
-            } else {
-                if (indexList.includes(card.index)) {
-                    s = "1";
-                } else {
-                    s = "0";
-                }
-            }
-            str = str + s;
-        });
-
-        updateCardset(str);
-        preSetElement.value = "0";
-    }
-}
-
 // B-51: called by the radio group with SEQUENCE or NAME
 function changeSortOrder(resultsOrder) {
     const url = './api/update_results_order.php?t='+t+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
-    apiWrite(url);
+    settingWrite(url);
 }
 
 // B-51: called by the radio group with 0 (show names) or 1 (anonymous)
 function changeAnonymity(anonymous) {
     const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
-    apiWrite(url);
+    settingWrite(url);
 }
 
 // B-96: called by the radio group with 0 (tips off) or 1 (tips on), for the whole team
 function changeShowTips(showTips) {
     const on = showTips === '1';
     measureEvent(on ? 'TIPS_ON' : 'TIPS_OFF');
-    apiWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
+    settingWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
+}
+
+/* B-115: switch B-104 (the first card stays visible when someone changes theirs after the reveal) for the team */
+function changeShowCardChanges(show) {
+    const on = show === '1';
+    measureEvent(on ? 'CARD_CHANGES_ON' : 'CARD_CHANGES_OFF');
+    settingWrite('./api/update_team.php?t='+t+'&show_card_changes='+(on ? '1' : '0'));
 }
 
 function onChangeTeamNameInput() {
@@ -743,7 +719,7 @@ function updateTeamName() {
     document.getElementById('cet_change_name').disabled = true;
 
     let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + t;
-    apiWrite(url);
+    settingWrite(url);
 }
 
 function updateUserName() {
@@ -752,7 +728,7 @@ function updateUserName() {
     document.getElementById('cet_change_user').disabled = true;
 
     let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
-    apiWrite(url);
+    settingWrite(url);
 }
 
 // B-51: called by the radio group with PLAYER or OBSERVER
@@ -760,5 +736,5 @@ function toggleUserType(playerType) {
     if (playerType !== 'OBSERVER') playerType = 'PLAYER';
 
     let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
-    apiWrite(url);
+    settingWrite(url);
 }

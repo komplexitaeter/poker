@@ -53,7 +53,7 @@ test('show_tips for an unknown team id is rejected with 403', async ({ browser }
 /**
  * B-96 (frontend): Board settings → Team → "Tips" switches the tips in the column (#round_tip) off and on for
  * the whole team. Other boards follow without a reload (B-81), the setting survives a reload, the deck hints
- * ("keys 1–9 pick a card") stay. Each switch is measured (TIPS_OFF / TIPS_ON).
+ * ("keys Q–P pick a card") stay. Each switch is measured (TIPS_OFF / TIPS_ON).
  */
 const DESKTOP = { width: 1400, height: 800 };
 
@@ -80,8 +80,9 @@ test('the "Tips" switch hides and shows the tip on every board of the team (B-96
   for (const page of [alice, bob]) {
     await expect(page.locator('#round_tip')).toHaveText(/^Pick the card that fits best/);
     await expect(page.locator('#round_tip')).toBeVisible();
-    await expect(page.locator('.deck-hint')).toBeVisible();
   }
+  // B-99 F8: the deck hint as it is before the switch (the default deck: hidden, its last key lies too far right)
+  const deckHint = await alice.locator('.deck-hint').isVisible();
 
   // default on, with a short hint
   await openTeamTab(alice);
@@ -93,7 +94,7 @@ test('the "Tips" switch hides and shows the tip on every board of the team (B-96
   for (const page of [alice, bob]) {
     await expect(page.locator('#round_tip')).toBeHidden();
     await expect(page.locator('#round_tip')).toBeEmpty();
-    await expect(page.locator('.deck-hint')).toBeVisible();
+    expect(await page.locator('.deck-hint').isVisible()).toBe(deckHint);
   }
   await expect.poll(() => measured).toContain('TIPS_OFF');
 

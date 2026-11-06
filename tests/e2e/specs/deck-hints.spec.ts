@@ -1,11 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, deckCard, deckCards, selectedDeckCards, setLegacyDeck,
+  clearLegacyDeck, setTeamDeck } from './helpers';
 
 /**
  * B-69 (large screens): the deck has no scrollbar. When it overflows, a chevron bar shows at the
  * edge where more cards are hidden (more-left / more-right on #down-container); a click on it
- * scrolls the deck that way. Keys 1–9 and 0 bring a hidden card into view.
+ * scrolls the deck that way. The letter keys (Q–P, A–L, Y–M) bring a hidden card into view.
  * B-75 (touch phones): the deck is a carousel instead: no bars, the card in the middle larger, dots below
  * (display only), a tap picks and centers a card, a swipe never picks. A narrow window with a mouse
  * keeps the deck row with the bars (Andreas, 2026-10-29). B-77: touch at any width (tablets: the
@@ -14,13 +15,6 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 const PHONE = { width: 390, height: 844 };
 const NARROW = { width: 1000, height: 800 }; // large screen layout, 46 cards overflow the tray
 
-function setDeck(t: string, indexes: number[]) {
-  expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // checked before it goes into the statement
-  const flags = Array(46).fill('0');
-  indexes.forEach(i => flags[i] = '1');
-  execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-e',
-    `update pok_teams_tbl set cardset_flags='${flags.join('')}' where id='${t}'`]);
-}
 
 const ALL = Array.from({ length: 46 }, (_, i) => i);
 
@@ -31,9 +25,9 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
   const alice = await newPlayer(browser, { viewport: NARROW });
   const url = await createTeam(alice, 'Deck Hints');
   const t = new URL(url).searchParams.get('t')!;
-  setDeck(t, ALL);
+  await setLegacyDeck(alice, t, ALL);
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  await expect(deckCards(alice)).toHaveCount(46);
   const tray = alice.locator('#down-container');
   const ctl = alice.locator('#ctl');
 
@@ -61,10 +55,11 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
   await expect(tray).not.toHaveClass(/more-right/);
   expect(Math.abs((await tray.boundingBox())!.height - height)).toBeLessThan(1);
 
-  // a deck that fits: no bars
-  setDeck(t, [0, 2, 3, 4]);
+  // a deck that fits (the server's deck again, update_deck.php): no bars
+  await clearLegacyDeck(alice);
+  await setTeamDeck(alice, url, 'fib-classic', ['zero001', 'one0001', 'two0001', 'three01'], []);
   await alice.reload();
-  await expect(alice.locator('#ctl img.on')).toHaveCount(4);
+  await expect(deckCards(alice)).toHaveCount(4);
   await expect(tray).not.toHaveClass(/more-left/);
   await expect(tray).not.toHaveClass(/more-right/);
   await alice.context().close();
@@ -73,9 +68,9 @@ test('deck hints: ">" at the start, "<" at the end, no scrollbar (B-69)', async 
 test('deck hints: a key brings a hidden card into view, the wheel scrolls sideways (B-69)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1000, height: 800 }, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Keys');
-  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL);
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  await expect(deckCards(alice)).toHaveCount(46);
   const ctl = alice.locator('#ctl');
   await expect.poll(() => ctl.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
 
@@ -85,16 +80,16 @@ test('deck hints: a key brings a hidden card into view, the wheel scrolls sidewa
   await alice.mouse.wheel(0, 300);
   await expect.poll(() => ctl.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
 
-  // scrolled to the end, the first card is hidden; key 1 brings it back and picks it
+  // scrolled to the end, the first card is hidden; key Q brings it back and picks it
   await ctl.evaluate(el => { el.scrollLeft = el.scrollWidth; });
-  const first = alice.locator('#ctl img.on >> nth=0');
+  const first = deckCards(alice).first();
   const visible = () => first.evaluate(img => {
     const c = img.closest('#ctl')!.getBoundingClientRect();
     const r = img.getBoundingClientRect();
     return r.left >= c.left - 1 && r.right <= c.right + 1;
   });
   expect(await visible()).toBe(false);
-  await alice.keyboard.press('1');
+  await alice.keyboard.press('KeyQ');
   await expect.poll(visible).toBe(true);
   await expect(first).toHaveClass(/selected/);
   // the first card scrolls the deck back to its start: no bar covers it
@@ -106,9 +101,9 @@ test('deck hints: a key brings a hidden card into view, the wheel scrolls sidewa
 test('deck hints: a click on a bar scrolls the deck, no card is picked (B-69)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: NARROW, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Bars');
-  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL);
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  await expect(deckCards(alice)).toHaveCount(46);
   const tray = alice.locator('#down-container');
   const ctl = alice.locator('#ctl');
   const scrollLeft = () => ctl.evaluate(el => el.scrollLeft);
@@ -120,7 +115,7 @@ test('deck hints: a click on a bar scrolls the deck, no card is picked (B-69)', 
   await expect.poll(scrollLeft).toBeGreaterThan(0);
   const step = await scrollLeft();
   const [width, card] = await ctl.evaluate(el =>
-    [el.clientWidth, el.querySelector('img.on')!.getBoundingClientRect().width]);
+    [el.clientWidth, el.querySelector('.ctl')!.getBoundingClientRect().width]);
   expect(Math.abs(step - (width - card))).toBeLessThan(2);
   await expect(tray).toHaveClass(/more-left/);
 
@@ -130,16 +125,16 @@ test('deck hints: a click on a bar scrolls the deck, no card is picked (B-69)', 
   await expect(tray).not.toHaveClass(/more-left/);
 
   // the bars took the clicks: no card was picked
-  await expect(alice.locator('#ctl img.selected')).toHaveCount(0);
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
   await alice.context().close();
 });
 
 test('narrow window with a mouse: no carousel, the edge bars scroll the deck, keys pick (B-75, B-69)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, reducedMotion: 'reduce' }); // no touch
   const url = await createTeam(alice, 'Deck Narrow Mouse');
-  setDeck(new URL(url).searchParams.get('t')!, ALL);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL);
   await joinAsPlayer(alice, url, 'Alice');
-  await expect(alice.locator('#ctl img.on')).toHaveCount(46);
+  await expect(deckCards(alice)).toHaveCount(46);
   const tray = alice.locator('#down-container');
   const ctl = alice.locator('#ctl');
   const scrollLeft = () => ctl.evaluate(el => el.scrollLeft);
@@ -149,7 +144,7 @@ test('narrow window with a mouse: no carousel, the edge bars scroll the deck, ke
   await expect(alice.locator('#deck_dots .deck-dot')).toHaveCount(0);
   await expect(alice.locator('#deck_pick')).toBeHidden();
   expect(await ctl.evaluate(el => getComputedStyle(el).scrollSnapType)).toBe('none');
-  const widths = await alice.locator('#ctl img.on').evaluateAll(imgs =>
+  const widths = await deckCards(alice).evaluateAll(imgs =>
     imgs.slice(0, 5).map(i => Math.round(i.getBoundingClientRect().width)));
   expect(new Set(widths).size).toBe(1);
 
@@ -162,19 +157,19 @@ test('narrow window with a mouse: no carousel, the edge bars scroll the deck, ke
   await expect(alice.locator('.deck-more-left')).toBeVisible();
   await alice.getByRole('button', { name: 'Show previous cards' }).click();
   await expect.poll(scrollLeft).toBe(0);
-  await expect(alice.locator('#ctl img.selected')).toHaveCount(0);
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
 
   // the wheel scrolls sideways, a key picks a card and brings it into view
   const deck = (await ctl.boundingBox())!;
   await alice.mouse.move(deck.x + deck.width / 2, deck.y + deck.height / 2);
   await alice.mouse.wheel(0, 200);
   await expect.poll(scrollLeft).toBeGreaterThan(0);
-  await alice.keyboard.press('1');
-  await expect(alice.locator('#ctl img.on').nth(0)).toHaveClass(/selected/);
+  await alice.keyboard.press('KeyQ');
+  await expect(deckCards(alice).nth(0)).toHaveClass(/selected/);
   await expect.poll(scrollLeft).toBe(0);
 
   // a click picks the card without moving the deck to the middle
-  const card = alice.locator('#ctl img.on').nth(3);
+  const card = deckCards(alice).nth(3);
   await card.click();
   await expect(card).toHaveClass(/selected/);
   await alice.waitForTimeout(300);
@@ -185,9 +180,9 @@ test('narrow window with a mouse: no carousel, the edge bars scroll the deck, ke
 test('touch device: the carousel stays at any width, no traces left when a mouse takes over (B-75, B-77)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Switch');
-  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   await joinAsPlayer(alice, url, 'Alice');
-  const cards = alice.locator('#ctl img.on');
+  const cards = deckCards(alice);
   await expect(cards).toHaveCount(11);
   await expect(alice.locator('#deck_dots .deck-dot')).toHaveCount(11);
   expect(await cards.nth(0).evaluate(img => img.style.transform)).not.toBe('');
@@ -220,7 +215,7 @@ test('touch device: the carousel stays at any width, no traces left when a mouse
 const offCenterOfCurrent = (page: Page) => page.evaluate(() => {
   const ctl = document.getElementById('ctl')!;
   const i = Array.from(document.querySelectorAll('#deck_dots .deck-dot')).findIndex(d => d.classList.contains('current'));
-  const slot = (ctl.querySelectorAll('img.on')[i] as HTMLElement).parentElement!.getBoundingClientRect();
+  const slot = (ctl.querySelectorAll('.ctl')[i] as HTMLElement).parentElement!.getBoundingClientRect();
   const deck = ctl.getBoundingClientRect();
   return Math.abs(slot.left + slot.width / 2 - (deck.left + deck.width / 2));
 });
@@ -240,9 +235,9 @@ async function swipe(page: Page, x: number, y: number, dx: number) {
 test('phone deck: a carousel with dots, a tap picks, a swipe does not, no edge bars (B-75)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
   const url = await createTeam(alice, 'Deck Carousel');
-  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   await joinAsPlayer(alice, url, 'Alice');
-  const cards = alice.locator('#ctl img.on');
+  const cards = deckCards(alice);
   await expect(cards).toHaveCount(11);
   const ctl = alice.locator('#ctl');
   const line = alice.locator('#deck_pick');
@@ -261,16 +256,16 @@ test('phone deck: a carousel with dots, a tap picks, a swipe does not, no edge b
     const mid = c.left + c.width / 2;
     let best = '';
     let dist = Infinity;
-    el.querySelectorAll('img.on').forEach(img => {
+    el.querySelectorAll('.ctl').forEach(img => {
       const r = img.getBoundingClientRect();
       const d = Math.abs(r.left + r.width / 2 - mid);
-      if (d < dist) { dist = d; best = img.id; }
+      if (d < dist) { dist = d; best = img.getAttribute('data-card')!; }
     });
     return best;
   });
-  const width = (id: string) => alice.locator(`#ctl img#${id}`).evaluate(img => img.getBoundingClientRect().width);
+  const width = (id: string) => deckCard(alice, id).evaluate(img => img.getBoundingClientRect().width);
   const centered = await middle();
-  const others = await cards.evaluateAll((imgs, id) => imgs.filter(i => i.id !== id)
+  const others = await cards.evaluateAll((imgs, id) => imgs.filter(i => i.getAttribute('data-card') !== id)
     .map(i => i.getBoundingClientRect().width), centered);
   expect(await width(centered)).toBeGreaterThan(Math.max(...others));
 
@@ -281,7 +276,7 @@ test('phone deck: a carousel with dots, a tap picks, a swipe does not, no edge b
   await expect.poll(() => ctl.evaluate(el => el.scrollLeft)).toBeGreaterThan(before);
   await expect.poll(middle).not.toBe(centered);
   await alice.waitForTimeout(500);
-  await expect(alice.locator('#ctl img.selected')).toHaveCount(0);
+  await expect(selectedDeckCards(alice)).toHaveCount(0);
 
   // a tap picks the card and brings it to the middle; its dot is filled, the line names it
   const target = cards.nth(2);
@@ -314,9 +309,11 @@ test('phone deck: a tap on a card further out brings it exactly to the middle, n
   // smooth scrolling (no reduced motion): snapping is off on the way, the card lands centered
   const alice = await newPlayer(browser, { viewport: PHONE, hasTouch: true, isMobile: true });
   const url = await createTeam(alice, 'Deck Carousel Tap');
-  setDeck(new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  // start from this deck, not from the start deck the board showed before (its size moved the carousel, B-98 S2)
+  await alice.reload();
   await joinAsPlayer(alice, url, 'Alice');
-  const cards = alice.locator('#ctl img.on');
+  const cards = deckCards(alice);
   await expect(cards).toHaveCount(11);
   const ctl = alice.locator('#ctl');
 
@@ -349,7 +346,7 @@ test('phone deck: a tap on a card further out brings it exactly to the middle, n
 
   // a finger on the deck stops the tween at once: snapping on again, the deck stays where it is
   const [steering, afterDown] = await ctl.evaluate(el => {
-    (el.querySelectorAll('img.on')[9] as HTMLElement).click(); // starts the tween (keyboard-like click)
+    (el.querySelectorAll('.ctl')[9] as HTMLElement).click(); // starts the tween (keyboard-like click)
     const steering = el.classList.contains('steering');
     el.dispatchEvent(new PointerEvent('pointerdown', { isPrimary: true, bubbles: true }));
     return [steering, el.classList.contains('steering')];
@@ -377,9 +374,9 @@ for (const [name, viewport] of [['portrait', { width: 820, height: 1180 }], ['la
   test(`tablet ${name}: the carousel in the floating tray, a tap picks and centers, the column's button aligned (B-77)`, async ({ browser }) => {
     const alice = await newPlayer(browser, { viewport, hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
     const url = await createTeam(alice, `Deck Tablet ${name}`);
-    setDeck(new URL(url).searchParams.get('t')!, ALL.slice(0, 17).filter(i => i !== 1));
+    await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, ALL.slice(0, 17).filter(i => i !== 1));
     await joinAsPlayer(alice, url, 'Alice');
-    const cards = alice.locator('#ctl img.on');
+    const cards = deckCards(alice);
     await expect(cards).toHaveCount(16);
     const tray = alice.locator('#down-container');
 
@@ -397,7 +394,7 @@ for (const [name, viewport] of [['portrait', { width: 820, height: 1180 }], ['la
       const ctl = document.getElementById('ctl')!;
       const deck = ctl.getBoundingClientRect();
       const mid = deck.left + deck.width / 2;
-      return Array.from(ctl.querySelectorAll('img.on')).map(img => {
+      return Array.from(ctl.querySelectorAll('.ctl')).map(img => {
         const r = img.getBoundingClientRect();
         return { d: Math.abs(r.left + r.width / 2 - mid), w: r.width, half: deck.width / 2 };
       });

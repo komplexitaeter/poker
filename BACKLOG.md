@@ -1324,7 +1324,8 @@ Entscheidungen Andreas zum Deck-Menü (2026-10-31, Mock-up „Deck-Menü R3“):
 - **Menü:** Variante C (erst Gruppe, dann Variante/Steuerkarten/Karten) mit Karten-Fächern aus B. „Eigenes Set definieren“
   als Vollbild-Overlay mit explizitem **Save**/Cancel (das Team sieht Änderungen erst nach Save).
 - **Migration:** `cardset_flags`, die genau einer Gruppe/Variante (+ Steuerkarten) entsprechen, werden übernommen; alle
-  anderen fallen auf den Standard zurück.
+  anderen fallen auf den Standard zurück. Fällt ein Team auf J.U.D.G.E. (mit „6 veto“), wird die Steuerkarte ✋ nicht
+  übernommen – „6 veto“ deckt sie ab; bei allen anderen Gruppen bleibt ✋ wie gewählt.
 - **Standard** für neue Teams und Rückfall: Fibonacci Classic + Steuerkarten.
 - **Steuerkarten** (☕ ? ! ✋) gelten **pro Team**, unabhängig vom Set; immer Stil `plain`. ✋ veto (Steuerkarte) und
   J.U.D.G.E. „6 veto“ sind verschiedene Karten. „!“ heißt **important**; Texte: need a break / question / important / veto.
@@ -1392,7 +1393,7 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Die Tipps (B-70/B-79) sind a
 keine offenen Fragen gibt.**
 - Keine 5 (need to talk), keine 6 (veto), kein „?“: „Decision accepted.“ – gibt es 3 (severe concerns) oder 4 (step out),
   zusätzlich als Angebot: „Concerns from <Name> (3) – want to hear them?“
-- 5 oder „?“ (zählt wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
+- 5, „?“ oder „!“ (zählen wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
 - Nur 6: Veto anhören.
 - Anonym-Modus: ohne Namen. Tipps abschaltbar wie bisher (B-96).
 Offen/später: ob Delegation, Ampel, Emotionen ebenfalls eigene Tipp-Regeln brauchen.
@@ -1409,6 +1410,10 @@ gewählt, ggf. nicht im Set, löst den Pausen-Tipp aus, verfälscht die ☕-Stat
 - Statistik: eigener Key, damit ☕-Zahlen künftig sauber sind (und man sieht, wie oft jemand später kommt).
 
 ### B-103 `setc.php`: gelegte Karte gegen das Deck des Teams prüfen
+Status: umgesetzt (rollout-3), freigegeben von Andreas (2026-11-01), Teil von R3. `setc.php` lehnt Keys außerhalb der
+eingeschalteten Deck-Karten und Steuerkarten des Teams mit 400 ab (ohne Schreiben/notify, Deck über `lock_team_deck()`
+inkl. Lazy-Migration, `deck_allows_card()` in `api/lib.php`); Karte zurücknehmen bleibt erlaubt. Ohne gültigen
+`card_catalog.json` keine Prüfung (Board nutzt dann `cards.json`).
 Hinweis Sina (Review B-102, 2026-10-31): `setc.php` speichert jeden formal gültigen `cardkey`, auch Karten außerhalb des
 aktiven Decks bzw. der Steuerkarten des Teams (z. B. per Direktaufruf); sie zählen dann in `getDao()` als Stimme. Kein
 XSS-Risiko (Ausgabe per textContent). Minimaler Fix: Keys ablehnen (400), die weder im Deck noch in den Steuerkarten des
@@ -1420,7 +1425,12 @@ Status: refined (Andreas, 2026-10-31), Teil von R3. Wer **nach dem Aufdecken** s
 - Änderungen vor dem Aufdecken zählen nicht.
 - Mehrere Änderungen: nur **Original + aktuell** (keine Zwischenstände).
 - Zurück auf die Originalkarte: **kein Stapel** mehr.
-- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte.
+- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte. Ausnahme „Let them explain“ (Andreas,
+  2026-10-31): Genannt werden die Extremwerte der Karten beim Aufdecken (Original, sonst aktuell) **und** der aktuellen
+  Karten – wer beim Aufdecken ein Extrem war, bleibt drin, wer neu auf ein Extrem wechselt, kommt dazu; Anzeige
+  „Name (5→8)“. „Everyone agrees“ nur nach aktuellen Karten; J.U.D.G.E. (B-101) nur aktuelle Karten.
+- Die Originalkarte zeigt **immer** oben links ihren Wert bzw. ihr Mini-Symbol (Andreas, 2026-10-31), auch Bild- und
+  Steuerkarten, J.U.D.G.E. und kleine Karten auf dem Phone.
 - **Statistik:** Originalkarte wird gespeichert (additive Spalte, Snapshot der Runde) – auswertbar, wie oft Teams nach
   der Diskussion umschwenken.
 - Anonym-Modus: Stapel ebenfalls (Namen sind dort ohnehin verborgen). Neue Runde: Original wird gelöscht.

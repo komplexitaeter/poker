@@ -8,8 +8,14 @@ let gColorMode = "dark";
 let gScreenWidth = null;
 let gDisplayType = null;
 let gTopic = null;
-let gCardsConfig = null;
-let gCardsPresets = null;
+let gCardsConfig = null;   // cards.json (v1) as loaded; only for the fallback deck (cardset_flags)
+let gCatalogV2 = null;     // card_catalog.json (v2, B-98): groups, variants, control cards (deck menu, script_deck.js)
+// B-99 (F1): the card model (script/deck.js). The catalog: all cards in deck order; the deck: the team's cards
+let gCardCatalog = [];
+let gCardByKey = new Map();
+let gDeck = { rev: null, cards: [] };
+// one element per card in the tray (built once, attached while the card is in the deck): key -> { slot, card, keyLabel }
+const gDeckElements = new Map();
 let gSurvey = null;
 let gAllPlayersReady = false;
 let gLastJson = null;
@@ -17,7 +23,6 @@ let gJsonBefore = null;
 let gTimerTime = null;
 let gTimerBaseTime = new Date();
 let gTimerInterval = null;
-let gLastShowAvg = null;
 // B-75: touch devices (no hover, coarse pointer): no focus without a tap (iOS keyboard).
 // B-75/B-77: on these the deck is a carousel at any width (same query as style.css "Card deck");
 // a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
@@ -66,29 +71,35 @@ function newRound() {
     apiWrite(url);
 }
 
-function playerTypeUpdate(playerType, name) {
+function playerTypeUpdate(playerType, name, teamName) {
     let ctl = document.getElementById("ctl");
     let overlayNameInput = document.getElementById("overlay_name_input");
     let privacyLink = document.getElementById("overlay_privacy_link");
 
     if (playerType === 'PLAYER' || playerType === 'OBSERVER') {
-        toggleStyleClass(ctl, "hidden", "visible");
+        // the deck (#ctl) is shown by controlsDsp() right after (B-110: no hidden/visible flip on every load)
         toggleStyleClass(overlayNameInput, "hidden", "visible");
         toggleStyleClass(privacyLink, 'hidden', 'visible');
     }
     else {
         let nameinput = document.getElementById("nameinput");
         let removedMsg = document.getElementById("removed_msg");
+        // R3 review V4: "Join <team>" above the field (not when removed: that state has its own heading)
+        let joinTitle = document.getElementById("join_title");
+        const joinText = teamName ? 'Join ' + teamName : 'Join';
+        if (joinTitle.textContent !== joinText) joinTitle.textContent = joinText;
 
         updateBecomeUserButtons(nameinput);
 
         if (playerType === 'REMOVED') {
             toggleStyleClass(nameinput, 'display_none', 'display_unset');
+            toggleStyleClass(joinTitle, 'display_none', 'display_unset');
             toggleStyleClass(removedMsg, 'display_unset', 'display_none');
             toggleStyleClass(privacyLink, 'hidden', 'visible');
 
         } else {
             toggleStyleClass(nameinput, 'display_unset', 'display_none');
+            toggleStyleClass(joinTitle, 'display_unset', 'display_none');
             toggleStyleClass(removedMsg, 'display_none', 'display_unset');
             toggleStyleClass(privacyLink, 'visible', 'hidden');
         }
@@ -128,96 +139,370 @@ function controlsDsp(playerType) {
     }
 
 
-    const images = document.querySelectorAll('#ctl img.on');
-
-    images.forEach(img => {
+    gDeckElements.forEach(({ card }) => {
         if (playerType === "PLAYER") {
-            img.classList.add("ctl_hover");
-            img.addEventListener("click", setC);
+            card.classList.add("ctl_hover");
+            card.addEventListener("click", setC);
+            card.removeAttribute("aria-disabled");
         }
         else {
-            img.classList.remove("ctl_hover");
-            img.removeEventListener("click", setC);
+            card.classList.remove("ctl_hover");
+            card.removeEventListener("click", setC);
+            card.setAttribute("aria-disabled", "true"); // observers do not pick
         }
     });
 }
 
-function deletePlayer(e) {
-    let url = './api/delete.php?mkey=' + e.target.parentElement.id + '&t=' + t;
+function deletePlayer(mkey) {
+    let url = './api/delete.php?mkey=' + encodeURIComponent(mkey) + '&t=' + t;
     apiWrite(url);
 }
 
 function updateSelectedC(currKey) {
-    let e = document.getElementsByClassName('ctl');
-    for (let i = 0; i < e.length; i++) {
-        if (e[i].id === currKey) {
-            e[i].classList.add('selected');
-        }
-        else {
-            e[i].classList.remove('selected');
-        }
-    }
+    gDeckElements.forEach(({ card }, key) => {
+        card.classList.toggle('selected', key === currKey);
+        card.setAttribute('aria-pressed', key === currKey ? 'true' : 'false');
+    });
+    updateDeckTabStop();
     scheduleCarousel(); // B-75: the dot of the picked card
 }
 
+/* the card key of a deck element (data-card) */
+function deckCardKey(element) {
+    return element.getAttribute('data-card');
+}
+
 function setC(e) {
+    const element = e.currentTarget;
     let url = null;
-    if (e.target.classList.contains('selected')) {
+    if (element.classList.contains('selected')) {
         if (!gAllPlayersReady) {
             url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + t;
-            e.target.classList.remove('selected');
+            element.classList.remove('selected');
+            element.setAttribute('aria-pressed', 'false');
         }
     }
     else
-        url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + e.target.id + '&t=' + t;
+        url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + encodeURIComponent(deckCardKey(element)) + '&t=' + t;
 
     if (url !== null) apiWrite(url);
 }
 
-function toggleC(cardId, flag) {
-    let e = document.getElementById(cardId);
-    let e_conf = document.getElementById('_'+cardId);
-    if (flag === '1') {
-        if (e===null) {
-            console.log(cardId);
-        }
-        e.classList.add('on');
-        e.classList.remove('off');
-        e_conf.classList.add('cs_c_on');
+/* B-99 (F1): the card of the catalog for a key (also cards no longer in the deck), undefined if unknown */
+function cardByKey(key) {
+    return gCardByKey.get(key);
+}
+
+/* true when the card is in the team's deck */
+function deckHas(key) {
+    return gDeck.cards.some(card => card.key === key);
+}
+
+/* the tray elements of the deck's cards, in deck order */
+function deckCardElements() {
+    return gDeck.cards.map(card => gDeckElements.get(card.key)).filter(entry => entry !== undefined).map(entry => entry.card);
+}
+
+/* the element of a card in the tray (B-99 F2: a button with the rendered card, cards.js), with its key below
+ * it (B-68). Built once per card, so a card switched off and on again keeps its element (no listeners lost);
+ * the face is rebuilt when the deck shows texts or not (setDeck). */
+function deckElement(card) {
+    let entry = gDeckElements.get(card.key);
+    if (entry === undefined) {
+        const element = document.createElement("button");
+        element.type = "button";
+        element.id = card.key;
+        element.classList.add("ctl", "on");
+        element.setAttribute("data-card", card.key);
+        element.setAttribute("aria-pressed", "false");
+        element.setAttribute("aria-label", cardAriaLabel(card, false));
+        element.tabIndex = -1;
+        element.addEventListener("pointerenter", showDeckInfoByPointer);
+        element.addEventListener("pointerleave", hideDeckInfo);
+        element.addEventListener("focus", showDeckInfoByFocus);
+        element.addEventListener("blur", hideDeckInfo);
+        element.addEventListener("keydown", moveDeckFocus);
+        element.addEventListener("pointerdown", () => {
+            if (document.activeElement === element) gDeckPointerFocus = element;
+        });
+        element.addEventListener("focus", () => { gDeckPointerFocus = gKeyboardInput ? null : element; });
+        element.addEventListener("blur", () => { if (gDeckPointerFocus === element) gDeckPointerFocus = null; });
+        // B-68: the card with its key below it (shown on devices with a mouse, style.css)
+        const slot = document.createElement("span");
+        slot.className = "ctl-slot";
+        const keyLabel = document.createElement("span");
+        keyLabel.className = "ctl-key";
+        keyLabel.setAttribute("aria-hidden", "true");
+        slot.append(element, keyLabel);
+        entry = { slot, card: element, keyLabel, texts: null, model: card };
+        gDeckElements.set(card.key, entry);
     }
-    else {
-        e.classList.remove('on');
-        e.classList.add('off');
-        e_conf.classList.remove('cs_c_on');
+    // R3 fix (Andreas): a custom card keeps its key when only its set's style changes; addCustomCards() then builds
+    // a new card model, so a new model means a new face
+    if (entry.texts !== gDeckTexts || entry.model !== card) {
+        entry.texts = gDeckTexts;
+        entry.model = card;
+        entry.card.replaceChildren(cardFace(card, 'deck', true)); // F7: control cards show their heading in every set
+        entry.card.setAttribute('aria-label', cardAriaLabel(card, false));
+    }
+    return entry;
+}
+
+/* B-99 (F2): the deck shows texts (headings / descriptions) when one of its cards (not a control card) has
+ * some. F7 (Andreas): the control cards show their heading in every set (Fibonacci too) in the deck, the info
+ * line explains them; F8: on the table they show heading and description in every set. */
+let gDeckTexts = false;
+/* the layout level of the table cards (deckTextSize) */
+let gDeckTextSize = 'none';
+
+/* D4: the longest description of a "short texts" deck (control cards: 51, J.U.D.G.E. up to 160 characters) */
+const DECK_SHORT_INFO = 60;
+/* D5: the longest text of a "one word" deck (emotions: "uninterested", stars: "no stars") */
+const DECK_WORD_TEXT = 16;
+
+/* D5: how much text the cards of a deck carry; the table cards of a deck share one layout (style.css,
+ * #cbox[data-text-size]): none (Fibonacci), word (one short word: emotions, stars), short (descriptions up to DECK_SHORT_INFO: traffic lights, Delegation),
+ * long (J.U.D.G.E.) */
+function deckTextSize(deck) {
+    if (!deckHasTexts(deck)) return 'none';
+    const cards = deck.cards.filter(card => !card.controlCard);
+    const word = cards.every(card => !(card.heading && card.info)
+        && String(card.heading || card.info || '').length <= DECK_WORD_TEXT);
+    if (word) return 'word';
+    return deck.cards.every(card => String(card.info || '').length <= DECK_SHORT_INFO) ? 'short' : 'long';
+}
+
+function deckHasTexts(deck) {
+    return deck.cards.some(card => !card.controlCard && (card.heading || card.info));
+}
+
+/* B-99 (F2): the info line above the tray (devices with a mouse: pointing at a card; keyboard: focus) shows
+ * the value, heading and description of the card. Sets without texts (Fibonacci): only for control cards. */
+function deckInfoCard(element) {
+    const card = cardByKey(deckCardKey(element));
+    if (card === undefined || !(card.heading || card.info)) return undefined;
+    return gDeckTexts || card.controlCard ? card : undefined;
+}
+
+function showDeckInfo(element) {
+    const line = document.getElementById('deck_info');
+    if (line === null) return;
+    const card = deckInfoCard(element);
+    if (card === undefined) { hideDeckInfo(); return; }
+    const chip = document.createElement('span');
+    chip.className = 'deck-info-value';
+    const look = cardLook(card);
+    setCardColor(chip, look.color);
+    chip.appendChild(cardSmall(card, !card.heading)); // B-99 (F6): mono text or mini symbol, no system emoji
+    // F8 (Andreas): left the chip, right the text, left-aligned: a second line starts below the first one's start
+    const text = document.createElement('span');
+    text.className = 'deck-info-text';
+    if (card.heading) {
+        const heading = document.createElement('b');
+        heading.textContent = card.heading;
+        text.appendChild(heading);
+    }
+    // F7: a description alone (emotions) reads like a heading
+    if (card.info && card.heading) text.appendChild(document.createTextNode(' — ' + card.info));
+    else if (card.info) text.appendChild(Object.assign(document.createElement('b'), { textContent: card.info }));
+    const parts = [chip, text];
+    line.replaceChildren(...parts);
+    line.hidden = false;
+}
+
+function showDeckInfoByPointer(event) {
+    if (event.pointerType === 'mouse') showDeckInfo(event.currentTarget);
+}
+
+function showDeckInfoByFocus(event) {
+    const element = event.currentTarget;
+    gDeckElements.forEach(({ card }) => { card.tabIndex = card === element ? 0 : -1; }); // roving tab stop
+    if (!gCarousel.on) showDeckInfo(element);
+}
+
+function hideDeckInfo() {
+    const line = document.getElementById('deck_info');
+    if (line === null || line.hidden) return;
+    const focused = document.activeElement;
+    if (focused instanceof Element && focused.matches('#ctl .ctl') && focused.matches(':focus-visible') && !gCarousel.on) {
+        showDeckInfo(focused); // the pointer left, the keyboard focus stays
+        return;
+    }
+    line.hidden = true;
+    line.replaceChildren();
+}
+
+/* R3 (Andreas, 2026-11-02): the deck card that got the focus from a pointer press (mouse, finger), null when the
+ * focus came from the keyboard or left the card. A letter key then moves the focus along (pickCardByKey). */
+let gDeckPointerFocus = null;
+
+/* R3 (Andreas, 2026-11-03): did the last action come from the keyboard (true) or from a pointer (mouse, finger)?
+ * Focus the app moves itself (a dialog opens or closes, a view changes: focusQuietly) shows its ring only after a key.
+ * Chrome decides so on its own; Safari (a click does not focus a button) showed the ring after a click as well. */
+let gKeyboardInput = false;
+document.addEventListener('keydown', event => {
+    if (event.metaKey || event.ctrlKey || ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(event.key)) return;
+    gKeyboardInput = true;
+    // a key shows the ring on the focused control again (as browsers do after a click)
+    const focused = document.activeElement;
+    if (focused instanceof Element) focused.classList.remove('no-ring');
+}, true);
+document.addEventListener('pointerdown', () => { gKeyboardInput = false; }, true);
+
+// text fields show their ring after a click too: they are focused as usual
+const RING_ALWAYS = 'textarea, select, [contenteditable], input:not([type="button"], [type="submit"], [type="reset"], '
+    + '[type="checkbox"], [type="radio"], [type="range"], [type="color"])';
+
+/* focuses el (null: nothing); after a pointer action without the focus ring: FocusOptions.focusVisible where the
+ * browser knows it (Firefox), else the class no-ring until el loses the focus or a key is pressed (style.css) */
+function focusQuietly(el, options = {}) {
+    if (el === null || el === undefined) return;
+    if (gKeyboardInput || el.matches(RING_ALWAYS)) {
+        el.focus(options);
+        return;
+    }
+    el.focus({ ...options, focusVisible: false });
+    if (document.activeElement !== el || !el.matches(':focus-visible')) return;
+    el.classList.add('no-ring');
+    el.addEventListener('blur', () => el.classList.remove('no-ring'), { once: true });
+}
+
+/* B-99 (F3): one tab stop for the deck; the arrow keys move between its cards */
+function moveDeckFocus(event) {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (step === 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+    const cards = deckCardElements();
+    const next = cards[cards.indexOf(event.currentTarget) + step];
+    event.preventDefault();
+    if (next !== undefined) next.focus();
+}
+
+/* the deck card that takes the tab stop: the picked one, else the first */
+function updateDeckTabStop() {
+    const cards = deckCardElements();
+    const stop = cards.find(card => card.classList.contains('selected')) || cards[0];
+    if (cards.includes(document.activeElement)) return; // the focus is in the deck: it keeps the stop
+    gDeckElements.forEach(({ card }) => { card.tabIndex = card === stop ? 0 : -1; });
+}
+
+/* B-99 (F1): shows a deck (deck.js) in the tray: only its cards, in its order. The tray is only
+ * rebuilt when the deck changed (rev). */
+function setDeck(deck) {
+    const ctl = document.getElementById('ctl');
+    if (ctl === null || deck.rev === gDeck.rev) return;
+    gDeck = deck;
+    const texts = deckHasTexts(deck);
+    const textSize = deckTextSize(deck);
+    const textsChanged = texts !== gDeckTexts || textSize !== gDeckTextSize;
+    // R3 fix: a card of the deck with a new model (style of a custom set changed, same key): table and result anew
+    const restyled = deck.cards.some(card => {
+        const entry = gDeckElements.get(card.key);
+        return entry !== undefined && entry.model !== card;
+    });
+    gDeckTexts = texts;
+    gDeckTextSize = textSize;
+    ctl.classList.toggle('deck-texts', texts);
+    // D4/D5: the table cards' layout follows the deck's longest text (style.css, "data-text-size")
+    const cbox = document.getElementById('cbox');
+    if (cbox !== null) cbox.dataset.textSize = textSize;
+    ctl.replaceChildren(...deck.cards.map(card => deckElement(card).slot));
+    updateDeckTabStop();
+    // R3 fix: the carousel's hint line caches by card key; a new deck (texts of a custom card changed, same key)
+    // builds it anew on the next frame
+    document.getElementById('deck_pick')?.removeAttribute('data-shows');
+    scheduleCarousel();
+    if (textsChanged || restyled) refreshTableFaces();
+    if (restyled) {
+        // the spread labels, the range and the tip show small faces of the cards: built anew on the next update
+        ['spread_bars', 'spread_range'].forEach(id => document.getElementById(id)?.removeAttribute(id === 'spread_bars' ? 'data-keys' : 'data-shows'));
+        const tip = document.getElementById('round_tip');
+        if (tip !== null) delete tip.dataset.key;
     }
 }
 
-function setCSet(cSet) {
-    let str = cSet.padEnd(gCardsConfig.length, '0');
-
-    localStorage.setItem('cSet', str);
-
-    gCardsConfig.forEach(card => {
-        toggleC(card.card_key, str.charAt(card.index));
-    });
+/* R3 F4: the team's deck from dao ("deck", card data from card_catalog.json); without it (catalog missing or
+ * broken on the server) the old way from cardset_flags and cards.json (adapter in deck.js) */
+function setTeamDeck(json) {
+    const deck = deckFromServer(json.deck, gCardByKey)
+        || deckFromLegacy(gCardCatalog, String(json.cardset_flags || '').padEnd(gCardsConfig.length, '0'));
+    setDeck(deck);
     updateDeckKeys();
 }
 
-/* B-68: keys 1–9 and 0 pick the first ten cards of the deck (in deck order) */
-const DECK_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+/* B-68, F8 (B-99 planning, Andreas): the letter rows pick the cards from left to right, in deck order:
+ * Q W E R T Z U I O P, then A S D F G H J K L, then Y X C V B N M (26 cards, control cards included).
+ * The physical key counts (event.code), so QWERTZ, QWERTY and AZERTY pick the same card with the same finger. */
+const DECK_KEY_CODES = [
+    'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP',
+    'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL',
+    'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM',
+];
+
+/* the label under a card: the character of the key in the user's layout. navigator.keyboard.getLayoutMap()
+ * tells it (Chromium); where it is missing (Firefox, Safari) the browser language guesses it (R3 review E9):
+ * QWERTZ for German and the other QWERTZ languages, QWERTY otherwise (only Y and Z swap places). */
+const DECK_KEY_LABELS_QWERTY = {
+    KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyT: 'T', KeyY: 'Y', KeyU: 'U', KeyI: 'I', KeyO: 'O', KeyP: 'P',
+    KeyA: 'A', KeyS: 'S', KeyD: 'D', KeyF: 'F', KeyG: 'G', KeyH: 'H', KeyJ: 'J', KeyK: 'K', KeyL: 'L',
+    KeyZ: 'Z', KeyX: 'X', KeyC: 'C', KeyV: 'V', KeyB: 'B', KeyN: 'N', KeyM: 'M',
+};
+const DECK_KEY_LABELS_QWERTZ = { ...DECK_KEY_LABELS_QWERTY, KeyY: 'Z', KeyZ: 'Y' };
+const QWERTZ_LANGS = ['de', 'cs', 'sk', 'hu', 'sl', 'hr', 'sq'];
+
+function defaultDeckKeyLabels() {
+    const lang = String(navigator.language || '').toLowerCase().split('-')[0];
+    return QWERTZ_LANGS.includes(lang) ? DECK_KEY_LABELS_QWERTZ : DECK_KEY_LABELS_QWERTY;
+}
+
+const DECK_KEY_LABELS_DEFAULT = defaultDeckKeyLabels();
+let gDeckKeyLabels = DECK_KEY_LABELS_DEFAULT;
+
+function deckKeyLabel(code) {
+    return gDeckKeyLabels[code] || DECK_KEY_LABELS_DEFAULT[code];
+}
+
+/* reads the layout (again: on load and when the window gets the focus back, the user may have switched it) */
+function loadDeckKeyLayout() {
+    const keyboard = navigator.keyboard;
+    if (!keyboard || typeof keyboard.getLayoutMap !== 'function') return;
+    keyboard.getLayoutMap().then(map => {
+        const labels = {};
+        DECK_KEY_CODES.forEach(code => {
+            const char = map.get(code);
+            // one printable character only; anything else keeps the default label
+            labels[code] = typeof char === 'string' && [...char].length === 1 && char.trim() !== ''
+                ? char.toUpperCase() : DECK_KEY_LABELS_DEFAULT[code];
+        });
+        if (DECK_KEY_CODES.every(code => labels[code] === gDeckKeyLabels[code])) return;
+        gDeckKeyLabels = labels;
+        updateDeckKeys();
+    }).catch(() => {}); // e.g. not allowed in a frame: the default labels
+}
 
 function updateDeckKeys() {
-    document.querySelectorAll('#ctl img.ctl').forEach(img => {
-        img.nextElementSibling.textContent = '';
+    // B-110: written only when a label changes (the board loads on every hb, the same state changes nothing)
+    const labels = new Map();
+    gDeck.cards.forEach((card, i) => {
+        if (i < DECK_KEY_CODES.length) labels.set(card.key, deckKeyLabel(DECK_KEY_CODES[i]));
     });
-    document.querySelectorAll('#ctl img.on').forEach((img, i) => {
-        if (i < DECK_KEYS.length) img.nextElementSibling.textContent = DECK_KEYS[i];
+    gDeckElements.forEach(({ keyLabel }, key) => {
+        const label = labels.get(key) || '';
+        if (keyLabel.textContent !== label) keyLabel.textContent = label;
     });
+    // the hint names the first and the last key in use, lower case like a console line: "press q–p to pick a card"
+    const hint = document.querySelector('.deck-hint');
+    const used = Math.min(gDeck.cards.length, DECK_KEY_CODES.length);
+    if (hint !== null && used > 0) {
+        const first = deckKeyLabel(DECK_KEY_CODES[0]).toLowerCase();
+        const text = used === 1 ? 'press ' + first + ' to pick the card'
+            : 'press ' + first + '\u2013' + deckKeyLabel(DECK_KEY_CODES[used - 1]).toLowerCase() + ' to pick a card';
+        if (hint.textContent !== text) hint.textContent = text;
+    }
     updateDeckRoom();
     syncCarousel(); // B-75
 }
 
-/* B-68: the hint "keys 1–9 pick a card" sits in the row of the keys; it is hidden (class
+/* B-68: the hint "press q–p to pick a card" sits in the row of the keys; it is hidden (class
  * hint-off) when the deck scrolls or its last key does not stay clear of it, so the tray keeps its
  * height. Only where the keys show (style.css "Card deck"). */
 function updateDeckRoom() {
@@ -225,8 +510,8 @@ function updateDeckRoom() {
     const ctl = document.getElementById('ctl');
     const hint = container === null ? null : container.querySelector('.deck-hint');
     if (ctl === null || container === null) return;
-    const keyed = Array.from(ctl.querySelectorAll('img.on')).slice(0, DECK_KEYS.length);
-    const lastKey = keyed.length > 0 ? keyed[keyed.length - 1].nextElementSibling : null;
+    const keyed = gDeck.cards.slice(0, DECK_KEY_CODES.length);
+    const lastKey = keyed.length > 0 ? gDeckElements.get(keyed[keyed.length - 1].key).keyLabel : null;
     const fits = hint !== null && ctl.scrollWidth <= ctl.clientWidth + 1
         && (lastKey === null || lastKey.getBoundingClientRect().right + 8 <= hint.getBoundingClientRect().left);
     container.classList.toggle('hint-off', !fits);
@@ -251,7 +536,7 @@ function scrollDeckByWheel(event) {
 function scrollDeckByBar(direction) {
     const ctl = document.getElementById('ctl');
     if (ctl === null) return;
-    const card = ctl.querySelector('img.on');
+    const card = deckCardElements()[0] || null;
     const cardWidth = card === null ? 0 : card.getBoundingClientRect().width;
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     ctl.scrollBy({ left: direction * Math.max(ctl.clientWidth - cardWidth, cardWidth), behavior });
@@ -280,19 +565,19 @@ const gCarousel = {
 };
 
 function carouselCards() {
-    return Array.from(document.querySelectorAll('#ctl img.on'));
+    return deckCardElements();
 }
 
-/* brings a deck card (img) to the middle of the deck. Animated by an own tween of scrollLeft
+/* brings a deck card (its element) to the middle of the deck. Animated by an own tween of scrollLeft
  * (easeOutCubic, CAROUSEL_TWEEN_MS) instead of the browser's smooth scroll, which is jerky on
  * iPhones; scroll snapping is off meanwhile (.steering, style.css), or iOS stops at a snap point
  * on the way (scroll-snap-stop). The last frame sets the exact position, then snapping is on
  * again. Each tween frame also lays out the carousel (carouselFrame), so the scroll events it
  * causes do no work of their own. A finger on the deck ends the tween (pointerdown). */
 const CAROUSEL_TWEEN_MS = 250;
-function carouselCenter(img, instant) {
+function carouselCenter(card, instant) {
     const ctl = document.getElementById('ctl');
-    const slot = img.parentElement;
+    const slot = card.parentElement;
     const max = ctl.scrollWidth - ctl.clientWidth;
     const to = Math.min(max, Math.max(0, slot.offsetLeft + slot.offsetWidth / 2 - ctl.clientWidth / 2));
     carouselSteerEnd(ctl);
@@ -335,18 +620,18 @@ function syncCarousel(recenter = false) {
         if (gCarousel.on) { // back to the deck row (mouse / trackpad): no traces of the carousel
             gCarousel.on = false;
             gCarousel.keys = '';
-            ctl.querySelectorAll('img.ctl').forEach(img => { img.style.transform = ''; img.style.opacity = ''; img.style.pointerEvents = ''; });
+            gDeckElements.forEach(({ card }) => { card.style.transform = ''; card.style.opacity = ''; card.style.pointerEvents = ''; });
             carouselSteerEnd(ctl);
         }
         return;
     }
     gCarousel.on = true;
     const cards = carouselCards();
-    const keys = cards.map(img => img.id).join(',');
+    const keys = cards.map(deckCardKey).join(',');
     if (keys !== gCarousel.keys) {
         gCarousel.keys = keys;
         const row = dots.querySelector('.deck-dots-row');
-        row.replaceChildren(...cards.map(img => {
+        row.replaceChildren(...cards.map(() => {
             const dot = document.createElement('span');
             dot.className = 'deck-dot';
             return dot;
@@ -358,8 +643,8 @@ function syncCarousel(recenter = false) {
     dots.classList.toggle('as-bar', cards.length > 0 && room / cards.length < 5);
     if (recenter && cards.length > 0) {
         const picked = gLastJson ? gLastJson.selected_card_key : null;
-        const target = cards.find(img => img.id === gCarousel.currentKey)
-            || cards.find(img => img.id === picked)
+        const target = cards.find(card => deckCardKey(card) === gCarousel.currentKey)
+            || cards.find(card => deckCardKey(card) === picked)
             || cards[Math.floor((cards.length - 1) / 2)];
         carouselCenter(target, true);
     }
@@ -390,12 +675,12 @@ function carouselFrame() {
     // reads first (layout), then the writes
     const half = Math.max(1, ctl.clientWidth / 2);
     const mid = ctl.scrollLeft + half;
-    const centers = cards.map(img => img.parentElement.offsetLeft + img.parentElement.offsetWidth / 2);
+    const centers = cards.map(card => card.parentElement.offsetLeft + card.parentElement.offsetWidth / 2);
     const step = (cards.length > 1 ? centers[1] - centers[0] : 0) || 1;
     const k = Math.log(CAROUSEL_EDGE) * step / half; // ln of the factor per card
     let best = 0;
     let bestDist = Infinity;
-    cards.forEach((img, i) => {
+    cards.forEach((card, i) => {
         const signed = (centers[i] - mid) / step; // in cards, < 0 left of the middle
         const d = Math.abs(signed);
         const u = d * step / half;                // relative to the deck's width, 1 at its edge
@@ -404,13 +689,13 @@ function carouselFrame() {
         const scale = Math.max(0.3, CAROUSEL_GROW * fall);
         const pos = step * CAROUSEL_GROW * (fall - 1) / k; // where the card is drawn, in px
         const shift = Math.sign(signed) * pos - signed * step;
-        const opacity = Math.max(img.classList.contains('selected') ? 0.85 : 0.12, 1 - 0.7 * u);
-        img.style.transform = 'translateX(' + shift.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
-        img.style.opacity = opacity.toFixed(3);
+        const opacity = Math.max(card.classList.contains('selected') ? 0.85 : 0.12, 1 - 0.7 * u);
+        card.style.transform = 'translateX(' + shift.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
+        card.style.opacity = opacity.toFixed(3);
         // far cards pile up faintly at the edges: not tappable, or a tap there would pick a card far away
-        img.style.pointerEvents = u > 1.1 ? 'none' : '';
+        card.style.pointerEvents = u > 1.1 ? 'none' : '';
     });
-    const currentKey = cards[best].id;
+    const currentKey = deckCardKey(cards[best]);
     if (currentKey !== gCarousel.currentKey) {
         gCarousel.currentKey = currentKey;
         if (gCarousel.swiping) carouselTick();
@@ -422,11 +707,11 @@ function carouselFrame() {
         dot.classList.toggle('current', i === best);
         dot.classList.toggle('picked', picked);
     });
-    // the line below the dots: what you picked (players only; observers have no line, style.css)
+    // the line below the dots: what you picked (players only; observers have no line, style.css).
+    // B-99 (F3): a card with texts in the middle: "tap to pick 3 · Consult" (+ its description in sets with
+    // texts; Fibonacci: the control cards with their heading only)
     const line = document.getElementById('deck_pick');
-    const config = pickedIndex >= 0 ? getCardConfig(cards[pickedIndex].id) : null;
-    const text = config ? 'you picked ' + (config.symbol || config.description) : 'tap to pick a card';
-    if (line !== null && line.textContent !== text) line.textContent = text;
+    if (line !== null) setDeckPickLine(line, cards[best], pickedIndex >= 0 ? cards[pickedIndex] : null);
     if (dots.classList.contains('as-bar')) {
         const bar = dots.querySelector('.deck-bar');
         const thumb = dots.querySelector('.deck-bar-thumb');
@@ -439,6 +724,43 @@ function carouselFrame() {
         pick.hidden = pickedIndex < 0;
         if (pickedIndex >= 0) pick.style.left = (pickedIndex / Math.max(1, cards.length - 1) * 100) + '%';
     }
+}
+
+/* B-99 (F3): the hint line of the carousel (textContent only) */
+function setDeckPickLine(line, middle, picked) {
+    const card = deckInfoCard(middle);
+    let key;
+    let parts;
+    if (card === undefined) {
+        const pickedCard = picked !== null ? cardByKey(deckCardKey(picked)) : undefined;
+        key = pickedCard ? 'p:' + pickedCard.key : '-';
+        parts = () => deckPickParts(pickedCard, true, false);
+    } else {
+        const isPicked = middle === picked;
+        key = (isPicked ? 'P:' : 'm:') + card.key + (gDeckTexts ? '+' : '');
+        parts = () => deckPickParts(card, isPicked, true);
+    }
+    if (line.getAttribute('data-shows') === key) return; // only on a change (per frame while swiping)
+    line.setAttribute('data-shows', key);
+    // F8, D17 (Andreas): the text centred, the description below as well (style.css)
+    const body = document.createElement('span');
+    body.className = 'deck-pick-body';
+    body.append(...parts());
+    line.replaceChildren(body);
+}
+
+/* the content of the hint line: "tap to pick a card", "you picked 5" or, for a card with texts,
+ * "tap to pick 3 · Consult" (+ its description in sets with texts) */
+function deckPickParts(card, isPicked, withTexts) {
+    if (card === undefined) return [document.createTextNode('tap to pick a card')];
+    if (!withTexts) return [document.createTextNode('you picked '), cardSmall(card)];
+    const name = document.createElement('b');
+    name.append(cardSmall(card, !card.heading), card.heading ? ' · ' + card.heading : '');
+    const list = [document.createTextNode(isPicked ? 'you picked ' : 'tap to pick '), name];
+    // F7: a description alone (emotions) reads like a heading (one-text)
+    if (gDeckTexts && card.info) list.push(Object.assign(document.createElement('span'),
+        { className: 'deck-pick-info' + (card.heading ? '' : ' one-text'), textContent: card.info }));
+    return list;
 }
 
 /* a short tick when a card snaps into the middle while swiping (Android; not for fast flings) */
@@ -501,8 +823,8 @@ function initCarousel() {
             event.preventDefault();
             return;
         }
-        const img = event.target instanceof Element ? event.target.closest('img.on') : null;
-        if (img !== null) carouselCenter(img, false);
+        const card = event.target instanceof Element ? event.target.closest('#ctl .ctl') : null;
+        if (card !== null) carouselCenter(card, false);
     }, true);
 
     // carousel on / off at runtime (resize, a mouse plugged in): lay out the deck anew
@@ -512,32 +834,54 @@ function initCarousel() {
     });
 }
 
-/* B-68: a key 1–9 or 0 picks (or, on the picked card, takes back) a card like a click, players only
- * (observers have no click handler). Not while typing, in the menu or in an overlay. */
+/* B-68, F8: a letter key (DECK_KEY_CODES, physical position) picks (or, on the picked card, takes back) a card
+ * like a click, players only (observers have no click handler). Not with a modifier (browser and system
+ * shortcuts, Shift, AltGr), not while typing, in the menu or in an overlay. */
 function pickCardByKey(event) {
-    const n = DECK_KEYS.indexOf(event.key);
-    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    const n = DECK_KEY_CODES.indexOf(event.code);
+    if (n < 0 || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
+        || (event.getModifierState && event.getModifierState('AltGraph'))) return;
+    if (event.isComposing) return; // an input method is composing a character
     const target = event.target;
     if (target instanceof Element && target.closest('input, textarea, select, [contenteditable], dialog')) return;
+    if (target instanceof Element && target.closest('.tbl-pop')) return; // B-110: emoji bar, remove confirm
     const menu = document.getElementById('menu');
     if (menu !== null && menu.open) return;
     if (document.querySelector('.overlay:not(.hidden), .overlay.visible') !== null) return; // name, delete user, QR
     if (connHintVisible()) return; // B-86: no connection, the board cannot be used
-    const cards = document.querySelectorAll('#ctl img.on');
-    const img = cards[n];
-    if (img === undefined) return;
+    const cards = deckCardElements();
+    const card = cards[n];
+    if (card === undefined) return;
     event.preventDefault();
     // B-69: a card outside the visible part of the deck comes into view, clear of the edge bars;
     // the first and the last card scroll the deck to its start / end (no bar left there)
     // (touch phones: the carousel brings the clicked card to the middle itself, initCarousel(), B-75)
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-    const ctl = img.closest('#ctl');
+    const ctl = card.closest('#ctl');
     if (!gCarousel.on) {
         if (n === 0) ctl.scrollTo({ left: 0, behavior });
         else if (n === cards.length - 1) ctl.scrollTo({ left: ctl.scrollWidth, behavior });
-        else img.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
+        else card.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior });
     }
-    img.click();
+    const focused = document.activeElement;
+    const focusInDeck = cards.includes(focused);
+    const pointerFocus = focusInDeck && gDeckPointerFocus === focused;
+    const wasPicked = card.classList.contains('selected');
+    card.click();
+    // R3 (Andreas, 2026-11-02): the key switches the browser to showing the focus ring (:focus-visible); a deck
+    // card that kept the focus (from a click or Tab) would look picked as well. So the focus goes with the key
+    // to its card. A card taken back by key loses a focus that came from the pointer (it would still look
+    // picked); a keyboard focus stays on it.
+    if (!focusInDeck) return;
+    if (wasPicked && !card.classList.contains('selected')) {
+        if (pointerFocus) focused.blur();
+        else if (focused !== card) card.focus({ preventScroll: true });
+        return;
+    }
+    if (focused !== card) {
+        card.focus({ preventScroll: true });
+        if (pointerFocus) gDeckPointerFocus = card; // still the pointer's focus: a later take-back drops it
+    }
 }
 
 /* B-92: every board state asked for gets a number; an answer older than the one shown last is
@@ -546,9 +890,15 @@ function pickCardByKey(event) {
 let gDaoSeq = 0;        // board states asked for so far
 let gDaoShownSeq = 0;   // number of the board state shown last
 
+let gDaoLoading = 0;     // B-110: dao.php loads in flight
+
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
     const seq = ++gDaoSeq;
+    // B-110: any load does what a pending heartbeat load would do (it refreshes last_callback_time)
+    clearTimeout(gHbLoadTimer);
+    gHbLoadTimer = null;
+    gDaoLoading++;
     // B-73: the timer part of an answer counts only when no own timer change was under way or
     // finished meanwhile (see timerStateFresh)
     const timerWrite = gTimerWrites === 0 ? gTimerWriteGen : -1;
@@ -561,6 +911,7 @@ function updateDao(isOnLoad) {
 
             if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
             gDaoShownSeq = Math.max(gDaoShownSeq, seq);
+            noteDeckGroup(myJson, seq);
 
             gLastJson = myJson;
             updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
@@ -569,7 +920,70 @@ function updateDao(isOnLoad) {
             // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
             // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
-        });
+        })
+        .catch(error => console.log('dao.php failed', error))
+        .finally(() => { gDaoLoading--; });
+}
+
+/* V6 (Andreas): when someone else switches the team to another card set (group of card_catalog.json), the others
+ * see a toast ("Card set changed to J.U.D.G.E."); otherwise their cards would change without a word. Not on the
+ * first load, not for a new variant or other cards of the same set, not for the one who changed it (the deck menu
+ * shows it to them): an own deck write counts until a board state asked for after its answer is shown. */
+let gShownDeckGroup = null;   // the set group of the board state shown last (null: none yet / unknown)
+let gOwnDeckWrites = [];      // own deck writes: {doneSeq} = the last board state asked for before their answer
+
+function isDeckWrite(url) {
+    return /\/api\/(update_(deck|cardset)|custom_set_(create|save|delete))\.php/.test(url);
+}
+
+/* B-98 S5: what counts as "another card set" for the toast: the group, for a custom set the set itself */
+function shownDeckSet(json) {
+    const deck = json && json.deck;
+    if (!deck || typeof deck.group !== 'string') return null;
+    return deck.group === 'custom' ? 'custom:' + deck.id : deck.group;
+}
+
+function noteDeckGroup(json, seq) {
+    const own = gOwnDeckWrites.length > 0;
+    gOwnDeckWrites = gOwnDeckWrites.filter(write => seq <= write.doneSeq);
+    const group = shownDeckSet(json);
+    if (group === null) return;
+    const before = gShownDeckGroup;
+    gShownDeckGroup = group;
+    if (before === null || before === group || own) return;
+    const name = json.deck.group === 'custom' ? customSetName(json) : deckGroupName(group);
+    // B-98: who switched (dao deck.changed_by, free text: showToast() sets it with textContent)
+    const by = typeof json.deck.changed_by === 'string' ? json.deck.changed_by.trim() : '';
+    showToast(by !== '' ? by + ' changed the card set to ' + name : 'Card set changed to ' + name);
+}
+
+/* B-98 S5: the name of the team's custom set in play (free text: only ever shown with textContent) */
+function customSetName(json) {
+    const sets = Array.isArray(json.custom_sets) ? json.custom_sets : [];
+    const set = sets.find(entry => entry && entry.deck_id === json.deck.id);
+    return set && typeof set.name === 'string' ? set.name : 'your own set';
+}
+
+/* the name of a set group (card_catalog.json), else its id */
+function deckGroupName(groupId) {
+    const groups = gCatalogV2 && Array.isArray(gCatalogV2.groups) ? gCatalogV2.groups : [];
+    const group = groups.find(entry => entry && entry.id === groupId);
+    return group && typeof group.name === 'string' && group.name !== '' ? group.name : groupId;
+}
+
+/* B-110: on every 'hb' of poker-msg (30 s) the board loads dao.php once, 0-5 s later (the boards of a team do not all
+ * come at the same moment). The load keeps the own last_callback_time fresh: a board that stops loading (closed,
+ * locked phone, frozen tab) shows as away to the others (dao.php "away", AWAY_AFTER_SEC). Only one such load is
+ * pending; any other load meanwhile (pull, own write) replaces it, and none starts while a load is in flight. */
+const HB_LOAD_JITTER_MS = 5000;
+let gHbLoadTimer = null;
+
+function scheduleHbLoad() {
+    if (gHbLoadTimer !== null) return;
+    gHbLoadTimer = setTimeout(() => {
+        gHbLoadTimer = null;
+        if (gDaoLoading === 0) updateDao(false);
+    }, Math.round(Math.random() * HB_LOAD_JITTER_MS));
 }
 
 /* B-41: The cards are laid out by CSS (#cbox is a centered flex-wrap container),
@@ -629,13 +1043,15 @@ function fitCardsToTable() {
     const ratio = token('--card-ratio');
     const delMin = token('--card-del-min') || 0;
     const gutterMin = token('--card-gutter-min') || 0;
+    const nameH = token('--card-name-h') || 0; // B-99: the name tag above the card
     if (!(min > 0 && max >= min && ratio > 0)) return false;
 
     const tableStyle = getComputedStyle(table);
     const width = table.offsetWidth - parseFloat(tableStyle.paddingLeft) - parseFloat(tableStyle.paddingRight);
 
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
-    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7;
+    // B-110: minus the observers row below the cards (with its margins)
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7 - observersHeight();
 
     const n = cbox.children.length;
     let fit = min;
@@ -646,7 +1062,7 @@ function fitCardsToTable() {
         // half a pixel to spare: the browser must not wrap a card earlier than computed
         const cols = Math.max(1, Math.floor((inner + gapX - 0.5) / (w + gapX)));
         const rows = Math.ceil(n / cols);
-        if (rows * (w * ratio + gapY) <= height) {
+        if (rows * (nameH + w * ratio + gapY) <= height) {
             fit = w;
             break;
         }
@@ -681,27 +1097,787 @@ function updateCards(cardsDiv, players) {
 
         let player = players.find(p => p.mkey === card.id);
 
-        const srcStr = 'src/c_' + player.display_card_key + '.png';
-        const cardImage = card.getElementsByClassName('card_image')[0];
-        const oldSrc = cardImage.src;
-        if (!oldSrc.includes(srcStr)) {
-            cardImage.src = srcStr;
+        // B-99 (F1): compared by the card key (data-card), not by the image
+        const oldKey = card.getAttribute('data-card');
+        const newKey = String(player.display_card_key);
+        const awayFace = player.away === true && isThinkingCardKey(newKey);
+        if (oldKey === newKey && (card.getAttribute('data-away-face') === 'true') !== awayFace) {
+            setTableCardFace(card, newKey, player.away === true); // L30a: thinking <-> away, same card
+        }
+        if (oldKey !== newKey) {
+            setTableCardFace(card, newKey, player.away === true);
             removeStyleClass(card, 'cardValueChanged');
-            if (!oldSrc.includes('c_done') && !oldSrc.includes('c_prgrss') &&
-                !srcStr.includes('c_done') && !srcStr.includes('c_prgrss'))
-            {
+            if (!isStatusCardKey(oldKey) && !isStatusCardKey(newKey)) {
                 valueChangedCards.push(card);
             }
         }
+        // B-104: the original card of the reveal behind the current one (after the face, it sets the label)
+        setTableCardOriginal(card, player.original_card_key, true);
 
         const nameSpan = card.getElementsByClassName('card_player_name')[0];
         if (nameSpan.textContent !== player.name) {
             nameSpan.textContent = player.name;
             nameSpan.title = player.name; // the full name when it ends with an ellipsis
         }
+        // B-110: no connection for a while (dao.php "away"); attributes only when they change (quiet re-render)
+        const away = player.away === true;
+        if (card.classList.contains('is-away') !== away) card.classList.toggle('is-away', away);
+        setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(player.name, away, card.classList.contains('is-me')));
+        const react = card.querySelector('.react');
+        if (react !== null) setAttrIfChanged(react, 'aria-label', reactLabel(player.name));
+        const nudge = card.querySelector('.nudge');
+        if (nudge !== null) setAttrIfChanged(nudge, 'aria-label', nudgeLabel(player.name));
     });
 
     return valueChangedCards;
+}
+
+/* B-99: the face of a card on the table for a card key (a card of the deck or a status card:
+ * prgrss1/prgrss2 thinking, done001 ready). The key is kept in data-card; F2: the face is rendered
+ * (cards.js). A key the client does not know (e.g. a newer card) shows as its key. */
+function tableCardModel(key, away = false) {
+    // R3 review V10 (L30a): no card yet and no connection: "away" instead of "thinking"
+    if (away && isThinkingCardKey(key)) return { ...STATUS_CARDS[key], caption: 'away', aria: 'away \u2013 no connection' };
+    return STATUS_CARDS[key] || cardByKey(key) || { key, text: key, heading: null, info: null, style: 'plain' };
+}
+
+function isThinkingCardKey(key) {
+    return key === 'prgrss1' || key === 'prgrss2';
+}
+
+function setTableCardFace(cardDiv, key, away = false) {
+    cardDiv.setAttribute('data-card', key);
+    cardDiv.setAttribute('data-away-face', away && isThinkingCardKey(key) ? 'true' : 'false');
+    const card = tableCardModel(key, away);
+    // F8 (Andreas): every card on the table shows all its texts; control cards heading and description in
+    // every set (small cards shorten the description, style.css "Rendered cards")
+    const face = cardFace(card, 'table', true);
+    const old = cardDiv.querySelector('.pc:not(.pc-orig)');
+    if (old === null) cardDiv.insertBefore(face, cardDiv.querySelector('.nudge, .react, .delete'));
+    else old.replaceWith(face);
+}
+
+/* B-104: a card changed after the reveal shows as a stack in the place of one card: the original card of the
+ * reveal behind (upper left, its value small in the visible rim), the current card on top (lower right). key null (or a status card, or the current card) = no stack. The
+ * label of the top card says both values. animate: the original slides back when the stack appears. */
+function setTableCardOriginal(cardDiv, key, animate) {
+    const current = cardDiv.getAttribute('data-card');
+    const original = key === null || key === undefined || isStatusCardKey(current) || isStatusCardKey(String(key))
+        || String(key) === current ? null : String(key);
+    const oldOriginal = cardDiv.getAttribute('data-original');
+    const top = cardDiv.querySelector('.pc:not(.pc-orig)');
+    let back = cardDiv.querySelector('.pc-orig');
+
+    if (original === null) {
+        cardDiv.removeAttribute('data-original');
+        cardDiv.classList.remove('is-changed');
+        if (back !== null) {
+            back.remove();
+            top.setAttribute('aria-label', cardAriaLabel(tableCardModel(current), true));
+        }
+        return;
+    }
+    if (original !== oldOriginal || back === null) {
+        const face = cardFace(tableCardModel(original), 'table', true);
+        face.classList.add('pc-orig');
+        face.removeAttribute('role');
+        face.removeAttribute('aria-label');
+        face.setAttribute('aria-hidden', 'true');
+        // its value in the visible upper rim, like the corner index of a playing card. Andreas: the card's own
+        // symbol (as drawn on the card, small, full opacity, in the card colour; a text value in the card's style),
+        // not the mono text of cardSmall()
+        const corner = document.createElement('span');
+        corner.className = 'pc-corner';
+        corner.appendChild(cardFace(tableCardModel(original), 'mini'));
+        face.appendChild(corner);
+        if (back === null && animate && oldOriginal === null) {
+            face.classList.add('pc-orig-in'); // once: moving the card would restart it
+            face.addEventListener('animationend', () => face.classList.remove('pc-orig-in'), { once: true });
+        }
+        if (back === null) cardDiv.insertBefore(face, top);
+        else back.replaceWith(face);
+        back = face;
+    }
+    cardDiv.setAttribute('data-original', original);
+    cardDiv.classList.add('is-changed');
+    const model = tableCardModel(current);
+    top.setAttribute('aria-label', cardAriaLabel(model, true)
+        + ', changed from ' + cardName(tableCardModel(original)) + ' to ' + cardName(model));
+}
+
+/* all faces on the table anew (the deck switched between symbols only and texts) */
+function refreshTableFaces() {
+    document.querySelectorAll('#cbox .c').forEach(card => {
+        const original = card.getAttribute('data-original');
+        setTableCardFace(card, card.getAttribute('data-card'), card.classList.contains('is-away'));
+        card.removeAttribute('data-original'); // the original face anew, too
+        setTableCardOriginal(card, original, false);
+    });
+}
+
+/* B-99 D16: the trash can of the delete button: a tinted body with hatching (currentColor), the outline in the
+ * ink of the cards, a lid that tilts on hover (style.css). Static paths only, no user data. */
+const DELETE_ICON_PATHS = [
+    { d: 'M6.3 8.4l.9 11.3c.1.9.6 1.4 1.5 1.4l6.7-.1c.9 0 1.4-.5 1.5-1.4l.9-11.2', cls: 'body' },
+    { d: 'M7.6 12.1l2.6-2.2M7.8 15.4l5.6-4.9M8.1 18.6l7.4-6.6M10.6 20.6l5-4.4', cls: 'hatch', w: 1 },
+    { d: 'M6.3 8.4l.9 11.3c.1.9.6 1.4 1.5 1.4l6.7-.1c.9 0 1.4-.5 1.5-1.4l.9-11.2', cls: 'ink', w: 1.9 },
+    { d: 'M4.3 7.1l7.6-.3 7.8.2', cls: 'ink', w: 2.1, lid: true },
+    { d: 'M9.6 6.8c-.1-1.6.4-2.4 2.3-2.4 2 0 2.5.8 2.5 2.4', cls: 'ink', w: 1.7, lid: true },
+];
+
+function deleteLabel(name, away = false, isMe = false) {
+    if (isMe) return 'Remove yourself from the table'; // B-110: the own card (.is-me)
+    return 'Remove ' + name + ' from the table' + (away ? ' (no connection)' : ''); // B-110: away
+}
+
+function reactLabel(name) {
+    return 'Throw a reaction at ' + name;
+}
+
+/* B-110: the smiley of the reaction button (.react, next to the delete button), same sketch as the trash can:
+ * a tinted, hatched face, the outline and the face in ink. Static paths only, no user data. */
+const REACT_ICON_PATHS = [
+    { d: 'M12 3.6c4.7-.1 8.3 3.6 8.3 8.4 0 4.7-3.7 8.4-8.4 8.4-4.6 0-8.3-3.8-8.3-8.5 0-4.6 3.8-8.2 8.4-8.3z', cls: 'body' },
+    { d: 'M5.6 13.9l2.2-1.9M6.6 16.6l3-2.6M15.9 16.4l2.6-2.3', cls: 'hatch', w: 1 },
+    { d: 'M12 3.6c4.7-.1 8.3 3.6 8.3 8.4 0 4.7-3.7 8.4-8.4 8.4-4.6 0-8.3-3.8-8.3-8.5 0-4.6 3.8-8.2 8.4-8.3z', cls: 'ink', w: 1.8 },
+    { d: 'M9.3 9.3v1.6M14.7 9.2v1.6', cls: 'ink', w: 2.1 },
+    { d: 'M8.2 14c1.9 2.6 5.8 2.6 7.6-.2', cls: 'ink', w: 1.8 },
+];
+
+/* B-110: the nudge button (.nudge, left of the smiley): a tilted card that wobbles, same sketch as the trash can and
+ * the smiley: a tinted, hatched card with the bar on top, in ink, and motion lines on both sides. Static paths only, no user data. */
+const NUDGE_ICON_PATHS = [
+    { d: 'M7.7 6.3l5.8-1.3c1.1-.2 1.8.2 2.1 1.3l2 9.8c.3 1.1-.1 1.8-1.3 2l-5.8 1.3c-1.1.2-1.8-.2-2.1-1.3l-2-9.8c-.3-1.1.2-1.8 1.3-2z', cls: 'body' },
+    { d: 'M8.6 14.6l2-2.7M9.2 17.5l4.8-6.2M10.2 18.5l5.8-5.8', cls: 'hatch', w: 1 },
+    { d: 'M7.7 6.3l5.8-1.3c1.1-.2 1.8.2 2.1 1.3l2 9.8c.3 1.1-.1 1.8-1.3 2l-5.8 1.3c-1.1.2-1.8-.2-2.1-1.3l-2-9.8c-.3-1.1.2-1.8 1.3-2z', cls: 'ink', w: 1.8 },
+    { d: 'M8.2 8.6l6-1.3', cls: 'ink', w: 1.5 },
+    { d: 'M4.4 7.4c-1 1.3-1.1 2.8-.3 4.2M2.3 6.1c-1.6 2.1-1.8 4.6-.5 6.7', cls: 'ink', w: 1.6 },
+    { d: 'M19.9 12.9c1 1.3 1 2.8.1 4.2M22 11.6c1.6 2.1 1.6 4.6.3 6.7', cls: 'ink', w: 1.6 },
+];
+
+function nudgeLabel(name) {
+    return 'Nudge ' + name;
+}
+
+/* a sketched 24x24 icon from static paths; paths with lid: true go into a group .lid (it tilts, style.css) */
+function sketchIcon(paths) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const lid = document.createElementNS(NS, 'g');
+    lid.setAttribute('class', 'lid');
+    paths.forEach(p => {
+        const path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', p.d);
+        path.setAttribute('class', p.cls);
+        if (p.w) path.setAttribute('stroke-width', String(p.w));
+        (p.lid ? lid : svg).appendChild(path);
+    });
+    if (lid.hasChildNodes()) svg.appendChild(lid);
+    return svg;
+}
+
+function deleteIcon() {
+    return sketchIcon(DELETE_ICON_PATHS);
+}
+
+/* B-110: for the reaction button (.react); the "no connection" symbol of an away player is CSS only (.c.is-away) */
+function reactIcon() {
+    return sketchIcon(REACT_ICON_PATHS);
+}
+
+/* B-110: for the nudge button (.nudge) */
+function nudgeIcon() {
+    return sketchIcon(NUDGE_ICON_PATHS);
+}
+
+/* ---------- B-110: table interaction (markup contract: style.css "Table interaction") ----------
+ * Every other card and every other observer has its circles: the nudge (.nudge, shakes the card on every board,
+ * anonymous), the smiley (.react, opens the emoji bar #react_bar) and, on cards only, the trash can (.delete).
+ * Desktop: the circles on hover / keyboard focus.
+ * Touch devices ((hover: none), (pointer: coarse), tablets included): a tap on a card or an observer opens it
+ * (.is-open, one at a time, a tap elsewhere closes it); a hint once (#tap_hint).
+ * Removing always asks first (#rm_confirm, Esc / Cancel: the focus goes back to the trash can).
+ * All names via textContent. The clicks go through one handler (onTableClick). */
+const gTapQuery = window.matchMedia('(hover: none), (pointer: coarse)');
+// the emojis of the bar (board.html data-react); 'nudge' is the nudge circle (no emoji, no flight)
+const REACT_EMOJI = { cake: '🎂', heart: '❤️', clap: '👏', party: '🎉', think: '🤔', thumbs: '👍', fish: '🐟' };
+const REACT_NUDGE = 'nudge';
+// the same format check as poker-msg (MsgServer::parseReact, format only); unknown codes are ignored (onReaction)
+const REACT_MSG = /^react:([0-9]{1,10}):([0-9]{1,10}):([a-z]{1,12})$/;
+const REACT_LAND_SLOTS = 4; // landings on the same target at once get offset (--land-i 0..3), more overlap
+const TAP_HINT_KEY = 'TAP_HINT_SEEN';
+const POP_GAP = 10;     // between a popover and its anchor (the arrow sits in it)
+const POP_MARGIN = 8;   // to the edge of the window
+
+let gPop = null;            // the open popover: { el, anchor, holder, opener }
+let gTapHintShown = false;  // once per page, also when localStorage is not available
+
+/* sets an attribute only when its value changes (a re-render with the same state changes nothing) */
+function setAttrIfChanged(el, name, value) {
+    if (el !== null && el.getAttribute(name) !== value) el.setAttribute(name, value);
+}
+
+/* the nudge and the smiley on a card or an observer: added when wanted (before the trash can, if any), removed
+ * otherwise. Order: .nudge, .react, .delete (style.css "Table interaction"). */
+function syncReactButton(holder, wanted, name, before = null) {
+    let btn = holder.querySelector(':scope > .react');
+    let nudge = holder.querySelector(':scope > .nudge');
+    if (!wanted) {
+        if (btn !== null) {
+            if (gPop !== null && gPop.opener === btn) closePopover(false);
+            btn.remove();
+        }
+        if (nudge !== null) nudge.remove();
+        return;
+    }
+    if (btn === null) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'react';
+        btn.title = 'Throw a reaction';
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.appendChild(reactIcon());
+        holder.insertBefore(btn, before);
+    }
+    if (nudge === null) {
+        nudge = document.createElement('button');
+        nudge.type = 'button';
+        nudge.className = 'nudge';
+        nudge.title = 'Nudge';
+        nudge.appendChild(nudgeIcon());
+        holder.insertBefore(nudge, btn);
+    }
+    setAttrIfChanged(btn, 'aria-label', reactLabel(name));
+    setAttrIfChanged(nudge, 'aria-label', nudgeLabel(name));
+}
+
+/* B-110: the row "observing" below the cards: the connected observers (dao.php "observers", away ones are left out
+ * by the API), the own one as a name tag like in the header (.is-me, no smiley). Updated in place, by mkey. */
+function updateObservers(observers, myMkey) {
+    const box = document.getElementById('observers');
+    if (box === null) return;
+    const list = box.querySelector('.obs-list');
+    const existing = new Map(Array.from(list.children).map(li => [li.dataset.mkey, li]));
+    let next = list.firstElementChild;
+    observers.forEach(o => {
+        const mkey = String(o.mkey);
+        let li = existing.get(mkey);
+        if (li === undefined) {
+            li = document.createElement('li');
+            li.className = 'obs';
+            li.dataset.mkey = mkey;
+            const span = document.createElement('span');
+            span.className = 'obs-name';
+            li.appendChild(span);
+        }
+        existing.delete(mkey);
+        const span = li.querySelector('.obs-name');
+        const name = String(o.name);
+        if (span.textContent !== name) span.textContent = name; // no title: the name is right there (B-110)
+        const isMe = mkey === myMkey;
+        if (li.classList.contains('is-me') !== isMe) li.classList.toggle('is-me', isMe);
+        syncReactButton(li, !isMe, name);
+        if (li !== next) list.insertBefore(li, next);
+        else next = li.nextElementSibling;
+    });
+    existing.forEach(li => li.remove());
+    if (box.hidden !== (observers.length === 0)) box.hidden = observers.length === 0;
+}
+
+/* the height the observers row takes from the table, with its margins (0 when hidden) */
+function observersHeight() {
+    const box = document.getElementById('observers');
+    if (box === null || box.hidden) return 0;
+    const style = getComputedStyle(box);
+    return box.offsetHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+}
+
+/* the card (.c) or observer (.obs) a smiley or trash can belongs to; its mkey and name */
+function holderOf(el) {
+    return el.closest('#cbox .c, #observers .obs');
+}
+
+function holderMkey(holder) {
+    return holder.classList.contains('obs') ? holder.dataset.mkey : holder.id;
+}
+
+function holderName(holder) {
+    const span = holder.querySelector('.card_player_name, .obs-name');
+    return span === null ? '' : span.textContent;
+}
+
+/* touch: the tap mode, also alone at the table (R3 review E6: the own trash can only after a tap, as with others).
+ * #table.tap-mode marks it for style.css; set on start and when the device changes (e.g. a mouse plugged in). */
+function tapMode() {
+    return gTapQuery.matches;
+}
+
+function syncTapModeClass() {
+    const table = document.getElementById('table');
+    if (table !== null) table.classList.toggle('tap-mode', tapMode());
+}
+
+/* touch: while a popover or the circles of a card are open, a tap into the header only closes them
+ * (R3 review E5: the team name would copy the link). Capture phase: before the onclick of the button. */
+function onHeadClickCapture(event) {
+    if (!tapMode()) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target === null || target.closest('header.head') === null) return;
+    if (gPop === null && document.querySelector('#cbox .c.is-open, #observers .obs.is-open') === null) return;
+    closePopover(false);
+    setOpenHolder(null);
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function setOpenHolder(holder) {
+    document.querySelectorAll('#cbox .c.is-open, #observers .obs.is-open').forEach(el => {
+        if (el !== holder) el.classList.remove('is-open');
+    });
+    if (holder !== null) holder.classList.add('is-open');
+}
+
+/* places a popover (position: fixed) above its anchor, below when there is no room; the arrow points at the middle
+ * of the anchor (--arrow-x). The popover has to be shown already (it is measured). */
+function placePopover(el, anchor) {
+    const a = anchor.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const mid = a.left + a.width / 2;
+    const left = Math.max(POP_MARGIN, Math.min(mid - w / 2, vw - w - POP_MARGIN));
+    let top = a.top - h - POP_GAP;
+    const below = top < POP_MARGIN && a.bottom + POP_GAP + h <= vh - POP_MARGIN;
+    if (below) top = a.bottom + POP_GAP;
+    el.classList.toggle('is-below', below);
+    el.style.left = Math.round(left) + 'px';
+    el.style.top = Math.round(Math.max(POP_MARGIN, top)) + 'px';
+    el.style.setProperty('--arrow-x', Math.round(Math.max(14, Math.min(mid - left, w - 14))) + 'px');
+}
+
+function openPopover(el, anchor, holder, opener) {
+    closePopover(false);
+    gPop = { el, anchor, holder, opener };
+    el.hidden = false;
+    placePopover(el, anchor);
+    if (opener !== null && opener.classList.contains('react')) opener.setAttribute('aria-expanded', 'true');
+}
+
+/* closes the open emoji bar or remove confirm; focusBack: the focus goes back to the button that opened it */
+function closePopover(focusBack) {
+    if (gPop === null) return;
+    const { el, opener } = gPop;
+    gPop = null;
+    el.hidden = true;
+    if (opener !== null && opener.classList.contains('react')) opener.setAttribute('aria-expanded', 'false');
+    if (!tapMode()) setOpenHolder(null); // without the tap mode .is-open only marks the card of the remove confirm
+    if (focusBack && opener !== null && opener.isConnected) opener.focus({ preventScroll: true });
+}
+
+/* after a re-render: a popover whose card or observer is gone closes, the others follow their anchor */
+function repositionPopover() {
+    if (gPop === null) return;
+    if (!gPop.anchor.isConnected || !gPop.holder.isConnected) {
+        const hadFocus = gPop.el.contains(document.activeElement);
+        closePopover(false);
+        if (hadFocus) document.body.focus();
+        return;
+    }
+    placePopover(gPop.el, gPop.anchor);
+}
+
+function openReactBar(btn) {
+    const holder = holderOf(btn);
+    if (holder === null) return;
+    const bar = document.getElementById('react_bar');
+    bar.querySelector('.react-bar-name').textContent = holderName(holder);
+    bar.dataset.to = holderMkey(holder);
+    if (gTapQuery.matches) setOpenHolder(holder);
+    openPopover(bar, btn, holder, btn);
+    const first = bar.querySelector('button[data-react]');
+    if (first !== null) first.focus({ preventScroll: true });
+}
+
+function openRemoveConfirm(btn) {
+    const holder = holderOf(btn);
+    if (holder === null) return;
+    const box = document.getElementById('rm_confirm');
+    // B-110: the own card asks "Remove yourself from the table?"
+    const isMe = holder.classList.contains('is-me');
+    const name = holderName(holder);
+    box.querySelector('.rm-name').textContent = isMe ? 'yourself' : name;
+    box.querySelector('.rm-hint').textContent = (isMe ? 'You' : name) + ' can rejoin at any time.';
+    box.dataset.mkey = holderMkey(holder);
+    setOpenHolder(holder);
+    openPopover(box, btn, holder, btn);
+    box.querySelector('.rm-cancel').focus({ preventScroll: true });
+}
+
+/* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket. Nothing happens here before the echo: poker-msg
+ * sends the same text to every board of the team, the sender's too, and all of them animate on it (onReaction).
+ * Not sent without an open connection (the reaction is lost, as when poker-msg drops it above 1/s).
+ * A nudge is anonymous: from is always 0, also in the message. */
+function sendReaction(toMkey, code) {
+    const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : String(gLastJson.mkey ?? ''));
+    if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
+    const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
+    if (!REACT_MSG.test(msg)) return;
+    if (gConn === null || gConn.readyState !== WebSocket.OPEN) return;
+    try {
+        gConn.send(msg);
+    } catch (e) {
+        console.log('reaction not sent', e);
+    }
+}
+
+/* the card (#cbox .c) or the observer (#observers .obs) of a mkey, null when not on the board */
+function reactHolder(mkey) {
+    const card = document.getElementById(mkey);
+    if (card !== null && card.matches('#cbox .c')) return card;
+    return Array.from(document.querySelectorAll('#observers .obs')).find(li => li.dataset.mkey === mkey) ?? null;
+}
+
+/* the middle of an element in the window, null when it is not visible (outside the table or the window) */
+function visibleCenter(el) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return null;
+    const table = document.getElementById('table');
+    const box = table === null ? null : table.getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return null;
+    if (box !== null && (x < box.left || x > box.right || y < box.top || y > box.bottom)) return null;
+    return { x, y };
+}
+
+/* where a flight starts when the sender cannot be shown (not visible, anonymous mode): the top edge of the table */
+function neutralFlightStart() {
+    const table = document.getElementById('table');
+    const r = table === null ? { left: 0, width: window.innerWidth, top: 0 } : table.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: Math.max(0, r.top) };
+}
+
+/* a CSS duration token ("900ms", "1.8s") in ms */
+function cssDurationMs(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const n = parseFloat(v);
+    if (!Number.isFinite(n)) return fallback;
+    return v.endsWith('ms') ? n : (v.endsWith('s') ? n * 1000 : fallback);
+}
+
+/* the flights under way: { fly, anim }; dropped when the tab is hidden (nothing is played late) */
+const gFlights = new Set();
+
+/* an echo of poker-msg: "react:<from>:<to>:<code>" (format checked already). A nudge only shakes the target card on
+ * every board (harder on the board of the nudged one): no flight, no emoji, no name. An emoji flies from the sender to
+ * the target, then lands. Unknown code or target gone: nothing. Anonymous mode: no sender name and the flight starts
+ * at the top of the table (no hint who threw it). Tab hidden: dropped, not buffered (Andreas). */
+/* the visible part of a holder a flight starts or lands on: the card face of a card, the name tag of an observer
+ * (not the room for the circles above it) */
+function flightAnchor(holder) {
+    const part = holder.querySelector(holder.classList.contains('c') ? ':scope > .pc' : '.obs-name');
+    return part ?? holder;
+}
+
+function onReaction(from, to, code) {
+    if (document.visibilityState !== 'visible') return;
+    if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
+    const target = reactHolder(to);
+    if (target === null) return;
+    if (code === REACT_NUDGE) { nudgeTarget(target, to); return; }
+    const anonymous = gLastJson !== null && gLastJson.anonymous_mode === 1;
+    const sender = anonymous ? null : reactHolder(from);
+    const name = sender === null ? '' : holderName(sender);
+    const land = () => landReaction(to, code, name);
+
+    if (prefersReducedMotion() || typeof Element.prototype.animate !== 'function') { land(); return; }
+    const ra = flightAnchor(target).getBoundingClientRect();
+    const end = { x: ra.left + ra.width / 2, y: ra.top + ra.height / 2 };
+    const start = (sender === null ? null : visibleCenter(flightAnchor(sender))) ?? neutralFlightStart();
+
+    const fly = document.createElement('span');
+    fly.className = 'react-fly';
+    fly.setAttribute('aria-hidden', 'true');
+    fly.textContent = REACT_EMOJI[code];
+    document.body.appendChild(fly);
+    const half = fly.offsetWidth / 2;
+    const halfH = fly.offsetHeight / 2;
+    // a quadratic curve with its top above the higher end (a throw), the emoji turns and grows a little
+    const dist = Math.hypot(end.x - start.x, end.y - start.y);
+    const ctrl = { x: (start.x + end.x) / 2, y: Math.min(start.y, end.y) - Math.max(60, dist * 0.35) };
+    const steps = 12;
+    const frames = [];
+    for (let i = 0; i <= steps; i++) {
+        const k = i / steps;
+        const x = (1 - k) * (1 - k) * start.x + 2 * (1 - k) * k * ctrl.x + k * k * end.x;
+        const y = (1 - k) * (1 - k) * start.y + 2 * (1 - k) * k * ctrl.y + k * k * end.y;
+        const scale = 0.6 + 0.6 * Math.sin(Math.PI * k) + 0.4 * k;
+        frames.push({ transform: `translate(${(x - half).toFixed(1)}px, ${(y - halfH).toFixed(1)}px) `
+                + `rotate(${Math.round(-30 + 390 * k)}deg) scale(${scale.toFixed(2)})`, offset: k });
+    }
+    const anim = fly.animate(frames, { duration: cssDurationMs('--react-fly-dur', 900), easing: 'ease-in-out' });
+    const flight = { fly, anim, dropped: false };
+    gFlights.add(flight);
+    const done = () => {
+        gFlights.delete(flight);
+        fly.remove();
+        if (!flight.dropped) land();
+    };
+    anim.onfinish = done;
+    anim.oncancel = done;
+}
+
+/* the tab is hidden: flights and landings under way are dropped, not played when it is back */
+function dropReactions() {
+    gFlights.forEach(flight => {
+        flight.dropped = true;
+        flight.anim.cancel();
+    });
+    gFlights.clear();
+    document.querySelectorAll('.react-fly, .react-land').forEach(el => el.remove());
+}
+
+/* a nudge: the target shakes on every board, harder on the board of the nudged one */
+function nudgeTarget(target, to) {
+    const isMe = gLastJson !== null && String(gLastJson.mkey) === to;
+    restartClass(target, 'is-nudged', 700);
+    if (isMe) restartClass(target, 'is-nudged-me', 1100);
+}
+
+/* the slot of a new landing on a target (--land-i): the first one free, so landings at once are offset; all taken:
+ * they overlap ("Gewusel ist ok") */
+function landSlot(target) {
+    const used = new Set(Array.from(target.querySelectorAll(':scope > .react-land'))
+        .map(el => Number(el.style.getPropertyValue('--land-i')) || 0));
+    for (let i = 0; i < REACT_LAND_SLOTS; i++) if (!used.has(i)) return i;
+    return used.size % REACT_LAND_SLOTS;
+}
+
+/* the landing at the target (looked up again: it may have gone or been rebuilt during the flight) */
+function landReaction(to, code, name) {
+    const target = reactHolder(to);
+    if (target === null) return;
+    const span = document.createElement('span');
+    span.className = 'react-land';
+    span.setAttribute('aria-hidden', 'true');
+    span.style.setProperty('--land-i', String(landSlot(target)));
+    const emoji = document.createElement('span');
+    emoji.className = 'react-emoji';
+    emoji.textContent = REACT_EMOJI[code];
+    span.appendChild(emoji);
+    if (name !== '') {
+        const from = document.createElement('span');
+        from.className = 'react-from';
+        from.textContent = name;
+        span.appendChild(from);
+    }
+    target.appendChild(span);
+    const remove = () => span.remove();
+    span.addEventListener('animationend', remove);
+    setTimeout(remove, cssDurationMs('--react-land-dur', 1800) + 500); // no animation (hidden, no CSS): gone anyway
+
+    if (target.classList.contains('c')) restartClass(target, 'is-hit', 450);
+}
+
+/* sets a class for ms milliseconds; set again while it is on, the CSS animation starts over */
+const gClassTimers = new WeakMap();
+function restartClass(el, cls, ms) {
+    if (!gClassTimers.has(el)) gClassTimers.set(el, {});
+    const timers = gClassTimers.get(el);
+    clearTimeout(timers[cls]);
+    if (el.classList.contains(cls)) {
+        el.classList.remove(cls);
+        void el.offsetWidth; // restart the animation
+    }
+    el.classList.add(cls);
+    timers[cls] = setTimeout(() => el.classList.remove(cls), ms);
+}
+
+/* one click handler for the table, the observers and the popovers (document, bubbling) */
+function onTableClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target === null) return;
+
+    // the emoji bar and the remove confirm
+    const emoji = target.closest('#react_bar button[data-react]');
+    if (emoji !== null) {
+        const code = emoji.dataset.react;
+        const to = document.getElementById('react_bar').dataset.to;
+        closePopover(true);
+        if (Object.hasOwn(REACT_EMOJI, code) && to) sendReaction(to, code);
+        return;
+    }
+    if (target.closest('#rm_confirm .rm-cancel') !== null) { closePopover(true); return; }
+    if (target.closest('#rm_confirm .rm-ok') !== null) {
+        const mkey = document.getElementById('rm_confirm').dataset.mkey;
+        closePopover(false);
+        setOpenHolder(null);
+        if (mkey) deletePlayer(mkey);
+        return;
+    }
+    if (target.closest('#tap_hint .tap-hint-ok') !== null) { hideTapHint(true); return; }
+    if (target.closest('.tbl-pop') !== null) return;
+
+    // the circles
+    const nudge = target.closest('#cbox .c .nudge, #observers .obs .nudge');
+    if (nudge !== null) {
+        hideTapHint(true);
+        closePopover(false);
+        const holder = holderOf(nudge);
+        if (holder !== null) sendReaction(holderMkey(holder), REACT_NUDGE);
+        return;
+    }
+    const react = target.closest('#cbox .c .react, #observers .obs .react');
+    if (react !== null) {
+        hideTapHint(true);
+        if (gPop !== null && gPop.opener === react) closePopover(false);
+        else openReactBar(react);
+        return;
+    }
+    const del = target.closest('#cbox .c .delete');
+    if (del !== null) {
+        hideTapHint(true);
+        // B-110 (Andreas): removing always asks first, also with a mouse or the keyboard
+        if (gPop !== null && gPop.opener === del) closePopover(false);
+        else openRemoveConfirm(del);
+        return;
+    }
+
+    // a tap elsewhere closes an open popover first, with the circles of its card (and does nothing else)
+    if (gPop !== null) {
+        closePopover(false);
+        setOpenHolder(null);
+        return;
+    }
+
+    // touch: a tap on a card or an observer opens its circles, a second tap or a tap elsewhere closes them
+    if (!tapMode()) return;
+    const holder = holderOf(target);
+    if (holder !== null && holder.querySelector(':scope > .react, :scope > .delete') !== null) {
+        hideTapHint(true);
+        setOpenHolder(holder.classList.contains('is-open') ? null : holder);
+    } else {
+        setOpenHolder(null);
+    }
+}
+
+/* the keys in the emoji bar (arrows, Home/End, Esc, Tab) and in the remove confirm (Esc) */
+function onPopoverKeydown(event) {
+    if (gPop === null || !gPop.el.contains(event.target)) return;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closePopover(true);
+        return;
+    }
+    if (gPop.el.id !== 'react_bar') return;
+    const buttons = Array.from(gPop.el.querySelectorAll('button[data-react]'));
+    const i = buttons.indexOf(document.activeElement);
+    let n = -1;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') n = (i + 1) % buttons.length;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') n = (i - 1 + buttons.length) % buttons.length;
+    else if (event.key === 'Home') n = 0;
+    else if (event.key === 'End') n = buttons.length - 1;
+    else if (event.key === 'Tab') {
+        // a menu: Tab leaves it, back on the smiley
+        event.preventDefault();
+        closePopover(true);
+        return;
+    } else return;
+    event.preventDefault();
+    event.stopPropagation(); // no card pick, no name overlay keys (document listener)
+    buttons[n].focus();
+}
+
+/* Touch, once: where the circles are. At the first card with a smiley; "Got it" or using a card hides it for good
+ * (localStorage; without it once per page). */
+function tapHintSeen() {
+    try {
+        return localStorage.getItem(TAP_HINT_KEY) === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
+function showTapHint() {
+    if (gTapHintShown || !tapMode() || tapHintSeen() || gPop !== null || connHintVisible()) return;
+    if (document.querySelector('.overlay.visible, .overlay:not(.hidden)') !== null) return; // name input etc.
+    const menu = document.getElementById('menu');
+    if (menu !== null && menu.open) return;
+    const card = document.querySelector('#cbox .c:not(.is-me) > .pc, #observers .obs:not(.is-me) .obs-name');
+    const hint = document.getElementById('tap_hint');
+    if (card === null || hint === null) return;
+    gTapHintShown = true;
+    hint.querySelector('p').textContent = 'Tap someone\'s card to nudge them, throw an emoji or remove them from the table.';
+    hint.querySelector('.tap-hint-ok').textContent = 'Got it';
+    hint.hidden = false;
+    placePopover(hint, card);
+    gTapHintAnchor = card;
+}
+
+let gTapHintAnchor = null;
+
+function hideTapHint(seen) {
+    const hint = document.getElementById('tap_hint');
+    if (hint === null || hint.hidden) return;
+    hint.hidden = true;
+    gTapHintAnchor = null;
+    if (seen) {
+        try {
+            localStorage.setItem(TAP_HINT_KEY, '1');
+        } catch (e) {
+            // private mode etc.: shown once per page only
+        }
+    }
+}
+
+function repositionTapHint() {
+    const hint = document.getElementById('tap_hint');
+    if (hint === null || hint.hidden) return;
+    if (gTapHintAnchor === null || !gTapHintAnchor.isConnected) { hideTapHint(false); return; }
+    placePopover(hint, gTapHintAnchor);
+}
+
+/* after every board update: popovers follow their anchor (also after a glide), without the tap mode nothing stays
+ * open, the tap hint shows once */
+function afterTableUpdate() {
+    repositionPopover();
+    repositionTapHint();
+    if (!tapMode()) {
+        if (gPop === null) setOpenHolder(null);
+        hideTapHint(false);
+    }
+    // after a glide: at the new place; the tap hint once the new card has arrived
+    clearTimeout(afterTableUpdate.timer);
+    afterTableUpdate.timer = setTimeout(() => {
+        repositionPopover();
+        repositionTapHint();
+        showTapHint();
+    }, CARD_ANIMATION_MS + 50);
+}
+
+function initTableInteraction() {
+    document.addEventListener('click', onTableClick);
+    document.addEventListener('click', onHeadClickCapture, true);
+    syncTapModeClass();
+    const onTapQueryChange = () => {
+        syncTapModeClass();
+        if (!tapMode()) setOpenHolder(null);
+    };
+    if (typeof gTapQuery.addEventListener === 'function') gTapQuery.addEventListener('change', onTapQueryChange);
+    else if (typeof gTapQuery.addListener === 'function') gTapQuery.addListener(onTapQueryChange); // Safari < 14
+    document.addEventListener('keydown', onPopoverKeydown, true);
+    const reposition = () => { repositionPopover(); repositionTapHint(); };
+    window.addEventListener('resize', reposition);
+    document.getElementById('table').addEventListener('scroll', reposition, { passive: true });
 }
 
 function createCardDiv(player, playersCount, isOnLoad) {
@@ -710,23 +1886,25 @@ function createCardDiv(player, playersCount, isOnLoad) {
     newCard.classList.add('c');
     if (!isOnLoad && playersCount>1) newCard.classList.add('c_fade-in');
 
-    let cardImg = document.createElement('img');
-    cardImg.classList.add('background', 'card_image');
-    cardImg.src = 'src/c_' + player.display_card_key + '.png';
-    newCard.appendChild(cardImg);
-
+    // B-76/B-99: the name tag above the card
     let cardSpan = document.createElement('span');
     cardSpan.classList.add('card_player_name');
-    cardSpan.innerText = player.name;
+    cardSpan.textContent = player.name;
     cardSpan.title = player.name; // the full name when it ends with an ellipsis
     newCard.appendChild(cardSpan);
 
-    let cardDeleteImg = document.createElement('img');
-    cardDeleteImg.classList.add('delete');
-    cardDeleteImg.src = "./src/delete.png";
-    cardDeleteImg.alt = "Delete";
-    cardDeleteImg.onclick = deletePlayer;
-    newCard.appendChild(cardDeleteImg);
+    // B-99 D16: a real button (focusable, named), a sketched trash can inside
+    let cardDeleteBtn = document.createElement('button');
+    cardDeleteBtn.type = 'button';
+    cardDeleteBtn.classList.add('delete');
+    cardDeleteBtn.setAttribute('aria-label', deleteLabel(player.name, player.away === true));
+    cardDeleteBtn.title = 'Remove from the table';
+    cardDeleteBtn.appendChild(deleteIcon());
+    // B-110: the click is handled by onTableClick (always asks first, #rm_confirm)
+    newCard.appendChild(cardDeleteBtn);
+    if (player.away === true) newCard.classList.add('is-away');
+    setTableCardFace(newCard, String(player.display_card_key), player.away === true);
+    setTableCardOriginal(newCard, player.original_card_key, false); // B-104
 
     return newCard;
 }
@@ -842,6 +2020,7 @@ function updatePlayersCards(players, isOnLoad, anonymousMode) {
 function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     if (myJson === 0) return;
+    addCustomCards(myJson, gCardByKey); // B-98 S5: custom cards of the team's sets and on the table (deck.js)
 
     if (!gAllPlayersReady
         && myJson.all_players_ready
@@ -854,15 +2033,10 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
-    // B-51: the player's name as a tag on the cursor behind the team name in the header; plain text only
-    let promptUser = document.getElementById('prompt_user');
-    let promptText = myJson.name ? myJson.name : '';
-    if (promptUser.textContent !== promptText) promptUser.textContent = promptText;
-
     let topic = document.getElementById('topic');
     let topicHash = myJson.topic.hashCode().toString();
 
-    playerTypeUpdate(myJson.player_type, myJson.name);
+    playerTypeUpdate(myJson.player_type, myJson.name, myJson.team_name);
 
     if (topic.getAttribute("data-hash") !== topicHash) {
 
@@ -894,8 +2068,9 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
         || myJson.players_count !== gJsonBefore.players_count
         || myJson.ready_players_count !== gJsonBefore.ready_players_count
     ) {
-        document.title = "" + myJson.ready_players_count + "|" + myJson.players_count +""
-        + " Agile Estimations: " + myJson.team_name;
+        // R3 review V10 (L7): "2/5 voted · Team Phoenix – Agile Poker"
+        document.title = myJson.ready_players_count + '/' + myJson.players_count + ' voted \u00b7 '
+            + myJson.team_name + ' \u2013 Agile Poker';
         document.getElementById("team_name").innerText = myJson.team_name;
     }
 
@@ -913,15 +2088,29 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     }
 
-    setCSet(myJson.cardset_flags);
+    setTeamDeck(myJson);
+    updateDeckMenu(myJson); // R3 F5 (script_deck.js)
 
     if (!isOnLoad) {
+        // B-110: the observers first, their row takes room from the cards (fitCardsToTable)
+        updateObservers(Array.isArray(myJson.observers) ? myJson.observers : [], myJson.mkey);
         if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
             /* returns true when new cards have been added */
             setColor();
         }
     }
 
+
+    // B-99 D8: the own card's name tag is styled like the name tag in the header
+    // B-110: every other card gets the nudge (.nudge) and the smiley (.react) to throw a reaction
+    document.querySelectorAll('#cbox .c').forEach(card => {
+        const isMe = card.id === myJson.mkey;
+        if (card.classList.contains('is-me') !== isMe) card.classList.toggle('is-me', isMe);
+        const name = card.querySelector('.card_player_name').textContent;
+        setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(name, card.classList.contains('is-away'), isMe));
+        syncReactButton(card, !isMe, name, card.querySelector('.delete'));
+    });
+    afterTableUpdate(); // B-110: popovers, tap hint
 
     updateSelectedC(myJson.selected_card_key);
 
@@ -934,10 +2123,10 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     if (timerFresh) updateTimer(myJson);
     updateOrderByConfig(myJson.results_order
                         , myJson.anonymous_mode === 1 || myJson.anonymous_request_toggle === 1);
-    updateAnonymityConfig(myJson.anonymous_request_toggle);
+    updateAnonymityConfig(myJson.anonymous_request_toggle, myJson.anonymous_mode);
     checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
+    updateCardChangesConfig(myJson.show_card_changes, myJson.round_show_card_changes); // B-115
 
-    activateJediMode(myJson.show_avg);
     updateJediBtn();
 
     if (isOnLoad) {
@@ -961,24 +2150,12 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
 }
 
-function activateJediMode(showAvg) {
-    if (showAvg === 1 && gLastShowAvg !== null && gLastShowAvg === 0) {
-        let body = document.body;
-        body.classList.add('flash-red');
-
-        body.addEventListener('animationend', () => {
-            body.classList.remove('flash-red');
-        }, { once: true });
-    }
-    gLastShowAvg = showAvg;
-}
-
 function updateNewRoundBtn(oneOreMorePlayerReady, allPlayersReady) {
-    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Cancel Round")
+    // B-67 (Andreas): the button is always there; before the first card it is disabled ("Restart round")
     let newRoundBtn = document.getElementById('newroundbtn');
-    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New Round' : 'Cancel Round';
+    let newButtonText = (oneOreMorePlayerReady && allPlayersReady) ? 'New round' : 'Restart round';
     newRoundBtn.disabled = !oneOreMorePlayerReady;
-    newRoundBtn.classList.toggle('primary', newButtonText === 'New Round'); // all cards revealed
+    newRoundBtn.classList.toggle('primary', newButtonText === 'New round'); // all cards revealed
     if (newRoundBtn.value !== newButtonText) {
         newRoundBtn.value = newButtonText;
     }
@@ -1025,7 +2202,15 @@ function initializeWSConnection(teamId) {
     conn.onmessage = function(e){
         if (conn !== gConn) return;
         gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
+        if (typeof e.data !== 'string') return;
+        if (e.data.startsWith('react:')) { // B-110: a reaction (never a pull, even if it contained the word)
+            if (document.visibilityState !== 'visible') return; // hidden tab: dropped, not buffered
+            const m = REACT_MSG.exec(e.data);
+            if (m !== null) onReaction(m[1], m[2], m[3]);
+            return;
+        }
         if (e.data.includes('pull')) updateDao(false);
+        else if (e.data === 'hb') scheduleHbLoad(); // B-110
     };
 
     let wasOpen = false;
@@ -1079,6 +2264,7 @@ function reconnectWSConnection() {
 function initWSReconnect() {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reconnectWSConnection();
+        else dropReactions(); // B-110: nothing is played late
     });
     window.addEventListener('online', reconnectWSConnection);
     window.addEventListener('pageshow', (event) => {
@@ -1090,6 +2276,8 @@ function initWSReconnect() {
  * request failed or took longer than WRITE_TIMEOUT_MS. Afterwards (success or not) beforeReload
  * runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
 function apiWrite(url, init = {}, beforeReload = null) {
+    const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
+    if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
     const options = Object.assign({ method: 'POST' }, init);
     if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
         options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
@@ -1104,8 +2292,19 @@ function apiWrite(url, init = {}, beforeReload = null) {
         console.log('write failed', url, error);
         return null;
     }).then(response => {
+        if (deckWrite !== null) deckWrite.doneSeq = gDaoSeq; // the reload below gets a higher number
         if (beforeReload !== null) beforeReload();
         afterWrite();
+        return response;
+    });
+}
+
+/* R3 (Andreas): a setting of the menu (board settings Results/Team, menu You) written with apiWrite; a failed write
+ * shows the error toast only (success needs no message: the board shows the new state). The board reloaded itself
+ * (apiWrite), so the radios show the server's state again. Deck and timer menu have their own handling. */
+function settingWrite(url, init = {}) {
+    return apiWrite(url, init).then(response => {
+        if (response === null || !response.ok) showToast('Not saved \u2013 please try again', DECK_TOAST_MS, 'error');
         return response;
     });
 }
@@ -1170,6 +2369,15 @@ function showConnHint(show) {
     }
 }
 
+/* a double click on the board loads it again (board.html, body); not inside the menu, the popovers at a card or on
+ * the circles (B-110: opening and closing the emoji bar quickly is no double click on the board) */
+function onBodyDblClick(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target !== null && target.closest('#menu, .tbl-pop, #cbox button, #observers')) return;
+    if (target !== null && tapMode() && target.closest('#cbox .c')) return; // B-110: two taps open and close a card
+    updateDao(false);
+}
+
 function loadBoard() {
     const urlParams = new URLSearchParams(window.location.search);
     t = urlParams.get("t");
@@ -1180,6 +2388,7 @@ function loadBoard() {
     initializeWSConnection(t);
     initWSReconnect();
     initDisplayHandling();
+    initTableInteraction(); // B-110
     measureEvent("BOARD_ON_LOAD");
 
     document.getElementById('nameinput').addEventListener('input', function(event) {
@@ -1369,29 +2578,110 @@ function toggleTopic(event) {
     button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
 }
 
+/* R3 review V2: "Invite" in the header. On touch devices (gTouchQuery, as for the "tap" tip) with navigator.share the
+ * native share menu opens; elsewhere (Andreas: on desktops the share menu hides copying), or when sharing fails, the
+ * link is copied (copyLink). Cancelling the share menu does nothing. */
+function inviteShares() {
+    return gTouchQuery.matches && typeof navigator.share === 'function';
+}
+
+/* the accessible name says what a click does: share (touch) or copy */
+function updateInviteLabel() {
+    let button = document.getElementById('invite_btn');
+    if (button === null) return;
+    button.setAttribute('aria-label', inviteShares() ? 'Invite – share board link' : 'Invite – copy board link');
+}
+document.addEventListener('DOMContentLoaded', updateInviteLabel);
+gTouchQuery.addEventListener('change', updateInviteLabel);
+
+function inviteTeam() {
+    let url = window.location.href;
+    if (inviteShares()) {
+        let name = document.getElementById('team_name').textContent;
+        let data = { title: name ? name + ' – Agile Poker' : 'Agile Poker', url: url };
+        let share;
+        try {
+            share = navigator.share(data);
+        } catch (e) {
+            share = Promise.reject(e);
+        }
+        share.catch(function (e) {
+            if (!e || e.name !== 'AbortError') copyLink(); // not supported here, not allowed: copy instead
+        });
+        return;
+    }
+    copyLink();
+}
+
+/* copies the board link; the Invite button confirms it (V1: feedback where the click was). Where the browser
+ * refuses (no permission, http, a web view) the link shows in a field, selected, to copy by hand (R3 review E7) */
 function copyLink() {
     let text = window.location.href;
-    navigator.clipboard.writeText(text).then(function() {
-        showToast('Board link copied');
+    let done;
+    try {
+        done = navigator.clipboard.writeText(text);
+    } catch (e) {
+        done = Promise.reject(e); // no navigator.clipboard (http)
+    }
+    done.then(function () {
+        confirmInvite('Link copied');
+    }, function () {
+        window.prompt('Copy the board link:', text);
     });
 }
 
+/* the Invite button reads "Copied" for 2 s (class is-done: check icon, green; short, so the header does not jump on
+ * small phones), screen readers hear "Link copied" once */
+let gInviteTimer = null;
+function confirmInvite(text, label = 'Copied') {
+    let button = document.getElementById('invite_btn');
+    let lbl = button.querySelector('.lbl');
+    let status = document.getElementById('invite_status');
+    lbl.textContent = label;
+    button.classList.add('is-done');
+    status.textContent = text;
+    clearTimeout(gInviteTimer);
+    gInviteTimer = setTimeout(function () {
+        lbl.textContent = 'Invite';
+        button.classList.remove('is-done');
+        status.textContent = '';
+    }, 2000);
+}
+
 /* Short message that pops up from the bottom edge for a moment (style.css, .toast).
- * Plain text only (textContent). Calling it again replaces the text and restarts the timer. */
+ * R3 review V1: the result of an own click shows at that control (Invite button), else a toast (sent feedback, the
+ * deck and the timer menu: R3 review, Andreas). Plain text only (textContent). Calling it again replaces the
+ * text and restarts the timer; ms: how long it stays (the deck menu: a little longer). */
 let gToastTimer = null;
-function showToast(text) {
+/* kind 'error' (R3, Andreas): refusals and failed writes show "!" instead of the ">" prompt (style.css .toast-error) */
+function showToast(text, ms = 2200, kind = 'info') {
     let toast = document.getElementById('toast');
     // B-51: a modal menu (phone sheet) lies in the top layer; the toast goes into it to stay visible
     // (closeMenu() puts it back)
     let menu = document.getElementById('menu');
-    let host = isModalOpen(menu) ? menu : document.body;
+    // B-98 S5: above the editor of an own set (a modal dialog in the top layer as well)
+    let editor = document.getElementById('cs_editor');
+    let host = editor !== null && editor.open ? editor : isModalOpen(menu) ? menu : document.body;
     if (toast.parentElement !== host) host.appendChild(toast);
     toast.textContent = text;
+    toast.classList.toggle('toast-error', kind === 'error');
+    if (kind === 'error') {
+        // the alert icon of the sprite (board.html) instead of the ">" prompt; the text stays plain text
+        const svgNs = 'http://www.w3.org/2000/svg';
+        const icon = document.createElementNS(svgNs, 'svg');
+        icon.setAttribute('class', 'i toast-ico');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('focusable', 'false');
+        const use = document.createElementNS(svgNs, 'use');
+        use.setAttribute('href', '#i-alert');
+        icon.appendChild(use);
+        toast.prepend(icon);
+    }
     toast.classList.add('toast-on');
     clearTimeout(gToastTimer);
     gToastTimer = setTimeout(function () {
         toast.classList.remove('toast-on');
-    }, 2200);
+    }, ms);
 }
 
 
@@ -1473,6 +2763,8 @@ function updateTimer(json) {
     let box = document.getElementById('timer');
     if (box !== null) {
         box.classList.toggle('display_none', !gTimer.visible);
+        // R3 (Andreas): phones without the timer: the round button takes the whole row (style.css .dock.no-timer)
+        if (box.parentElement !== null) box.parentElement.classList.toggle('no-timer', !gTimer.visible);
         // not started yet (or reset): "ready"; both ready and paused are shown dimmed
         box.setAttribute('data-state', running ? 'running' : (gTimer.time === 0 ? 'ready' : 'paused'));
         document.getElementById('timer_start').hidden = running;
@@ -1582,16 +2874,22 @@ function timerAction(action, value = null) {
     });
 }
 
+/* R3 (Andreas): a failed setting of the timer menu as an error toast, like the deck menu (the board loaded itself,
+ * apiWrite, so the menu shows the server's state again) */
+function timerSettingFailed() {
+    showToast('Not saved \u2013 please try again', DECK_TOAST_MS, 'error');
+}
+
 function setTimerVisibility(value) {
-    // B-46: confirm the own change with a toast (others just see the timer appear)
+    // B-46: confirm the own change (others just see the timer appear); R3 (Andreas): as a toast like the deck menu
     timerAction('set_visibility', value).then(() => {
-        showToast(value === '1' ? 'Timer on – everyone on the board sees it' : 'Timer off');
-    }).catch(() => {}); // the board loaded itself (apiWrite)
+        showToast(value === '1' ? 'Timer on \u2013 everyone on the board sees it' : 'Timer off', DECK_TOAST_MS);
+    }).catch(timerSettingFailed);
     measureEvent("TOGGLE_TIMER");
 }
 
 function setTimerMode(value) {
-    timerAction('set_mode', value).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_mode', value).catch(timerSettingFailed);
 }
 
 function setTimerTimebox(minutes) {
@@ -1599,7 +2897,7 @@ function setTimerTimebox(minutes) {
     other.value = '';
     other.closest('.tmr-other').setAttribute('data-set', 'false');
     showTimerOtherError(false);
-    timerAction('set_timebox', minutes).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_timebox', minutes).catch(timerSettingFailed);
 }
 
 /* "other: __ min" (whole minutes 1..240), a plain text field (no number field: Safari and Chrome
@@ -1654,12 +2952,12 @@ function saveTimerOther(showError) {
     gTimer.timebox = minutes * 60;
     gTimerTime = 0;
     gTimerBaseTime = new Date();
-    timerAction('set_timebox', String(minutes)).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_timebox', String(minutes)).catch(timerSettingFailed);
     return true;
 }
 
 function setTimerAutoRestart(value) {
-    timerAction('set_auto_restart', value).catch(() => {}); // the board loaded itself (apiWrite)
+    timerAction('set_auto_restart', value).catch(timerSettingFailed);
 }
 
 function timerStart() {
@@ -1700,19 +2998,30 @@ function updateOrderByConfig(resultsOrder, anonymousMode) {
     }
 }
 
-function updateAnonymityConfig(anonymousRequestToggle) {
-    checkRadio('cet_anonymous', anonymousRequestToggle === 1 ? '1' : '0');
+/* R3 (Andreas): "Takes effect with the next round." under a Results setting only while a change is pending, i.e. the
+ * team setting differs from the one of the running round (the server applies it at once while no card is down) */
+function showPendingRoundHint(hintId, pending) {
+    document.getElementById(hintId).classList.toggle('display_none', !pending);
+}
+
+function updateAnonymityConfig(anonymousRequestToggle, anonymousMode) {
+    const team = anonymousRequestToggle === 1 ? 1 : 0;
+    checkRadio('cet_anonymous', String(team));
+    showPendingRoundHint('cet_anonymous_hint', team !== (anonymousMode === 1 ? 1 : 0));
+}
+
+/* B-115: the switch follows the team setting (default on), the round setting decides the hint */
+function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
+    const team = showCardChanges === 0 ? 0 : 1;
+    checkRadio('cet_show_card_changes', String(team));
+    showPendingRoundHint('cet_show_card_changes_hint', team !== (roundShowCardChanges === 0 ? 0 : 1));
 }
 
 
 function loadCardConfig() {
-    /* - load card config from cards.json to create all the html needed
-       - to add new cards to the config, put them at the end of the json file
-       - increment the index attribute so that all cards get a unique int index,
-         starting by 0
-       - only change index values of existing cards, if you really know what you are doing!!!
-       - to chang the order of the cards just use the attribute sort_order
-       - sort_order does not have to be unique, but it will help to maintain consistency
+    /* - cards.json (v1): the old card list, only for the fallback deck from cardset_flags (deck.js, adapter)
+       - card_catalog.json (v2, B-98): groups, variants, control cards and the card texts; the deck of the
+         team comes from dao ("deck") and refers to these cards (R3 F4)
      */
 
     const url = "./cards.json?v=3"; // bump when cards.json changes (Safari keeps it cached)
@@ -1720,49 +3029,22 @@ function loadCardConfig() {
     gCardsConfig = jsonCardsConf.cards;
     gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
 
-    gCardsPresets = jsonCardsConf.presets;
-
-    let ctl = document.getElementById("ctl");
-    let cardsThumbs = document.getElementById("cards_thumbs");
-
-    gCardsConfig.forEach(card => {
-        let cardElement = document.createElement("img");
-        cardElement.id = card.card_key;
-        cardElement.src = "src/c_" + card.card_key + ".png";
-        cardElement.classList.add("ctl");
-        cardElement.alt = card.description;
-        // B-68: the card with its key below it (shown on devices with a mouse, style.css)
-        let slot = document.createElement("span");
-        slot.className = "ctl-slot";
-        let key = document.createElement("span");
-        key.className = "ctl-key";
-        key.setAttribute("aria-hidden", "true");
-        slot.append(cardElement, key);
-        ctl.appendChild(slot);
-
-        let thumbElement = document.createElement("img");
-        thumbElement.id = "_" + card.card_key;
-        thumbElement.src = "src/c_" + card.card_key + ".png";
-        thumbElement.setAttribute("data-card_key", card.card_key);
-        thumbElement.classList.add("cs_c");
-        thumbElement.alt = card.description;
-        thumbElement.addEventListener("click", toggleCSet);
-        cardsThumbs.appendChild(thumbElement);
-    });
-
-    let cetPre = document.getElementById("cet_pre");
-
-    gCardsPresets.forEach(preSet => {
-        let option = document.createElement("option");
-        option.value = preSet.id.toString();
-        option.textContent = preSet.description;
-        cetPre.appendChild(option);
-    });
+    // B-99 (F1): the card model (deck.js); the tray shows the team's deck once the board state is there.
+    // F2/F4: values, headings, descriptions, groups and styles from card_catalog.json (v2); without it the
+    // cards still show (value as text, no texts) and the deck falls back to cardset_flags
+    let catalogV2 = null;
+    try {
+        catalogV2 = loadJSON('./card_catalog.json?v=12'); // bump when card_catalog.json changes
+    } catch (e) {
+        catalogV2 = null;
+    }
+    gCatalogV2 = catalogV2 && typeof catalogV2 === 'object' ? catalogV2 : null;
+    gCardCatalog = catalogFromLegacy(gCardsConfig, catalogV2Index(catalogV2));
+    // the catalog v2 cards win; v1 cards only for keys v2 does not know
+    gCardByKey = new Map(gCardCatalog.map(entry => [entry.card.key, entry.card]));
+    catalogV2Cards(catalogV2).forEach((card, key) => gCardByKey.set(key, card));
 }
 
-function getCardConfig(cardKey) {
-    return gCardsConfig.find(card => card.card_key === cardKey);
-}
 
 // Load JSON text from server hosted file and return JSON parsed object
 function loadJSON(filePath) {
@@ -1829,6 +3111,8 @@ function handleResize() {
 function initDisplayHandling() {
     window.addEventListener('resize', handleResize);
     initCarousel(); // B-75
+    loadDeckKeyLayout(); // F8
+    window.addEventListener('focus', loadDeckKeyLayout);
     // B-69: the "<" / ">" bars follow the deck's scroll position; the wheel scrolls it sideways
     const ctl = document.getElementById('ctl');
     if (ctl !== null) {
@@ -1871,7 +3155,7 @@ function updateSide(json, glide = true) {
     const revealed = json.all_players_ready && json.players_count > 0;
     let text = 'waiting for players';
     if (revealed) text = 'revealed';
-    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + '/' + json.players_count + ' voted';
+    else if (json.players_count > 0) text = 'voting · ' + json.ready_players_count + ' of ' + json.players_count + ' voted';
     if (status.textContent !== text) status.textContent = text;
 
     spread.hidden = !revealed;
@@ -1879,21 +3163,21 @@ function updateSide(json, glide = true) {
 
     // the columns follow the deck, also before the reveal (they keep the spread's room)
     const bars = document.getElementById('spread_bars');
-    const deckCards = Array.from(document.querySelectorAll('#ctl img.on'));
-    const keys = deckCards.map(img => img.id).join(',');
+    const deckCards = gDeck.cards;
+    const keys = deckCards.map(card => card.key).join(',');
     if (bars.getAttribute('data-keys') !== keys) {
-        bars.replaceChildren(...deckCards.map(img => {
-            const config = getCardConfig(img.id);
+        bars.replaceChildren(...deckCards.map(card => {
             const col = document.createElement('div');
             col.className = 'spread-col zero';
-            col.setAttribute('data-card', img.id);
+            col.setAttribute('data-card', card.key);
             const count = document.createElement('span');
             count.className = 'spread-count';
             const bar = document.createElement('span');
             bar.className = 'spread-bar';
             const value = document.createElement('span');
             value.className = 'spread-value';
-            value.textContent = config ? (config.symbol || config.description) : '';
+            // B-99 (F6): per symbol mono text or a mini symbol (cards.js cardSmall), never a system emoji
+            value.appendChild(cardSmall(card));
             col.append(count, bar, value);
             return col;
         }));
@@ -1913,9 +3197,11 @@ function updateSide(json, glide = true) {
         return;
     }
 
-    const cardStats = calculateCardStats(json.players);
+    // B-102: the "joined in" card is no vote
+    const cardStats = calculateCardStats(json.players.filter(player => !isLateCardKey(player.display_card_key)));
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
     const chosen = [];
+    let unvalued = false; // B-98 S5: a custom card without a value is down (no range then)
     const grown = [];
     Array.from(bars.children).forEach(col => {
         const stat = cardStats[col.getAttribute('data-card')];
@@ -1924,26 +3210,35 @@ function updateSide(json, glide = true) {
         col.classList.toggle('zero', n === 0);
         col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
         grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
-        const config = getCardConfig(col.getAttribute('data-card'));
-        const rank = cardRank(config);
-        if (n > 0 && rank !== null) chosen.push({ rank, text: col.querySelector('.spread-value').textContent });
+        const card = cardByKey(col.getAttribute('data-card'));
+        const rank = cardRank(card);
+        if (n > 0 && rank !== null) chosen.push({ rank, card });
+        else if (n > 0 && card && card.custom) unvalued = true;
     });
     if (grown.length > 0) {
         void bars.offsetHeight; // the new blocks start invisible (class "in"), then fade in
         grown.forEach(seg => seg.classList.remove('in'));
     }
 
-    // the range of the chosen numeric values (B-79: infinity as the top end): "2 – 20", "3 – ∞",
-    // or "5" when all agree
-    let range = '';
-    if (chosen.length > 0) {
+    // the range of the chosen numeric values (B-79: infinity as the top end): "range 2–20", "range 3–∞",
+    // or "5" when all agree; B-99 (F6): each end as mono text (cardSmall). R3 review V10 (L22): number cards
+    // only – traffic lights, emotions, stars, T-shirt sizes show the chart alone. B-98 S5: a custom set shows the
+    // range when every card down has a value (control cards aside)
+    let ends = [];
+    if (chosen.length > 0 && !unvalued && chosen.every(entry => isNumberCard(entry.card))) {
         chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
-        const low = chosen[0].text;
-        const high = chosen[chosen.length - 1].text;
-        range = low === high ? low : low + ' – ' + high;
+        const low = chosen[0].card;
+        const high = chosen[chosen.length - 1].card;
+        ends = low.key === high.key ? [low] : [low, high];
     }
     const rangeElement = document.getElementById('spread_range');
-    if (rangeElement.textContent !== range) rangeElement.textContent = range;
+    const rangeKey = ends.map(card => card.key).join(',');
+    if (rangeElement.getAttribute('data-shows') !== rangeKey) {
+        rangeElement.setAttribute('data-shows', rangeKey);
+        rangeElement.replaceChildren(...(ends.length === 2
+            ? ['range ', cardSmall(ends[0]), '\u2013', cardSmall(ends[1])]
+            : ends.map(card => cardSmall(card))));
+    }
 
     let left = null;
     if (json.show_avg === 1) {
@@ -1982,6 +3277,18 @@ function updateTip(json, revealed) {
         if (typeof part === 'string') return document.createTextNode(part);
         const b = document.createElement('b');
         b.textContent = part.name;
+        // B-99 (F6): "Dan (3)", "Eve (✋ as mini symbol)". The last name and "(symbol)" never break apart:
+        // no-break space plus a nowrap group (style.css), the names before it still wrap normally.
+        const card = part.card !== undefined ? cardByKey(part.card) : undefined;
+        if (card !== undefined) {
+            const value = document.createElement('span');
+            value.className = 'tip-value';
+            // B-104: a changed card shows both values, "(5→8)"
+            const from = part.from !== undefined ? cardByKey(part.from) : undefined;
+            if (from !== undefined) value.append('(', cardSmall(from), '\u2192', cardSmall(card), ')');
+            else value.append('(', cardSmall(card), ')');
+            b.append('\u00a0', value);
+        }
         return b;
     }));
 }
@@ -1997,24 +3304,31 @@ function tipNames(names) {
 }
 
 /* the players on one side of the spread: "Dan (3)", "Dan, Eve +2 (8)" */
-function tipSide(players, value) {
+function tipSide(players, card) {
     const names = players.slice(0, 2).map(player => player.name).join(', ');
-    return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : '') + ' (' + value + ')' };
+    return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : ''), card: card.key };
+}
+
+/* R3 review V10 (L22): a card whose value is a number (0, ½, 13, ∞); the range of the result shows for these only */
+function isNumberCard(card) {
+    if (card && card.custom) return cardRank(card) !== null; // B-98 S5: a custom card with a value (or ∞)
+    return !!card && /^(\d+(\.\d+)?|½|∞)$/.test(String(card.text));
 }
 
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
  * ("too big to estimate"), null for cards without a value (veto, control cards). Not for the
  * average: infinity stays out of it. */
-function cardRank(config) {
-    if (!config) return null;
-    if (config.card_key === 'infin01' || config.description === 'infinity') return Infinity;
-    return config.numeric_value != null ? config.numeric_value : null;
+function cardRank(card) {
+    if (!card) return null;
+    if (card.infinite) return Infinity;
+    return card.value;
 }
 
 /* the tip as a list of plain strings and highlighted { name } parts; [] for none */
 function tipText(json, revealed) {
-    const players = json.players || [];
-    if (json.players_count < 2) return ['Copy the board link and invite your team.'];
+    // B-102: a player who joined in after the reveal (late001) has no vote: not in any tip after the reveal
+    const players = (json.players || []).filter(player => !revealed || !isLateCardKey(player.display_card_key));
+    if (json.players_count < 2) return ['Invite your team: ' + (gTouchQuery.matches ? 'tap' : 'click') + ' Invite and share the link.'];
 
     if (!revealed) {
         if (json.player_type === 'PLAYER' && !json.selected_card_key) {
@@ -2022,34 +3336,43 @@ function tipText(json, revealed) {
         }
         const missing = players.filter(player => String(player.display_card_key).startsWith('prgrss'));
         if (missing.length === 0) return [];
+        // R3 review V10 (L30a): everyone missing is away (no connection): only removing them reveals the cards
+        if (missing.every(player => player.away === true)) {
+            const away = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
+            const them = missing.length > 3 ? ['them'] : away;
+            return ['Waiting for ', ...away, ' (away). Remove ', ...them, ' from the table to reveal.'];
+        }
         const who = missing.length > 3 ? [{ name: missing.length + ' players' }] : tipNames(missing.map(player => player.name));
         return ['Waiting for ', ...who, '. Once everyone has voted, cards are revealed automatically.'];
     }
 
     // B-79: coffee adds a hint for a break (also in anonymous mode); ? and ! are asked first
-    const configs = players.map(player => ({ player, config: getCardConfig(player.display_card_key) }));
-    const pause = configs.some(entry => entry.config && entry.config.card_key === 'break01');
+    const configs = players.map(player => ({ player, config: cardByKey(player.display_card_key) }));
+    const pause = configs.some(entry => entry.config && entry.config.key === 'break01');
     const withBreak = parts => {
         if (!pause) return parts;
         if (parts.length === 0) return ['Maybe take a short break.'];
         const last = parts[parts.length - 1];
-        const done = typeof last === 'string' && last.endsWith('.');
+        const done = typeof last === 'string' && /[.?!]$/.test(last);
         return [...parts, done ? ' Maybe take a short break.' : '. Maybe take a short break.'];
     };
+
+    // B-101: J.U.D.G.E. is a decision, not an estimate: own rules (also in anonymous mode)
+    if (isJudgeDeck(json)) return withBreak(judgeTip(configs, json.anonymous_mode === 1));
 
     // B-79: in anonymous mode always a general, gentle line – nobody is asked to explain
     if (json.anonymous_mode === 1) return withBreak(['Take the chance and talk about what you see.']);
 
     // "Maria (?)", "Jogi, Paul +1 (!)" – one group per control card that asks for a word
     const asking = ['qstmrk1', 'xclam01'].map(key => {
-        const entries = configs.filter(entry => entry.config && entry.config.card_key === key);
-        return entries.length === 0 ? null : tipSide(entries.map(entry => entry.player), entries[0].config.symbol);
+        const entries = configs.filter(entry => entry.config && entry.config.key === key);
+        return entries.length === 0 ? null : tipSide(entries.map(entry => entry.player), entries[0].config);
     }).filter(group => group !== null);
     // groups joined by commas: "Let them explain: Alice (3), Bob (8), Maria (?)"
     const explain = groups => {
         const parts = ['Let them explain: '];
         groups.forEach((group, i) => {
-            if (i > 0) parts.push(asking.length > 0 ? ', ' : ' and ');
+            if (i > 0) parts.push(asking.length > 0 || i < groups.length - 1 ? ', ' : ' and ');
             parts.push(group);
         });
         return parts;
@@ -2058,8 +3381,8 @@ function tipText(json, revealed) {
         ? ['Talk about the cards you chose.']
         : ['Talk about the cards you chose \u2013 ', ...explain(asking).slice(1), ' first.'];
 
-    // the cards actually chosen; control cards (coffee, ?, !) stay neutral
-    const chosen = configs.filter(entry => entry.config && !entry.config.flow_control);
+    // the cards actually chosen; control cards (coffee, ?, !, shruggie) stay neutral
+    const chosen = configs.filter(entry => entry.config && !entry.config.control);
     if (chosen.length === 0) return withBreak(asking.length > 0 ? explain(asking) : []);
     // B-79: emotions and traffic lights have no range (or just three values): talk instead of names
     if (chosen.some(entry => entry.config.talk)) return withBreak(talk);
@@ -2072,17 +3395,112 @@ function tipText(json, revealed) {
     const min = Math.min(...values);
     const max = Math.max(...values);
     if (min === max) {
-        if (numeric.length === players.length) return ['Everyone agrees \u2013 on to the next topic.'];
+        // B-106: the shruggie ("can't say – and that's ok") is no objection: the others may still agree,
+        // as long as at least two of them do
+        const shrugs = configs.filter(entry => entry.config && entry.config.key === 'shrug01').length;
+        if (numeric.length === players.length - shrugs && (shrugs === 0 || numeric.length > 1)) {
+            return ['Everyone agrees \u2013 on to the next topic.'];
+        }
         // the same number next to a veto: talk about them
         if (chosen.length > numeric.length) return withBreak(talk);
         // next to control cards only: ? and ! explain, otherwise no tip
         return withBreak(asking.length > 0 ? explain(asking) : []);
     }
-    const side = value => {
-        const entries = numeric.filter(entry => cardRank(entry.config) === value);
-        return tipSide(entries.map(entry => entry.player), entries[0].config.symbol || entries[0].config.description);
+    return withBreak(explain([...extremeGroups(configs, min, max), ...asking]));
+}
+
+/* B-104 (Andreas): who is asked to explain the lowest and highest card. Nobody leaves the list by changing the card
+ * after the reveal, but a change can add someone: the extremes of the cards of the reveal (original_card_key, else
+ * the current card) and of the current cards (min/max). One group per side and card ("Dan (3)"); a changed card
+ * shows both values ("Bob (5→8)"). The current card decides the side, else the card of the reveal. */
+function extremeGroups(configs, min, max) {
+    const rankOf = config => config && !config.control ? cardRank(config) : null;
+    const entries = configs.map(entry => {
+        const key = entry.player.original_card_key;
+        const original = key !== null && key !== undefined && String(key) !== String(entry.player.display_card_key)
+            ? cardByKey(String(key)) : undefined;
+        return { ...entry, original, now: rankOf(entry.config), then: original !== undefined ? rankOf(original) : rankOf(entry.config) };
+    });
+    const thens = entries.map(entry => entry.then).filter(value => value !== null);
+    const minThen = Math.min(...thens);
+    const maxThen = Math.max(...thens);
+    const sideOf = entry => entry.now === min ? 'low' : entry.now === max ? 'high'
+        : entry.then === minThen ? 'low' : entry.then === maxThen ? 'high' : null;
+    const groupsOf = side => {
+        const groups = new Map();
+        entries.filter(entry => entry.config && sideOf(entry) === side).forEach(entry => {
+            const id = (entry.original ? entry.original.key : '') + '>' + entry.config.key;
+            if (!groups.has(id)) groups.set(id, []);
+            groups.get(id).push(entry);
+        });
+        // from low to high like the spread (by the current card, without a value by the card of the reveal)
+        const rank = entry => entry.now !== null ? entry.now : entry.then;
+        const list = [...groups.values()].sort((a, b) => (rank(a[0]) - rank(b[0])) || 0); // ∞ - ∞: keep the order
+        return list.map(group => {
+            const part = tipSide(group.map(entry => entry.player), group[0].config);
+            if (group[0].original !== undefined) part.from = group[0].original.key;
+            return part;
+        });
     };
-    return withBreak(explain([side(min), side(max), ...asking]));
+    return [...groupsOf('low'), ...groupsOf('high')];
+}
+
+/* B-101: the team's deck is the J.U.D.G.E. group (dao deck.group, else the cards of the deck) */
+function isJudgeDeck(json) {
+    if (json.deck && typeof json.deck.group === 'string') return json.deck.group === 'judge';
+    return gDeck.cards.some(card => card.group === 'judge');
+}
+
+/* B-101: the tip after the reveal for a J.U.D.G.E. decision. It is accepted as long as nobody needs to talk
+ * (5, or ? and ! which count as a 5) and nobody vetoes (6, also the ✋ card). Those who need to talk come first,
+ * then the veto; an accepted decision offers to hear the concerns (3, 4). Anonymous mode: counts, no names.
+ * configs: [{ player, config }] of the table; returns the tip parts (tipText) */
+function judgeTip(configs, anonymous) {
+    const of = keys => configs.filter(entry => entry.config && keys.includes(entry.config.key));
+    // R3 review V10 (L28): anonymous mode counts in words, "2 people need to talk", "1 veto"
+    const count = (keys, one, many) => {
+        const n = of(keys).length;
+        return n === 0 ? null : n + ' ' + (n === 1 ? one : many);
+    };
+    // one group per card: "Bob, Cleo (5)", "Dan (?)"
+    const groups = keys => keys.map(key => of([key])).filter(entries => entries.length > 0)
+        .map(entries => tipSide(entries.map(entry => entry.player), entries[0].config));
+    // "A", "A and B", "A, B and C"
+    const join = list => list.flatMap((group, i) =>
+        i === 0 ? [group] : [i === list.length - 1 ? ' and ' : ', ', group]);
+
+    const talkKeys = ['jdg5', 'qstmrk1', 'xclam01'];
+    const vetoKeys = ['jdg6', 'veto'];
+    if (anonymous) {
+        const talk = count(talkKeys, 'person needs to talk', 'people need to talk');
+        const vetoes = of(vetoKeys).length;
+        const veto = vetoes === 0 ? null : (vetoes === 1 ? 'the veto' : 'the ' + vetoes + ' vetoes');
+        if (talk !== null) return veto !== null ? [talk + ' first, then hear ' + veto + '.'] : [talk + ' first.'];
+        if (veto !== null) return ['Hear ' + veto + ' first.'];
+    } else {
+        const talk = groups(talkKeys);
+        const veto = groups(vetoKeys);
+        if (talk.length > 0) {
+            const parts = ['Let them talk first: ', ...join(talk)];
+            return veto.length > 0 ? [...parts, '. Then hear the veto: ', ...join(veto)] : parts;
+        }
+        if (veto.length > 0) return ['Hear the veto: ', ...join(veto)];
+    }
+    // no vote of the deck at all (only coffee): no tip
+    if (of(['jdg0', 'jdg1', 'jdg2', 'jdg3', 'jdg4']).length === 0) return [];
+    if (anonymous) {
+        const concerns = count(['jdg3', 'jdg4'], 'person has concerns', 'people have concerns');
+        return concerns === null ? ['Decision accepted.'] : ['Decision accepted. ' + concerns + ' \u2013 want to hear them?'];
+    }
+    // L29: "Bob (3) has concerns, Eve (4) steps out" – 4 is no concern, it is not taking part
+    const said = (keys, one, many) => groups(keys).map(group => {
+        const n = of(keys).length;
+        return [group, n === 1 ? one : many];
+    });
+    const concerns = [...said(['jdg3'], ' has concerns', ' have concerns'), ...said(['jdg4'], ' steps out', ' step out')];
+    if (concerns.length === 0) return ['Decision accepted.'];
+    return ['Decision accepted. ', ...concerns.flatMap((parts, i) => i === 0 ? parts : [', ', ...parts]),
+        ' \u2013 want to hear them?'];
 }
 
 /* B-68: n blocks (one per vote) in a bar of the spread. New ones are added on top with the class
@@ -2162,14 +3580,13 @@ function calculateIndicatorLefPosition(cardStats, elementFor, pointer) {
     let curPos;
 
     Object.keys(cardStats).forEach(cardKey => {
-        let cardConfig = getCardConfig(cardKey);
+        let card = cardByKey(cardKey);
 
-        if (cardConfig && cardConfig.numeric_value != null
-            && document.getElementById(cardKey).classList.contains('on')) {
+        if (card && card.value != null && deckHas(cardKey)) {
             hasResult = true;
             resultCnt += cardStats[cardKey].usageCount;
-            resultSum += cardStats[cardKey].usageCount * cardConfig.numeric_value;
-        } else if (cardConfig && cardConfig.description === "infinity") {
+            resultSum += cardStats[cardKey].usageCount * card.value;
+        } else if (card && card.infinite) {
             let e = elementFor(cardKey);
             if (e !== null) returnPos = indicatorLeft(e, e.getBoundingClientRect().left, pointer);
         }
@@ -2177,18 +3594,24 @@ function calculateIndicatorLefPosition(cardStats, elementFor, pointer) {
 
     if (returnPos != null) return returnPos;
 
+    // B-98 S5: a custom set: between its cards with a value, in deck order, and only while the values rise
+    let line = gDeck.cards;
+    if (line.some(card => card.custom)) {
+        line = line.filter(card => card.custom && card.value !== null);
+        if (line.some((card, i) => i > 0 && card.value < line[i - 1].value)) return null;
+    }
+
     if (hasResult) {
         let avgResult = resultSum / resultCnt;
 
-        const images = document.querySelectorAll('#ctl img.on');
         let lastVal = null;
         let lastPos = null;
 
-        for (let img of images) {
-            let curVal = getCardConfig(img.id).numeric_value;
+        for (let card of line) {
+            let curVal = card.value;
 
             if (curVal > avgResult) {
-                let e = elementFor(img.id);
+                let e = elementFor(card.key);
                 curPos = e.getBoundingClientRect().left;
 
                 let range = curVal - lastVal;
@@ -2198,13 +3621,13 @@ function calculateIndicatorLefPosition(cardStats, elementFor, pointer) {
             }
 
             if (curVal >= avgResult - 0.1 && curVal <= avgResult + 0.1) {
-                let e = elementFor(img.id);
+                let e = elementFor(card.key);
                 curPos = e.getBoundingClientRect().left;
                 return indicatorLeft(e, curPos, pointer);
             }
 
             lastVal = curVal;
-            let e = elementFor(img.id);
+            let e = elementFor(card.key);
             curPos = e.getBoundingClientRect().left;
             lastPos = curPos;
         }
