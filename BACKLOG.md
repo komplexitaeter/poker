@@ -1720,6 +1720,11 @@ Darstellung als **Timeline** (Andreas, 2026-11-07): Datum / Items / Zukunft (noc
 Item steht immer der Stand der letzten Runde, bis das Team es als fertig markiert; dann wird das Ergebnis final
 festgehalten, der Spread lässt sich optional aufklappen. Wer was gelegt hat, vorerst nicht. Danach geht es mit dem
 nächsten noch nicht geschätzten Item weiter.
+Entscheidungen (Andreas, 2026-11-07): Items anlegen, umsortieren, als fertig markieren und wieder öffnen dürfen **alle**
+(Wiederöffnen auch gegen versehentliches Schließen). Fertige Items bleiben vorerst **dauerhaft** am Team-Link.
+Löschen: ein Item „zum Löschen markieren“, nimmt es niemand zurück, wird es nach ~14 Tagen automatisch gelöscht.
+Vorschlag Kai zu gelöschten Userdaten: Das Ergebnis am Item als Aggregat ohne Personenbezug speichern (Ergebnis,
+Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von Userdaten das Ergebnis nicht.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
