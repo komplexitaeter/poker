@@ -25,8 +25,12 @@ const LIVE_RELOAD_SEC = 30;
 const USAGE_WEEKS = 9;           // weekly users: current week + 8 full weeks
 const USAGE_DAYS = 28;           // daily feature usage
 const LIVE_DAYS = 28;            // rounds per day in the live tab (today + 27 days)
-/* dates worth marking in the usage charts */
-const MILESTONES = array('2026-10-28' => 'Rollout 1');
+/* dates worth marking in the usage charts (live deploys); add a line with every rollout to master */
+const MILESTONES = array(
+    '2026-10-28' => 'Rollout 1',
+    '2026-11-01' => 'Rollout 2',
+    '2026-11-06' => 'Rollout 3',
+);
 /* login (B-63): htpasswd file of nginx, the only place of the credentials (maintained with htpasswd -B -C 12);
    STATS_COOKIE_SECRET (config.php) is part of the cookie signature key */
 define('AUTH_FILE', defined('STATS_HTPASSWD') ? STATS_HTPASSWD : '/etc/nginx/poker-stats.htpasswd');
