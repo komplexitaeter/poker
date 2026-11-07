@@ -79,6 +79,17 @@ test('default unchanged, collapse to the rail, peek by hover and click, pin; kep
   await alice.mouse.click(200, 300);
   await expect(container(alice)).not.toHaveClass(/side-peek/);
 
+  // the pin lies where «« is: a click on it right after hover opened the overlay keeps it open, it does not pin
+  await alice.locator('#side_open').hover();
+  await expect(container(alice)).toHaveClass(/side-peek/, { timeout: 1000 });
+  await alice.locator('#side_pin').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.mouse.move(200, 300);
+  await alice.waitForTimeout(400);
+  await expect(container(alice)).toHaveClass(/side-peek/); // open for good, like a click on ««
+  await alice.keyboard.press('Escape');
+  await expect(container(alice)).not.toHaveClass(/side-peek/);
+
   // kept on reload, without animation
   await alice.reload();
   await expect(container(alice)).toHaveClass(/side-collapsed/);

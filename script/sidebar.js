@@ -15,7 +15,8 @@ const SIDE_SNAP_VW = 14;        // dragged narrower than this: collapses on rele
 const SIDE_KEY_STEP_VW = 2;
 const SIDE_PEEK_OPEN_MS = 120;  // hover over the rail: the overlay opens after this
 const SIDE_PEEK_CLOSE_MS = 250; // the pointer left rail and overlay: it closes after this
-const SIDE_ANIM_MS = 450;       // .side-anim stays this long (the width transition is 0.35s)
+const SIDE_ANIM_MS = 450;
+const SIDE_PIN_GUARD_MS = 400;  // a click on the pin this soon after a hover opened the overlay was meant for «« below it       // .side-anim stays this long (the width transition is 0.35s)
 
 const gSideQuery = window.matchMedia('(min-width: 800px) and (hover: hover), (min-width: 800px) and (pointer: fine)');
 
@@ -29,6 +30,7 @@ const gSide = {
     animTimer: null,
     drag: null,        // { id, startW, snap } while the grip is dragged
     inside: false,     // the mouse is over the rail or the overlay
+    hoverAt: 0,        // when hover opened the overlay
     hoverBlocked: false, // closed (or collapsed) under the mouse: hover opens again only after it left the rail
 };
 
@@ -248,6 +250,11 @@ function sideBlockHoverAt(event) {
 /* the pin in the overlay: open for good (this phase) */
 function sidePin() {
     if (!gSide.active || gSide.phase === null) return;
+    // the pin lies where «« is: a click right after hover opened the overlay was aimed at ««, it keeps it open only
+    if (gSide.peek && !gSide.peekSticky && Date.now() - gSide.hoverAt < SIDE_PIN_GUARD_MS) {
+        sidePeek(true, true);
+        return;
+    }
     const state = { collapsed: false, width: sideShown().width };
     sideSave(gSide.phase, state);
     sidePeek(false);
@@ -326,7 +333,10 @@ function sideHoverIn(event) {
     if (gSide.peek || gSide.hoverBlocked) return;
     clearTimeout(gSide.openTimer);
     if (event.target instanceof Element && event.target.closest('#rail_round, #rail_timer') !== null) return;
-    gSide.openTimer = setTimeout(() => sidePeek(true), SIDE_PEEK_OPEN_MS);
+    gSide.openTimer = setTimeout(() => {
+        sidePeek(true);
+        gSide.hoverAt = Date.now();
+    }, SIDE_PEEK_OPEN_MS);
 }
 
 function sideHoverOut(event) {
