@@ -104,6 +104,8 @@ April 2026 eingestellt – nicht mehr verwenden.
 - Deployment: manuell per `git pull --ff-only` auf dem jeweiligen Server (`git config pull.ff only` auf beiden Servern).
   `config.php` ist nicht im Repo und wird von `git pull` nicht angefasst. Es gibt keine Build- oder Migrationsschritte;
   Schemaänderungen werden von Hand eingespielt.
+- Bei jedem Rollout nach `master` trägt Kai das Datum als Meilenstein in `MILESTONES` in `stats.php` ein (gelbe Linie in
+  den Nutzungsdiagrammen), am besten gleich im PR `release` → `master`.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - `poker-msg` (supervisor, `/etc/supervisor/conf.d/poker-msg.conf`): explizit `/usr/bin/php8.4`, `ulimit -n 20000`,
   Info-Log `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`. Braucht die Erweiterung `ev` (sonst
