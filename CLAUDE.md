@@ -97,7 +97,7 @@ April 2026 eingestellt – nicht mehr verwenden.
 
 | Server | Branch | Zweck |
 |---|---|---|
-| Release-Server (Staging, `poker-staging.komplexitaeter.de`) | `release`; während R3 `rollout-3` | manueller Test vor dem Livegang |
+| Release-Server (Staging, `poker-staging.komplexitaeter.de`) | `release` | manueller Test vor dem Livegang |
 | Live-Server | `master` | Produktion |
 
 - Code auf dem Live-Server: `/home/ubuntu/poker/public_html/`, auf Staging: `/home/ubuntu/poker-staging.komplexitaeter.de/public_html/`.
@@ -190,10 +190,10 @@ nachträglich im Backlog vermerkt.
 - Mehrere zusammengehörige Feature-Branches darf Kai zu einem Sammel-PR nach `release` zusammenführen.
 - Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
 - `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
-- **Rollout 3 (seit 2026-10-31, Andreas):** R3 wird auf dem Integrations-Branch `rollout-3` gebaut (Feature-Branches von
-  `rollout-3`, PRs nach `rollout-3`, sonst gleicher Ablauf). Staging hat `rollout-3` ausgecheckt. `release` nimmt bis zum
-  Ende von R3 nur Hotfixes und Backlog-/Doku-Pflege auf; Kai merget `release` regelmäßig nach `rollout-3`. Zum Abschluss
-  `rollout-3` → `release` → `master`. R3-Schemaänderungen nur additiv, damit `release` auf der Staging-DB weiterläuft.
+- **Rollout 3 ist live (2026-11-06), `rollout-3` ist abgeschlossen.** Seitdem wieder der normale Ablauf (Andreas,
+  2026-11-07): Feature-Branches von `release`, PRs nach `release`, Staging auf `release`. Neues geht in kleinen,
+  einzeln deploybaren Happen live; ein Integrations-Branch nur, wenn ein Rollout sich wieder gegen den laufenden
+  abgrenzen muss.
 
 **Rollen und Agenten** (`.claude/agents/`):
 
