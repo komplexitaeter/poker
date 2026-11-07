@@ -1713,6 +1713,9 @@ der höchste gelegte Wert (∞ zählt nicht – dann ist es zu groß und noch ni
 kann den Wert vor „Next Item“ selbst ändern. Details später, zusammen mit der Historisierung.
 Roadmap (2026-11-07): öffentlich als „Topic list“; die Historisierung je Topic baut darauf auf.
 
+Historisierung (Andreas, 2026-11-07): nur zusammen mit den Items, keine eigene Rundenhistorie. Beim Abschluss eines Items
+(„Next item“ / „Finalize item“, Name offen) wird am Item das Ergebnis festgehalten, dazu z. B. die Zahl der Schätzrunden.
+Die einzelnen Runden müssen vermutlich nicht sichtbar sein (Daten liegen ohnehin in pok_roundstats_tbl).
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
