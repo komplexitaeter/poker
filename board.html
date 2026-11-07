@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.32" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.33" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -49,6 +49,11 @@
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></symbol>
     <symbol id="i-rotate" viewBox="0 0 24 24"><rect x="8" y="5" width="10" height="17" rx="2"/><path d="M13 18h.01"/><path d="M2.5 11A8.5 8.5 0 0 1 10 2"/><path d="M7.5 1.5 10 2l-.5 2.5"/></symbol>
+    <!-- B-113: open / collapse the column, keep the overlay open, new round -->
+    <symbol id="i-dleft" viewBox="0 0 24 24"><path d="M12 6l-6 6 6 6M19 6l-6 6 6 6"/></symbol>
+    <symbol id="i-dright" viewBox="0 0 24 24"><path d="M5 6l6 6-6 6M12 6l6 6-6 6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
 </svg>
 
 <!-- B-78: phones held sideways (style.css, "Rotate hint"); "Continue anyway" hides it for the session -->
@@ -103,52 +108,83 @@
          phones: a strip right above the deck). From the top: where the round is (#round_status, set
          by updateSide() in script.js; large screens only), the topic (.topic-bar, placed in the column
          by style.css; phones: a strip below the header), the spread (#spread: its room is always
-         kept on large screens, shown once the cards are revealed) and at the foot the round actions (.dock). -->
-    <p id="round_status" class="round-status"></p>
+         kept on large screens, shown once the cards are revealed) and at the foot the round actions (.dock).
+         B-113 (large screens with a mouse only; phones and tablets unchanged): the column can be collapsed to a
+         narrow rail and resized with the grip. State hooks on .container (set by script.js; style.css "Sidebar (B-113)"):
+         .side-collapsed (the rail; the column slides out), .side-peek (collapsed: the full column over the table),
+         .side-anim (animate a width change), .side-no-anim (no transitions: first paint, restore), .side-dragging,
+         .side-snap (dragged below the minimum: collapses on release), --side-w (a width like 35vw, 20-60; unset: as wide as today, --col-w),
+         data-phase="voting|revealed" (what the rail shows). -->
+    <div id="side_rail" class="side-rail">
+        <button type="button" id="side_open" class="icon-btn rail-open" aria-label="Open sidebar" title="Open sidebar" aria-expanded="false" aria-controls="sidebar"><svg class="i" aria-hidden="true"><use href="#i-dleft"/></svg></button>
+        <!-- voting: "3/6 voted" and the waiting dots; plain display, no frame (#rail_count by script.js) -->
+        <p class="rail-vote"><b id="rail_count" class="rail-count">0/0</b><small>voted</small><span class="rail-wait" aria-hidden="true"><i></i><i></i><i></i></span></p>
+        <!-- revealed: the range, smallest card above the largest (cardSmall() each in a span.rail-card, a
+             span.rail-to between them; one card when all agree). Filled by script.js. -->
+        <p id="rail_range" class="rail-range"></p>
+        <span class="rail-fill"></span>
+        <!-- the timer while it is on (mirrors #timer: text, data-state, data-over; shown by style.css) -->
+        <span id="rail_timer" class="rail-timer" role="timer" aria-label="Timer" data-state="ready" data-over="false"></span>
+        <!-- the round button as an icon (mirrors #newroundbtn: disabled, .primary, aria-label and title = its value):
+             "Restart round" ↺ framed, "New round" → filled -->
+        <button type="button" id="rail_round" class="rail-round" aria-label="Restart round" title="Restart round" disabled><svg class="i i-restart" aria-hidden="true"><use href="#i-reset"/></svg><svg class="i i-new" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    </div>
 
-    <!-- topic: in the column on large screens (long topics scroll inside it); phones: one line
-         below the header that unfolds with the arrow button. Only while a topic is set. -->
-    <section class="topic-bar" data-expanded="false" aria-label="Topic">
-        <h2 class="topic-label">topic</h2>
-        <div id="topic" class="display_none" data-hash="0" onclick="toggleTopic(event)"></div>
-        <button type="button" id="topic_toggle" class="icon-btn" aria-label="Show the whole topic" aria-expanded="false" aria-controls="topic" onclick="toggleTopic(event)"><svg class="i" aria-hidden="true"><use href="#i-down"/></svg></button>
-        <button type="button" class="icon-btn topic-edit" data-open="topic" aria-controls="menu" aria-label="Edit topic"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
-    </section>
-
-    <!-- the spread: one stacked bar per deck card (one segment per vote, the count above, the card's
-         value below), the range of the chosen values and the average pointer (board setting show_avg) -->
-    <aside class="side" aria-label="Round result">
-        <section id="spread" class="spread" hidden>
-            <div class="spread-head">
-                <h2 class="side-label">result</h2>
-                <span id="spread_range" class="spread-range"></span>
-            </div>
-            <div class="spread-chart">
-                <div id="spread_bars" class="spread-bars"></div>
-                <img id="spread_index" class="spread-index hidden" src="src/index.png" alt="" />
-            </div>
-        </section>
-        <!-- B-70: what to do now (set by updateTip() in script.js; large screens only). Before the
-             reveal at the top of the spread's (kept) room, then below the spread; nothing moves. -->
-        <p id="round_tip" class="round-tip"></p>
-    </aside>
-
-    <!-- B-66/B-67/B-68: round actions at the foot of the column. Large screens: the timer above the
-         round button; phones: one row right above the deck (timer left, button right).
-         #timer is shown while the timer is on (timer_visibility); its room is kept while it is off,
-         so the button never moves. data-state: ready | running | paused, data-over="true" once a
-         TIMER has run past its timebox (T+ in amber).
-         Display and aria-label are set by updateTimer() in script.js. -->
-    <div class="dock">
-        <div id="timer" class="timer display_none" role="group" aria-label="Timer" data-state="ready" data-over="false">
-            <span id="timer_display" class="timer-display" role="timer" aria-label="Timer">T+00:00</span>
-            <div class="timer-actions">
-                <button type="button" id="timer_start" class="icon-btn timer-btn" onclick="timerStart()" aria-label="Start timer"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg></button>
-                <button type="button" id="timer_pause" class="icon-btn timer-btn" onclick="timerPause()" aria-label="Pause timer" hidden><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg></button>
-                <button type="button" id="timer_reset" class="icon-btn timer-btn" onclick="timerReset()" aria-label="Reset timer"><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg></button>
-            </div>
+    <!-- B-113: the column as one block (large screens: a subgrid over the page grid's rows, so it looks and sits
+         exactly as before; phones: display: contents, its parts stay where they were). -->
+    <div id="sidebar" class="sidebar">
+        <!-- the grip on the left edge: drag or arrow keys (aria-valuenow etc. by script.js) -->
+        <div id="side_grip" class="side-grip" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-controls="sidebar" aria-valuemin="20" aria-valuemax="60" tabindex="0"></div>
+        <div class="side-tools">
+            <button type="button" id="side_pin" class="icon-btn side-pin" aria-label="Keep sidebar open" title="Keep open"><svg class="i" aria-hidden="true"><use href="#i-pin"/></svg></button>
+            <button type="button" id="side_collapse" class="icon-btn side-collapse" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar"><svg class="i" aria-hidden="true"><use href="#i-dright"/></svg></button>
         </div>
-        <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Restart round" disabled />
+        <p id="round_status" class="round-status"></p>
+
+        <!-- topic: in the column on large screens (long topics scroll inside it); phones: one line
+             below the header that unfolds with the arrow button. Only while a topic is set. -->
+        <section class="topic-bar" data-expanded="false" aria-label="Topic">
+            <h2 class="topic-label">topic</h2>
+            <div id="topic" class="display_none" data-hash="0" onclick="toggleTopic(event)"></div>
+            <button type="button" id="topic_toggle" class="icon-btn" aria-label="Show the whole topic" aria-expanded="false" aria-controls="topic" onclick="toggleTopic(event)"><svg class="i" aria-hidden="true"><use href="#i-down"/></svg></button>
+            <button type="button" class="icon-btn topic-edit" data-open="topic" aria-controls="menu" aria-label="Edit topic"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
+        </section>
+
+        <!-- the spread: one stacked bar per deck card (one segment per vote, the count above, the card's
+             value below), the range of the chosen values and the average pointer (board setting show_avg) -->
+        <aside class="side" aria-label="Round result">
+            <section id="spread" class="spread" hidden>
+                <div class="spread-head">
+                    <h2 class="side-label">result</h2>
+                    <span id="spread_range" class="spread-range"></span>
+                </div>
+                <div class="spread-chart">
+                    <div id="spread_bars" class="spread-bars"></div>
+                    <img id="spread_index" class="spread-index hidden" src="src/index.png" alt="" />
+                </div>
+            </section>
+            <!-- B-70: what to do now (set by updateTip() in script.js; large screens only). Before the
+                 reveal at the top of the spread's (kept) room, then below the spread; nothing moves. -->
+            <p id="round_tip" class="round-tip"></p>
+        </aside>
+
+        <!-- B-66/B-67/B-68: round actions at the foot of the column. Large screens: the timer above the
+             round button; phones: one row right above the deck (timer left, button right).
+             #timer is shown while the timer is on (timer_visibility); its room is kept while it is off,
+             so the button never moves. data-state: ready | running | paused, data-over="true" once a
+             TIMER has run past its timebox (T+ in amber).
+             Display and aria-label are set by updateTimer() in script.js. -->
+        <div class="dock">
+            <div id="timer" class="timer display_none" role="group" aria-label="Timer" data-state="ready" data-over="false">
+                <span id="timer_display" class="timer-display" role="timer" aria-label="Timer">T+00:00</span>
+                <div class="timer-actions">
+                    <button type="button" id="timer_start" class="icon-btn timer-btn" onclick="timerStart()" aria-label="Start timer"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg></button>
+                    <button type="button" id="timer_pause" class="icon-btn timer-btn" onclick="timerPause()" aria-label="Pause timer" hidden><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg></button>
+                    <button type="button" id="timer_reset" class="icon-btn timer-btn" onclick="timerReset()" aria-label="Reset timer"><svg class="i" aria-hidden="true"><use href="#i-reset"/></svg></button>
+                </div>
+            </div>
+            <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Restart round" disabled />
+        </div>
     </div>
 
     <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide) -->
