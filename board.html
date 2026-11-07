@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.33" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.34" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -18,7 +18,8 @@
     <script defer src="script/deck.js?v=1.6" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.14" type="text/javascript"></script>
+    <script defer src="script/sidebar.js?v=1.0" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.15" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -119,8 +120,8 @@
         <button type="button" id="side_open" class="icon-btn rail-open" aria-label="Open sidebar" title="Open sidebar" aria-expanded="false" aria-controls="sidebar"><svg class="i" aria-hidden="true"><use href="#i-dleft"/></svg></button>
         <!-- voting: "3/6 voted" and the waiting dots; plain display, no frame (#rail_count by script.js) -->
         <p class="rail-vote"><b id="rail_count" class="rail-count">0/0</b><small>voted</small><span class="rail-wait" aria-hidden="true"><i></i><i></i><i></i></span></p>
-        <!-- revealed: the range, smallest card above the largest (cardSmall() each in a span.rail-card, a
-             span.rail-to between them; one card when all agree). Filled by script.js. -->
+        <!-- revealed: the range as in #spread_range (its mini values cloned, without "range"), smallest above the
+             largest with a span.rail-to between them; one value when all agree. Filled by sidebar.js. -->
         <p id="rail_range" class="rail-range"></p>
         <span class="rail-fill"></span>
         <!-- the timer while it is on (mirrors #timer: text, data-state, data-over; shown by style.css) -->

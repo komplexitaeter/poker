@@ -2388,6 +2388,7 @@ function loadBoard() {
     initializeWSConnection(t);
     initWSReconnect();
     initDisplayHandling();
+    initSidebar(); // B-113 (sidebar.js)
     initTableInteraction(); // B-110
     measureEvent("BOARD_ON_LOAD");
 
@@ -2835,6 +2836,7 @@ function renderTimer(elapsed) {
     label = (gTimer.mode === 'TIMER' ? 'Timer: ' : 'Stopwatch: ') + label;
     if (display.getAttribute('aria-label') !== label) display.setAttribute('aria-label', label);
     box.setAttribute('data-over', over ? 'true' : 'false');
+    syncRailTimer(); // B-113 (sidebar.js)
 }
 
 /* the timer panel follows the server state (also when someone else changes it); the "other"
@@ -3098,14 +3100,21 @@ function handleResize() {
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
-    // B-68: the spread's blocks jump to their new height (e.g. at the breakpoint), only votes animate
+    repositionSpread();
+    updateDeckRoom();
+    syncCarousel(true); // B-75: the card in the middle stays there
+}
+
+/* B-68: the spread's blocks jump to their new height (e.g. at the breakpoint), only votes animate; the average
+ * pointer jumps to its new spot. Also when only the column changes its width (B-113, sidebar.js). */
+function repositionSpread() {
+    if (!gLastJson) return;
     const spread = document.getElementById('spread');
+    if (spread === null) return;
     spread.classList.add('no-anim');
     updateSide(gLastJson, false);
     void spread.offsetHeight;
     spread.classList.remove('no-anim');
-    updateDeckRoom();
-    syncCarousel(true); // B-75: the card in the middle stays there
 }
 
 function initDisplayHandling() {
@@ -3151,6 +3160,7 @@ function updateSide(json, glide = true) {
     const status = document.getElementById('round_status');
     const spread = document.getElementById('spread');
     if (status === null || spread === null || !json) return;
+    syncSidebar(json); // B-113: the rail and the state of the phase (sidebar.js)
 
     const revealed = json.all_players_ready && json.players_count > 0;
     let text = 'waiting for players';
@@ -3194,6 +3204,7 @@ function updateSide(json, glide = true) {
         // empty bars, so the votes grow in on the next reveal
         bars.querySelectorAll('.spread-bar').forEach(bar => bar.replaceChildren());
         toggleStyleClass(pointer, 'hidden', 'visible');
+        syncRailRange(false); // B-113 (sidebar.js)
         return;
     }
 
@@ -3239,6 +3250,7 @@ function updateSide(json, glide = true) {
             ? ['range ', cardSmall(ends[0]), '\u2013', cardSmall(ends[1])]
             : ends.map(card => cardSmall(card))));
     }
+    syncRailRange(true); // B-113: the same range in the rail (sidebar.js)
 
     let left = null;
     if (json.show_avg === 1) {

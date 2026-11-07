@@ -4426,44 +4426,25 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-wait i:nth-child(2) { animation-delay: 0.2s; }
     .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
 
-    /* revealed: the range, smallest above largest (one card when all agree), each a small card face */
+    /* revealed: the range exactly as in the column's #spread_range (its mini values cloned by sidebar.js, without
+     * "range"), smallest above largest with "–" between them; one value when all agree (Andreas, 2026-11-07) */
     .rail-range {
         display: none;
         flex-direction: column;
         align-items: center;
         gap: 2px;
+        max-width: 100%;
         margin: var(--space-1) 0 0;
+        font-size: var(--fs-s);
+        line-height: 1.25rem;
+        color: var(--text);
+        white-space: nowrap;
     }
 
     .container[data-phase=revealed] .rail-vote { display: none; }
     .container[data-phase=revealed] .rail-range { display: flex; }
 
-    .rail-card {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 53px; /* --card-ratio */
-        box-sizing: border-box;
-        overflow: hidden;
-        border: 1.5px solid var(--line-strong);
-        border-radius: var(--radius-l);
-        background: var(--cardc-face);
-        color: var(--cardc-ink);
-        font-size: var(--fs-l);
-        font-weight: bold;
-        line-height: 1;
-        white-space: nowrap;
-    }
-
-    .rail-card .sm-draw { --sm-h: 1.9em; margin: 0; vertical-align: middle; }
-    .rail-card .sm-inv { --sm-h: 1.6em; margin: 0; vertical-align: middle; }
-
-    .rail-to {
-        font-size: var(--fs-l);
-        line-height: 1;
-        color: var(--muted);
-    }
+    .rail-to { color: var(--muted); }
 
     .rail-fill { flex: 1 1 auto; }
 
