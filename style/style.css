@@ -43,6 +43,9 @@
     --tap: 36px;
     /* menu panel width on large screens */
     --panel-w: 380px;
+    /* B-113: the collapsed column (large screens with a mouse) */
+    --rail-w: 60px;
+    --z-side: 20;         /* the column over the table while it peeks out (above cards and deck) */
     /* B-68: width of the column (large screens): as wide as the menu panel, narrower on small
      * desktops (300px at 800px), so the deck keeps room for its cards; the menu panel covers it */
     --col-w: clamp(300px, 40vw - 20px, var(--panel-w));
@@ -3807,7 +3810,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     max-width: 18rem;
     position: absolute;
     bottom: calc(var(--dock-lift, 0px) + 44px + var(--space-2) + var(--tap) + var(--space-2));
-    right: calc(-1 * (var(--col-w) + var(--tray-gap, 0px)));
+    right: calc(-1 * (var(--side-col, var(--col-w)) + var(--tray-gap, 0px))); /* B-113: the column's width */
     margin: 0 auto;
     visibility: hidden;
     display: unset;
@@ -4100,7 +4103,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 /* phones: no status line (the cards on the table show who is missing); the strip above the deck
  * is only there once the cards are revealed: the spread. Until then its room goes to the table. */
 @media (max-width: 799.98px) {
-    .container:has(#spread[hidden]) > .side { display: none; }
+    .container:has(#spread[hidden]) .side { display: none; }
 }
 
 @media (min-width: 800px) {
@@ -4167,7 +4170,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     }
 
     /* the topic: "// topic" and the pen in one row, the topic below, long ones scroll */
-    .container > .topic-bar {
+    .sidebar > .topic-bar {
         flex-wrap: wrap;
         align-items: center;
         gap: 0 var(--space-2);
@@ -4198,6 +4201,362 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .spread-head { margin-bottom: var(--space-2); }
 
     .spread-chart { padding-bottom: 12px; } /* B-99 F8: the pointer close below the labels (was 16px) */
+}
+
+/* ---------- Sidebar (B-113) ---------- */
+
+/* The column as one block (#sidebar: status, topic, spread, round actions; markup in board.html).
+ * Phones: display: contents, its parts keep their places in the page grid (strip below the header, strip above
+ * the deck). Large screens: a subgrid over the page grid's rows 2 to the end, so every part sits exactly where it
+ * sat before (the round actions still share the deck's row).
+ * Large screens with a mouse (not the tablets with the deck carousel) can also resize and collapse it. State on
+ * .container, set by script.js:
+ *   --side-w          the column's width as a vw length (20vw-60vw); unset: as before (--col-w)
+ *   .side-collapsed   the narrow rail (#side_rail); the column slides out to the right
+ *   .side-peek        (collapsed) the whole column slides in over the table; the table does not move
+ *   .side-anim        animate a change of the width (toggle, phase change; ~0.35s); off by default, so a window
+ *                     resize or dragging the grip follows at once. Sliding the column in and out (collapse, peek)
+ *                     is always animated (0.25-0.3s), the rail fades in
+ *   .side-no-anim     no transitions or animations at all: first paint and the restore from localStorage (wins
+ *                     over .side-anim); prefers-reduced-motion: never animated
+ *   .side-dragging    the grip is being dragged (grip highlighted, col-resize cursor everywhere)
+ *   .side-snap        dragged below the minimum: collapses on release (grip in amber)
+ *   data-phase        "voting" | "revealed": what the rail shows
+ * --side-open is the width of the open column (also the overlay's width), --side-col the column's track. */
+.sidebar { display: contents; }
+
+.side-rail,
+.side-grip,
+.side-tools { display: none; }
+
+@media (min-width: 800px) {
+    .sidebar {
+        position: relative; /* anchor of the grip and the tools */
+        display: grid;
+        grid-column: 2;
+        grid-row: 2 / -1;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr) auto; /* without subgrid */
+        grid-template-rows: subgrid;
+        min-width: 0;
+        min-height: 0;
+        background: var(--bg-2);
+        text-align: left;
+    }
+
+    .sidebar > .round-status { grid-area: 1 / 1; }
+    .sidebar > .topic-bar { grid-area: 2 / 1; }
+    .sidebar > .side { grid-area: 3 / 1; }
+    .sidebar > .dock { grid-area: 4 / 1; }
+}
+
+@media (min-width: 800px) and (hover: hover), (min-width: 800px) and (pointer: fine) {
+    .container {
+        --side-ease: cubic-bezier(0.3, 0.7, 0.2, 1);
+        --side-open: min(60vw, max(240px, var(--side-w, var(--col-w))));
+        --side-col: var(--side-open);
+        grid-template-columns: minmax(0, 1fr) var(--side-col);
+    }
+
+    .container.side-collapsed { --side-col: var(--rail-w); }
+
+    .container.side-anim { transition: grid-template-columns 0.35s var(--side-ease); }
+
+    /* the menu panel covers the whole column, also a wide one (collapsed: as wide as before) */
+    .container > .menu { width: max(var(--panel-w), var(--side-col)); }
+
+    /* --- the open column: the grip on its left edge, "collapse" in the status row --- */
+    .side-grip {
+        display: block;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -6px;
+        z-index: 2;
+        width: 12px;
+        cursor: col-resize;
+        touch-action: none;
+    }
+
+    /* a line on the edge and a handle in its middle, both only while hovered, focused or dragged */
+    .side-grip::before,
+    .side-grip::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        background: var(--accent);
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .side-grip::before {
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        margin-left: -1px;
+    }
+
+    .side-grip::after {
+        top: 50%;
+        width: 6px;
+        height: 40px;
+        margin: -20px 0 0 -3px;
+        border-radius: 3px;
+    }
+
+    .side-grip:hover::before,
+    .side-grip:hover::after,
+    .side-grip:focus-visible::before,
+    .side-grip:focus-visible::after,
+    .side-dragging .side-grip::before,
+    .side-dragging .side-grip::after { opacity: 1; }
+
+    .side-grip:focus-visible { outline: none; }
+
+    .side-snap .side-grip::before,
+    .side-snap .side-grip::after { background: var(--warn); }
+
+    .side-dragging,
+    .side-dragging * { cursor: col-resize !important; }
+
+    .side-tools {
+        display: flex;
+        position: absolute;
+        top: 10px;
+        right: var(--space-2);
+        z-index: 1;
+    }
+
+    .side-tools .icon-btn { color: var(--muted); }
+    .side-tools .icon-btn:hover { color: var(--accent); }
+    .side-tools .i { width: 18px; height: 18px; }
+
+    /* the status line keeps clear of the button */
+    .round-status { padding-right: calc(var(--tap) + var(--space-3)); }
+
+    /* "keep open" only on the overlay; there "collapse" is gone (it is collapsed already) */
+    .side-pin,
+    .side-collapsed .side-collapse { display: none; }
+
+    .side-collapsed.side-peek .side-pin { display: inline-flex; }
+
+    /* --- collapsed: the column lies outside on the right, ready to slide in over the table --- */
+    .side-collapsed > .sidebar {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: var(--z-side);
+        width: var(--side-open);
+        grid-template-rows: auto auto minmax(0, 1fr) auto; /* no subgrid out of the flow */
+        transform: translateX(100%);
+        visibility: hidden;
+        transition: transform 0.3s var(--side-ease), box-shadow 0.3s, visibility 0s 0.3s;
+    }
+
+    .side-collapsed.side-peek > .sidebar {
+        transform: none;
+        visibility: visible;
+        /* like the menu panel: a line on the left edge (inset, so nothing moves) and its shadow */
+        box-shadow: inset 1px 0 0 var(--line-strong), -12px 0 28px -14px var(--shadow-color);
+        transition: transform 0.25s var(--side-ease), box-shadow 0.25s, visibility 0s;
+    }
+
+    .side-collapsed .side-grip { display: none; }
+
+    /* --- the rail: open button, status, timer, round button --- */
+    .side-rail {
+        grid-column: 2;
+        grid-row: 2 / -1;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        padding: 10px 0 calc(12px + var(--dock-lift) + env(safe-area-inset-bottom));
+        background: var(--bg-2);
+        font-size: var(--fs-xs);
+        color: var(--muted);
+    }
+
+    .side-collapsed > .side-rail {
+        display: flex;
+        animation: rail-in 0.25s 0.1s both;
+    }
+
+    .rail-open {
+        width: 40px;
+        color: var(--muted);
+    }
+
+    .rail-open:hover,
+    .rail-open[aria-expanded=true] { color: var(--accent); }
+
+    /* voting: "3/6", "voted", three waiting dots; plain text, no frame */
+    .rail-vote {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        margin: var(--space-1) 0 0;
+        line-height: 1.2;
+    }
+
+    .rail-count {
+        font-size: var(--fs-l);
+        font-variant-numeric: tabular-nums;
+        color: var(--text);
+    }
+
+    .rail-wait {
+        display: flex;
+        gap: 3px;
+        margin-top: 6px;
+    }
+
+    .rail-wait i {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: rail-wait 1.2s infinite;
+    }
+
+    .rail-wait i:nth-child(2) { animation-delay: 0.2s; }
+    .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
+
+    /* revealed: the range exactly as in the column's #spread_range (its mini values cloned by sidebar.js, without
+     * "range"), smallest above largest with "–" between them; one value when all agree (Andreas, 2026-11-07) */
+    .rail-range {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        max-width: 100%;
+        margin: var(--space-1) 0 0;
+        font-size: var(--fs-s);
+        line-height: 1.25rem;
+        color: var(--text);
+        white-space: nowrap;
+    }
+
+    .container[data-phase=revealed] .rail-vote { display: none; }
+    .container[data-phase=revealed] .rail-range { display: flex; }
+
+    .rail-to { color: var(--muted); }
+
+    .rail-fill { flex: 1 1 auto; }
+
+    /* the timer while it is on (#timer shown); compact, the same states as in the column */
+    .rail-timer {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        color: var(--text);
+    }
+
+    .container:has(#timer.display_none) .rail-timer { visibility: hidden; }
+
+    .rail-timer:is([data-state=ready], [data-state=paused]) { color: var(--muted); }
+
+    .rail-timer[data-over=true] {
+        color: var(--warn);
+        font-weight: 500;
+    }
+
+    /* the round button as an icon: "Restart round" framed (↺), "New round" filled (→); like #newroundbtn */
+    .rail-round {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius-m);
+        background: var(--bg);
+        color: var(--text);
+        cursor: pointer;
+    }
+
+    .rail-round:enabled:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .rail-round:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    .rail-round:disabled {
+        border-style: dashed;
+        color: color-mix(in srgb, var(--muted) 40%, var(--bg-2));
+        cursor: not-allowed;
+    }
+
+    .rail-round .i-new,
+    .rail-round.primary .i-restart { display: none; }
+
+    .rail-round.primary .i-new { display: block; }
+
+    .rail-round.primary:enabled {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--on-accent);
+    }
+
+    .rail-round.primary:enabled:hover {
+        background: transparent;
+        color: var(--accent);
+    }
+
+    /* --- the spread grows with the column: as before up to 380px, then taller bars, wider columns and larger
+     * labels (a wide column after the reveal: the result large). Plain vw lengths (--side-open), no container
+     * units: they would resolve against the spread's own columns. --- */
+    .side {
+        --side-grow: max(0px, var(--side-open) - 380px);
+        --spread-h: min(64px + var(--side-grow) * 0.25, 160px, max(64px, 20vh));
+    }
+
+    .spread-col { max-width: min(32px + var(--side-grow) * 0.08, 72px); }
+
+    .spread-bar { max-width: min(22px + var(--side-grow) * 0.06, 48px); }
+
+    .spread-count,
+    .spread-value { --spread-fs: min(11px + var(--side-grow) * 0.008, 15px); }
+
+    .spread-count { font-size: max(var(--fs-xs), var(--spread-fs)); }
+
+    .spread-value { font-size: clamp(7.5px, 100cqi / 1.75, max(var(--fs-xs), var(--spread-fs))); }
+}
+
+@keyframes rail-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes rail-wait {
+    0%, 100% { opacity: 0.25; }
+    40% { opacity: 1; }
+}
+
+/* B-113: the state set on load (or restored) shows at once */
+.side-no-anim,
+.side-no-anim :is(.sidebar, .side-rail) {
+    transition: none !important;
+    animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .container.side-anim,
+    .side-collapsed > .sidebar,
+    .side-collapsed.side-peek > .sidebar { transition: none; }
+
+    .side-collapsed > .side-rail,
+    .rail-wait i { animation: none; }
+
+    .rail-wait i { opacity: 0.6; }
 }
 
 /* ---------- Overlays: QR code, privacy links ---------- */
