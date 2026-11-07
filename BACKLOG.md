@@ -1555,6 +1555,7 @@ Gedanken für das Refinement (Andreas/Kai, 2026-11-05):
   Thema „Board-Layout“ refinen.
 - Lernen statt raten: zwei, drei klickbare Varianten (wie das Deck-Menü-Mockup) in echten Sessions ausprobieren,
   ggf. mit der Person, von der das Feedback kam.
+Roadmap (2026-11-07): öffentlich als „Resizable sidebar“.
 
 ### B-114 Verdeckt wählen beim Bildschirmteilen
 Status: neu, nicht priorisiert. Roadmap-Eintrag „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
@@ -1694,6 +1695,7 @@ Inaktivität (keine Eingabe) taugt nicht, weil Zuhörende ebenfalls nichts tippe
 - Offen, wo überall angepasst werden muss: Ready-Status, Tipps (zählt nicht mit), Statistik/Historie
   (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Verhalten bei neuer Runde (Pause bleibt), Beobachter.
 - Wer darf pausieren: jeder am Tisch (wie Entfernen) – vermutlich ja.
+Roadmap: setzt den öffentlichen Eintrag „Reveal now“ um (Titel bleibt, Andreas 2026-11-06: die Stimmen gelten der Idee; nach Done sagen die Nutzer, ob die Lösung passt).
 
 ### B-126 nginx: `/tools/` nicht ausliefern
 Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, deshalb sind `tools/` (Migrations- und Kartenskripte,
@@ -1709,6 +1711,7 @@ Topic rückwirkend anzeigen. Berührt Datenmodell/API (Ben). Erst im Mockup (Del
 Gedanke Andreas (2026-10-29) zum Ergebnis je Topic: Ein Algorithmus schlägt einen Default vor; Tendenz erst einmal
 der höchste gelegte Wert (∞ zählt nicht – dann ist es zu groß und noch nicht final geschätzt, kein Eintrag). Das Team
 kann den Wert vor „Next Item“ selbst ändern. Details später, zusammen mit der Historisierung.
+Roadmap (2026-11-07): öffentlich als „Topic list“; die Historisierung je Topic baut darauf auf.
 
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
@@ -1725,6 +1728,7 @@ Der Median ist der mittlere Wert der sortierten Karten. Ausreißer verzerren ihn
 echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shirt, Sterne und ∞ (als größter Wert).
 Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
 Wert zeigen oder den Bereich „3–5“).
+Roadmap (2026-11-07): öffentlich als „Median indicator“.
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
