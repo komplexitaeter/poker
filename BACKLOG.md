@@ -1557,6 +1557,14 @@ Gedanken für das Refinement (Andreas/Kai, 2026-11-05):
   ggf. mit der Person, von der das Feedback kam.
 Roadmap (2026-11-07): öffentlich als „Resizable sidebar“.
 
+**Refinement (Andreas/Kai, 2026-11-07), Schnitt 1 – Status: refined:** nur Desktop, Mobile bleibt. Default wie heute (nichts
+eingeklappt, Tipps bleiben). Einklappen zur schmalen Leiste (Hover öffnet als Overlay, Pin hält offen), Breite per Griff
+20–60 % (unter ~14 % einklappen, Pfeiltasten), Zustand je Phase (Voting/Revealed) pro Person im Browser, beim
+Phasenwechsel animiert. Spread wächst mit der Breite. Leiste: oben Aufklapp-Pfeil; Voting: „3/6 voted“ + Warte-Punkte;
+Revealed: Spannweite kleinste–größte Karte untereinander (kein „meistgewählt“ – nimmt das Ergebnis vorweg), bei Einigkeit
+eine Karte; ?/☕ zählen nicht, ∞ größte. Unten Uhr/Timer und der Rundenknopf: Voting ↺ „Restart round“ (Rahmen),
+Revealed → „New round“ (gefüllt), Tooltip mit vollem Text; Status oben ist reine Anzeige. Median-Linie (B-53) und
+Items (B-52) nicht in diesem Schnitt. Mock: Delia 2026-11-07.
 ### B-114 Verdeckt wählen beim Bildschirmteilen
 Status: neu, nicht priorisiert. Roadmap-Eintrag „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
 Problem: Wer seinen Bildschirm teilt (oft Scrum Master/Moderation), verrät beim Abstimmen die eigene Wahl – die gewählte
