@@ -1716,6 +1716,10 @@ Roadmap (2026-11-07): öffentlich als „Topic list“; die Historisierung je To
 Historisierung (Andreas, 2026-11-07): nur zusammen mit den Items, keine eigene Rundenhistorie. Beim Abschluss eines Items
 („Next item“ / „Finalize item“, Name offen) wird am Item das Ergebnis festgehalten, dazu z. B. die Zahl der Schätzrunden.
 Die einzelnen Runden müssen vermutlich nicht sichtbar sein (Daten liegen ohnehin in pok_roundstats_tbl).
+Darstellung als **Timeline** (Andreas, 2026-11-07): Datum / Items / Zukunft (noch nicht geschätzte Items). Am aktiven
+Item steht immer der Stand der letzten Runde, bis das Team es als fertig markiert; dann wird das Ergebnis final
+festgehalten, der Spread lässt sich optional aufklappen. Wer was gelegt hat, vorerst nicht. Danach geht es mit dem
+nächsten noch nicht geschätzten Item weiter.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
