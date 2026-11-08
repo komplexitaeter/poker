@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, openTimerPanel } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, openTimerPanel, setTeamDeck } from './helpers';
 
 /**
  * B-113 (cut 1): on large screens with a mouse the column can be collapsed to a narrow rail (hover opens it as an
@@ -465,6 +465,71 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
 
   // the other board (Bob) has its own browser: unchanged
   await expect(container(bob)).not.toHaveClass(/side-collapsed/);
+});
+
+test('stars and T-shirt sizes show a range, traffic lights none; the mini bars have a column per card (B-113)', async ({ browser }) => {
+  const { alice, bob, url } = await twoPlayers(browser, 'Sidebar Stars');
+  const range = alice.locator('#spread_range');
+  const railBars = alice.locator('#rail_bars > i');
+  const heights = () => railBars.evaluateAll(bars => bars.map(bar => Math.round(bar.getBoundingClientRect().height)));
+  const round = async (deck: string, deckLength: number, a: string, b: string) => {
+    await setTeamDeck(alice, url, deck, null, ['qstmrk1']);
+    await expect(alice.locator('#spread_bars .spread-col')).toHaveCount(deckLength + 1);
+    await pickCard(alice, a);
+    await pickCard(bob, b);
+    await expect(container(alice)).toHaveAttribute('data-phase', 'revealed');
+  };
+
+  if (process.env.B113_SHOT) await alice.evaluate(() => document.body.classList.add('light-theme')); // manual look check
+  // stars: "range 1★–3★" in the mini looks of the spread, the same in the rail
+  await round('stars', 6, '1star01', '3stars1');
+  await expect(range).toHaveAttribute('data-shows', '1star01,3stars1');
+  await expect(range).toContainText('range');
+  await expect(range.locator(':scope > *')).toHaveCount(2);
+  if (process.env.B113_SHOT) await alice.locator('#sidebar').screenshot({ path: process.env.B113_SHOT + '-open-light.png' });
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await expect(alice.locator('#rail_range')).toHaveAttribute('data-shows', '1star01,3stars1');
+  await expect(alice.locator('#rail_range > *')).toHaveCount(3);
+  await expect(alice.locator('#rail_range .rail-to')).toHaveCount(1);
+
+  // mini bars, a fingerprint of the big spread: one per column (6 stars and ?), a 1px base line, higher only where
+  // votes are
+  await expect(railBars).toHaveCount(7);
+  const keys = await alice.locator('#spread_bars .spread-col').evaluateAll(cols => cols.map(col => col.getAttribute('data-card')));
+  const starHeights = await heights();
+  keys.forEach((key, i) => {
+    // as in the big spread: one vote of two players is half the full height (22px)
+    if (key === '1star01' || key === '3stars1') expect(starHeights[i]).toBe(11);
+    else expect(starHeights[i]).toBe(1);
+  });
+  // all within the tile (measured in one go: the rail may still be sliding in)
+  await expect.poll(() => alice.locator('.rail-result').evaluate(tile => {
+    const box = tile.getBoundingClientRect();
+    return Array.from(tile.querySelectorAll('#rail_bars > i')).every(bar => {
+      const r = bar.getBoundingClientRect();
+      return r.left >= box.left && r.right <= box.right;
+    });
+  })).toBe(true);
+  if (process.env.B113_SHOT) await alice.locator('#side_rail').screenshot({ path: process.env.B113_SHOT + '-rail-light.png' });
+
+  // T-shirt sizes: a range too
+  await alice.locator('#rail_round').click();
+  await round('tshirt', 7, 'l000001', 's000001');
+  await expect(range).toHaveAttribute('data-shows', 's000001,l000001');
+  await expect(alice.locator('#rail_range')).toHaveAttribute('data-shows', 's000001,l000001');
+
+  // traffic lights ("range": false in card_catalog.json): no range, the check; the mini bars still show
+  await alice.locator('#rail_round').click();
+  await round('traffic', 3, 'green01', 'green01');
+  await expect(range).toHaveText('');
+  await expect(alice.locator('#rail_range')).toBeEmpty();
+  await expect(alice.locator('.rail-shown .i')).toBeVisible();
+  await expect(railBars).toHaveCount(4);
+  const trafficHeights = await heights();
+  expect(trafficHeights[0]).toBe(22); // green: two votes of two players, the full height
+  expect(trafficHeights.slice(1)).toEqual([1, 1, 1]);
+  await expect(railBars.first()).toHaveClass('top');
 });
 
 test('the rail timer shows just the time, past the timebox amber and counting up (B-113)', async ({ browser }) => {

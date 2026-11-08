@@ -4538,25 +4538,27 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         color: var(--ok);
     }
 
-    /* the spread in mini (sidebar.js): thin bars without blocks or labels, colours as .spread-bar / .spread-col.top;
-     * many cards: the bars get narrower, down to 2px */
+    /* the spread in mini (sidebar.js): one column per card of the deck, without blocks or labels, colours as
+     * .spread-bar / .spread-col.top. B-113 (Fred, Andreas' feedback): every value has a 1px base line in
+     * --line-strong, votes rise from it; the columns shrink down to 1px with a 1px gap, so even the largest deck
+     * (21 cards: 41px) fits the tile without clipping */
     .rail-bars {
         display: flex;
         align-items: flex-end;
         justify-content: center;
-        gap: 2px;
+        gap: 1px;
         width: 100%;
         height: 22px;
         margin-top: 2px;
-        overflow: hidden;
     }
 
     .rail-bars:empty { display: none; }
 
     .rail-bars i {
-        flex: 0 1 6px;
-        min-width: 2px;
-        min-height: 2px;
+        flex: 0 1 4px;
+        min-width: 1px;
+        height: 1px; /* the base line; a bar with votes gets its height from sidebar.js */
+        min-height: 1px;
         background: var(--line-strong);
     }
 

@@ -10,6 +10,8 @@
  *   infinite     the infinity card: the top end of the range, not part of the average
  *   control      control card (coffee, ?, !): neutral in the tips
  *   talk         emotions / traffic lights: the tip asks to talk instead of naming the sides
+ *   range        B-113: may be an end of the spread's range (#spread_range): a card with a value (or ∞) whose group (or itself)
+ *                does not say range: false in card_catalog.json (traffic lights, faces)
  *   text         the value as shown (R3, F2: "5", "½", "☕", "XL"; card_catalog.json value)
  *   heading      short heading or null (card_catalog.json, e.g. "need a break")
  *   info         long description or null (card_catalog.json; not the v1 description)
@@ -35,6 +37,8 @@ function cardFromLegacy(config, v2) {
         control: config.flow_control === true,
         controlCard: config.flow_control === true || (v2 !== undefined && v2.group === null),
         talk: config.talk === true,
+        range: (config.numeric_value != null || config.card_key === 'infin01' || config.description === 'infinity')
+            && !(v2 && v2.group && v2.group.range === false),
         text: typeof entry.value === 'string' ? entry.value : (config.symbol || config.description),
         heading: typeof entry.heading === 'string' && entry.heading !== '' ? entry.heading : null,
         info: typeof entry.description === 'string' && entry.description !== '' ? entry.description : null,
@@ -107,6 +111,9 @@ function cardFromCatalog(entry, group) {
     const style = catalogText(entry.style) || (group ? catalogText(group.style) : null) || 'plain';
     const talk = typeof entry.talk === 'boolean' ? entry.talk
         : group && typeof group.talk === 'boolean' ? group.talk : group !== null && TALK_GROUPS.has(group.id);
+    // B-113: catalog flag "range" (card, else group; default true), only for cards with a value
+    const range = (value !== null || entry.infinite === true || text === '∞') && (typeof entry.range === 'boolean' ? entry.range
+        : !(group && group.range === false));
     return {
         key: entry.card_key,
         label: text,
@@ -117,6 +124,7 @@ function cardFromCatalog(entry, group) {
         control: group === null && entry.card_key !== 'veto',
         controlCard: group === null,
         talk,
+        range,
         text,
         heading,
         info,
@@ -163,6 +171,7 @@ function cardFromCustom(entry, style = 'plain') {
         control: false,
         controlCard: false,
         talk: false,
+        range: value !== null || entry.infinite === true,
         text,
         heading,
         info,

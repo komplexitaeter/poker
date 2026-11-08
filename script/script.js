@@ -3036,7 +3036,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=12'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=13'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
@@ -3223,7 +3223,7 @@ function updateSide(json, glide = true) {
         grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
         const card = cardByKey(col.getAttribute('data-card'));
         const rank = cardRank(card);
-        if (n > 0 && rank !== null) chosen.push({ rank, card });
+        if (n > 0 && rank !== null && card.range !== false) chosen.push({ rank, card }); // B-113: catalog flag range
         else if (n > 0 && card && card.custom) unvalued = true;
     });
     if (grown.length > 0) {
@@ -3232,11 +3232,13 @@ function updateSide(json, glide = true) {
     }
 
     // the range of the chosen numeric values (B-79: infinity as the top end): "range 2–20", "range 3–∞",
-    // or "5" when all agree; B-99 (F6): each end as mono text (cardSmall). R3 review V10 (L22): number cards
-    // only – traffic lights, emotions, stars, T-shirt sizes show the chart alone. B-98 S5: a custom set shows the
-    // range when every card down has a value (control cards aside)
+    // or "5" when all agree; B-99 (F6): each end in its mini look (cardSmall: mono text or mini symbol).
+    // B-113 (Andreas): every card with a value counts, ordered by that value – also stars ("range 1★–3★") and
+    // T-shirt sizes; cards without a value (faces, control cards) and groups with "range": false in
+    // card_catalog.json (traffic lights) stay out of it (card.range, deck.js).
+    // B-98 S5: a custom set shows the range only when every card down has a value (control cards aside)
     let ends = [];
-    if (chosen.length > 0 && !unvalued && chosen.every(entry => isNumberCard(entry.card))) {
+    if (chosen.length > 0 && !unvalued) {
         chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
         const low = chosen[0].card;
         const high = chosen[chosen.length - 1].card;
@@ -3319,12 +3321,6 @@ function tipNames(names) {
 function tipSide(players, card) {
     const names = players.slice(0, 2).map(player => player.name).join(', ');
     return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : ''), card: card.key };
-}
-
-/* R3 review V10 (L22): a card whose value is a number (0, ½, 13, ∞); the range of the result shows for these only */
-function isNumberCard(card) {
-    if (card && card.custom) return cardRank(card) !== null; // B-98 S5: a custom card with a value (or ∞)
-    return !!card && /^(\d+(\.\d+)?|½|∞)$/.test(String(card.text));
 }
 
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
