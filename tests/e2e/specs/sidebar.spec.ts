@@ -84,20 +84,33 @@ test('default unchanged, collapse to the rail, peek by hover and click, pin; kep
   await alice.mouse.click(200, 300);
   await expect(container(alice)).not.toHaveClass(/side-peek/);
 
-  // the pin lies where «« is: hover opened the overlay and the mouse has not moved since, so a click there was
-  // meant for «« – it keeps the overlay open, it does not pin; however long it took (no timing)
+  // the pin lies where «« is: hover opened the overlay, the mouse has not moved since and the click comes late
+  // (or on a slow CI runner) – the pin pins all the same (B-113, Andreas: no guessing whether it was meant for ««)
   const openBox = (await alice.locator('#side_open').boundingBox())!;
   const at = { x: openBox.x + openBox.width / 2, y: openBox.y + openBox.height / 2 };
   await alice.mouse.move(at.x, at.y);
   await expect(container(alice)).toHaveClass(/side-peek/);
-  await alice.waitForTimeout(600); // a slow click (or a slow CI runner)
+  await alice.waitForTimeout(600);
   expect(await alice.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('#side_pin') !== null, at)).toBe(true);
   await alice.mouse.click(at.x, at.y);
+  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-peek/);
+  await expect.poll(() => sideWidth(alice)).toBe(380);
+  // only a look: »» collapses again – and the rail stays shut while the mouse moves in it (Andreas: pleasant);
+  // hover opens it again only after the mouse left the rail once
+  await alice.locator('#side_collapse').click();
   await expect(container(alice)).toHaveClass(/side-collapsed/);
-  await alice.mouse.move(200, 300);
+  await expect.poll(async () => Math.round((await alice.locator('#side_rail').boundingBox())!.width)).toBe(60);
+  await alice.waitForTimeout(500); // the rail has slid in
+  const countBox = (await alice.locator('#rail_count').boundingBox())!;
+  await alice.mouse.move(at.x, at.y + 10, { steps: 3 });
+  await alice.mouse.move(countBox.x + countBox.width / 2, countBox.y + countBox.height / 2, { steps: 5 });
+  await alice.mouse.move(at.x - 5, at.y, { steps: 5 });
   await alice.waitForTimeout(400);
-  await expect(container(alice)).toHaveClass(/side-peek/); // open for good, like a click on ««
-  await alice.keyboard.press('Escape');
+  await expect(container(alice)).not.toHaveClass(/side-peek/);
+  await alice.mouse.move(200, 300);
+  await alice.mouse.move(at.x, at.y);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.mouse.move(200, 300);
   await expect(container(alice)).not.toHaveClass(/side-peek/);
 
   // kept on reload, without animation
@@ -134,6 +147,34 @@ test('default unchanged, collapse to the rail, peek by hover and click, pin; kep
   await alice.locator('#side_pin').click();
   await expect(container(alice)).not.toHaveClass(/side-collapsed|side-peek/);
   await expect.poll(() => sideWidth(alice)).toBe(380);
+});
+
+test('the pin pins at once: hover opens the overlay, a quick click without moving the mouse (B-113)', async ({ browser }) => {
+  // Andreas (staging): collapsed, the mouse onto ««, the overlay opens and he clicks right away on the pin (which
+  // lies there) without moving the mouse – it was not pinned, several times in a row
+  const { alice } = await twoPlayers(browser, 'Sidebar Pin Quick');
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await expect.poll(async () => Math.round((await alice.locator('#side_rail').boundingBox())!.width)).toBe(60);
+  await alice.waitForTimeout(500); // the rail has slid in
+  await alice.mouse.move(200, 300);
+
+  const openBox = (await alice.locator('#side_open').boundingBox())!;
+  const at = { x: openBox.x + openBox.width / 2, y: openBox.y + openBox.height / 2 };
+  await alice.mouse.move(at.x, at.y);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  // click as soon as the pin is under the mouse, no move in between
+  await expect.poll(() => alice.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('#side_pin') !== null, at),
+    { intervals: [10] }).toBe(true);
+  await alice.mouse.click(at.x, at.y);
+  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-peek/);
+  await expect(alice.locator('#side_rail')).toBeHidden();
+  await expect.poll(() => sideWidth(alice)).toBe(380);
+  expect((await stored(alice)).voting.collapsed).toBe(false);
+  // stays pinned when the mouse leaves
+  await alice.mouse.move(200, 300);
+  await alice.waitForTimeout(400);
+  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-peek/);
 });
 
 /** samples the column's box (and whether it is on top at its middle) in every frame while the action runs */

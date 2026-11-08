@@ -19,7 +19,6 @@ const SIDE_KEY_STEP_VW = 2;
 const SIDE_PEEK_OPEN_MS = 120;  // hover over the rail: the overlay opens after this
 const SIDE_PEEK_CLOSE_MS = 250; // the pointer left rail and overlay: it closes after this
 const SIDE_ANIM_MS = 450;       // .side-anim stays this long (the width transition is 0.35s)
-const SIDE_PIN_STILL_PX = 4;    // hover opened the overlay after the mouse moved onto «« and it moved less than this since: a click on the pin was meant for ««
 
 const gSideQuery = window.matchMedia('(min-width: 800px) and (hover: hover), (min-width: 800px) and (pointer: fine)');
 
@@ -34,9 +33,6 @@ const gSide = {
     drag: null,        // { id, startW, snap } while the grip is dragged
     inside: false,     // the mouse is over the rail or the overlay
     mouse: null,       // { x, y }: the mouse's last position (real moves only, see sideMouseMove)
-    onOpen: false,     // the last move ended on «« (#side_open)
-    aimedAtOpen: false, // ... and the mouse came there from outside «« (not: stood there already, e.g. on the menu's X)
-    hoverAt: null,     // { x, y }: hover opened the overlay with the mouse on ««, until it moved away from there
     hoverBlocked: false, // closed (or collapsed) under the mouse: hover opens again only after it left the rail
 };
 
@@ -141,7 +137,6 @@ function sidePeek(open, sticky = false) {
     if (!open && gSide.peek && gSide.inside) gSide.hoverBlocked = true;
     gSide.peek = open;
     gSide.peekSticky = open && sticky;
-    gSide.hoverAt = null;
     box.classList.toggle('side-peek', open);
     const button = document.getElementById('side_open');
     if (button !== null) button.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -294,15 +289,10 @@ function sideBlockHoverAt(event) {
 }
 
 /* the pin in the overlay: open for good (this phase) */
-function sidePin(event) {
+function sidePin() {
     if (!gSide.active || gSide.phase === null) return;
-    // the pin lies where «« is: the mouse moved onto ««, hover opened the overlay and the mouse has not moved since –
-    // the click was aimed at ««, it keeps it open only. Any other way (opened elsewhere on the rail, by a click, the
-    // mouse stood there already (the menu's X) or moved since, the keyboard (detail 0)) pins at once.
-    if (gSide.peek && !gSide.peekSticky && gSide.hoverAt !== null && event.detail !== 0) {
-        sidePeek(true, true);
-        return;
-    }
+    // a click on the pin always pins, also right after hover opened the overlay with the mouse on «« (the pin lies
+    // there): guessing whether it was meant for «« was unreliable (B-113, Andreas). Only a look: »» collapses again.
     const state = { collapsed: false, width: sideShown().width };
     sideSave(gSide.phase, state);
     sidePeek(false);
@@ -415,31 +405,16 @@ function sideRailTarget(event) {
 }
 
 /* the mouse's position. Only a move to a new position counts (browsers may send a move at the same spot when the
- * page changes under the mouse). Moved in the rail's upper part: hover opens the overlay. Moved away from where
- * hover opened it: a click on the pin now pins (no timing: a slow click on «« still counts as one, a quick move to
- * the pin still pins). */
+ * page changes under the mouse). Moved in the rail's upper part: hover opens the overlay. */
 function sideMouseMove(event) {
     if (event.pointerType !== 'mouse') return;
     const last = gSide.mouse;
     if (last !== null && last.x === event.clientX && last.y === event.clientY) return;
     gSide.mouse = { x: event.clientX, y: event.clientY };
-    const at = gSide.hoverAt;
-    if (at !== null && Math.hypot(event.clientX - at.x, event.clientY - at.y) >= SIDE_PIN_STILL_PX) gSide.hoverAt = null;
     if (!gSide.active) return;
 
-    const target = sideRailTarget(event);
-    const open = target !== null ? target.closest('#side_open') : null;
-    if (open === null) {
-        gSide.onOpen = false;
-        gSide.aimedAtOpen = false;
-    } else if (!gSide.onOpen) {
-        // just got onto ««: aimed at it unless the mouse stood there already (something lay over it)
-        const r = open.getBoundingClientRect();
-        gSide.onOpen = true;
-        gSide.aimedAtOpen = last === null || !(last.x >= r.left && last.x <= r.right && last.y >= r.top && last.y <= r.bottom);
-    }
-
     if (gSide.peek || gSide.hoverBlocked || !sideContainer().classList.contains('side-collapsed')) return;
+    const target = sideRailTarget(event);
     if (target === null || target.closest('.rail-foot') !== null) {
         sideCancelOpen();
         return;
@@ -448,7 +423,6 @@ function sideMouseMove(event) {
     gSide.openTimer = setTimeout(() => {
         gSide.openTimer = null;
         sidePeek(true);
-        if (gSide.onOpen && gSide.aimedAtOpen) gSide.hoverAt = gSide.mouse;
     }, SIDE_PEEK_OPEN_MS);
 }
 
