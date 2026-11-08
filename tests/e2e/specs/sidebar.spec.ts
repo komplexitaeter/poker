@@ -491,6 +491,13 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
   await expect(alice.locator('#rail_range .rail-to')).toHaveCount(1);
   await expect(alice.locator('#rail_range')).toHaveText('3\u20138');
   expect(await alice.locator('#rail_range > .sm-text').count()).toBe(2);
+  // the same type as #spread_range in the column (Andreas: not larger): size, weight, line
+  const type = (selector: string) => alice.locator(selector).first().evaluate(el => {
+    const style = getComputedStyle(el);
+    return [style.fontSize, style.fontWeight, style.lineHeight, style.fontFamily].join(' ');
+  });
+  expect(await type('#rail_range')).toBe(await type('#spread_range'));
+  expect(await type('#rail_range > .sm-text')).toBe(await type('#spread_range > .sm-text'));
   await expect(alice.locator('#rail_count')).toBeHidden();
   const round = alice.locator('#rail_round');
   await expect(round).toHaveClass(/primary/);
