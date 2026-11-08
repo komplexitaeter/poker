@@ -4458,11 +4458,12 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
      * apart by air. No card colours (Andreas: no third look of the cards):
      *   voting      .rail-vote   "3/6", "voted", the waiting dots
      *   revealed    .rail-result one tile:
-     *                 .rail-range  the values of the column's #spread_range without the word "range" ("3–8", "5");
+     *                 .rail-bars   the spread in mini on top (B-113, Andreas: the range below it, to try out)
+     *                 .rail-range  below the bars: the values of the column's #spread_range without the word "range" ("3–8", "5");
      *                              wraps at the "–" when it does not fit the rail
      *                 .rail-shown  instead when there is no range (no number cards): just a check (Andreas: the
-     *                              word is too much; "revealed" stays for screen readers, .sr-only)
-     *                 .rail-bars   the spread in mini below them */
+     *                              word is too much; "revealed" stays for screen readers, .sr-only); in the
+     *                              range's place below the bars, so the bars sit at the same height in every round */
     .rail-tile {
         display: none;
         flex: none;
@@ -4512,7 +4513,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
     /* revealed: the range's values as text like .spread-range (same size, weight, colour and line: --range-fs,
      * --range-lh; symbols sized in em, so the same too), without the word
-     * "range" (Andreas); without a range a check alone; below them the mini spread */
+     * "range" (Andreas); without a range a check alone; both below the mini spread */
     .rail-range {
         margin: 0;
         font-size: var(--range-fs); /* exactly as #spread_range: size, line and so its symbols (em) */
@@ -4555,7 +4556,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         gap: 1px;
         width: 100%;
         height: 22px;
-        margin-top: 2px;
+        margin-bottom: 2px; /* air to the range below (Fred: was margin-top while the bars sat below the range) */
     }
 
     .rail-bars:empty { display: none; }

@@ -491,6 +491,14 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
   await expect(alice.locator('#rail_range .rail-to')).toHaveCount(1);
   await expect(alice.locator('#rail_range')).toHaveText('3\u20138');
   expect(await alice.locator('#rail_range > .sm-text').count()).toBe(2);
+  // the mini bars on top, the range below them (B-113, Andreas: to try out)
+  const below = async (upper: string, lower: string) => {
+    const u = (await alice.locator(upper).boundingBox())!;
+    const l = (await alice.locator(lower).boundingBox())!;
+    return u.y + u.height <= l.y + 0.5;
+  };
+  await expect(alice.locator('#rail_bars')).toBeVisible();
+  expect(await below('#rail_bars', '#rail_range')).toBe(true);
   // the same type as #spread_range in the column (Andreas: not larger): size, weight, line
   const type = (selector: string) => alice.locator(selector).first().evaluate(el => {
     const style = getComputedStyle(el);
@@ -539,6 +547,8 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
   await expect(shown).toHaveText('revealed');
   await expect(shown.locator('.sr-only')).toHaveText('revealed');
   await expect(alice.locator('#rail_bars')).toBeVisible();
+  // the check in the range's place: below the bars
+  expect(await below('#rail_bars', '.rail-shown')).toBe(true);
   if (process.env.B113_SHOT) { // manual check of the look (not in CI)
     await alice.locator('#side_rail').screenshot({ path: process.env.B113_SHOT + '-dark.png' });
     await alice.evaluate(() => document.body.classList.add('light-theme'));

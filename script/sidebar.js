@@ -193,7 +193,7 @@ function syncRailRange(revealed) {
     }
 }
 
-/* B-113 (Andreas): the spread in mini below the range, a fingerprint of the big spread: the same columns (every card of
+/* B-113 (Andreas): the spread in mini above the range (or the check), a fingerprint of the big spread: the same columns (every card of
  * the deck, in deck order), the same height logic (a bar's share of the full height is its votes per player on the
  * board, --voters of #spread_bars, as the blocks there) and the same accent rule (.top: the most chosen, from two votes
  * on), only without blocks, counts and labels; a 1px base line for a column without votes. Read from #spread_bars
