@@ -4219,6 +4219,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
  *                     is always animated (0.25-0.3s), the rail fades in
  *   .side-no-anim     no transitions or animations at all: first paint and the restore from localStorage (wins
  *                     over .side-anim); prefers-reduced-motion: never animated
+ *   .side-pinning     just pinned from the overlay (with .side-anim): the column keeps the overlay's width at the
+ *                     right edge (over the table) while its track grows, so it does not jump to the rail's width
  *   .side-dragging    the grip is being dragged (grip highlighted, col-resize cursor everywhere)
  *   .side-snap        dragged below the minimum: collapses on release (grip in amber)
  *   data-phase        "voting" | "revealed": what the rail shows
@@ -4363,6 +4365,13 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     }
 
     .side-collapsed .side-grip { display: none; }
+
+    /* pinned from the overlay: stays in place while the track grows from the rail's width */
+    .side-pinning > .sidebar {
+        justify-self: end;
+        width: var(--side-open);
+        z-index: var(--z-side);
+    }
 
     /* --- the rail: open button, status, timer, round button --- */
     .side-rail {

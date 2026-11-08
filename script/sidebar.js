@@ -1,6 +1,6 @@
 /* B-113 (cut 1): the column on large screens with a mouse can be collapsed to a narrow rail and resized with the
  * grip on its left edge. The look is in style.css ("Sidebar (B-113)"); this file sets its hooks on .container:
- * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-dragging, .side-snap, --side-w, data-phase.
+ * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-pinning, .side-dragging, .side-snap, --side-w, data-phase.
  * The state (collapsed, width in vw) is kept per phase (voting / revealed) in localStorage, for all boards of the
  * browser. Without a stored state the column stays as it always was (open, --col-w). Phones and the carousel
  * tablets: nothing is set at all.
@@ -104,13 +104,14 @@ function sideUpdateGrip() {
 /* shows a state; how: 'none' (first paint, restore), 'anim' (toggle, phase change) or 'plain' (drag, keys) */
 function sideApply(state, how) {
     const box = sideContainer();
+    box.classList.remove('side-pinning');
     if (how === 'none') {
         box.classList.add('side-no-anim');
         requestAnimationFrame(() => requestAnimationFrame(() => box.classList.remove('side-no-anim')));
     } else if (how === 'anim') {
         box.classList.add('side-anim');
         clearTimeout(gSide.animTimer);
-        gSide.animTimer = setTimeout(() => box.classList.remove('side-anim'), SIDE_ANIM_MS);
+        gSide.animTimer = setTimeout(() => box.classList.remove('side-anim', 'side-pinning'), SIDE_ANIM_MS);
     }
     sideSetWidth(state.width);
     if (!state.collapsed) sidePeek(false);
@@ -224,7 +225,7 @@ function sideSetActive(active) {
     } else {
         if (gSide.drag !== null) sideEndDrag(null);
         sidePeek(false);
-        box.classList.remove('side-collapsed', 'side-peek', 'side-anim', 'side-no-anim', 'side-dragging', 'side-snap');
+        box.classList.remove('side-collapsed', 'side-peek', 'side-anim', 'side-no-anim', 'side-pinning', 'side-dragging', 'side-snap');
         box.style.removeProperty('--side-w');
         box.removeAttribute('data-phase');
     }
@@ -262,6 +263,9 @@ function sidePin() {
     sideSave(gSide.phase, state);
     sidePeek(false);
     sideApply(state, 'anim');
+    // the overlay stays where it is while the table makes room; without this the column would start at the
+    // rail's width and grow back (B-113, Andreas)
+    sideContainer().classList.add('side-pinning');
 }
 
 /* --- the grip: drag (pointer events: mouse, pen, touch) and arrow keys --- */

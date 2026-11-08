@@ -120,6 +120,56 @@ test('default unchanged, collapse to the rail, peek by hover and click, pin; kep
   await expect(container(alice)).not.toHaveClass(/side-collapsed/);
 });
 
+/** samples the column's box (and whether it is on top at its middle) in every frame while the action runs */
+async function sampleSidebar(page: Page, action: () => Promise<void>) {
+  await page.evaluate(() => {
+    const samples: { left: number; width: number; onTop: boolean }[] = [];
+    (window as any).__sideSamples = samples;
+    const start = performance.now();
+    const frame = () => {
+      const sidebar = document.getElementById('sidebar')!;
+      const r = sidebar.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      samples.push({ left: Math.round(r.left), width: Math.round(r.width), onTop: hit !== null && sidebar.contains(hit) });
+      if (performance.now() - start < 900) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  await action();
+  await page.waitForTimeout(1000);
+  return page.evaluate(() => (window as any).__sideSamples as { left: number; width: number; onTop: boolean }[]);
+}
+
+test('pinning keeps the overlay in place, collapsing slides it out without a jump (B-113)', async ({ browser }) => {
+  const { alice } = await twoPlayers(browser, 'Sidebar Pin');
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.mouse.move(200, 300);
+  await alice.locator('#side_open').click();
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.waitForTimeout(400); // slid in
+  const overlay = (await alice.locator('#sidebar').boundingBox())!;
+
+  // pin: the column stays where the overlay was in every frame (does not start at the rail's width), on top
+  const pinned = await sampleSidebar(alice, () => alice.locator('#side_pin').click());
+  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-peek|side-pinning/);
+  expect(pinned.length).toBeGreaterThan(10);
+  for (const s of pinned) {
+    expect(Math.abs(s.left - Math.round(overlay.x))).toBeLessThanOrEqual(1);
+    expect(Math.abs(s.width - Math.round(overlay.width))).toBeLessThanOrEqual(1);
+    expect(s.onTop).toBe(true);
+  }
+
+  // »»: it slides out to the right, never back or narrower
+  const collapsed = await sampleSidebar(alice, () => alice.locator('#side_collapse').click());
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  for (let i = 1; i < collapsed.length; i++) {
+    expect(collapsed[i].left).toBeGreaterThanOrEqual(collapsed[i - 1].left);
+    expect(collapsed[i].width).toBe(collapsed[0].width);
+  }
+  expect(collapsed[collapsed.length - 1].left).toBe(DESKTOP.width);
+});
+
 test('the grip: drag and arrow keys set the width (kept on reload), below the minimum it collapses (B-113)', async ({ browser }) => {
   const { alice } = await twoPlayers(browser, 'Sidebar Grip');
   const grip = alice.locator('#side_grip');
