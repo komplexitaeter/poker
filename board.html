@@ -9,16 +9,16 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.36" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.37" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.39" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.40" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.6" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/sidebar.js?v=1.3" type="text/javascript"></script>
+    <script defer src="script/sidebar.js?v=1.4" type="text/javascript"></script>
     <script defer src="script/script.js?v=3.15" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
@@ -131,11 +131,13 @@
         <button type="button" id="rail_round" class="rail-round" aria-label="Restart round" title="Restart round" disabled><svg class="i i-restart" aria-hidden="true"><use href="#i-reset"/></svg><svg class="i i-new" aria-hidden="true"><use href="#i-arrow"/></svg></button>
     </div>
 
+    <!-- B-113: the grip on the column's left edge: drag or arrow keys (aria-valuenow etc. by sidebar.js). Outside
+         #sidebar so it can lie above the open menu panel at the panel's left edge (also while collapsed). -->
+    <div id="side_grip" class="side-grip" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-controls="sidebar" aria-valuemin="20" aria-valuemax="60" tabindex="0"></div>
+
     <!-- B-113: the column as one block (large screens: a subgrid over the page grid's rows, so it looks and sits
          exactly as before; phones: display: contents, its parts stay where they were). -->
     <div id="sidebar" class="sidebar">
-        <!-- the grip on the left edge: drag or arrow keys (aria-valuenow etc. by script.js) -->
-        <div id="side_grip" class="side-grip" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-controls="sidebar" aria-valuemin="20" aria-valuemax="60" tabindex="0"></div>
         <div class="side-tools">
             <button type="button" id="side_pin" class="icon-btn side-pin" aria-label="Keep sidebar open" title="Keep open"><svg class="i" aria-hidden="true"><use href="#i-pin"/></svg></button>
             <button type="button" id="side_collapse" class="icon-btn side-collapse" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar"><svg class="i" aria-hidden="true"><use href="#i-dright"/></svg></button>

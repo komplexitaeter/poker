@@ -4223,6 +4223,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
  *                     right edge (over the table) while its track grows, so it does not jump to the rail's width
  *   .side-dragging    the grip is being dragged (grip highlighted, col-resize cursor everywhere)
  *   .side-snap        dragged below the minimum: collapses on release (grip in amber)
+ *   .side-menu        the menu panel is open (sidebar.js): the grip lies above it at its left edge, also while
+ *                     collapsed (Fred, B-113: Andreas' feedback; it sets the width only, no collapsing)
  *   data-phase        "voting" | "revealed": what the rail shows
  * --side-open is the width of the open column (also the overlay's width), --side-col the column's track. */
 .sidebar { display: contents; }
@@ -4264,13 +4266,19 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
     .container.side-anim { transition: grid-template-columns 0.35s var(--side-ease); }
 
-    /* the menu panel covers the whole column, also a wide one (collapsed: as wide as before) */
-    .container > .menu { width: max(var(--panel-w), var(--side-col)); }
+    /* the menu panel covers the whole column, also a wide one; collapsed: the stored width of the phase
+     * (Fred: --side-open instead of --side-col, the same while the column is open) */
+    .container { --side-menu-w: max(var(--panel-w), var(--side-open)); }
+    .container > .menu { width: var(--side-menu-w); }
 
     /* --- the open column: the grip on its left edge, "collapse" in the status row --- */
+    /* (Fred: the grip is a child of .container, no longer of #sidebar, so it can lie above the menu panel;
+     * placed on the column's grid area, it follows the track as before) */
     .side-grip {
         display: block;
         position: absolute;
+        grid-column: 2;
+        grid-row: 2 / -1;
         top: 0;
         bottom: 0;
         left: -6px;
@@ -4374,7 +4382,17 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         transition: transform 0.25s var(--side-ease), box-shadow 0.25s, visibility 0s;
     }
 
-    .side-collapsed .side-grip { display: none; }
+    .side-collapsed .side-grip,
+    .side-pinning > .side-grip { display: none; }
+
+    /* menu panel open (also collapsed): the grip at the panel's left edge, above it (Fred, B-113) */
+    .container.side-menu > .side-grip {
+        display: block;
+        grid-column: 1 / -1;
+        left: auto;
+        right: calc(var(--side-menu-w) - 6px);
+        z-index: calc(var(--z-panel) + 1);
+    }
 
     /* pinned from the overlay: stays in place while the track grows from the rail's width */
     .side-pinning > .sidebar {

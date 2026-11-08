@@ -1,12 +1,15 @@
 /* B-113 (cut 1): the column on large screens with a mouse can be collapsed to a narrow rail and resized with the
  * grip on its left edge. The look is in style.css ("Sidebar (B-113)"); this file sets its hooks on .container:
- * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-pinning, .side-dragging, .side-snap, --side-w, data-phase.
+ * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-pinning, .side-dragging, .side-snap, .side-menu, --side-w,
+ * data-phase.
  * The state (collapsed, width in vw) is kept per phase (voting / revealed) in localStorage, for all boards of the
  * browser. Without a stored state the column stays as it always was (open, --col-w). Phones and the carousel
  * tablets: nothing is set at all.
  * The open column has "collapse" (»») at the top right; the overlay has the pin ("Keep open") at the same spot.
  * The rail mirrors the round: "3/6" voted, the range of the cards down after the reveal, the timer and the round
- * button (#rail_round does what #newroundbtn does). */
+ * button (#rail_round does what #newroundbtn does).
+ * While the menu panel is open (.side-menu) the grip lies above it at its left edge, also while collapsed: dragging
+ * sets the width of the phase (the menu and, later, the column use it) but never collapses or opens the column. */
 
 const SIDE_STORE_KEY = 'SIDEBAR_STATE';
 const SIDE_MIN_VW = 20;
@@ -117,6 +120,12 @@ function sideApply(state, how) {
     if (!state.collapsed) sidePeek(false);
     box.classList.toggle('side-collapsed', state.collapsed);
     sideUpdateGrip();
+}
+
+/* the menu panel (#menu) is open: the grip only sets the width then */
+function sideMenuOpen() {
+    const menu = document.getElementById('menu');
+    return menu !== null && menu.open;
 }
 
 /* the overlay over the table while collapsed */
@@ -287,7 +296,7 @@ function sideMoveDrag(event) {
     const drag = gSide.drag;
     if (drag === null || event.pointerId !== drag.id) return;
     const w = sideGripW(event.clientX);
-    drag.snap = w < SIDE_SNAP_VW;
+    drag.snap = w < SIDE_SNAP_VW && !sideMenuOpen();
     sideContainer().classList.toggle('side-snap', drag.snap);
     sideSetWidth(sideClampW(w));
 }
@@ -310,7 +319,8 @@ function sideEndDrag(event) {
         sideApply(state, 'anim');
         sideBlockHoverAt(event);
     } else {
-        sideSave(gSide.phase, { collapsed: false, width: sideShown().width });
+        // collapsed with the menu open: stays collapsed, the width is kept for the menu and for later
+        sideSave(gSide.phase, sideShown());
     }
 }
 
@@ -324,7 +334,7 @@ function sideGripKey(event) {
     event.stopPropagation(); // not the deck's keys
     const width = sideClampW(Math.round(sideMeasuredW()) + step);
     sideSetWidth(width);
-    sideSave(gSide.phase, { collapsed: false, width });
+    sideSave(gSide.phase, { collapsed: sideShown().collapsed, width });
 }
 
 /* --- the overlay: hover with a mouse, the button by click or tap, Escape and a click elsewhere close it --- */
@@ -396,12 +406,20 @@ function initSidebar() {
     });
     document.addEventListener('pointerdown', event => {
         if (!gSide.peek || !(event.target instanceof Node)) return;
-        if (rail.contains(event.target) || sidebar.contains(event.target)) return;
+        if (rail.contains(event.target) || sidebar.contains(event.target) || grip.contains(event.target)) return;
         // the menu panel lies over the column: a click in it is no click elsewhere
         const menu = document.getElementById('menu');
         if (menu !== null && menu.contains(event.target)) return;
         sidePeek(false);
     });
+
+    // the menu panel open or closed: .side-menu (the grip above the panel)
+    const menu = document.getElementById('menu');
+    if (menu !== null && typeof MutationObserver === 'function') {
+        const syncMenu = () => box.classList.toggle('side-menu', menu.open);
+        new MutationObserver(syncMenu).observe(menu, { attributes: true, attributeFilter: ['open'] });
+        syncMenu();
+    }
 
     // the spread's average pointer follows the column's width (grip, phase change, peek)
     if (typeof ResizeObserver === 'function') {

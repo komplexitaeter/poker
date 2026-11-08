@@ -238,11 +238,12 @@ function otherModalOpen(menu) {
 }
 
 /* B-74: true when the event did not happen in the menu, an overlay (QR, delete user, name), another dialog,
- * the toast or the light/dark switch (Andreas: look at the open panel in the other mode). composedPath(): the
+ * the toast, the light/dark switch (Andreas: look at the open panel in the other mode) or the sidebar's grip at the
+ * panel's edge (B-113: resizing it with the menu open keeps the menu open). composedPath(): the
  * target may be gone from the page by now (re-rendered by its handler). */
 function isOutsideMenu(event) {
     return !event.composedPath().some(el => el instanceof Element
-        && (el.id === 'menu' || el.id === 'toast' || el.id === 'cmode_btn' || el.id === 'rotate_hint' || el.id === 'conn_hint' || el.tagName === 'DIALOG'
+        && (el.id === 'menu' || el.id === 'toast' || el.id === 'cmode_btn' || el.id === 'rotate_hint' || el.id === 'conn_hint' || el.id === 'side_grip' || el.tagName === 'DIALOG'
             || el.classList.contains('overlay')));
 }
 
