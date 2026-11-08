@@ -172,26 +172,22 @@ function syncSidebar(json) {
     sideApply(sideLoad(phase), first ? 'none' : 'anim');
 }
 
-/* the range in the rail: exactly what the column's #spread_range shows (its mini values cloned, without "range"),
- * smallest above largest with "–" between them, one value when all agree, nothing when it shows nothing (cards
- * without a value, sets that are no numbers). Called by updateSide() once #spread_range is up to date. */
+/* the range in the rail: exactly what the column's #spread_range shows (its values cloned, "–" between them; the
+ * "range" label comes from style.css), one value when all agree, nothing when it shows nothing (cards without a
+ * value, sets that are no numbers). No colours of its own (B-113, Andreas: no third look of the cards). Called by
+ * updateSide() once #spread_range is up to date. */
 function syncRailRange(revealed) {
     const range = document.getElementById('rail_range');
     const source = document.getElementById('spread_range');
     if (range === null || source === null) return;
+    syncRailBars(revealed);
     const key = revealed ? (source.getAttribute('data-shows') || '') : '';
     if (range.getAttribute('data-shows') === key) return;
     range.setAttribute('data-shows', key);
     const values = key === '' ? [] : Array.from(source.children).map(element => element.cloneNode(true));
-    // B-113 (Delia): each value as a chip in its card colour (style.css .rail-range); the keys are those of
-    // data-shows, in the same order as the values. One value: the tile takes its colour too.
-    const keys = key === '' ? [] : key.split(',');
-    values.forEach((value, i) => railChipColor(value, keys[i]));
-    railChipColor(range, values.length === 1 ? keys[0] : undefined);
-    range.classList.toggle('one', values.length === 1);
     if (values.length === 2) {
         const to = document.createElement('span');
-        to.className = 'rail-to';
+        to.className = 'rail-to'; // a hook only, no style of its own
         to.textContent = '\u2013';
         range.replaceChildren(values[0], to, values[1]);
     } else {
@@ -199,12 +195,27 @@ function syncRailRange(revealed) {
     }
 }
 
-/* the value colour of a card (--a, --on; cards.js) on an element of the rail; none: removed */
-function railChipColor(element, key) {
-    element.style.removeProperty('--a');
-    element.style.removeProperty('--on');
-    const card = key === undefined ? undefined : cardByKey(key);
-    if (card !== undefined) setCardColor(element, cardLook(card).color);
+/* B-113 (Andreas): the spread in mini below the range: one thin bar per card with votes, in deck order, its height
+ * relative to the most chosen card, the most chosen in the accent colour (from two votes on) – read from the
+ * column's #spread_bars (its .spread-col: data-card, the count, .top), so it is always the same as the big spread.
+ * Colours and sizes: style.css .rail-bars. */
+function syncRailBars(revealed) {
+    const bars = document.getElementById('rail_bars');
+    const source = document.getElementById('spread_bars');
+    if (bars === null || source === null) return;
+    const cols = revealed ? Array.from(source.children)
+        .map(col => ({ n: parseInt(col.querySelector('.spread-count')?.textContent || '0', 10) || 0, top: col.classList.contains('top') }))
+        .filter(col => col.n > 0) : [];
+    const key = cols.map(col => col.n + (col.top ? 't' : '')).join(',');
+    if (bars.getAttribute('data-shows') === key) return;
+    bars.setAttribute('data-shows', key);
+    const max = Math.max(1, ...cols.map(col => col.n));
+    bars.replaceChildren(...cols.map(col => {
+        const bar = document.createElement('i');
+        if (col.top) bar.className = 'top';
+        bar.style.height = Math.round(col.n / max * 100) + '%';
+        return bar;
+    }));
 }
 
 /* #rail_round mirrors #newroundbtn */
