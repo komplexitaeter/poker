@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard } from './helpers';
+import { execFileSync } from 'node:child_process';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, openTimerPanel } from './helpers';
 
 /**
  * B-113 (cut 1): on large screens with a mouse the column can be collapsed to a narrow rail (hover opens it as an
@@ -13,6 +14,10 @@ const DESKTOP = { width: 1280, height: 800 };
 const container = (page: Page) => page.locator('.container');
 const sideWidth = async (page: Page) => Math.round((await page.locator('#sidebar').boundingBox())!.width);
 const sideW = (page: Page) => container(page).evaluate(el => (el as HTMLElement).style.getPropertyValue('--side-w'));
+
+const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
+const sql = (statement: string) => execFileSync('mysql', [...DB_ARGS, '-N', '-e', statement],
+  { stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
 
 async function twoPlayers(browser: any, name: string) {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
@@ -223,6 +228,44 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
 
   // the other board (Bob) has its own browser: unchanged
   await expect(container(bob)).not.toHaveClass(/side-collapsed/);
+});
+
+test('the rail timer shows just the time, past the timebox amber and counting up (B-113)', async ({ browser }) => {
+  const { alice, bob, url } = await twoPlayers(browser, 'Sidebar Timer');
+  const rail = alice.locator('#rail_timer');
+  await openTimerPanel(alice);
+  await alice.locator('input[name=tmr_visibility][value="1"]').check();
+  await alice.locator('input[name=tmr_mode][value="TIMER"]').check();
+  await alice.locator('input[name=tmr_timebox][value="5"]').check();
+  await alice.locator('#menu_close').click();
+  await expect(alice.locator('#timer_display')).toHaveText('T−05:00');
+
+  // the rail mirrors it (also while hidden): no T−
+  await expect(rail).toHaveText('05:00');
+  await expect(rail).toHaveAttribute('aria-label', 'Timer: 5 min 0 s left, not started');
+  await expect(rail).toHaveAttribute('data-over', 'false');
+
+  // running (start is in the column): the collapsed rail counts down, still without prefix
+  await alice.getByRole('button', { name: 'Start timer' }).click();
+  await alice.locator('#side_collapse').click();
+  await expect(rail).toBeVisible();
+  await expect(rail).toHaveText(/^04:5\d$/);
+  await expect(rail).toHaveAttribute('aria-label', /^Timer: 4 min \d+ s left$/);
+
+  // past the timebox (started 5 min 7 s ago): the time counts up without T+, in amber like #timer
+  const id = new URL(url).searchParams.get('t') as string;
+  expect(id).toMatch(/^[A-Za-z0-9_-]+$/);
+  sql(`update pok_teams_tbl set timer_start_time = timestampadd(SECOND, -307, current_timestamp), timer_pause_time = null where id = '${id}'`);
+  await alice.reload();
+  await expect(alice.locator('#timer_display')).toHaveText(/^T\+00:\d\d$/);
+  await expect(rail).toHaveText(/^00:\d\d$/);
+  await expect(rail).toHaveAttribute('data-over', 'true');
+  await expect(rail).toHaveAttribute('aria-label', /^Timer: time is up, .* over$/);
+  await expect(rail).toHaveCSS('color', await alice.locator('#timer_display').evaluate(el => getComputedStyle(el).color));
+  const before = await rail.textContent();
+  await expect(rail).not.toHaveText(before!); // counts on (up)
+  await alice.context().close();
+  await bob.context().close();
 });
 
 test('the spread pointer follows the column width (B-113)', async ({ browser }) => {

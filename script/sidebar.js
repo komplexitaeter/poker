@@ -192,13 +192,16 @@ function syncRailRound() {
     if (rail.title !== source.value) rail.title = source.value;
 }
 
-/* #rail_timer mirrors #timer (text, data-state, data-over); called by renderTimer() */
+/* #rail_timer mirrors #timer (text, data-state, data-over); called by renderTimer(). The rail shows just the time,
+ * without the prefix T−/T+ (Andreas, B-113): it counts down and, past the timebox, up again in amber (data-over);
+ * the aria-label stays the full one of #timer */
 function syncRailTimer() {
     const rail = document.getElementById('rail_timer');
     const box = document.getElementById('timer');
     const display = document.getElementById('timer_display');
     if (rail === null || box === null || display === null) return;
-    if (rail.textContent !== display.textContent) rail.textContent = display.textContent;
+    const text = (display.textContent ?? '').replace(/^T[−+-]/, '');
+    if (rail.textContent !== text) rail.textContent = text;
     ['data-state', 'data-over'].forEach(name => {
         const value = box.getAttribute(name);
         if (value !== null && rail.getAttribute(name) !== value) rail.setAttribute(name, value);
