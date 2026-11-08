@@ -767,6 +767,73 @@ test('the spread pointer follows the column width (B-113)', async ({ browser }) 
   expect(p.x + p.width / 2).toBeLessThan(eight.x + eight.width);
 });
 
+test('a quiet hint names the phase after »», the pin and the grip, the first 4 times only (B-113)', async ({ browser }) => {
+  const { alice, bob } = await twoPlayers(browser, 'Sidebar Hint');
+  const hint = alice.locator('#side_hint');
+  const box = async (selector: string) => (await alice.locator(selector).boundingBox())!;
+  await expect(hint).toBeHidden();
+  await expect(hint).toHaveAttribute('aria-live', 'polite');
+
+  // 1: »» while voting – next to the rail, at its top; gone after about 3s
+  await alice.locator('#side_collapse').click();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('kept for voting');
+  await expect(hint).toHaveAttribute('data-at', 'top');
+  await expect.poll(async () => (await box('#side_rail')).x - (await box('#side_hint')).x - (await box('#side_hint')).width)
+    .toBeGreaterThanOrEqual(0);
+  await expect(hint).toBeHidden({ timeout: 6000 });
+  expect(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS'))).toBe('1');
+
+  // 2: »» after the reveal: "results"
+  await pickCard(alice, 'three01');
+  await pickCard(bob, 'eight01');
+  await expect(container(alice)).toHaveAttribute('data-phase', 'revealed');
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+  await alice.locator('#side_collapse').click();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('kept for results');
+  await expect(hint).toBeHidden({ timeout: 6000 });
+
+  // 3: the pin on the overlay – next to the column's left edge
+  await alice.locator('#side_open').click();
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.locator('#side_pin').click();
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('kept for results');
+  await expect.poll(async () => (await box('#sidebar')).x - (await box('#side_hint')).x - (await box('#side_hint')).width)
+    .toBeGreaterThanOrEqual(0);
+  await expect(hint).toBeHidden({ timeout: 6000 });
+
+  // 4: dragging the grip – next to its handle, it stays while dragged and fades after the release
+  await alice.mouse.move(200, 300); // the handle shows on hover only; the grip is there anyway
+  const g = await box('#side_grip');
+  await alice.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await alice.mouse.down();
+  await alice.mouse.move(700, g.y + g.height / 2, { steps: 5 });
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('width for results');
+  await expect(hint).toHaveAttribute('data-at', 'grip');
+  const h = await box('#side_hint');
+  const g2 = await box('#side_grip');
+  expect(h.x + h.width).toBeLessThanOrEqual(g2.x + g2.width / 2);
+  expect(Math.abs(h.y + h.height / 2 - (g2.y + g2.height / 2))).toBeLessThan(10);
+  await alice.waitForTimeout(3500);
+  await expect(hint).toBeVisible();
+  await alice.mouse.move(680, g.y + g.height / 2, { steps: 3 });
+  await alice.mouse.up();
+  await expect(hint).toBeHidden({ timeout: 6000 });
+  expect(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS'))).toBe('4');
+
+  // after 4: never again (»», arrow keys)
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.waitForTimeout(800);
+  await expect(hint).toBeHidden();
+  await expect(hint).not.toHaveClass(/shown/);
+  expect(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS'))).toBe('4');
+});
+
 test('phones: no rail, no state, even with a stored one (B-113)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await alice.addInitScript(() => {
@@ -778,6 +845,7 @@ test('phones: no rail, no state, even with a stored one (B-113)', async ({ brows
   await expect(alice.locator('#side_rail')).toBeHidden();
   await expect(alice.locator('#side_collapse')).toBeHidden();
   await expect(alice.locator('#side_grip')).toBeHidden();
+  await expect(alice.locator('#side_hint')).toBeHidden();
   await expect(container(alice)).not.toHaveAttribute('data-phase', /.*/);
   await expect(container(alice)).not.toHaveClass(/side-/);
   expect(await sideW(alice)).toBe('');

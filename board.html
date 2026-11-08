@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.48" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.49" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -18,7 +18,7 @@
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/sidebar.js?v=1.14" type="text/javascript"></script>
+    <script defer src="script/sidebar.js?v=1.15" type="text/javascript"></script>
     <script defer src="script/script.js?v=3.16" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
@@ -145,6 +145,10 @@
     <!-- B-113: the grip on the column's left edge: drag or arrow keys (aria-valuenow etc. by sidebar.js). Outside
          #sidebar so it can lie above the open menu panel at the panel's left edge (also while collapsed). -->
     <div id="side_grip" class="side-grip" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-controls="sidebar" aria-valuemin="20" aria-valuemax="60" tabindex="0"></div>
+
+    <!-- B-113 (to try out, Andreas): a quiet line next to the column right after collapsing, pinning or resizing it,
+         "kept for voting" / "width for results": the state is kept per phase. The first 4 times only (sidebar.js). -->
+    <p id="side_hint" class="side-hint" role="status" aria-live="polite"></p>
 
     <!-- B-113: the column as one block (large screens: a subgrid over the page grid's rows, so it looks and sits
          exactly as before; phones: display: contents, its parts stay where they were). -->
