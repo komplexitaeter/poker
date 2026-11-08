@@ -322,13 +322,47 @@ test('collapsed with the menu open: the grip sets the width of the phase, the co
   await expect(alice.locator('#side_rail')).toBeVisible();
   await expect(alice.locator('#side_grip')).toBeHidden();
 
-  // opened later: the new width (the close button lay over the rail: hover may have opened the overlay)
+  // opened later: the new width (the close button lay over the rail: no overlay without a move)
   await alice.mouse.move(200, 300);
   await expect(container(alice)).not.toHaveClass(/side-peek/);
   await alice.locator('#side_open').click();
   await alice.locator('#side_pin').click();
   await expect(container(alice)).not.toHaveClass(/side-collapsed/);
   await expect.poll(() => sideWidth(alice)).toBe(640);
+});
+
+test('menu closed over the rail: no overlay until the mouse moves, then the pin pins at once (B-113)', async ({ browser }) => {
+  // Andreas (staging): collapsed, menu opened, closed with X over the rail, the overlay opened by itself and the
+  // pin then only kept it open (like ««) instead of pinning
+  const { alice } = await twoPlayers(browser, 'Sidebar Menu Close');
+  const menu = alice.locator('dialog#menu');
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.mouse.move(200, 300);
+
+  await alice.locator('#cset_btn').click();
+  await expect(menu).toHaveAttribute('open');
+  await panelSettled(menu);
+  const x = (await alice.locator('#menu_close').boundingBox())!;
+  const at = { x: x.x + x.width / 2, y: x.y + x.height / 2 };
+  await alice.mouse.click(at.x, at.y);
+  await expect(menu).not.toHaveAttribute('open');
+  // the rail is now under the mouse standing still: no overlay
+  expect(await alice.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('#side_rail') !== null, at)).toBe(true);
+  await alice.waitForTimeout(500);
+  await expect(container(alice)).not.toHaveClass(/side-peek/);
+
+  // a slight move in the rail's upper part opens it
+  await alice.mouse.move(at.x - 2, at.y + 2);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.waitForTimeout(300);
+
+  // the pin pins: the column is open, no rail, stored
+  await alice.locator('#side_pin').click();
+  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-peek/);
+  await expect(alice.locator('#side_rail')).toBeHidden();
+  await expect.poll(() => sideWidth(alice)).toBe(380);
+  expect((await stored(alice)).voting.collapsed).toBe(false);
 });
 
 test('the rail\'s foot (timer, round button and the room around them) opens no overlay on hover (B-113)', async ({ browser }) => {
