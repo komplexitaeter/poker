@@ -407,6 +407,88 @@ test('collapsed with the menu open: the grip sets the width of the phase, the co
   await expect.poll(() => sideWidth(alice)).toBe(640);
 });
 
+test('the overlay: its grip sets the width of the phase, stays collapsed and keeps the overlay open while dragged (B-113)', async ({ browser }) => {
+  // Delia's advice (Andreas): the grip sets the width only – also on the overlay, without opening or collapsing
+  const { alice } = await twoPlayers(browser, 'Sidebar Peek Grip');
+  const grip = alice.locator('#side_grip');
+  const handle = () => grip.evaluate(el => Number(getComputedStyle(el, '::after').opacity));
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.waitForTimeout(500); // the rail has slid in
+  await alice.mouse.move(200, 300);
+  await expect(grip).toBeHidden();
+
+  // hover opens the overlay: the grip lies at its left edge, its handle shows while the mouse is over the overlay
+  await alice.locator('#rail_count').hover();
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await expect(grip).toBeVisible();
+  await alice.waitForTimeout(400); // the overlay has slid in
+  const side = (await alice.locator('#sidebar').boundingBox())!;
+  expect(Math.round(side.width)).toBe(380);
+  await alice.mouse.move(side.x + side.width / 2, side.y + side.height / 2);
+  await expect.poll(handle).toBeGreaterThan(0);
+  const at = await gripOnTop(alice);
+  expect(Math.abs(at.x - side.x)).toBeLessThanOrEqual(2);
+
+  // drag: far out over the table (60vw at most), the overlay stays open, also after a while
+  await alice.mouse.move(at.x, at.y);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.mouse.down();
+  await alice.mouse.move(300, at.y, { steps: 5 });
+  await alice.mouse.move(100, at.y, { steps: 5 });
+  await expect(container(alice)).toHaveClass(/side-dragging/);
+  expect(await sideW(alice)).toBe('60vw');
+  await alice.waitForTimeout(500);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  // back to the middle and released there (on the overlay's edge): 50vw, still the open overlay over the rail
+  await alice.mouse.move(700, at.y, { steps: 5 });
+  await alice.mouse.move(640, at.y, { steps: 5 });
+  await alice.mouse.up();
+  await expect(container(alice)).not.toHaveClass(/side-dragging/);
+  expect(await sideW(alice)).toBe('50vw');
+  expect(await sideWidth(alice)).toBe(640);
+  await alice.waitForTimeout(500);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await expect(alice.locator('#side_rail')).toBeVisible();
+  expect((await stored(alice)).voting).toEqual({ collapsed: true, width: 50 });
+
+  // arrow keys on the grip as well: narrower by 2vw, still collapsed
+  await grip.focus();
+  await alice.keyboard.press('ArrowRight');
+  await expect(grip).toHaveAttribute('aria-valuenow', '48');
+  await alice.keyboard.press('ArrowLeft');
+  expect((await stored(alice)).voting).toEqual({ collapsed: true, width: 50 });
+  await expect(container(alice)).toHaveClass(/side-peek/);
+
+  // leaving it: closes as usual
+  await alice.mouse.move(200, 300);
+  await expect(container(alice)).not.toHaveClass(/side-peek/);
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await expect(grip).toBeHidden();
+
+  // released outside the overlay: it closes after the usual delay
+  await alice.locator('#rail_count').hover();
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.waitForTimeout(400);
+  const at2 = await gripOnTop(alice);
+  await alice.mouse.move(at2.x, at2.y);
+  await alice.mouse.down();
+  await alice.mouse.move(100, at2.y, { steps: 5 });
+  await alice.mouse.up();
+  expect(await sideW(alice)).toBe('60vw');
+  await expect(container(alice)).not.toHaveClass(/side-peek/);
+  expect((await stored(alice)).voting).toEqual({ collapsed: true, width: 60 });
+
+  // pinned later: the new width
+  await alice.locator('#side_open').click();
+  await alice.locator('#side_pin').click();
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+  await expect.poll(() => sideWidth(alice)).toBe(768);
+  expect((await stored(alice)).voting).toEqual({ collapsed: false, width: 60 });
+});
+
 test('menu closed over the rail: no overlay until the mouse moves, then the pin pins at once (B-113)', async ({ browser }) => {
   // Andreas (staging): collapsed, menu opened, closed with X over the rail, the overlay opened by itself and the
   // pin then only kept it open (like ««) instead of pinning
@@ -491,6 +573,14 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
   await expect(alice.locator('#rail_range .rail-to')).toHaveCount(1);
   await expect(alice.locator('#rail_range')).toHaveText('3\u20138');
   expect(await alice.locator('#rail_range > .sm-text').count()).toBe(2);
+  // the mini bars on top, the range below them (B-113, Andreas: to try out)
+  const below = async (upper: string, lower: string) => {
+    const u = (await alice.locator(upper).boundingBox())!;
+    const l = (await alice.locator(lower).boundingBox())!;
+    return u.y + u.height <= l.y + 0.5;
+  };
+  await expect(alice.locator('#rail_bars')).toBeVisible();
+  expect(await below('#rail_bars', '#rail_range')).toBe(true);
   // the same type as #spread_range in the column (Andreas: not larger): size, weight, line
   const type = (selector: string) => alice.locator(selector).first().evaluate(el => {
     const style = getComputedStyle(el);
@@ -539,6 +629,8 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
   await expect(shown).toHaveText('revealed');
   await expect(shown.locator('.sr-only')).toHaveText('revealed');
   await expect(alice.locator('#rail_bars')).toBeVisible();
+  // the check in the range's place: below the bars
+  expect(await below('#rail_bars', '.rail-shown')).toBe(true);
   if (process.env.B113_SHOT) { // manual check of the look (not in CI)
     await alice.locator('#side_rail').screenshot({ path: process.env.B113_SHOT + '-dark.png' });
     await alice.evaluate(() => document.body.classList.add('light-theme'));
