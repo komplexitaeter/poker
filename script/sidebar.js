@@ -338,9 +338,9 @@ function sideGripKey(event) {
 }
 
 /* --- the overlay: hover with a mouse, the button by click or tap, Escape and a click elsewhere close it --- */
-/* over the rail (pointerover, also when moving between its parts) or the overlay (pointerenter). The round
- * button and the timer at the rail's foot do not open it: the overlay would slide over the button about to be
- * clicked. */
+/* over the rail (pointerover, also when moving between its parts) or the overlay (pointerenter). The rail's foot
+ * (timer and round button with the room around them down to the rail's edges) does not open it: the overlay would
+ * slide over the button about to be clicked. */
 function sideHoverIn(event) {
     if (!gSide.active || event.pointerType !== 'mouse') return;
     gSide.inside = true;
@@ -349,7 +349,7 @@ function sideHoverIn(event) {
     clearTimeout(gSide.closeTimer);
     if (gSide.peek || gSide.hoverBlocked) return;
     clearTimeout(gSide.openTimer);
-    if (event.target instanceof Element && event.target.closest('#rail_round, #rail_timer') !== null) return;
+    if (event.target instanceof Element && event.target.closest('.rail-foot') !== null) return;
     gSide.openTimer = setTimeout(() => {
         sidePeek(true);
         gSide.hoverAt = Date.now();

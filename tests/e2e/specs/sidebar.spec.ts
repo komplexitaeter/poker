@@ -315,6 +315,33 @@ test('collapsed with the menu open: the grip sets the width of the phase, the co
   await expect.poll(() => sideWidth(alice)).toBe(640);
 });
 
+test('the rail\'s foot (timer, round button and the room around them) opens no overlay on hover (B-113)', async ({ browser }) => {
+  const { alice } = await twoPlayers(browser, 'Sidebar Rail Foot');
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.mouse.move(200, 300);
+
+  const rail = (await alice.locator('#side_rail').boundingBox())!;
+  const round = (await alice.locator('#rail_round').boundingBox())!;
+  const spots = [
+    { x: round.x - 5, y: round.y + round.height / 2 },              // left of the button
+    { x: round.x + round.width + 5, y: round.y + round.height / 2 }, // right of it
+    { x: round.x + round.width / 2, y: round.y + round.height + 10 }, // below it
+    { x: rail.x + rail.width / 2, y: rail.y + rail.height - 3 },     // at the rail's bottom edge
+  ];
+  for (const spot of spots) {
+    await alice.mouse.move(spot.x, spot.y, { steps: 3 });
+    await alice.waitForTimeout(300);
+    await expect(container(alice)).not.toHaveClass(/side-peek/);
+    await alice.mouse.move(200, 300);
+    await alice.waitForTimeout(300);
+  }
+
+  // the upper part still opens it
+  await alice.locator('#rail_count').hover();
+  await expect(container(alice)).toHaveClass(/side-peek/);
+});
+
 test('each phase keeps its own state; the rail shows the range and starts a new round (B-113)', async ({ browser }) => {
   const { alice, bob } = await twoPlayers(browser, 'Sidebar Phases');
 

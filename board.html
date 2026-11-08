@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.37" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.38" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -18,7 +18,7 @@
     <script defer src="script/deck.js?v=1.6" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/sidebar.js?v=1.4" type="text/javascript"></script>
+    <script defer src="script/sidebar.js?v=1.5" type="text/javascript"></script>
     <script defer src="script/script.js?v=3.15" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
@@ -124,11 +124,14 @@
              largest with a span.rail-to between them; one value when all agree. Filled by sidebar.js. -->
         <p id="rail_range" class="rail-range"></p>
         <span class="rail-fill"></span>
-        <!-- the timer while it is on (mirrors #timer: text, data-state, data-over; shown by style.css) -->
-        <span id="rail_timer" class="rail-timer" role="timer" aria-label="Timer" data-state="ready" data-over="false"></span>
-        <!-- the round button as an icon (mirrors #newroundbtn: disabled, .primary, aria-label and title = its value):
-             "Restart round" ↺ framed, "New round" → filled -->
-        <button type="button" id="rail_round" class="rail-round" aria-label="Restart round" title="Restart round" disabled><svg class="i i-restart" aria-hidden="true"><use href="#i-reset"/></svg><svg class="i i-new" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+        <!-- the rail's foot (timer and round button, down to the rail's edges): hovering it opens no overlay -->
+        <div class="rail-foot">
+            <!-- the timer while it is on (mirrors #timer: text, data-state, data-over; shown by style.css) -->
+            <span id="rail_timer" class="rail-timer" role="timer" aria-label="Timer" data-state="ready" data-over="false"></span>
+            <!-- the round button as an icon (mirrors #newroundbtn: disabled, .primary, aria-label and title = its value):
+                 "Restart round" ↺ framed, "New round" → filled -->
+            <button type="button" id="rail_round" class="rail-round" aria-label="Restart round" title="Restart round" disabled><svg class="i i-restart" aria-hidden="true"><use href="#i-reset"/></svg><svg class="i i-new" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+        </div>
     </div>
 
     <!-- B-113: the grip on the column's left edge: drag or arrow keys (aria-valuenow etc. by sidebar.js). Outside

@@ -4411,10 +4411,22 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         min-width: 0;
         min-height: 0;
         overflow: hidden;
-        padding: 10px 0 calc(12px + var(--dock-lift) + env(safe-area-inset-bottom));
+        padding: 10px 0 0; /* the bottom padding is the foot's (Fred) */
         background: var(--bg-2);
         font-size: var(--fs-xs);
         color: var(--muted);
+    }
+
+    /* timer and round button: the whole width of the rail down to its bottom edge, so hovering next to or below
+     * the button opens no overlay (sidebar.js; Fred, B-113: Andreas' feedback) */
+    .rail-foot {
+        display: flex;
+        flex: none;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+        align-self: stretch;
+        padding-bottom: calc(12px + var(--dock-lift) + env(safe-area-inset-bottom));
     }
 
     .side-collapsed > .side-rail {
