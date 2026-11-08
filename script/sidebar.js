@@ -197,25 +197,29 @@ function syncRailRange(revealed) {
     }
 }
 
-/* B-113 (Andreas): the spread in mini below the range: one thin bar per card with votes, in deck order, its height
- * relative to the most chosen card, the most chosen in the accent colour (from two votes on) – read from the
- * column's #spread_bars (its .spread-col: data-card, the count, .top), so it is always the same as the big spread.
- * Colours and sizes: style.css .rail-bars. */
+/* B-113 (Andreas): the spread in mini below the range, a fingerprint of the big spread: the same columns (every card of
+ * the deck, in deck order), the same height logic (a bar's share of the full height is its votes per player on the
+ * board, --voters of #spread_bars, as the blocks there) and the same accent rule (.top: the most chosen, from two votes
+ * on), only without blocks, counts and labels; a 1px base line for a column without votes. Read from #spread_bars
+ * itself (its .spread-col: the count, .top), so the two never differ. Colours and sizes: style.css .rail-bars. */
 function syncRailBars(revealed) {
     const bars = document.getElementById('rail_bars');
     const source = document.getElementById('spread_bars');
     if (bars === null || source === null) return;
-    const cols = revealed ? Array.from(source.children)
-        .map(col => ({ n: parseInt(col.querySelector('.spread-count')?.textContent || '0', 10) || 0, top: col.classList.contains('top') }))
-        .filter(col => col.n > 0) : [];
-    const key = cols.map(col => col.n + (col.top ? 't' : '')).join(',');
+    const cols = revealed ? Array.from(source.children).map(col => ({
+        n: parseInt(col.querySelector('.spread-count')?.textContent || '0', 10) || 0,
+        top: col.classList.contains('top'),
+    })) : [];
+    const voters = parseInt(source.style.getPropertyValue('--voters'), 10) || 1;
+    const key = voters + ':' + cols.map(col => col.n + (col.top ? 't' : '')).join(',');
     if (bars.getAttribute('data-shows') === key) return;
     bars.setAttribute('data-shows', key);
-    const max = Math.max(1, ...cols.map(col => col.n));
+    const max = Math.max(voters, ...cols.map(col => col.n));
     bars.replaceChildren(...cols.map(col => {
         const bar = document.createElement('i');
         if (col.top) bar.className = 'top';
-        bar.style.height = Math.round(col.n / max * 100) + '%';
+        // no votes: the base line (style.css); votes: their share of the full height, as in #spread_bars
+        if (col.n > 0) bar.style.height = Math.round(col.n / max * 100) + '%';
         return bar;
     }));
 }
