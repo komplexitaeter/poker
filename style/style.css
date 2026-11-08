@@ -2888,24 +2888,32 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
     vertical-align: -0.27em;
 }
 
-/* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read */
+/* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read.
+ * B-113 fix (Andreas): every symbol in the spread sits on the middle of the line (no margins tuned for running text),
+ * so all columns share one middle (☕ and ? sat higher than the lights); the line itself is tall enough for the
+ * largest symbol at any label size (--spread-val-h, see .spread below). */
 .spread-value .sm-draw { --sm-h: 1.7em; }
+
+.spread-value .mini:is(.sm-draw, .sm-inv) {
+    margin-block: 0;
+    vertical-align: middle;
+}
 
 /* R3 review E8: traffic lights in small places: the lit lamp solid in its colour (the card's light tint and hatching
  * blur into the housing at this size), so green, yellow and red read at a glance. In the spread the light is taller:
- * its value row grows (--spread-val-h, the same for all columns), the light fills it */
+ * its value row grows (--spread-val-h, the same for all columns), the light fills it. The row grows with the labels
+ * (--spread-fs, the label size cap: --fs-xs, larger in a wide column, see "Sidebar (B-113)"): 1.85em fits the
+ * other symbols (1.7em), 2.7em the light (2.5em). */
 .mini use[href*="#s-light-"] {
     --sym-tint: currentColor;
     --sym-hatch: transparent;
 }
 
-.spread:has(use[href*="#s-light-"]) { --spread-val-h: 1.875rem; }
+.spread { --spread-val-h: max(1.25rem, var(--spread-fs, var(--fs-xs)) * 1.85); }
 
-.spread-value .sm-draw:has(use[href*="#s-light-"]) {
-    --sm-h: 2.5em;
-    margin-block: -0.2em;
-    vertical-align: middle;
-}
+.spread:has(use[href*="#s-light-"]) { --spread-val-h: max(1.875rem, var(--spread-fs, var(--fs-xs)) * 2.7); }
+
+.spread-value .sm-draw:has(use[href*="#s-light-"]) { --sm-h: 2.5em; }
 
 /* B-99 F8 (Andreas): sets in the style "inverted" (J.U.D.G.E.): a mini square in the card colour with the white value
  * in a black outline, like on the card (cardSmall() in cards.js). As high as a capital letter and a half less its
@@ -4003,7 +4011,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     flex: 1 1 0;
     min-width: 0;
     max-width: 32px;
-    height: calc(1rem + var(--spread-h) + var(--spread-val-h, 1.25rem) + 6px);
+    height: calc(1rem + var(--spread-h) + var(--spread-val-h) + 6px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -4061,7 +4069,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
      * about 0.6em wide, less the tighter spacing 0.56em, so 3 digits need 1.7em; never above --fs-xs */
     font-size: clamp(7.5px, 100cqi / 1.75, var(--fs-xs));
     letter-spacing: -0.04em;
-    line-height: var(--spread-val-h, 1.25rem);
+    height: var(--spread-val-h); /* the same for every column, so all labels share one line */
+    line-height: var(--spread-val-h);
     text-align: center; /* fix (R3, iPhone): the value in the middle below its bar, also if its box comes out wider */
     white-space: nowrap;
     max-width: 100%;
@@ -4629,18 +4638,16 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .side {
         --side-grow: max(0px, var(--side-open) - 380px);
         --spread-h: min(64px + var(--side-grow) * 0.25, 160px, max(64px, 20vh));
+        --spread-fs: max(var(--fs-xs), min(11px + var(--side-grow) * 0.008, 15px)); /* also sizes the value row */
     }
 
     .spread-col { max-width: min(32px + var(--side-grow) * 0.08, 72px); }
 
     .spread-bar { max-width: min(22px + var(--side-grow) * 0.06, 48px); }
 
-    .spread-count,
-    .spread-value { --spread-fs: min(11px + var(--side-grow) * 0.008, 15px); }
+    .spread-count { font-size: var(--spread-fs); }
 
-    .spread-count { font-size: max(var(--fs-xs), var(--spread-fs)); }
-
-    .spread-value { font-size: clamp(7.5px, 100cqi / 1.75, max(var(--fs-xs), var(--spread-fs))); }
+    .spread-value { font-size: clamp(7.5px, 100cqi / 1.75, var(--spread-fs)); }
 }
 
 @keyframes rail-in {
