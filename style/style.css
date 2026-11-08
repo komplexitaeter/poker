@@ -4442,12 +4442,14 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-open:hover,
     .rail-open[aria-expanded=true] { color: var(--accent); }
 
-    /* the rail's tiles (Delia, B-113: Andreas' feedback "a lonely 3 looks sad"): the round's state as one small
-     * block below the open button, a bit lighter/darker than the rail, the same in every phase:
+    /* the rail's tiles (Delia, B-113: Andreas' feedback "a lonely 3 looks sad"): the round's state on a quiet grey
+     * patch below the open button, the same in every phase. No card colours (Andreas: no third look of the cards):
      *   voting      .rail-vote   "3/6", "voted", the waiting dots
-     *   revealed    .rail-range  "range" and the two values as chips in their card colour (smallest above),
-     *                            or one larger chip (one value)
-     *               .rail-shown  no range (no number cards): a check and "revealed" */
+     *   revealed    .rail-result one tile:
+     *                 .rail-range  exactly what the column's #spread_range shows ("range 3–8", "5"); wraps at the
+     *                              "–" when it does not fit the rail
+     *                 .rail-shown  instead when there is no range (no number cards): a check and "revealed"
+     *                 .rail-bars   the spread in mini below them */
     .rail-tile {
         display: none;
         flex: none;
@@ -4456,17 +4458,16 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         gap: 4px;
         width: calc(var(--rail-w) - 12px);
         margin: var(--space-1) 0 0;
-        padding: 8px 0 9px;
-        border: 1px solid var(--line);
+        padding: 8px 2px 9px;
         border-radius: var(--radius-l);
-        background: var(--bg);
+        background: var(--bg-3);
         line-height: 1.2;
         white-space: nowrap;
+        box-sizing: border-box;
     }
 
     .container[data-phase=voting] .rail-vote,
-    .container[data-phase=revealed] .rail-range:not(:empty),
-    .container[data-phase=revealed] .rail-range:empty + .rail-shown { display: flex; }
+    .container[data-phase=revealed] .rail-result { display: flex; }
 
     .rail-tile small {
         font-size: var(--fs-xs);
@@ -4498,54 +4499,34 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-wait i:nth-child(2) { animation-delay: 0.2s; }
     .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
 
-    /* the range: "range" (as in the column's #spread_range), the values as tiny cards in their colour (--a, --on
-     * set by sidebar.js like the card faces), "–" between them */
+    /* revealed: the range as text like .spread-range (same size, colour and line), "range" above two values;
+     * without a range "revealed" with a check; below them the mini spread */
     .rail-range {
-        gap: 3px;
+        margin: 0;
         font-size: var(--fs-s);
+        line-height: 1.25rem;
+        text-align: center;
+        white-space: normal;
+        overflow-wrap: anywhere;
         color: var(--text);
     }
 
-    .rail-range:has(> .rail-to)::before {
-        content: "range";
-        margin-bottom: 2px;
-        font-size: var(--fs-xs);
-        color: var(--muted);
+    .rail-range[data-shows*=","]::before {
+        content: "range"; /* as in #spread_range: same colour as the values */
+        display: block;
     }
 
-    .rail-range > :not(.rail-to) {
-        display: grid;
-        place-items: center;
-        min-width: 28px;
-        min-height: 24px;
-        margin: 0; /* .sm-draw / .sm-inv: no negative margins in the chip */
-        padding: 0 4px;
-        border: 1.5px solid var(--a, var(--line-strong));
-        border-radius: var(--radius-m);
-        background: color-mix(in srgb, var(--a, var(--line-strong)) 16%, var(--bg));
-        font-weight: 700;
-        box-sizing: border-box;
+    .rail-range:empty { display: none; }
+
+    .rail-shown {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        margin: 0;
     }
 
-    .rail-range > .sm-text { color: var(--text); }
-
-    .rail-range > .rail-to {
-        line-height: 0.75rem;
-        color: var(--muted);
-    }
-
-    /* one value: one larger chip like a small card, the tile in its colour */
-    .rail-range.one {
-        padding-block: 10px;
-        border-color: color-mix(in srgb, var(--a, var(--line-strong)) 45%, var(--line));
-    }
-
-    .rail-range.one > :not(.rail-to) {
-        min-width: 30px;
-        min-height: 40px;
-        border-width: 2px;
-        font-size: var(--fs-l);
-    }
+    .rail-range:not(:empty) + .rail-shown { display: none; }
 
     .rail-shown small { font-size: 0.625rem; } /* "revealed" fits the tile */
 
@@ -4554,6 +4535,30 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         height: 18px;
         color: var(--ok);
     }
+
+    /* the spread in mini (sidebar.js): thin bars without blocks or labels, colours as .spread-bar / .spread-col.top;
+     * many cards: the bars get narrower, down to 2px */
+    .rail-bars {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 2px;
+        width: 100%;
+        height: 22px;
+        margin-top: 2px;
+        overflow: hidden;
+    }
+
+    .rail-bars:empty { display: none; }
+
+    .rail-bars i {
+        flex: 0 1 6px;
+        min-width: 2px;
+        min-height: 2px;
+        background: var(--line-strong);
+    }
+
+    .rail-bars i.top { background: var(--accent); }
 
     .rail-fill { flex: 1 1 auto; }
 
