@@ -4278,7 +4278,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         touch-action: none;
     }
 
-    /* a line on the edge and a handle in its middle, both only while hovered, focused or dragged */
+    /* a handle in the middle of the edge, always there but quiet; while hovered, focused or dragged it turns
+     * to the accent colour and a line along the whole edge appears */
     .side-grip::before,
     .side-grip::after {
         content: "";
@@ -4286,7 +4287,12 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         left: 50%;
         background: var(--accent);
         opacity: 0;
-        transition: opacity 0.15s;
+        transition: opacity 0.15s, background-color 0.15s;
+    }
+
+    .side-grip::after {
+        background: var(--line-strong);
+        opacity: 1;
     }
 
     .side-grip::before {
@@ -4310,6 +4316,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .side-grip:focus-visible::after,
     .side-dragging .side-grip::before,
     .side-dragging .side-grip::after { opacity: 1; }
+
+    .side-grip:hover::after,
+    .side-grip:focus-visible::after,
+    .side-dragging .side-grip::after { background: var(--accent); }
 
     .side-grip:focus-visible { outline: none; }
 
