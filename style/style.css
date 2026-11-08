@@ -4442,12 +4442,13 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-open:hover,
     .rail-open[aria-expanded=true] { color: var(--accent); }
 
-    /* the rail's tiles (Delia, B-113: Andreas' feedback "a lonely 3 looks sad"): the round's state on a quiet grey
-     * patch below the open button, the same in every phase. No card colours (Andreas: no third look of the cards):
+    /* the rail's tiles (Delia, B-113): the round's state below the open button, the same in every phase. No grey
+     * patch behind it (Andreas: with the mini spread it reads without one) – straight on the rail's background, set
+     * apart by air. No card colours (Andreas: no third look of the cards):
      *   voting      .rail-vote   "3/6", "voted", the waiting dots
      *   revealed    .rail-result one tile:
-     *                 .rail-range  exactly what the column's #spread_range shows ("range 3–8", "5"); wraps at the
-     *                              "–" when it does not fit the rail
+     *                 .rail-range  the values of the column's #spread_range without the word "range" ("3–8", "5");
+     *                              wraps at the "–" when it does not fit the rail
      *                 .rail-shown  instead when there is no range (no number cards): just a check (Andreas: the
      *                              word is too much; "revealed" stays for screen readers, .sr-only)
      *                 .rail-bars   the spread in mini below them */
@@ -4456,12 +4457,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         flex: none;
         flex-direction: column;
         align-items: center;
-        gap: 4px;
-        width: calc(var(--rail-w) - 12px);
-        margin: var(--space-1) 0 0;
-        padding: 8px 2px 9px;
-        border-radius: var(--radius-l);
-        background: var(--bg-3);
+        gap: 6px;
+        width: calc(var(--rail-w) - 8px);
+        margin: var(--space-2) 0 0;
+        padding: 0 2px;
         line-height: 1.2;
         white-space: nowrap;
         box-sizing: border-box;
@@ -4500,8 +4499,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-wait i:nth-child(2) { animation-delay: 0.2s; }
     .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
 
-    /* revealed: the range as text like .spread-range (same size, colour and line), "range" above two values;
-     * without a range a check alone; below them the mini spread */
+    /* revealed: the range's values as text like .spread-range (same size, colour and line), without the word
+     * "range" (Andreas); without a range a check alone; below them the mini spread */
     .rail-range {
         margin: 0;
         font-size: var(--fs-s);
@@ -4512,15 +4511,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         color: var(--text);
     }
 
-    .rail-range[data-shows*=","]::before {
-        content: "range"; /* as in #spread_range: same colour as the values */
-        display: block;
-    }
-
     .rail-range:empty { display: none; }
 
     /* the check alone, centred and a little larger than an icon in text; its line as high as the range's
-     * (1.25rem) plus a little air, so the tile keeps a calm height whether it shows a range or the check */
+     * (1.25rem) plus a little air, so the block keeps a calm height whether it shows a range or the check */
     .rail-shown {
         position: relative; /* holds the .sr-only "revealed" */
         display: flex;
@@ -4541,7 +4535,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     /* the spread in mini (sidebar.js): one column per card of the deck, without blocks or labels, colours as
      * .spread-bar / .spread-col.top. B-113 (Fred, Andreas' feedback): every value has a 1px base line in
      * --line-strong, votes rise from it; the columns shrink down to 1px with a 1px gap, so even the largest deck
-     * (21 cards: 41px) fits the tile without clipping */
+     * (21 cards: 41px) fits the rail without clipping */
     .rail-bars {
         display: flex;
         align-items: flex-end;

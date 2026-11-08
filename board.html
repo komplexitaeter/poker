@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.42" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.43" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -118,11 +118,11 @@
          data-phase="voting|revealed" (what the rail shows). -->
     <div id="side_rail" class="side-rail">
         <button type="button" id="side_open" class="icon-btn rail-open" aria-label="Open sidebar" title="Open sidebar" aria-expanded="false" aria-controls="sidebar"><svg class="i" aria-hidden="true"><use href="#i-dleft"/></svg></button>
-        <!-- the round's state as one small tile (style.css "the rail's tiles"). Voting: "3/6", "voted" and the
+        <!-- the round's state straight on the rail (style.css "the rail's tiles"). Voting: "3/6", "voted" and the
              waiting dots (#rail_count by script.js) -->
         <p class="rail-vote rail-tile"><b id="rail_count" class="rail-count">0/0</b><small>voted</small><span class="rail-wait" aria-hidden="true"><i></i><i></i><i></i></span></p>
-        <!-- revealed: one tile. #rail_range: exactly what #spread_range shows (its values cloned, "–" between them,
-             "range" by style.css), no colours of its own; wraps at the "–" when it does not fit. Without a range
+        <!-- revealed: one block on the rail (no grey tile). #rail_range: exactly what #spread_range shows (its values cloned, "–" between them,
+             without the word "range"), no colours of its own; wraps at the "–" when it does not fit. Without a range
              (no number cards, only "?" or coffee) just a check ("revealed" for screen readers) instead. #rail_bars: the spread in mini
              (a 1px base line per card of the deck, rising where there are votes; colours as in #spread). Filled by sidebar.js. -->
         <div class="rail-result rail-tile">
