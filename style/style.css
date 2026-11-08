@@ -4493,6 +4493,9 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .container[data-phase=voting] .rail-vote,
     .container[data-phase=revealed] .rail-result { display: flex; }
 
+    /* bars and range (or check) read as one unit (Andreas): no tile gap between them, only .rail-bars' margin */
+    .rail-result { gap: 0; }
+
     .rail-tile small {
         font-size: var(--fs-xs);
         color: var(--muted);
@@ -4538,6 +4541,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
     .rail-range:empty { display: none; }
 
+    /* text on top ("8–13"): the digits start ~5px into the line (half-leading, ascent), so the line moves up to sit
+     * as close to the bars as a symbol range does (a symbol fills its line and stays at the 3px of .rail-bars) */
+    .rail-range:has(> .sm-text:first-child) { margin-top: -4px; }
+
     /* the check alone, centred and a little larger than an icon in text; its line as high as the range's
      * (1.25rem) plus a little air, so the block keeps a calm height whether it shows a range or the check */
     .rail-shown {
@@ -4545,8 +4552,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 0;
-        padding: 2px 0;
+        margin: -3px 0 0; /* right below the bars, as a text range (the check's own air: see .i) */
+        padding: 0 0 2px;
     }
 
     .rail-range:not(:empty) + .rail-shown { display: none; }
@@ -4554,6 +4561,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-shown .i {
         width: 20px;
         height: 20px;
+        margin-top: -2px; /* its glyph starts ~5px into the box: so it sits as close to the bars as the range */
         color: var(--ok);
     }
 
@@ -4568,7 +4576,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         gap: 1px;
         width: 100%;
         height: 22px;
-        margin-bottom: 2px; /* air to the range below (Fred: was margin-top while the bars sat below the range) */
+        margin-bottom: 5px; /* the only air to the range below (Andreas: a tick closer, was 6px gap + 2px; 3px was too close); not
+                             * less: a star symbol reaches ~1px above its line box */
     }
 
     .rail-bars:empty { display: none; }
