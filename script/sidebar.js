@@ -1,6 +1,6 @@
 /* B-113 (cut 1): the column on large screens with a mouse can be collapsed to a narrow rail and resized with the
  * grip on its left edge. The look is in style.css ("Sidebar (B-113)"); this file sets its hooks on .container:
- * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-pinning, .side-dragging, .side-snap, .side-menu, --side-w,
+ * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-pinning, .side-dragging, .side-menu, --side-w,
  * data-phase.
  * The state (collapsed, width in vw) is kept per phase (voting / revealed) in localStorage, for all boards of the
  * browser. Without a stored state the column stays as it always was (open, --col-w). Phones and the carousel
@@ -9,12 +9,13 @@
  * The rail mirrors the round: "3/6" voted, the range of the cards down after the reveal, the timer and the round
  * button (#rail_round does what #newroundbtn does).
  * While the menu panel is open (.side-menu) the grip lies above it at its left edge, also while collapsed: dragging
- * sets the width of the phase (the menu and, later, the column use it) but never collapses or opens the column. */
+ * sets the width of the phase (the menu and, later, the column use it) but never collapses or opens the column.
+ * B-113 (Andreas): the grip sets the width only (20-60vw), it never collapses the column, neither dragged nor by
+ * arrow keys; collapsing is the job of »». */
 
 const SIDE_STORE_KEY = 'SIDEBAR_STATE';
 const SIDE_MIN_VW = 20;
 const SIDE_MAX_VW = 60;
-const SIDE_SNAP_VW = 14;        // dragged narrower than this: collapses on release
 const SIDE_KEY_STEP_VW = 2;
 const SIDE_PEEK_OPEN_MS = 120;  // hover over the rail: the overlay opens after this
 const SIDE_PEEK_CLOSE_MS = 250; // the pointer left rail and overlay: it closes after this
@@ -30,7 +31,7 @@ const gSide = {
     openTimer: null,
     closeTimer: null,
     animTimer: null,
-    drag: null,        // { id, startW, snap } while the grip is dragged
+    drag: null,        // { id, startW } while the grip is dragged
     inside: false,     // the mouse is over the rail or the overlay
     mouse: null,       // { x, y }: the mouse's last position (real moves only, see sideMouseMove)
     hoverBlocked: false, // closed (or collapsed) under the mouse: hover opens again only after it left the rail
@@ -262,7 +263,7 @@ function sideSetActive(active) {
     } else {
         if (gSide.drag !== null) sideEndDrag(null);
         sidePeek(false);
-        box.classList.remove('side-collapsed', 'side-peek', 'side-anim', 'side-no-anim', 'side-pinning', 'side-dragging', 'side-snap');
+        box.classList.remove('side-collapsed', 'side-peek', 'side-anim', 'side-no-anim', 'side-pinning', 'side-dragging');
         box.style.removeProperty('--side-w');
         box.removeAttribute('data-phase');
     }
@@ -313,7 +314,7 @@ function sideStartDrag(event) {
     event.preventDefault();
     const grip = event.currentTarget;
     try { grip.setPointerCapture(event.pointerId); } catch (e) { /* captured anyway */ }
-    gSide.drag = { id: event.pointerId, startW: sideShown().width, snap: false };
+    gSide.drag = { id: event.pointerId, startW: sideShown().width };
     sideContainer().classList.add('side-dragging');
 }
 
@@ -321,8 +322,6 @@ function sideMoveDrag(event) {
     const drag = gSide.drag;
     if (drag === null || event.pointerId !== drag.id) return;
     const w = sideGripW(event.clientX);
-    drag.snap = w < SIDE_SNAP_VW && !sideMenuOpen();
-    sideContainer().classList.toggle('side-snap', drag.snap);
     sideSetWidth(sideClampW(w));
 }
 
@@ -332,21 +331,13 @@ function sideEndDrag(event) {
     if (drag === null || (event !== null && event.pointerId !== drag.id)) return;
     gSide.drag = null;
     const box = sideContainer();
-    box.classList.remove('side-dragging', 'side-snap');
+    box.classList.remove('side-dragging');
     if (event === null || event.type === 'pointercancel') {
         sideSetWidth(drag.startW);
         return;
     }
-    if (drag.snap) {
-        // collapses; the width before the drag stays for the next time it is opened
-        const state = { collapsed: true, width: drag.startW };
-        sideSave(gSide.phase, state);
-        sideApply(state, 'anim');
-        sideBlockHoverAt(event);
-    } else {
-        // collapsed with the menu open: stays collapsed, the width is kept for the menu and for later
-        sideSave(gSide.phase, sideShown());
-    }
+    // never collapses (B-113); collapsed with the menu open: stays collapsed, the width is kept for the menu and later
+    sideSave(gSide.phase, sideShown());
 }
 
 function sideGripKey(event) {
