@@ -4244,6 +4244,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 .side-rail,
 .side-grip,
+.side-hint,
 .side-tools { display: none; }
 
 @media (min-width: 800px) {
@@ -4414,6 +4415,55 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         grid-column: 1 / -1;
         left: auto;
         right: calc(var(--side-menu-w) - 6px);
+        z-index: calc(var(--z-panel) + 1);
+    }
+
+    /* B-113 (to try out, Andreas): "kept for voting" / "width for results" for ~3s right after collapsing, pinning or
+     * resizing (sidebar.js, the first 4 times only). A quiet grey line like the deck's key hint, outside the column on
+     * its left edge: data-at="top" level with the rail's open button / the column's first row, data-at="grip" next to
+     * the grip's handle (also on the overlay and the menu panel). It lets the mouse through. */
+    .side-hint {
+        --hint-edge: var(--side-col);
+        display: block;
+        position: absolute;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        top: 22px; /* level with the rail's open button and the column's first row */
+        right: calc(var(--hint-edge) + 12px);
+        z-index: calc(var(--z-side) + 2);
+        margin: 0;
+        font-size: var(--fs-xs);
+        line-height: 1;
+        white-space: nowrap;
+        color: var(--muted);
+        text-transform: lowercase;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s ease, visibility 0s 0.4s;
+    }
+
+    .side-hint.shown {
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.25s ease 0.15s, visibility 0s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .side-hint,
+        .side-hint.shown { transition: none; }
+    }
+
+    .side-hint[data-at="grip"] {
+        grid-row: 2 / -1;
+        top: 50%;
+        margin-top: -0.5em;
+    }
+
+    .container.side-collapsed.side-peek > .side-hint[data-at="grip"] { --hint-edge: var(--side-open); }
+
+    .container.side-menu > .side-hint[data-at="grip"] {
+        --hint-edge: var(--side-menu-w);
         z-index: calc(var(--z-panel) + 1);
     }
 

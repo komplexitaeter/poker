@@ -15,7 +15,10 @@
  * B-113 (Delia's advice, Andreas): the overlay (collapsed, .side-peek) has the grip at its left edge too. It sets the
  * width of the phase only: the column stays collapsed, the overlay (and the open menu) follow the width. While it is
  * dragged the overlay does not close (no close timer, no hoverBlocked); after the release it closes as usual once the
- * mouse is outside rail, overlay and grip. */
+ * mouse is outside rail, overlay and grip.
+ * B-113 (to try out, Andreas): right after collapsing (»»), pinning or resizing, a quiet line next to the column says
+ * that this is kept for the phase ("kept for voting", "width for results"; #side_hint, style.css .side-hint), for
+ * about 3s; only the first SIDE_HINT_MAX times in this browser (counted in localStorage). */
 
 const SIDE_STORE_KEY = 'SIDEBAR_STATE';
 const SIDE_MIN_VW = 20;
@@ -24,6 +27,9 @@ const SIDE_KEY_STEP_VW = 2;
 const SIDE_PEEK_OPEN_MS = 120;  // hover over the rail: the overlay opens after this
 const SIDE_PEEK_CLOSE_MS = 250; // the pointer left rail and overlay: it closes after this
 const SIDE_ANIM_MS = 450;       // .side-anim stays this long (the width transition is 0.35s)
+const SIDE_HINT_KEY = 'SIDEBAR_HINTS';
+const SIDE_HINT_MAX = 4;        // the hint shows after the first 4 actions only
+const SIDE_HINT_MS = 3000;      // and stays this long (while dragging: until 3s after the release)
 
 const gSideQuery = window.matchMedia('(min-width: 800px) and (hover: hover), (min-width: 800px) and (pointer: fine)');
 
@@ -39,6 +45,8 @@ const gSide = {
     inside: false,     // the mouse is over the rail or the overlay
     mouse: null,       // { x, y }: the mouse's last position (real moves only, see sideMouseMove)
     hoverBlocked: false, // closed (or collapsed) under the mouse: hover opens again only after it left the rail
+    hintTimer: null,
+    hintText: '',      // the hint shown now ('' while none)
 };
 
 function sideContainer() {
@@ -170,6 +178,7 @@ function syncSidebar(json) {
     const first = gSide.phase === null;
     gSide.phase = phase;
     if (gSide.drag !== null) sideEndDrag(null);
+    sideHintHide();
     if (!first) sidePeek(false);
     sideApply(sideLoad(phase), first ? 'none' : 'anim');
 }
@@ -266,6 +275,7 @@ function sideSetActive(active) {
         }
     } else {
         if (gSide.drag !== null) sideEndDrag(null);
+        sideHintHide();
         sidePeek(false);
         box.classList.remove('side-collapsed', 'side-peek', 'side-anim', 'side-no-anim', 'side-pinning', 'side-dragging');
         box.style.removeProperty('--side-w');
@@ -279,6 +289,7 @@ function sideCollapse(event) {
     sideSave(gSide.phase, state);
     sideApply(state, 'anim');
     sideBlockHoverAt(event);
+    sideHint('kept');
 }
 
 /* collapsed by a click or a release on the right edge: the rail is now under the mouse; it opens the overlay only
@@ -305,6 +316,48 @@ function sidePin() {
     // the overlay stays where it is while the table makes room; without this the column would start at the
     // rail's width and grow back (B-113, Andreas)
     sideContainer().classList.add('side-pinning');
+    sideHint('kept');
+}
+
+/* --- the hint: "kept for voting" etc. next to the column, right after an action (B-113, to try out) --- */
+/* how often it was shown in this browser; null without localStorage (then it always shows) */
+function sideHintCount() {
+    try {
+        return parseInt(localStorage.getItem(SIDE_HINT_KEY) || '0', 10) || 0;
+    } catch (e) { return null; }
+}
+
+/* kind: 'kept' (collapsed, pinned; at the column's top) or 'width' (the grip; next to its handle). The same hint
+ * still on screen (the grip dragged on, arrow keys) only stays longer, it does not count again. hold: while dragging
+ * it does not fade (sideHintRelease starts the timer) */
+function sideHint(kind, hold = false) {
+    const hint = document.getElementById('side_hint');
+    if (hint === null || !gSide.active || gSide.phase === null) return;
+    const text = (kind === 'width' ? 'width' : 'kept') + ' for ' + (gSide.phase === 'revealed' ? 'results' : 'voting');
+    if (gSide.hintText !== text) {
+        const count = sideHintCount();
+        if (count !== null && count >= SIDE_HINT_MAX) return;
+        try { localStorage.setItem(SIDE_HINT_KEY, String((count || 0) + 1)); } catch (e) { /* shows anyway */ }
+        gSide.hintText = text;
+        hint.setAttribute('data-at', kind === 'width' ? 'grip' : 'top');
+        hint.textContent = text;
+        hint.classList.add('shown');
+    }
+    clearTimeout(gSide.hintTimer);
+    gSide.hintTimer = hold ? null : setTimeout(sideHintHide, SIDE_HINT_MS);
+}
+
+function sideHintRelease() {
+    if (gSide.hintText === '' || gSide.hintTimer !== null) return;
+    gSide.hintTimer = setTimeout(sideHintHide, SIDE_HINT_MS);
+}
+
+function sideHintHide() {
+    clearTimeout(gSide.hintTimer);
+    gSide.hintTimer = null;
+    gSide.hintText = '';
+    const hint = document.getElementById('side_hint');
+    if (hint !== null) hint.classList.remove('shown'); // the text stays while it fades out
 }
 
 /* --- the grip: drag (pointer events: mouse, pen, touch) and arrow keys --- */
@@ -329,7 +382,10 @@ function sideMoveDrag(event) {
     const drag = gSide.drag;
     if (drag === null || event.pointerId !== drag.id) return;
     const w = sideGripW(event.clientX);
-    sideSetWidth(sideClampW(w));
+    const width = sideClampW(w);
+    if (String(width) === String(sideShown().width)) return;
+    sideSetWidth(width);
+    sideHint('width', true);
 }
 
 /* event null: given up (phase change, layout switched); otherwise the release saves */
@@ -339,6 +395,7 @@ function sideEndDrag(event) {
     gSide.drag = null;
     const box = sideContainer();
     box.classList.remove('side-dragging');
+    sideHintRelease();
     if (event === null || event.type === 'pointercancel') {
         sideSetWidth(drag.startW);
         return;
@@ -375,6 +432,7 @@ function sideGripKey(event) {
     const width = sideClampW(Math.round(sideMeasuredW()) + step);
     sideSetWidth(width);
     sideSave(gSide.phase, { collapsed: sideShown().collapsed, width });
+    sideHint('width');
 }
 
 /* --- the overlay: hover with a mouse, the button by click or tap, Escape and a click elsewhere close it --- */
