@@ -4593,7 +4593,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
     /* text on top ("8–13"): the digits start ~5px into the line (half-leading, ascent), so the line moves up to sit
      * as close to the bars as a symbol range does (a symbol fills its line and stays at the 3px of .rail-bars) */
-    .rail-range:has(> .sm-text:first-child) { margin-top: -3px; }
+    .rail-range:has(> .sm-text:first-child) { margin-top: -4px; }
 
     /* the check alone, centred and a little larger than an icon in text; its line as high as the range's
      * (1.25rem) plus a little air, so the block keeps a calm height whether it shows a range or the check */
@@ -4626,7 +4626,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         gap: 1px;
         width: 100%;
         height: 22px;
-        margin-bottom: 3px; /* the only air to the range below (Andreas: a tick closer, was 6px gap + 2px); not
+        margin-bottom: 5px; /* the only air to the range below (Andreas: a tick closer, was 6px gap + 2px; 3px was too close); not
                              * less: a star symbol reaches ~1px above its line box */
     }
 
