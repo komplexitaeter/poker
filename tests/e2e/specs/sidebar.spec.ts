@@ -444,6 +444,25 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
   await expect(alice.locator('#rail_range > *')).toHaveCount(1);
   await expect(alice.locator('#rail_range')).toHaveText('5');
 
+  // only "?": no range, the rail shows the check alone ("revealed" for screen readers only) and the mini bars
+  await round.click();
+  await expect(container(alice)).toHaveAttribute('data-phase', 'voting');
+  await pickCard(alice, 'qstmrk1');
+  await pickCard(bob, 'qstmrk1');
+  await expect(container(alice)).toHaveAttribute('data-phase', 'revealed');
+  await expect(alice.locator('#rail_range')).toBeEmpty();
+  const shown = alice.locator('.rail-shown');
+  await expect(shown.locator('.i')).toBeVisible();
+  await expect(shown).toHaveText('revealed');
+  await expect(shown.locator('.sr-only')).toHaveText('revealed');
+  await expect(alice.locator('#rail_bars')).toBeVisible();
+  if (process.env.B113_SHOT) { // manual check of the look (not in CI)
+    await alice.locator('#side_rail').screenshot({ path: process.env.B113_SHOT + '-dark.png' });
+    await alice.evaluate(() => document.body.classList.add('light-theme'));
+    await alice.locator('#side_rail').screenshot({ path: process.env.B113_SHOT + '-light.png' });
+    await alice.evaluate(() => document.body.classList.remove('light-theme'));
+  }
+
   // the other board (Bob) has its own browser: unchanged
   await expect(container(bob)).not.toHaveClass(/side-collapsed/);
 });

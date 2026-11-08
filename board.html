@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.40" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.41" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -123,11 +123,11 @@
         <p class="rail-vote rail-tile"><b id="rail_count" class="rail-count">0/0</b><small>voted</small><span class="rail-wait" aria-hidden="true"><i></i><i></i><i></i></span></p>
         <!-- revealed: one tile. #rail_range: exactly what #spread_range shows (its values cloned, "–" between them,
              "range" by style.css), no colours of its own; wraps at the "–" when it does not fit. Without a range
-             (no number cards, only "?" or coffee) a check and "revealed" instead. #rail_bars: the spread in mini
+             (no number cards, only "?" or coffee) just a check ("revealed" for screen readers) instead. #rail_bars: the spread in mini
              (one thin bar per chosen card, colours as in #spread). Filled by sidebar.js. -->
         <div class="rail-result rail-tile">
             <p id="rail_range" class="rail-range"></p>
-            <p class="rail-shown"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><small>revealed</small></p>
+            <p class="rail-shown"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span class="sr-only">revealed</span></p>
             <span id="rail_bars" class="rail-bars" aria-hidden="true"></span>
         </div>
         <span class="rail-fill"></span>
