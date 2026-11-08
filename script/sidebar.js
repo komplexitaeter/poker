@@ -11,7 +11,11 @@
  * While the menu panel is open (.side-menu) the grip lies above it at its left edge, also while collapsed: dragging
  * sets the width of the phase (the menu and, later, the column use it) but never collapses or opens the column.
  * B-113 (Andreas): the grip sets the width only (20-60vw), it never collapses the column, neither dragged nor by
- * arrow keys; collapsing is the job of »». */
+ * arrow keys; collapsing is the job of »».
+ * B-113 (Delia's advice, Andreas): the overlay (collapsed, .side-peek) has the grip at its left edge too. It sets the
+ * width of the phase only: the column stays collapsed, the overlay (and the open menu) follow the width. While it is
+ * dragged the overlay does not close (no close timer, no hoverBlocked); after the release it closes as usual once the
+ * mouse is outside rail, overlay and grip. */
 
 const SIDE_STORE_KEY = 'SIDEBAR_STATE';
 const SIDE_MIN_VW = 20;
@@ -31,7 +35,7 @@ const gSide = {
     openTimer: null,
     closeTimer: null,
     animTimer: null,
-    drag: null,        // { id, startW } while the grip is dragged
+    drag: null,        // { id, startW } while the grip is dragged (also on the overlay: it stays open meanwhile)
     inside: false,     // the mouse is over the rail or the overlay
     mouse: null,       // { x, y }: the mouse's last position (real moves only, see sideMouseMove)
     hoverBlocked: false, // closed (or collapsed) under the mouse: hover opens again only after it left the rail
@@ -316,6 +320,9 @@ function sideStartDrag(event) {
     try { grip.setPointerCapture(event.pointerId); } catch (e) { /* captured anyway */ }
     gSide.drag = { id: event.pointerId, startW: sideShown().width };
     sideContainer().classList.add('side-dragging');
+    // on the overlay: it stays open while dragging
+    clearTimeout(gSide.closeTimer);
+    sideCancelOpen();
 }
 
 function sideMoveDrag(event) {
@@ -336,8 +343,25 @@ function sideEndDrag(event) {
         sideSetWidth(drag.startW);
         return;
     }
-    // never collapses (B-113); collapsed with the menu open: stays collapsed, the width is kept for the menu and later
+    // never collapses (B-113); collapsed with the menu open or on the overlay: stays collapsed, the width is kept
+    // for the overlay, the menu and later
     sideSave(gSide.phase, sideShown());
+    sidePeekAfterDrag(event);
+}
+
+/* released on the overlay's grip: the mouse is outside rail, overlay and grip – the overlay closes after the usual
+ * delay (as if the mouse had just left it); inside it stays open */
+function sidePeekAfterDrag(event) {
+    if (!gSide.peek || gSide.peekSticky || event.pointerType !== 'mouse') return;
+    const over = document.elementFromPoint(event.clientX, event.clientY);
+    if (over !== null && sideIsInside(over)) {
+        gSide.inside = true;
+        return;
+    }
+    gSide.inside = false;
+    gSide.hoverBlocked = false;
+    clearTimeout(gSide.closeTimer);
+    gSide.closeTimer = setTimeout(() => sidePeek(false), SIDE_PEEK_CLOSE_MS);
 }
 
 function sideGripKey(event) {
@@ -371,11 +395,22 @@ function sideHoverIn(event) {
     if (sideContainer().classList.contains('side-collapsed')) clearTimeout(gSide.closeTimer);
 }
 
+/* the rail, the overlay (#sidebar) and the grip (on the overlay's left edge) count as one */
+function sideIsInside(node) {
+    return ['side_rail', 'sidebar', 'side_grip'].some(id => {
+        const element = document.getElementById(id);
+        return element !== null && element.contains(node);
+    });
+}
+
 function sideHoverOut(event) {
     if (!gSide.active || event.pointerType !== 'mouse') return;
     // still over the rail or the overlay: stays
     const to = event.relatedTarget;
-    if (to instanceof Node && (document.getElementById('side_rail').contains(to) || document.getElementById('sidebar').contains(to))) return;
+    if (to instanceof Node && sideIsInside(to)) return;
+    // dragging the grip on the overlay (the pointer may leave everything meanwhile): nothing closes; the release
+    // decides (sideEndDrag)
+    if (gSide.drag !== null) return;
     gSide.inside = false;
     gSide.hoverBlocked = false;
     sideCancelOpen();
@@ -441,7 +476,8 @@ function initSidebar() {
     document.addEventListener('pointermove', sideMouseMove, { passive: true });
     rail.addEventListener('pointerover', sideHoverIn);
     sidebar.addEventListener('pointerenter', sideHoverIn);
-    [rail, sidebar].forEach(element => element.addEventListener('pointerleave', sideHoverOut));
+    grip.addEventListener('pointerenter', sideHoverIn);
+    [rail, sidebar, grip].forEach(element => element.addEventListener('pointerleave', sideHoverOut));
 
     grip.addEventListener('pointerdown', sideStartDrag);
     grip.addEventListener('pointermove', sideMoveDrag);

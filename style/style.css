@@ -4235,6 +4235,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
  *   .side-pinning     just pinned from the overlay (with .side-anim): the column keeps the overlay's width at the
  *                     right edge (over the table) while its track grows, so it does not jump to the rail's width
  *   .side-dragging    the grip is being dragged (grip highlighted, col-resize cursor everywhere)
+ *                     (also on the overlay: .side-collapsed.side-peek, the grip lies at its left edge)
  *   .side-menu        the menu panel is open (sidebar.js): the grip lies above it at its left edge, also while
  *                     collapsed (Fred, B-113: Andreas' feedback; it sets the width only, no collapsing)
  *   data-phase        "voting" | "revealed": what the rail shows
@@ -4395,6 +4396,17 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
     .side-collapsed .side-grip,
     .side-pinning > .side-grip { display: none; }
+
+    /* collapsed with the overlay open: the grip at the overlay's left edge, above it (Fred, B-113: Delia's advice,
+     * the grip sets the width only). Dragging changes the width of the phase (overlay and later the column), the
+     * column stays collapsed; the handle shows by the same rules as on the open column (hover over the overlay) */
+    .container.side-collapsed.side-peek > .side-grip {
+        display: block;
+        grid-column: 1 / -1;
+        left: auto;
+        right: calc(var(--side-open) - 6px);
+        z-index: calc(var(--z-side) + 1);
+    }
 
     /* menu panel open (also collapsed): the grip at the panel's left edge, above it (Fred, B-113) */
     .container.side-menu > .side-grip {
