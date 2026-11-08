@@ -1137,8 +1137,8 @@ function roadmap_phase_sql(string $status_column): string {
 
 /*
  * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none).
- * Per user only the latest row over all phases counts (creation_date is set on every write; on equal timestamps the
- * row of the current phase wins, as vote_roadmap.php only writes that one). A latest row with reaction NONE (removed)
+ * Per user only the latest row over all phases counts (creation_date is set on every write, in microseconds, so
+ * consecutive votes never tie; for old whole-second rows on equal timestamps the row of the current phase wins). A latest row with reaction NONE (removed)
  * counts nothing. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by (UP - DOWN) descending, then sort_order,
  * then newest first.
  * $item_id limits the result to that entry (empty array if it is not visible).
