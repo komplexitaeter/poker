@@ -189,6 +189,8 @@ nachträglich im Backlog vermerkt.
   (Andreas) manuell frei und mergt ihn.**
 - Mehrere zusammengehörige Feature-Branches darf Kai zu einem Sammel-PR nach `release` zusammenführen.
 - Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
+- **Aufräumen (Andreas, 2026-11-08):** Kai löscht Feature-/Fix-Branches direkt nach dem Merge (remote) und entfernt die
+  zugehörigen Worktrees. Ist nichts in Entwicklung, gibt es nur `release` und `master`.
 - `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
 - **Rollout 3 ist live (2026-11-06), `rollout-3` ist abgeschlossen.** Seitdem wieder der normale Ablauf (Andreas,
   2026-11-07): Feature-Branches von `release`, PRs nach `release`, Staging auf `release`. Neues geht in kleinen,
