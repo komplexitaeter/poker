@@ -1,12 +1,15 @@
 /* B-113 (cut 1): the column on large screens with a mouse can be collapsed to a narrow rail and resized with the
  * grip on its left edge. The look is in style.css ("Sidebar (B-113)"); this file sets its hooks on .container:
- * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-pinning, .side-dragging, .side-snap, --side-w, data-phase.
+ * .side-collapsed, .side-peek, .side-anim, .side-no-anim, .side-pinning, .side-dragging, .side-snap, .side-menu, --side-w,
+ * data-phase.
  * The state (collapsed, width in vw) is kept per phase (voting / revealed) in localStorage, for all boards of the
  * browser. Without a stored state the column stays as it always was (open, --col-w). Phones and the carousel
  * tablets: nothing is set at all.
  * The open column has "collapse" (»») at the top right; the overlay has the pin ("Keep open") at the same spot.
  * The rail mirrors the round: "3/6" voted, the range of the cards down after the reveal, the timer and the round
- * button (#rail_round does what #newroundbtn does). */
+ * button (#rail_round does what #newroundbtn does).
+ * While the menu panel is open (.side-menu) the grip lies above it at its left edge, also while collapsed: dragging
+ * sets the width of the phase (the menu and, later, the column use it) but never collapses or opens the column. */
 
 const SIDE_STORE_KEY = 'SIDEBAR_STATE';
 const SIDE_MIN_VW = 20;
@@ -120,6 +123,12 @@ function sideApply(state, how) {
     sideUpdateGrip();
 }
 
+/* the menu panel (#menu) is open: the grip only sets the width then */
+function sideMenuOpen() {
+    const menu = document.getElementById('menu');
+    return menu !== null && menu.open;
+}
+
 /* the overlay over the table while collapsed */
 function sidePeek(open, sticky = false) {
     clearTimeout(gSide.openTimer);
@@ -174,6 +183,12 @@ function syncRailRange(revealed) {
     if (range.getAttribute('data-shows') === key) return;
     range.setAttribute('data-shows', key);
     const values = key === '' ? [] : Array.from(source.children).map(element => element.cloneNode(true));
+    // B-113 (Delia): each value as a chip in its card colour (style.css .rail-range); the keys are those of
+    // data-shows, in the same order as the values. One value: the tile takes its colour too.
+    const keys = key === '' ? [] : key.split(',');
+    values.forEach((value, i) => railChipColor(value, keys[i]));
+    railChipColor(range, values.length === 1 ? keys[0] : undefined);
+    range.classList.toggle('one', values.length === 1);
     if (values.length === 2) {
         const to = document.createElement('span');
         to.className = 'rail-to';
@@ -182,6 +197,14 @@ function syncRailRange(revealed) {
     } else {
         range.replaceChildren(...values);
     }
+}
+
+/* the value colour of a card (--a, --on; cards.js) on an element of the rail; none: removed */
+function railChipColor(element, key) {
+    element.style.removeProperty('--a');
+    element.style.removeProperty('--on');
+    const card = key === undefined ? undefined : cardByKey(key);
+    if (card !== undefined) setCardColor(element, cardLook(card).color);
 }
 
 /* #rail_round mirrors #newroundbtn */
@@ -290,7 +313,7 @@ function sideMoveDrag(event) {
     const drag = gSide.drag;
     if (drag === null || event.pointerId !== drag.id) return;
     const w = sideGripW(event.clientX);
-    drag.snap = w < SIDE_SNAP_VW;
+    drag.snap = w < SIDE_SNAP_VW && !sideMenuOpen();
     sideContainer().classList.toggle('side-snap', drag.snap);
     sideSetWidth(sideClampW(w));
 }
@@ -313,7 +336,8 @@ function sideEndDrag(event) {
         sideApply(state, 'anim');
         sideBlockHoverAt(event);
     } else {
-        sideSave(gSide.phase, { collapsed: false, width: sideShown().width });
+        // collapsed with the menu open: stays collapsed, the width is kept for the menu and for later
+        sideSave(gSide.phase, sideShown());
     }
 }
 
@@ -327,13 +351,13 @@ function sideGripKey(event) {
     event.stopPropagation(); // not the deck's keys
     const width = sideClampW(Math.round(sideMeasuredW()) + step);
     sideSetWidth(width);
-    sideSave(gSide.phase, { collapsed: false, width });
+    sideSave(gSide.phase, { collapsed: sideShown().collapsed, width });
 }
 
 /* --- the overlay: hover with a mouse, the button by click or tap, Escape and a click elsewhere close it --- */
-/* over the rail (pointerover, also when moving between its parts) or the overlay (pointerenter). The round
- * button and the timer at the rail's foot do not open it: the overlay would slide over the button about to be
- * clicked. */
+/* over the rail (pointerover, also when moving between its parts) or the overlay (pointerenter). The rail's foot
+ * (timer and round button with the room around them down to the rail's edges) does not open it: the overlay would
+ * slide over the button about to be clicked. */
 function sideHoverIn(event) {
     if (!gSide.active || event.pointerType !== 'mouse') return;
     gSide.inside = true;
@@ -343,7 +367,7 @@ function sideHoverIn(event) {
     clearTimeout(gSide.closeTimer);
     if (gSide.peek || gSide.hoverBlocked) return;
     clearTimeout(gSide.openTimer);
-    if (event.target instanceof Element && event.target.closest('#rail_round, #rail_timer') !== null) return;
+    if (event.target instanceof Element && event.target.closest('.rail-foot') !== null) return;
     gSide.openTimer = setTimeout(() => {
         sidePeek(true);
         gSide.hoverAt = gSide.mouse;
@@ -410,12 +434,20 @@ function initSidebar() {
     });
     document.addEventListener('pointerdown', event => {
         if (!gSide.peek || !(event.target instanceof Node)) return;
-        if (rail.contains(event.target) || sidebar.contains(event.target)) return;
+        if (rail.contains(event.target) || sidebar.contains(event.target) || grip.contains(event.target)) return;
         // the menu panel lies over the column: a click in it is no click elsewhere
         const menu = document.getElementById('menu');
         if (menu !== null && menu.contains(event.target)) return;
         sidePeek(false);
     });
+
+    // the menu panel open or closed: .side-menu (the grip above the panel)
+    const menu = document.getElementById('menu');
+    if (menu !== null && typeof MutationObserver === 'function') {
+        const syncMenu = () => box.classList.toggle('side-menu', menu.open);
+        new MutationObserver(syncMenu).observe(menu, { attributes: true, attributeFilter: ['open'] });
+        syncMenu();
+    }
 
     // the spread's average pointer follows the column's width (grip, phase change, peek)
     if (typeof ResizeObserver === 'function') {

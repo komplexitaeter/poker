@@ -240,6 +240,124 @@ test('the grip: drag and arrow keys set the width (kept on reload), below the mi
   expect(await sideW(alice)).toBe(kept);
 });
 
+/* the grip's handle (the "Böbbel" in the middle of its edge) is on top: elementFromPoint hits the grip */
+async function gripOnTop(page: Page) {
+  const g = (await page.locator('#side_grip').boundingBox())!;
+  const x = g.x + g.width / 2;
+  const y = g.y + g.height / 2;
+  expect(await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.id ?? '', [x, y])).toBe('side_grip');
+  return { x, y };
+}
+
+async function dragGrip(page: Page, from: { x: number, y: number }, toX: number) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(toX + 60, from.y, { steps: 5 });
+  await page.mouse.move(toX, from.y, { steps: 5 });
+  await page.mouse.up();
+}
+
+/* the panel slides in (panel-in): measure after it */
+const panelSettled = (menu: any) => menu.evaluate((el: Element) => Promise.all(el.getAnimations().map(a => a.finished)));
+const menuWidth = async (page: Page) => Math.round((await page.locator('#menu').boundingBox())!.width);
+const stored = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('SIDEBAR_STATE') || '{}'));
+
+test('menu open: the grip lies above the panel, dragging resizes and keeps the menu open (B-113)', async ({ browser }) => {
+  const { alice } = await twoPlayers(browser, 'Sidebar Menu Grip');
+  const menu = alice.locator('dialog#menu');
+
+  await alice.locator('#cset_btn').click();
+  await expect(menu).toHaveAttribute('open');
+  await expect(container(alice)).toHaveClass(/side-menu/);
+  await panelSettled(menu);
+  const at = await gripOnTop(alice);
+  // at the panel's left edge
+  expect(Math.abs(at.x - (await menu.boundingBox())!.x)).toBeLessThanOrEqual(2);
+
+  // wider: menu and column 50vw; the release does not close the menu
+  await dragGrip(alice, at, 640);
+  expect(await sideW(alice)).toBe('50vw');
+  expect(await menuWidth(alice)).toBe(640);
+  expect(await sideWidth(alice)).toBe(640);
+  await alice.waitForTimeout(300);
+  await expect(menu).toHaveAttribute('open');
+
+  // far to the right: only the minimum width (20vw), no collapsing while the menu is open; the menu keeps its own
+  // minimum (380px) and stays open
+  await dragGrip(alice, await gripOnTop(alice), 1250);
+  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-snap/);
+  expect(await sideW(alice)).toBe('20vw');
+  expect(await sideWidth(alice)).toBe(256);
+  expect(await menuWidth(alice)).toBe(380);
+  await alice.waitForTimeout(300);
+  await expect(menu).toHaveAttribute('open');
+  expect((await stored(alice)).voting).toEqual({ collapsed: false, width: 20 });
+});
+
+test('collapsed with the menu open: the grip sets the width of the phase, the column stays collapsed (B-113)', async ({ browser }) => {
+  const { alice } = await twoPlayers(browser, 'Sidebar Menu Collapsed');
+  const menu = alice.locator('dialog#menu');
+
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await expect(alice.locator('#side_grip')).toBeHidden();
+
+  await alice.locator('#cset_btn').click();
+  await expect(menu).toHaveAttribute('open');
+  await panelSettled(menu);
+  const at = await gripOnTop(alice);
+  expect(Math.abs(at.x - (await menu.boundingBox())!.x)).toBeLessThanOrEqual(2);
+
+  await dragGrip(alice, at, 640);
+  expect(await menuWidth(alice)).toBe(640);
+  await alice.waitForTimeout(300);
+  await expect(menu).toHaveAttribute('open');
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  expect((await stored(alice)).voting).toEqual({ collapsed: true, width: 50 });
+
+  // menu closed: still the rail, no grip
+  await alice.locator('#menu_close').click();
+  await expect(menu).not.toHaveAttribute('open');
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await expect(alice.locator('#side_rail')).toBeVisible();
+  await expect(alice.locator('#side_grip')).toBeHidden();
+
+  // opened later: the new width (the close button lay over the rail: hover may have opened the overlay)
+  await alice.mouse.move(200, 300);
+  await expect(container(alice)).not.toHaveClass(/side-peek/);
+  await alice.locator('#side_open').click();
+  await alice.locator('#side_pin').click();
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+  await expect.poll(() => sideWidth(alice)).toBe(640);
+});
+
+test('the rail\'s foot (timer, round button and the room around them) opens no overlay on hover (B-113)', async ({ browser }) => {
+  const { alice } = await twoPlayers(browser, 'Sidebar Rail Foot');
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.mouse.move(200, 300);
+
+  const rail = (await alice.locator('#side_rail').boundingBox())!;
+  const round = (await alice.locator('#rail_round').boundingBox())!;
+  const spots = [
+    { x: round.x - 5, y: round.y + round.height / 2 },              // left of the button
+    { x: round.x + round.width + 5, y: round.y + round.height / 2 }, // right of it
+    { x: round.x + round.width / 2, y: round.y + round.height + 10 }, // below it
+    { x: rail.x + rail.width / 2, y: rail.y + rail.height - 3 },     // at the rail's bottom edge
+  ];
+  for (const spot of spots) {
+    await alice.mouse.move(spot.x, spot.y, { steps: 3 });
+    await alice.waitForTimeout(300);
+    await expect(container(alice)).not.toHaveClass(/side-peek/);
+    await alice.mouse.move(200, 300);
+    await alice.waitForTimeout(300);
+  }
+
+  // the upper part still opens it
+  await alice.locator('#rail_count').hover();
+  await expect(container(alice)).toHaveClass(/side-peek/);
+});
+
 test('each phase keeps its own state; the rail shows the range and starts a new round (B-113)', async ({ browser }) => {
   const { alice, bob } = await twoPlayers(browser, 'Sidebar Phases');
 
