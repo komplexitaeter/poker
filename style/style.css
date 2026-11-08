@@ -4442,18 +4442,41 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-open:hover,
     .rail-open[aria-expanded=true] { color: var(--accent); }
 
-    /* voting: "3/6", "voted", three waiting dots; plain text, no frame */
-    .rail-vote {
-        display: flex;
+    /* the rail's tiles (Delia, B-113: Andreas' feedback "a lonely 3 looks sad"): the round's state as one small
+     * block below the open button, a bit lighter/darker than the rail, the same in every phase:
+     *   voting      .rail-vote   "3/6", "voted", the waiting dots
+     *   revealed    .rail-range  "range" and the two values as chips in their card colour (smallest above),
+     *                            or one larger chip (one value)
+     *               .rail-shown  no range (no number cards): a check and "revealed" */
+    .rail-tile {
+        display: none;
+        flex: none;
         flex-direction: column;
         align-items: center;
-        gap: 2px;
+        gap: 4px;
+        width: calc(var(--rail-w) - 12px);
         margin: var(--space-1) 0 0;
+        padding: 8px 0 9px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-l);
+        background: var(--bg);
         line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .container[data-phase=voting] .rail-vote,
+    .container[data-phase=revealed] .rail-range:not(:empty),
+    .container[data-phase=revealed] .rail-range:empty + .rail-shown { display: flex; }
+
+    .rail-tile small {
+        font-size: var(--fs-xs);
+        color: var(--muted);
     }
 
     .rail-count {
-        font-size: var(--fs-l);
+        max-width: 100%;
+        font-size: 0.9375rem;
+        letter-spacing: -0.02em; /* "12/14" still fits */
         font-variant-numeric: tabular-nums;
         color: var(--text);
     }
@@ -4461,7 +4484,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-wait {
         display: flex;
         gap: 3px;
-        margin-top: 6px;
+        margin-top: 2px;
     }
 
     .rail-wait i {
@@ -4475,25 +4498,62 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-wait i:nth-child(2) { animation-delay: 0.2s; }
     .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
 
-    /* revealed: the range exactly as in the column's #spread_range (its mini values cloned by sidebar.js, without
-     * "range"), smallest above largest with "–" between them; one value when all agree (Andreas, 2026-11-07) */
+    /* the range: "range" (as in the column's #spread_range), the values as tiny cards in their colour (--a, --on
+     * set by sidebar.js like the card faces), "–" between them */
     .rail-range {
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        max-width: 100%;
-        margin: var(--space-1) 0 0;
+        gap: 3px;
         font-size: var(--fs-s);
-        line-height: 1.25rem;
         color: var(--text);
-        white-space: nowrap;
     }
 
-    .container[data-phase=revealed] .rail-vote { display: none; }
-    .container[data-phase=revealed] .rail-range { display: flex; }
+    .rail-range:has(> .rail-to)::before {
+        content: "range";
+        margin-bottom: 2px;
+        font-size: var(--fs-xs);
+        color: var(--muted);
+    }
 
-    .rail-to { color: var(--muted); }
+    .rail-range > :not(.rail-to) {
+        display: grid;
+        place-items: center;
+        min-width: 28px;
+        min-height: 24px;
+        margin: 0; /* .sm-draw / .sm-inv: no negative margins in the chip */
+        padding: 0 4px;
+        border: 1.5px solid var(--a, var(--line-strong));
+        border-radius: var(--radius-m);
+        background: color-mix(in srgb, var(--a, var(--line-strong)) 16%, var(--bg));
+        font-weight: 700;
+        box-sizing: border-box;
+    }
+
+    .rail-range > .sm-text { color: var(--text); }
+
+    .rail-range > .rail-to {
+        line-height: 0.75rem;
+        color: var(--muted);
+    }
+
+    /* one value: one larger chip like a small card, the tile in its colour */
+    .rail-range.one {
+        padding-block: 10px;
+        border-color: color-mix(in srgb, var(--a, var(--line-strong)) 45%, var(--line));
+    }
+
+    .rail-range.one > :not(.rail-to) {
+        min-width: 30px;
+        min-height: 40px;
+        border-width: 2px;
+        font-size: var(--fs-l);
+    }
+
+    .rail-shown small { font-size: 0.625rem; } /* "revealed" fits the tile */
+
+    .rail-shown .i {
+        width: 18px;
+        height: 18px;
+        color: var(--ok);
+    }
 
     .rail-fill { flex: 1 1 auto; }
 

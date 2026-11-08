@@ -181,6 +181,12 @@ function syncRailRange(revealed) {
     if (range.getAttribute('data-shows') === key) return;
     range.setAttribute('data-shows', key);
     const values = key === '' ? [] : Array.from(source.children).map(element => element.cloneNode(true));
+    // B-113 (Delia): each value as a chip in its card colour (style.css .rail-range); the keys are those of
+    // data-shows, in the same order as the values. One value: the tile takes its colour too.
+    const keys = key === '' ? [] : key.split(',');
+    values.forEach((value, i) => railChipColor(value, keys[i]));
+    railChipColor(range, values.length === 1 ? keys[0] : undefined);
+    range.classList.toggle('one', values.length === 1);
     if (values.length === 2) {
         const to = document.createElement('span');
         to.className = 'rail-to';
@@ -189,6 +195,14 @@ function syncRailRange(revealed) {
     } else {
         range.replaceChildren(...values);
     }
+}
+
+/* the value colour of a card (--a, --on; cards.js) on an element of the rail; none: removed */
+function railChipColor(element, key) {
+    element.style.removeProperty('--a');
+    element.style.removeProperty('--on');
+    const card = key === undefined ? undefined : cardByKey(key);
+    if (card !== undefined) setCardColor(element, cardLook(card).color);
 }
 
 /* #rail_round mirrors #newroundbtn */
