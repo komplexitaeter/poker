@@ -18,8 +18,8 @@ const SIDE_SNAP_VW = 14;        // dragged narrower than this: collapses on rele
 const SIDE_KEY_STEP_VW = 2;
 const SIDE_PEEK_OPEN_MS = 120;  // hover over the rail: the overlay opens after this
 const SIDE_PEEK_CLOSE_MS = 250; // the pointer left rail and overlay: it closes after this
-const SIDE_ANIM_MS = 450;
-const SIDE_PIN_GUARD_MS = 400;  // a click on the pin this soon after a hover opened the overlay was meant for «« below it       // .side-anim stays this long (the width transition is 0.35s)
+const SIDE_ANIM_MS = 450;       // .side-anim stays this long (the width transition is 0.35s)
+const SIDE_PIN_STILL_PX = 4;    // hover opened the overlay and the mouse moved less than this since: a click on the pin was meant for «« below it
 
 const gSideQuery = window.matchMedia('(min-width: 800px) and (hover: hover), (min-width: 800px) and (pointer: fine)');
 
@@ -33,7 +33,8 @@ const gSide = {
     animTimer: null,
     drag: null,        // { id, startW, snap } while the grip is dragged
     inside: false,     // the mouse is over the rail or the overlay
-    hoverAt: 0,        // when hover opened the overlay
+    mouse: null,       // { x, y }: the mouse's last position
+    hoverAt: null,     // { x, y }: where the mouse stood when hover opened the overlay, until it moved away from there
     hoverBlocked: false, // closed (or collapsed) under the mouse: hover opens again only after it left the rail
 };
 
@@ -138,6 +139,7 @@ function sidePeek(open, sticky = false) {
     if (!open && gSide.peek && gSide.inside) gSide.hoverBlocked = true;
     gSide.peek = open;
     gSide.peekSticky = open && sticky;
+    gSide.hoverAt = null;
     box.classList.toggle('side-peek', open);
     const button = document.getElementById('side_open');
     if (button !== null) button.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -275,10 +277,11 @@ function sideBlockHoverAt(event) {
 }
 
 /* the pin in the overlay: open for good (this phase) */
-function sidePin() {
+function sidePin(event) {
     if (!gSide.active || gSide.phase === null) return;
     // the pin lies where «« is: a click right after hover opened the overlay was aimed at ««, it keeps it open only
-    if (gSide.peek && !gSide.peekSticky && Date.now() - gSide.hoverAt < SIDE_PIN_GUARD_MS) {
+    // (the mouse has not moved since; the keyboard (detail 0) always pins)
+    if (gSide.peek && !gSide.peekSticky && gSide.hoverAt !== null && event.detail !== 0) {
         sidePeek(true, true);
         return;
     }
@@ -358,6 +361,7 @@ function sideGripKey(event) {
 function sideHoverIn(event) {
     if (!gSide.active || event.pointerType !== 'mouse') return;
     gSide.inside = true;
+    gSide.mouse = { x: event.clientX, y: event.clientY };
     const box = sideContainer();
     if (!box.classList.contains('side-collapsed')) return;
     clearTimeout(gSide.closeTimer);
@@ -366,7 +370,7 @@ function sideHoverIn(event) {
     if (event.target instanceof Element && event.target.closest('.rail-foot') !== null) return;
     gSide.openTimer = setTimeout(() => {
         sidePeek(true);
-        gSide.hoverAt = Date.now();
+        gSide.hoverAt = gSide.mouse;
     }, SIDE_PEEK_OPEN_MS);
 }
 
@@ -381,6 +385,15 @@ function sideHoverOut(event) {
     if (!gSide.peek || gSide.peekSticky) return;
     clearTimeout(gSide.closeTimer);
     gSide.closeTimer = setTimeout(() => sidePeek(false), SIDE_PEEK_CLOSE_MS);
+}
+
+/* the mouse's position; moved away from where hover opened the overlay: a click on the pin now pins (no timing:
+ * a slow click on «« still counts as one, a quick move to the pin still pins) */
+function sideMouseMove(event) {
+    if (event.pointerType !== 'mouse') return;
+    gSide.mouse = { x: event.clientX, y: event.clientY };
+    const at = gSide.hoverAt;
+    if (at !== null && Math.hypot(event.clientX - at.x, event.clientY - at.y) >= SIDE_PIN_STILL_PX) gSide.hoverAt = null;
 }
 
 function sideOpenClick() {
@@ -404,6 +417,7 @@ function initSidebar() {
         if (!document.getElementById('newroundbtn').disabled) newRound();
     });
 
+    document.addEventListener('pointermove', sideMouseMove, { passive: true });
     rail.addEventListener('pointerover', sideHoverIn);
     sidebar.addEventListener('pointerenter', sideHoverIn);
     [rail, sidebar].forEach(element => element.addEventListener('pointerleave', sideHoverOut));

@@ -84,10 +84,15 @@ test('default unchanged, collapse to the rail, peek by hover and click, pin; kep
   await alice.mouse.click(200, 300);
   await expect(container(alice)).not.toHaveClass(/side-peek/);
 
-  // the pin lies where «« is: a click on it right after hover opened the overlay keeps it open, it does not pin
-  await alice.locator('#side_open').hover();
-  await expect(container(alice)).toHaveClass(/side-peek/, { timeout: 1000 });
-  await alice.locator('#side_pin').click();
+  // the pin lies where «« is: hover opened the overlay and the mouse has not moved since, so a click there was
+  // meant for «« – it keeps the overlay open, it does not pin; however long it took (no timing)
+  const openBox = (await alice.locator('#side_open').boundingBox())!;
+  const at = { x: openBox.x + openBox.width / 2, y: openBox.y + openBox.height / 2 };
+  await alice.mouse.move(at.x, at.y);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.waitForTimeout(600); // a slow click (or a slow CI runner)
+  expect(await alice.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('#side_pin') !== null, at)).toBe(true);
+  await alice.mouse.click(at.x, at.y);
   await expect(container(alice)).toHaveClass(/side-collapsed/);
   await alice.mouse.move(200, 300);
   await alice.waitForTimeout(400);
@@ -118,6 +123,17 @@ test('default unchanged, collapse to the rail, peek by hover and click, pin; kep
   await alice.reload();
   await expect(container(alice)).toHaveAttribute('data-phase', 'voting');
   await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+
+  // hover opened the overlay, then the mouse moved (to the pin): the pin pins
+  await alice.locator('#side_collapse').click();
+  await expect(container(alice)).toHaveClass(/side-collapsed/);
+  await alice.mouse.move(200, 300);
+  await alice.mouse.move(at.x, at.y);
+  await expect(container(alice)).toHaveClass(/side-peek/);
+  await alice.mouse.move(at.x - 30, at.y + 20, { steps: 3 });
+  await alice.locator('#side_pin').click();
+  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-peek/);
+  await expect.poll(() => sideWidth(alice)).toBe(380);
 });
 
 /** samples the column's box (and whether it is on top at its middle) in every frame while the action runs */
