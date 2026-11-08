@@ -4418,8 +4418,9 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         z-index: calc(var(--z-panel) + 1);
     }
 
-    /* B-113 (to try out, Andreas): "kept for voting" / "width for results" for ~3s right after collapsing, pinning or
-     * resizing (sidebar.js, the first 4 times only). A quiet grey line like the deck's key hint, outside the column on
+    /* B-113 (to try out, Andreas): "setting saved for voting panel" / "... results panel" for ~2s right after
+     * collapsing, pinning or resizing (sidebar.js, the first 3 times per case). On the page colour with a soft wide
+     * glow in the same colour, so the table and cards under it fade out around it (readable, no card look); not to the right. A quiet grey line like the deck's key hint, outside the column on
      * its left edge: data-at="top" level with the rail's open button / the column's first row, data-at="grip" next to
      * the grip's handle (also on the overlay and the menu panel). It lets the mouse through. */
     .side-hint {
@@ -4432,6 +4433,11 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         right: calc(var(--hint-edge) + 12px);
         z-index: calc(var(--z-side) + 2);
         margin: 0;
+        padding: 3px 6px;
+        border-radius: 4px;
+        background: var(--bg);
+        box-shadow: 0 0 12px 8px var(--bg);
+        clip-path: inset(-32px 0 -32px -32px); /* no glow on the right, over the column's edge */
         font-size: var(--fs-xs);
         line-height: 1;
         white-space: nowrap;
@@ -4457,7 +4463,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .side-hint[data-at="grip"] {
         grid-row: 2 / -1;
         top: 50%;
-        margin-top: -0.5em;
+        margin-top: calc(-0.5em - 3px); /* centred incl. the padding */
     }
 
     .container.side-collapsed.side-peek > .side-hint[data-at="grip"] { --hint-edge: var(--side-open); }

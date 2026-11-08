@@ -767,71 +767,130 @@ test('the spread pointer follows the column width (B-113)', async ({ browser }) 
   expect(p.x + p.width / 2).toBeLessThan(eight.x + eight.width);
 });
 
-test('a quiet hint names the phase after »», the pin and the grip, the first 4 times only (B-113)', async ({ browser }) => {
+test('a quiet hint names the phase after »», the pin and the grip, about 2s, 3 times per case (B-113)', async ({ browser }) => {
+  test.setTimeout(120_000); // many hints of ~2s each
   const { alice, bob } = await twoPlayers(browser, 'Sidebar Hint');
   const hint = alice.locator('#side_hint');
+  const grip = alice.locator('#side_grip');
   const box = async (selector: string) => (await alice.locator(selector).boundingBox())!;
+  const counts = async () => JSON.parse(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS') ?? '{}'));
   await expect(hint).toBeHidden();
   await expect(hint).toHaveAttribute('aria-live', 'polite');
 
-  // 1: »» while voting – next to the rail, at its top; gone after about 3s
-  await alice.locator('#side_collapse').click();
-  await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('kept for voting');
+  const collapse = async () => {
+    await alice.locator('#side_collapse').click();
+    await expect(container(alice)).toHaveClass(/side-collapsed/);
+  };
+  const pin = async () => {
+    await alice.locator('#side_open').click();
+    await expect(container(alice)).toHaveClass(/side-peek/);
+    await alice.locator('#side_pin').click();
+    await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+  };
+  const shown = async (text: string) => {
+    await expect(hint).toBeVisible();
+    await expect(hint).toHaveText(text);
+    await expect(hint).toBeHidden({ timeout: 4000 });
+  };
+  const none = async () => {
+    await alice.waitForTimeout(600);
+    await expect(hint).not.toHaveClass(/shown/);
+  };
+
+  // »» while voting – next to the rail, at its top; gone after about 2s (still there after 1.2s)
+  await collapse();
+  await expect(hint).toHaveText('setting saved for voting panel');
   await expect(hint).toHaveAttribute('data-at', 'top');
   await expect.poll(async () => (await box('#side_rail')).x - (await box('#side_hint')).x - (await box('#side_hint')).width)
     .toBeGreaterThanOrEqual(0);
-  await expect(hint).toBeHidden({ timeout: 6000 });
-  expect(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS'))).toBe('1');
+  await alice.waitForTimeout(1200);
+  await expect(hint).toHaveClass(/shown/);
+  await expect(hint).toBeHidden({ timeout: 2500 });
+  expect(await counts()).toEqual({ collapse: 1 });
 
-  // 2: »» after the reveal: "results"
+  // the pin – next to the column's left edge; counted on its own
+  await pin();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('setting saved for voting panel');
+  await expect.poll(async () => (await box('#sidebar')).x - (await box('#side_hint')).x - (await box('#side_hint')).width)
+    .toBeGreaterThanOrEqual(0);
+  await expect(hint).toBeHidden({ timeout: 4000 });
+  expect(await counts()).toEqual({ collapse: 1, pin: 1 });
+
+  // »» and the pin twice more each, then neither shows again
+  await collapse(); await shown('setting saved for voting panel');
+  await pin(); await shown('setting saved for voting panel');
+  await collapse(); await shown('setting saved for voting panel');
+  await pin(); await shown('setting saved for voting panel');
+  expect(await counts()).toEqual({ collapse: 3, pin: 3 });
+  await collapse(); await none();
+  await pin(); await none();
+  expect(await counts()).toEqual({ collapse: 3, pin: 3 });
+
+  // the grip while voting: its own case (keys held on one hint count once)
+  await grip.focus();
+  await alice.keyboard.press('ArrowLeft');
+  await alice.keyboard.press('ArrowRight');
+  await expect(hint).toHaveText('setting saved for voting panel');
+  await expect(hint).toHaveAttribute('data-at', 'grip');
+  await expect(hint).toBeHidden({ timeout: 4000 });
+  for (let i = 0; i < 2; i++) {
+    await alice.keyboard.press('ArrowLeft');
+    await shown('setting saved for voting panel');
+  }
+  expect(await counts()).toEqual({ collapse: 3, pin: 3, width_voting: 3 });
+  await alice.keyboard.press('ArrowRight');
+  await none();
+
+  // after the reveal: »» and the pin stay silent (counted for all phases), the grip counts anew for results
   await pickCard(alice, 'three01');
   await pickCard(bob, 'eight01');
   await expect(container(alice)).toHaveAttribute('data-phase', 'revealed');
-  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
-  await alice.locator('#side_collapse').click();
-  await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('kept for results');
-  await expect(hint).toBeHidden({ timeout: 6000 });
+  await collapse(); await none();
+  await pin(); await none();
 
-  // 3: the pin on the overlay – next to the column's left edge
-  await alice.locator('#side_open').click();
-  await expect(container(alice)).toHaveClass(/side-peek/);
-  await alice.locator('#side_pin').click();
-  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
-  await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('kept for results');
-  await expect.poll(async () => (await box('#sidebar')).x - (await box('#side_hint')).x - (await box('#side_hint')).width)
-    .toBeGreaterThanOrEqual(0);
-  await expect(hint).toBeHidden({ timeout: 6000 });
-
-  // 4: dragging the grip – next to its handle, it stays while dragged and fades after the release
+  // dragging the grip – next to its handle, it stays while dragged and fades about 2s after the release
   await alice.mouse.move(200, 300); // the handle shows on hover only; the grip is there anyway
   const g = await box('#side_grip');
   await alice.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
   await alice.mouse.down();
   await alice.mouse.move(700, g.y + g.height / 2, { steps: 5 });
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('width for results');
+  await expect(hint).toHaveText('setting saved for results panel');
   await expect(hint).toHaveAttribute('data-at', 'grip');
   const h = await box('#side_hint');
   const g2 = await box('#side_grip');
   expect(h.x + h.width).toBeLessThanOrEqual(g2.x + g2.width / 2);
   expect(Math.abs(h.y + h.height / 2 - (g2.y + g2.height / 2))).toBeLessThan(10);
-  await alice.waitForTimeout(3500);
+  await alice.waitForTimeout(2500);
   await expect(hint).toBeVisible();
   await alice.mouse.move(680, g.y + g.height / 2, { steps: 3 });
   await alice.mouse.up();
-  await expect(hint).toBeHidden({ timeout: 6000 });
-  expect(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS'))).toBe('4');
+  await expect(hint).toBeHidden({ timeout: 4000 });
+  expect(await counts()).toEqual({ collapse: 3, pin: 3, width_voting: 3, width_revealed: 1 });
+});
 
-  // after 4: never again (»», arrow keys)
+test('the hint: an old plain count is ignored, a case at 3 stays silent while the others show (B-113)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Sidebar Hint Old');
+  await joinAsPlayer(alice, url, 'Alice');
+  await alice.evaluate(() => localStorage.setItem('SIDEBAR_HINTS', '4')); // the count before (all cases together)
+  const hint = alice.locator('#side_hint');
   await alice.locator('#side_collapse').click();
-  await expect(container(alice)).toHaveClass(/side-collapsed/);
-  await alice.waitForTimeout(800);
-  await expect(hint).toBeHidden();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('setting saved for voting panel');
+  expect(JSON.parse(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS') ?? ''))).toEqual({ collapse: 1 });
+
+  await alice.evaluate(() => localStorage.setItem('SIDEBAR_HINTS', JSON.stringify({ pin: 3 })));
+  await expect(hint).toBeHidden({ timeout: 4000 });
+  await alice.locator('#side_open').click();
+  await alice.locator('#side_pin').click();
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+  await alice.waitForTimeout(600);
   await expect(hint).not.toHaveClass(/shown/);
-  expect(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS'))).toBe('4');
+  await alice.locator('#side_collapse').click();
+  await expect(hint).toBeVisible();
+  expect(JSON.parse(await alice.evaluate(() => localStorage.getItem('SIDEBAR_HINTS') ?? ''))).toEqual({ pin: 3, collapse: 1 });
 });
 
 test('phones: no rail, no state, even with a stored one (B-113)', async ({ browser }) => {

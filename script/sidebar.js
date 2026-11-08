@@ -17,8 +17,9 @@
  * dragged the overlay does not close (no close timer, no hoverBlocked); after the release it closes as usual once the
  * mouse is outside rail, overlay and grip.
  * B-113 (to try out, Andreas): right after collapsing (»»), pinning or resizing, a quiet line next to the column says
- * that this is kept for the phase ("kept for voting", "width for results"; #side_hint, style.css .side-hint), for
- * about 3s; only the first SIDE_HINT_MAX times in this browser (counted in localStorage). */
+ * that this is kept for the phase ("setting saved for voting panel" / "... results panel"; #side_hint, style.css .side-hint), for
+ * about 2s; only the first SIDE_HINT_MAX times per case in this browser (counted in localStorage per case: collapse,
+ * pin, width while voting, width for results; Andreas). */
 
 const SIDE_STORE_KEY = 'SIDEBAR_STATE';
 const SIDE_MIN_VW = 20;
@@ -28,8 +29,8 @@ const SIDE_PEEK_OPEN_MS = 120;  // hover over the rail: the overlay opens after 
 const SIDE_PEEK_CLOSE_MS = 250; // the pointer left rail and overlay: it closes after this
 const SIDE_ANIM_MS = 450;       // .side-anim stays this long (the width transition is 0.35s)
 const SIDE_HINT_KEY = 'SIDEBAR_HINTS';
-const SIDE_HINT_MAX = 4;        // the hint shows after the first 4 actions only
-const SIDE_HINT_MS = 3000;      // and stays this long (while dragging: until 3s after the release)
+const SIDE_HINT_MAX = 3;        // the hint shows after the first 3 actions of each case only
+const SIDE_HINT_MS = 2000;      // and stays this long (while dragging: until 2s after the release)
 
 const gSideQuery = window.matchMedia('(min-width: 800px) and (hover: hover), (min-width: 800px) and (pointer: fine)');
 
@@ -47,6 +48,7 @@ const gSide = {
     hoverBlocked: false, // closed (or collapsed) under the mouse: hover opens again only after it left the rail
     hintTimer: null,
     hintText: '',      // the hint shown now ('' while none)
+    hintCase: '',      // its case (sideHintCase)
 };
 
 function sideContainer() {
@@ -289,7 +291,7 @@ function sideCollapse(event) {
     sideSave(gSide.phase, state);
     sideApply(state, 'anim');
     sideBlockHoverAt(event);
-    sideHint('kept');
+    sideHint('collapse');
 }
 
 /* collapsed by a click or a release on the right edge: the rail is now under the mouse; it opens the overlay only
@@ -316,29 +318,48 @@ function sidePin() {
     // the overlay stays where it is while the table makes room; without this the column would start at the
     // rail's width and grow back (B-113, Andreas)
     sideContainer().classList.add('side-pinning');
-    sideHint('kept');
+    sideHint('pin');
 }
 
-/* --- the hint: "kept for voting" etc. next to the column, right after an action (B-113, to try out) --- */
-/* how often it was shown in this browser; null without localStorage (then it always shows) */
-function sideHintCount() {
+/* --- the hint: "setting saved for voting panel" etc. next to the column, right after an action (B-113, to try out) --- */
+/* how often each case was shown in this browser: { collapse: n, pin: n, width_voting: n, width_revealed: n };
+ * null without localStorage (then it always shows). An old count as a plain number is ignored (overwritten). */
+function sideHintCounts() {
     try {
-        return parseInt(localStorage.getItem(SIDE_HINT_KEY) || '0', 10) || 0;
-    } catch (e) { return null; }
+        const counts = JSON.parse(localStorage.getItem(SIDE_HINT_KEY) || '{}');
+        return counts !== null && typeof counts === 'object' && !Array.isArray(counts) ? counts : {};
+    } catch (e) {
+        try { localStorage.getItem(SIDE_HINT_KEY); } catch (e2) { return null; }
+        return {}; // unreadable JSON
+    }
 }
 
-/* kind: 'kept' (collapsed, pinned; at the column's top) or 'width' (the grip; next to its handle). The same hint
+/* the case counted: »» and the pin in all phases together, the grip per phase */
+function sideHintCase(kind) {
+    return kind === 'width' ? 'width_' + gSide.phase : kind;
+}
+
+/* kind: 'collapse' (»»), 'pin' (both at the column's top) or 'width' (the grip; next to its handle). The same hint
  * still on screen (the grip dragged on, arrow keys) only stays longer, it does not count again. hold: while dragging
  * it does not fade (sideHintRelease starts the timer) */
 function sideHint(kind, hold = false) {
     const hint = document.getElementById('side_hint');
     if (hint === null || !gSide.active || gSide.phase === null) return;
-    const text = (kind === 'width' ? 'width' : 'kept') + ' for ' + (gSide.phase === 'revealed' ? 'results' : 'voting');
-    if (gSide.hintText !== text) {
-        const count = sideHintCount();
-        if (count !== null && count >= SIDE_HINT_MAX) return;
-        try { localStorage.setItem(SIDE_HINT_KEY, String((count || 0) + 1)); } catch (e) { /* shows anyway */ }
+    const text = 'setting saved for ' + (gSide.phase === 'revealed' ? 'results' : 'voting') + ' panel';
+    const hintCase = sideHintCase(kind);
+    if (gSide.hintText !== text || gSide.hintCase !== hintCase) {
+        const counts = sideHintCounts();
+        const count = counts === null ? 0 : (parseInt(counts[hintCase], 10) || 0);
+        if (count >= SIDE_HINT_MAX) {
+            // not this case any more; another hint still on screen fades as planned
+            return;
+        }
+        if (counts !== null) {
+            counts[hintCase] = count + 1;
+            try { localStorage.setItem(SIDE_HINT_KEY, JSON.stringify(counts)); } catch (e) { /* shows anyway */ }
+        }
         gSide.hintText = text;
+        gSide.hintCase = hintCase;
         hint.setAttribute('data-at', kind === 'width' ? 'grip' : 'top');
         hint.textContent = text;
         hint.classList.add('shown');
@@ -356,6 +377,7 @@ function sideHintHide() {
     clearTimeout(gSide.hintTimer);
     gSide.hintTimer = null;
     gSide.hintText = '';
+    gSide.hintCase = '';
     const hint = document.getElementById('side_hint');
     if (hint !== null) hint.classList.remove('shown'); // the text stays while it fades out
 }
