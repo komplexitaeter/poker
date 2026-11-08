@@ -4448,7 +4448,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
      *   revealed    .rail-result one tile:
      *                 .rail-range  exactly what the column's #spread_range shows ("range 3–8", "5"); wraps at the
      *                              "–" when it does not fit the rail
-     *                 .rail-shown  instead when there is no range (no number cards): a check and "revealed"
+     *                 .rail-shown  instead when there is no range (no number cards): just a check (Andreas: the
+     *                              word is too much; "revealed" stays for screen readers, .sr-only)
      *                 .rail-bars   the spread in mini below them */
     .rail-tile {
         display: none;
@@ -4500,7 +4501,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
 
     /* revealed: the range as text like .spread-range (same size, colour and line), "range" above two values;
-     * without a range "revealed" with a check; below them the mini spread */
+     * without a range a check alone; below them the mini spread */
     .rail-range {
         margin: 0;
         font-size: var(--fs-s);
@@ -4518,21 +4519,22 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
     .rail-range:empty { display: none; }
 
+    /* the check alone, centred and a little larger than an icon in text; its line as high as the range's
+     * (1.25rem) plus a little air, so the tile keeps a calm height whether it shows a range or the check */
     .rail-shown {
+        position: relative; /* holds the .sr-only "revealed" */
         display: flex;
-        flex-direction: column;
+        justify-content: center;
         align-items: center;
-        gap: 4px;
         margin: 0;
+        padding: 2px 0;
     }
 
     .rail-range:not(:empty) + .rail-shown { display: none; }
 
-    .rail-shown small { font-size: 0.625rem; } /* "revealed" fits the tile */
-
     .rail-shown .i {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
         color: var(--ok);
     }
 
