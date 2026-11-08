@@ -4,7 +4,7 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, openTimerPanel, setTeamD
 
 /**
  * B-113 (cut 1): on large screens with a mouse the column can be collapsed to a narrow rail (hover opens it as an
- * overlay, the pin keeps it open) and resized with the grip (20-60vw, below ~14vw it collapses; arrow keys ±2).
+ * overlay, the pin keeps it open) and resized with the grip (20-60vw, it never collapses: only »» does; arrow keys ±2).
  * The state is kept per phase (voting / revealed) in localStorage for all boards of the browser; a phase change
  * switches to the state of the new phase. The rail shows "1/2" while voting, the range of the cards down after the
  * reveal (one card when all agree) and the round button. Without a stored state nothing changes; phones never.
@@ -227,7 +227,7 @@ test('pinning keeps the overlay in place, collapsing slides it out without a jum
   expect(collapsed[collapsed.length - 1].left).toBe(DESKTOP.width);
 });
 
-test('the grip: drag and arrow keys set the width (kept on reload), below the minimum it collapses (B-113)', async ({ browser }) => {
+test('the grip: drag and arrow keys set the width (kept on reload), never collapse (B-113)', async ({ browser }) => {
   const { alice } = await twoPlayers(browser, 'Sidebar Grip');
   const grip = alice.locator('#side_grip');
 
@@ -269,16 +269,51 @@ test('the grip: drag and arrow keys set the width (kept on reload), below the mi
   await expect(container(alice)).toHaveAttribute('data-phase', 'voting');
   expect(await sideW(alice)).toBe(kept);
 
-  // dragged below ~14vw: the grip warns, the release collapses; the width before stays for later
+  // dragged below 14vw (Andreas: the grip sets the width only): stays at 20vw, not collapsed
   const g3 = (await grip.boundingBox())!;
   await alice.mouse.move(g3.x + g3.width / 2, 400);
   await alice.mouse.down();
   await alice.mouse.move(1250, 400, { steps: 8 });
-  await expect(container(alice)).toHaveClass(/side-snap/);
   await alice.mouse.up();
-  await expect(container(alice)).toHaveClass(/side-collapsed/);
-  await expect(container(alice)).not.toHaveClass(/side-snap/);
-  expect(await sideW(alice)).toBe(kept);
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+  expect(await sideW(alice)).toBe('20vw');
+  expect(await sideWidth(alice)).toBe(256);
+  expect((await stored(alice)).voting).toEqual({ collapsed: false, width: 20 });
+
+  // the arrow keys never collapse either
+  await grip.focus();
+  await alice.keyboard.press('ArrowRight');
+  await alice.keyboard.press('ArrowRight');
+  await expect(grip).toHaveAttribute('aria-valuenow', '20');
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
+});
+
+test('the grip\'s handle shows only on hover over the column, while focused or with the menu open (B-113)', async ({ browser }) => {
+  const { alice } = await twoPlayers(browser, 'Sidebar Handle');
+  const handle = () => alice.locator('#side_grip').evaluate(el => Number(getComputedStyle(el, '::after').opacity));
+
+  // pointer over the table: hidden
+  await alice.mouse.move(200, 300);
+  await expect.poll(handle).toBe(0);
+
+  // pointer over the column (not the grip): shown
+  const side = (await alice.locator('#sidebar').boundingBox())!;
+  await alice.mouse.move(side.x + side.width / 2, side.y + side.height / 2);
+  await expect.poll(handle).toBeGreaterThan(0);
+
+  // pointer on the grip's part over the table (it reaches past the column's edge): still shown
+  const g = (await alice.locator('#side_grip').boundingBox())!;
+  await alice.mouse.move(g.x + 2, g.y + g.height / 2);
+  await expect.poll(handle).toBeGreaterThan(0);
+
+  await alice.mouse.move(200, 300);
+  await expect.poll(handle).toBe(0);
+
+  // menu panel open, pointer elsewhere: shown
+  await alice.locator('#cset_btn').click();
+  await expect(container(alice)).toHaveClass(/side-menu/);
+  await alice.mouse.move(200, 300);
+  await expect.poll(handle).toBeGreaterThan(0);
 });
 
 /* the grip's handle (the "Böbbel" in the middle of its edge) is on top: elementFromPoint hits the grip */
@@ -326,7 +361,7 @@ test('menu open: the grip lies above the panel, dragging resizes and keeps the m
   // far to the right: only the minimum width (20vw), no collapsing while the menu is open; the menu keeps its own
   // minimum (380px) and stays open
   await dragGrip(alice, await gripOnTop(alice), 1250);
-  await expect(container(alice)).not.toHaveClass(/side-collapsed|side-snap/);
+  await expect(container(alice)).not.toHaveClass(/side-collapsed/);
   expect(await sideW(alice)).toBe('20vw');
   expect(await sideWidth(alice)).toBe(256);
   expect(await menuWidth(alice)).toBe(380);
@@ -456,6 +491,13 @@ test('each phase keeps its own state; the rail shows the range and starts a new 
   await expect(alice.locator('#rail_range .rail-to')).toHaveCount(1);
   await expect(alice.locator('#rail_range')).toHaveText('3\u20138');
   expect(await alice.locator('#rail_range > .sm-text').count()).toBe(2);
+  // the same type as #spread_range in the column (Andreas: not larger): size, weight, line
+  const type = (selector: string) => alice.locator(selector).first().evaluate(el => {
+    const style = getComputedStyle(el);
+    return [style.fontSize, style.fontWeight, style.lineHeight, style.fontFamily].join(' ');
+  });
+  expect(await type('#rail_range')).toBe(await type('#spread_range'));
+  expect(await type('#rail_range > .sm-text')).toBe(await type('#spread_range > .sm-text'));
   await expect(alice.locator('#rail_count')).toBeHidden();
   const round = alice.locator('#rail_round');
   await expect(round).toHaveClass(/primary/);

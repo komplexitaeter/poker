@@ -20,6 +20,10 @@
     --fs-m: 0.875rem;     /* 14px: body text */
     --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
     --fs-xl: 1.125rem;    /* 18px: timer display (large screens) */
+    /* B-113 (Andreas): the spread's range line (.spread-head with #spread_range) and its copy in the rail
+     * (#rail_range) share one size and line, fixed (not growing with a wide column like --spread-fs) */
+    --range-fs: var(--fs-s);
+    --range-lh: 1.25rem;
     /* stacking order (lowest first) */
     --z-nav: 10;          /* header, above the table */
     --z-promo: 100;
@@ -3968,8 +3972,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     gap: var(--space-2);
     min-width: 0;
     margin-bottom: var(--space-1);
-    font-size: var(--fs-s);
-    line-height: 1.25rem;
+    font-size: var(--range-fs);
+    line-height: var(--range-lh);
     white-space: nowrap;
 }
 
@@ -4231,7 +4235,6 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
  *   .side-pinning     just pinned from the overlay (with .side-anim): the column keeps the overlay's width at the
  *                     right edge (over the table) while its track grows, so it does not jump to the rail's width
  *   .side-dragging    the grip is being dragged (grip highlighted, col-resize cursor everywhere)
- *   .side-snap        dragged below the minimum: collapses on release (grip in amber)
  *   .side-menu        the menu panel is open (sidebar.js): the grip lies above it at its left edge, also while
  *                     collapsed (Fred, B-113: Andreas' feedback; it sets the width only, no collapsing)
  *   data-phase        "voting" | "revealed": what the rail shows
@@ -4297,8 +4300,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         touch-action: none;
     }
 
-    /* a handle in the middle of the edge, always there but quiet; while hovered, focused or dragged it turns
-     * to the accent colour and a line along the whole edge appears */
+    /* a handle in the middle of the edge; while hovered, focused or dragged it turns to the accent colour and a
+     * line along the whole edge appears. B-113 (Andreas, Delia's advice: the grip sets the width, nothing else):
+     * the handle shows only while the pointer is over the column or the grip (the grip reaches past the column's
+     * edge, without it the handle would flicker there), while focused, dragged or the menu panel is open */
     .side-grip::before,
     .side-grip::after {
         content: "";
@@ -4309,10 +4314,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         transition: opacity 0.15s, background-color 0.15s;
     }
 
-    .side-grip::after {
-        background: var(--line-strong);
-        opacity: 1;
-    }
+    .side-grip::after { background: var(--line-strong); }
+
+    .container:has(.sidebar:hover, .side-grip:hover) > .side-grip::after,
+    .container.side-menu > .side-grip::after { opacity: 1; }
 
     .side-grip::before {
         top: 0;
@@ -4341,9 +4346,6 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .side-dragging .side-grip::after { background: var(--accent); }
 
     .side-grip:focus-visible { outline: none; }
-
-    .side-snap .side-grip::before,
-    .side-snap .side-grip::after { background: var(--warn); }
 
     .side-dragging,
     .side-dragging * { cursor: col-resize !important; }
@@ -4508,12 +4510,13 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .rail-wait i:nth-child(2) { animation-delay: 0.2s; }
     .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
 
-    /* revealed: the range's values as text like .spread-range (same size, colour and line), without the word
+    /* revealed: the range's values as text like .spread-range (same size, weight, colour and line: --range-fs,
+     * --range-lh; symbols sized in em, so the same too), without the word
      * "range" (Andreas); without a range a check alone; below them the mini spread */
     .rail-range {
         margin: 0;
-        font-size: var(--fs-s);
-        line-height: 1.25rem;
+        font-size: var(--range-fs); /* exactly as #spread_range: size, line and so its symbols (em) */
+        line-height: var(--range-lh);
         text-align: center;
         white-space: normal;
         overflow-wrap: anywhere;
