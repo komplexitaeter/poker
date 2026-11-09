@@ -480,7 +480,7 @@ function loadDeckKeyLayout() {
 }
 
 function updateDeckKeys() {
-    // B-110: written only when a label changes (the board loads on every hb, the same state changes nothing)
+    // B-110: written only when a label changes (the board loads often, the same state changes nothing)
     const labels = new Map();
     gDeck.cards.forEach((card, i) => {
         if (i < DECK_KEY_CODES.length) labels.set(card.key, deckKeyLabel(DECK_KEY_CODES[i]));
@@ -891,11 +891,12 @@ let gDaoSeq = 0;        // board states asked for so far
 let gDaoShownSeq = 0;   // number of the board state shown last
 
 let gDaoLoading = 0;     // B-110: dao.php loads in flight
+let gAwaySig = null;     // B-127: away_sig of the board state shown last (null: none shown yet / unknown)
 
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
     const seq = ++gDaoSeq;
-    // B-110: any load does what a pending heartbeat load would do (it refreshes last_callback_time)
+    // B-110: any load does what a pending heartbeat would do (it refreshes last_callback_time and the away state)
     clearTimeout(gHbLoadTimer);
     gHbLoadTimer = null;
     gDaoLoading++;
@@ -912,6 +913,7 @@ function updateDao(isOnLoad) {
             if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
             gDaoShownSeq = Math.max(gDaoShownSeq, seq);
             noteDeckGroup(myJson, seq);
+            gAwaySig = typeof myJson.away_sig === 'string' ? myJson.away_sig : null; // B-127
 
             gLastJson = myJson;
             updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
@@ -971,10 +973,13 @@ function deckGroupName(groupId) {
     return group && typeof group.name === 'string' && group.name !== '' ? group.name : groupId;
 }
 
-/* B-110: on every 'hb' of poker-msg (30 s) the board loads dao.php once, 0-5 s later (the boards of a team do not all
- * come at the same moment). The load keeps the own last_callback_time fresh: a board that stops loading (closed,
- * locked phone, frozen tab) shows as away to the others (dao.php "away", AWAY_AFTER_SEC). Only one such load is
- * pending; any other load meanwhile (pull, own write) replaces it, and none starts while a load is in flight. */
+/* B-110: on every 'hb' of poker-msg (30 s) the board calls home once, 0-5 s later (the boards of a team do not all
+ * come at the same moment). The call keeps the own last_callback_time fresh: a board that stops calling (closed,
+ * locked phone, frozen tab) shows as away to the others (dao.php "away", AWAY_AFTER_SEC). Only one such call is
+ * pending; any dao.php load meanwhile (pull, own write) replaces it, and none starts while a load is in flight.
+ * B-127: the call is the light api/seen.php, not dao.php: it returns only away_sig, the signature of the away persons.
+ * dao.php is loaded only when it differs from the one of the board state shown last, or when it is unknown (nothing
+ * shown yet) or the call fails (no answer, no JSON, no away_sig): away never gets stuck. */
 const HB_LOAD_JITTER_MS = 5000;
 let gHbLoadTimer = null;
 
@@ -982,8 +987,29 @@ function scheduleHbLoad() {
     if (gHbLoadTimer !== null) return;
     gHbLoadTimer = setTimeout(() => {
         gHbLoadTimer = null;
-        if (gDaoLoading === 0) updateDao(false);
+        if (gDaoLoading === 0) hbSeen();
     }, Math.round(Math.random() * HB_LOAD_JITTER_MS));
+}
+
+function hbSeen() {
+    if (gAwaySig === null) {
+        updateDao(false);
+        return;
+    }
+    const seq = gDaoSeq;
+    fetch('./api/seen.php?id=' + localStorage.getItem('SID') + '&t=' + t)
+        .then(response => response.json())
+        .then(json => {
+            if (json === null || typeof json !== 'object' || typeof json.away_sig !== 'string') {
+                throw new Error('no away_sig');
+            }
+            if (gDaoSeq !== seq) return; // a load asked for meanwhile brings the newer state anyway
+            if (json.away_sig !== gAwaySig) updateDao(false);
+        })
+        .catch(error => {
+            console.log('seen.php failed', error);
+            if (gDaoSeq === seq) updateDao(false);
+        });
 }
 
 /* B-41: The cards are laid out by CSS (#cbox is a centered flex-wrap container),
@@ -2388,6 +2414,7 @@ function loadBoard() {
     initializeWSConnection(t);
     initWSReconnect();
     initDisplayHandling();
+    initSidebar(); // B-113 (sidebar.js)
     initTableInteraction(); // B-110
     measureEvent("BOARD_ON_LOAD");
 
@@ -2835,6 +2862,7 @@ function renderTimer(elapsed) {
     label = (gTimer.mode === 'TIMER' ? 'Timer: ' : 'Stopwatch: ') + label;
     if (display.getAttribute('aria-label') !== label) display.setAttribute('aria-label', label);
     box.setAttribute('data-over', over ? 'true' : 'false');
+    syncRailTimer(); // B-113 (sidebar.js)
 }
 
 /* the timer panel follows the server state (also when someone else changes it); the "other"
@@ -3034,7 +3062,7 @@ function loadCardConfig() {
     // cards still show (value as text, no texts) and the deck falls back to cardset_flags
     let catalogV2 = null;
     try {
-        catalogV2 = loadJSON('./card_catalog.json?v=12'); // bump when card_catalog.json changes
+        catalogV2 = loadJSON('./card_catalog.json?v=13'); // bump when card_catalog.json changes
     } catch (e) {
         catalogV2 = null;
     }
@@ -3098,14 +3126,21 @@ function handleResize() {
     Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
     finishAnimations(cbox, 'height');
     fitCardsToTable(); // B-49: no glide either
-    // B-68: the spread's blocks jump to their new height (e.g. at the breakpoint), only votes animate
+    repositionSpread();
+    updateDeckRoom();
+    syncCarousel(true); // B-75: the card in the middle stays there
+}
+
+/* B-68: the spread's blocks jump to their new height (e.g. at the breakpoint), only votes animate; the average
+ * pointer jumps to its new spot. Also when only the column changes its width (B-113, sidebar.js). */
+function repositionSpread() {
+    if (!gLastJson) return;
     const spread = document.getElementById('spread');
+    if (spread === null) return;
     spread.classList.add('no-anim');
     updateSide(gLastJson, false);
     void spread.offsetHeight;
     spread.classList.remove('no-anim');
-    updateDeckRoom();
-    syncCarousel(true); // B-75: the card in the middle stays there
 }
 
 function initDisplayHandling() {
@@ -3119,6 +3154,21 @@ function initDisplayHandling() {
         // (not on the carousel: no bars there, and its frames stay light)
         ctl.addEventListener('scroll', () => { if (!gCarousel.on) updateDeckRoom(); }, { passive: true });
         ctl.addEventListener('wheel', scrollDeckByWheel, { passive: false });
+    }
+    // B-113: pinning the sidebar or dragging its grip changes the deck's width without a window
+    // resize: measure the hint's room again (once per frame, also during the width animation)
+    const down = document.getElementById('down-container');
+    if (down !== null && typeof ResizeObserver === 'function') {
+        let roomFrame = 0;
+        const observer = new ResizeObserver(() => {
+            if (roomFrame !== 0) return;
+            roomFrame = requestAnimationFrame(() => {
+                roomFrame = 0;
+                if (!gCarousel.on) updateDeckRoom();
+            });
+        });
+        observer.observe(down);
+        if (ctl !== null) observer.observe(ctl);
     }
     // B-68: a deck card image that loads late widens the deck; measure again (load does not bubble)
     document.addEventListener('load', event => {
@@ -3151,6 +3201,7 @@ function updateSide(json, glide = true) {
     const status = document.getElementById('round_status');
     const spread = document.getElementById('spread');
     if (status === null || spread === null || !json) return;
+    syncSidebar(json); // B-113: the rail and the state of the phase (sidebar.js)
 
     const revealed = json.all_players_ready && json.players_count > 0;
     let text = 'waiting for players';
@@ -3194,6 +3245,7 @@ function updateSide(json, glide = true) {
         // empty bars, so the votes grow in on the next reveal
         bars.querySelectorAll('.spread-bar').forEach(bar => bar.replaceChildren());
         toggleStyleClass(pointer, 'hidden', 'visible');
+        syncRailRange(false); // B-113 (sidebar.js)
         return;
     }
 
@@ -3212,7 +3264,7 @@ function updateSide(json, glide = true) {
         grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
         const card = cardByKey(col.getAttribute('data-card'));
         const rank = cardRank(card);
-        if (n > 0 && rank !== null) chosen.push({ rank, card });
+        if (n > 0 && rank !== null && card.range !== false) chosen.push({ rank, card }); // B-113: catalog flag range
         else if (n > 0 && card && card.custom) unvalued = true;
     });
     if (grown.length > 0) {
@@ -3221,11 +3273,13 @@ function updateSide(json, glide = true) {
     }
 
     // the range of the chosen numeric values (B-79: infinity as the top end): "range 2–20", "range 3–∞",
-    // or "5" when all agree; B-99 (F6): each end as mono text (cardSmall). R3 review V10 (L22): number cards
-    // only – traffic lights, emotions, stars, T-shirt sizes show the chart alone. B-98 S5: a custom set shows the
-    // range when every card down has a value (control cards aside)
+    // or "5" when all agree; B-99 (F6): each end in its mini look (cardSmall: mono text or mini symbol).
+    // B-113 (Andreas): every card with a value counts, ordered by that value – also stars ("range 1★–3★") and
+    // T-shirt sizes; cards without a value (faces, control cards) and groups with "range": false in
+    // card_catalog.json (traffic lights) stay out of it (card.range, deck.js).
+    // B-98 S5: a custom set shows the range only when every card down has a value (control cards aside)
     let ends = [];
-    if (chosen.length > 0 && !unvalued && chosen.every(entry => isNumberCard(entry.card))) {
+    if (chosen.length > 0 && !unvalued) {
         chosen.sort((a, b) => (a.rank === b.rank ? 0 : (a.rank < b.rank ? -1 : 1)));
         const low = chosen[0].card;
         const high = chosen[chosen.length - 1].card;
@@ -3239,6 +3293,7 @@ function updateSide(json, glide = true) {
             ? ['range ', cardSmall(ends[0]), '\u2013', cardSmall(ends[1])]
             : ends.map(card => cardSmall(card))));
     }
+    syncRailRange(true); // B-113: the same range in the rail (sidebar.js)
 
     let left = null;
     if (json.show_avg === 1) {
@@ -3307,12 +3362,6 @@ function tipNames(names) {
 function tipSide(players, card) {
     const names = players.slice(0, 2).map(player => player.name).join(', ');
     return { name: names + (players.length > 2 ? ' +' + (players.length - 2) : ''), card: card.key };
-}
-
-/* R3 review V10 (L22): a card whose value is a number (0, ½, 13, ∞); the range of the result shows for these only */
-function isNumberCard(card) {
-    if (card && card.custom) return cardRank(card) !== null; // B-98 S5: a custom card with a value (or ∞)
-    return !!card && /^(\d+(\.\d+)?|½|∞)$/.test(String(card.text));
 }
 
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card

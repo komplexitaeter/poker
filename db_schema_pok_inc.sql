@@ -139,6 +139,21 @@ update pok_roadmap_votes_tbl v
 /* 3. after deploying the new code (no-op without a default): same column definition as on live. Idempotent. */
 alter table pok_roadmap_votes_tbl alter column phase drop default;
 
+/* B-57 fix: the public list counts the latest row per user (get_roadmap_items()). With a second-precision timestamp,
+   two votes of a user in different phases within the same second were a tie, and the tie-breaker (current phase)
+   could pick the older row (e.g. an old WANT vote over a newer NONE in the DONE phase). Microseconds make the order
+   of consecutive requests unique. Run BEFORE deploying the code (works without it too, only with ties again).
+   Idempotent (same definition again is a no-op in effect), backward compatible (old code writes whole seconds).
+   pok_roadmap_votes_tbl is tiny, the rebuild takes well under a second. */
+
+/* 1. check (read only): column_type timestamp, datetime_precision 0 */
+select column_type, datetime_precision, column_default, extra from information_schema.columns
+ where table_schema = database() and table_name = 'pok_roadmap_votes_tbl' and column_name = 'creation_date';
+
+/* 2. change */
+alter table pok_roadmap_votes_tbl
+  modify column creation_date timestamp(6) not null default current_timestamp(6) on update current_timestamp(6);
+
 /* B-64: index on pok_players_tbl.last_callback_time for the live tab of stats.php (reloads every 30 s while open):
    "clients active within the last 5 minutes" becomes a range scan over ~100 rows instead of a full table scan.
    Also helps pok_daily_team_stats_evt (last_callback_time > ...). stats.php works without it, just slower.

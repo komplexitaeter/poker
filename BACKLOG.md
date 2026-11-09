@@ -1555,7 +1555,16 @@ Gedanken für das Refinement (Andreas/Kai, 2026-11-05):
   Thema „Board-Layout“ refinen.
 - Lernen statt raten: zwei, drei klickbare Varianten (wie das Deck-Menü-Mockup) in echten Sessions ausprobieren,
   ggf. mit der Person, von der das Feedback kam.
+Roadmap (2026-11-07): öffentlich als „Resizable sidebar“.
 
+**Refinement (Andreas/Kai, 2026-11-07), Schnitt 1 – Status: refined:** nur Desktop, Mobile bleibt. Default wie heute (nichts
+eingeklappt, Tipps bleiben). Einklappen zur schmalen Leiste (Hover öffnet als Overlay, Pin hält offen), Breite per Griff
+20–60 % (unter ~14 % einklappen, Pfeiltasten), Zustand je Phase (Voting/Revealed) pro Person im Browser, beim
+Phasenwechsel animiert. Spread wächst mit der Breite. Leiste: oben Aufklapp-Pfeil; Voting: „3/6 voted“ + Warte-Punkte;
+Revealed: Spannweite kleinste–größte Karte untereinander (kein „meistgewählt“ – nimmt das Ergebnis vorweg), bei Einigkeit
+eine Karte; ?/☕ zählen nicht, ∞ größte. Unten Uhr/Timer und der Rundenknopf: Voting ↺ „Restart round“ (Rahmen),
+Revealed → „New round“ (gefüllt), Tooltip mit vollem Text; Status oben ist reine Anzeige. Median-Linie (B-53) und
+Items (B-52) nicht in diesem Schnitt. Mock: Delia 2026-11-07.
 ### B-114 Verdeckt wählen beim Bildschirmteilen
 Status: neu, nicht priorisiert. Roadmap-Eintrag „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
 Problem: Wer seinen Bildschirm teilt (oft Scrum Master/Moderation), verrät beim Abstimmen die eigene Wahl – die gewählte
@@ -1694,12 +1703,31 @@ Inaktivität (keine Eingabe) taugt nicht, weil Zuhörende ebenfalls nichts tippe
 - Offen, wo überall angepasst werden muss: Ready-Status, Tipps (zählt nicht mit), Statistik/Historie
   (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Verhalten bei neuer Runde (Pause bleibt), Beobachter.
 - Wer darf pausieren: jeder am Tisch (wie Entfernen) – vermutlich ja.
+Roadmap: setzt den öffentlichen Eintrag „Reveal now“ um (Titel bleibt, Andreas 2026-11-06: die Stimmen gelten der Idee; nach Done sagen die Nutzer, ob die Lösung passt).
 
 ### B-126 nginx: `/tools/` nicht ausliefern
 Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, deshalb sind `tools/` (Migrations- und Kartenskripte,
 README) per URL erreichbar. Die PHP-Skripte antworten über das Web mit 404 (`tools/migration/common.php`), der Rest ist
 harmlos (öffentlich auf GitHub). Trotzdem sauberer: in nginx beider Server `location ^~ /tools/ { return 404; }`.
 Befehle bereitet Kai vor, Betreiber spielt sie ein.
+
+### B-127 Leichter Heartbeat statt dao.php alle 30 s
+Status: im Sprint (Andreas, 2026-11-09). **Befund (Live-Logs):** Seit R3 lädt jedes Board bei jedem `hb` von poker-msg
+(alle 30 s) komplett `api/dao.php` (away-Erkennung aus B-110). Folge: an einem Montag rund 194 dao-Abrufe je Client
+statt 57 vor R3, insgesamt etwa 140.000 statt 45.000.
+**Lösung:** Neuer Endpunkt `api/seen.php` (GET `id`, `t`): setzt nur `last_callback_time` und liefert `away_sig`, eine
+Signatur (sha1 über die sortierten mkeys) der aktuell abwesenden Personen (Spieler und Beobachter, ohne die eigene,
+ohne `REMOVED`), nie Player-IDs. `dao.php` liefert dasselbe Feld. Das Board ruft bei `hb` nur `seen.php` und lädt
+`dao.php` nur, wenn sich `away_sig` gegenüber dem letzten dao-Load geändert hat (Backend Ben, Client Fred).
+**Akzeptanz:** away-Anzeige wie bisher (Zeitpunkt und Darstellung); `dao.php` nur noch bei `pull`, nach eigenem
+Schreiben und bei geänderter away-Menge.
+
+### B-128 R3-Deck-Backup prüfen und löschen (Mitte Dezember)
+Status: neu (Andreas, 2026-11-09). Die R3-Deck-Migration übernimmt das Deck eines Teams erst beim nächsten Laden.
+Stand 2026-11-09 (`php8.4 tools/migration/check_deck_migration.php --verify` auf Live): 192 ok, 0 mismatch,
+21 danach selbst geändert, rund 24.400 noch nicht wieder geladen. **Mitte Dezember 2026:** Prüfung wiederholen; bei
+0 mismatch die Tabelle `pok_teams_deck_backup_r3` löschen (`drop table`, Befehl bereitet Kai vor, Betreiber führt aus).
+Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
 
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
@@ -1709,7 +1737,20 @@ Topic rückwirkend anzeigen. Berührt Datenmodell/API (Ben). Erst im Mockup (Del
 Gedanke Andreas (2026-10-29) zum Ergebnis je Topic: Ein Algorithmus schlägt einen Default vor; Tendenz erst einmal
 der höchste gelegte Wert (∞ zählt nicht – dann ist es zu groß und noch nicht final geschätzt, kein Eintrag). Das Team
 kann den Wert vor „Next Item“ selbst ändern. Details später, zusammen mit der Historisierung.
+Roadmap (2026-11-07): öffentlich als „Topic list“; die Historisierung je Topic baut darauf auf.
 
+Historisierung (Andreas, 2026-11-07): nur zusammen mit den Items, keine eigene Rundenhistorie. Beim Abschluss eines Items
+(„Next item“ / „Finalize item“, Name offen) wird am Item das Ergebnis festgehalten, dazu z. B. die Zahl der Schätzrunden.
+Die einzelnen Runden müssen vermutlich nicht sichtbar sein (Daten liegen ohnehin in pok_roundstats_tbl).
+Darstellung als **Timeline** (Andreas, 2026-11-07): Datum / Items / Zukunft (noch nicht geschätzte Items). Am aktiven
+Item steht immer der Stand der letzten Runde, bis das Team es als fertig markiert; dann wird das Ergebnis final
+festgehalten, der Spread lässt sich optional aufklappen. Wer was gelegt hat, vorerst nicht. Danach geht es mit dem
+nächsten noch nicht geschätzten Item weiter.
+Entscheidungen (Andreas, 2026-11-07): Items anlegen, umsortieren, als fertig markieren und wieder öffnen dürfen **alle**
+(Wiederöffnen auch gegen versehentliches Schließen). Fertige Items bleiben vorerst **dauerhaft** am Team-Link.
+Löschen: ein Item „zum Löschen markieren“, nimmt es niemand zurück, wird es nach ~14 Tagen automatisch gelöscht.
+Vorschlag Kai zu gelöschten Userdaten: Das Ergebnis am Item als Aggregat ohne Personenbezug speichern (Ergebnis,
+Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von Userdaten das Ergebnis nicht.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
@@ -1725,6 +1766,7 @@ Der Median ist der mittlere Wert der sortierten Karten. Ausreißer verzerren ihn
 echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shirt, Sterne und ∞ (als größter Wert).
 Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
 Wert zeigen oder den Bereich „3–5“).
+Roadmap (2026-11-07): öffentlich als „Median indicator“.
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von

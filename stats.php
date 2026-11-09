@@ -30,6 +30,7 @@ const MILESTONES = array(
     '2026-10-28' => 'Rollout 1',
     '2026-11-01' => 'Rollout 2',
     '2026-11-06' => 'Rollout 3',
+    '2026-11-09' => 'Sidebar, light heartbeat',
 );
 /* login (B-63): htpasswd file of nginx, the only place of the credentials (maintained with htpasswd -B -C 12);
    STATS_COOKIE_SECRET (config.php) is part of the cookie signature key */

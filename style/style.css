@@ -20,6 +20,10 @@
     --fs-m: 0.875rem;     /* 14px: body text */
     --fs-l: 1rem;         /* 16px: main actions, large inputs (keeps iOS from zooming) */
     --fs-xl: 1.125rem;    /* 18px: timer display (large screens) */
+    /* B-113 (Andreas): the spread's range line (.spread-head with #spread_range) and its copy in the rail
+     * (#rail_range) share one size and line, fixed (not growing with a wide column like --spread-fs) */
+    --range-fs: var(--fs-s);
+    --range-lh: 1.25rem;
     /* stacking order (lowest first) */
     --z-nav: 10;          /* header, above the table */
     --z-promo: 100;
@@ -43,6 +47,9 @@
     --tap: 36px;
     /* menu panel width on large screens */
     --panel-w: 380px;
+    /* B-113: the collapsed column (large screens with a mouse) */
+    --rail-w: 60px;
+    --z-side: 20;         /* the column over the table while it peeks out (above cards and deck) */
     /* B-68: width of the column (large screens): as wide as the menu panel, narrower on small
      * desktops (300px at 800px), so the deck keeps room for its cards; the menu panel covers it */
     --col-w: clamp(300px, 40vw - 20px, var(--panel-w));
@@ -2885,24 +2892,32 @@ body:not(.light-theme) .pc.is-status { --sym-calm: color-mix(in srgb, currentCol
     vertical-align: -0.27em;
 }
 
-/* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read */
+/* the spread's columns: small text (--fs-xs) in a 20 px line, the symbol a bit larger so traffic lights and faces read.
+ * B-113 fix (Andreas): every symbol in the spread sits on the middle of the line (no margins tuned for running text),
+ * so all columns share one middle (☕ and ? sat higher than the lights); the line itself is tall enough for the
+ * largest symbol at any label size (--spread-val-h, see .spread below). */
 .spread-value .sm-draw { --sm-h: 1.7em; }
+
+.spread-value .mini:is(.sm-draw, .sm-inv) {
+    margin-block: 0;
+    vertical-align: middle;
+}
 
 /* R3 review E8: traffic lights in small places: the lit lamp solid in its colour (the card's light tint and hatching
  * blur into the housing at this size), so green, yellow and red read at a glance. In the spread the light is taller:
- * its value row grows (--spread-val-h, the same for all columns), the light fills it */
+ * its value row grows (--spread-val-h, the same for all columns), the light fills it. The row grows with the labels
+ * (--spread-fs, the label size cap: --fs-xs, larger in a wide column, see "Sidebar (B-113)"): 1.85em fits the
+ * other symbols (1.7em), 2.7em the light (2.5em). */
 .mini use[href*="#s-light-"] {
     --sym-tint: currentColor;
     --sym-hatch: transparent;
 }
 
-.spread:has(use[href*="#s-light-"]) { --spread-val-h: 1.875rem; }
+.spread { --spread-val-h: max(1.25rem, var(--spread-fs, var(--fs-xs)) * 1.85); }
 
-.spread-value .sm-draw:has(use[href*="#s-light-"]) {
-    --sm-h: 2.5em;
-    margin-block: -0.2em;
-    vertical-align: middle;
-}
+.spread:has(use[href*="#s-light-"]) { --spread-val-h: max(1.875rem, var(--spread-fs, var(--fs-xs)) * 2.7); }
+
+.spread-value .sm-draw:has(use[href*="#s-light-"]) { --sm-h: 2.5em; }
 
 /* B-99 F8 (Andreas): sets in the style "inverted" (J.U.D.G.E.): a mini square in the card colour with the white value
  * in a black outline, like on the card (cardSmall() in cards.js). As high as a capital letter and a half less its
@@ -3807,7 +3822,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     max-width: 18rem;
     position: absolute;
     bottom: calc(var(--dock-lift, 0px) + 44px + var(--space-2) + var(--tap) + var(--space-2));
-    right: calc(-1 * (var(--col-w) + var(--tray-gap, 0px)));
+    right: calc(-1 * (var(--side-col, var(--col-w)) + var(--tray-gap, 0px))); /* B-113: the column's width */
     margin: 0 auto;
     visibility: hidden;
     display: unset;
@@ -3957,8 +3972,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     gap: var(--space-2);
     min-width: 0;
     margin-bottom: var(--space-1);
-    font-size: var(--fs-s);
-    line-height: 1.25rem;
+    font-size: var(--range-fs);
+    line-height: var(--range-lh);
     white-space: nowrap;
 }
 
@@ -4000,7 +4015,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     flex: 1 1 0;
     min-width: 0;
     max-width: 32px;
-    height: calc(1rem + var(--spread-h) + var(--spread-val-h, 1.25rem) + 6px);
+    height: calc(1rem + var(--spread-h) + var(--spread-val-h) + 6px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -4058,7 +4073,8 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
      * about 0.6em wide, less the tighter spacing 0.56em, so 3 digits need 1.7em; never above --fs-xs */
     font-size: clamp(7.5px, 100cqi / 1.75, var(--fs-xs));
     letter-spacing: -0.04em;
-    line-height: var(--spread-val-h, 1.25rem);
+    height: var(--spread-val-h); /* the same for every column, so all labels share one line */
+    line-height: var(--spread-val-h);
     text-align: center; /* fix (R3, iPhone): the value in the middle below its bar, also if its box comes out wider */
     white-space: nowrap;
     max-width: 100%;
@@ -4100,7 +4116,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 /* phones: no status line (the cards on the table show who is missing); the strip above the deck
  * is only there once the cards are revealed: the spread. Until then its room goes to the table. */
 @media (max-width: 799.98px) {
-    .container:has(#spread[hidden]) > .side { display: none; }
+    .container:has(#spread[hidden]) .side { display: none; }
 }
 
 @media (min-width: 800px) {
@@ -4167,7 +4183,7 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     }
 
     /* the topic: "// topic" and the pen in one row, the topic below, long ones scroll */
-    .container > .topic-bar {
+    .sidebar > .topic-bar {
         flex-wrap: wrap;
         align-items: center;
         gap: 0 var(--space-2);
@@ -4198,6 +4214,549 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .spread-head { margin-bottom: var(--space-2); }
 
     .spread-chart { padding-bottom: 12px; } /* B-99 F8: the pointer close below the labels (was 16px) */
+}
+
+/* ---------- Sidebar (B-113) ---------- */
+
+/* The column as one block (#sidebar: status, topic, spread, round actions; markup in board.html).
+ * Phones: display: contents, its parts keep their places in the page grid (strip below the header, strip above
+ * the deck). Large screens: a subgrid over the page grid's rows 2 to the end, so every part sits exactly where it
+ * sat before (the round actions still share the deck's row).
+ * Large screens with a mouse (not the tablets with the deck carousel) can also resize and collapse it. State on
+ * .container, set by script.js:
+ *   --side-w          the column's width as a vw length (20vw-60vw); unset: as before (--col-w)
+ *   .side-collapsed   the narrow rail (#side_rail); the column slides out to the right
+ *   .side-peek        (collapsed) the whole column slides in over the table; the table does not move
+ *   .side-anim        animate a change of the width (toggle, phase change; ~0.35s); off by default, so a window
+ *                     resize or dragging the grip follows at once. Sliding the column in and out (collapse, peek)
+ *                     is always animated (0.25-0.3s), the rail fades in
+ *   .side-no-anim     no transitions or animations at all: first paint and the restore from localStorage (wins
+ *                     over .side-anim); prefers-reduced-motion: never animated
+ *   .side-pinning     just pinned from the overlay (with .side-anim): the column keeps the overlay's width at the
+ *                     right edge (over the table) while its track grows, so it does not jump to the rail's width
+ *   .side-dragging    the grip is being dragged (grip highlighted, col-resize cursor everywhere)
+ *                     (also on the overlay: .side-collapsed.side-peek, the grip lies at its left edge)
+ *   .side-menu        the menu panel is open (sidebar.js): the grip lies above it at its left edge, also while
+ *                     collapsed (Fred, B-113: Andreas' feedback; it sets the width only, no collapsing)
+ *   data-phase        "voting" | "revealed": what the rail shows
+ * --side-open is the width of the open column (also the overlay's width), --side-col the column's track. */
+.sidebar { display: contents; }
+
+.side-rail,
+.side-grip,
+.side-hint,
+.side-tools { display: none; }
+
+@media (min-width: 800px) {
+    .sidebar {
+        position: relative; /* anchor of the grip and the tools */
+        display: grid;
+        grid-column: 2;
+        grid-row: 2 / -1;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr) auto; /* without subgrid */
+        grid-template-rows: subgrid;
+        min-width: 0;
+        min-height: 0;
+        background: var(--bg-2);
+        text-align: left;
+    }
+
+    .sidebar > .round-status { grid-area: 1 / 1; }
+    .sidebar > .topic-bar { grid-area: 2 / 1; }
+    .sidebar > .side { grid-area: 3 / 1; }
+    .sidebar > .dock { grid-area: 4 / 1; }
+}
+
+@media (min-width: 800px) and (hover: hover), (min-width: 800px) and (pointer: fine) {
+    .container {
+        --side-ease: cubic-bezier(0.3, 0.7, 0.2, 1);
+        --side-open: min(60vw, max(240px, var(--side-w, var(--col-w))));
+        --side-col: var(--side-open);
+        grid-template-columns: minmax(0, 1fr) var(--side-col);
+    }
+
+    .container.side-collapsed { --side-col: var(--rail-w); }
+
+    .container.side-anim { transition: grid-template-columns 0.35s var(--side-ease); }
+
+    /* the menu panel covers the whole column, also a wide one; collapsed: the stored width of the phase
+     * (Fred: --side-open instead of --side-col, the same while the column is open) */
+    .container { --side-menu-w: max(var(--panel-w), var(--side-open)); }
+    .container > .menu { width: var(--side-menu-w); }
+
+    /* --- the open column: the grip on its left edge, "collapse" in the status row --- */
+    /* (Fred: the grip is a child of .container, no longer of #sidebar, so it can lie above the menu panel;
+     * placed on the column's grid area, it follows the track as before) */
+    .side-grip {
+        display: block;
+        position: absolute;
+        grid-column: 2;
+        grid-row: 2 / -1;
+        top: 0;
+        bottom: 0;
+        left: -6px;
+        z-index: 2;
+        width: 12px;
+        cursor: col-resize;
+        touch-action: none;
+    }
+
+    /* a handle in the middle of the edge; while hovered, focused or dragged it turns to the accent colour and a
+     * line along the whole edge appears. B-113 (Andreas, Delia's advice: the grip sets the width, nothing else):
+     * the handle shows only while the pointer is over the column or the grip (the grip reaches past the column's
+     * edge, without it the handle would flicker there), while focused, dragged or the menu panel is open */
+    .side-grip::before,
+    .side-grip::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        background: var(--accent);
+        opacity: 0;
+        transition: opacity 0.15s, background-color 0.15s;
+    }
+
+    .side-grip::after { background: var(--line-strong); }
+
+    .container:has(.sidebar:hover, .side-grip:hover) > .side-grip::after,
+    .container.side-menu > .side-grip::after { opacity: 1; }
+
+    .side-grip::before {
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        margin-left: -1px;
+    }
+
+    .side-grip::after {
+        top: 50%;
+        width: 6px;
+        height: 40px;
+        margin: -20px 0 0 -3px;
+        border-radius: 3px;
+    }
+
+    .side-grip:hover::before,
+    .side-grip:hover::after,
+    .side-grip:focus-visible::before,
+    .side-grip:focus-visible::after,
+    .side-dragging .side-grip::before,
+    .side-dragging .side-grip::after { opacity: 1; }
+
+    .side-grip:hover::after,
+    .side-grip:focus-visible::after,
+    .side-dragging .side-grip::after { background: var(--accent); }
+
+    .side-grip:focus-visible { outline: none; }
+
+    .side-dragging,
+    .side-dragging * { cursor: col-resize !important; }
+
+    .side-tools {
+        display: flex;
+        position: absolute;
+        top: 10px;
+        right: var(--space-2);
+        z-index: 1;
+    }
+
+    .side-tools .icon-btn { color: var(--muted); }
+    .side-tools .icon-btn:hover { color: var(--accent); }
+    .side-tools .i { width: 18px; height: 18px; }
+
+    /* the status line keeps clear of the button */
+    .round-status { padding-right: calc(var(--tap) + var(--space-3)); }
+
+    /* "keep open" only on the overlay; there "collapse" is gone (it is collapsed already) */
+    .side-pin,
+    .side-collapsed .side-collapse { display: none; }
+
+    .side-collapsed.side-peek .side-pin { display: inline-flex; }
+
+    /* --- collapsed: the column lies outside on the right, ready to slide in over the table --- */
+    .side-collapsed > .sidebar {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: var(--z-side);
+        width: var(--side-open);
+        grid-template-rows: auto auto minmax(0, 1fr) auto; /* no subgrid out of the flow */
+        transform: translateX(100%);
+        visibility: hidden;
+        transition: transform 0.3s var(--side-ease), box-shadow 0.3s, visibility 0s 0.3s;
+    }
+
+    .side-collapsed.side-peek > .sidebar {
+        transform: none;
+        visibility: visible;
+        /* like the menu panel: a line on the left edge (inset, so nothing moves) and its shadow */
+        box-shadow: inset 1px 0 0 var(--line-strong), -12px 0 28px -14px var(--shadow-color);
+        transition: transform 0.25s var(--side-ease), box-shadow 0.25s, visibility 0s;
+    }
+
+    .side-collapsed .side-grip,
+    .side-pinning > .side-grip { display: none; }
+
+    /* collapsed with the overlay open: the grip at the overlay's left edge, above it (Fred, B-113: Delia's advice,
+     * the grip sets the width only). Dragging changes the width of the phase (overlay and later the column), the
+     * column stays collapsed; the handle shows by the same rules as on the open column (hover over the overlay) */
+    .container.side-collapsed.side-peek > .side-grip {
+        display: block;
+        grid-column: 1 / -1;
+        left: auto;
+        right: calc(var(--side-open) - 6px);
+        z-index: calc(var(--z-side) + 1);
+    }
+
+    /* menu panel open (also collapsed): the grip at the panel's left edge, above it (Fred, B-113) */
+    .container.side-menu > .side-grip {
+        display: block;
+        grid-column: 1 / -1;
+        left: auto;
+        right: calc(var(--side-menu-w) - 6px);
+        z-index: calc(var(--z-panel) + 1);
+    }
+
+    /* B-113 (to try out, Andreas): "setting saved for voting panel" / "... results panel" for ~2s right after
+     * collapsing, pinning or resizing (sidebar.js, the first 3 times per case). On the page colour with a soft wide
+     * glow in the same colour, so the table and cards under it fade out around it (readable, no card look); not to the right. A quiet grey line like the deck's key hint, outside the column on
+     * its left edge: data-at="top" level with the rail's open button / the column's first row, data-at="grip" next to
+     * the grip's handle (also on the overlay and the menu panel). It lets the mouse through. */
+    .side-hint {
+        --hint-edge: var(--side-col);
+        display: block;
+        position: absolute;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        top: 22px; /* level with the rail's open button and the column's first row */
+        right: calc(var(--hint-edge) + 12px);
+        z-index: calc(var(--z-side) + 2);
+        margin: 0;
+        padding: 3px 6px;
+        border-radius: 4px;
+        background: var(--bg);
+        box-shadow: 0 0 12px 8px var(--bg);
+        clip-path: inset(-32px 0 -32px -32px); /* no glow on the right, over the column's edge */
+        font-size: var(--fs-xs);
+        line-height: 1;
+        white-space: nowrap;
+        color: var(--muted);
+        text-transform: lowercase;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s ease, visibility 0s 0.4s;
+    }
+
+    .side-hint.shown {
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.25s ease 0.15s, visibility 0s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .side-hint,
+        .side-hint.shown { transition: none; }
+    }
+
+    .side-hint[data-at="grip"] {
+        grid-row: 2 / -1;
+        top: 50%;
+        margin-top: calc(-0.5em - 3px); /* centred incl. the padding */
+    }
+
+    .container.side-collapsed.side-peek > .side-hint[data-at="grip"] { --hint-edge: var(--side-open); }
+
+    .container.side-menu > .side-hint[data-at="grip"] {
+        --hint-edge: var(--side-menu-w);
+        z-index: calc(var(--z-panel) + 1);
+    }
+
+    /* pinned from the overlay: stays in place while the track grows from the rail's width */
+    .side-pinning > .sidebar {
+        justify-self: end;
+        width: var(--side-open);
+        z-index: var(--z-side);
+    }
+
+    /* --- the rail: open button, status, timer, round button --- */
+    .side-rail {
+        grid-column: 2;
+        grid-row: 2 / -1;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        padding: 10px 0 0; /* the bottom padding is the foot's (Fred) */
+        background: var(--bg-2);
+        font-size: var(--fs-xs);
+        color: var(--muted);
+    }
+
+    /* timer and round button: the whole width of the rail down to its bottom edge, so hovering next to or below
+     * the button opens no overlay (sidebar.js; Fred, B-113: Andreas' feedback) */
+    .rail-foot {
+        display: flex;
+        flex: none;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+        align-self: stretch;
+        padding-bottom: calc(12px + var(--dock-lift) + env(safe-area-inset-bottom));
+    }
+
+    .side-collapsed > .side-rail {
+        display: flex;
+        animation: rail-in 0.25s 0.1s both;
+    }
+
+    .rail-open {
+        width: 40px;
+        color: var(--muted);
+    }
+
+    .rail-open:hover,
+    .rail-open[aria-expanded=true] { color: var(--accent); }
+
+    /* the rail's tiles (Delia, B-113): the round's state below the open button, the same in every phase. No grey
+     * patch behind it (Andreas: with the mini spread it reads without one) – straight on the rail's background, set
+     * apart by air. No card colours (Andreas: no third look of the cards):
+     *   voting      .rail-vote   "3/6", "voted", the waiting dots
+     *   revealed    .rail-result one tile:
+     *                 .rail-bars   the spread in mini on top (B-113, Andreas: the range below it, to try out)
+     *                 .rail-range  below the bars: the values of the column's #spread_range without the word "range" ("3–8", "5");
+     *                              wraps at the "–" when it does not fit the rail
+     *                 .rail-shown  instead when there is no range (no number cards): just a check (Andreas: the
+     *                              word is too much; "revealed" stays for screen readers, .sr-only); in the
+     *                              range's place below the bars, so the bars sit at the same height in every round */
+    .rail-tile {
+        display: none;
+        flex: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        width: calc(var(--rail-w) - 8px);
+        margin: var(--space-2) 0 0;
+        padding: 0 2px;
+        line-height: 1.2;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+
+    .container[data-phase=voting] .rail-vote,
+    .container[data-phase=revealed] .rail-result { display: flex; }
+
+    /* bars and range (or check) read as one unit (Andreas): no tile gap between them, only .rail-bars' margin */
+    .rail-result { gap: 0; }
+
+    .rail-tile small {
+        font-size: var(--fs-xs);
+        color: var(--muted);
+    }
+
+    .rail-count {
+        max-width: 100%;
+        font-size: 0.9375rem;
+        letter-spacing: -0.02em; /* "12/14" still fits */
+        font-variant-numeric: tabular-nums;
+        color: var(--text);
+    }
+
+    .rail-wait {
+        display: flex;
+        gap: 3px;
+        margin-top: 2px;
+    }
+
+    .rail-wait i {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: rail-wait 1.2s infinite;
+    }
+
+    .rail-wait i:nth-child(2) { animation-delay: 0.2s; }
+    .rail-wait i:nth-child(3) { animation-delay: 0.4s; }
+
+    /* revealed: the range's values as text like .spread-range (same size, weight, colour and line: --range-fs,
+     * --range-lh; symbols sized in em, so the same too), without the word
+     * "range" (Andreas); without a range a check alone; both below the mini spread */
+    .rail-range {
+        margin: 0;
+        font-size: var(--range-fs); /* exactly as #spread_range: size, line and so its symbols (em) */
+        line-height: var(--range-lh);
+        text-align: center;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        color: var(--text);
+    }
+
+    .rail-range:empty { display: none; }
+
+    /* text on top ("8–13"): the digits start ~5px into the line (half-leading, ascent), so the line moves up to sit
+     * as close to the bars as a symbol range does (a symbol fills its line and stays at the 3px of .rail-bars) */
+    .rail-range:has(> .sm-text:first-child) { margin-top: -4px; }
+
+    /* the check alone, centred and a little larger than an icon in text; its line as high as the range's
+     * (1.25rem) plus a little air, so the block keeps a calm height whether it shows a range or the check */
+    .rail-shown {
+        position: relative; /* holds the .sr-only "revealed" */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: -3px 0 0; /* right below the bars, as a text range (the check's own air: see .i) */
+        padding: 0 0 2px;
+    }
+
+    .rail-range:not(:empty) + .rail-shown { display: none; }
+
+    .rail-shown .i {
+        width: 20px;
+        height: 20px;
+        margin-top: -2px; /* its glyph starts ~5px into the box: so it sits as close to the bars as the range */
+        color: var(--ok);
+    }
+
+    /* the spread in mini (sidebar.js): one column per card of the deck, without blocks or labels, colours as
+     * .spread-bar / .spread-col.top. B-113 (Fred, Andreas' feedback): every value has a 1px base line in
+     * --line-strong, votes rise from it; the columns shrink down to 1px with a 1px gap, so even the largest deck
+     * (21 cards: 41px) fits the rail without clipping */
+    .rail-bars {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 1px;
+        width: 100%;
+        height: 22px;
+        margin-bottom: 5px; /* the only air to the range below (Andreas: a tick closer, was 6px gap + 2px; 3px was too close); not
+                             * less: a star symbol reaches ~1px above its line box */
+    }
+
+    .rail-bars:empty { display: none; }
+
+    .rail-bars i {
+        flex: 0 1 4px;
+        min-width: 1px;
+        height: 1px; /* the base line; a bar with votes gets its height from sidebar.js */
+        min-height: 1px;
+        background: var(--line-strong);
+    }
+
+    .rail-bars i.top { background: var(--accent); }
+
+    .rail-fill { flex: 1 1 auto; }
+
+    /* the timer while it is on (#timer shown); compact, the same states as in the column */
+    .rail-timer {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        color: var(--text);
+    }
+
+    .container:has(#timer.display_none) .rail-timer { visibility: hidden; }
+
+    .rail-timer:is([data-state=ready], [data-state=paused]) { color: var(--muted); }
+
+    .rail-timer[data-over=true] {
+        color: var(--warn);
+        font-weight: 500;
+    }
+
+    /* the round button as an icon: "Restart round" framed (↺), "New round" filled (→); like #newroundbtn */
+    .rail-round {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius-m);
+        background: var(--bg);
+        color: var(--text);
+        cursor: pointer;
+    }
+
+    .rail-round:enabled:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .rail-round:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    .rail-round:disabled {
+        border-style: dashed;
+        color: color-mix(in srgb, var(--muted) 40%, var(--bg-2));
+        cursor: not-allowed;
+    }
+
+    .rail-round .i-new,
+    .rail-round.primary .i-restart { display: none; }
+
+    .rail-round.primary .i-new { display: block; }
+
+    .rail-round.primary:enabled {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--on-accent);
+    }
+
+    .rail-round.primary:enabled:hover {
+        background: transparent;
+        color: var(--accent);
+    }
+
+    /* --- the spread grows with the column: as before up to 380px, then taller bars, wider columns and larger
+     * labels (a wide column after the reveal: the result large). Plain vw lengths (--side-open), no container
+     * units: they would resolve against the spread's own columns. --- */
+    .side {
+        --side-grow: max(0px, var(--side-open) - 380px);
+        --spread-h: min(64px + var(--side-grow) * 0.25, 160px, max(64px, 20vh));
+        --spread-fs: max(var(--fs-xs), min(11px + var(--side-grow) * 0.008, 15px)); /* also sizes the value row */
+    }
+
+    .spread-col { max-width: min(32px + var(--side-grow) * 0.08, 72px); }
+
+    .spread-bar { max-width: min(22px + var(--side-grow) * 0.06, 48px); }
+
+    .spread-count { font-size: var(--spread-fs); }
+
+    .spread-value { font-size: clamp(7.5px, 100cqi / 1.75, var(--spread-fs)); }
+}
+
+@keyframes rail-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes rail-wait {
+    0%, 100% { opacity: 0.25; }
+    40% { opacity: 1; }
+}
+
+/* B-113: the state set on load (or restored) shows at once */
+.side-no-anim,
+.side-no-anim :is(.sidebar, .side-rail) {
+    transition: none !important;
+    animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .container.side-anim,
+    .side-collapsed > .sidebar,
+    .side-collapsed.side-peek > .sidebar { transition: none; }
+
+    .side-collapsed > .side-rail,
+    .rail-wait i { animation: none; }
+
+    .rail-wait i { opacity: 0.6; }
 }
 
 /* ---------- Overlays: QR code, privacy links ---------- */

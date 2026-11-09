@@ -40,9 +40,11 @@ if (count($items) !== 1) {
 $phase = roadmap_phase($items[0]['status']);
 
 // creation_date is set explicitly: "on update current_timestamp" alone would keep it when the reaction stays the same,
-// and then an older row of the other phase could still be the latest one
-$sql = $link->prepare("insert into pok_roadmap_votes_tbl (item_id, user_id, phase, reaction) values (?, ?, ?, ?) as new
-                       on duplicate key update reaction = new.reaction, creation_date = current_timestamp");
+// and then an older row of the other phase could still be the latest one. Microseconds (timestamp(6), see
+// db_schema_pok_inc.sql): with whole seconds, votes of a user in two phases within one second were a tie.
+$sql = $link->prepare("insert into pok_roadmap_votes_tbl (item_id, user_id, phase, reaction, creation_date)
+                       values (?, ?, ?, ?, current_timestamp(6)) as new
+                       on duplicate key update reaction = new.reaction, creation_date = new.creation_date");
 $sql->bind_param('isss', $item, $id, $phase, $reaction);
 $sql->execute();
 

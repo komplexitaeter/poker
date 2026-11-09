@@ -46,6 +46,7 @@ export interface myJsonType {
     ready_players_count: number;
     players: Player[];
     observers: Observer[]; // B-110: connected observers, ordered by name
+    away_sig: string; // B-127: signature of the away persons (api/lib.php away_sig()), '' = nobody; as in api/seen.php
     deck: Deck | null; // R3 (B-98): null without card_catalog.json on the server (fallback: cardset_flags)
     custom_sets: CustomSet[];          // B-98 S4: the team's own sets (not deleted), in their order
     custom_cards_played: CustomCard[]; // B-98 S4: custom cards on the table that are in no active set any more
@@ -137,4 +138,9 @@ interface RoadmapItem {
 
 interface Roadmap {
     items: RoadmapItem[];
+}
+
+/* B-127: answer of api/seen.php (light heartbeat of the board) */
+export interface SeenJsonType {
+    away_sig: string; // same value as myJsonType.away_sig; a change means: load dao.php
 }
