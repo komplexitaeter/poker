@@ -1747,15 +1747,28 @@ Item steht immer der Stand der letzten Runde, bis das Team es als fertig markier
 festgehalten, der Spread lässt sich optional aufklappen. Wer was gelegt hat, vorerst nicht. Danach geht es mit dem
 nächsten noch nicht geschätzten Item weiter.
 Entscheidungen (Andreas, 2026-11-07): Items anlegen, umsortieren, als fertig markieren und wieder öffnen dürfen **alle**
-(Wiederöffnen auch gegen versehentliches Schließen). Fertige Items bleiben vorerst **dauerhaft** am Team-Link.
+(Wiederöffnen auch gegen versehentliches Schließen). ~~Fertige Items bleiben vorerst dauerhaft am Team-Link.~~
 Löschen: ein Item „zum Löschen markieren“, nimmt es niemand zurück, wird es nach ~14 Tagen automatisch gelöscht.
+(Überholt durch den neuen Zuschnitt unten.)
 Vorschlag Kai zu gelöschten Userdaten: Das Ergebnis am Item als Aggregat ohne Personenbezug speichern (Ergebnis,
 Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von Userdaten das Ergebnis nicht.
-**Offen vor der Historisierung – Team-ID (Andreas/Kai, 2026-11-09):** Dauerhaft gespeicherte Items können vertraulich
-sein (Produktpläne, Kunden). Die Team-ID ist heute aus dem Teamnamen abgeleitet (`name2id()`, je Zeichen 2–4
-Varianten) und damit bei kurzem bzw. bekanntem Namen erratbar – nicht nur eine Frage der Länge. Vorschlag: neue Teams
-mit zufälligem Anteil (z. B. lesbarer Name + 16 Zufallszeichen); offen, wie bestehende, dauerhaft genutzte Team-Links
-umziehen (z. B. beim ersten Nutzen der Historie). Sina prüft vorher.
+**Neuer Zuschnitt (Andreas, 2026-11-09) – ersetzt „dauerhaft am Team-Link“:** Der Team-Link ist eine Parole, keine
+Zugangskontrolle (wird weitergegeben, nicht zurücknehmbar; die Team-ID ist zudem aus dem Teamnamen abgeleitet,
+`name2id()`, und bei kurzem/bekanntem Namen erratbar). Deshalb keine dauerhafte Historie mit Inhalten:
+- **Topics als Puffer für die Session:** Statt eines Topics optional mehrere. Je Item: ID (optional, z. B. Ticket-Nr.),
+  Heading, Description (optional). Reihenfolge ändern, bearbeiten, löschen – alle dürfen das.
+- **Abarbeiten der Reihe nach;** fertig geschätzte Items erscheinen im Results-Panel nur noch mit ID, Heading und
+  Ergebnis (ggf. Zahl der Runden). Die Description wird beim Abschluss nicht mehr gezeigt.
+- **Geschätzte Items werden automatisch zum Löschen markiert** und nach einer Frist X gelöscht (reicht für die Session
+  und etwas danach).
+- **Später (eigener Eintrag, wenn gewünscht):** Wer an seinem User eine E-Mail hinterlegt, kann sich per Mail eine PIN
+  schicken lassen, die die Historie freischaltet – nur für Runden ab der ersten Runde, in der er nachweislich mit
+  seiner User-ID dabei war.
+Offene Fragen: Frist X (Tage?); wird die Description beim Abschluss gelöscht oder nur ausgeblendet (Vorschlag: gelöscht,
+dann liegt nichts Vertrauliches länger als nötig); Export/„Copy results“ vor dem Löschen (z. B. für Jira); neue Team-IDs
+mit Zufallsanteil trotzdem sinnvoll (Erraten erschweren). E-Mail/PIN: wäre die erste E-Mail-Adresse in der DB
+(Datenschutz), und die User-ID hängt am Browser (localStorage) – geht verloren beim Löschen der Browserdaten bzw. auf
+einem anderen Gerät. Sina prüft vor der Umsetzung.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
