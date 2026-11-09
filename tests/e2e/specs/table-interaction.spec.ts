@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, stopHbLoads, pickCard } from './helpers';
 
 /**
- * B-110 part 1 (board): the board loads dao.php on every hb; away players show with a dimmed card and the trash can
+ * B-110 part 1 (board): the board calls home on every hb (B-127: api/seen.php, dao.php only when the away persons
+ * changed); away players show with a dimmed card and the trash can
  * without hover; the connected observers in a row below the cards; the smiley (.react) opens the emoji bar; touch
  * devices open the circles by a tap on the card, ask before removing and show a hint once.
  * last_callback_time is moved back per SQL and the board is updated by calling updateDao() (the hb of poker-msg comes
@@ -49,24 +50,94 @@ async function colorMode(page: Page, mode: 'dark' | 'light'): Promise<void> {
   await page.evaluate(m => (window as unknown as { setColorMode: (m: string) => void }).setColorMode(m), mode);
 }
 
-test('hb: the board loads dao.php 0-5 s after a heartbeat, once (B-110)', async ({ browser }) => {
+/** drops the real 'hb' of poker-msg (every 30 s, one timer for all connections: one arriving at the wrong moment would
+ * call home again, rightly); only the test sends 'hb', to the original handler. gConn is a global let (not on
+ * window): evaluated as a script in the page */
+async function ownHbOnly(page: Page): Promise<void> {
+  await page.evaluate(`window.e2eOnMessage = gConn.onmessage;
+    gConn.onmessage = e => { if (e.data !== 'hb') window.e2eOnMessage(e); };`);
+}
+
+async function sendHb(page: Page, times = 1): Promise<void> {
+  await page.evaluate(`for (let i = 0; i < ${times}; i++) e2eOnMessage(new MessageEvent('message', { data: 'hb' }))`);
+}
+
+function countLoads(page: Page): { dao: number; seen: number } {
+  const loads = { dao: 0, seen: 0 };
+  page.on('request', r => {
+    if (r.url().includes('/api/dao.php')) loads.dao++;
+    if (r.url().includes('/api/seen.php')) loads.seen++;
+  });
+  return loads;
+}
+
+test('hb: the board calls seen.php 0-5 s after a heartbeat, once, and no dao.php without a change (B-110, B-127)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Table Hb');
   await joinAsPlayer(alice, url, 'Alice');
   await expect(tableCard(alice, 'Alice')).toBeVisible();
   await alice.waitForTimeout(500);
-  // poker-msg sends a real 'hb' to all connections every 30 s (one timer for all): one arriving after the load below
-  // would load again, rightly. So the real ones are dropped and only the test sends 'hb' (the original handler).
-  // gConn is a global let (not on window): evaluated as a script in the page
-  await alice.evaluate(`window.e2eOnMessage = gConn.onmessage;
-    gConn.onmessage = e => { if (e.data !== 'hb') window.e2eOnMessage(e); };`);
-  let loads = 0;
-  alice.on('request', r => { if (r.url().includes('/api/dao.php')) loads++; });
-  // three heartbeats in a row: one load (a pending one is not doubled)
-  await alice.evaluate(`for (let i = 0; i < 3; i++) e2eOnMessage(new MessageEvent('message', { data: 'hb' }))`);
-  await expect.poll(() => loads, { timeout: 7000 }).toBe(1);
+  await ownHbOnly(alice);
+  const loads = countLoads(alice);
+  // three heartbeats in a row: one call (a pending one is not doubled), the away persons are the same: no dao.php
+  await sendHb(alice, 3);
+  await expect.poll(() => loads.seen, { timeout: 7000 }).toBe(1);
   await alice.waitForTimeout(1000);
-  expect(loads).toBe(1);
+  expect(loads).toEqual({ dao: 0, seen: 1 });
+});
+
+test('hb: another player goes away or comes back: dao.php after the next hb shows it (B-127)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Table Hb Away');
+  const t = teamIdOf(url);
+  await joinAsPlayer(alice, url, 'Alice');
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await alice.reload();
+  const bobCard = tableCard(alice, 'Bob');
+  await expect(bobCard).toBeVisible();
+  await expect(bobCard).not.toHaveClass(/is-away/);
+  await alice.waitForTimeout(500);
+  await ownHbOnly(alice);
+  const loads = countLoads(alice);
+
+  // Bob goes away: the next hb calls seen.php, the signature differs, the board loads dao.php
+  lastLoadAgo(t, bob, 120);
+  await sendHb(alice);
+  await expect(bobCard).toHaveClass(/is-away/, { timeout: 8000 });
+  expect(loads).toEqual({ dao: 1, seen: 1 });
+
+  // nothing changed: seen.php only
+  await sendHb(alice);
+  await expect.poll(() => loads.seen, { timeout: 7000 }).toBe(2);
+  await alice.waitForTimeout(1000);
+  expect(loads.dao).toBe(1);
+
+  // Bob is back (his board calls seen.php): the next hb loads dao.php again
+  expect((await alice.request.get(`/api/seen.php?${new URLSearchParams({ t, id: bob })}`)).ok()).toBeTruthy();
+  await sendHb(alice);
+  await expect(bobCard).not.toHaveClass(/is-away/, { timeout: 8000 });
+  expect(loads).toEqual({ dao: 2, seen: 3 });
+});
+
+test('hb: seen.php fails or has no away_sig: the board loads dao.php instead (B-127)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Table Hb Fail');
+  await joinAsPlayer(alice, url, 'Alice');
+  await expect(tableCard(alice, 'Alice')).toBeVisible();
+  await alice.waitForTimeout(500);
+  await ownHbOnly(alice);
+  const loads = countLoads(alice);
+
+  await alice.route('**/api/seen.php*', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+  await sendHb(alice);
+  await expect.poll(() => loads.dao, { timeout: 7000 }).toBe(1);
+  expect(loads.seen).toBe(1);
+
+  await alice.unroute('**/api/seen.php*');
+  await alice.route('**/api/seen.php*', route => route.abort());
+  await sendHb(alice);
+  await expect.poll(() => loads.dao, { timeout: 7000 }).toBe(2);
+  expect(loads.seen).toBe(2);
 });
 
 test('away: dimmed card, trash can without hover, named for screen readers (B-110)', async ({ browser }) => {
@@ -297,7 +368,7 @@ test('touch: the tap hint shows once (B-110)', async ({ browser }) => {
   await expect(hint).toBeHidden();
 });
 
-test('a load with the same state changes nothing on the page (B-110: dao.php on every hb)', async ({ browser }) => {
+test('a load with the same state changes nothing on the page (B-110: dao.php after pulls and own writes)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Table Quiet');
   const t = teamIdOf(url);

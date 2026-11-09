@@ -734,9 +734,50 @@ function get_team_id($name, $link) {
 }
 
 
-/* B-110: a player is "away" when his board has not loaded dao.php for this many seconds. The board loads dao.php on
-   every hb of poker-msg (every 30 s, plus 0-5 s jitter), so 70 s = two missed heartbeats (Andreas, 2026-11-01). */
+/* B-110: a player is "away" when his board has not called seen.php or dao.php for this many seconds. The board calls
+   seen.php on every hb of poker-msg (every 30 s, plus 0-5 s jitter; B-127, before: dao.php), so 70 s = two missed
+   heartbeats (Andreas, 2026-11-01). */
 const AWAY_AFTER_SEC = 70;
+
+/* B-110, B-127: marks the board of player $id in team $t as connected (dao.php and seen.php). The bound team_id limits
+   the effect to that team, an unknown team or id changes nothing. */
+function touch_player($link, string $id, string $t): void {
+    $sql = $link->prepare("UPDATE pok_players_tbl
+               SET last_callback_time = current_timestamp
+             WHERE id = ?
+               AND team_id = ?");
+    $sql->bind_param('ss', $id, $t);
+    $sql->execute();
+}
+
+/* B-127: signature of the set of away persons (players and observers, not REMOVED, never the own one), '' for none.
+   Only a hash of the public mkeys, never a player id (SID). getDao() and seen.php both use it, so the board loads
+   dao.php after a heartbeat only when the set changed. */
+function away_sig(array $mkeys): string {
+    if (count($mkeys) === 0) return '';
+    $mkeys = array_map('intval', $mkeys);
+    sort($mkeys, SORT_NUMERIC);
+    return sha1(implode(',', $mkeys));
+}
+
+/* B-127: away_sig() of team $t from the view of player $id, same away definition as the player query in getDao() */
+function load_away_sig($link, string $id, string $t): string {
+    $sql = $link->prepare("SELECT p.mkey
+              FROM pok_players_tbl p
+             WHERE p.team_id = ?
+               AND p.id <> ?
+               AND p.player_type <> 'REMOVED'
+               AND unix_timestamp(p.last_callback_time) < unix_timestamp() - ?");
+    $away_after_sec = AWAY_AFTER_SEC;
+    $sql->bind_param('ssi', $t, $id, $away_after_sec);
+    $sql->execute();
+    $mkeys = array();
+    if ($result = $sql->get_result()) {
+        while ($row = $result->fetch_row()) $mkeys[] = $row[0];
+        $result->close();
+    }
+    return away_sig($mkeys);
+}
 
 function getDao($t, $id) {
     $all_players_ready = true;
@@ -765,6 +806,7 @@ function getDao($t, $id) {
     $show_avg = 0;
     $players=array();
     $observers = array(); // B-110: connected observers only (not away), {name, mkey}
+    $away_mkeys = array(); // B-127: mkeys of the away persons for away_sig()
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
     $show_tips = 1;
@@ -781,12 +823,7 @@ function getDao($t, $id) {
     $link = db_init();
 
     /* set last callback of current player */
-    $sql = $link->prepare("UPDATE pok_players_tbl
-               SET last_callback_time = current_timestamp
-             WHERE id = ?
-               AND team_id = ?");
-    $sql->bind_param('ss', $id, $t);
-    $sql->execute();
+    touch_player($link, $id, $t);
 
     $sql = $link->prepare("SELECT t.cardset_flags
                   ,t.name
@@ -933,6 +970,7 @@ function getDao($t, $id) {
 
             // B-110: the own board is loading right now, so the own person is never away
             $obj->away = ($obj->id != $id && (int)$obj->away === 1);
+            if ($obj->away && $obj->player_type !== 'REMOVED') $away_mkeys[] = $obj->mkey; // B-127, see load_away_sig()
 
             if ($deck !== null && $obj->id === $deck_changed_by) $deck['changed_by'] = $obj->name; // B-98 V6
 
@@ -1114,7 +1152,8 @@ function getDao($t, $id) {
         "players_count"=>$players_count,
         "ready_players_count"=>$ready_players_count,
         "players"=>$players,
-        "observers"=>$observers ); // B-110: connected observers, ordered by name
+        "observers"=>$observers, // B-110: connected observers, ordered by name
+        "away_sig"=>away_sig($away_mkeys) ); // B-127: same value as seen.php, '' = nobody away
 }
 
 /* B-57: allowed values for feedback types, roadmap status and reactions (UP = thumbs up, DOWN = thumbs down) */
