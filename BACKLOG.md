@@ -1768,7 +1768,10 @@ Offene Fragen: Frist X (Tage?); wird die Description beim Abschluss gelöscht od
 dann liegt nichts Vertrauliches länger als nötig); Export/„Copy results“ vor dem Löschen (z. B. für Jira); neue Team-IDs
 mit Zufallsanteil trotzdem sinnvoll (Erraten erschweren). E-Mail/PIN: wäre die erste E-Mail-Adresse in der DB
 (Datenschutz), und die User-ID hängt am Browser (localStorage) – geht verloren beim Löschen der Browserdaten bzw. auf
-einem anderen Gerät. Sina prüft vor der Umsetzung.
+einem anderen Gerät. Idee Andreas (2026-11-09): Mit hinterlegter E-Mail lässt sich genau das lösen – per Mail-PIN
+bzw. Login-Link die eigene User-ID auf einem neuen Gerät/Browser wiederherstellen (leichter Account ohne Passwort).
+Dafür nötig: E-Mail beim Hinterlegen per PIN bestätigen (sonst könnte jemand fremde Adressen an seine ID binden),
+Mailversand (SMTP, SPF/DKIM), Datenschutzerklärung, Löschen der E-Mail durch den User. Sina prüft vor der Umsetzung.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
