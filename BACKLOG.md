@@ -1722,6 +1722,13 @@ ohne `REMOVED`), nie Player-IDs. `dao.php` liefert dasselbe Feld. Das Board ruft
 **Akzeptanz:** away-Anzeige wie bisher (Zeitpunkt und Darstellung); `dao.php` nur noch bei `pull`, nach eigenem
 Schreiben und bei geänderter away-Menge.
 
+### B-128 R3-Deck-Backup prüfen und löschen (Mitte Dezember)
+Status: neu (Andreas, 2026-11-09). Die R3-Deck-Migration übernimmt das Deck eines Teams erst beim nächsten Laden.
+Stand 2026-11-09 (`php8.4 tools/migration/check_deck_migration.php --verify` auf Live): 192 ok, 0 mismatch,
+21 danach selbst geändert, rund 24.400 noch nicht wieder geladen. **Mitte Dezember 2026:** Prüfung wiederholen; bei
+0 mismatch die Tabelle `pok_teams_deck_backup_r3` löschen (`drop table`, Befehl bereitet Kai vor, Betreiber führt aus).
+Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
