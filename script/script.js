@@ -480,7 +480,7 @@ function loadDeckKeyLayout() {
 }
 
 function updateDeckKeys() {
-    // B-110: written only when a label changes (the board loads on every hb, the same state changes nothing)
+    // B-110: written only when a label changes (the board loads often, the same state changes nothing)
     const labels = new Map();
     gDeck.cards.forEach((card, i) => {
         if (i < DECK_KEY_CODES.length) labels.set(card.key, deckKeyLabel(DECK_KEY_CODES[i]));
@@ -891,11 +891,12 @@ let gDaoSeq = 0;        // board states asked for so far
 let gDaoShownSeq = 0;   // number of the board state shown last
 
 let gDaoLoading = 0;     // B-110: dao.php loads in flight
+let gAwaySig = null;     // B-127: away_sig of the board state shown last (null: none shown yet / unknown)
 
 function updateDao(isOnLoad) {
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
     const seq = ++gDaoSeq;
-    // B-110: any load does what a pending heartbeat load would do (it refreshes last_callback_time)
+    // B-110: any load does what a pending heartbeat would do (it refreshes last_callback_time and the away state)
     clearTimeout(gHbLoadTimer);
     gHbLoadTimer = null;
     gDaoLoading++;
@@ -912,6 +913,7 @@ function updateDao(isOnLoad) {
             if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
             gDaoShownSeq = Math.max(gDaoShownSeq, seq);
             noteDeckGroup(myJson, seq);
+            gAwaySig = typeof myJson.away_sig === 'string' ? myJson.away_sig : null; // B-127
 
             gLastJson = myJson;
             updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
@@ -971,10 +973,13 @@ function deckGroupName(groupId) {
     return group && typeof group.name === 'string' && group.name !== '' ? group.name : groupId;
 }
 
-/* B-110: on every 'hb' of poker-msg (30 s) the board loads dao.php once, 0-5 s later (the boards of a team do not all
- * come at the same moment). The load keeps the own last_callback_time fresh: a board that stops loading (closed,
- * locked phone, frozen tab) shows as away to the others (dao.php "away", AWAY_AFTER_SEC). Only one such load is
- * pending; any other load meanwhile (pull, own write) replaces it, and none starts while a load is in flight. */
+/* B-110: on every 'hb' of poker-msg (30 s) the board calls home once, 0-5 s later (the boards of a team do not all
+ * come at the same moment). The call keeps the own last_callback_time fresh: a board that stops calling (closed,
+ * locked phone, frozen tab) shows as away to the others (dao.php "away", AWAY_AFTER_SEC). Only one such call is
+ * pending; any dao.php load meanwhile (pull, own write) replaces it, and none starts while a load is in flight.
+ * B-127: the call is the light api/seen.php, not dao.php: it returns only away_sig, the signature of the away persons.
+ * dao.php is loaded only when it differs from the one of the board state shown last, or when it is unknown (nothing
+ * shown yet) or the call fails (no answer, no JSON, no away_sig): away never gets stuck. */
 const HB_LOAD_JITTER_MS = 5000;
 let gHbLoadTimer = null;
 
@@ -982,8 +987,29 @@ function scheduleHbLoad() {
     if (gHbLoadTimer !== null) return;
     gHbLoadTimer = setTimeout(() => {
         gHbLoadTimer = null;
-        if (gDaoLoading === 0) updateDao(false);
+        if (gDaoLoading === 0) hbSeen();
     }, Math.round(Math.random() * HB_LOAD_JITTER_MS));
+}
+
+function hbSeen() {
+    if (gAwaySig === null) {
+        updateDao(false);
+        return;
+    }
+    const seq = gDaoSeq;
+    fetch('./api/seen.php?id=' + localStorage.getItem('SID') + '&t=' + t)
+        .then(response => response.json())
+        .then(json => {
+            if (json === null || typeof json !== 'object' || typeof json.away_sig !== 'string') {
+                throw new Error('no away_sig');
+            }
+            if (gDaoSeq !== seq) return; // a load asked for meanwhile brings the newer state anyway
+            if (json.away_sig !== gAwaySig) updateDao(false);
+        })
+        .catch(error => {
+            console.log('seen.php failed', error);
+            if (gDaoSeq === seq) updateDao(false);
+        });
 }
 
 /* B-41: The cards are laid out by CSS (#cbox is a centered flex-wrap container),

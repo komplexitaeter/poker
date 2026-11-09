@@ -207,8 +207,9 @@ export async function clearLegacyDeck(page: Page): Promise<void> {
 }
 
 /**
- * B-110: the board loads dao.php 0-5 s after every 'hb' of poker-msg (every 30 s). A test that checks that an action
- * loads nothing ("loads === 0") hit such a load now and then; this stops them on the page (and drops a pending one).
+ * B-110: the board calls home 0-5 s after every 'hb' of poker-msg (every 30 s; B-127: api/seen.php, dao.php only when
+ * the away persons changed or the call failed). A test that checks that an action loads nothing ("loads === 0") hit
+ * such a load now and then; this stops them on the page (and drops a pending one).
  * scheduleHbLoad is a top-level function of script.js (a window property); gHbLoadTimer a script-level let.
  */
 export async function stopHbLoads(page: Page): Promise<void> {
