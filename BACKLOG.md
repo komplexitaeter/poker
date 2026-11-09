@@ -1751,6 +1751,11 @@ Entscheidungen (Andreas, 2026-11-07): Items anlegen, umsortieren, als fertig mar
 Löschen: ein Item „zum Löschen markieren“, nimmt es niemand zurück, wird es nach ~14 Tagen automatisch gelöscht.
 Vorschlag Kai zu gelöschten Userdaten: Das Ergebnis am Item als Aggregat ohne Personenbezug speichern (Ergebnis,
 Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von Userdaten das Ergebnis nicht.
+**Offen vor der Historisierung – Team-ID (Andreas/Kai, 2026-11-09):** Dauerhaft gespeicherte Items können vertraulich
+sein (Produktpläne, Kunden). Die Team-ID ist heute aus dem Teamnamen abgeleitet (`name2id()`, je Zeichen 2–4
+Varianten) und damit bei kurzem bzw. bekanntem Namen erratbar – nicht nur eine Frage der Länge. Vorschlag: neue Teams
+mit zufälligem Anteil (z. B. lesbarer Name + 16 Zufallszeichen); offen, wie bestehende, dauerhaft genutzte Team-Links
+umziehen (z. B. beim ersten Nutzen der Historie). Sina prüft vorher.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
