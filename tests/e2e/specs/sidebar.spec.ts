@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, openTimerPanel, setTeamDeck } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, openTimerPanel, setTeamDeck, setLegacyDeck, deckCards } from './helpers';
 
 /**
  * B-113 (cut 1): on large screens with a mouse the column can be collapsed to a narrow rail (hover opens it as an
@@ -908,4 +908,39 @@ test('phones: no rail, no state, even with a stored one (B-113)', async ({ brows
   await expect(container(alice)).not.toHaveAttribute('data-phase', /.*/);
   await expect(container(alice)).not.toHaveClass(/side-/);
   expect(await sideW(alice)).toBe('');
+});
+
+test('the deck hint follows the width of the column: hidden when the grip widens it, back when narrower (B-113)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Sidebar Deck Hint');
+  await setLegacyDeck(alice, new URL(url).searchParams.get('t')!, [0, 2, 3, 4, 6, 9, 10, 11, 12, 13]); // 10 cards
+  await joinAsPlayer(alice, url, 'Alice');
+  await expect(deckCards(alice)).toHaveCount(10);
+  const down = alice.locator('#down-container');
+  const hint = alice.locator('.deck-hint');
+  const lastKeyRight = async () => {
+    const keys = alice.locator('#ctl .ctl-key');
+    return (await keys.nth((await keys.count()) - 1).boundingBox())!;
+  };
+  const clear = async () => (await lastKeyRight()).x + (await lastKeyRight()).width <= (await hint.boundingBox())!.x;
+
+  // default width: the hint in the row of the keys, clear of the last key
+  await expect(down).not.toHaveClass(/hint-off/);
+  await expect(hint).toBeVisible();
+  expect(await clear()).toBe(true);
+
+  // the grip widens the column to 60vw (no window resize): the hint no longer fits, hidden
+  const g = (await alice.locator('#side_grip').boundingBox())!;
+  await dragGrip(alice, { x: g.x + g.width / 2, y: 400 }, 100);
+  expect(await sideW(alice)).toBe('60vw');
+  await expect(down).toHaveClass(/hint-off/);
+  await expect(hint).toBeHidden();
+
+  // narrower again: the hint is back, still clear of the last key
+  const g2 = (await alice.locator('#side_grip').boundingBox())!;
+  await dragGrip(alice, { x: g2.x + g2.width / 2, y: 400 }, 1250);
+  expect(await sideW(alice)).toBe('20vw');
+  await expect(down).not.toHaveClass(/hint-off/);
+  await expect(hint).toBeVisible();
+  expect(await clear()).toBe(true);
 });

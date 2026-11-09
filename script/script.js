@@ -3129,6 +3129,21 @@ function initDisplayHandling() {
         ctl.addEventListener('scroll', () => { if (!gCarousel.on) updateDeckRoom(); }, { passive: true });
         ctl.addEventListener('wheel', scrollDeckByWheel, { passive: false });
     }
+    // B-113: pinning the sidebar or dragging its grip changes the deck's width without a window
+    // resize: measure the hint's room again (once per frame, also during the width animation)
+    const down = document.getElementById('down-container');
+    if (down !== null && typeof ResizeObserver === 'function') {
+        let roomFrame = 0;
+        const observer = new ResizeObserver(() => {
+            if (roomFrame !== 0) return;
+            roomFrame = requestAnimationFrame(() => {
+                roomFrame = 0;
+                if (!gCarousel.on) updateDeckRoom();
+            });
+        });
+        observer.observe(down);
+        if (ctl !== null) observer.observe(ctl);
+    }
     // B-68: a deck card image that loads late widens the deck; measure again (load does not bubble)
     document.addEventListener('load', event => {
         if (event.target instanceof HTMLImageElement && event.target.closest('#ctl') !== null) updateDeckRoom();
