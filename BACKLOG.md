@@ -1711,6 +1711,17 @@ README) per URL erreichbar. Die PHP-Skripte antworten über das Web mit 404 (`to
 harmlos (öffentlich auf GitHub). Trotzdem sauberer: in nginx beider Server `location ^~ /tools/ { return 404; }`.
 Befehle bereitet Kai vor, Betreiber spielt sie ein.
 
+### B-127 Leichter Heartbeat statt dao.php alle 30 s
+Status: im Sprint (Andreas, 2026-11-09). **Befund (Live-Logs):** Seit R3 lädt jedes Board bei jedem `hb` von poker-msg
+(alle 30 s) komplett `api/dao.php` (away-Erkennung aus B-110). Folge: an einem Montag rund 194 dao-Abrufe je Client
+statt 57 vor R3, insgesamt etwa 140.000 statt 45.000.
+**Lösung:** Neuer Endpunkt `api/seen.php` (GET `id`, `t`): setzt nur `last_callback_time` und liefert `away_sig`, eine
+Signatur (sha1 über die sortierten mkeys) der aktuell abwesenden Personen (Spieler und Beobachter, ohne die eigene,
+ohne `REMOVED`), nie Player-IDs. `dao.php` liefert dasselbe Feld. Das Board ruft bei `hb` nur `seen.php` und lädt
+`dao.php` nur, wenn sich `away_sig` gegenüber dem letzten dao-Load geändert hat (Backend Ben, Client Fred).
+**Akzeptanz:** away-Anzeige wie bisher (Zeitpunkt und Darstellung); `dao.php` nur noch bei `pull`, nach eigenem
+Schreiben und bei geänderter away-Menge.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
