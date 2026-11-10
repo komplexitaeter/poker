@@ -5,6 +5,19 @@ Gemeinsames Backlog für Wartung und Weiterentwicklung. Ablauf siehe `CLAUDE.md`
 Status: `neu` → `refined` (gemeinsam verstanden, bereit für einen Sprint) → `im Sprint` → `erledigt`.
 Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
+## Leitidee (Andreas, 2026-11-10)
+
+**Refinement ist ein wiederkehrendes Gespräch.** Schätzen ist die Kommunikationsmethode, nicht das Urteil: Es geht
+darum, eine gemeinsame Vorstellung davon zu entwickeln, was man zusammen erreichen will. Items kommen mehrfach ins
+Refinement und werden dabei konkreter (erst lose Ideen, dann Notizen, Mockups, erste Umsetzungen). Ein breiter
+Spread oder „nochmal mitbringen“ ist kein Fehler, sondern genau das, worüber man reden sollte. Viele Teams erleben
+es anders („Item gut vorbereiten, einmal schätzen, umsetzen – alles andere ist ein Fehler“); die App soll den
+iterativen Weg leicht und normal machen (Funktionen, aber auch Sprache und Tipps). Betrifft vor allem B-52, B-53, B-129.
+
+**Daten:** Erwachsene Menschen geben Daten ein und teilen einen Link. Die App behält Items, solange das Team sie
+braucht; die Teams haben selbst in der Hand, was sie löschen oder absichern. Datensicherheit ist wichtig, aber nicht
+die Primärfunktion (Andreas, 2026-11-10).
+
 ## Aktueller Sprint
 
 **Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
@@ -1730,7 +1743,8 @@ Stand 2026-11-09 (`php8.4 tools/migration/check_deck_migration.php --verify` auf
 Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
 
 ### B-129 Session-Planer: Agenda mit Timeboxen je Item
-Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Baut auf B-52 (Item-Karten) und dem Timer
+Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Ziel je Item (vorstellen / Fragen sammeln / schätzen)
+ist gesetzt (Andreas, 2026-11-10): ein Item kommt mehrfach auf die Agenda, je Durchgang mit eigenem Ziel (Leitidee). Baut auf B-52 (Item-Karten) und dem Timer
 (B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
 **Idee:**
 - Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
@@ -1770,7 +1784,14 @@ Löschen: ein Item „zum Löschen markieren“, nimmt es niemand zurück, wird 
 (Überholt durch den neuen Zuschnitt unten.)
 Vorschlag Kai zu gelöschten Userdaten: Das Ergebnis am Item als Aggregat ohne Personenbezug speichern (Ergebnis,
 Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von Userdaten das Ergebnis nicht.
-**Neuer Zuschnitt (Andreas, 2026-11-09) – ersetzt „dauerhaft am Team-Link“:** Der Team-Link ist eine Parole, keine
+**Revidiert (Andreas, 2026-11-10), siehe Leitidee oben:** Das automatische Löschen kurz nach der Session war zu
+sehr von der Datensicherheit geprägt. Iteratives Refinement braucht, dass Items über Wochen wiederkommen. Neu:
+Items bleiben, solange das Team sie braucht; Löschen und Absichern liegen in der Hand des Teams (Items und Team
+selbst löschen, ggf. Link erneuern, später optional PIN). Automatisches Aufräumen höchstens als Sicherheitsnetz bei
+langer Inaktivität. Ein Item hat mehrere **Durchgänge** (je Agenda-Termin eines, mit Ziel und Stand), der Spread über
+die Durchgänge zeigt, wie das gemeinsame Verständnis wächst. Der folgende Zuschnitt vom 2026-11-09 gilt nur noch für
+die Item-Felder, das Abarbeiten und den Export, nicht mehr für die Löschfrist.
+**Neuer Zuschnitt (Andreas, 2026-11-09) – (teilweise überholt) ersetzte „dauerhaft am Team-Link“:** Der Team-Link ist eine Parole, keine
 Zugangskontrolle (wird weitergegeben, nicht zurücknehmbar; die Team-ID ist zudem aus dem Teamnamen abgeleitet,
 `name2id()`, und bei kurzem/bekanntem Namen erratbar). Deshalb keine dauerhafte Historie mit Inhalten:
 - **Topics als Puffer für die Session:** Statt eines Topics optional mehrere. Je Item: ID (optional, z. B. Ticket-Nr.),
