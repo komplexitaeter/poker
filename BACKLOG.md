@@ -1752,8 +1752,11 @@ Stufen (Andreas, 2026-11-10):
 - **gering** – wir haben eine grobe Idee und können anfangen, die richtigen Fragen zu stellen
 - **mittel** – es wird langsam klarer, in welche Richtung es geht, aber noch kann sich alles wieder ändern
 - **hoch** – der letzte Feinschliff, eigentlich sollten wir mit der Umsetzung starten
-Offen: englische Namen in der App; ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die
-Timebox-Planung beeinflusst. Baut auf B-52 (Item-Karten) und dem Timer
+Namen in der App eher beschreibend: *new · rough · shaping · ready* (nicht low/high – klingt nach Note); mit Delia
+im Mockup entscheiden. Darstellung (Andreas, 2026-11-10): **umgekipptes Dreieck mit Schieberegler** – oben breit
+(viele offene Fragen, alles möglich), unten spitz (klar, bereit); der Regler sitzt auf der aktuellen Stufe (Bild des
+Unsicherheitstrichters).
+Offen: ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die Timebox-Planung beeinflusst. Baut auf B-52 (Item-Karten) und dem Timer
 (B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
 **Idee:**
 - Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
