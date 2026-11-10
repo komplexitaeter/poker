@@ -1743,8 +1743,11 @@ Stand 2026-11-09 (`php8.4 tools/migration/check_deck_migration.php --verify` auf
 Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
 
 ### B-129 Session-Planer: Agenda mit Timeboxen je Item
-Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Ziel je Item (vorstellen / Fragen sammeln / schätzen)
-ist gesetzt (Andreas, 2026-11-10): ein Item kommt mehrfach auf die Agenda, je Durchgang mit eigenem Ziel (Leitidee). Baut auf B-52 (Item-Karten) und dem Timer
+Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Ein Item kommt mehrfach auf die Agenda (Leitidee).
+Statt eines festen Ziels je Durchgang (engt zu sehr ein) eher ein **Reifegrad am Item** (Andreas, 2026-11-10): eine
+Eigenschaft, die mit jedem Gespräch wächst (z. B. Idee → grob verstanden → geschärft → bereit; Stufen offen), vom Team
+gesetzt; jeder Durchgang darf alles (reden, Fragen sammeln, schätzen). Offen: Stufen und Namen, ob der Spread einen
+Vorschlag für den Reifegrad liefert, ob er die Timebox-Planung beeinflusst. Baut auf B-52 (Item-Karten) und dem Timer
 (B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
 **Idee:**
 - Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
@@ -1756,8 +1759,7 @@ ist gesetzt (Andreas, 2026-11-10): ein Item kommt mehrfach auf die Agenda, je Du
   sich festfährt, ans Ende bzw. in die nächste Session.
 - **Agenda vorab:** über den Team-Link für alle einsehbar, dazu „Copy agenda“ zum Verschicken – man kann sich vorher
   Gedanken machen, keine Überraschungen.
-Offene Fragen: Hat ein Item neben der Timebox auch ein **Ziel** (schätzen / nur vorstellen und Fragen sammeln)? Dann
-endet ein Vorstell-Item ohne Ergebnis (bzw. mit gesammelten Fragen). Wer darf Timeboxen ändern (vermutlich alle, wie bei
+Offene Fragen: Wer darf Timeboxen ändern (vermutlich alle, wie bei
 den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Items existieren damit schon Tage vor der
 Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 
@@ -1788,7 +1790,7 @@ Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von
 sehr von der Datensicherheit geprägt. Iteratives Refinement braucht, dass Items über Wochen wiederkommen. Neu:
 Items bleiben, solange das Team sie braucht; Löschen und Absichern liegen in der Hand des Teams (Items und Team
 selbst löschen, ggf. Link erneuern, später optional PIN). Automatisches Aufräumen höchstens als Sicherheitsnetz bei
-langer Inaktivität. Ein Item hat mehrere **Durchgänge** (je Agenda-Termin eines, mit Ziel und Stand), der Spread über
+langer Inaktivität. Ein Item hat mehrere **Durchgänge** (je Agenda-Termin eines, mit Stand; Reifegrad am Item, siehe B-129), der Spread über
 die Durchgänge zeigt, wie das gemeinsame Verständnis wächst. Der folgende Zuschnitt vom 2026-11-09 gilt nur noch für
 die Item-Felder, das Abarbeiten und den Export, nicht mehr für die Löschfrist.
 **Neuer Zuschnitt (Andreas, 2026-11-09) – (teilweise überholt) ersetzte „dauerhaft am Team-Link“:** Der Team-Link ist eine Parole, keine
