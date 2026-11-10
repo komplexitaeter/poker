@@ -1755,7 +1755,8 @@ Stufen (Andreas, 2026-11-10):
 Namen in der App eher beschreibend: *new · rough · shaping · ready* (nicht low/high – klingt nach Note); mit Delia
 im Mockup entscheiden. Darstellung (Andreas, 2026-11-10): **liegendes Dreieck mit Schieberegler, von links nach rechts** –
 links breit (viele offene Fragen, alles möglich), rechts spitz (klar, bereit); der Regler wandert nach rechts und
-sitzt auf der aktuellen Stufe (Bild des Unsicherheitstrichters).
+sitzt auf der aktuellen Stufe (Bild des Unsicherheitstrichters). Alternative: stehendes Dreieck (Spitze oben),
+unten breit, der Regler wandert nach oben. Delia zeigt beide im Mockup.
 Offen: ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die Timebox-Planung beeinflusst. Baut auf B-52 (Item-Karten) und dem Timer
 (B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
 **Idee:**
