@@ -1723,6 +1723,11 @@ Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, deshalb s
 README) per URL erreichbar. Die PHP-Skripte antworten über das Web mit 404 (`tools/migration/common.php`), der Rest ist
 harmlos (öffentlich auf GitHub). Trotzdem sauberer: in nginx beider Server `location ^~ /tools/ { return 404; }`.
 Befehle bereitet Kai vor, Betreiber spielt sie ein.
+**Akut erledigt (2026-11-10, Live, außerhalb poker):** Bei feedback und teamcar war `.git` öffentlich abrufbar
+(Scanner fragten Git-Objekte ab). Regel wie bei poker `location ~ /\.(?!well-known/) { return 404; }` in beiden
+Server-Blöcken ergänzt, geprüft: 404. Keine Token in Remote-URLs; feedback `config.php` ignoriert; teamcar trackt
+`config.php`, das Passwort darin weicht vom Live-Wert ab (kein Leck). Offen (teamcar-Repo, klein): `config.php` aus
+Git nehmen, `config.example.php` + `.gitignore`. Staging-Seiten bei Gelegenheit genauso prüfen.
 
 ### B-127 Leichter Heartbeat statt dao.php alle 30 s
 Status: im Sprint (Andreas, 2026-11-09). **Befund (Live-Logs):** Seit R3 lädt jedes Board bei jedem `hb` von poker-msg
