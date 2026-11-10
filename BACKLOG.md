@@ -1772,6 +1772,11 @@ einem anderen Gerät. Idee Andreas (2026-11-09): Mit hinterlegter E-Mail lässt 
 bzw. Login-Link die eigene User-ID auf einem neuen Gerät/Browser wiederherstellen (leichter Account ohne Passwort).
 Dafür nötig: E-Mail beim Hinterlegen per PIN bestätigen (sonst könnte jemand fremde Adressen an seine ID binden),
 Mailversand (SMTP, SPF/DKIM), Datenschutzerklärung, Löschen der E-Mail durch den User. Sina prüft vor der Umsetzung.
+**Vorbild (Andreas, 2026-11-10, ein anderes Planning-Poker-Tool angesehen):** Items als **Karten**: Das aktive Item
+liegt oben als Karte, die nächsten schauen als Stapel dahinter hervor (man sieht ohne Liste, dass noch etwas wartet).
+An die Item-Karte hängt sich das Ergebnis (Historisierung je Item), daneben groß der **Ergebnisvorschlag** (siehe
+Gedanke vom 2026-10-29), den das Team vor „Next item“ übernimmt oder ändert. Nur die Idee übernehmen, nicht den Look
+(Console Style bleibt).
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
@@ -1788,6 +1793,11 @@ echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shi
 Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
 Wert zeigen oder den Bereich „3–5“).
 Roadmap (2026-11-07): öffentlich als „Median indicator“.
+Ideen aus einem anderen Tool (Andreas, 2026-11-10), Fragen für Delia: (1) Phasen sichtbar als Schritte
+(z. B. Discuss → Estimate → Review) mit einer Zeile, was jetzt zu tun ist; (2) durchgehende Farbskala nach Wert
+(niedrig → hoch) für Deck, Balken und gelegte Karten, damit Ausreißer sofort auffallen; (3) Ergebnis nach Wert
+gruppiert: je Wert eine Karte mit den Personen darauf statt einer Karte je Person (bei vielen Spielern übersichtlicher).
+Keine bunten Verläufe, Avatare oder Fächer-Deck – Console Style bleibt.
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
