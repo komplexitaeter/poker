@@ -1777,6 +1777,10 @@ liegt oben als Karte, die nächsten schauen als Stapel dahinter hervor (man sieh
 An die Item-Karte hängt sich das Ergebnis (Historisierung je Item), daneben groß der **Ergebnisvorschlag** (siehe
 Gedanke vom 2026-10-29), den das Team vor „Next item“ übernimmt oder ändert. Nur die Idee übernehmen, nicht den Look
 (Console Style bleibt).
+**Export (Andreas, 2026-11-10):** „Copy results“ für die fertigen Item-Karten, bevor sie gelöscht werden – Format
+passend zum Einfügen in Jira/Linear (z. B. je Zeile ID, Heading, Ergebnis; zusätzlich als CSV/Tabelle). Schlanke
+Antwort auf „Jira/Linear support“ der Konkurrenz, ohne eigene Integration. „Ohne Login“ bleibt das Versprechen:
+die E-Mail-PIN ist nur ein Extra, Schätzen und Export gehen immer ohne.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
