@@ -1729,6 +1729,24 @@ Stand 2026-11-09 (`php8.4 tools/migration/check_deck_migration.php --verify` auf
 0 mismatch die Tabelle `pok_teams_deck_backup_r3` löschen (`drop table`, Befehl bereitet Kai vor, Betreiber führt aus).
 Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
 
+### B-129 Session-Planer: Agenda mit Timeboxen je Item
+Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Baut auf B-52 (Item-Karten) und dem Timer
+(B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
+**Idee:**
+- Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
+  B: 5 min, „ganz neu, nur grob vorstellen und erste Fragen sammeln“). Einstellbar z. B. durch Größerziehen der Karte
+  in einer Zeitleiste. Die Session hat ebenfalls eine Timebox; die Summe der Items zeigt, ob die Agenda hineinpasst.
+- Damit gibt es eine **Agenda**: was in der Session insgesamt geschätzt bzw. besprochen werden soll.
+- **Im Meeting:** das aktive Item zeigt seine Restzeit (Überzug amber wie der Timer in der Leiste), dazu ruhig der
+  Gesamtstand („6 min hinter Plan, noch 4 Items“). Nur signalisieren, nichts erzwingen. Ausweg „Parken“: ein Item, das
+  sich festfährt, ans Ende bzw. in die nächste Session.
+- **Agenda vorab:** über den Team-Link für alle einsehbar, dazu „Copy agenda“ zum Verschicken – man kann sich vorher
+  Gedanken machen, keine Überraschungen.
+Offene Fragen: Hat ein Item neben der Timebox auch ein **Ziel** (schätzen / nur vorstellen und Fragen sammeln)? Dann
+endet ein Vorstell-Item ohne Ergebnis (bzw. mit gesammelten Fragen). Wer darf Timeboxen ändern (vermutlich alle, wie bei
+den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Items existieren damit schon Tage vor der
+Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
+
 ### B-52 Topics als Backlog-Items
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
