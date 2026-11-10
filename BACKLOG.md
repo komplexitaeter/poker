@@ -1757,7 +1757,14 @@ im Mockup entscheiden. Darstellung (Andreas, 2026-11-10): **liegendes Dreieck mi
 links breit (viele offene Fragen, alles möglich), rechts spitz (klar, bereit); der Regler wandert nach rechts und
 sitzt auf der aktuellen Stufe (Bild des Unsicherheitstrichters). Alternative: stehendes Dreieck (Spitze oben),
 unten breit, der Regler wandert nach oben. Delia zeigt beide im Mockup.
-Offen: ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die Timebox-Planung beeinflusst. Baut auf B-52 (Item-Karten) und dem Timer
+Offen: ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die Timebox-Planung beeinflusst.
+**Feedback zum Mockup (`mockups/planner/`, Andreas, 2026-11-10):**
+- Reifegrad: das **liegende Dreieck** (links → rechts) ist gesetzt.
+- Tabs Agenda / Later / Done schlüssig; „Later“ besser benennen (z. B. „Upcoming“ oder „Backlog“, offen).
+- Agenda-Leiste in der Sidebar (Segmente je Item, Markierung „jetzt“, „on time · 3 items left · ends 10:00“) gefällt sehr.
+- **Einfachster Fall muss einfach bleiben:** ohne Sessionplanung ein Thema eintippen und schätzen, wie heute. Alles
+  andere (ID, Description, Timebox, Session, Reifegrad) ist optional – wer mehr will, gibt mehr ein.
+- Im Mockup noch „T+02:10“ am Timer – in der App gibt es kein T± mehr (B-113), nicht übernehmen. Baut auf B-52 (Item-Karten) und dem Timer
 (B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
 **Idee:**
 - Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
