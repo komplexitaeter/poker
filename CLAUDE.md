@@ -190,8 +190,11 @@ nachträglich im Backlog vermerkt.
 - Mehrere zusammengehörige Feature-Branches darf Kai zu einem Sammel-PR nach `release` zusammenführen.
 - Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
 - **Aufräumen (Andreas, 2026-11-08):** Ist nichts in Entwicklung, gibt es nur `release` und `master`. Kai kann Remote-Branches
-  nicht löschen; gemergte Branches löscht GitHub per Repo-Einstellung „Automatically delete head branches“ bzw. Andreas.
-  Kai entfernt nach dem Merge die zugehörigen lokalen Worktrees.
+  nicht löschen; gemergte Branches löscht GitHub per Repo-Einstellung „Automatically delete head branches“ (aktiv seit
+  2026-11-10) bzw. Andreas. Kai entfernt nach dem Merge die zugehörigen lokalen Worktrees und Branches.
+  Ruleset „protect release and master“ (aktiv seit 2026-11-10): `release` und `master` können nicht gelöscht und nicht
+  per Force-Push überschrieben werden, kein Bypass. Keine Status-Check- oder PR-Pflicht (Kai pusht Kleinigkeiten direkt
+  auf `release`).
 - `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
 - **Rollout 3 ist live (2026-11-06), `rollout-3` ist abgeschlossen.** Seitdem wieder der normale Ablauf (Andreas,
   2026-11-07): Feature-Branches von `release`, PRs nach `release`, Staging auf `release`. Neues geht in kleinen,
