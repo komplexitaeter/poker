@@ -1786,6 +1786,23 @@ den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Ite
 Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 
 ### B-52 Topics als Backlog-Items
+**Erster Schnitt S1 – Vorschlag Kai (2026-11-10), Ziel: bis Mitte Dezember live** (vor der Jahreswechsel-Welle,
+siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbeiten.*
+- Im Topics-Menü statt eines Textfelds eine Liste von Items; je Item Heading (Pflicht) und Description (optional,
+  Markdown wie heute), ID optional. Anlegen, bearbeiten, umsortieren, löschen – alle dürfen das.
+- Einfachster Fall wie heute: Wer nur ein Thema eintippt, merkt keinen Unterschied (ein Item, kein Listen-Ballast).
+  Das bisherige Topic eines Teams wird beim ersten Laden zum ersten Item.
+- Das oberste offene Item ist das aktive und erscheint dort, wo heute das Topic steht.
+- Nach dem Aufdecken im Results-Panel „Next item“: das aktive Item wird abgeschlossen, das nächste wird aktiv
+  (neue Runde wie heute). Abgeschlossene Items stehen unter „Done“ mit Heading und dem Stand der letzten Runde
+  (Range bzw. Median, je nach Kartenset); wieder öffnen möglich.
+- Neue Tabelle für Items (Ben), Prepared Statements, `notify_team()`; Frontend Fred, Gestaltung Delia
+  (Mockup-Stand `mockups/planner/`).
+- **Nicht in S1:** Timeboxen, Agenda/Session, Reifegrad, „Bring back“/Durchgänge, Copy results, Ergebnisvorschlag.
+Offen für das Planning: (1) Was wird am abgeschlossenen Item gespeichert – nur der Stand der letzten Runde
+(Range/Median, Kartenset) oder auch ein vom Team gewählter Wert? (2) Tab-Name „Later“/„Backlog“ schon in S1 oder erst
+mit der Agenda? (3) Mobil: Liste im Bottom-Sheet reicht?
+
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
 Rundenhistorie wird heute schon geschrieben (`pok_roundstats_tbl`, `pok_roundstat_details_tbl`) und ließe sich je
