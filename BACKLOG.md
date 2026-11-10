@@ -1746,8 +1746,14 @@ Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
 Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Ein Item kommt mehrfach auf die Agenda (Leitidee).
 Statt eines festen Ziels je Durchgang (engt zu sehr ein) eher ein **Reifegrad am Item** (Andreas, 2026-11-10): eine
 Eigenschaft, die mit jedem Gespräch wächst (z. B. Idee → grob verstanden → geschärft → bereit; Stufen offen), vom Team
-gesetzt; jeder Durchgang darf alles (reden, Fragen sammeln, schätzen). Offen: Stufen und Namen, ob der Spread einen
-Vorschlag für den Reifegrad liefert, ob er die Timebox-Planung beeinflusst. Baut auf B-52 (Item-Karten) und dem Timer
+gesetzt; jeder Durchgang darf alles (reden, Fragen sammeln, schätzen).
+Stufen (Andreas, 2026-11-10):
+- **neu** – wir kennen das Thema noch nicht und müssen es uns mal ansehen
+- **gering** – wir haben eine grobe Idee und können anfangen, die richtigen Fragen zu stellen
+- **mittel** – es wird langsam klarer, in welche Richtung es geht, aber noch kann sich alles wieder ändern
+- **hoch** – der letzte Feinschliff, eigentlich sollten wir mit der Umsetzung starten
+Offen: englische Namen in der App; ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die
+Timebox-Planung beeinflusst. Baut auf B-52 (Item-Karten) und dem Timer
 (B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
 **Idee:**
 - Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
