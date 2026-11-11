@@ -686,3 +686,40 @@ select (select count(*) from pok_teams_tbl) teams, (select count(*) from pok_tea
        (select count(*) from pok_teams_deck_backup_r3 where deck_id is null) without_deck,
        (select max(backup_date) from pok_teams_deck_backup_r3) last_backup;
 /* end B-98 backup */
+
+/* B-52 S1: topics as a list of items per team (api/lib_topics.php). The topmost open item (status 'open', lowest
+   position) is the active one; pok_teams_tbl.topic is kept in line with it by the app (round snapshot, stats.php and
+   Grafana keep reading pok_teams_tbl.topic / pok_roundstats_tbl.topic unchanged). The old topic of a team becomes its
+   first item lazily in getDao(). distribution = cards of the last revealed round of the item as JSON {"card_key": count},
+   no person data. result_card_key: open item = card chosen by the team (result_auto = 0), null = automatic proposal
+   (computed by dao.php); done item = the final result (result_auto 1 = automatic, 0 = chosen), null = no single value.
+   team_id with the charset of pok_teams_tbl.id (utf8mb3) for joins.
+   Additive (new table only), idempotent (run it again any time), BEFORE deploying the code (dao.php reads the table).
+   The release code never reads or writes it.
+   Run only this block: sed -n '/^\/\* B-52 S1:/,/^\/\* end B-52 S1/p' db_schema_pok_inc.sql */
+select table_name from information_schema.tables
+ where table_schema = database() and table_name = 'pok_topic_items_tbl';
+
+create table if not exists pok_topic_items_tbl (
+  id int unsigned not null auto_increment primary key,
+  team_id varchar(80) character set utf8mb3 collate utf8mb3_general_ci not null,
+  position smallint unsigned not null default 0 comment 'order of the open items (1..n), 0 for done items',
+  ext_id varchar(20) null comment 'optional id of the item, e.g. a ticket number',
+  heading varchar(200) not null,
+  description varchar(2000) null comment 'markdown, like the old topic',
+  maturity tinyint unsigned not null default 0 comment '0 new, 1 rough, 2 shaping, 3 ready',
+  status varchar(4) character set ascii collate ascii_bin not null default 'open' comment 'open | done',
+  result_card_key varchar(7) character set ascii collate ascii_bin null,
+  result_auto tinyint not null default 1 comment '1 = automatic (highest value), 0 = chosen by the team',
+  distribution varchar(1000) character set ascii collate ascii_bin null comment 'JSON {card_key: count} of the last revealed round',
+  rounds_cnt smallint unsigned not null default 0 comment 'revealed rounds played while the item was active',
+  done_date timestamp null,
+  creation_date timestamp not null default current_timestamp,
+  update_date timestamp not null default current_timestamp on update current_timestamp,
+  key ix_topic_items_team (team_id, status, position)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-52: topic items of a team';
+
+select table_name, table_rows from information_schema.tables
+ where table_schema = database() and table_name = 'pok_topic_items_tbl';
+/* end B-52 S1 */

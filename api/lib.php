@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/lib_custom.php'; // B-98 S4: custom sets
+require_once __DIR__ . '/lib_topics.php'; // B-52 S1: topic items
 
 /*
  * Connects with utf8mb4 (B-85), so emojis in names and topics reach the utf8mb4 columns unchanged. Reading the
@@ -625,6 +626,9 @@ function start_new_round($link, string $t): void
         $sql->execute();
     }
 
+    // B-52 S1: a revealed round is stored at the active topic item (distribution, rounds_cnt) before the cards go up
+    record_round_on_active_item($link, $t);
+
     // B-115: the setting "See changed cards" takes effect with the new round (snapshot for setc.php and getDao())
     $sql = $link->prepare( "update pok_teams_tbl t
                                      set t.anonymous_mode = t.anonymous_request_toggle
@@ -946,6 +950,7 @@ function getDao($t, $id) {
             }
             $custom_sets = load_custom_sets($link, $t, $catalog);
             $deck = resolve_deck($deck_id, $deck_cards, $deck_controls, (int)$obj->deck_rev, $catalog, $custom_sets);
+            $deck['aim'] = deck_aim($deck, $catalog, $custom_sets); // B-52 S1: 'agree' | 'perspectives' (api/lib_topics.php)
             $deck['changed_by'] = null; // B-98 V6: name of the player who changed the set group last (null = unknown)
         }
     }
@@ -1025,6 +1030,25 @@ function getDao($t, $id) {
             if (is_string($key) && str_starts_with($key, CUSTOM_DECK_PREFIX) && !isset($active_custom[$key])) $missing[] = $key;
     if (count($missing) > 0) $custom_played = array_values(load_custom_cards_by_key($link, $t, $missing, card_catalog()));
 
+
+    /* B-52 S1: the topic items; the active one gets the cards of the running round while they are revealed.
+       A missing table (code deployed before the schema) must not break the board: topic_items null then. */
+    $topic_items = null;
+    try {
+        $live_distribution = null;
+        if ($all_players_ready && $one_ore_more_player_ready) {
+            $live_distribution = array();
+            foreach ($objs as $obj)
+                if ($obj->card_key !== null && $obj->card_key !== LATE_CARD_KEY)
+                    $live_distribution[$obj->card_key] = ($live_distribution[$obj->card_key] ?? 0) + 1;
+            ksort($live_distribution);
+            if (count($live_distribution) === 0) $live_distribution = null;
+        }
+        $topic_items = topic_items_for_dao($link, $t, $topic, $live_distribution, card_catalog(),
+                                           $deck === null ? 'agree' : $deck['aim']);
+    } catch (mysqli_sql_exception $e) {
+        error_log('poker dao: topic items not loaded: ' . $e->getMessage());
+    }
 
     $sql = $link->prepare("SELECT count(1) as user_exists
                                      ,max(u.color_mode) as color_mode
@@ -1129,7 +1153,8 @@ function getDao($t, $id) {
         "custom_sets"=>array_values($custom_sets), // B-98 S4: [{set_id, deck_id, name, style, rev, cards}]
         "custom_cards_played"=>$custom_played, // B-98 S4: inactive custom cards still on the table
         "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>custom_cards_max()),
-        "topic"=>(String)$topic,
+        "topic"=>(String)$topic, // B-52 S1: text of the active topic item (heading + description), '' without one
+        "topic_items"=>$topic_items, // B-52 S1: {active_id, open, done, done_count, limits} (api/lib_topics.php)
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
         "timer_visibility"=>(Int)$timer_visibility,
