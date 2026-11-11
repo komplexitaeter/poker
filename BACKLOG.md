@@ -1813,6 +1813,13 @@ siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbe
   Personenbezug). Ein einzelner Ergebniswert nur bei Sets mit Zahlenwerten (auch T-Shirt, Sterne: interner
   `numeric_value`): vorbelegt der höchste gelegte Wert, änderbar. Bei Ampel und Emotionen (`"range": false`) kein
   Ergebniswert – dort geht es nicht um Einigung.
+- **Reifegrad (Andreas, 2026-11-11, nach dem S1-Mockup):** wird am Item erfasst (z. B. vom PO beim Anlegen/Bearbeiten),
+  um klarzumachen, worum es gerade geht; **optional** (darf leer bleiben, wenn es keinen Sinn macht). Ist er gesetzt,
+  zeigen Voting- und Results-Panel ihn nur an – kein Regler dort.
+- Mockup `mockups/topics-s1/` in der Grundidee abgenommen. Weitere Gestaltungspunkte (Vorschläge Kai, ohne Einwand):
+  ein Akzent im Spread (Schätzung statt „meistgewählt“), nur Balken mit Stimmen klickbar + Dropdown für alles,
+  „New round“ und „Next item“ gleichwertig, Mini-Balken unter „done“ bei Perspektiven-Sets, wiedereröffnete Items
+  direkt hinter das aktive, einfacher Fall: erste Zeile = Heading, Rest = Description.
 - **Generisch, nie am Set-Namen (Andreas, 2026-11-11):** Entscheidend ist der Zweck – **Einigung** am Ende (ein Wert,
   Range, Ergebnis) oder **Perspektiven nebeneinander transparent machen** (nur Verteilung). Das hängt am
   Anwendungsfall, nicht an den Karten: Ampel z. B. als Squad Health Check (Perspektiven zeigen, nicht umstimmen) vs.
