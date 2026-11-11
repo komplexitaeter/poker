@@ -21,6 +21,7 @@ const TOPIC_EXT_ID_MAX = 20;
 const TOPIC_HEADING_MAX = 200;
 const TOPIC_DESCRIPTION_MAX = 2000;  // like pok_teams_tbl.topic
 const TOPIC_TEXT_MAX = 2000;         // pok_teams_tbl.topic
+const TOPIC_DISTRIBUTION_MAX_BYTES = 1000; // pok_topic_items_tbl.distribution varchar(1000) ascii
 const TOPIC_MATURITY_MAX = 3;        // 0 new, 1 rough, 2 shaping, 3 ready; optional (null = not set, Andreas 2026-11-11)
 
 /* writes an error answer of the topic item endpoints and ends the request (rolls back an open transaction) */
@@ -337,6 +338,7 @@ function record_round_on_active_item($link, string $t): void
     $active = active_item_id($link, $t);
     if ($active === null) return;
     $json = json_encode($distribution);
+    if (!is_string($json) || strlen($json) > TOPIC_DISTRIBUTION_MAX_BYTES) $json = null; // never "Data too long"; rounds still count
     $sql = $link->prepare("update pok_topic_items_tbl
                               set distribution = ?, rounds_cnt = least(rounds_cnt + 1, 65535)
                                  ,result_card_key = null, result_auto = 1

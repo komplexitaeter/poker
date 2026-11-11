@@ -626,8 +626,14 @@ function start_new_round($link, string $t): void
         $sql->execute();
     }
 
-    // B-52 S1: a revealed round is stored at the active topic item (distribution, rounds_cnt) before the cards go up
-    record_round_on_active_item($link, $t);
+    /* B-52 S1: a revealed round is stored at the active topic item (distribution, rounds_cnt) before the cards go up.
+       A missing table (code deployed before the schema) must not break "New round": the failed statement does not
+       end the transaction, the round goes on without it. */
+    try {
+        record_round_on_active_item($link, $t);
+    } catch (mysqli_sql_exception $e) {
+        error_log('poker new round: topic item not updated: ' . $e->getMessage());
+    }
 
     // B-115: the setting "See changed cards" takes effect with the new round (snapshot for setc.php and getDao())
     $sql = $link->prepare( "update pok_teams_tbl t
