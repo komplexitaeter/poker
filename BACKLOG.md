@@ -1809,6 +1809,13 @@ siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbe
 - **Ergebnis:** bei Karten mit Wert zunächst der höchste gelegte Wert; änderbar durch Klick auf einen Balken im
   Spread (markierter Balken), alternativ Dropdown.
 - Einfache Liste offen/done (kein Later/Backlog-Tab in S1). Mobil bleibt alles im Menü.
+- **Ergebnisregel (2026-11-11):** Am abgeschlossenen Item wird immer die Verteilung gespeichert (Anzahl je Karte, ohne
+  Personenbezug). Ein einzelner Ergebniswert nur bei Sets mit Zahlenwerten (auch T-Shirt, Sterne: interner
+  `numeric_value`): vorbelegt der höchste gelegte Wert, änderbar. Bei Ampel und Emotionen (`"range": false`) kein
+  Ergebniswert – dort geht es nicht um Einigung.
+- Plan: Ben Datenmodell/API (Items-Tabelle, lazy Übernahme des bisherigen Topics als erstes Item, `update_topic.php`
+  bearbeitet weiter das aktive Item, `pok_teams_tbl.topic` bleibt synchron) → Delia parallel S1-Mockup → Fred + Delia
+  Oberfläche → Sina, E2E. Ein einzelnes Topic überschreiben bleibt wie heute (kein Eintrag unter „done“).
 
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
