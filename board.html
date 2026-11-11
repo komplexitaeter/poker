@@ -9,17 +9,18 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.51" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.52" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.40" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.41" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/sidebar.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.18" type="text/javascript"></script>
+    <script defer src="script/sidebar.js?v=1.17" type="text/javascript"></script>
+    <script defer src="script/topics.js?v=1.0" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.19" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -55,6 +56,10 @@
     <symbol id="i-dright" viewBox="0 0 24 24"><path d="M5 6l6 6-6 6M12 6l6 6-6 6"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+    <!-- B-52 S1: topic items (move up, add, delete) -->
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
 </svg>
 
 <!-- B-78: phones held sideways (style.css, "Rotate hint"); "Continue anyway" hides it for the session -->
@@ -180,6 +185,14 @@
                     <div id="spread_bars" class="spread-bars"></div>
                     <img id="spread_index" class="spread-index hidden" src="src/index.png" alt="" />
                 </div>
+                <!-- B-52 S1 (topics.js): the result of the active topic item. Deck aim 'agree': the dropdown (a click on a
+                     bar with votes does the same); 'perspectives': the sentence instead. Only while an item is active. -->
+                <div id="spread_est" class="spread-est" hidden>
+                    <label for="spread_est_sel">Current estimate</label>
+                    <select id="spread_est_sel" class="field"></select>
+                    <span id="spread_est_why" class="spread-est-why"></span>
+                </div>
+                <p id="spread_note" class="spread-note" hidden>No single value for this deck &ndash; the spread is what you talk about.</p>
             </section>
             <!-- B-70: what to do now (set by updateTip() in script.js; large screens only). Before the
                  reveal at the top of the spread's (kept) room, then below the spread; nothing moves. -->
@@ -202,6 +215,8 @@
                 </div>
             </div>
             <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Restart round" disabled />
+            <!-- B-52 S1: finishes the active topic item and starts the next one; while revealed and more items wait (topics.js) -->
+            <button type="button" id="nextitem_btn" class="btn next-item" onclick="nextTopicItem()" hidden>Next item<svg class="i" aria-hidden="true"><use href="#i-next"/></svg></button>
         </div>
     </div>
 
@@ -288,12 +303,18 @@
             </section>
 
             <section id="topic_box" class="menu_sec" data-sec="topic" data-title="Topic" hidden>
-                <label class="lab" for="topic_txt">What are you estimating? (optional, Markdown works)</label>
-                <textarea maxlength="1800" rows="7" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="field" oninput="topicChanged()"></textarea>
-                <div class="row end">
-                    <button type="button" id="topic_reset" class="btn-box" onclick="reset_topic()">Undo</button>
-                    <button type="button" id="topic_save" class="btn-box primary" onclick="save_topic()">Save</button>
+                <!-- B-52 S1 (topics.js): one topic as before (#topic_single) plus a quiet "+ next item"; with more
+                     items the list (#topic_list: open with the active one on top, done) -->
+                <div id="topic_single">
+                    <label class="lab" for="topic_txt">What are you estimating? (optional, Markdown works)</label>
+                    <textarea maxlength="1800" rows="7" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="field" oninput="topicChanged()"></textarea>
+                    <div class="row end">
+                        <button type="button" id="topic_add_next" class="ti-link ti-add-next" onclick="topicAddNext()" hidden><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>next item</button>
+                        <button type="button" id="topic_reset" class="btn-box" onclick="reset_topic()">Undo</button>
+                        <button type="button" id="topic_save" class="btn-box primary" onclick="save_topic()">Save</button>
+                    </div>
                 </div>
+                <div id="topic_list" class="ti-list" hidden></div>
             </section>
 
             <!-- board settings: tabs Deck | Results | Team, one panel visible at a time

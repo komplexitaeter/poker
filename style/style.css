@@ -5796,3 +5796,475 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     .cs-foot .btn-box { flex: 1 1 auto; padding: 4px 10px; }
     .cs-fill { display: none; }
 }
+
+/* ---------- Topic items (B-52) ---------- */
+
+/* B-52 S1 (script/topics.js): topics as a list of items. One topic as before needs nothing of this; with items:
+ * - the column (#topic.ti-view): ID and maturity, the heading in the topic colour, the description cut to two lines
+ *   ("more"), the maturity text (voting: below the item; results: unfolds with a click on the triangle) and a quiet
+ *   "+N more · next: …" that opens the topics menu. Phones: the strip shows ID and heading in one line, the rest
+ *   when it is unfolded.
+ * - maturity (.mat): a lying triangle, wide left (much still open) to the point right (ready), filled up to the stage,
+ *   the stage marked; always with the stage name next to it (never the shape alone).
+ * - the spread: the result of the active item (.spread-col.est) is the only accent; columns with votes are buttons
+ *   (.pick); below it "Current estimate" with the dropdown, or the sentence for decks without a single value.
+ * - the dock: "Next item" next to "New round", the same weight.
+ * - the topics menu: the list (open / done) and the item form. */
+
+[hidden].spread-est,
+[hidden].spread-note,
+#nextitem_btn[hidden],
+#topic_single[hidden],
+#topic_list[hidden] { display: none; }
+
+/* a quiet text button (more, reopen, + next item) */
+.ti-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+.ti-link:hover { color: var(--accent); }
+.ti-link .i { width: 14px; height: 14px; }
+
+/* maturity */
+.mat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: var(--fs-xs);
+}
+
+.mat-tri { display: block; flex: none; overflow: visible; }
+.mat-out { fill: none; stroke: var(--line-strong); stroke-width: 1.2; }
+.mat-fill { fill: var(--accent); opacity: 0.35; }
+.mat-mark { stroke: var(--accent); stroke-width: 2.2; stroke-linecap: round; }
+
+/* the column */
+#topic.ti-view {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.ti-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    font-size: var(--fs-s);
+    color: var(--muted);
+}
+
+.ti-ext { color: var(--muted); }
+
+.ti-mat-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.ti-mat-btn:hover { border-color: var(--line-strong); }
+.ti-mat-btn[aria-expanded=true] .mat-name { color: var(--text); }
+
+#topic .ti-heading {
+    margin: 0;
+    font-size: var(--fs-l);
+    line-height: 1.35;
+    color: var(--topic-color);
+    overflow-wrap: anywhere;
+}
+
+.ti-desc {
+    width: 100%;
+    font-size: var(--fs-s);
+    color: var(--muted);
+    overflow-wrap: anywhere;
+}
+
+.ti-desc > :first-child { margin-top: 0; }
+.ti-desc > :last-child { margin-bottom: 0; }
+
+.ti-desc.clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* inside the clamped text the blocks run on, so the two lines are really two lines of text */
+.ti-desc.clamp :is(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre) { display: inline; margin: 0; padding: 0; font-size: inherit; }
+.ti-desc.clamp :is(p, li, h1, h2, h3, h4, h5, h6)::after { content: " "; }
+
+.ti-desc-more[hidden],
+.ti-mat-text[hidden] { display: none; }
+
+.ti-mat-text {
+    margin: 0;
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    color: var(--muted);
+}
+
+.ti-next {
+    max-width: 100%;
+    margin-top: 4px;
+    padding: 2px 10px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    background: none;
+    border: 1px dashed var(--line-strong);
+    border-radius: 12px;
+    color: var(--muted);
+    font: var(--fs-xs) var(--font);
+    cursor: pointer;
+}
+
+.ti-next:hover { color: var(--accent); border-color: var(--accent); }
+
+/* phones: the strip is one line (ID and heading) until it is unfolded */
+@media (max-width: 799.98px), (max-height: 500px) and (orientation: landscape) {
+    .topic-bar[data-expanded=false] #topic.ti-view { display: block; }
+    .topic-bar[data-expanded=false] #topic.ti-view > :not(.ti-meta, .ti-heading) { display: none; }
+    .topic-bar[data-expanded=false] #topic.ti-view .ti-meta { display: inline; margin-right: 8px; }
+    .topic-bar[data-expanded=false] #topic.ti-view .ti-meta .mat { display: none; }
+    .topic-bar[data-expanded=false] #topic.ti-view .ti-heading { display: inline; font-size: inherit; }
+}
+
+/* the spread: the result is the only accent; columns with votes can be clicked */
+.spread-col.pick {
+    cursor: pointer;
+    border-radius: var(--radius-s);
+    outline-offset: 1px;
+}
+
+@media (hover: hover) {
+    .spread-col.pick:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+}
+
+.spread-col.est {
+    --bar: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+    border-radius: var(--radius-s);
+}
+
+.spread-col.est .spread-count { color: var(--accent); font-weight: bold; }
+
+.spread-col.est .spread-value {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: bold;
+    border-radius: 2px;
+}
+
+.spread-est {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px var(--space-2);
+    margin-top: var(--space-1);
+    font-size: var(--fs-s);
+    text-align: left;
+}
+
+.spread-est label { color: var(--text); }
+
+.spread-est select.field {
+    width: auto;
+    min-width: 5.5rem;
+    min-height: 30px;
+    padding: 2px 6px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-m);
+    color: var(--text);
+    font: bold var(--fs-m) var(--font);
+    cursor: pointer;
+}
+
+.spread-est-why {
+    flex-basis: 100%;
+    min-height: 1.4em; /* one line, also while empty: nothing moves when the cards turn */
+    line-height: 1.4;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--fs-xs);
+    color: var(--muted);
+}
+
+.spread-note {
+    margin: var(--space-1) 0 0;
+    font-size: var(--fs-s);
+    line-height: 1.4;
+    color: var(--muted);
+    text-align: left;
+}
+
+/* phones: the strip above the deck stays low - the reason only on large screens */
+@media (max-width: 799.98px) {
+    .spread-est-why { display: none; }
+    .spread-est { margin-top: 0; }
+}
+
+/* "Next item": the same weight as "New round" (both filled once the cards are revealed) */
+#nextitem_btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: auto;
+    min-width: 0;
+    min-height: var(--tap);
+    padding: 0.2rem 0.6rem;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-size: var(--fs-m);
+    font-weight: bold;
+}
+
+#nextitem_btn:enabled:hover { background: transparent; color: var(--accent); }
+#nextitem_btn .i { width: 16px; height: 16px; }
+
+@media (max-width: 799.98px) {
+    .dock.has-next { flex-wrap: wrap; }
+
+    .dock.has-next #newroundbtn,
+    .dock.has-next #nextitem_btn {
+        flex: 1 1 7rem;
+        max-width: none;
+        margin-left: 0;
+    }
+}
+
+@media (min-width: 800px) {
+    .dock.has-next {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-content: end;
+    }
+
+    .dock.has-next > .timer { grid-column: 1 / -1; }
+
+    #nextitem_btn {
+        min-height: 44px;
+        padding: 5pt var(--space-2);
+        font-size: var(--fs-l);
+    }
+}
+
+/* the topics menu: "+ next item" left in the row of Undo / Save */
+.ti-add-next { margin-right: auto; }
+
+.ti-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    text-align: left;
+}
+
+.ti-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.ti-sl {
+    margin: 0;
+    font-size: var(--fs-s);
+    font-weight: normal;
+    color: var(--muted);
+}
+
+.ti-sl::before { content: "// "; color: var(--line-strong); }
+
+.ti-note { font-size: var(--fs-xs); color: var(--muted); }
+
+.ti-done-head { margin-top: var(--space-3); }
+
+.ti-items,
+.ti-done {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ti-items { gap: 6px; }
+
+.ti-it {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 4px 2px 4px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line-strong);
+    border-radius: var(--radius-l);
+}
+
+.ti-it.now {
+    border-left-color: var(--topic-color);
+    background: color-mix(in srgb, var(--topic-color) 6%, var(--bg-2));
+}
+
+.ti-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.ti-l1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: var(--fs-xs);
+    color: var(--muted);
+}
+
+.ti-tag {
+    padding: 0 5px;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-s);
+    line-height: 15px;
+    color: var(--topic-color);
+}
+
+.ti-it .ti-h {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--fs-m);
+}
+
+.ti-it.now .ti-h { font-weight: bold; }
+
+.ti-acts { display: flex; align-items: center; }
+.ti-acts .icon-btn { color: var(--muted); padding: 0 6px; min-width: 32px; }
+.ti-acts .icon-btn:hover:enabled { color: var(--accent); }
+.ti-acts .icon-btn:disabled { opacity: 0.3; cursor: default; }
+.ti-acts .i { width: 16px; height: 16px; }
+.ti-move { display: flex; }
+
+.ti-del-sure { min-height: 30px !important; padding: 2px 10px !important; }
+
+.ti-it.editing {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px 12px 12px;
+    border-left-color: var(--accent);
+}
+
+.ti-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.ti-grid { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: var(--space-2); }
+.ti-field { display: flex; flex-direction: column; min-width: 0; }
+.ti-field .lab { margin-bottom: 3px; }
+.ti-form .f { margin: 0; }
+.ti-seg { flex-wrap: wrap; }
+.ti-seg label { flex: 1 1 auto; }
+.ti-seg span { padding: 2px 6px; white-space: nowrap; }
+.ti-mat-hint:empty,
+.ti-error:empty { display: none; }
+.ti-error { color: var(--danger); }
+.ti-form .row.end { margin-top: 0; }
+.ti-form [aria-invalid=true] { border-color: var(--danger); }
+
+.ti-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--tap);
+    padding: 6px;
+    background: transparent;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-l);
+    color: var(--muted);
+    font: var(--fs-s) var(--font);
+    cursor: pointer;
+}
+
+.ti-add:hover:enabled { color: var(--accent); border-color: var(--accent); }
+.ti-add:disabled { cursor: not-allowed; opacity: 0.5; }
+.ti-add .i { width: 16px; height: 16px; }
+
+.ti-done > li:not(.editing) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 2px;
+    border-bottom: 1px dashed var(--line);
+    font-size: var(--fs-s);
+}
+
+.ti-done > li.editing { margin: 6px 0; }
+
+.ti-done .ti-h {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--muted);
+}
+
+.ti-done .ti-h b { font-weight: normal; color: var(--text); }
+
+.ti-l2 { display: flex; align-items: center; gap: 10px; font-size: var(--fs-xs); }
+.ti-l2 .ti-grow { flex: 1; }
+.ti-l2 .icon-btn { color: var(--muted); min-width: 30px; min-height: 30px; padding: 0 4px; }
+.ti-l2 .icon-btn:hover { color: var(--accent); }
+.ti-l2 .icon-btn .i { width: 15px; height: 15px; }
+
+.ti-res { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.ti-res-val { font-size: var(--fs-m); color: var(--text); }
+
+/* the distribution of a done item without a single value: mini bars with the card below */
+.ti-dist { display: inline-flex; align-items: flex-end; gap: 4px; }
+
+.ti-dist-col {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    font-size: 10px;
+    --c: var(--line-strong);
+}
+
+.ti-dist-col > i {
+    display: block;
+    width: 8px;
+    background: var(--c);
+    border-radius: 1px;
+}
+
+.ti-dist-col .mini { width: 14px; height: 14px; }
+
+@media (max-width: 799.98px) {
+    .ti-grid { grid-template-columns: minmax(0, 1fr); }
+    .ti-note { display: none; }
+    .ti-acts .icon-btn { min-width: 40px; min-height: 40px; }
+}
+
+.spread-col.pick:focus-visible,
+.ti-link:focus-visible,
+.ti-next:focus-visible,
+.ti-mat-btn:focus-visible,
+.ti-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

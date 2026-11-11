@@ -2059,36 +2059,10 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
-    let topic = document.getElementById('topic');
-    let topicHash = myJson.topic.hashCode().toString();
-
     playerTypeUpdate(myJson.player_type, myJson.name, myJson.team_name);
 
-    if (topic.getAttribute("data-hash") !== topicHash) {
-
-        topic.setAttribute("data-hash", topicHash);
-        gTopic = myJson.topic;
-
-        let markDown = new Remarkable({
-            html: false, // Enable HTML tags in source
-            xhtmlOut: true, // Use '/' to close single tags (<br />)
-            breaks: true, // Convert '\n' in paragraphs into <br>
-            linkify: true, // Autoconvert URL-like text to links
-            // Enable some language-neutral replacement + quotes beautification
-            typographer: false,
-            // Double + single quotes replacement pairs, when typographer enabled,
-            // and smartquotes on. Set doubles to '«»' for Russian, '„“' for German.
-            quotes: '“”‘’'
-        });
-        topic.innerHTML = markDown.render(myJson.topic);
-
-        if (topicHash === "0") {
-            topic.classList.add("display_none");
-        } else {
-            topic.classList.remove("display_none");
-        }
-
-    }
+    // B-52 S1: the topic, or the active topic item where the topic stands (topics.js)
+    updateTopicView(myJson);
 
     if (document.getElementById("team_name").innerText !== myJson.team_name
         || myJson.players_count !== gJsonBefore.players_count
@@ -2600,6 +2574,7 @@ function toggleTopic(event) {
     let button = document.getElementById('topic_toggle');
     if (getComputedStyle(button).display === 'none') return;
     if (event.target.closest('a')) return; // links in the topic just open
+    if (event.currentTarget && event.currentTarget.id === 'topic' && event.target.closest('button')) return; // B-52
     let expanded = button.getAttribute('aria-expanded') !== 'true';
     button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
@@ -3246,19 +3221,26 @@ function updateSide(json, glide = true) {
         bars.querySelectorAll('.spread-bar').forEach(bar => bar.replaceChildren());
         toggleStyleClass(pointer, 'hidden', 'visible');
         syncRailRange(false); // B-113 (sidebar.js)
+        bars.querySelectorAll('.spread-col').forEach(col => syncEstimateColumn(col, { show: false }, 0));
+        updateEstimateRow(json, false, {}); // B-52 S1 (topics.js)
         return;
     }
 
     // B-102: the "joined in" card is no vote
     const cardStats = calculateCardStats(json.players.filter(player => !isLateCardKey(player.display_card_key)));
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
+    // B-52 S1: the result of the active topic item is the only accent (deck aim 'agree'); the most chosen card(s)
+    // only while no result is marked. Columns with votes are buttons then (topics.js)
+    const estimate = topicEstimate(json);
+    const estMarked = estimate.show && estimate.aim === 'agree' && estimate.key !== null;
     const chosen = [];
     let unvalued = false; // B-98 S5: a custom card without a value is down (no range then)
     const grown = [];
     Array.from(bars.children).forEach(col => {
         const stat = cardStats[col.getAttribute('data-card')];
         const n = stat ? stat.usageCount : 0;
-        col.classList.toggle('top', n > 1 && n === top);
+        col.classList.toggle('top', !estMarked && n > 1 && n === top);
+        syncEstimateColumn(col, estimate, n);
         col.classList.toggle('zero', n === 0);
         col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
         grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
@@ -3294,6 +3276,7 @@ function updateSide(json, glide = true) {
             : ends.map(card => cardSmall(card))));
     }
     syncRailRange(true); // B-113: the same range in the rail (sidebar.js)
+    updateEstimateRow(json, revealed, cardStats); // B-52 S1 (topics.js)
 
     let left = null;
     if (json.show_avg === 1) {

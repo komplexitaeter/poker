@@ -219,7 +219,7 @@ function syncRailBars(revealed) {
     if (bars === null || source === null) return;
     const cols = revealed ? Array.from(source.children).map(col => ({
         n: parseInt(col.querySelector('.spread-count')?.textContent || '0', 10) || 0,
-        top: col.classList.contains('top'),
+        top: col.classList.contains('top') || col.classList.contains('est'), // B-52 S1: or the result of the active item
     })) : [];
     const voters = parseInt(source.style.getPropertyValue('--voters'), 10) || 1;
     const key = voters + ':' + cols.map(col => col.n + (col.top ? 't' : '')).join(',');
