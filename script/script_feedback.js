@@ -67,6 +67,7 @@ function prepareMenuSection(sec) {
         document.getElementById('topic_reset').disabled = !gTopicChangePending;
         document.getElementById('topic_save').disabled = !gTopicChangePending;
         if (!gTopicChangePending) document.getElementById('topic_txt').value = gTopic;
+        prepareTopicMenu(); // B-52 S1: the field (one topic) or the list of items (topics.js)
     }
 }
 
@@ -128,11 +129,11 @@ function openMenu(sec, opener = null, focusField = true) {
     if (focusField) {
         let field = gMenuSections[sec].focus;
         if (field) {
-            let element = document.getElementById(field);
+            let element = sec === 'topic' ? topicMenuFocus() : document.getElementById(field); // B-52 S1
             if (element === null) element = section.querySelector('button, input, [tabindex]') || section; // R3 F5: deck not loaded yet
             // a radio group (fieldset): its checked radio, as the arrow keys move from there
             if (element.tagName === 'FIELDSET') element = element.querySelector('input:checked') || element.querySelector('input');
-            if (sec === 'topic') element.select();
+            if (sec === 'topic' && element.id === 'topic_txt') element.select();
             else focusQuietly(element);
         } else if (sec === 'index') {
             // back from a section: the focus on its entry, otherwise on the first entry
