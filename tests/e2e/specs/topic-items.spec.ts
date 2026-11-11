@@ -88,6 +88,14 @@ test('update_topic.php: the single topic is the active item, synced to the team,
   expect(list.done).toHaveLength(0);
   expect(teamTopic(t)).toBe('Checkout');
 
+  // blank lines and markdown come back exactly as typed (simple case unchanged)
+  for (const text of ['A\n\nB', 'Story\n\n- one\n- two\n\nMore', 'Line break  \nnext line']) {
+    expect((await save(text)).ok()).toBeTruthy();
+    expect(teamTopic(t)).toBe(text);
+    expect((await dao(page, t, ids[0])).topic).toBe(text);
+  }
+  expect((await items(page, t, ids[0])).open).toHaveLength(1);
+
   // an empty text deletes the active item, topic ''
   expect((await save('   ')).ok()).toBeTruthy();
   list = await items(page, t, ids[0]);
@@ -107,6 +115,16 @@ test('the old topic of a team becomes its first item once, also with parallel lo
   const item = (await items(page, t, ids[0])).open[0];
   expect(item).toMatchObject({ heading: 'Old story', description: 'with details', maturity: null });
   expect(teamTopic(t)).toBe('Old story\nwith details'); // unchanged
+
+  // blank lines survive the takeover: heading + description give the old text back
+  mysql(`delete from pok_topic_items_tbl where team_id = '${t}';
+         update pok_teams_tbl set topic = 'Old list\n\n- one\n- two' where id = '${t}'`);
+  const list = (await items(page, t, ids[0])).open[0];
+  expect(list.heading).toBe('Old list');
+  expect(`${list.heading}\n${list.description}`).toBe('Old list\n\n- one\n- two');
+  expect((await post(page, 'topic_item_maturity.php', { t, item: list.id, maturity: 1 })).ok()).toBeTruthy();
+  expect((await post(page, 'topic_item_edit.php', { t, item: list.id, maturity: 2 }, {})).ok()).toBeTruthy();
+  expect(teamTopic(t)).toBe('Old list\n\n- one\n- two'); // a sync keeps it
 
   // a long first line is cut, the description keeps the whole text
   const long = 'x'.repeat(250);
