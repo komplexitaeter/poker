@@ -16,7 +16,7 @@ function mysql(statement: string): string {
 }
 
 type Item = {
-  id: number; ext_id: string | null; heading: string; description: string | null; maturity: number;
+  id: number; ext_id: string | null; heading: string; description: string | null; maturity: number | null;
   status: string; result_card_key: string | null; result_auto: number;
   distribution: Record<string, number> | null; rounds_cnt: number; done_date: string | null;
 };
@@ -105,7 +105,7 @@ test('the old topic of a team becomes its first item once, also with parallel lo
   for (const load of loads) expect(load.topic_items.open).toHaveLength(1);
   expect(mysql(`select count(*) from pok_topic_items_tbl where team_id = '${t}'`)).toBe('1');
   const item = (await items(page, t, ids[0])).open[0];
-  expect(item).toMatchObject({ heading: 'Old story', description: 'with details', maturity: 0 });
+  expect(item).toMatchObject({ heading: 'Old story', description: 'with details', maturity: null });
   expect(teamTopic(t)).toBe('Old story\nwith details'); // unchanged
 
   // a long first line is cut, the description keeps the whole text
@@ -142,8 +142,21 @@ test('add, edit, move, maturity and delete keep the topic in line with the activ
   expect((await post(page, 'topic_item_move.php', { t, item: b, to: 99 })).ok()).toBeTruthy();
   expect((await items(page, t, ids[0])).open.map(i => i.id)).toEqual([a, c, b]);
 
+  // maturity is optional: not set (null) by default, set and cleared again
+  expect((await items(page, t, ids[0])).open[1].maturity).toBeNull();
   expect((await post(page, 'topic_item_maturity.php', { t, item: c, maturity: 3 })).ok()).toBeTruthy();
   expect((await items(page, t, ids[0])).open[1].maturity).toBe(3);
+  expect((await post(page, 'topic_item_edit.php', { t, item: c }, { ext_id: 'X-9' })).ok()).toBeTruthy();
+  expect((await items(page, t, ids[0])).open[1]).toMatchObject({ maturity: 3, ext_id: 'X-9', heading: 'Charlie' });
+  expect((await post(page, 'topic_item_edit.php', { t, item: c, maturity: '' }, {})).ok()).toBeTruthy();
+  expect((await items(page, t, ids[0])).open[1].maturity).toBeNull();
+  expect((await post(page, 'topic_item_edit.php', { t, item: c, maturity: 1 }, {})).ok()).toBeTruthy();
+  expect((await items(page, t, ids[0])).open[1].maturity).toBe(1);
+  expect((await post(page, 'topic_item_maturity.php', { t, item: c, maturity: '' })).ok()).toBeTruthy();
+  expect((await items(page, t, ids[0])).open[1].maturity).toBeNull();
+  const ready = await post(page, 'topic_item_add.php', { t, maturity: 2 }, { heading: 'Delta' });
+  expect((await items(page, t, ids[0])).open.find(i => i.heading === 'Delta')?.maturity).toBe(2);
+  expect((await post(page, 'topic_item_delete.php', { t, item: (await ready.json()).item_id })).ok()).toBeTruthy();
 
   expect((await post(page, 'topic_item_delete.php', { t, item: a })).ok()).toBeTruthy();
   list = await items(page, t, ids[0]);
@@ -155,6 +168,7 @@ test('add, edit, move, maturity and delete keep the topic in line with the activ
   expect((await post(page, 'topic_item_add.php', { t, maturity: 7 }, { heading: 'x' })).status()).toBe(400);
   expect((await post(page, 'topic_item_edit.php', { t, item: c }, { heading: '' })).status()).toBe(400);
   expect((await post(page, 'topic_item_maturity.php', { t, item: c, maturity: 4 })).status()).toBe(400);
+  expect((await post(page, 'topic_item_edit.php', { t, item: c, maturity: 'x' }, {})).status()).toBe(400);
   expect((await post(page, 'topic_item_maturity.php', { t, item: 'x1', maturity: 1 })).status()).toBe(400);
   expect((await post(page, 'topic_item_move.php', { t, item: c, to: -1 })).status()).toBe(400);
   expect((await post(page, 'topic_item_delete.php', { t, item: a })).status()).toBe(404);

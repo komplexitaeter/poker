@@ -163,7 +163,7 @@ interface TopicItem {
     ext_id: string | null;      // free text, output with textContent only
     heading: string;            // free text
     description: string | null; // markdown like the old topic (remarkable without HTML)
-    maturity: number;           // 0 new, 1 rough, 2 shaping, 3 ready
+    maturity: number | null;    // optional: 0 new, 1 rough, 2 shaping, 3 ready; null = not set (show nothing)
     status: 'open' | 'done';
     // open: the chosen card (result_auto 0) or the automatic proposal (result_auto 1); done: the final result.
     // null = no single value (deck aim 'perspectives', no vote, or no played card with a value and none chosen)

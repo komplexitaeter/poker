@@ -707,7 +707,7 @@ create table if not exists pok_topic_items_tbl (
   ext_id varchar(20) null comment 'optional id of the item, e.g. a ticket number',
   heading varchar(200) not null,
   description varchar(2000) null comment 'markdown, like the old topic',
-  maturity tinyint unsigned not null default 0 comment '0 new, 1 rough, 2 shaping, 3 ready',
+  maturity tinyint unsigned null comment 'optional: 0 new, 1 rough, 2 shaping, 3 ready; null = not set',
   status varchar(4) character set ascii collate ascii_bin not null default 'open' comment 'open | done',
   result_card_key varchar(7) character set ascii collate ascii_bin null,
   result_auto tinyint not null default 1 comment '1 = automatic (highest value), 0 = chosen by the team',

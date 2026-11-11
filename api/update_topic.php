@@ -37,7 +37,7 @@ if ($topic === '') {
         $sql->execute();
     } else {
         if (topic_item_counts($link, $t)['total'] >= TOPIC_ITEMS_TOTAL_MAX) topic_fail($link, 409, 'limit');
-        insert_topic_item($link, $t, null, $split['heading'], $split['description'], 0, 0);
+        insert_topic_item($link, $t, null, $split['heading'], $split['description'], null, 0);
     }
 }
 sync_team_topic($link, $t);

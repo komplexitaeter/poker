@@ -4,21 +4,21 @@ require './lib.php';
 require_post();
 
 /*
- * B-52 S1: adds a topic item. URL: t, at = end (default) | next (right after the active item), maturity 0-3 (optional).
+ * B-52 S1: adds a topic item. URL: t, at = end (default) | next (right after the active item), maturity 0-3 (optional,
+ * missing or empty = not set).
  * POST body (form encoded): heading (required), description, ext_id (optional).
  * Answer: {ok, item_id, active_id}; 400 {error: heading|maturity}, 409 {error: limit}, 403 unknown team.
  */
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 $at = get_at_param();
-$maturity_raw = get_id_param('maturity', 1);
 $heading = (string)get_post_text_param('heading', TOPIC_HEADING_MAX);
 $description = null_if_empty(get_post_text_param('description', TOPIC_DESCRIPTION_MAX));
 $ext_id = null_if_empty(get_post_text_param('ext_id', TOPIC_EXT_ID_MAX));
 
 if ($heading === '') topic_fail(null, 400, 'heading');
-if (filter_has_var(INPUT_GET, 'maturity') && !preg_match('/^[0-' . TOPIC_MATURITY_MAX . ']$/D', $maturity_raw))
-    topic_fail(null, 400, 'maturity');
-$maturity = (int)$maturity_raw;
+$maturity = get_maturity_param();
+if ($maturity === 'invalid') topic_fail(null, 400, 'maturity');
+if ($maturity === false) $maturity = null;
 
 $link = db_init();
 lock_team_topics($link, $t);

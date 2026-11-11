@@ -21,7 +21,7 @@ const TOPIC_EXT_ID_MAX = 20;
 const TOPIC_HEADING_MAX = 200;
 const TOPIC_DESCRIPTION_MAX = 2000;  // like pok_teams_tbl.topic
 const TOPIC_TEXT_MAX = 2000;         // pok_teams_tbl.topic
-const TOPIC_MATURITY_MAX = 3;        // 0 new, 1 rough, 2 shaping, 3 ready
+const TOPIC_MATURITY_MAX = 3;        // 0 new, 1 rough, 2 shaping, 3 ready; optional (null = not set, Andreas 2026-11-11)
 
 /* writes an error answer of the topic item endpoints and ends the request (rolls back an open transaction) */
 function topic_fail($link, int $status, string $error, array $extra = array()): never
@@ -199,7 +199,7 @@ function load_topic_item($link, string $t, int $id): ?array
 }
 
 /* inserts an open item at index $index of the open order; returns its id. The caller checks the limits. */
-function insert_topic_item($link, string $t, ?string $ext_id, string $heading, ?string $description, int $maturity,
+function insert_topic_item($link, string $t, ?string $ext_id, string $heading, ?string $description, ?int $maturity,
                            int $index): int
 {
     $sql = $link->prepare("insert into pok_topic_items_tbl(team_id, position, ext_id, heading, description, maturity)
@@ -209,6 +209,18 @@ function insert_topic_item($link, string $t, ?string $ext_id, string $heading, ?
     $id = (int)$link->insert_id;
     place_open_item($link, $t, $id, $index);
     return $id;
+}
+
+/*
+ * The optional maturity from the URL (?maturity=): false if the parameter is missing (leave unchanged), null for an
+ * empty value (not set), 0..TOPIC_MATURITY_MAX, or the string 'invalid'.
+ */
+function get_maturity_param(): int|null|false|string
+{
+    if (!filter_has_var(INPUT_GET, 'maturity')) return false;
+    $raw = (string)filter_input(INPUT_GET, 'maturity');
+    if ($raw === '') return null;
+    return preg_match('/^[0-' . TOPIC_MATURITY_MAX . ']$/D', $raw) ? (int)$raw : 'invalid';
 }
 
 /* '' -> null for optional text columns */
@@ -343,7 +355,7 @@ function migrate_topic_to_item($link, string $t): void
     $topic = lock_team_topics_or_null($link, $t);
     if ($topic !== null && trim($topic) !== '' && active_item_id($link, $t) === null) {
         $split = split_topic_text(trim($topic));
-        insert_topic_item($link, $t, null, $split['heading'], $split['description'], 0, 0);
+        insert_topic_item($link, $t, null, $split['heading'], $split['description'], null, 0);
     }
     $link->commit();
 }
@@ -445,7 +457,7 @@ function topic_item_out(array $row, ?array $distribution): array
         'ext_id' => $row['ext_id'],
         'heading' => $row['heading'],
         'description' => $row['description'],
-        'maturity' => (int)$row['maturity'],
+        'maturity' => $row['maturity'] === null ? null : (int)$row['maturity'],
         'status' => $row['status'],
         'result_card_key' => $row['result_card_key'],
         'result_auto' => (int)$row['result_auto'],
