@@ -1813,6 +1813,13 @@ siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbe
   Personenbezug). Ein einzelner Ergebniswert nur bei Sets mit Zahlenwerten (auch T-Shirt, Sterne: interner
   `numeric_value`): vorbelegt der höchste gelegte Wert, änderbar. Bei Ampel und Emotionen (`"range": false`) kein
   Ergebniswert – dort geht es nicht um Einigung.
+- **Generisch, nie am Set-Namen (Andreas, 2026-11-11):** Entscheidend ist der Zweck – **Einigung** am Ende (ein Wert,
+  Range, Ergebnis) oder **Perspektiven nebeneinander transparent machen** (nur Verteilung). Das hängt am
+  Anwendungsfall, nicht an den Karten: Ampel z. B. als Squad Health Check (Perspektiven zeigen, nicht umstimmen) vs.
+  Go/No-Go-Call (einer sagt Rot → erstmal Rot, Diskussion, Einigung z. B. auf Gelb; der „höchste Wert“ passt dann).
+  S1: Merkmal am Set mit Default aus dem Katalog (`"range": false` = Perspektiven; ohne Zahlenwerte ebenfalls
+  Perspektiven), Prüfung an genau einer Stelle. **Später (eigener Schritt):** Team kann den Zweck umschalten (je Set
+  bzw. je Item/Runde, z. B. im Results-Panel „agree / show perspectives“); eigene Sets wählen ihn beim Anlegen.
 - Plan: Ben Datenmodell/API (Items-Tabelle, lazy Übernahme des bisherigen Topics als erstes Item, `update_topic.php`
   bearbeitet weiter das aktive Item, `pok_teams_tbl.topic` bleibt synchron) → Delia parallel S1-Mockup → Fred + Delia
   Oberfläche → Sina, E2E. Ein einzelnes Topic überschreiben bleibt wie heute (kein Eintrag unter „done“).
