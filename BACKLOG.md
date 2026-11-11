@@ -1799,9 +1799,16 @@ siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbe
 - Neue Tabelle für Items (Ben), Prepared Statements, `notify_team()`; Frontend Fred, Gestaltung Delia
   (Mockup-Stand `mockups/planner/`).
 - **Nicht in S1:** Timeboxen, Agenda/Session, Reifegrad, „Bring back“/Durchgänge, Copy results, Ergebnisvorschlag.
-Offen für das Planning: (1) Was wird am abgeschlossenen Item gespeichert – nur der Stand der letzten Runde
-(Range/Median, Kartenset) oder auch ein vom Team gewählter Wert? (2) Tab-Name „Later“/„Backlog“ schon in S1 oder erst
-mit der Agenda? (3) Mobil: Liste im Bottom-Sheet reicht?
+**Entscheidungen (Andreas, 2026-11-11) – Status S1: refined:**
+- **Prämisse:** Wer nur ein Topic eingibt wie heute, hat es nicht komplizierter und braucht nicht mehr Klicks.
+- **Rich-Infos zum Item in der Sidebar:** Voting-Panel zeigt das aktive Item (ID, Heading, Description, Reifegrad) und
+  deutet an, dass noch mehr kommt (später oben die Session-Timeline). Results-Panel: Details zur Abstimmung, dort
+  beginnt die Historisierung.
+- **Reifegrad von Anfang an** als echtes Alleinstellungsmerkmal (in S1 klein: liegendes Dreieck, 4 Stufen), Sprache
+  „kontinuierliches Refinement“.
+- **Ergebnis:** bei Karten mit Wert zunächst der höchste gelegte Wert; änderbar durch Klick auf einen Balken im
+  Spread (markierter Balken), alternativ Dropdown.
+- Einfache Liste offen/done (kein Later/Backlog-Tab in S1). Mobil bleibt alles im Menü.
 
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
