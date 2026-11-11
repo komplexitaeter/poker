@@ -1817,8 +1817,11 @@ siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbe
   Range, Ergebnis) oder **Perspektiven nebeneinander transparent machen** (nur Verteilung). Das hängt am
   Anwendungsfall, nicht an den Karten: Ampel z. B. als Squad Health Check (Perspektiven zeigen, nicht umstimmen) vs.
   Go/No-Go-Call (einer sagt Rot → erstmal Rot, Diskussion, Einigung z. B. auf Gelb; der „höchste Wert“ passt dann).
-  S1: Merkmal am Set mit Default aus dem Katalog (`"range": false` = Perspektiven; ohne Zahlenwerte ebenfalls
-  Perspektiven), Prüfung an genau einer Stelle. **Später (eigener Schritt):** Team kann den Zweck umschalten (je Set
+  S1: Merkmal am Set mit Default aus dem Katalog (`"range": false` = Perspektiven), Prüfung an genau einer Stelle.
+  **Zahlenwert je Karte (Andreas, 2026-11-11):** `numeric_value` hängt an einzelnen Karten, Sets können gemischt sein.
+  Alle automatischen Ableitungen (vorbelegtes Ergebnis = höchster Wert, Range, Hinweise) nur aus den gelegten Karten
+  mit Wert. Hat keine gelegte Karte einen Wert, gibt es kein automatisches Ergebnis – das Team kann es aber manuell
+  setzen (gelegte Karte wählen), sonst bleibt es leer. **Später (eigener Schritt):** Team kann den Zweck umschalten (je Set
   bzw. je Item/Runde, z. B. im Results-Panel „agree / show perspectives“); eigene Sets wählen ihn beim Anlegen.
 - Plan: Ben Datenmodell/API (Items-Tabelle, lazy Übernahme des bisherigen Topics als erstes Item, `update_topic.php`
   bearbeitet weiter das aktive Item, `pok_teams_tbl.topic` bleibt synchron) → Delia parallel S1-Mockup → Fred + Delia
