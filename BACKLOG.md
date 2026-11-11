@@ -1815,7 +1815,9 @@ siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbe
   Ergebniswert – dort geht es nicht um Einigung.
 - **Reifegrad (Andreas, 2026-11-11, nach dem S1-Mockup):** wird am Item erfasst (z. B. vom PO beim Anlegen/Bearbeiten),
   um klarzumachen, worum es gerade geht; **optional** (darf leer bleiben, wenn es keinen Sinn macht). Ist er gesetzt,
-  zeigen Voting- und Results-Panel ihn nur an – kein Regler dort.
+  zeigen Voting- und Results-Panel ihn nur an – kein Regler dort. Anzeige = Dreieck **plus** Stufenname, und der
+  Erklärtext muss erreichbar sein (er wirkt, z. B. „noch kann sich alles ändern“): im Voting-Panel direkt darunter
+  sichtbar bzw. per Klick auf das Dreieck aufklappbar – kein reiner Tooltip (Tooltips werden übersehen).
 - Mockup `mockups/topics-s1/` in der Grundidee abgenommen. Weitere Gestaltungspunkte (Vorschläge Kai, ohne Einwand):
   ein Akzent im Spread (Schätzung statt „meistgewählt“), nur Balken mit Stimmen klickbar + Dropdown für alles,
   „New round“ und „Next item“ gleichwertig, Mini-Balken unter „done“ bei Perspektiven-Sets, wiedereröffnete Items
