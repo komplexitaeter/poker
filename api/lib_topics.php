@@ -94,17 +94,21 @@ function item_topic_text(string $heading, ?string $description): string
 
 /*
  * Splits a topic text (update_topic.php, the old topic) into heading and description: the first line is the
- * heading, the following lines the description, so item_topic_text() gives the text back unchanged. A first line
- * longer than TOPIC_HEADING_MAX is cut ('…') and the description keeps the whole text (nothing is lost).
+ * heading, the following lines the description (as they are, also leading blank lines), so item_topic_text() gives
+ * the text back unchanged. A first line longer than TOPIC_HEADING_MAX is cut ('…') and the description keeps the
+ * whole text (nothing is lost).
  * $text is trimmed and not empty.
  */
 function split_topic_text(string $text): array
 {
     $text = cut_text($text, TOPIC_TEXT_MAX);
     $parts = preg_split('/\r?\n/', $text, 2);
-    $first = trim((string)$parts[0]);
-    $rest = isset($parts[1]) ? trim($parts[1], "\r\n") : '';
-    if ($first === '') $first = '…'; // cannot happen for a trimmed text, but heading is required
+    /* nothing trimmed inside: blank lines after the heading and trailing spaces (markdown line break) stay, so
+       item_topic_text() gives the text back exactly (B-52 S1 review, Fred); only the separator \r\n becomes \n */
+    $first = (string)$parts[0];
+    $rest = $parts[1] ?? '';
+    if (trim($rest) === '') $rest = '';
+    if (trim($first) === '') $first = '…'; // cannot happen for a trimmed text, but heading is required
     if (preg_match('/^.{' . (TOPIC_HEADING_MAX + 1) . '}/us', $first)) {
         return array('heading' => cut_text($first, TOPIC_HEADING_MAX - 1) . '…',
                      'description' => cut_text($text, TOPIC_DESCRIPTION_MAX));
