@@ -102,7 +102,7 @@ test('auto-start Next item: saved as 2 with a toast and its hint, the other pane
   await openTimerPanel(alice);
   await openTimerPanel(bob);
   await expect(alice.locator('#tmr_auto_restart .seg label')).toHaveText(['Off', 'New round', 'Next item']);
-  await expect(alice.locator('#tmr_auto_restart_hint')).toHaveText('Starts only with play.');
+  await expect(alice.locator('#tmr_auto_restart_hint')).toHaveText('You start it yourself.');
 
   // by pointer (a click on the label, as with mouse or touch)
   await alice.locator('#tmr_auto_restart label', { hasText: 'Next item' }).click();

@@ -2800,7 +2800,7 @@ const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
 
 /* B-130: auto-start 0 = off, 1 = new round, 2 = next item: the hint below the switch and the toast of an own change */
 const TIMER_AUTO_RESTART_HINTS = [
-    'Starts only with play.',
+    'You start it yourself.',
     'Restarts with every new round.',
     'Restarts with every next item.',
 ];
