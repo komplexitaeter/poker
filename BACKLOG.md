@@ -1803,7 +1803,7 @@ Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 - **S1c „Item verlassen“ (Andreas, 2026-11-12):** Es gibt kein klares Kriterium für „fertig“ – manchmal kommt man
   nicht zu einem Ergebnis. Bei Sets mit Ziel Einigung: Ist es klar (alle Karten mit Wert gleich = Konsens, oder Wert
   bewusst gewählt), geht „Next item“/„Finish item“ ohne Frage weiter. Sonst fragt ein **Overlay mit Cancel**
-  (funktioniert auch aus der schmalen Leiste): „Close with 8“ (Vorschlag = höchste Karte) · „Close without a value“ ·
+  (funktioniert auch aus der schmalen Leiste): „Close with 8“ (8 = die aktuelle Schätzung: automatisch der höchste Wert oder vom Team überschrieben) · „Close without a value“ ·
   „Bring it back later“ (bleibt offen, ans Ende der Liste, Runden/Verteilung bleiben). Der höchste Wert ist damit nur
   noch Vorschlag, nicht automatisch übernommen. Perspektiven-Sets: keine Frage. Backend prüft dieselbe Regel.
   Zusammen mit dem Split in der Leiste nach S1b.
