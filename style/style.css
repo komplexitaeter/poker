@@ -6013,11 +6013,12 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .spread-col.est .spread-count { color: var(--accent); font-weight: bold; }
 
+/* B-52 fix (Andreas): the value on the plain column background, no accent patch behind it (a symbol, e.g. stars, was
+ * hard to read on it; the column's frame marks it enough): text in the accent and bold like .top; a symbol keeps its
+ * card colour (.mini sets its own) */
 .spread-col.est .spread-value {
-    background: var(--accent);
-    color: var(--on-accent);
+    color: var(--accent);
     font-weight: bold;
-    border-radius: 2px;
 }
 
 .spread-est {
