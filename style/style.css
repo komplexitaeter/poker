@@ -6275,20 +6275,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 /* ---------- Topic items S1b (B-52, Fred; please review, Delia) ---------- */
 
-/* the column: the team's note below the active item, set off by a dashed line */
-.ti-note-view {
-    width: 100%;
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px dashed var(--line);
-    font-size: var(--fs-s);
-}
-
-.ti-note-lab { font-size: var(--fs-xs); color: var(--muted); }
-.ti-note-lab::before { content: "// "; color: var(--line-strong); }
-.ti-note-md > :first-child { margin-top: 0; }
-.ti-note-md > :last-child { margin-bottom: 0; }
-
 /* "+ Add item": a clearly visible button with a dashed outline */
 .ti-add { color: var(--text); border-color: var(--muted); }
 
@@ -6324,6 +6310,226 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
 @media (prefers-reduced-motion: reduce) {
     .ti-tri { transition: none; }
 }
+
+/* ---------- Topic items S1c (B-52, Fred; please review, Delia) ---------- */
+
+/* the team's note on the board above the cards (#board_note in main#table): the quoted block of the former topic
+ * (topic colour bar), cut to three lines (phones: two) with a fade; "more" unfolds it (then it scrolls inside from
+ * 40% of the height); the pen opens the topics menu on "Note". No note: hidden, no room. script.js takes its height
+ * off the room of the cards (boardNoteHeight). */
+.board-note {
+    flex: none;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    width: 100%;
+    max-width: 760px;
+    margin: var(--space-3) auto 0;
+    padding: 0 var(--space-2);
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.board-note[hidden] { display: none; }
+.board-note:not([hidden]) + #cbox { margin-top: var(--space-2); }
+
+.board-note-text {
+    --note-lines: 3;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-height: calc(var(--note-lines) * 1.5em + 4px);
+    overflow: hidden;
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--topic-color);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    color: var(--text);
+}
+
+.board-note-text.cut {
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+    mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+
+.board-note-text.open {
+    max-height: min(40vh, 20rem);
+    max-height: min(40dvh, 20rem);
+    overflow-y: auto;
+}
+
+.board-note-text > :first-child { margin-top: 0; }
+.board-note-text > :last-child { margin-bottom: 0; }
+.board-note-text :is(p, ul, ol, blockquote, pre) { margin: 0 0 0.25em; }
+.board-note-text :is(h1, h2, h3, h4, h5, h6) { margin: 0 0 0.25em; font-size: var(--fs-m); }
+.board-note-text :is(strong, b, h1, h2, h3, h4, h5, h6) { color: var(--topic-color); }
+
+.board-note-acts {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.board-note-acts .ti-link[hidden] { display: none; }
+.board-note-edit { color: var(--muted); }
+.board-note-edit:hover { color: var(--accent); }
+.board-note-acts .ti-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 799.98px) {
+    .board-note { margin-top: var(--space-2); padding: 0 6px 0 10px; }
+    .board-note-text { --note-lines: 2; }
+}
+
+/* the topics menu: tabs Note · Open · Done with counters; the lists without the S1b line above them */
+#topic_tabs[hidden] { display: none; }
+#topic_box .ti-list { margin-top: 0; padding-top: 0; border-top: 0; }
+.tab-n { margin-left: 4px; font-weight: normal; font-variant-numeric: tabular-nums; color: var(--muted); }
+.m-tabs [aria-selected=true] .tab-n { color: var(--accent); }
+.ti-empty { margin: 0; }
+
+/* "leave this item" (#leave_item): a modal box over a scrim; one button per choice (the suggestion framed in the
+ * accent and focused), Cancel below. Phones: a sheet at the bottom. */
+.leave-item {
+    width: min(420px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: var(--space-3) var(--space-3) var(--space-3);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--bg-2);
+    color: var(--text);
+    text-align: left;
+    box-shadow: var(--tray-shadow);
+    box-sizing: border-box;
+}
+
+.leave-item::backdrop { background: var(--scrim); }
+
+.leave-item h2 {
+    margin: 0 0 4px;
+    font-size: var(--fs-l);
+}
+
+.leave-item-heading {
+    margin: 0 0 var(--space-3);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--fs-s);
+    color: var(--topic-color);
+}
+
+.leave-item-opts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.leave-opt {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    min-height: var(--tap);
+    padding: 8px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+    color: var(--text);
+    font: var(--fs-m) var(--font);
+    text-align: left;
+    cursor: pointer;
+}
+
+.leave-opt:hover { border-color: var(--accent); }
+.leave-opt.primary { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.leave-opt-v { margin-left: 2px; color: var(--accent); }
+.leave-opt-h { font-size: var(--fs-xs); color: var(--muted); }
+.leave-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.leave-item-foot {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-3);
+}
+
+@media (max-width: 799.98px) {
+    .leave-item {
+        width: 100%;
+        max-width: 100%;
+        margin: auto 0 0;
+        border-radius: var(--radius-l) var(--radius-l) 0 0;
+        padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    }
+}
+
+/* the rail: the item marker on top ("1/3", "item", in the topic colour; opens the column over the table) */
+.rail-item[hidden],
+.rail-item[hidden] + .rail-sep { display: none; }
+
+.rail-item {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 52px;
+    padding: 5px 0 4px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    color: var(--topic-color);
+    font: inherit;
+    cursor: pointer;
+}
+
+.rail-item:hover { border-color: var(--line-strong); }
+.rail-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rail-item .i { width: 16px; height: 16px; }
+.rail-item b { font-size: 13px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.rail-item small { font-size: var(--fs-xs); color: var(--muted); }
+.rail-sep { flex: none; width: 28px; height: 1px; background: var(--line); }
+
+/* the rail's foot after the reveal while an item is active (.split, variant B): one block, two equal filled halves
+ * "next item" ("finish item") / "new round", each with its icon and a two-line word inside the button */
+.rail-acts { display: flex; flex-direction: column; align-items: center; }
+.rail-lbl { display: none; }
+.rail-next[hidden] { display: none; }
+.rail-next .i-flag,
+.rail-next.last .i-skip { display: none; }
+.rail-next.last .i-flag { display: block; }
+
+.rail-acts.split {
+    width: 52px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+}
+
+.rail-acts.split > button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    height: 58px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--accent);
+    color: var(--on-accent);
+    font: bold 10.5px/1.15 var(--font);
+    letter-spacing: -0.02em;
+    cursor: pointer;
+}
+
+.rail-acts.split > button + button { border-top: 1px solid var(--bg-2); }
+.rail-acts.split > button:enabled:hover { background: transparent; color: var(--accent); }
+.rail-acts.split > button:focus-visible { outline: 2px solid var(--on-accent); outline-offset: -4px; }
+.rail-acts.split > button .i { width: 18px; height: 18px; }
+.rail-acts.split .rail-lbl { display: block; text-align: center; }
+.rail-acts.split .rail-lbl > span { display: block; }
 
 /* B-52 S1b: the goal of an own set (set editor) */
 .cs-aimf { grid-column: 1 / -1; }

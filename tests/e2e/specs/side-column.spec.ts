@@ -57,13 +57,14 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   const cardTop = (await deckCards(alice).first().boundingBox())!.y;
   expect(cardTop - (await box(alice, '#down-container')).y).toBeLessThan(16);
 
-  // the topic is in the column
+  // B-52 S1c: the note is on the board above the cards (not in the column; no topic bar without an item)
   await alice.request.post(`/api/update_topic.php?t=${encodeURIComponent(t)}`, { form: { topic: 'PAY-142 pay by invoice' } });
   await alice.reload();
-  await expect(alice.locator('#topic')).toHaveText('PAY-142 pay by invoice');
-  const topic = await box(alice, '.topic-bar');
-  expect(topic.x).toBeGreaterThanOrEqual(side.x - 1);
-  expect(topic.y).toBeGreaterThanOrEqual((await box(alice, '#round_status')).y);
+  await expect(alice.locator('#board_note_text')).toHaveText('PAY-142 pay by invoice');
+  await expect(alice.locator('.topic-bar')).toBeHidden();
+  const note = await box(alice, '#board_note');
+  expect(note.x + note.width).toBeLessThanOrEqual(side.x);
+  expect(note.y + note.height).toBeLessThanOrEqual((await box(alice, '#cbox')).y);
 
   // voting: no spread yet, but its room is kept; the round button keeps its place when the timer
   // goes on and off. Alice picks the 6th card (5) with its key.
@@ -147,7 +148,7 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   expect(await five.locator('.spread-bar').evaluate(bar => new Promise<number>(resolve =>
     requestAnimationFrame(() => resolve(bar.getBoundingClientRect().height))))).toBeCloseTo(34, 0);
   await expect(status).toBeHidden();
-  await expect(alice.locator('.topic-bar')).toBeVisible();
+  await expect(alice.locator('#board_note')).toBeVisible(); // B-52 S1c: the note above the cards
   await expect(alice.locator('#spread')).toBeVisible();
   const strip = await box(alice, '.side');
   const dock = await box(alice, '.dock');

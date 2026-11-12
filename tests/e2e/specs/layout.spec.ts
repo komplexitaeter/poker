@@ -7,7 +7,8 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, teamWi
  * B-68: large screens (from 800px) have a column on the right: round status, topic, spread and at its
  * foot New Round and the timer, next to the deck (side-column.spec.ts); on phones the spread and
  * the round actions sit in a strip right above the deck (the spread only once revealed, no status line).
- * On phones the topic is a one-line strip that unfolds with its arrow button.
+ * B-52 S1c: the team's note stands on the board above the cards (cut, "more" unfolds it); the column (phones: the
+ * strip below the header) shows the active item only.
  * The own timer switch (B-67: in the timer panel) confirms below the switch (R3 review V1, no toast; Invite:
  * invite.spec.ts); the header has no hover hints any more.
  * B-51: without a topic there is no topic bar at all (the topic is set in the menu).
@@ -55,7 +56,7 @@ test('only the table scrolls, deck and New Round stay in view (B-46)', async ({ 
   }
 });
 
-test('phone: the topic strip shows one line and unfolds with its button (B-46)', async ({ browser }) => {
+test('phone: the note above the cards shows two lines and unfolds with "more" (B-46, B-52 S1c)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: SMALL });
   const url = await createTeam(alice, 'Layout Topic');
   await joinAsPlayer(alice, url, 'Alice');
@@ -64,22 +65,26 @@ test('phone: the topic strip shows one line and unfolds with its button (B-46)',
   await alice.request.post(`/api/update_topic.php?t=${encodeURIComponent(t)}`, { form: { topic } });
   await alice.reload();
 
-  const strip = alice.locator('#topic');
-  const toggle = alice.locator('#topic_toggle');
-  await expect(strip).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  const collapsed = (await strip.boundingBox())!.height;
+  const note = alice.locator('#board_note_text');
+  const more = alice.locator('#board_note_more');
+  await expect(note).toBeVisible();
+  await expect(alice.locator('.topic-bar')).toBeHidden(); // no item: no strip below the header
+  expect((await alice.locator('#board_note').boundingBox())!.y).toBeLessThan((await alice.locator('#cbox').boundingBox())!.y);
+  await expect(more).toBeVisible();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  const collapsed = (await note.boundingBox())!.height;
 
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await expect.poll(async () => (await strip.boundingBox())!.height).toBeGreaterThan(collapsed * 2);
+  await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(more).toHaveText('less');
+  await expect.poll(async () => (await note.boundingBox())!.height).toBeGreaterThan(collapsed * 1.5);
 
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect.poll(async () => (await strip.boundingBox())!.height).toBe(collapsed);
+  await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await expect.poll(async () => (await note.boundingBox())!.height).toBe(collapsed);
 });
 
-test('large screen: topic in the column, New Round at its foot next to the deck (B-46, B-66, B-68)', async ({ browser }) => {
+test('large screen: the note above the cards, New Round at its foot next to the deck (B-46, B-66, B-68)', async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: { width: 1100, height: 800 } });
   const url = await createTeam(alice, 'Layout Topic Bar');
   await addPlayersViaApi(alice, url, ['Bob']);
@@ -97,27 +102,31 @@ test('large screen: topic in the column, New Round at its foot next to the deck 
   await alice.keyboard.press('Escape');
   await expect(alice.locator('#topic_box')).toBeHidden();
 
-  // a long topic: in the column below the round status, its height is capped
+  // B-52 S1c: a long note: on the board above the cards (not in the column), cut to three lines; "more" unfolds
+  // it up to 40vh (then it scrolls)
   const t = new URL(url).searchParams.get('t')!;
   const topic = Array.from({ length: 30 }, (_, i) => `Paragraph ${i + 1}`).join('\n\n');
   await alice.request.post(`/api/update_topic.php?t=${encodeURIComponent(t)}`, { form: { topic } });
   await alice.reload();
-  const bar = (await alice.locator('.topic-bar').boundingBox())!;
-  const head = (await alice.locator('header.head').boundingBox())!;
+  await expect(alice.locator('#board_note')).toBeVisible();
+  await expect(topicBar).toBeHidden();
+  const note = (await alice.locator('#board_note').boundingBox())!;
   const table = (await alice.locator('#table').boundingBox())!;
-  const status = (await alice.locator('#round_status').boundingBox())!;
-  expect(Math.round(bar.y)).toBe(Math.round(status.y + status.height));
-  expect(Math.round(bar.x + bar.width)).toBe(1100);
-  expect(bar.x).toBeGreaterThanOrEqual(table.x + table.width - 1);
+  const head = (await alice.locator('header.head').boundingBox())!;
+  expect(note.x).toBeGreaterThanOrEqual(table.x);
+  expect(note.x + note.width).toBeLessThanOrEqual(table.x + table.width);
   expect(Math.round(table.y)).toBe(Math.round(head.y + head.height));
-  expect(bar.height).toBeLessThanOrEqual(800 * 0.4 + 80); // topic up to 40vh, label and padding
-  expect(await alice.locator('#topic').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
-  await expect(topicBar).toBeVisible();
-  await expect(alice.locator('.topic-edit')).toBeVisible();
-  // the pen in the bar opens the topic in the menu as well
-  await alice.locator('.topic-edit').click();
+  expect(note.y + note.height).toBeLessThanOrEqual((await alice.locator('#cbox').boundingBox())!.y);
+  expect(note.height).toBeLessThan(100); // three lines
+  await alice.locator('#board_note_more').click();
+  await expect.poll(async () => (await alice.locator('#board_note').boundingBox())!.height).toBeGreaterThan(200);
+  expect((await alice.locator('#board_note').boundingBox())!.height).toBeLessThanOrEqual(800 * 0.4 + 10);
+  expect(await alice.locator('#board_note_text').evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  // the pen opens the menu on the note
+  await alice.locator('#board_note_edit').click();
   await expect(alice.locator('#topic_box')).toBeVisible();
   await expect(alice.locator('#topic_txt')).toHaveValue(topic);
+  await expect(alice.locator('#topic_txt')).toBeFocused();
   await alice.keyboard.press('Escape');
 
   // B-66/B-68: New Round sits at the foot of the column, right of the deck, within its height

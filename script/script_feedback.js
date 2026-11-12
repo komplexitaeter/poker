@@ -87,6 +87,7 @@ function showMenuTab(box, name, focusTab = false) {
     box.querySelectorAll('[role="tabpanel"]').forEach(p => { p.hidden = p.getAttribute('data-tab') !== name; });
     if (focusTab) tab.focus();
     if (box.id === 'feedback_box' && name === 'backlog') loadFeedbackBacklog(); // B-57
+    if (box.id === 'topic_box') onTopicTab(name); // B-52 S1c: Note | Open | Done (topics.js; loads Done lazily)
 }
 
 function showCsetTab(name, focusTab = false) {
@@ -338,6 +339,7 @@ function initMenu() {
     });
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || isModalOpen(menu)) return;
+        if (otherModalOpen(menu)) return; // B-52 S1c: a dialog above the panel (leave item) closes first
         if (typeof connHintVisible === 'function' && connHintVisible()) return; // B-86: the panel is inert
         event.preventDefault();
         closeMenu();

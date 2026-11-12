@@ -408,7 +408,7 @@ function updateNextItemButton(json) {
     const label = button.querySelector('.lbl');
     if (label !== null && label.textContent !== text) label.textContent = text;
     button.dataset.last = last ? 'true' : 'false';
-    button.title = last ? 'Finish this item – no item after it' : 'Finish this item and go to the next one';
+    button.title = last ? 'Leave this item – no item after it' : 'Leave this item and go to the next one';
     button.hidden = !show;
     button.closest('.dock').classList.toggle('has-next', show);
 }
@@ -563,6 +563,20 @@ function initLeaveItem() {
             closeLeaveItem();
             return;
         }
+        if (event.key === 'Tab') {
+            // the focus stays inside (a modal dialog alone lets it go on to the browser's own controls)
+            const controls = Array.from(dialog.querySelectorAll('button:not([disabled])'));
+            const first = controls[0];
+            const last = controls[controls.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+            return;
+        }
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
         const options = Array.from(dialog.querySelectorAll('.leave-opt'));
         const index = options.indexOf(document.activeElement);
@@ -588,14 +602,18 @@ function topicWrite(endpoint, params, form = null, quiet = []) {
 
 /* ---------- the lists (get_topics.php) ---------- */
 
-/* loads the lists while the topics menu shows them (opening: it is about to), only when the dao topics_rev differs
- * from the rev of the last lists (or the done items are missing). One request at a time; asked again meanwhile, the
- * next follows when it is done. An answer that an own change made outdated (topicListsChanged()) is dropped. */
+/* loads the lists while the topics menu shows the tab "Open" (open items) or "Done" (with the done items; S1c: only
+ * then), only when the dao topics_rev differs from the rev of the last lists (or the done items are missing). One
+ * request at a time; asked again meanwhile, the next follows when it is done. An answer that an own change made
+ * outdated (topicListsChanged()) is dropped. opening: the menu is about to show it. */
 function loadTopicLists(opening = false) {
     if (gTopicItems === null || !topicHasItems()) return;
     if (!opening && openMenuSection() !== 'topic') return;
+    if (gTopicTab === 'note') return;
+    if (gTopicTab === 'open' && gTopicItems.open_count === 0) return;
+    if (gTopicTab === 'done' && gTopicItems.done_count === 0) return;
     const rev = gTopicItems.topics_rev;
-    const done = gTopicItems.done_count > 0;
+    const done = gTopicTab === 'done';
     if (rev === gTopicListsFor && (!done || gTopicListsDone)) return;
     if (gTopicLoad !== null) {
         gTopicLoadAgain = true;
@@ -646,39 +664,53 @@ function topicListItem(id) {
 
 /* ---------- the topics menu ---------- */
 
-/* the note field stays (S1b); below it the items. force: also while the item form is open */
+/* the tabs Note · Open · Done (S1c) with their counters, the open items and the done items. force: also while the
+ * item form is open */
 function renderTopicMenu(force = false) {
     const single = document.getElementById('topic_single');
     const list = document.getElementById('topic_list');
-    if (single === null || list === null) return;
+    const doneBox = document.getElementById('topic_done');
+    const tabs = document.getElementById('topic_tabs');
+    if (single === null || list === null || doneBox === null || tabs === null) return;
     const label = single.querySelector('label.lab');
     const labelText = topicHasItems() ? 'Note for everyone (optional, Markdown works)'
         : 'What are you estimating? (optional, Markdown works)';
     if (label !== null && label.textContent !== labelText) label.textContent = labelText;
 
-    list.hidden = gTopicItems === null;
+    tabs.hidden = gTopicItems === null;
     if (gTopicItems === null) {
+        // an old server: the note alone
+        if (gTopicTab !== 'note') showMenuTab(document.getElementById('topic_box'), 'note');
         gTopicMenuKey = '';
         return;
     }
+    setTextIfChanged(document.getElementById('topic_n_open'), String(gTopicItems.open_count));
+    setTextIfChanged(document.getElementById('topic_n_done'), String(gTopicItems.done_count));
     if (!force && gTopicEditor !== null) return;
     const key = JSON.stringify([gTopicItems, gTopicLists, gTopicLoad !== null, gTopicLoadError, gTopicEditor,
-        gTopicConfirmDelete, [...gTopicDistOpen]]);
+        gTopicConfirmDelete, [...gTopicDistOpen], gTopicTab]);
     if (!force && key === gTopicMenuKey) return;
     gTopicMenuKey = key;
 
     const focus = document.activeElement;
-    const focusAct = focus && list.contains(focus) && focus.dataset ? focus.dataset.tiAct : null;
+    const focusBox = [list, doneBox].find(box => focus && box.contains(focus)) || null;
+    const focusAct = focusBox !== null && focus.dataset ? focus.dataset.tiAct : null;
     const focusId = focusAct ? focus.dataset.tiId : null;
-    list.replaceChildren(...topicListParts());
-    if (focusAct) restoreTopicFocus(list, focusAct, focusId);
+    list.replaceChildren(...topicOpenParts());
+    doneBox.replaceChildren(...topicDoneParts());
+    if (focusAct) restoreTopicFocus(focusBox, focusAct, focusId);
 }
 
-function restoreTopicFocus(list, act, id) {
+function setTextIfChanged(element, text) {
+    if (element !== null && element.textContent !== text) element.textContent = text;
+}
+
+function restoreTopicFocus(box, act, id) {
     const sel = id ? '[data-ti-id="' + id + '"]' : '';
-    let element = list.querySelector('[data-ti-act="' + act + '"]' + sel + ':not([disabled])')
-        || (id ? list.querySelector('[data-ti-act]' + sel + ':not([disabled])') : null)
-        || list.querySelector('[data-ti-act="add"]');
+    let element = box.querySelector('[data-ti-act="' + act + '"]' + sel + ':not([disabled])')
+        || (id ? box.querySelector('[data-ti-act]' + sel + ':not([disabled])') : null)
+        || box.querySelector('[data-ti-act="add"]')
+        || document.querySelector('#topic_tabs [aria-selected="true"]');
     if (element !== null) element.focus({ preventScroll: true });
 }
 
@@ -697,24 +729,24 @@ function topicLoadState() {
     return textElement('p', 'hint ti-load', 'Loading items …');
 }
 
-function topicListParts() {
+/* the tab "Open": the open items (the active one on top) and "+ Add item" */
+function topicOpenParts() {
     const summary = gTopicItems;
     const lists = gTopicLists;
     const has = topicHasItems();
     const parts = [];
 
-    if (has) {
+    if (summary.open_count > 0) {
         const head = document.createElement('div');
         head.className = 'ti-head';
-        head.appendChild(textElement('h3', 'ti-sl', 'items · ' + summary.open_count + ' open'));
-        if (summary.open_count > 0) head.appendChild(textElement('span', 'ti-note', 'top item = the one you talk about now'));
+        head.appendChild(textElement('span', 'ti-note', 'top item = the one you talk about now'));
         parts.push(head);
+        if (lists === null) parts.push(topicLoadState());
     }
 
     const ol = document.createElement('ol');
     ol.className = 'ti-items';
     ol.id = 'ti_open';
-    if (has && lists === null) parts.push(topicLoadState());
     const open = lists !== null && summary.open_count > 0 ? lists.open : [];
     open.forEach((item, index) => {
         ol.appendChild(gTopicEditor !== null && gTopicEditor.id === item.id
@@ -724,6 +756,9 @@ function topicListParts() {
     if (ol.childNodes.length > 0) parts.push(ol);
 
     if (gTopicEditor === null || gTopicEditor.id !== 'new') {
+        if (has && summary.open_count === 0) {
+            parts.push(textElement('p', 'hint ti-empty', 'No open items. Add one, or reopen one under “Done”.'));
+        }
         const add = document.createElement('button');
         add.type = 'button';
         add.className = 'ti-add';
@@ -734,26 +769,27 @@ function topicListParts() {
         parts.push(add);
         if (!has) parts.push(textElement('p', 'hint ti-add-hint', 'Several topics? Add them as items and go through them one by one.'));
     }
+    return parts;
+}
 
-    if (summary.done_count > 0) {
-        const doneHead = document.createElement('div');
-        doneHead.className = 'ti-head ti-done-head';
-        doneHead.appendChild(textElement('h3', 'ti-sl', 'done · ' + summary.done_count));
-        parts.push(doneHead);
-        const done = lists !== null && Array.isArray(lists.done) ? lists.done : null;
-        if (done === null) {
-            if (lists !== null) parts.push(topicLoadState());
-        } else {
-            const ul = document.createElement('ul');
-            ul.className = 'ti-done';
-            ul.id = 'ti_done';
-            done.forEach(item => ul.appendChild(gTopicEditor !== null && gTopicEditor.id === item.id
-                ? topicEditorRow(item) : topicDoneRow(item)));
-            parts.push(ul);
-            if (summary.done_count > done.length) {
-                parts.push(textElement('p', 'hint', 'The latest ' + done.length + ' of ' + summary.done_count + ' done items.'));
-            }
-        }
+/* the tab "Done": the history (loaded when the tab opens) */
+function topicDoneParts() {
+    const summary = gTopicItems;
+    const lists = gTopicLists;
+    if (summary.done_count === 0) {
+        return [textElement('p', 'hint ti-empty', 'Nothing done yet. Items you close show up here.')];
+    }
+    const done = lists !== null && gTopicListsDone && Array.isArray(lists.done) ? lists.done : null;
+    if (done === null) return [topicLoadState()];
+    const parts = [];
+    const ul = document.createElement('ul');
+    ul.className = 'ti-done';
+    ul.id = 'ti_done';
+    done.forEach(item => ul.appendChild(gTopicEditor !== null && gTopicEditor.id === item.id
+        ? topicEditorRow(item) : topicDoneRow(item)));
+    parts.push(ul);
+    if (summary.done_count > done.length) {
+        parts.push(textElement('p', 'hint', 'The latest ' + done.length + ' of ' + summary.done_count + ' done items.'));
     }
     return parts;
 }
@@ -839,11 +875,19 @@ function topicDistView(item) {
     return bars;
 }
 
-/* 'YYYY-MM-DD hh:mm:ss' (server time) -> a short local date ("12 Nov"; other years with the year), '' if unknown */
+/* a date of the API -> a short local date ("12 Nov"; other years with the year), '' if unknown. S1c: ISO 8601 in UTC
+ * ("2026-11-12T14:03:00Z", or with an offset) -> new Date() puts it into the browser's time zone; the former
+ * 'YYYY-MM-DD hh:mm:ss' (no zone) is read as local time */
 function topicDate(value) {
-    const m = typeof value === 'string' ? value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/) : null;
-    if (m === null) return { short: '', long: '' };
-    const date = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+    if (typeof value !== 'string') return { short: '', long: '' };
+    let date;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(value)) {
+        date = new Date(value);
+    } else {
+        const m = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+        if (m === null) return { short: '', long: '' };
+        date = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+    }
     if (isNaN(date.getTime())) return { short: '', long: '' };
     const sameYear = date.getFullYear() === new Date().getFullYear();
     const short = date.toLocaleDateString(undefined, sameYear ? { day: 'numeric', month: 'short' }
@@ -1039,7 +1083,7 @@ function saveTopicEditor(item) {
             gTopicEditor = null;
             renderTopicMenu(true);
             const target = item === null ? document.getElementById('ti_add')
-                : document.querySelector('#topic_list [data-ti-act="edit"][data-ti-id="' + item.id + '"]');
+                : document.querySelector('#topic_box [data-ti-act="edit"][data-ti-id="' + item.id + '"]');
             if (target !== null) target.focus({ preventScroll: true });
         } else if (document.getElementById('ti_save') !== null) {
             document.getElementById('ti_save').disabled = false;
@@ -1075,7 +1119,7 @@ function onTopicListClick(event) {
         gTopicEditor = null;
         renderTopicMenu(true);
         const target = wasNew ? document.getElementById('ti_add')
-            : document.querySelector('#topic_list [data-ti-act="edit"][data-ti-id="' + editedId + '"]');
+            : document.querySelector('#topic_box [data-ti-act="edit"][data-ti-id="' + editedId + '"]');
         if (target !== null) focusQuietly(target);
     } else if (act === 'edit') {
         openTopicEditor(id);
@@ -1091,7 +1135,7 @@ function onTopicListClick(event) {
     } else if (act === 'delete') {
         gTopicConfirmDelete = id;
         renderTopicMenu(true);
-        const sure = document.querySelector('#topic_list [data-ti-act="delete-sure"]');
+        const sure = document.querySelector('#topic_box [data-ti-act="delete-sure"]');
         if (sure !== null) sure.focus();
     } else if (act === 'delete-sure') {
         gTopicConfirmDelete = null;
@@ -1111,24 +1155,39 @@ function onTopicListClick(event) {
     }
 }
 
-/* the topics menu is opened: the note field, the list fresh (prepareMenuSection in script_feedback.js) */
+/* the topics menu is opened (prepareMenuSection in script_feedback.js): the start tab (an opener's wish, else "Open"
+ * while items are open, else "Note"), the lists fresh */
 function prepareTopicMenu() {
     gTopicEditor = null;
+    gTopicConfirmDelete = null;
+    let tab = gTopicNextTab || (gTopicItems !== null && gTopicItems.open_count > 0 ? 'open' : 'note');
+    gTopicNextTab = null;
+    if (gTopicItems === null) tab = 'note';
+    showMenuTab(document.getElementById('topic_box'), tab); // -> onTopicTab()
+    renderTopicMenu(true);
+    loadTopicLists(true);
+}
+
+/* a tab of the topics menu is shown (showMenuTab in script_feedback.js) */
+function onTopicTab(name) {
+    if (gTopicTab === name) return;
+    gTopicTab = name;
     gTopicConfirmDelete = null;
     renderTopicMenu(true);
     loadTopicLists(true);
 }
 
-/* where the focus goes when the topics menu opens: the note field (as before) */
+/* where the focus goes when the topics menu opens: the note field on "Note" (as before), else the chosen tab */
 function topicMenuFocus() {
-    return document.getElementById('topic_txt');
+    if (gTopicTab === 'note') return document.getElementById('topic_txt');
+    return document.querySelector('#topic_tabs [aria-selected="true"]');
 }
 
 function initTopicItems() {
     const topic = document.getElementById('topic');
     if (topic !== null) topic.addEventListener('click', onTopicViewClick);
-    const list = document.getElementById('topic_list');
-    if (list !== null) {
+    [document.getElementById('topic_list'), document.getElementById('topic_done')].forEach(list => {
+        if (list === null) return;
         list.addEventListener('click', onTopicListClick);
         list.addEventListener('keydown', event => {
             if (event.key === 'Escape' && gTopicConfirmDelete !== null) {
@@ -1141,7 +1200,7 @@ function initTopicItems() {
                 if (trash !== null) trash.focus();
             }
         });
-    }
+    });
     const bars = document.getElementById('spread_bars');
     if (bars !== null) {
         bars.addEventListener('click', onSpreadPick);
@@ -1149,7 +1208,18 @@ function initTopicItems() {
     }
     const select = document.getElementById('spread_est_sel');
     if (select !== null) select.addEventListener('change', () => setTopicResult(select.value));
-    window.addEventListener('resize', () => requestAnimationFrame(updateTopicMoreButton));
+    // the openers ask for their tab (before the menu's own click handler on the document)
+    const noteEdit = document.getElementById('board_note_edit');
+    if (noteEdit !== null) noteEdit.addEventListener('click', () => { gTopicNextTab = 'note'; });
+    const itemEdit = document.querySelector('.topic-bar .topic-edit');
+    if (itemEdit !== null) itemEdit.addEventListener('click', () => { gTopicNextTab = 'open'; });
+    const noteMore = document.getElementById('board_note_more');
+    if (noteMore !== null) noteMore.addEventListener('click', toggleBoardNote);
+    initLeaveItem();
+    window.addEventListener('resize', () => requestAnimationFrame(() => {
+        updateTopicMoreButton();
+        syncBoardNoteMore();
+    }));
 }
 
 document.addEventListener('DOMContentLoaded', initTopicItems);

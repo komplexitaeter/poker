@@ -41,8 +41,8 @@ test('board boots and renders markdown with all external hosts blocked', async (
   await page.locator('#topic_btn').click();
   await page.locator('#topic_txt').pressSequentially('**bold** and [link](https://example.com/)');
   await page.locator('#topic_save').click();
-  await expect(page.locator('#topic strong')).toHaveText('bold');
-  await expect(page.locator('#topic a', { hasText: 'link' })).toHaveAttribute('href', 'https://example.com/');
+  await expect(page.locator('#board_note_text strong')).toHaveText('bold');
+  await expect(page.locator('#board_note_text a', { hasText: 'link' })).toHaveAttribute('href', 'https://example.com/');
 
   // at least one external host was actually blocked (proves the blockade is in effect)
   expect(blocked.length).toBeGreaterThan(0);
