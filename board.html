@@ -20,7 +20,7 @@
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/topics.js?v=1.4" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.22" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.24" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -471,13 +471,16 @@
                     <p id="tmr_other_hint" class="sr-only">1 to 240 minutes.</p>
                     <p id="tmr_other_error" class="hint tmr-other-error" role="status" hidden>Please enter 1 to 240 minutes.</p>
                 </fieldset>
-                <fieldset class="f" id="tmr_auto_restart">
-                    <legend class="lab">Auto-start on new round</legend>
+                <!-- B-130: Off / New round / Next item (timer_auto_restart 0/1/2); the hint follows the value
+                     (updateTimerConfig() in script.js) -->
+                <fieldset class="f" id="tmr_auto_restart" aria-describedby="tmr_auto_restart_hint">
+                    <legend class="lab">Auto-start</legend>
                     <div class="seg">
                         <label><input type="radio" name="tmr_auto_restart" value="0" onchange="setTimerAutoRestart(this.value)"/><span>Off</span></label>
-                        <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>On</span></label>
+                        <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>New round</span></label>
+                        <label><input type="radio" name="tmr_auto_restart" value="2" onchange="setTimerAutoRestart(this.value)"/><span>Next item</span></label>
                     </div>
-                    <p class="hint">Restarts with every new round.</p>
+                    <p class="hint" id="tmr_auto_restart_hint">Starts only with play.</p>
                 </fieldset>
             </section>
 

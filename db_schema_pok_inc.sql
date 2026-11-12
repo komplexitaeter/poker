@@ -786,3 +786,10 @@ select table_name, column_name, column_default from information_schema.columns
    and (table_name, column_name) in (('pok_teams_tbl', 'topics_rev'), ('pok_topic_items_tbl', 'last_round_date'),
                                      ('pok_custom_sets_tbl', 'aim'), ('pok_roundstats_tbl', 'topic_item_id'));
 /* end B-52 S1b */
+
+/* B-130: timer auto-start with three values in the existing column pok_teams_tbl.timer_auto_restart (B-67, tinyint):
+   0 = off, 1 = new round (unchanged meaning, existing teams keep their behaviour), 2 = next item.
+   No DDL needed. Old code only restarts on = 1 and its frontend treats 2 as "off", so a 2 written by the new code
+   does not break the old one. Check (read only): */
+select timer_auto_restart, count(1) from pok_teams_tbl group by timer_auto_restart;
+/* end B-130 */

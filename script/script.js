@@ -1559,7 +1559,7 @@ function openRemoveConfirm(btn) {
 
 /* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket. Nothing happens here before the echo: poker-msg
  * sends the same text to every board of the team, the sender's too, and all of them animate on it (onReaction).
- * Not sent without an open connection (the reaction is lost, as when poker-msg drops it above 1/s).
+ * Not sent without an open connection (the reaction is lost) or above the limit of poker-msg (B-131, reactionAllowed).
  * A nudge is anonymous: from is always 0, also in the message. */
 function sendReaction(toMkey, code) {
     const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : String(gLastJson.mkey ?? ''));
@@ -1567,11 +1567,35 @@ function sendReaction(toMkey, code) {
     const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
     if (!REACT_MSG.test(msg)) return;
     if (gConn === null || gConn.readyState !== WebSocket.OPEN) return;
+    if (!reactionAllowed()) return;
     try {
         gConn.send(msg);
+        gReactSent.push(performance.now());
     } catch (e) {
         console.log('reaction not sent', e);
     }
+}
+
+/* B-131: the same staggered limit as poker-msg (per connection, sliding windows; keep both in step): at most
+ * [count, window in ms]. Above it poker-msg drops the reaction silently, so the board does not send it at all and
+ * says so (except for the 1 s window: a double click, nothing to say). Per tab, like the connection. */
+const REACT_LIMITS = [[1, 1000], [10, 60 * 1000]];
+const REACT_LIMIT_TOAST_MS = 4000; // the hint at most once in this time, so it does not spam itself
+let gReactSent = [];               // performance.now() of the own reactions sent (the longest window)
+let gReactToastAt = -Infinity;
+
+/* false (and the hint, if due) when one more reaction now would be above a limit */
+function reactionAllowed() {
+    const now = performance.now();
+    const longest = REACT_LIMITS[REACT_LIMITS.length - 1][1];
+    gReactSent = gReactSent.filter(t => now - t < longest);
+    const over = REACT_LIMITS.filter(([max, ms]) => gReactSent.filter(t => now - t < ms).length >= max);
+    if (over.length === 0) return true;
+    if (over.some(([, ms]) => ms > 1000) && now - gReactToastAt >= REACT_LIMIT_TOAST_MS) {
+        gReactToastAt = now;
+        showToast('Easy there \u2013 too many reactions. Try again in a moment.', 3000);
+    }
+    return false;
 }
 
 /* the card (#cbox .c) or the observer (#observers .obs) of a mkey, null when not on the board */
@@ -1735,6 +1759,20 @@ function restartClass(el, cls, ms) {
     }
     el.classList.add(cls);
     timers[cls] = setTimeout(() => el.classList.remove(cls), ms);
+}
+
+/* B-131: a held Enter/Space on a circle or an emoji sends one reaction, not one per key repeat (the repeats would
+ * click the button again and again; with Enter even reopen the emoji bar and throw the next one). The browser
+ * clicks a button on Enter keydown and on Space keyup: a repeated keydown is dropped before it clicks. */
+function onReactKeyRepeat(event) {
+    if (!event.repeat || (event.key !== 'Enter' && event.key !== ' ')) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target === null) return;
+    if (target.closest('#react_bar button, #cbox .c :is(.nudge, .react), #observers .obs :is(.nudge, .react)') === null) {
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 /* one click handler for the table, the observers and the popovers (document, bubbling) */
@@ -1911,6 +1949,7 @@ function initTableInteraction() {
     if (typeof gTapQuery.addEventListener === 'function') gTapQuery.addEventListener('change', onTapQueryChange);
     else if (typeof gTapQuery.addListener === 'function') gTapQuery.addListener(onTapQueryChange); // Safari < 14
     document.addEventListener('keydown', onPopoverKeydown, true);
+    document.addEventListener('keydown', onReactKeyRepeat, true);
     const reposition = () => { repositionPopover(); repositionTapHint(); };
     window.addEventListener('resize', reposition);
     document.getElementById('table').addEventListener('scroll', reposition, { passive: true });
@@ -2759,6 +2798,14 @@ function timerStateFresh(writeGen) {
 
 const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
 
+/* B-130: auto-start 0 = off, 1 = new round, 2 = next item: the hint below the switch and the toast of an own change */
+const TIMER_AUTO_RESTART_HINTS = [
+    'Starts only with play.',
+    'Restarts with every new round.',
+    'Restarts when you move on to the next item \u2013 new rounds within an item keep it running. Without items like New round.',
+];
+const TIMER_AUTO_RESTART_TOASTS = ['Auto-start off', 'Auto-start with every new round', 'Auto-start with every next item'];
+
 function updateTimer(json) {
     gTimer = {
         status: json.timer_status,
@@ -2766,7 +2813,8 @@ function updateTimer(json) {
         visible: json.timer_visibility === 1,
         mode: json.timer_mode === 'TIMER' ? 'TIMER' : 'STOPWATCH',
         timebox: json.timer_timebox > 0 ? json.timer_timebox : 300,
-        autoRestart: json.timer_auto_restart === 1,
+        // B-130: 0 = off, 1 = new round, 2 = next item
+        autoRestart: [1, 2].includes(json.timer_auto_restart) ? json.timer_auto_restart : 0,
     };
     gTimerTime = gTimer.time;
     gTimerBaseTime = new Date();
@@ -2856,7 +2904,11 @@ function updateTimerConfig(force = false) {
     if (gTimer === null || document.getElementById('timer_box') === null) return;
     checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
     checkRadio('tmr_mode', gTimer.mode);
-    checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
+    checkRadio('tmr_auto_restart', String(gTimer.autoRestart));
+    let autoHint = document.getElementById('tmr_auto_restart_hint');
+    // B-130: written only when it changes (a load with the same state changes nothing on the page, B-110)
+    const autoText = TIMER_AUTO_RESTART_HINTS[gTimer.autoRestart] ?? '';
+    if (autoHint !== null && autoHint.textContent !== autoText) autoHint.textContent = autoText;
     document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
 
     let minutes = Math.round(gTimer.timebox / 60);
@@ -2970,7 +3022,12 @@ function saveTimerOther(showError) {
 }
 
 function setTimerAutoRestart(value) {
-    timerAction('set_auto_restart', value).catch(timerSettingFailed);
+    // B-130: the hint follows right away, the toast confirms the saved value
+    let hint = document.getElementById('tmr_auto_restart_hint');
+    if (hint !== null && TIMER_AUTO_RESTART_HINTS[value] !== undefined) hint.textContent = TIMER_AUTO_RESTART_HINTS[value];
+    timerAction('set_auto_restart', value).then(() => {
+        showToast(TIMER_AUTO_RESTART_TOASTS[value] ?? 'Saved', DECK_TOAST_MS);
+    }).catch(timerSettingFailed);
 }
 
 function timerStart() {

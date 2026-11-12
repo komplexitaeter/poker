@@ -9,8 +9,8 @@ import { newPlayer, createTeam, joinAsPlayer, tableCard, stopHbLoads } from './h
  * .is-hit on the card). Several landings on one card at once are offset (--land-i). The nudge circle (.nudge) sends
  * "react:0:<to>:nudge" (anonymous): no flight, no landing, the target shakes (.is-nudged; on the nudged one's board
  * also .is-nudged-me). Anonymous mode: no sender name. A hidden tab drops reactions (nothing is played late).
- * poker-msg checks the format only and forwards at most one reaction per connection and second; the board ignores
- * unknown codes.
+ * poker-msg checks the format only and forwards at most 1 reaction per connection and second and 10 a minute
+ * (B-131); the board keeps to the same limits (a hint above them, none on a double click) and ignores unknown codes.
  * SHOT_DIR (optional): stills of the flight, the landing and a nudge, and a video of a flight.
  */
 const DESKTOP = { width: 1280, height: 800 };
@@ -460,4 +460,105 @@ test('shots: circles, flight, landing, two landings, nudge (B-110)', async ({ br
   await alice.mouse.move(5, 5);
   await alice.waitForTimeout(2500);
   await alice.context().close(); // writes the video
+});
+
+/** B-131: moves the page's performance.now() (the clock of the reaction limit) forward, without waiting */
+async function installClockOffset(page: Page): Promise<(ms: number) => Promise<void>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { perfOffset: number };
+    w.perfOffset = 0;
+    const orig = performance.now.bind(performance);
+    performance.now = () => orig() + w.perfOffset;
+  });
+  return ms => page.evaluate(d => { (window as unknown as { perfOffset: number }).perfOffset += d; }, ms);
+}
+
+test('rate limit: 10 reactions a minute go out, the 11th is not sent and shows a hint, a double click is silent (B-131)',
+  async ({ browser }) => {
+  const { alice, bob, bobMkey } = await setup(browser, 'React Limit');
+  const sent = await recordSent(alice);
+  const advance = await installClockOffset(alice);
+  type W = { sendReaction: (to: string, code: string) => void; toasts: string[];
+    showToast: (text: string, ...rest: unknown[]) => void };
+  // counts the hints (showToast is a global function: the board calls it through window)
+  await alice.evaluate(() => {
+    const w = window as unknown as W;
+    w.toasts = [];
+    const orig = w.showToast;
+    w.showToast = (text: string, ...rest: unknown[]) => { w.toasts.push(text); orig(text, ...rest); };
+  });
+  const toasts = () => alice.evaluate(() => (window as unknown as W).toasts.slice());
+
+  // a double click on the nudge circle: one nudge goes out, the second (within 1 s) silently not
+  const bobCard = tableCard(alice, 'Bob');
+  await bobCard.hover();
+  await bobCard.getByRole('button', { name: 'Nudge Bob' }).dblclick();
+  await alice.waitForTimeout(500);
+  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`]);
+  expect(await toasts()).toEqual([]);
+  await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
+
+  // nine more, one per (faked) second: all go out
+  for (let i = 0; i < 9; i++) {
+    await advance(1100);
+    await alice.evaluate(([to, c]) => (window as unknown as W).sendReaction(to, c), [bobMkey, i % 2 ? 'nudge' : 'clap']);
+  }
+  expect(await sent()).toHaveLength(10);
+  expect(await toasts()).toEqual([]);
+
+  // the 11th within the minute (through the emoji bar): not sent, a friendly hint instead
+  await advance(1100);
+  await throwAt(alice, bobCard, 'heart');
+  await expect(alice.locator('#toast')).toHaveClass(/\btoast-on\b/);
+  await expect(alice.locator('#toast')).toContainText('too many reactions');
+  expect(await sent()).toHaveLength(10);
+  expect(await toasts()).toHaveLength(1);
+  await expect(bob.locator('.react-land')).toHaveCount(0);
+
+  // tried again right away: still not sent, and the hint does not repeat itself
+  await advance(1100);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'cake'), [bobMkey]);
+  expect(await sent()).toHaveLength(10);
+  expect(await toasts()).toHaveLength(1);
+
+  // a minute after the first: one goes out again
+  await advance(60_000);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'party'), [bobMkey]);
+  expect(await sent()).toHaveLength(11);
+  await expect(tableCard(bob, 'Bob').locator('.react-land .react-emoji')).toHaveText('🎉');
+  expect(await toasts()).toHaveLength(1);
+});
+
+test('a held Enter on the nudge circle or an emoji sends one reaction, not one per key repeat (B-131)',
+  async ({ browser }) => {
+  const { alice, bobMkey } = await setup(browser, 'React Hold');
+  const sent = await recordSent(alice);
+  // the 1 s limit would hide the repeats: every repeat comes a (faked) 1.1 s later
+  const advance = await installClockOffset(alice);
+  const hold = async (key: string, repeats: number) => {
+    await alice.keyboard.down(key);
+    for (let i = 0; i < repeats; i++) {
+      await advance(1100);
+      await alice.keyboard.down(key); // Playwright: a key pressed already goes down again with repeat = true
+    }
+    await alice.keyboard.up(key);
+    await alice.waitForTimeout(300);
+  };
+
+  const bobCard = tableCard(alice, 'Bob');
+  await bobCard.hover();
+  await bobCard.getByRole('button', { name: 'Nudge Bob' }).focus();
+  await hold('Enter', 8);
+  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`]);
+
+  // the emoji bar: the held Enter neither throws again nor reopens the bar
+  await advance(1100);
+  await bobCard.hover();
+  await bobCard.locator('.react').click();
+  await alice.locator('#react_bar button[data-react="heart"]').focus();
+  await hold('Enter', 8);
+  const aliceMkey = await tableCard(alice, 'Alice').getAttribute('id') as string;
+  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`, `react:${aliceMkey}:${bobMkey}:heart`]);
+  await expect(alice.locator('#react_bar')).toBeHidden();
+  await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
 });
