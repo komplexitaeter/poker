@@ -10,7 +10,9 @@
  *   An own set fills it with all its cards and its style; each card sends its card_key (c-...) as key. The name stays
  *   empty (required). Esc / × / Cancel close the choice; nothing is stored before Save.
  * - Head: title, "The team sees changes after Save" (unsaved / errors, live region), × (= Cancel).
- * - Top: set name (24, counter), Style (card_catalog.json styles: plain | badge | banner | inverted).
+ * - Top: set name (24, counter), Style (card_catalog.json styles: plain | badge | banner | inverted), B-52 S1b: Goal
+ *   (aim: 'agree' = one agreed value per topic item, 'perspectives' = only the spread; built-in groups with
+ *   "range": false start with perspectives, a copy of an own set takes its aim).
  * - Left: "Cards (n of max)" (max: dao custom_limits.cards), a strip of the cards in the set's style: the selected one large as it looks on the
  *   table (cardFace()) with ↑ ↓ ×, the others as compact rows (small card, name, value; phones: small cards only),
  *   at the end "+ Add card" (up to the limit - a bigger migrated set keeps its size but does not grow -, × down to 2 cards).
@@ -34,6 +36,11 @@ const CS_HEADING_MAX = 16;
 const CS_DESCRIPTION_MAX = 160;
 const CS_MIN_CARDS = 2;
 const CS_STYLE_NAMES = { plain: 'Plain', badge: 'Badge', banner: 'Banner', inverted: 'Inverted' };
+/* B-52 S1b: the goal of a set (custom_set_create/save "aim"), with the line that explains it */
+const CS_AIMS = [
+    { aim: 'agree', name: 'Agree on a value', help: 'The team agrees on one value per item, e.g. an estimate.' },
+    { aim: 'perspectives', name: 'Show perspectives', help: 'Only the spread counts, e.g. a health check – no single value.' },
+];
 const CS_TEXT_OPTION = 'text'; // the option "Text" of the symbol picker
 
 /* the groups of the symbol picker (by symbol id, csCategory()) */
@@ -49,6 +56,7 @@ const CS_CATEGORIES = [
 const CS_ERRORS = {
     name: 'Give the set a name.',
     style: 'Choose a style.',
+    aim: 'Choose a goal.',
     text: 'Up to 6 characters – letters, digits, signs or emoji.',
     symbol: 'Choose a symbol.',
     symbol_or_text: 'Choose a symbol or enter a text.',
@@ -70,6 +78,7 @@ const gCs = {
     set: null,        // the set as loaded (null: a new set)
     name: '',
     style: 'plain',
+    aim: 'agree',     // B-52 S1b: 'agree' | 'perspectives'
     cards: [],        // { key, mode: 'symbol'|'text', symbol, text, heading, description, value (string), color, colorSet }
     sel: 0,
     pick: null,       // the open symbol picker: { query, active } or null
@@ -275,7 +284,7 @@ function csRequestCard(card) {
 }
 
 function csSignature() {
-    return JSON.stringify([gCs.name.trim(), gCs.style, gCs.cards.map(csRequestCard)]);
+    return JSON.stringify([gCs.name.trim(), gCs.style, gCs.aim, gCs.cards.map(csRequestCard)]);
 }
 
 function csDirty() {
@@ -378,6 +387,9 @@ function csStartEditor(set, group, copy = null) {
     gCs.name = set ? set.name : '';
     const source = set || copy || group;
     gCs.style = source && CARD_STYLES.has(source.style) ? source.style : 'plain';
+    // B-52 S1b: own sets have their aim; built-in groups without a single value ("range": false) show perspectives
+    gCs.aim = (set || copy) ? ((set || copy).aim === 'perspectives' ? 'perspectives' : 'agree')
+        : group && group.range === false ? 'perspectives' : 'agree';
     gCs.maxCards = Math.max(csCardLimit(), set ? set.cards.length : 0);
     // Andreas: a copy of an own set takes all its cards; their keys (c-...) let the API keep symbol and colour
     gCs.cards = set ? set.cards.map(csFromStored)
@@ -600,7 +612,7 @@ function csRender() {
     const body = csEl('div', 'cs-body');
     body.id = 'cs_body';
     const top = csEl('div', 'cs-topf');
-    top.append(csNameField(), csStyleField());
+    top.append(csNameField(), csStyleField(), csAimField());
     const cards = csEl('div', 'cs-cards');
     cards.id = 'cs_cards';
     const detail = csEl('section', 'cs-detail');
@@ -733,6 +745,37 @@ function csStyleField() {
         seg.appendChild(label);
     });
     box.appendChild(seg);
+    return box;
+}
+
+/* B-52 S1b: the goal of the set - agree on a value or show perspectives, one line explains the chosen one */
+function csAimField() {
+    const box = csEl('fieldset', 'f cs-f cs-aimf');
+    box.id = 'cs_aim';
+    box.appendChild(csEl('legend', 'lab cs-lab', 'Goal'));
+    const seg = csEl('div', 'seg');
+    const help = csEl('p', 'hint cs-aim-help', '');
+    help.id = 'cs_aim_help';
+    const showHelp = () => { help.textContent = (CS_AIMS.find(entry => entry.aim === gCs.aim) || CS_AIMS[0]).help; };
+    CS_AIMS.forEach(entry => {
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'cs_aim';
+        input.value = entry.aim;
+        input.checked = gCs.aim === entry.aim;
+        input.setAttribute('data-f', 'aim:' + entry.aim);
+        input.setAttribute('aria-describedby', 'cs_aim_help');
+        input.addEventListener('change', () => {
+            gCs.aim = entry.aim;
+            showHelp();
+            csRenderState();
+        });
+        label.append(input, csEl('span', null, entry.name));
+        seg.appendChild(label);
+    });
+    showHelp();
+    box.append(seg, help);
     return box;
 }
 
@@ -1445,7 +1488,7 @@ function csSave(play) {
         csClose();
         return;
     }
-    const body = { name: gCs.name.trim(), style: gCs.style, cards: gCs.cards.map(csRequestCard) };
+    const body = { name: gCs.name.trim(), style: gCs.style, aim: gCs.aim, cards: gCs.cards.map(csRequestCard) };
     const team = encodeURIComponent(t);
     gCs.busy = play ? 'play' : 'save';
     csRenderFoot();

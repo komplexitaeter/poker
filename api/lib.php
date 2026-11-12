@@ -566,6 +566,12 @@ function team_has_cards_down($link, string $t): bool
     return $row !== null && (int)$row->cnt > 0;
 }
 
+/* B-52 S1b: a statement failed only because a table (1146) or column (1054) is missing (code deployed before the schema) */
+function is_missing_schema_error(mysqli_sql_exception $e): bool
+{
+    return in_array($e->getCode(), array(1054, 1146), true);
+}
+
 /*
  * Starts a new round (newround.php; B-98 S2 also update_deck.php when the deck changes while cards are down):
  * snapshot of the round in pok_roundstats_tbl (incl. the deck of the round: deck_id, deck_cards, deck_controls, so
@@ -624,14 +630,26 @@ function start_new_round($link, string $t): void
                                     ");
         $sql->bind_param('is', $obj->last_id, $t);
         $sql->execute();
+
+        /* B-52 S1b: the snapshot remembers the active topic item (topic_item_id). A missing column (code deployed
+           before the schema) must not break "New round": the failed statement does not end the transaction. Only a
+           missing table/column is skipped; anything else (e.g. a deadlock, which rolls back the whole transaction)
+           is rethrown, so the round never goes on outside the transaction. */
+        try {
+            link_round_to_active_item($link, $t, (int)$obj->last_id);
+        } catch (mysqli_sql_exception $e) {
+            if (!is_missing_schema_error($e)) throw $e;
+            error_log('poker new round: topic item of the round not stored: ' . $e->getMessage());
+        }
     }
 
     /* B-52 S1: a revealed round is stored at the active topic item (distribution, rounds_cnt) before the cards go up.
        A missing table (code deployed before the schema) must not break "New round": the failed statement does not
-       end the transaction, the round goes on without it. */
+       end the transaction, the round goes on without it. Anything else (e.g. a deadlock) is rethrown (B-52 S1b review). */
     try {
         record_round_on_active_item($link, $t);
     } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
         error_log('poker new round: topic item not updated: ' . $e->getMessage());
     }
 
@@ -1037,8 +1055,9 @@ function getDao($t, $id) {
     if (count($missing) > 0) $custom_played = array_values(load_custom_cards_by_key($link, $t, $missing, card_catalog()));
 
 
-    /* B-52 S1: the topic items; the active one gets the cards of the running round while they are revealed.
-       A missing table (code deployed before the schema) must not break the board: topic_items null then. */
+    /* B-52 S1/S1b: the active topic item (with the cards of the running round while they are revealed), counts and
+       topics_rev; the lists come from get_topics.php. A missing table or column (code deployed before the schema)
+       must not break the board: topic_items null then. */
     $topic_items = null;
     try {
         $live_distribution = null;
@@ -1050,7 +1069,7 @@ function getDao($t, $id) {
             ksort($live_distribution);
             if (count($live_distribution) === 0) $live_distribution = null;
         }
-        $topic_items = topic_items_for_dao($link, $t, $topic, $live_distribution, card_catalog(),
+        $topic_items = topic_items_for_dao($link, $t, $live_distribution, card_catalog(),
                                            $deck === null ? 'agree' : $deck['aim']);
     } catch (mysqli_sql_exception $e) {
         error_log('poker dao: topic items not loaded: ' . $e->getMessage());
@@ -1156,11 +1175,11 @@ function getDao($t, $id) {
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
         "deck"=>$deck, // B-98: {id, group, cards, controls, rev}, card data in card_catalog.json (B-98 S4: custom_sets)
-        "custom_sets"=>array_values($custom_sets), // B-98 S4: [{set_id, deck_id, name, style, rev, cards}]
+        "custom_sets"=>array_values($custom_sets), // B-98 S4: [{set_id, deck_id, name, style, aim, rev, cards}] (B-52 S1b: aim)
         "custom_cards_played"=>$custom_played, // B-98 S4: inactive custom cards still on the table
         "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>custom_cards_max()),
-        "topic"=>(String)$topic, // B-52 S1: text of the active topic item (heading + description), '' without one
-        "topic_items"=>$topic_items, // B-52 S1: {active_id, open, done, done_count, limits} (api/lib_topics.php)
+        "topic"=>(String)$topic, // the team's note (B-52 S1b: independent of the topic items again)
+        "topic_items"=>$topic_items, // B-52 S1b: {active, open_count, done_count, next_heading, topics_rev} (api/lib_topics.php)
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
         "timer_visibility"=>(Int)$timer_visibility,

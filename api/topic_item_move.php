@@ -22,7 +22,6 @@ if ($item === null) topic_fail($link, 404, 'item');
 if ($item['status'] !== 'open') topic_fail($link, 409, 'not_open');
 
 place_open_item($link, $t, $id, (int)$to);
-sync_team_topic($link, $t);
 $active = active_item_id($link, $t);
 $link->commit();
 $link->close();

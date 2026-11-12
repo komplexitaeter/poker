@@ -14,12 +14,8 @@ if ($id === 0) topic_fail(null, 400, 'item');
 $link = db_init();
 lock_team_topics($link, $t);
 
-$sql = $link->prepare("delete from pok_topic_items_tbl where id = ? and team_id = ?");
-$sql->bind_param('is', $id, $t);
-$sql->execute();
-if ($sql->affected_rows < 1) topic_fail($link, 404, 'item');
+if (!delete_topic_item($link, $t, $id)) topic_fail($link, 404, 'item');
 
-sync_team_topic($link, $t);
 $active = active_item_id($link, $t);
 $link->commit();
 $link->close();

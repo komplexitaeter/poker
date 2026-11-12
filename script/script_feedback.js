@@ -67,7 +67,7 @@ function prepareMenuSection(sec) {
         document.getElementById('topic_reset').disabled = !gTopicChangePending;
         document.getElementById('topic_save').disabled = !gTopicChangePending;
         if (!gTopicChangePending) document.getElementById('topic_txt').value = gTopic;
-        prepareTopicMenu(); // B-52 S1: the field (one topic) or the list of items (topics.js)
+        prepareTopicMenu(); // B-52 S1b: the note field, below it the items (topics.js; loads the lists if needed)
     }
 }
 

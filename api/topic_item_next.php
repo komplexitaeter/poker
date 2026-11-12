@@ -4,14 +4,17 @@ require './lib.php';
 require_post();
 
 /*
- * B-52 S1: "Next item" - finishes the active topic item and starts a new round, in one transaction (the same lock as
+ * B-52 S1: "Next item" - finishes the active topic item and starts a new round, in one transaction. S1b: also
+ * "Finish item" for the last open item (same call): afterwards there is no active item (active_id null), the team's
+ * note (pok_teams_tbl.topic) stays as it is (the same lock as
  * newround.php, so it cannot interleave with "New round", a card or a deck change). URL: t, item = id of the active
  * item as the board shows it (two people clicking at the same time finish one item only: the second gets 409).
- * 1. Cards down? -> start_new_round() as newround.php (snapshot with the topic of this item, the revealed round goes
- *    to the item: distribution, rounds_cnt; then all cards up). No card down -> no new round needed.
+ * 1. Cards down? -> start_new_round() as newround.php (snapshot with the note and topic_item_id = this item, the
+ *    revealed round goes to the item: distribution, rounds_cnt, last_round_date; then all cards up). No card down ->
+ *    no new round needed.
  * 2. The item is done: done_date, its distribution of the last revealed round, result = the card chosen by the team
  *    (result_auto 0) or the automatic one (deck_aim() 'agree': highest value; 'perspectives' or no vote: null).
- * 3. The next open item is active, pok_teams_tbl.topic follows it ('' without one).
+ * 3. The next open item is active (none after the last one).
  * Answer: {ok, item_id (done), active_id (new active or null), result_card_key, result_auto};
  * 400 {error: item}, 409 {error: not_active, active_id} (item is not the active one, e.g. finished by someone else).
  */
@@ -48,14 +51,8 @@ if ($chosen !== null) {
     $auto = 1;
 }
 
-$sql = $link->prepare("update pok_topic_items_tbl
-                          set status = 'done', done_date = current_timestamp, position = 0
-                             ,result_card_key = ?, result_auto = ?
-                        where id = ? and team_id = ?");
-$sql->bind_param('siis', $result, $auto, $id, $t);
-$sql->execute();
+finish_topic_item($link, $t, $id, $result, $auto);
 
-sync_team_topic($link, $t);
 $next = active_item_id($link, $t);
 $link->commit();
 $link->close();

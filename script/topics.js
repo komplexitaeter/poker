@@ -1,12 +1,18 @@
-/* B-52 S1: topics as a list of items (api/topic_item_*.php, api/update_topic.php; dao topic_items and deck.aim,
- * see script/types.ts). The topmost open item is the active one and stands where the topic stood.
- * Premise (Andreas, 2026-11-11): who enters one topic as before sees no difference and needs no extra click. "Simple"
- * (topicItemsSimple()): at most one open item, no done item, no ID and no maturity at the item - then the column
- * shows the topic text as before and the menu has the one field (update_topic.php) plus a quiet "+ next item".
- * Otherwise: the column shows the active item (ID, heading, description cut with "more", maturity) and "+N more";
- * the menu shows the list (open / done). topic_items null (table missing on the server): always the old behaviour.
- * The results panel (updateSide() in script.js) marks the result of the active item (deck aim 'agree') and offers a
- * dropdown; "Next item" next to "New round" while more open items wait.
+/* B-52 S1/S1b: topics as a list of items (api/topic_item_*.php, api/get_topics.php; dao topic_items and deck.aim,
+ * see script/types.ts). The topmost open item is the active one.
+ * S1b (Andreas, 2026-11-12): the note stays a note. The topic field (update_topic.php, dao topic) is the general note
+ * of the team, always shown in the column as before; the items come in addition. Without items everything looks as
+ * before S1 (plus "+ Add item" in the topics menu).
+ * - dao.php brings only the summary (topic_items: active, open_count, done_count, next_heading, topics_rev). The column
+ *   (active item, "+N more · next: …") and the results panel live on it.
+ * - The lists come from get_topics.php, only while the topics menu shows them and only when topics_rev differs from
+ *   the rev the last lists were loaded for (the done items when there are any). One request at a time; a request
+ *   asked for meanwhile follows when the running one is done (loadTopicLists()).
+ * - The results panel (updateSide() in script.js) marks the result of the active item (deck aim 'agree') and offers a
+ *   dropdown; after the reveal "Next item" next to "New round", for the last open item "Finish item" (then no item
+ *   is active, the note stays).
+ * - Done items (history): agreed value (if any), rounds, date of the last round, the spread behind a triangle.
+ * topic_items null (table missing on the server): the old behaviour, no items.
  * Free text only via textContent (or remarkable without HTML); free text goes in the POST body, never in the URL.
  * After every write the board loads itself (apiWrite). */
 
@@ -19,10 +25,17 @@ const MATURITY_TEXTS = [
 ];
 
 
-let gTopicItems = null;       // dao topic_items; null: the old single topic only
-let gTopicListForced = false; // "+ next item" in the simple menu: the list stays until the menu is opened again
+let gTopicItems = null;       // dao topic_items (the summary); null: the note only (old server)
+let gTopicLists = null;       // the last answer of get_topics.php {topics_rev, open, open_count, done_count, limits, done?}
+let gTopicListsFor = null;    // the dao topics_rev the lists were asked for (compared for inequality only)
+let gTopicListsDone = false;  // the lists were asked for with the done items
+let gTopicLoad = null;        // { seq } while a get_topics.php request runs
+let gTopicLoadAgain = false;  // another load was asked for while one ran
+let gTopicLoadSeq = 0;
+let gTopicLoadError = false;  // the last load failed (the menu offers "Try again")
 let gTopicEditor = null;      // { id: number | 'new' } while the item form is open in the menu
 let gTopicConfirmDelete = null; // id of the item whose trash can asks "Delete?"
+let gTopicDistOpen = new Set(); // ids of done items whose spread is unfolded
 let gTopicMenuKey = '';       // what the menu list shows now
 let gTopicViewKey = '';       // what the column shows now
 let gTopicDescMore = false;   // the column: the whole description ("more")
@@ -35,19 +48,17 @@ function topicMarkdown(text) {
 }
 
 function validTopicItems(items) {
-    return items !== null && typeof items === 'object' && Array.isArray(items.open) && Array.isArray(items.done);
-}
-
-/* the simple case: as before B-52 (one topic text) */
-function topicItemsSimple(items) {
-    if (!validTopicItems(items)) return true;
-    if (items.done_count > 0 || items.done.length > 0 || items.open.length > 1) return false;
-    const item = items.open[0];
-    return item === undefined || (!item.ext_id && item.maturity === null);
+    return items !== null && typeof items === 'object' && typeof items.topics_rev === 'number'
+        && typeof items.open_count === 'number' && typeof items.done_count === 'number';
 }
 
 function activeTopicItem() {
-    return validTopicItems(gTopicItems) && gTopicItems.open.length > 0 ? gTopicItems.open[0] : null;
+    return gTopicItems !== null && gTopicItems.active ? gTopicItems.active : null;
+}
+
+/* the team has items at all (open or done) */
+function topicHasItems() {
+    return gTopicItems !== null && gTopicItems.open_count + gTopicItems.done_count > 0;
 }
 
 function svgEl(tag, attrs) {
@@ -99,7 +110,7 @@ function maturityBadge(level) {
 
 /* ---------- the column (voting and results panel) ---------- */
 
-/* called by updateDom() before updateSide(): the topic or the active item where the topic stands */
+/* called by updateDom() before updateSide(): the note as before; with an active item the item and the note below it */
 function updateTopicView(json) {
     gTopicItems = validTopicItems(json.topic_items) ? json.topic_items : null;
     gTopic = json.topic;
@@ -107,10 +118,10 @@ function updateTopicView(json) {
     const topic = document.getElementById('topic');
     const label = document.querySelector('.topic-bar .topic-label');
     const edit = document.querySelector('.topic-bar .topic-edit');
-    const simple = topicItemsSimple(gTopicItems);
     const item = activeTopicItem();
 
-    if (simple || item === null) {
+    if (item === null) {
+        // as before S1: the note (markdown), no bar without one
         const key = 's:' + json.topic;
         if (gTopicViewKey !== key) {
             gTopicViewKey = key;
@@ -123,25 +134,25 @@ function updateTopicView(json) {
             edit.setAttribute('aria-label', 'Edit topic');
         }
     } else {
-        const next = gTopicItems.open[1];
         const key = 'i:' + JSON.stringify([item.id, item.ext_id, item.heading, item.description, item.maturity,
-            gTopicItems.open.length, next ? next.heading : null, gTopicRevealed, gTopicDescMore, gTopicMatOpen]);
+            gTopicItems.open_count, gTopicItems.next_heading, json.topic, gTopicRevealed, gTopicDescMore, gTopicMatOpen]);
         if (gTopicViewKey !== key) {
             gTopicViewKey = key;
             topic.setAttribute('data-hash', key.hashCode().toString());
             topic.classList.add('ti-view');
-            topic.replaceChildren(...topicItemView(item, gTopicItems.open.length, next));
+            topic.replaceChildren(...topicItemView(item, gTopicItems.open_count, gTopicItems.next_heading, json.topic));
             topic.classList.remove('display_none');
-            label.textContent = 'item 1 of ' + gTopicItems.open.length;
-            edit.setAttribute('aria-label', 'Edit items');
+            label.textContent = 'item 1 of ' + gTopicItems.open_count;
+            edit.setAttribute('aria-label', 'Edit topic and items');
             requestAnimationFrame(updateTopicMoreButton);
         }
     }
     renderTopicMenu();
+    loadTopicLists();
     updateNextItemButton(json);
 }
 
-function topicItemView(item, openCount, next) {
+function topicItemView(item, openCount, nextHeading, note) {
     const parts = [];
     const meta = document.createElement('div');
     meta.className = 'ti-meta';
@@ -191,7 +202,7 @@ function topicItemView(item, openCount, next) {
         parts.push(text);
     }
 
-    if (next) {
+    if (openCount > 1 && nextHeading !== null && nextHeading !== undefined) {
         const more = document.createElement('button');
         more.type = 'button';
         more.className = 'ti-next';
@@ -199,8 +210,21 @@ function topicItemView(item, openCount, next) {
         more.title = 'Open the topic list';
         more.dataset.open = 'topic'; // the menu's own opener handling (script_feedback.js)
         more.setAttribute('aria-controls', 'menu');
-        more.textContent = '+' + (openCount - 1) + ' more · next: ' + next.heading;
+        more.textContent = '+' + (openCount - 1) + ' more · next: ' + nextHeading;
         parts.push(more);
+    }
+
+    // S1b: the team's note stays visible below the item
+    if (note) {
+        const box = document.createElement('div');
+        box.className = 'ti-note-view';
+        box.id = 'ti_note_view';
+        box.appendChild(textElement('span', 'ti-note-lab', 'note'));
+        const text = document.createElement('div');
+        text.className = 'ti-note-md';
+        text.innerHTML = topicMarkdown(note);
+        box.appendChild(text);
+        parts.push(box);
     }
     return parts;
 }
@@ -334,12 +358,18 @@ function onSpreadPick(event) {
     setTopicResult(col.getAttribute('data-card'));
 }
 
-/* "Next item" next to "New round": revealed and more open items waiting */
+/* "Next item" next to "New round" after the reveal while an item is active; "Finish item" for the last open one */
 function updateNextItemButton(json) {
     const button = document.getElementById('nextitem_btn');
     if (button === null) return;
     const revealed = json.all_players_ready && json.players_count > 0;
-    const show = revealed && validTopicItems(gTopicItems) && gTopicItems.open.length > 1;
+    const show = revealed && activeTopicItem() !== null;
+    const last = gTopicItems === null || gTopicItems.open_count <= 1;
+    const text = last ? 'Finish item' : 'Next item';
+    const label = button.querySelector('.lbl');
+    if (label !== null && label.textContent !== text) label.textContent = text;
+    button.dataset.last = last ? 'true' : 'false';
+    button.title = last ? 'Finish this item – no item after it' : 'Finish this item and go to the next one';
     button.hidden = !show;
     button.closest('.dock').classList.toggle('has-next', show);
 }
@@ -348,12 +378,13 @@ function nextTopicItem() {
     const item = activeTopicItem();
     if (item === null) return;
     const button = document.getElementById('nextitem_btn');
+    const last = button.dataset.last === 'true';
     button.disabled = true;
     gTopicDescMore = false;
     gTopicMatOpen = false;
     // 409 not_active: someone else was quicker; the reload shows the new item
     topicWrite('topic_item_next.php', { item: item.id }, null, [409]).then(() => { button.disabled = false; });
-    measureEvent('TOPIC_NEXT_ITEM');
+    measureEvent(last ? 'TOPIC_FINISH_ITEM' : 'TOPIC_NEXT_ITEM');
 }
 
 /* ---------- writes ---------- */
@@ -369,24 +400,84 @@ function topicWrite(endpoint, params, form = null, quiet = []) {
     });
 }
 
+/* ---------- the lists (get_topics.php) ---------- */
+
+/* loads the lists while the topics menu shows them (opening: it is about to), only when the dao topics_rev differs
+ * from the rev of the last lists (or the done items are missing). One request at a time; asked again meanwhile, the
+ * next follows when it is done. An answer that an own change made outdated (topicListsChanged()) is dropped. */
+function loadTopicLists(opening = false) {
+    if (gTopicItems === null || !topicHasItems()) return;
+    if (!opening && openMenuSection() !== 'topic') return;
+    const rev = gTopicItems.topics_rev;
+    const done = gTopicItems.done_count > 0;
+    if (rev === gTopicListsFor && (!done || gTopicListsDone)) return;
+    if (gTopicLoad !== null) {
+        gTopicLoadAgain = true;
+        return;
+    }
+    const seq = ++gTopicLoadSeq;
+    gTopicLoad = { seq };
+    const query = new URLSearchParams({ t: t });
+    if (done) query.set('done', '1');
+    fetch('./api/get_topics.php?' + query.toString(), { cache: 'no-store' })
+        .then(response => response.ok ? response.json() : Promise.reject(new Error('HTTP ' + response.status)))
+        .then(lists => {
+            if (lists === null || typeof lists !== 'object' || !Array.isArray(lists.open)) throw new Error('lists');
+            if (seq !== gTopicLoadSeq) return; // outdated meanwhile
+            gTopicLists = lists;
+            gTopicListsFor = rev;
+            gTopicListsDone = done && Array.isArray(lists.done);
+            gTopicLoadError = false;
+        })
+        .catch(() => {
+            if (seq !== gTopicLoadSeq) return;
+            // no retry loop: the next change of topics_rev or "Try again" loads again
+            gTopicLoadError = true;
+            gTopicListsFor = rev;
+            gTopicListsDone = done;
+        })
+        .finally(() => {
+            gTopicLoad = null;
+            renderTopicMenu();
+            if (gTopicLoadAgain || seq !== gTopicLoadSeq) {
+                gTopicLoadAgain = false;
+                loadTopicLists();
+            }
+        });
+}
+
+/* an own change shown at once (move): a running load is outdated, the lists are loaded again afterwards */
+function topicListsChanged() {
+    gTopicLoadSeq++;
+    gTopicListsFor = null;
+}
+
+function topicListItem(id) {
+    if (gTopicLists === null) return null;
+    return gTopicLists.open.find(item => item.id === id)
+        || (gTopicLists.done || []).find(item => item.id === id) || null;
+}
+
 /* ---------- the topics menu ---------- */
 
-/* force: also while the item form is open or the topic field has unsaved text */
+/* the note field stays (S1b); below it the items. force: also while the item form is open */
 function renderTopicMenu(force = false) {
     const single = document.getElementById('topic_single');
     const list = document.getElementById('topic_list');
     if (single === null || list === null) return;
-    const simple = !gTopicListForced && topicItemsSimple(gTopicItems);
-    if (!force && (gTopicEditor !== null || (gTopicChangePending && !single.hidden))) return;
+    const label = single.querySelector('label.lab');
+    const labelText = topicHasItems() ? 'Note for everyone (optional, Markdown works)'
+        : 'What are you estimating? (optional, Markdown works)';
+    if (label !== null && label.textContent !== labelText) label.textContent = labelText;
 
-    document.getElementById('topic_add_next').hidden = gTopicItems === null;
-    single.hidden = !simple;
-    list.hidden = simple;
-    if (simple) {
+    list.hidden = gTopicItems === null;
+    if (gTopicItems === null) {
         gTopicMenuKey = '';
         return;
     }
-    const key = JSON.stringify([gTopicItems, gTopicEditor, gTopicConfirmDelete]);
+    if (!force && gTopicEditor !== null) return;
+    const key = JSON.stringify([gTopicItems, gTopicLists, gTopicLoad !== null, gTopicLoadError, gTopicEditor,
+        gTopicConfirmDelete, [...gTopicDistOpen]]);
     if (!force && key === gTopicMenuKey) return;
     gTopicMenuKey = key;
 
@@ -405,25 +496,46 @@ function restoreTopicFocus(list, act, id) {
     if (element !== null) element.focus({ preventScroll: true });
 }
 
+/* while the lists load (or failed): one line instead of the list */
+function topicLoadState() {
+    if (gTopicLoadError && gTopicLoad === null) {
+        const p = textElement('p', 'hint ti-load', 'The items could not be loaded. ');
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'ti-link';
+        retry.dataset.tiAct = 'retry';
+        retry.textContent = 'Try again';
+        p.appendChild(retry);
+        return p;
+    }
+    return textElement('p', 'hint ti-load', 'Loading items …');
+}
+
 function topicListParts() {
-    const items = gTopicItems || { open: [], done: [], done_count: 0, limits: {} };
+    const summary = gTopicItems;
+    const lists = gTopicLists;
+    const has = topicHasItems();
     const parts = [];
 
-    const head = document.createElement('div');
-    head.className = 'ti-head';
-    head.append(textElement('h3', 'ti-sl', 'open · ' + items.open.length),
-        textElement('span', 'ti-note', 'top item = the one you talk about now'));
-    parts.push(head);
+    if (has) {
+        const head = document.createElement('div');
+        head.className = 'ti-head';
+        head.appendChild(textElement('h3', 'ti-sl', 'items · ' + summary.open_count + ' open'));
+        if (summary.open_count > 0) head.appendChild(textElement('span', 'ti-note', 'top item = the one you talk about now'));
+        parts.push(head);
+    }
 
     const ol = document.createElement('ol');
     ol.className = 'ti-items';
     ol.id = 'ti_open';
-    items.open.forEach((item, index) => {
+    if (has && lists === null) parts.push(topicLoadState());
+    const open = lists !== null && summary.open_count > 0 ? lists.open : [];
+    open.forEach((item, index) => {
         ol.appendChild(gTopicEditor !== null && gTopicEditor.id === item.id
-            ? topicEditorRow(item) : topicItemRow(item, index, items.open.length));
+            ? topicEditorRow(item) : topicItemRow(item, index, open.length));
     });
     if (gTopicEditor !== null && gTopicEditor.id === 'new') ol.appendChild(topicEditorRow(null));
-    parts.push(ol);
+    if (ol.childNodes.length > 0) parts.push(ol);
 
     if (gTopicEditor === null || gTopicEditor.id !== 'new') {
         const add = document.createElement('button');
@@ -432,22 +544,30 @@ function topicListParts() {
         add.id = 'ti_add';
         add.dataset.tiAct = 'add';
         add.append(iconSvg('plus'), 'Add item');
-        add.disabled = items.limits && items.open.length >= items.limits.open;
+        add.disabled = !!(lists && lists.limits && summary.open_count >= lists.limits.open);
         parts.push(add);
+        if (!has) parts.push(textElement('p', 'hint ti-add-hint', 'Several topics? Add them as items and go through them one by one.'));
     }
 
-    if (items.done.length > 0) {
+    if (summary.done_count > 0) {
         const doneHead = document.createElement('div');
         doneHead.className = 'ti-head ti-done-head';
-        doneHead.appendChild(textElement('h3', 'ti-sl', 'done · ' + items.done_count));
+        doneHead.appendChild(textElement('h3', 'ti-sl', 'done · ' + summary.done_count));
         parts.push(doneHead);
-        const ul = document.createElement('ul');
-        ul.className = 'ti-done';
-        ul.id = 'ti_done';
-        items.done.forEach(item => ul.appendChild(gTopicEditor !== null && gTopicEditor.id === item.id
-            ? topicEditorRow(item) : topicDoneRow(item)));
-        parts.push(ul);
-        parts.push(textElement('p', 'hint', 'Done items keep the spread of their last round. Reopen one to talk about it again.'));
+        const done = lists !== null && Array.isArray(lists.done) ? lists.done : null;
+        if (done === null) {
+            if (lists !== null) parts.push(topicLoadState());
+        } else {
+            const ul = document.createElement('ul');
+            ul.className = 'ti-done';
+            ul.id = 'ti_done';
+            done.forEach(item => ul.appendChild(gTopicEditor !== null && gTopicEditor.id === item.id
+                ? topicEditorRow(item) : topicDoneRow(item)));
+            parts.push(ul);
+            if (summary.done_count > done.length) {
+                parts.push(textElement('p', 'hint', 'The latest ' + done.length + ' of ' + summary.done_count + ' done items.'));
+            }
+        }
     }
     return parts;
 }
@@ -498,50 +618,56 @@ function topicDeleteButton(item) {
     return iconButton('trash', 'Delete: ' + item.heading, 'delete', item.id);
 }
 
-/* the result of a done item: the card, else the distribution as mini bars (perspectives), else nothing */
-function topicResultView(item) {
-    const wrap = document.createElement('span');
-    wrap.className = 'ti-res';
-    if (item.result_card_key !== null) {
-        const card = cardByKey(item.result_card_key);
-        wrap.append(textElement('span', 'ti-res-lab', 'estimate'));
-        const value = document.createElement('b');
-        value.className = 'ti-res-val';
-        value.appendChild(card ? cardSmall(card) : document.createTextNode(item.result_card_key));
-        wrap.appendChild(value);
-        return wrap;
-    }
+/* the cards of a distribution with votes, in deck order where known */
+function topicDistKeys(distribution) {
+    const keys = Object.keys(distribution || {}).filter(key => distribution[key] > 0);
+    const order = gDeck ? gDeck.cards.map(card => card.key) : [];
+    const rank = key => (order.indexOf(key) < 0 ? 999 : order.indexOf(key));
+    return keys.sort((a, b) => rank(a) - rank(b));
+}
+
+/* the spread of a done item: a bar per played card, the count above, the card below */
+function topicDistView(item) {
     const distribution = item.distribution || {};
-    const keys = Object.keys(distribution).filter(key => distribution[key] > 0);
-    if (keys.length === 0) {
-        wrap.appendChild(textElement('span', 'ti-res-lab', 'no votes'));
-        return wrap;
-    }
-    // deck order where known
-    const order = gDeck.cards.map(card => card.key);
-    keys.sort((a, b) => (order.indexOf(a) < 0 ? 999 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 999 : order.indexOf(b)));
-    const max = Math.max(...keys.map(key => distribution[key]));
-    wrap.appendChild(textElement('span', 'ti-res-lab', 'spread'));
-    const bars = document.createElement('span');
+    const keys = topicDistKeys(distribution);
+    const max = Math.max(1, ...keys.map(key => distribution[key]));
+    const bars = document.createElement('div');
     bars.className = 'ti-dist';
+    bars.id = 'ti_dist_' + item.id;
     keys.forEach(key => {
         const card = cardByKey(key);
         const col = document.createElement('span');
-        col.className = 'ti-dist-col';
+        col.className = 'ti-dist-col' + (item.result_card_key === key ? ' est' : '');
+        col.dataset.card = key;
         const name = card ? cardName(card) : key;
         col.title = name + ': ' + distribution[key];
+        col.appendChild(textElement('span', 'ti-dist-n', String(distribution[key])));
         const bar = document.createElement('i');
-        bar.style.height = Math.max(2, Math.round(distribution[key] / max * 14)) + 'px';
+        bar.style.height = Math.max(3, Math.round(distribution[key] / max * 28)) + 'px';
         if (card && card.color) bar.style.setProperty('--c', 'var(--c-' + card.color + ', var(--line-strong))');
         col.appendChild(bar);
         col.appendChild(card ? cardSmall(card, false) : textElement('span', 'sm-text', key));
-        col.appendChild(textElement('span', 'sr-only', name + ': ' + distribution[key]));
+        col.appendChild(textElement('span', 'sr-only', name + ': ' + distribution[key] + (distribution[key] === 1 ? ' vote' : ' votes')));
         bars.appendChild(col);
     });
-    wrap.appendChild(bars);
-    return wrap;
+    return bars;
 }
 
+/* 'YYYY-MM-DD hh:mm:ss' (server time) -> a short local date ("12 Nov"; other years with the year), '' if unknown */
+function topicDate(value) {
+    const m = typeof value === 'string' ? value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/) : null;
+    if (m === null) return { short: '', long: '' };
+    const date = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+    if (isNaN(date.getTime())) return { short: '', long: '' };
+    const sameYear = date.getFullYear() === new Date().getFullYear();
+    const short = date.toLocaleDateString(undefined, sameYear ? { day: 'numeric', month: 'short' }
+        : { day: 'numeric', month: 'short', year: 'numeric' });
+    const long = date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    return { short, long };
+}
+
+/* a done item (history): heading; agreed value (only if there is one), rounds, date of the last round, the spread
+ * behind a triangle (a disclosure); edit, delete, reopen */
 function topicDoneRow(item) {
     const li = document.createElement('li');
     li.dataset.id = String(item.id);
@@ -550,11 +676,43 @@ function topicDoneRow(item) {
     if (item.ext_id) line.appendChild(textElement('span', 'ti-ext', item.ext_id + ' '));
     line.appendChild(textElement('b', '', item.heading));
     line.title = item.heading;
+
+    const hasDist = topicDistKeys(item.distribution).length > 0;
+    const open = hasDist && gTopicDistOpen.has(item.id);
+    const sum = document.createElement(hasDist ? 'button' : 'span');
+    sum.className = 'ti-hist';
+    if (hasDist) {
+        sum.type = 'button';
+        sum.dataset.tiAct = 'dist';
+        sum.dataset.tiId = String(item.id);
+        sum.setAttribute('aria-expanded', open ? 'true' : 'false');
+        sum.setAttribute('aria-controls', 'ti_dist_' + item.id);
+        sum.title = open ? 'Hide the spread' : 'Show the spread';
+        const tri = svgEl('svg', { class: 'ti-tri', width: 8, height: 8, viewBox: '0 0 8 8', 'aria-hidden': 'true' });
+        tri.appendChild(svgEl('polygon', { points: '1,0 7,4 1,8' }));
+        sum.appendChild(tri);
+    }
+    if (item.result_card_key !== null) {
+        const card = cardByKey(item.result_card_key);
+        const value = document.createElement('b');
+        value.className = 'ti-res-val';
+        value.appendChild(card ? cardSmall(card) : document.createTextNode(item.result_card_key));
+        const res = document.createElement('span');
+        res.className = 'ti-res';
+        res.append(textElement('span', 'ti-res-lab', 'agreed'), value);
+        sum.appendChild(res);
+    }
+    const rounds = item.rounds_cnt === 1 ? '1 round' : (item.rounds_cnt > 0 ? item.rounds_cnt + ' rounds' : 'no round');
+    sum.appendChild(textElement('span', 'ti-rounds', rounds));
+    const date = topicDate(item.last_round_date);
+    if (date.short !== '') {
+        const time = textElement('span', 'ti-date', date.short);
+        time.title = 'Last round: ' + date.long;
+        sum.appendChild(time);
+    }
+
     const l2 = document.createElement('span');
     l2.className = 'ti-l2';
-    l2.appendChild(topicResultView(item));
-    const badge = maturityBadge(item.maturity);
-    if (badge !== null) l2.appendChild(badge);
     const grow = document.createElement('span');
     grow.className = 'ti-grow';
     const reopen = document.createElement('button');
@@ -565,8 +723,13 @@ function topicDoneRow(item) {
     reopen.title = 'Back to the open items, right after the current one';
     reopen.setAttribute('aria-label', 'Reopen: ' + item.heading);
     reopen.append(iconSvg('reset'), 'reopen');
-    l2.append(grow, iconButton('pen', 'Edit: ' + item.heading, 'edit', item.id), topicDeleteButton(item), reopen);
+    l2.append(sum, grow, iconButton('pen', 'Edit: ' + item.heading, 'edit', item.id), topicDeleteButton(item), reopen);
     li.append(line, l2);
+    if (hasDist) {
+        const dist = topicDistView(item);
+        dist.hidden = !open;
+        li.appendChild(dist);
+    }
     return li;
 }
 
@@ -580,7 +743,7 @@ function labelled(labelText, field) {
 }
 
 function topicEditorRow(item) {
-    const limits = (gTopicItems && gTopicItems.limits) || { ext_id: 20, heading: 200, description: 2000 };
+    const limits = (gTopicLists && gTopicLists.limits) || { ext_id: 20, heading: 200, description: 2000 };
     const li = document.createElement('li');
     li.className = 'ti-it editing';
     const form = document.createElement('form');
@@ -715,7 +878,7 @@ function onTopicListClick(event) {
     if (button === null || button.disabled) return;
     const act = button.dataset.tiAct;
     const id = button.dataset.tiId ? Number(button.dataset.tiId) : null;
-    const open = gTopicItems ? gTopicItems.open : [];
+    const open = gTopicLists ? gTopicLists.open : [];
     const index = open.findIndex(item => item.id === id);
     if (act !== 'delete-sure' && act !== 'delete') gTopicConfirmDelete = null;
     if (act === 'add') {
@@ -724,9 +887,8 @@ function onTopicListClick(event) {
         const wasNew = gTopicEditor !== null && gTopicEditor.id === 'new';
         const editedId = gTopicEditor !== null ? gTopicEditor.id : null;
         gTopicEditor = null;
-        if (wasNew && topicItemsSimple(gTopicItems)) gTopicListForced = false;
         renderTopicMenu(true);
-        const target = wasNew ? document.getElementById('ti_add') || document.getElementById('topic_txt')
+        const target = wasNew ? document.getElementById('ti_add')
             : document.querySelector('#topic_list [data-ti-act="edit"][data-ti-id="' + editedId + '"]');
         if (target !== null) focusQuietly(target);
     } else if (act === 'edit') {
@@ -735,6 +897,7 @@ function onTopicListClick(event) {
         const to = act === 'up' ? index - 1 : index + 1;
         if (to < 0 || to >= open.length) return;
         // shown at once, the reload brings the server's state
+        topicListsChanged();
         const moved = open.splice(index, 1)[0];
         open.splice(to, 0, moved);
         renderTopicMenu(true);
@@ -751,34 +914,28 @@ function onTopicListClick(event) {
     } else if (act === 'reopen') {
         topicWrite('topic_item_reopen.php', { item: id, at: 'next' });
         measureEvent('TOPIC_ITEM_REOPENED');
+    } else if (act === 'dist') {
+        if (gTopicDistOpen.has(id)) gTopicDistOpen.delete(id); else gTopicDistOpen.add(id);
+        renderTopicMenu(true);
+    } else if (act === 'retry') {
+        gTopicLoadError = false;
+        gTopicListsFor = null;
+        loadTopicLists();
+        renderTopicMenu(true);
     }
 }
 
-/* the simple menu: "+ next item" - unsaved text is saved first, then the list with the form for the next item */
-function topicAddNext() {
-    const before = gTopicChangePending
-        ? apiWrite('./api/update_topic.php?t=' + t, { body: new URLSearchParams({ topic: document.getElementById('topic_txt').value }) })
-        : Promise.resolve(null);
-    gTopicChangePending = false;
-    before.then(() => {
-        gTopicListForced = true;
-        openTopicEditor('new');
-    });
-}
-
-/* the topics menu is opened: the list or the field fresh (prepareMenuSection in script_feedback.js) */
+/* the topics menu is opened: the note field, the list fresh (prepareMenuSection in script_feedback.js) */
 function prepareTopicMenu() {
-    gTopicListForced = false;
     gTopicEditor = null;
     gTopicConfirmDelete = null;
     renderTopicMenu(true);
+    loadTopicLists(true);
 }
 
-/* where the focus goes when the topics menu opens: the field (simple) or the first entry of the list */
+/* where the focus goes when the topics menu opens: the note field (as before) */
 function topicMenuFocus() {
-    const list = document.getElementById('topic_list');
-    if (list === null || list.hidden) return document.getElementById('topic_txt');
-    return list.querySelector('[data-ti-act="edit"]') || document.getElementById('ti_add');
+    return document.getElementById('topic_txt');
 }
 
 function initTopicItems() {

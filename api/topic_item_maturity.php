@@ -20,9 +20,7 @@ $link = db_init();
 lock_team_topics($link, $t);
 
 if (load_topic_item($link, $t, $id) === null) topic_fail($link, 404, 'item');
-$sql = $link->prepare("update pok_topic_items_tbl set maturity = ? where id = ? and team_id = ?");
-$sql->bind_param('iis', $maturity, $id, $t);
-$sql->execute();
+set_topic_item_maturity($link, $t, $id, $maturity);
 
 $active = active_item_id($link, $t);
 $link->commit();

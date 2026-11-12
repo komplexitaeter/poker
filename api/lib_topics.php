@@ -1,28 +1,34 @@
 <?php
 /*
- * B-52 S1: topics as a list of items per team (pok_topic_items_tbl, db_schema_pok_inc.sql).
- * - The topmost open item (status 'open', lowest position) is the active one. pok_teams_tbl.topic always holds its
- *   text (item_topic_text(), sync_team_topic()), so the round snapshot (pok_roundstats_tbl.topic), stats.php and
- *   Grafana work as before. No open item: topic ''.
+ * B-52: topics as a list of items per team (pok_topic_items_tbl, db_schema_pok_inc.sql).
+ * - The topmost open item (status 'open', lowest position) is the active one. "Next item" finishes it and the next
+ *   open one becomes active; the last one is finished the same way ("Finish item"), then there is no active item.
+ * - S1b (Andreas, 2026-11-12): pok_teams_tbl.topic is the team's note again (update_topic.php as before S1), independent
+ *   of the items; the round snapshot (pok_roundstats_tbl.topic) keeps the note, topic_item_id the active item.
+ * - topics_rev (pok_teams_tbl): EVERY write to pok_topic_items_tbl goes through topic_items_write(), which raises it in
+ *   the same transaction. No other code writes the table (checked by tests/e2e/specs/topic-items.spec.ts). The board
+ *   loads the lists (api/get_topics.php) only when topics_rev in dao.php changed.
  * - Every write locks the team row first (lock_team_topics(), same lock order as newround.php: team row, then the
  *   rest), so parallel writes of one team run one after the other.
  * - A revealed round that ends (start_new_round()) is stored at the active item: distribution (cards per key, no
- *   person data), rounds_cnt + 1, a chosen result is reset (record_round_on_active_item()).
+ *   person data), rounds_cnt + 1, last_round_date, a chosen result is reset (record_round_on_active_item()).
  * - Result rule (Andreas, 2026-11-11): the purpose of the deck (deck_aim(), the ONE place) is 'agree' or 'perspectives'
- *   (catalog "range": false). 'agree': the automatic result is the played card with the highest numeric_value; control
- *   cards and cards without a value (e.g. infinity) are ignored; none with a value -> no automatic result. The team may
- *   choose a card instead (result_auto 0), also one without a value. 'perspectives': only the distribution.
+ *   (catalog "range": false, custom sets: their aim). 'agree': the automatic result is the played card with the highest
+ *   numeric_value; control cards and cards without a value (e.g. infinity) are ignored; none with a value -> no automatic
+ *   result. The team may choose a card instead (result_auto 0), also one without a value. 'perspectives': only the
+ *   distribution.
  */
 
 const TOPIC_ITEMS_OPEN_MAX = 100;    // open items per team (add, reopen)
 const TOPIC_ITEMS_TOTAL_MAX = 1000;  // all items per team incl. done ones (add)
-const TOPIC_ITEMS_DONE_DELIVERED = 50; // done items in dao.php, newest first
+const TOPIC_DONE_PAGE = 50;          // done items per get_topics.php answer (default of done_limit)
+const TOPIC_DONE_PAGE_MAX = 100;     // highest done_limit
 const TOPIC_EXT_ID_MAX = 20;
 const TOPIC_HEADING_MAX = 200;
 const TOPIC_DESCRIPTION_MAX = 2000;  // like pok_teams_tbl.topic
-const TOPIC_TEXT_MAX = 2000;         // pok_teams_tbl.topic
 const TOPIC_DISTRIBUTION_MAX_BYTES = 1000; // pok_topic_items_tbl.distribution varchar(1000) ascii
 const TOPIC_MATURITY_MAX = 3;        // 0 new, 1 rough, 2 shaping, 3 ready; optional (null = not set, Andreas 2026-11-11)
+const DECK_AIMS = array('agree', 'perspectives');
 
 /* writes an error answer of the topic item endpoints and ends the request (rolls back an open transaction) */
 function topic_fail($link, int $status, string $error, array $extra = array()): never
@@ -44,8 +50,8 @@ function topic_ok(array $data): void
 }
 
 /*
- * Free text from the POST body (form encoded, like update_topic.php: a description is too long for the URL),
- * trimmed and cut like get_text_param(). null if the field is missing (edit: leave it unchanged).
+ * Free text from the POST body (form encoded: a description is too long for the URL), trimmed and cut like
+ * get_text_param(). null if the field is missing (edit: leave it unchanged).
  */
 function get_post_text_param(string $name, int $max_length): ?string
 {
@@ -67,53 +73,43 @@ function get_at_param(): string
     return get_id_param('at', 8) === 'next' ? 'next' : 'end';
 }
 
-/*
- * Starts a transaction and locks the team row. Unknown team: 403 (like require_team()). Returns the topic of the team.
- */
-function lock_team_topics($link, string $t): string
+/* Starts a transaction and locks the team row. Unknown team: 403 (like require_team()). */
+function lock_team_topics($link, string $t): void
 {
     $link->begin_transaction();
-    $sql = $link->prepare("select topic from pok_teams_tbl where id = ? for update");
+    $sql = $link->prepare("select id from pok_teams_tbl where id = ? for update");
     $sql->bind_param('s', $t);
     $sql->execute();
-    $row = $sql->get_result()->fetch_assoc();
-    if (!is_array($row)) {
+    if (!is_array($sql->get_result()->fetch_assoc())) {
         $link->rollback();
         http_response_code(403);
         exit;
     }
-    return (string)$row['topic'];
-}
-
-/* text for pok_teams_tbl.topic: heading, and the description on the next lines */
-function item_topic_text(string $heading, ?string $description): string
-{
-    $text = ($description === null || $description === '') ? $heading : $heading . "\n" . $description;
-    return cut_text($text, TOPIC_TEXT_MAX);
 }
 
 /*
- * Splits a topic text (update_topic.php, the old topic) into heading and description: the first line is the
- * heading, the following lines the description (as they are, also leading blank lines), so item_topic_text() gives
- * the text back unchanged. A first line longer than TOPIC_HEADING_MAX is cut ('…') and the description keeps the
- * whole text (nothing is lost).
- * $text is trimmed and not empty.
+ * THE only write path of pok_topic_items_tbl (S1b): runs an insert/update/delete on the table and, if it changed a
+ * row, raises pok_teams_tbl.topics_rev of the team in the same transaction (bump_topics_rev()). Returns the statement
+ * (affected_rows, insert_id). Every statement must be limited to the team ($t). Any other statement is refused, so
+ * nothing can slip past the counter by accident.
  */
-function split_topic_text(string $text): array
+function topic_items_write($link, string $t, string $statement, string $types, mixed ...$params): mysqli_stmt
 {
-    $text = cut_text($text, TOPIC_TEXT_MAX);
-    $parts = preg_split('/\r?\n/', $text, 2);
-    /* nothing trimmed inside: blank lines after the heading and trailing spaces (markdown line break) stay, so
-       item_topic_text() gives the text back exactly (B-52 S1 review, Fred); only the separator \r\n becomes \n */
-    $first = (string)$parts[0];
-    $rest = $parts[1] ?? '';
-    if (trim($rest) === '') $rest = '';
-    if (trim($first) === '') $first = '…'; // cannot happen for a trimmed text, but heading is required
-    if (preg_match('/^.{' . (TOPIC_HEADING_MAX + 1) . '}/us', $first)) {
-        return array('heading' => cut_text($first, TOPIC_HEADING_MAX - 1) . '…',
-                     'description' => cut_text($text, TOPIC_DESCRIPTION_MAX));
-    }
-    return array('heading' => $first, 'description' => $rest === '' ? null : cut_text($rest, TOPIC_DESCRIPTION_MAX));
+    if (!preg_match('/^\s*(insert\s+into|update|delete\s+from)\s+pok_topic_items_tbl\b/i', $statement))
+        throw new LogicException('topic_items_write() writes pok_topic_items_tbl only');
+    $sql = $link->prepare($statement);
+    $sql->bind_param($types, ...$params);
+    $sql->execute();
+    if ($sql->affected_rows > 0) bump_topics_rev($link, $t);
+    return $sql;
+}
+
+/* topics_rev + 1 (the caller holds the team row lock or gets it here); only called by topic_items_write() */
+function bump_topics_rev($link, string $t): void
+{
+    $sql = $link->prepare("update pok_teams_tbl set topics_rev = topics_rev + 1 where id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
 }
 
 /* ids of the open items of a team in their order => position */
@@ -132,12 +128,11 @@ function open_item_positions($link, string $t): array
 /* stores the order of the open items: position 1..n in the order of $ids (only rows whose position changes) */
 function store_open_order($link, string $t, array $ids, array $positions): void
 {
-    $sql = $link->prepare("update pok_topic_items_tbl set position = ? where id = ? and team_id = ?");
     foreach (array_values($ids) as $i => $id) {
         $position = $i + 1;
         if (($positions[$id] ?? -1) === $position) continue;
-        $sql->bind_param('iis', $position, $id, $t);
-        $sql->execute();
+        topic_items_write($link, $t, "update pok_topic_items_tbl set position = ? where id = ? and team_id = ?",
+                          'iis', $position, $id, $t);
     }
 }
 
@@ -168,20 +163,6 @@ function active_item_id($link, string $t): ?int
     return is_array($row) ? (int)$row['id'] : null;
 }
 
-/* pok_teams_tbl.topic := text of the active item ('' without one). The caller holds the team row lock. */
-function sync_team_topic($link, string $t): void
-{
-    $sql = $link->prepare("select heading, description from pok_topic_items_tbl
-                            where team_id = ? and status = 'open' order by position, id limit 1");
-    $sql->bind_param('s', $t);
-    $sql->execute();
-    $row = $sql->get_result()->fetch_assoc();
-    $topic = is_array($row) ? item_topic_text($row['heading'], $row['description']) : '';
-    $sql = $link->prepare("update pok_teams_tbl set topic = ? where id = ?");
-    $sql->bind_param('ss', $topic, $t);
-    $sql->execute();
-}
-
 /* number of open and of all items of a team */
 function topic_item_counts($link, string $t): array
 {
@@ -207,13 +188,63 @@ function load_topic_item($link, string $t, int $id): ?array
 function insert_topic_item($link, string $t, ?string $ext_id, string $heading, ?string $description, ?int $maturity,
                            int $index): int
 {
-    $sql = $link->prepare("insert into pok_topic_items_tbl(team_id, position, ext_id, heading, description, maturity)
-                           values(?, 0, ?, ?, ?, ?)");
-    $sql->bind_param('ssssi', $t, $ext_id, $heading, $description, $maturity);
-    $sql->execute();
-    $id = (int)$link->insert_id;
+    $sql = topic_items_write($link, $t, "insert into pok_topic_items_tbl(team_id, position, ext_id, heading, description, maturity)
+                                         values(?, 0, ?, ?, ?, ?)",
+                             'ssssi', $t, $ext_id, $heading, $description, $maturity);
+    $id = (int)$sql->insert_id;
     place_open_item($link, $t, $id, $index);
     return $id;
+}
+
+/* changes heading, description, ext_id and maturity of an item (open or done) */
+function update_topic_item($link, string $t, int $id, string $heading, ?string $description, ?string $ext_id,
+                           ?int $maturity): void
+{
+    topic_items_write($link, $t, "update pok_topic_items_tbl set heading = ?, description = ?, ext_id = ?, maturity = ?
+                                   where id = ? and team_id = ?",
+                      'sssiis', $heading, $description, $ext_id, $maturity, $id, $t);
+}
+
+/* sets the optional maturity of an item */
+function set_topic_item_maturity($link, string $t, int $id, ?int $maturity): void
+{
+    topic_items_write($link, $t, "update pok_topic_items_tbl set maturity = ? where id = ? and team_id = ?",
+                      'iis', $maturity, $id, $t);
+}
+
+/* deletes an item for good; false if the team has no such item */
+function delete_topic_item($link, string $t, int $id): bool
+{
+    return topic_items_write($link, $t, "delete from pok_topic_items_tbl where id = ? and team_id = ?",
+                             'is', $id, $t)->affected_rows > 0;
+}
+
+/* stores the result of an item: a chosen card (auto 0) or the automatic one (auto 1, null = no single value) */
+function set_topic_item_result($link, string $t, int $id, ?string $card_key, int $auto): void
+{
+    topic_items_write($link, $t, "update pok_topic_items_tbl set result_card_key = ?, result_auto = ? where id = ? and team_id = ?",
+                      'siis', $card_key, $auto, $id, $t);
+}
+
+/* "Next item" / "Finish item": the item is done with its final result (done_date = now, out of the open order) */
+function finish_topic_item($link, string $t, int $id, ?string $card_key, int $auto): void
+{
+    topic_items_write($link, $t, "update pok_topic_items_tbl
+                                     set status = 'done', done_date = current_timestamp, position = 0
+                                        ,result_card_key = ?, result_auto = ?
+                                   where id = ? and team_id = ?",
+                      'siis', $card_key, $auto, $id, $t);
+}
+
+/* a done item is open again (at index $index of the open order); an automatic result is computed again */
+function reopen_topic_item($link, string $t, int $id, int $index): void
+{
+    topic_items_write($link, $t, "update pok_topic_items_tbl
+                                     set status = 'open', done_date = null
+                                        ,result_card_key = if(result_auto = 1, null, result_card_key)
+                                   where id = ? and team_id = ?",
+                      'is', $id, $t);
+    place_open_item($link, $t, $id, $index);
 }
 
 /*
@@ -262,17 +293,32 @@ function card_result_infos($link, string $t, array $keys, array $catalog): array
 /*
  * THE rule for the purpose of a deck (Andreas, 2026-11-11): 'perspectives' = no automatic result, only the
  * distribution side by side; 'agree' = automatic result (highest numeric_value of the played cards) and range. Comes
- * only from the set property: catalog group "range": false (traffic lights, emotions). Custom sets and sets with
- * cards without values are 'agree' (cards without a value are just ignored by the automatic result). Never by set name
- * or id. dao.php delivers it as deck.aim, so the board uses the same rule. A later override by the team (per set,
- * item or round) goes here. $deck as returned by resolve_deck(); null (no card catalog) counts as 'agree'.
+ * only from the set property: catalog group "range": false (traffic lights, emotions); a custom set has its own aim
+ * (pok_custom_sets_tbl.aim, set in the set editor, default 'agree', S1b). Never by set name or id. dao.php delivers it
+ * as deck.aim, so the board uses the same rule. A later override by the team (per item or round) goes here.
+ * $deck as returned by resolve_deck(), $custom_sets from load_custom_sets(); null (no card catalog) counts as 'agree'.
  */
 function deck_aim(?array $deck, array $catalog, array $custom_sets = array()): string
 {
-    if ($deck === null || ($deck['id'] ?? null) === null || isset($deck['set_id'])) return 'agree';
+    if ($deck === null || ($deck['id'] ?? null) === null) return 'agree';
+    if (isset($deck['set_id'])) return ($custom_sets[$deck['set_id']]['aim'] ?? 'agree') === 'perspectives' ? 'perspectives' : 'agree';
     foreach ($catalog['groups'] as $group)
         if ($group['id'] === ($deck['group'] ?? null) && ($group['range'] ?? true) === false) return 'perspectives';
     return 'agree';
+}
+
+/* deck_aim() of the team's current deck, read without a lock (get_topics.php) */
+function team_deck_aim($link, string $t, array $catalog): string
+{
+    $sql = $link->prepare("select deck_id, deck_cards, deck_controls, deck_rev from pok_teams_tbl where id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    if (!is_array($row)) return 'agree';
+    $custom_sets = load_custom_sets($link, $t, $catalog);
+    $deck = resolve_deck($row['deck_id'], $row['deck_cards'], $row['deck_controls'], (int)$row['deck_rev'], $catalog,
+                         $custom_sets);
+    return deck_aim($deck, $catalog, $custom_sets);
 }
 
 /* a card the automatic result may pick: a numeric_value and no control card (cards without a value are ignored) */
@@ -332,8 +378,8 @@ function revealed_distribution($link, string $t): ?array
 
 /*
  * start_new_round() (newround.php, "Next item", deck change with cards down): a revealed round is stored at the
- * active item before the cards go up: distribution, rounds_cnt + 1, a chosen result is reset (the next round proposes
- * again). Caller holds the team row lock. Nothing without an active item or without a revealed round.
+ * active item before the cards go up: distribution, rounds_cnt + 1, last_round_date, a chosen result is reset (the
+ * next round proposes again). Caller holds the team row lock. Nothing without an active item or a revealed round.
  */
 function record_round_on_active_item($link, string $t): void
 {
@@ -343,119 +389,161 @@ function record_round_on_active_item($link, string $t): void
     if ($active === null) return;
     $json = json_encode($distribution);
     if (!is_string($json) || strlen($json) > TOPIC_DISTRIBUTION_MAX_BYTES) $json = null; // never "Data too long"; rounds still count
-    $sql = $link->prepare("update pok_topic_items_tbl
-                              set distribution = ?, rounds_cnt = least(rounds_cnt + 1, 65535)
-                                 ,result_card_key = null, result_auto = 1
-                            where id = ? and team_id = ?");
-    $sql->bind_param('sis', $json, $active, $t);
-    $sql->execute();
+    topic_items_write($link, $t, "update pok_topic_items_tbl
+                                     set distribution = ?, rounds_cnt = least(rounds_cnt + 1, 65535)
+                                        ,last_round_date = current_timestamp
+                                        ,result_card_key = null, result_auto = 1
+                                   where id = ? and team_id = ?",
+                      'sis', $json, $active, $t);
 }
 
 /*
- * Lazy migration (getDao()): the old topic of a team (pok_teams_tbl.topic) without an open item becomes the first
- * open item (split_topic_text(): first line = heading, the rest = description). In its own transaction under the
- * team row lock, so parallel loads create one item only. The topic text itself stays as it is. Does not notify.
+ * S1b: the round snapshot (start_new_round(), pok_roundstats_tbl row $roundstat_id) remembers the active item, so
+ * rounds can be assigned to items later. null without an active item. Writes pok_roundstats_tbl only.
  */
-function migrate_topic_to_item($link, string $t): void
+function link_round_to_active_item($link, string $t, int $roundstat_id): void
 {
-    $topic = lock_team_topics_or_null($link, $t);
-    if ($topic !== null && trim($topic) !== '' && active_item_id($link, $t) === null) {
-        $split = split_topic_text(trim($topic));
-        insert_topic_item($link, $t, null, $split['heading'], $split['description'], null, 0);
-    }
-    $link->commit();
+    $active = active_item_id($link, $t);
+    if ($active === null) return;
+    $sql = $link->prepare("update pok_roundstats_tbl set topic_item_id = ? where id = ? and team_id = ?");
+    $sql->bind_param('iis', $active, $roundstat_id, $t);
+    $sql->execute();
 }
 
-/* like lock_team_topics(), but null for an unknown team instead of the 403 exit (getDao()) */
-function lock_team_topics_or_null($link, string $t): ?string
+/* topics_rev of the team (0 for an unknown team) */
+function load_topics_rev($link, string $t): int
 {
-    $link->begin_transaction();
-    $sql = $link->prepare("select topic from pok_teams_tbl where id = ? for update");
+    $sql = $link->prepare("select topics_rev from pok_teams_tbl where id = ?");
     $sql->bind_param('s', $t);
     $sql->execute();
     $row = $sql->get_result()->fetch_assoc();
-    return is_array($row) ? (string)$row['topic'] : null;
+    return is_array($row) ? (int)$row['topics_rev'] : 0;
+}
+
+const TOPIC_ITEM_COLUMNS = "id, ext_id, heading, description, maturity, status, result_card_key, result_auto
+                           ,distribution, rounds_cnt, last_round_date, done_date";
+
+/*
+ * Open items (rows in their order) as delivered: the first (active) one carries the cards of the running round as
+ * distribution while it is revealed ($live_distribution), else those of its last revealed round. result_card_key =
+ * the chosen card (result_auto 0) or the automatic proposal (result_auto 1, null = no single value). $aim: deck_aim()
+ * of the team's deck, or a callable that returns it (only called if needed).
+ */
+function open_items_out($link, string $t, array $rows, ?array $live_distribution, array $catalog,
+                        string|callable $aim): array
+{
+    $distributions = array();
+    foreach ($rows as $i => $row)
+        $distributions[$i] = ($i === 0 && $live_distribution !== null) ? $live_distribution : decode_distribution($row['distribution']);
+    $keys = array();
+    foreach ($distributions as $distribution) foreach (array_keys((array)$distribution) as $key) $keys[(string)$key] = true;
+    $infos = array();
+    if (count($keys) > 0) {
+        $infos = card_result_infos($link, $t, array_keys($keys), $catalog);
+        if (is_callable($aim)) $aim = $aim();
+    }
+    $out = array();
+    foreach ($rows as $i => $row) {
+        $chosen = (int)$row['result_auto'] === 0 && $row['result_card_key'] !== null;
+        $row['result_card_key'] = $chosen ? $row['result_card_key']
+            : (is_string($aim) ? auto_result_key($distributions[$i], $infos, $aim) : null);
+        $row['result_auto'] = $chosen ? 0 : 1;
+        $out[] = topic_item_out($row, $distributions[$i]);
+    }
+    return $out;
 }
 
 /*
- * topic_items of dao.php: {active_id, open: [...in order], done: [...newest first, at most TOPIC_ITEMS_DONE_DELIVERED],
- * done_count, limits}. The active item carries the cards of the running round as distribution while it is revealed
- * ($live_distribution), else those of its last revealed round. $aim = deck_aim() of the team's deck. Open items: result_card_key = the chosen card
- * (result_auto 0) or the automatic proposal (result_auto 1, null = no single value). Done items: the stored result.
- * Lazy migration of the old topic first (migrate_topic_to_item()).
+ * topic_items of dao.php (kept small, S1b): {active: the active item or null, open_count, done_count, next_heading
+ * (heading of the open item after the active one, null if none), topics_rev}. The lists come from get_topics.php.
+ * topics_rev is read FIRST: a write in between gives an older rev with newer data (the board loads the list once
+ * more), never a newer rev with older data.
  */
-function topic_items_for_dao($link, string $t, ?string $topic, ?array $live_distribution, array $catalog,
-                             string $aim): array
+function topic_items_for_dao($link, string $t, ?array $live_distribution, array $catalog, string $aim): array
 {
-    $sql = $link->prepare("select id, ext_id, heading, description, maturity, status, result_card_key, result_auto
-                                , distribution, rounds_cnt, done_date
+    $rev = load_topics_rev($link, $t);
+
+    $sql = $link->prepare("select " . TOPIC_ITEM_COLUMNS . "
+                             from pok_topic_items_tbl
+                            where team_id = ? and status = 'open'
+                            order by position, id
+                            limit 2");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $open = $sql->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $sql = $link->prepare("select coalesce(sum(status = 'open'), 0) open_cnt, coalesce(sum(status = 'done'), 0) done_cnt
+                             from pok_topic_items_tbl where team_id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $counts = $sql->get_result()->fetch_assoc();
+
+    $active = count($open) > 0 ? open_items_out($link, $t, array($open[0]), $live_distribution, $catalog, $aim)[0] : null;
+    return array(
+        'active' => $active,
+        'open_count' => (int)$counts['open_cnt'],
+        'done_count' => (int)$counts['done_cnt'],
+        'next_heading' => isset($open[1]) ? $open[1]['heading'] : null,
+        'topics_rev' => $rev,
+    );
+}
+
+/*
+ * get_topics.php: {topics_rev, open: [all open items in order], open_count, done_count, limits, and with $with_done
+ * done: [done items, newest first (done_date), $done_limit from $done_offset]}. One consistent snapshot (read only
+ * transaction), so topics_rev matches the lists. Open items as in open_items_out() (the active one with the cards of
+ * the running round while revealed).
+ */
+function topic_lists($link, string $t, array $catalog, bool $with_done, int $done_offset, int $done_limit): array
+{
+    $link->begin_transaction(MYSQLI_TRANS_START_READ_ONLY | MYSQLI_TRANS_START_WITH_CONSISTENT_SNAPSHOT);
+    $rev = load_topics_rev($link, $t);
+
+    $sql = $link->prepare("select " . TOPIC_ITEM_COLUMNS . "
                              from pok_topic_items_tbl
                             where team_id = ? and status = 'open'
                             order by position, id");
     $sql->bind_param('s', $t);
     $sql->execute();
-    $open = $sql->get_result()->fetch_all(MYSQLI_ASSOC);
+    $open_rows = $sql->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    if (count($open) === 0 && $topic !== null && trim($topic) !== '') {
-        /* A lock wait timeout or deadlock must not break the board: roll back, the next load migrates */
-        try {
-            migrate_topic_to_item($link, $t);
-        } catch (mysqli_sql_exception $e) {
-            $link->rollback();
-            error_log('poker dao: topic migration of a team skipped, retried on the next load: ' . $e->getMessage());
-        }
-        $sql->execute();
-        $open = $sql->get_result()->fetch_all(MYSQLI_ASSOC);
-    }
-
-    $sql = $link->prepare("select id, ext_id, heading, description, maturity, status, result_card_key, result_auto
-                                , distribution, rounds_cnt, done_date
-                             from pok_topic_items_tbl
-                            where team_id = ? and status = 'done'
-                            order by done_date desc, id desc
-                            limit " . TOPIC_ITEMS_DONE_DELIVERED);
+    $sql = $link->prepare("select count(1) cnt from pok_topic_items_tbl where team_id = ? and status = 'done'");
     $sql->bind_param('s', $t);
     $sql->execute();
-    $done = $sql->get_result()->fetch_all(MYSQLI_ASSOC);
+    $done_count = (int)$sql->get_result()->fetch_assoc()['cnt'];
 
-    $done_count = count($done);
-    if ($done_count === TOPIC_ITEMS_DONE_DELIVERED) {
-        $sql = $link->prepare("select count(1) cnt from pok_topic_items_tbl where team_id = ? and status = 'done'");
-        $sql->bind_param('s', $t);
+    $done_rows = array();
+    if ($with_done && $done_count > $done_offset) {
+        $sql = $link->prepare("select " . TOPIC_ITEM_COLUMNS . "
+                                 from pok_topic_items_tbl
+                                where team_id = ? and status = 'done'
+                                order by done_date desc, id desc
+                                limit ? offset ?");
+        $sql->bind_param('sii', $t, $done_limit, $done_offset);
         $sql->execute();
-        $done_count = (int)$sql->get_result()->fetch_assoc()['cnt'];
+        $done_rows = $sql->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    $active_id = count($open) > 0 ? (int)$open[0]['id'] : null;
-    $distributions = array();
-    foreach ($open as $i => $row)
-        $distributions['o' . $i] = ($i === 0 && $live_distribution !== null) ? $live_distribution : decode_distribution($row['distribution']);
-    $keys = array();
-    foreach ($distributions as $distribution) foreach (array_keys((array)$distribution) as $key) $keys[(string)$key] = true;
-    $infos = count($keys) > 0 ? card_result_infos($link, $t, array_keys($keys), $catalog) : array();
+    $live = count($open_rows) > 0 ? revealed_distribution($link, $t) : null;
+    $open = open_items_out($link, $t, $open_rows, $live, $catalog, fn() => team_deck_aim($link, $t, $catalog));
+    $link->commit();
 
-    $out_open = array();
-    foreach ($open as $i => $row) {
-        $distribution = $distributions['o' . $i];
-        $chosen = (int)$row['result_auto'] === 0 && $row['result_card_key'] !== null;
-        $row['result_card_key'] = $chosen ? $row['result_card_key'] : auto_result_key($distribution, $infos, $aim);
-        $row['result_auto'] = $chosen ? 0 : 1;
-        $out_open[] = topic_item_out($row, $distribution);
-    }
-    $out_done = array();
-    foreach ($done as $row) $out_done[] = topic_item_out($row, decode_distribution($row['distribution']));
-
-    return array(
-        'active_id' => $active_id,
-        'open' => $out_open,
-        'done' => $out_done,
+    $out = array(
+        'topics_rev' => $rev,
+        'open' => $open,
+        'open_count' => count($open),
         'done_count' => $done_count,
         'limits' => array('open' => TOPIC_ITEMS_OPEN_MAX, 'ext_id' => TOPIC_EXT_ID_MAX,
                           'heading' => TOPIC_HEADING_MAX, 'description' => TOPIC_DESCRIPTION_MAX),
     );
+    if ($with_done) {
+        $out['done'] = array_map(fn($row) => topic_item_out($row, decode_distribution($row['distribution'])), $done_rows);
+        $out['done_offset'] = $done_offset;
+    }
+    return $out;
 }
 
-/* an item as delivered by dao.php (see script/types.ts TopicItem) */
+/* an item as delivered by dao.php and get_topics.php (see script/types.ts TopicItem) */
 function topic_item_out(array $row, ?array $distribution): array
 {
     return array(
@@ -469,6 +557,7 @@ function topic_item_out(array $row, ?array $distribution): array
         'result_auto' => (int)$row['result_auto'],
         'distribution' => $distribution === null ? null : (object)array_map('intval', $distribution),
         'rounds_cnt' => (int)$row['rounds_cnt'],
+        'last_round_date' => $row['last_round_date'],
         'done_date' => $row['done_date'],
     );
 }

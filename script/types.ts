@@ -23,8 +23,8 @@ export interface myJsonType {
     survey: string;
     team_name: string;
     cardset_flags: string;
-    topic: string; // B-52 S1: text of the active topic item (heading, then description), '' without one
-    topic_items: TopicItems | null; // B-52 S1: null only if the table is missing on the server
+    topic: string; // the team's note (B-52 S1b: independent of the topic items, always shown)
+    topic_items: TopicItemsSummary | null; // B-52 S1b: null only if the table/columns are missing on the server
     timer_status: string;
     timer_time: number;
     timer_visibility: number;
@@ -60,6 +60,7 @@ interface CustomSet {
     deck_id: string;     // 'c-<set_id>', the deck id when the set is in play
     name: string;        // free text: output with textContent only
     style: string;       // plain | badge | banner | inverted (editor "Style"), the look of its cards
+    aim: 'agree' | 'perspectives'; // B-52 S1b: purpose of the set (editor), default agree; custom_set_create/save body "aim"
     rev: number;         // optimistic lock of custom_set_save.php
     cards: CustomCard[]; // active cards in position order
 }
@@ -87,7 +88,8 @@ interface Deck {
     controls: string[]; // control card keys (per team)
     rev: number;        // deck_rev, changes with every change of the deck
     // B-52 S1 (api/lib_topics.php deck_aim()): 'agree' = automatic result (highest numeric_value of the played cards,
-    // cards without a value ignored) and range; 'perspectives' = only the distribution (catalog group "range": false)
+    // cards without a value ignored) and range; 'perspectives' = only the distribution (catalog group "range": false,
+    // custom set: its aim, B-52 S1b)
     aim: 'agree' | 'perspectives';
 }
 
@@ -149,28 +151,40 @@ export interface SeenJsonType {
     away_sig: string; // same value as myJsonType.away_sig; a change means: load dao.php
 }
 
-/* B-52 S1: the topic items of a team (api/lib_topics.php topic_items_for_dao()) */
-interface TopicItems {
-    active_id: number | null; // the topmost open item, shown where the topic is; null = no open item
-    open: TopicItem[];        // in their order, open[0] is the active one
-    done: TopicItem[];        // newest first, at most 50
-    done_count: number;       // all done items of the team
+/* B-52 S1b: dao.php topic_items (api/lib_topics.php topic_items_for_dao()), kept small */
+interface TopicItemsSummary {
+    active: TopicItem | null;    // the topmost open item; null = none (general mode, only the note)
+    open_count: number;          // open items incl. the active one
+    done_count: number;
+    next_heading: string | null; // heading of the open item after the active one ("next: ..."), null = active is the last
+    topics_rev: number;          // changes with every change of any item; load get_topics.php when it differs
+}
+
+/* B-52 S1b: api/get_topics.php?t=..[&done=1&done_offset=0&done_limit=50] (api/lib_topics.php topic_lists()) */
+export interface TopicListsJsonType {
+    topics_rev: number;          // the rev of exactly these lists (one snapshot)
+    open: TopicItem[];           // all open items in their order, open[0] is the active one
+    open_count: number;
+    done_count: number;          // all done items of the team
     limits: { open: number; ext_id: number; heading: number; description: number };
+    done?: TopicItem[];          // only with done=1: newest first (done_date), done_limit items from done_offset
+    done_offset?: number;        // only with done=1
 }
 
 interface TopicItem {
     id: number;
     ext_id: string | null;      // free text, output with textContent only
     heading: string;            // free text
-    description: string | null; // markdown like the old topic (remarkable without HTML)
+    description: string | null; // markdown like the note (remarkable without HTML)
     maturity: number | null;    // optional: 0 new, 1 rough, 2 shaping, 3 ready; null = not set (show nothing)
     status: 'open' | 'done';
-    // open: the chosen card (result_auto 0) or the automatic proposal (result_auto 1); done: the final result.
+    // open: the chosen card (result_auto 0) or the automatic proposal (result_auto 1); done: the agreed value.
     // null = no single value (deck aim 'perspectives', no vote, or no played card with a value and none chosen)
     result_card_key: string | null;
     result_auto: number;
     // card_key -> count of the last revealed round (no persons); for the active item the running round while revealed
     distribution: { [card_key: string]: number } | null;
-    rounds_cnt: number;         // revealed rounds finished while the item was active (the running one not yet)
-    done_date: string | null;   // 'YYYY-MM-DD hh:mm:ss' (server time), null while open
+    rounds_cnt: number;              // revealed rounds finished while the item was active (the running one not yet)
+    last_round_date: string | null;  // B-52 S1b: end of the last revealed round of the item, 'YYYY-MM-DD hh:mm:ss' (server time)
+    done_date: string | null;        // when it was finished ("Next item"/"Finish item"), null while open
 }

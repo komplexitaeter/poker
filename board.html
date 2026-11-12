@@ -9,17 +9,17 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.52" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.53" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.41" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.42" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
-    <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
+    <script defer src="script/script_custom.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.17" type="text/javascript"></script>
-    <script defer src="script/topics.js?v=1.0" type="text/javascript"></script>
+    <script defer src="script/topics.js?v=1.1" type="text/javascript"></script>
     <script defer src="script/script.js?v=3.19" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
@@ -215,8 +215,9 @@
                 </div>
             </div>
             <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Restart round" disabled />
-            <!-- B-52 S1: finishes the active topic item and starts the next one; while revealed and more items wait (topics.js) -->
-            <button type="button" id="nextitem_btn" class="btn next-item" onclick="nextTopicItem()" hidden>Next item<svg class="i" aria-hidden="true"><use href="#i-next"/></svg></button>
+            <!-- B-52 S1/S1b: finishes the active topic item and starts the next one, after the reveal while an item is active;
+                 "Finish item" for the last open one (topics.js) -->
+            <button type="button" id="nextitem_btn" class="btn next-item" onclick="nextTopicItem()" hidden><span class="lbl">Next item</span><svg class="i" aria-hidden="true"><use href="#i-next"/></svg></button>
         </div>
     </div>
 
@@ -303,13 +304,12 @@
             </section>
 
             <section id="topic_box" class="menu_sec" data-sec="topic" data-title="Topic" hidden>
-                <!-- B-52 S1 (topics.js): one topic as before (#topic_single) plus a quiet "+ next item"; with more
-                     items the list (#topic_list: open with the active one on top, done) -->
+                <!-- B-52 S1b (topics.js): the note as before (#topic_single, update_topic.php), below it the items
+                     (#topic_list: "+ Add item", open with the active one on top, done with the history) -->
                 <div id="topic_single">
                     <label class="lab" for="topic_txt">What are you estimating? (optional, Markdown works)</label>
                     <textarea maxlength="1800" rows="7" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="field" oninput="topicChanged()"></textarea>
                     <div class="row end">
-                        <button type="button" id="topic_add_next" class="ti-link ti-add-next" onclick="topicAddNext()" hidden><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>next item</button>
                         <button type="button" id="topic_reset" class="btn-box" onclick="reset_topic()">Undo</button>
                         <button type="button" id="topic_save" class="btn-box primary" onclick="save_topic()">Save</button>
                     </div>

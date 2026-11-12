@@ -4,7 +4,7 @@ require './lib.php';
 require_post();
 
 /*
- * B-52 S1: adds a topic item. URL: t, at = end (default) | next (right after the active item), maturity 0-3 (optional,
+ * B-52 S1: adds a topic item (S1b: raises topics_rev). URL: t, at = end (default) | next (right after the active item), maturity 0-3 (optional,
  * missing or empty = not set).
  * POST body (form encoded): heading (required), description, ext_id (optional).
  * Answer: {ok, item_id, active_id}; 400 {error: heading|maturity}, 409 {error: limit}, 403 unknown team.
@@ -27,7 +27,6 @@ $counts = topic_item_counts($link, $t);
 if ($counts['open'] >= TOPIC_ITEMS_OPEN_MAX || $counts['total'] >= TOPIC_ITEMS_TOTAL_MAX) topic_fail($link, 409, 'limit');
 
 $id = insert_topic_item($link, $t, $ext_id, $heading, $description, $maturity, open_index_for($at, $counts['open']));
-sync_team_topic($link, $t);
 $active = active_item_id($link, $t);
 $link->commit();
 $link->close();
