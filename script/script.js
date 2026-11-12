@@ -1559,7 +1559,7 @@ function openRemoveConfirm(btn) {
 
 /* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket. Nothing happens here before the echo: poker-msg
  * sends the same text to every board of the team, the sender's too, and all of them animate on it (onReaction).
- * Not sent without an open connection (the reaction is lost, as when poker-msg drops it above 1/s).
+ * Not sent without an open connection (the reaction is lost) or above the limit of poker-msg (B-131, reactionAllowed).
  * A nudge is anonymous: from is always 0, also in the message. */
 function sendReaction(toMkey, code) {
     const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : String(gLastJson.mkey ?? ''));
@@ -1567,11 +1567,35 @@ function sendReaction(toMkey, code) {
     const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
     if (!REACT_MSG.test(msg)) return;
     if (gConn === null || gConn.readyState !== WebSocket.OPEN) return;
+    if (!reactionAllowed()) return;
     try {
         gConn.send(msg);
+        gReactSent.push(performance.now());
     } catch (e) {
         console.log('reaction not sent', e);
     }
+}
+
+/* B-131: the same staggered limit as poker-msg (per connection, sliding windows; keep both in step): at most
+ * [count, window in ms]. Above it poker-msg drops the reaction silently, so the board does not send it at all and
+ * says so (except for the 1 s window: a double click, nothing to say). Per tab, like the connection. */
+const REACT_LIMITS = [[1, 1000], [10, 60 * 1000]];
+const REACT_LIMIT_TOAST_MS = 4000; // the hint at most once in this time, so it does not spam itself
+let gReactSent = [];               // performance.now() of the own reactions sent (the longest window)
+let gReactToastAt = -Infinity;
+
+/* false (and the hint, if due) when one more reaction now would be above a limit */
+function reactionAllowed() {
+    const now = performance.now();
+    const longest = REACT_LIMITS[REACT_LIMITS.length - 1][1];
+    gReactSent = gReactSent.filter(t => now - t < longest);
+    const over = REACT_LIMITS.filter(([max, ms]) => gReactSent.filter(t => now - t < ms).length >= max);
+    if (over.length === 0) return true;
+    if (over.some(([, ms]) => ms > 1000) && now - gReactToastAt >= REACT_LIMIT_TOAST_MS) {
+        gReactToastAt = now;
+        showToast('Easy there \u2013 too many reactions. Try again in a moment.', 3000);
+    }
+    return false;
 }
 
 /* the card (#cbox .c) or the observer (#observers .obs) of a mkey, null when not on the board */
@@ -1735,6 +1759,20 @@ function restartClass(el, cls, ms) {
     }
     el.classList.add(cls);
     timers[cls] = setTimeout(() => el.classList.remove(cls), ms);
+}
+
+/* B-131: a held Enter/Space on a circle or an emoji sends one reaction, not one per key repeat (the repeats would
+ * click the button again and again; with Enter even reopen the emoji bar and throw the next one). The browser
+ * clicks a button on Enter keydown and on Space keyup: a repeated keydown is dropped before it clicks. */
+function onReactKeyRepeat(event) {
+    if (!event.repeat || (event.key !== 'Enter' && event.key !== ' ')) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target === null) return;
+    if (target.closest('#react_bar button, #cbox .c :is(.nudge, .react), #observers .obs :is(.nudge, .react)') === null) {
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 /* one click handler for the table, the observers and the popovers (document, bubbling) */
@@ -1911,6 +1949,7 @@ function initTableInteraction() {
     if (typeof gTapQuery.addEventListener === 'function') gTapQuery.addEventListener('change', onTapQueryChange);
     else if (typeof gTapQuery.addListener === 'function') gTapQuery.addListener(onTapQueryChange); // Safari < 14
     document.addEventListener('keydown', onPopoverKeydown, true);
+    document.addEventListener('keydown', onReactKeyRepeat, true);
     const reposition = () => { repositionPopover(); repositionTapHint(); };
     window.addEventListener('resize', reposition);
     document.getElementById('table').addEventListener('scroll', reposition, { passive: true });
