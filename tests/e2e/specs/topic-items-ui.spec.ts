@@ -1,5 +1,6 @@
 import { test, expect, Page, Browser } from '@playwright/test';
 import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, setTeamDeck, removeExampleSet } from './helpers';
+import * as fs from 'fs';
 
 /**
  * B-52 S1/S1b (script/topics.js): the topic list on the board.
@@ -835,4 +836,100 @@ test('done items without pen; the red "Delete" cancels on a click beside it, Esc
   await expect(sure).toHaveCount(0);
   await expect(doneTrash).toBeFocused();
   await expect(alice.locator('#ti_done > li')).toHaveCount(1);
+});
+
+test('done items export: Copy as a tab separated table, Download CSV; all items, oldest first, formulas defused (B-52)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP, permissions: ['clipboard-read', 'clipboard-write'] });
+  const url = await createTeam(alice, 'Topic UI Export');
+  const t = new URL(url).searchParams.get('t') as string;
+  const ids = await addPlayersViaApi(alice, url, ['Ann', 'Ben']);
+  await joinAsPlayer(alice, url, 'Alice');
+  const tq = encodeURIComponent(t);
+  const add = async (form: Record<string, string>, query = '') => {
+    expect((await alice.request.post(`/api/topic_item_add.php?t=${tq}&at=end${query}`, { form })).ok()).toBeTruthy();
+  };
+  await add({ ext_id: 'PROJ-1', heading: 'Login, "quick"', description: 'First line\n- second, with a comma' }, '&maturity=2');
+  await add({ heading: '=SUM(A1:A2)', description: '-1 is a formula too' });
+  await add({ ext_id: '@me', heading: '+plus' });
+  await add({ heading: 'Four' });
+  await add({ heading: 'Five' });
+  const activeId = async () => (await (await alice.request.get(`/api/get_topics.php?t=${tq}`)).json()).open[0].id;
+  // the first one with a round (agreed 5), the others closed through the API: with a card or without a value
+  await reveal(alice, t, ids, ['five001', 'five001', 'three01']);
+  const close = async (query: string) => {
+    expect((await alice.request.post(`/api/topic_item_next.php?t=${tq}&item=${await activeId()}&${query}`)).ok()).toBeTruthy();
+  };
+  await close('mode=close&card=five001');
+  await close('mode=close_empty');
+  await close('mode=close&card=eight01');
+  await close('mode=close_empty');
+  await close('mode=close_empty');
+  await expect(alice.locator('#topic_tab_done')).toHaveText('Done 5');
+
+  // rounds and date of the first item as the API has them (the date in local time, YYYY-MM-DD)
+  const first = (await (await alice.request.get(`/api/get_topics.php?t=${tq}&done=1`)).json()).done
+    .find((i: { heading: string }) => i.heading.startsWith('Login'));
+  const day = await alice.evaluate(value => {
+    const d = new Date(value);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }, first.last_round_date);
+  const rows = [
+    ['ID', 'Heading', 'Description', 'Agreed value', 'Rounds', 'Last round', 'Maturity'],
+    ['PROJ-1', 'Login, "quick"', 'First line\n- second, with a comma', '5', String(first.rounds_cnt), day, 'shaping'],
+    ['', "'=SUM(A1:A2)", "'-1 is a formula too", '', '0', '', ''],
+    ["'@me", "'+plus", '', '8', '0', '', ''],
+    ['', 'Four', '', '', '0', '', ''],
+    ['', 'Five', '', '', '0', '', ''],
+  ];
+  const quote = (cell: string, sep: string) =>
+    cell.includes(sep) || /["\r\n]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;
+  const table = (sep: string) => rows.map(row => row.map(cell => quote(cell, sep)).join(sep)).join('\r\n') + '\r\n';
+
+  // the export pages through get_topics.php (here 2 per page, so every item comes from a later page too)
+  const pages: string[] = [];
+  await alice.route(/\/api\/get_topics\.php\?.*done_limit=/, route => {
+    const u = new URL(route.request().url());
+    u.searchParams.set('done_limit', '2');
+    pages.push(u.searchParams.get('done_offset') as string);
+    return route.continue({ url: u.toString() });
+  });
+
+  await openTopics(alice);
+  await showTab(alice, 'done');
+  await expect(alice.locator('#ti_done > li')).toHaveCount(5);
+  const copy = alice.locator('#ti_export_copy');
+  const csv = alice.locator('#ti_export_csv');
+  await expect(copy).toBeVisible();
+  await expect(copy).toHaveText('Copy');
+  await expect(csv).toHaveText('Download CSV');
+  // below the list
+  expect((await copy.boundingBox())!.y).toBeGreaterThan((await alice.locator('#ti_done').boundingBox())!.y);
+
+  await copy.click();
+  await expect(alice.locator('#toast')).toHaveText('Copied 5 items');
+  expect(await alice.evaluate(() => navigator.clipboard.readText())).toBe(table('\t'));
+  expect(pages).toEqual(['0', '2', '4']);
+
+  pages.length = 0;
+  const [download] = await Promise.all([alice.waitForEvent('download'), csv.click()]);
+  const name = 'topics-' + await alice.evaluate(() => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }) + '.csv';
+  expect(download.suggestedFilename()).toBe(name);
+  const bytes = fs.readFileSync(await download.path());
+  expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // UTF-8 BOM
+  expect(bytes.subarray(3).toString('utf8')).toBe(table(','));
+  await expect(alice.locator('#toast')).toHaveText(`Downloaded ${name} (5 items)`);
+  expect(pages).toEqual(['0', '2', '4']);
+  // the done list itself is not affected
+  await expect(alice.locator('#ti_done > li')).toHaveCount(5);
+});
+
+test('done items export: no buttons without done items (B-52)', async ({ browser }) => {
+  const { alice, t } = await setup(browser, 'Topic UI Export Empty');
+  expect((await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading: 'Open' } })).ok()).toBeTruthy();
+  await openTopics(alice);
+  await expect(alice.locator('#topic_tab_done')).toHaveAttribute('aria-disabled', 'true');
+  await expect(alice.locator('#ti_export_copy, #ti_export_csv')).toHaveCount(0);
 });

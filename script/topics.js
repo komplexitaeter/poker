@@ -944,6 +944,7 @@ function topicDoneParts() {
     if (summary.done_count > done.length) {
         parts.push(textElement('p', 'hint', 'The latest ' + done.length + ' of ' + summary.done_count + ' done items.'));
     }
+    parts.push(topicExportRow());
     return parts;
 }
 
@@ -1049,20 +1050,32 @@ function topicDistView(item) {
     return bars;
 }
 
-/* a date of the API -> a short local date ("12 Nov"; other years with the year), '' if unknown. S1c: ISO 8601 in UTC
- * ("2026-11-12T14:03:00Z", or with an offset) -> new Date() puts it into the browser's time zone; the former
- * 'YYYY-MM-DD hh:mm:ss' (no zone) is read as local time */
-function topicDate(value) {
-    if (typeof value !== 'string') return { short: '', long: '' };
+/* a date of the API -> a Date (null if unknown): see topicDate() */
+function topicParseDate(value) {
+    if (typeof value !== 'string') return null;
     let date;
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(value)) {
         date = new Date(value);
     } else {
         const m = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-        if (m === null) return { short: '', long: '' };
+        if (m === null) return null;
         date = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
     }
-    if (isNaN(date.getTime())) return { short: '', long: '' };
+    return isNaN(date.getTime()) ? null : date;
+}
+
+/* a Date -> 'YYYY-MM-DD' in local time */
+function isoLocalDate(date) {
+    const pad = n => String(n).padStart(2, '0');
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+}
+
+/* a date of the API -> a short local date ("12 Nov"; other years with the year), '' if unknown. S1c: ISO 8601 in UTC
+ * ("2026-11-12T14:03:00Z", or with an offset) -> new Date() puts it into the browser's time zone; the former
+ * 'YYYY-MM-DD hh:mm:ss' (no zone) is read as local time */
+function topicDate(value) {
+    const date = topicParseDate(value);
+    if (date === null) return { short: '', long: '' };
     const sameYear = date.getFullYear() === new Date().getFullYear();
     const short = date.toLocaleDateString(undefined, sameYear ? { day: 'numeric', month: 'short' }
         : { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1135,6 +1148,160 @@ function topicDoneRow(item) {
         li.appendChild(dist);
     }
     return li;
+}
+
+/* ---------- B-52 export (Andreas, 2026-11-10/12): the done items as a table, for Jira, Linear, a spreadsheet ----------
+ * Two buttons below the done list: "Copy" (tab separated with a header row, pastes into Excel, Google Sheets, Jira
+ * tables) and "Download CSV" (topics-YYYY-MM-DD.csv, UTF-8 with BOM, comma separated, RFC 4180 quoting). All done items
+ * (not only the loaded page): get_topics.php?done=1 page by page. Everything stays in the browser.
+ * Order: chronological by closing, the oldest first – pasted into a backlog or a sheet, the rows then follow the
+ * order in which the team estimated them (and new exports append at the end); the list in the menu shows the newest
+ * first because there the latest result matters. */
+const TOPIC_EXPORT_PAGE = 100;   // TOPIC_DONE_PAGE_MAX in api/lib_topics.php
+const TOPIC_EXPORT_MAX = 1000;   // TOPIC_ITEMS_TOTAL_MAX: no team has more
+const TOPIC_EXPORT_HEAD = ['ID', 'Heading', 'Description', 'Agreed value', 'Rounds', 'Last round', 'Maturity'];
+let gTopicExportBusy = false; // false, or 'copy' | 'csv' while that export loads
+
+function topicExportRow() {
+    const row = document.createElement('div');
+    row.className = 'row end ti-export';
+    const button = (act, icon, label, title) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn-box';
+        b.id = 'ti_export_' + act;
+        b.dataset.tiAct = act;
+        b.title = title;
+        if (gTopicExportBusy === act) b.setAttribute('aria-busy', 'true');
+        b.append(iconSvg(icon), label);
+        return b;
+    };
+    row.append(button('copy', 'copy', 'Copy', 'Copy all done items as a table (paste into a spreadsheet or Jira)'),
+        button('csv', 'down', 'Download CSV', 'Download all done items as a CSV file'));
+    return row;
+}
+
+/* all done items of the team, oldest first (by done_date, then id) */
+async function loadAllDoneItems() {
+    const byId = new Map();
+    // the next page from where the last one ended; done when a page is empty or all done items are there
+    for (let offset = 0; offset < TOPIC_EXPORT_MAX;) {
+        const query = new URLSearchParams({ t: t, done: '1', done_offset: String(offset),
+            done_limit: String(TOPIC_EXPORT_PAGE) });
+        const response = await fetch('./api/get_topics.php?' + query.toString(), { cache: 'no-store' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const lists = await response.json();
+        if (lists === null || typeof lists !== 'object' || !Array.isArray(lists.done)) throw new Error('lists');
+        lists.done.forEach(item => byId.set(item.id, item)); // an item closed meanwhile shifts the pages: no doubles
+        offset += lists.done.length;
+        if (lists.done.length === 0 || offset >= lists.done_count) break;
+    }
+    const time = item => {
+        const date = topicParseDate(item.done_date);
+        return date === null ? 0 : date.getTime();
+    };
+    return [...byId.values()].sort((a, b) => time(a) - time(b) || a.id - b.id);
+}
+
+/* the agreed value as text: what the card shows (its text), else its name; '' without one */
+function topicExportValue(key) {
+    if (key === null || key === undefined) return '';
+    const card = cardByKey(key);
+    if (!card) return String(key);
+    return String(card.text || card.label || cardName(card) || key);
+}
+
+/* the rows of the table: the header row and one row per item (plain strings) */
+function topicExportRows(items) {
+    const rows = [TOPIC_EXPORT_HEAD];
+    items.forEach(item => {
+        const date = topicParseDate(item.last_round_date);
+        rows.push([
+            item.ext_id || '',
+            item.heading || '',
+            item.description || '',
+            topicExportValue(item.result_card_key),
+            String(item.rounds_cnt || 0),
+            date === null ? '' : isoLocalDate(date),
+            maturityValid(item.maturity) ? MATURITY_STAGES[item.maturity] : '',
+        ]);
+    });
+    return rows;
+}
+
+/* CSV injection: a cell a spreadsheet would read as a formula gets a leading apostrophe */
+function topicExportSafe(cell) {
+    return /^[=+\-@\t\r]/.test(cell) ? "'" + cell : cell;
+}
+
+/* a cell in quotes when it holds the separator, a quote or a line break ("" for a quote) */
+function topicExportQuote(cell, separator) {
+    const safe = topicExportSafe(cell);
+    return safe.includes(separator) || /["\r\n]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
+}
+
+function topicExportText(rows, separator) {
+    return rows.map(row => row.map(cell => topicExportQuote(cell, separator)).join(separator)).join('\r\n') + '\r\n';
+}
+
+const topicExportCount = n => n + (n === 1 ? ' item' : ' items');
+
+/* "Copy" / "Download CSV": loads all done items, then copies or downloads them; a toast confirms */
+function exportDoneItems(kind) {
+    if (gTopicExportBusy !== false) return; // one at a time; the button stays focusable (aria-busy, no disabled)
+    gTopicExportBusy = kind;
+    const button = document.getElementById('ti_export_' + kind);
+    if (button !== null) button.setAttribute('aria-busy', 'true');
+    const loaded = loadAllDoneItems();
+    let done;
+    if (kind === 'copy') {
+        const text = loaded.then(items => topicExportText(topicExportRows(items), '\t'));
+        done = copyExportText(text).then(() => loaded).then(items => {
+            showToast('Copied ' + topicExportCount(items.length));
+        }, () => showToast('Not copied – try “Download CSV”', DECK_TOAST_MS, 'error'));
+    } else {
+        done = loaded.then(items => {
+            const name = 'topics-' + isoLocalDate(new Date()) + '.csv';
+            downloadExport(name, '﻿' + topicExportText(topicExportRows(items), ','));
+            showToast('Downloaded ' + name + ' (' + topicExportCount(items.length) + ')');
+        }, () => showToast('Not loaded – please try again', DECK_TOAST_MS, 'error'));
+    }
+    done.finally(() => {
+        gTopicExportBusy = false;
+        const again = document.getElementById('ti_export_' + kind);
+        if (again !== null) again.removeAttribute('aria-busy');
+    });
+}
+
+/* the text into the clipboard. Safari allows the write only during the click: a ClipboardItem with the promise of the
+ * text is handed over at once; where that fails (older browsers), writeText() once the text is there */
+function copyExportText(textPromise) {
+    const clipboard = navigator.clipboard;
+    if (!clipboard) return Promise.reject(new Error('no clipboard'));
+    if (typeof ClipboardItem === 'function' && typeof clipboard.write === 'function') {
+        let item;
+        try {
+            item = new ClipboardItem({ 'text/plain': textPromise.then(text => new Blob([text], { type: 'text/plain' })) });
+        } catch (e) {
+            item = null;
+        }
+        if (item !== null) {
+            return clipboard.write([item]).catch(() => textPromise.then(text => clipboard.writeText(text)));
+        }
+    }
+    return textPromise.then(text => clipboard.writeText(text));
+}
+
+function downloadExport(name, text) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function labelled(labelText, field) {
@@ -1310,6 +1477,8 @@ function onTopicListClick(event) {
     } else if (act === 'dist') {
         if (gTopicDistOpen.has(id)) gTopicDistOpen.delete(id); else gTopicDistOpen.add(id);
         renderTopicMenu(true);
+    } else if (act === 'copy' || act === 'csv') {
+        exportDoneItems(act);
     } else if (act === 'retry') {
         gTopicLoadError = false;
         gTopicListsFor = null;
