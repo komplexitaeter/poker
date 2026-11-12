@@ -1785,6 +1785,14 @@ Offene Fragen: Wer darf Timeboxen ändern (vermutlich alle, wie bei
 den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Items existieren damit schon Tage vor der
 Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 
+### B-130 Timer: Auto-Start „Off · New round · Next item“
+Status: im Sprint (Andreas, 2026-11-12). Live-Daten seit 01.11.: 9 Teams nutzen den Timer (5 mit sichtbarer Uhr),
+Timeboxen 1, 5, 10, 41, 60 min – 5/10 min sind Timeboxen je Item, die heute bei jeder neuen Runde neu starten.
+Statt Ja/Nein (`timer_auto_restart`) drei Werte: **Off** · **New round** (wie heute „auto-start on new round“) ·
+**Next item** (Neustart nur beim Verlassen eines Items – Close/Close without a value/Bring it back later –, neue Runden
+innerhalb des Items lassen ihn weiterlaufen; ohne Items wie „New round“). Bestehende Teams behalten ihr Verhalten.
+Backend Ben (Schema, Neustart in `topic_item_next.php`), Frontend Fred (Umschalter im Timer-Menü). Geht mit B-52 live.
+
 ### B-52 Topics als Backlog-Items
 **S1b nach Staging-Test (Andreas, 2026-11-12) – Status: im Sprint:**
 - **Notiz bleibt Notiz:** Das bisherige Topic-Feld ist ein allgemeiner Hinweis (z. B. zum Ablauf), immer sichtbar;
