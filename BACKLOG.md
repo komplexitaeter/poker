@@ -1810,6 +1810,9 @@ Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 - **Notiz oben (Andreas, 2026-11-12):** Die Notiz ist ein eigener Abschnitt oben – am liebsten wieder (wie früher)
   auf dem Board über den Karten, damit alle sie immer sehen (auch bei eingeklappter Seitenleiste). Items bleiben in der
   Seitenleiste. Gestaltung Delia (Desktop und Mobil), mit S1c.
+- **Topics-Menü mit Tabs „Note · Open · Done“ (Andreas, 2026-11-12, nach S1b auf Staging):** statt eines langen
+  Panels. Start-Tab: „Open“, wenn Items offen sind, sonst „Note“ (einfacher Fall bleibt ohne Extra-Klick). Zähler an
+  den Tabs (z. B. „Open 3“, „Done 12“). Done lädt erst beim Öffnen des Tabs (`get_topics.php?done=1`). Mit S1c.
 - **dao.php klein halten:** dao liefert nur das aktive Item, Anzahlen und `topics_rev`; die Liste kommt über
   `api/get_topics.php`, nur wenn sich `topics_rev` geändert hat (Done-Items erst beim Öffnen des Menüs). Kein neuer
   Signaltyp in poker-msg. **Jede** Änderung an Items (auch Text eines alten/erledigten Items, Ergebnis, Reifegrad,
