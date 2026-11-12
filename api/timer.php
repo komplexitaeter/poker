@@ -98,7 +98,8 @@ if ($action=='set_timebox') {
 }
 
 /* B-67/B-130: auto-start of the timer: 0 = off, 1 = with every new or cancelled round (start_new_round()),
-   2 = when an item is left (topic_item_next.php; without an active item like 1) */
+   2 = when an item is left (topic_item_next.php; finishing the last item resets and pauses it; without an active
+   item like 1) */
 if ($action=='set_auto_restart') {
     $value = filter_input(INPUT_GET, "value") ?? '';
     if (!in_array($value, ['0', '1', '2'], true)) bad_request($link);

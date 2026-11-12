@@ -6,7 +6,8 @@ import { newPlayer, createTeam, addPlayersViaApi } from './helpers';
  * B-130: timer auto-start with three values in pok_teams_tbl.timer_auto_restart (timer.php set_auto_restart):
  * 0 = off, 1 = new round (as B-67: New round / Cancel round restart a visible timer), 2 = next item (the timer
  * restarts when an item is left in topic_item_next.php - close, close_empty, later -, not with rounds inside the
- * item; without an active item like 1). API level only.
+ * item; without an active item like 1). Exception for 2: finishing the last open item (no active item left) resets
+ * and pauses the timer (Andreas, 2026-11-12). API level only.
  */
 
 const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
@@ -52,6 +53,13 @@ async function setup(browser: Browser, name: string, autoStart: string) {
     expect(d.timer_status, label).toBe('RUNNING');
     expect(d.timer_time, label).toBeGreaterThanOrEqual(100);
   };
+  const expectResetPaused = async (label: string) => {
+    const d = await dao();
+    expect(d.timer_status, label).toBe('PAUSED');
+    expect(d.timer_time, label).toBe(0);
+    expect(mysql(`select concat(ifnull(timer_start_time, 'null'), '/', ifnull(timer_pause_time, 'null'))
+                    from pok_teams_tbl where id = '${t}'`), label).toBe('null/null'); // as a manual reset
+  };
   const play = async () => {
     await post('setc.php', { id: ann, cardkey: 'three01' });
     await post('setc.php', { id: ben, cardkey: 'five001' });
@@ -59,7 +67,7 @@ async function setup(browser: Browser, name: string, autoStart: string) {
   const addItem = async (heading: string) =>
     (await (await post('topic_item_add.php', { at: 'end' }, { heading })).json()).item_id as number;
   const next = (item: number, mode: string) => post('topic_item_next.php', { item, mode });
-  return { t, post, dao, backdate, expectRestarted, expectKept, play, addItem, next };
+  return { t, post, dao, backdate, expectRestarted, expectKept, expectResetPaused, play, addItem, next };
 }
 
 test('set_auto_restart accepts 0, 1, 2 and rejects anything else', async ({ browser }) => {
@@ -108,11 +116,28 @@ test('next item: rounds inside an item keep the timer, leaving the item restarts
   await s.next(b, 'later');
   await s.expectRestarted('later as the only open item');
 
-  // finish the last item -> no items open: a new round restarts the timer as with "New round"
+  // finish the last item -> the timer is reset and paused (Andreas, 2026-11-12) ...
+  await s.backdate();
   await s.next(b, 'close');
+  await s.expectResetPaused('finish the last item');
+  // ... and runs again on play; no items open: a new round restarts the timer as with "New round"
+  await s.post('timer.php', { action: 'start' });
+  expect((await s.dao()).timer_status).toBe('RUNNING');
   await s.backdate();
   await s.post('newround.php');
   await s.expectRestarted('new round without an active item');
+});
+
+test('next item: finishing the last item with cards down (close_empty) resets and pauses the timer', async ({ browser }) => {
+  const s = await setup(browser, 'AutoStartFinishPause', '2');
+  const a = await s.addItem('A');
+  await s.backdate();
+  await s.play();
+  await s.next(a, 'close_empty');
+  await s.expectResetPaused('finish item with cards down');
+  // stays paused until someone presses play
+  await s.play();
+  await s.expectResetPaused('cards played after finishing');
 });
 
 test('next item without items behaves like new round', async ({ browser }) => {
@@ -147,7 +172,7 @@ test('new round (old value 1): restarts with every round, also inside an item an
   await s.expectRestarted('later without cards down (only open item)');
   await s.backdate();
   await s.next(c, 'close');
-  await s.expectRestarted('finish item without cards down');
+  await s.expectRestarted('finish the last item: keeps running anew (not paused as with Next item)');
 });
 
 test('off: neither rounds nor leaving an item restart the timer; a hidden timer is never restarted', async ({ browser }) => {
