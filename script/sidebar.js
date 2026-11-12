@@ -552,6 +552,11 @@ function initSidebar() {
     document.getElementById('rail_round').addEventListener('click', () => {
         if (!document.getElementById('newroundbtn').disabled) newRound();
     });
+    // B-52 S1c: the item marker opens the column over the table (like »«), "next item" asks how to leave the item
+    const railItem = document.getElementById('rail_item');
+    if (railItem !== null) railItem.addEventListener('click', sideOpenClick);
+    const railNext = document.getElementById('rail_next');
+    if (railNext !== null) railNext.addEventListener('click', () => openLeaveItem(railNext));
 
     document.addEventListener('pointermove', sideMouseMove, { passive: true });
     rail.addEventListener('pointerover', sideHoverIn);
@@ -567,11 +572,13 @@ function initSidebar() {
     grip.addEventListener('keydown', sideGripKey);
 
     document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && gSide.peek) sidePeek(false);
+        if (event.key === 'Escape' && gSide.peek && !event.defaultPrevented) sidePeek(false);
     });
     document.addEventListener('pointerdown', event => {
         if (!gSide.peek || !(event.target instanceof Node)) return;
         if (rail.contains(event.target) || sidebar.contains(event.target) || grip.contains(event.target)) return;
+        // B-52 S1c: a dialog above it (leave item) is no click elsewhere
+        if (event.target instanceof Element && event.target.closest('#leave_item') !== null) return;
         // the menu panel lies over the column: a click in it is no click elsewhere
         const menu = document.getElementById('menu');
         if (menu !== null && menu.contains(event.target)) return;

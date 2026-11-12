@@ -42,7 +42,7 @@ test('topic: Save and Undo after text inserted without a key (E1)', async ({ bro
   const saved = alice.waitForResponse(r => r.url().includes('/api/update_topic.php'));
   await alice.locator('#topic_save').click();
   await saved;
-  await expect(alice.locator('#topic')).toHaveText('PROJ-42 Checkout');
+  await expect(alice.locator('#board_note_text')).toHaveText('PROJ-42 Checkout');
 });
 
 test('removed: the overlay says "You were removed from the table" (E3)', async ({ browser }) => {

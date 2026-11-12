@@ -77,6 +77,8 @@ async function addItem(page: Page, t: string, heading: string, extra: Record<str
   return (await res.json()).item_id as number;
 }
 
+const ISO_UTC = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+
 async function play(page: Page, t: string, ids: string[], cards: string[]) {
   for (const [i, cardkey] of cards.entries()) {
     expect((await post(page, 'setc.php', { t, id: ids[i], cardkey })).ok()).toBeTruthy();
@@ -225,8 +227,8 @@ test('next item: distribution and highest value, chosen result, new round, histo
   expect(history).toHaveLength(1);
   expect(history[0]).toMatchObject({ id: first, status: 'done', result_card_key: 'five001', result_auto: 0,
     distribution: { break01: 1, eight01: 1, five001: 1 }, rounds_cnt: 1 });
-  expect(history[0].done_date).not.toBeNull();
-  expect(history[0].last_round_date).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
+  expect(history[0].done_date).toMatch(ISO_UTC);
+  expect(history[0].last_round_date).toMatch(ISO_UTC);
   // the round snapshot keeps the note and the item of the round
   expect(mysql(`select concat(topic, '|', ifnull(topic_item_id, 'null')) from pok_roundstats_tbl
                  where team_id = '${t}' order by id desc limit 1`)).toBe(`Sprint 12 refinement|${first}`);
@@ -473,3 +475,156 @@ test('no code writes pok_topic_items_tbl past topic_items_write() (topics_rev at
     expect(allWrites, 'writes outside topic_items_write()').toBe(writesInCalls);
   }
 });
+
+/* ---------- S1c: leaving the item (topic_item_next.php mode) and dates in UTC ---------- */
+
+async function next(page: Page, t: string, params: Record<string, string | number>) {
+  return post(page, 'topic_item_next.php', { t, ...params });
+}
+
+test('S1c next mode close: with a card, with the current estimate, mode missing = close; invalid mode and card refused', async ({ browser }) => {
+  const { page, t, ids } = await setup(browser, 'TopicClose');
+  const a = await addItem(page, t, 'Alpha');
+  const b = await addItem(page, t, 'Bravo');
+  const c = await addItem(page, t, 'Charlie');
+  await play(page, t, ids, ['five001', 'eight01', 'three01']);
+
+  // refused before anything changes
+  const before = rev(t);
+  const bad = await next(page, t, { item: a, mode: 'drop' });
+  expect(bad.status()).toBe(400);
+  expect(await bad.json()).toEqual({ error: 'mode' });
+  expect((await next(page, t, { item: a, mode: '' })).status()).toBe(400);
+  expect((await next(page, t, { item: a, mode: 'close', card: 'x y' })).status()).toBe(400); // malformed key
+  expect((await next(page, t, { item: a, mode: 'close', card: 'break01' })).status()).toBe(400); // control card
+  expect((await next(page, t, { item: a, mode: 'close', card: 'green01' })).status()).toBe(400); // not played, not in deck
+  expect((await next(page, t, { item: a, mode: 'later', card: 'five001' })).status()).toBe(400); // card only with close
+  expect(rev(t)).toBe(before);
+  expect((await summary(page, t, ids[0])).active?.id).toBe(a);
+
+  // close with a played card that is not the proposal (8): stored as chosen
+  const closeA = await next(page, t, { item: a, mode: 'close', card: 'five001' });
+  expect(closeA.status()).toBe(200);
+  expect(await closeA.json()).toEqual({ ok: true, item_id: a, active_id: b, result_card_key: 'five001', result_auto: 0 });
+  expect(rev(t)).toBeGreaterThan(before);
+  expect((await done(page, t))[0]).toMatchObject({ id: a, result_card_key: 'five001', result_auto: 0, rounds_cnt: 1,
+    distribution: { eight01: 1, five001: 1, three01: 1 } });
+
+  // close without card: the current estimate (automatic: highest value)
+  await play(page, t, ids, ['two0001', 'three01', 'two0001']);
+  const closeB = await next(page, t, { item: b, mode: 'close' });
+  expect(await closeB.json()).toMatchObject({ item_id: b, active_id: c, result_card_key: 'three01', result_auto: 1 });
+
+  // mode missing = close; the team's chosen value is the current estimate
+  await play(page, t, ids, ['five001', 'eight01', 'eight01']);
+  expect((await post(page, 'topic_item_result.php', { t, item: c, card: 'five001' })).ok()).toBeTruthy();
+  const closeC = await next(page, t, { item: c });
+  expect(await closeC.json()).toMatchObject({ item_id: c, active_id: null, result_card_key: 'five001', result_auto: 0 });
+  expect((await summary(page, t, ids[0]))).toMatchObject({ active: null, open_count: 0, done_count: 3 });
+});
+
+test('S1c next mode close_empty: done without a value, also with a proposal; perspectives allowed', async ({ browser }) => {
+  const { page, url, t, ids } = await setup(browser, 'TopicCloseEmpty', ['Ann', 'Ben']);
+  const a = await addItem(page, t, 'Alpha');
+  const b = await addItem(page, t, 'Bravo');
+  await play(page, t, ids, ['five001', 'eight01']);
+  const before = rev(t);
+  const res = await next(page, t, { item: a, mode: 'close_empty' });
+  expect(await res.json()).toEqual({ ok: true, item_id: a, active_id: b, result_card_key: null, result_auto: 0 });
+  expect(rev(t)).toBeGreaterThan(before);
+  expect((await done(page, t))[0]).toMatchObject({ id: a, status: 'done', result_card_key: null, rounds_cnt: 1,
+    distribution: { eight01: 1, five001: 1 } });
+  // the round ended: all cards up
+  expect((await dao(page, t, ids[0])).players.every((p: { display_card_key: string }) => p.display_card_key === 'prgrss1')).toBeTruthy();
+
+  // perspectives: close and close_empty store no result, a card is refused (409)
+  await setTeamDeck(page, url, 'traffic');
+  const c = await addItem(page, t, 'Charlie');
+  await play(page, t, ids, ['green01', 'red0001']);
+  const refused = await next(page, t, { item: b, mode: 'close', card: 'red0001' });
+  expect(refused.status()).toBe(409);
+  expect(await refused.json()).toEqual({ error: 'perspectives' });
+  // a choice stored before the deck change does not count either
+  mysql(`update pok_topic_items_tbl set result_card_key = 'eight01', result_auto = 0 where id = ${b}`);
+  expect(await (await next(page, t, { item: b, mode: 'close' })).json())
+    .toMatchObject({ item_id: b, active_id: c, result_card_key: null, result_auto: 1 });
+  expect((await done(page, t))[0]).toMatchObject({ id: b, result_card_key: null, distribution: { green01: 1, red0001: 1 } });
+  const r = rev(t);
+  expect(await (await next(page, t, { item: c, mode: 'close_empty' })).json())
+    .toMatchObject({ item_id: c, active_id: null, result_card_key: null });
+  expect(rev(t)).toBeGreaterThan(r);
+});
+
+test('S1c next mode later: stays open at the end with its rounds, the next one is active; only open item stays active', async ({ browser }) => {
+  const { page, t, ids } = await setup(browser, 'TopicLater', ['Ann', 'Ben']);
+  const a = await addItem(page, t, 'Alpha');
+  const b = await addItem(page, t, 'Bravo');
+  const c = await addItem(page, t, 'Charlie');
+
+  // round 1 of Alpha, the team chooses 5; "later" with cards down ends the round and keeps it at the item
+  await play(page, t, ids, ['five001', 'eight01']);
+  expect((await post(page, 'topic_item_result.php', { t, item: a, card: 'five001' })).ok()).toBeTruthy();
+  let before = rev(t);
+  const later = await next(page, t, { item: a, mode: 'later' });
+  expect(await later.json()).toEqual({ ok: true, item_id: a, active_id: b, result_card_key: null, result_auto: 1 });
+  expect(rev(t)).toBeGreaterThan(before);
+  let list = await open(page, t);
+  expect(list.map(i => i.id)).toEqual([b, c, a]);
+  expect(list[2]).toMatchObject({ status: 'open', rounds_cnt: 1, distribution: { eight01: 1, five001: 1 },
+    result_card_key: 'eight01', result_auto: 1, done_date: null }); // the chosen 5 is reset, proposal again
+  expect(list[2].last_round_date).toMatch(ISO_UTC);
+  const firstRoundDate = list[2].last_round_date;
+  expect((await summary(page, t, ids[0]))).toMatchObject({ open_count: 3, done_count: 0, next_heading: 'Charlie' });
+  expect((await dao(page, t, ids[0])).players.every((p: { display_card_key: string }) => p.display_card_key === 'prgrss1')).toBeTruthy();
+
+  // later without cards down: just the order
+  before = rev(t);
+  expect(await (await next(page, t, { item: b, mode: 'later' })).json()).toMatchObject({ item_id: b, active_id: c });
+  expect(rev(t)).toBeGreaterThan(before);
+  expect((await open(page, t)).map(i => i.id)).toEqual([c, a, b]);
+  expect((await post(page, 'topic_item_next.php', { t, item: c, mode: 'close_empty' })).ok()).toBeTruthy();
+
+  // Alpha comes back: a second round counts on top of the first one (rounds_cnt 2)
+  await play(page, t, ids, ['three01', 'three01']);
+  expect(await (await next(page, t, { item: a, mode: 'close' })).json())
+    .toMatchObject({ item_id: a, active_id: b, result_card_key: 'three01', result_auto: 1 });
+  const alpha = (await done(page, t)).find(i => i.id === a) as Item;
+  expect(alpha).toMatchObject({ rounds_cnt: 2, distribution: { three01: 2 } });
+  expect(alpha.last_round_date! >= firstRoundDate!).toBeTruthy();
+
+  // the only open item: stays active, a stale click with another id is refused
+  await play(page, t, ids, ['eight01', 'eight01']);
+  before = rev(t);
+  expect(await (await next(page, t, { item: b, mode: 'later' })).json())
+    .toEqual({ ok: true, item_id: b, active_id: b, result_card_key: null, result_auto: 1 });
+  expect(rev(t)).toBeGreaterThan(before); // the round went to the item
+  expect((await summary(page, t, ids[0])).active).toMatchObject({ id: b, rounds_cnt: 1, status: 'open' });
+  expect((await next(page, t, { item: a, mode: 'later' })).status()).toBe(409);
+});
+
+test('S1c dates: last_round_date and done_date as ISO 8601 UTC, independent of the server time zone', async ({ browser }) => {
+  const { page, t, ids } = await setup(browser, 'TopicDates', ['Ann']);
+  const a = await addItem(page, t, 'Alpha');
+  const b = await addItem(page, t, 'Bravo');
+  await play(page, t, ids, ['five001']);
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect((await next(page, t, { item: a })).ok()).toBeTruthy();
+  await play(page, t, ids, ['five001']);
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+
+  // the stored instant (unix time is exact for timestamp columns), formatted in UTC by the test
+  const utc = (id: number, column: string) => new Date(Number(mysql(
+    `select unix_timestamp(${column}) from pok_topic_items_tbl where id = ${id}`)) * 1000).toISOString().replace('.000Z', 'Z');
+  const doneItem = (await done(page, t))[0];
+  expect(doneItem.done_date).toMatch(ISO_UTC);
+  expect(doneItem.done_date).toBe(utc(a, 'done_date'));
+  expect(doneItem.last_round_date).toBe(utc(a, 'last_round_date'));
+  const active = (await summary(page, t, ids[0])).active as Item;
+  expect(active.last_round_date).toMatch(ISO_UTC);
+  expect(active.last_round_date).toBe(utc(b, 'last_round_date'));
+  expect(active.done_date).toBeNull();
+  // close to now (the clocks of test and DB run on the same machine)
+  expect(Math.abs(Date.parse(active.last_round_date as string) - Date.now())).toBeLessThan(5 * 60 * 1000);
+  expect((await open(page, t))[0].last_round_date).toBe(active.last_round_date);
+});
+

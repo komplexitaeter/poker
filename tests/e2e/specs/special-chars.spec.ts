@@ -49,8 +49,8 @@ test('topic from the entry link is shown as entered', async ({ browser }) => {
   await page.goto(`/?tool=e2e&team=${encodeURIComponent('Link Team')}&text=${encodeURIComponent(topic)}`);
   await page.waitForURL(/\?t=/);
 
-  await expect(page.locator('#topic')).toHaveText(topic);
-  await expect(page.locator('#topic b')).toHaveCount(0);
+  await expect(page.locator('#board_note_text')).toHaveText(topic);
+  await expect(page.locator('#board_note_text b')).toHaveCount(0);
 });
 
 function escapeRegExp(s: string): string {
@@ -80,8 +80,8 @@ test('topic saved in the topic box keeps special characters', async ({ browser }
   await alice.locator('#topic_save').click();
 
   for (const page of [alice, bob]) {
-    await expect(page.locator('#topic')).toHaveText(topic);
-    await expect(page.locator('#topic b')).toHaveCount(0);
+    await expect(page.locator('#board_note_text')).toHaveText(topic);
+    await expect(page.locator('#board_note_text b')).toHaveCount(0);
   }
 });
 
@@ -97,7 +97,7 @@ test('topic markdown still renders links, bold text and line breaks', async ({ b
   await page.locator('#topic_txt').pressSequentially(`see ${link}`);
   await page.locator('#topic_save').click();
 
-  const topic = page.locator('#topic');
+  const topic = page.locator('#board_note_text');
   await expect(topic.locator('strong')).toHaveText('Story 42');
   await expect(topic.locator('a', { hasText: 'Ticket' })).toHaveAttribute('href', link);
   await expect(topic.locator('a', { hasText: link })).toHaveAttribute('href', link);  // linkify

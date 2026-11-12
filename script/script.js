@@ -1077,7 +1077,9 @@ function fitCardsToTable() {
 
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
     // B-110: minus the observers row below the cards (with its margins)
-    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7 - observersHeight();
+    // B-52 S1c: minus the team's note above the cards
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7 - observersHeight()
+        - boardNoteHeight();
 
     const n = cbox.children.length;
     let fit = min;
@@ -1418,6 +1420,14 @@ function updateObservers(observers, myMkey) {
 }
 
 /* the height the observers row takes from the table, with its margins (0 when hidden) */
+/* B-52 S1c: the note above the cards (#board_note) with its margins; 0 without a note */
+function boardNoteHeight() {
+    const box = document.getElementById('board_note');
+    if (box === null || box.hidden) return 0;
+    const style = getComputedStyle(box);
+    return box.offsetHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+}
+
 function observersHeight() {
     const box = document.getElementById('observers');
     if (box === null || box.hidden) return 0;
@@ -3154,12 +3164,16 @@ function initDisplayHandling() {
     // a scrollbar coming or going does not change the area the cards are fitted to.
     const table = document.getElementById('table');
     if (table !== null && typeof ResizeObserver === 'function') {
-        new ResizeObserver(() => {
+        const tableObserver = new ResizeObserver(() => {
             const cbox = document.getElementById('cbox');
             if (!fitCardsToTable()) return;
             Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
             finishAnimations(cbox, 'height');
-        }).observe(table, { box: 'border-box' });
+        });
+        tableObserver.observe(table, { box: 'border-box' });
+        // B-52 S1c: the note above the cards shown, unfolded or hidden
+        const note = document.getElementById('board_note');
+        if (note !== null) tableObserver.observe(note, { box: 'border-box' });
     }
 }
 
