@@ -3359,10 +3359,11 @@ function updateSide(json, glide = true) {
     }
 }
 
-/* B-53: the column(s) the median of the votes falls on: { low, high } (card keys; the same key when it lies on one
- * column) or null. Only votes on cards with a numeric value count (no control cards, no cards without a value, no ∞,
- * no cards with "range": false), at least two of them. Odd number: the middle vote; even: the two middle votes.
- * The line splits the columns in deck order, so a deck whose values do not rise in deck order (a custom set) has none. */
+/* B-53: the median of the votes: { value, low, high } or null. Only votes on cards with a numeric value count (no
+ * control cards, no cards without a value, no ∞, no cards with "range": false), at least two of them. Odd number: the
+ * value of the middle vote; even: the mean of the two middle votes (5 and 13: 9), as the average pointer works on
+ * values too. low/high: the neighbouring deck cards it lies between (both the same card when one has exactly that
+ * value). The line follows deck order, so a deck whose values do not rise in deck order (a custom set) has none. */
 function medianColumns(cardStats) {
     const valued = gDeck.cards.filter(card => card.value != null && !card.infinite && !card.control
         && !card.controlCard && card.range !== false);
@@ -3370,17 +3371,22 @@ function medianColumns(cardStats) {
     const votes = [];
     valued.forEach(card => {
         const n = cardStats[card.key] ? cardStats[card.key].usageCount : 0;
-        for (let i = 0; i < n; i++) votes.push(card);
+        for (let i = 0; i < n; i++) votes.push(card.value);
     });
     if (votes.length < 2) return null;
     const half = votes.length >> 1;
-    const low = votes.length % 2 === 1 ? votes[half] : votes[half - 1];
-    return { low, high: votes[half] };
+    const value = votes.length % 2 === 1 ? votes[half] : (votes[half - 1] + votes[half]) / 2;
+    const exact = valued.find(card => card.value === value);
+    if (exact) return { value, low: exact, high: exact };
+    const low = valued.filter(card => card.value < value).pop();
+    const high = valued.find(card => card.value > value);
+    return low && high ? { value, low, high } : null;
 }
 
-/* B-53: the dashed median line in the spread (#spread_median, left set here): through the middle of the column of the
- * median, or halfway between the middles of the two columns of the middle votes. median: medianColumns() or null
- * (no line). Its sr-only text says where it is ("Median 5", "Median between 5 and 8"). */
+/* B-53: the dashed median line in the spread (#spread_median, left set here): through the middle of the column with
+ * the median's value, else between the middles of its neighbouring columns, by value (median 9 between 8 and 13: a
+ * fifth of the way from the 8). median: medianColumns() or null (no line). Its sr-only text says the value
+ * ("Median 3", "Median 9"; the card's label when a column has exactly that value). */
 function syncMedianLine(median) {
     const centerOf = col => { const r = col.getBoundingClientRect(); return r.left + r.width / 2; };
     const line = document.getElementById('spread_median');
@@ -3388,23 +3394,22 @@ function syncMedianLine(median) {
     if (line === null || bars === null) return;
     const colLow = median ? bars.querySelector('[data-card="' + median.low.key + '"]') : null;
     const colHigh = median ? bars.querySelector('[data-card="' + median.high.key + '"]') : null;
-    // the column(s) the line runs through: their count on a patch of the background (style.css)
-    const x = colLow && colHigh ? (centerOf(colLow) + centerOf(colHigh)) / 2 : null;
-    bars.querySelectorAll('.spread-col').forEach(col => {
-        const r = col.getBoundingClientRect();
-        col.classList.toggle('median', x !== null && x > r.left && x < r.right);
-    });
-    if (colLow === null || colHigh === null) {
+    let x = null;
+    if (colLow !== null && colHigh !== null) {
+        const share = median.low === median.high ? 0 : (median.value - median.low.value) / (median.high.value - median.low.value);
+        x = centerOf(colLow) + share * (centerOf(colHigh) - centerOf(colLow));
+    }
+    if (x === null) {
         line.hidden = true;
         return;
     }
     const left = x - line.parentElement.getBoundingClientRect().left;
     line.style.left = Math.round(left * 2) / 2 + 'px';
-    const text = median.low.key === median.high.key ? 'Median ' + median.low.label
-        : 'Median between ' + median.low.label + ' and ' + median.high.label;
+    const value = String(Math.round(median.value * 100) / 100);
+    const text = 'Median ' + (median.low === median.high ? median.low.label : value);
     const label = line.querySelector('.sr-only');
     if (label.textContent !== text) label.textContent = text;
-    line.setAttribute('data-median', median.low.key === median.high.key ? median.low.key : median.low.key + ',' + median.high.key);
+    line.setAttribute('data-median', value);
     line.hidden = false;
 }
 

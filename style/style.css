@@ -4117,30 +4117,32 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 .spread-index.no-glide { transition: none; }
 
-/* B-53: the median, a dashed line from the counts down over the bars (left set by syncMedianLine() in script.js:
- * through the middle of a column or halfway between two). Muted, not the accent of the estimate; it ends above the
- * value labels, so the average pointer below them stays free. The count of a column it runs through (.median) lies
- * on a patch of the column's background, so the number stays readable. */
+/* B-53: the median, a dashed line (left set by syncMedianLine() in script.js: by the median's value, through the
+ * middle of a column or between two). B-53 fix (Andreas): it starts on the baseline (the foot of the bars) and goes up
+ * to the top of the count row, so it never runs over the value labels (nor the average pointer below them); it lies
+ * behind the bars and counts (they stay fully readable) and is subdued, muted and faint, not the estimate's accent.
+ * Behind: .spread-chart is its own stacking context, the bars above the line. */
+.spread-chart { isolation: isolate; }
+
+.spread-chart > .spread-bars {
+    position: relative;
+    z-index: 1;
+}
+
 .spread-median {
     position: absolute;
-    z-index: 1;
+    z-index: 0;
     top: 0;
     left: 0;
     width: 2px;
-    height: calc(1rem + 5px + var(--spread-h));
+    height: calc(1rem + 3px + var(--spread-h)); /* the count row, its gap and the bars: down to the baseline */
     margin-left: -1px;
-    background: repeating-linear-gradient(to bottom, var(--muted) 0 3px, transparent 3px 6px);
+    background: repeating-linear-gradient(to top, var(--muted) 0 3px, transparent 3px 6px);
+    opacity: 0.6;
     pointer-events: none;
 }
 
 .spread-median[hidden] { display: none; }
-
-.spread-col.median .spread-count {
-    position: relative;
-    z-index: 2;
-    padding: 0 2px;
-    background: var(--bg-2);
-}
 
 @media (prefers-reduced-motion: reduce) {
     .spread-seg,
