@@ -4119,10 +4119,16 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 /* B-53: the median, a dashed line (left set by syncMedianLine() in script.js: by the median's value, through the
  * middle of a column or between two). B-53 fix (Andreas): it starts on the baseline (the foot of the bars) and goes up
- * to the top of the count row, so it never runs over the value labels (nor the average pointer below them); it lies
+ * to the top of the count row (fix 2: a little above it, see below), so it never runs over the value labels (nor the average pointer below them); it lies
  * behind the bars and counts (they stay fully readable) and is subdued, muted and faint, not the estimate's accent.
  * Behind: .spread-chart is its own stacking context, the bars above the line. */
 .spread-chart { isolation: isolate; }
+
+/* B-53 fix 2 (Andreas): on top the line rises a little above the columns (their top is the top of a .est frame), so it
+ * reads as a line of its own and does not cling to the frame of a neighbouring column. 6px stay inside the head's
+ * margin and the lower half-leading of its line (no glyph is crossed); .side does not clip it (desktop: no overflow;
+ * phones: overflow-y auto, but the line stays inside the padding box). */
+.spread-median { --median-over: 6px; }
 
 .spread-chart > .spread-bars {
     position: relative;
@@ -4132,10 +4138,10 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 .spread-median {
     position: absolute;
     z-index: 0;
-    top: 0;
+    top: calc(-1 * var(--median-over));
     left: 0;
     width: 2px;
-    height: calc(1rem + 3px + var(--spread-h)); /* the count row, its gap and the bars: down to the baseline */
+    height: calc(var(--median-over) + 1rem + 3px + var(--spread-h)); /* the overhang, the count row, its gap and the bars: down to the baseline */
     margin-left: -1px;
     background: repeating-linear-gradient(to top, var(--muted) 0 3px, transparent 3px 6px);
     opacity: 0.6;

@@ -189,3 +189,69 @@ test('median line by value: 1 and 5 through the empty column 3 (unbroken), 5 and
     await alice.locator('#spread').screenshot({ path: `${SHOTS}/median-on-bar-phone-light.png` });
   }
 });
+
+test('median line rises above the columns, also above the frame of the current estimate (B-53 fix 2)', async ({ browser }) => {
+  // Andreas' case: 5 and 8, median 6.5 between them; the 8 is the current estimate (.est, the highest card while an
+  // item is active). The line used to end at the top of the count row, level with the frame of the 8.
+  const alice = await newPlayer(browser, { viewport: DESKTOP, colorScheme: 'dark', deviceScaleFactor: 2 });
+  const url = await createTeam(alice, 'Median Top');
+  const t = new URL(url).searchParams.get('t')!;
+  await joinAsPlayer(alice, url, 'Alice');
+  const me = await alice.evaluate(() => localStorage.getItem('SID')!);
+  await setTeamDeck(alice, url, 'fib-classic', null, CONTROLS_ALL);
+  await post(alice, 'update_show_avg.php', { t, show_avg: '1' });
+  const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
+  await alice.reload();
+  const line = alice.locator('#spread_median');
+  const status = alice.locator('#round_status');
+
+  /* top and bottom of the line, of the frame of the estimate (or the top of the columns) and of the baseline */
+  const geometry = () => alice.evaluate(() => {
+    const box = (el: Element) => el.getBoundingClientRect();
+    const line = box(document.getElementById('spread_median')!);
+    const est = document.querySelector('#spread_bars .spread-col.est');
+    const col = box(est ?? document.querySelector('#spread_bars .spread-col')!);
+    const bar = box(document.querySelector('#spread_bars [data-card="eight01"] .spread-bar')!);
+    const side = box(document.querySelector('.side')!);
+    const sideStyle = getComputedStyle(document.querySelector('.side')!);
+    return {
+      lineTop: line.top, lineBottom: line.bottom, colTop: col.top, base: bar.bottom,
+      sideTop: side.top + parseFloat(sideStyle.borderTopWidth), // the top of the padding box: nothing above is shown
+    };
+  });
+
+  // without an item: no .est, the line still rises above the columns, down to the baseline
+  for (const [id, cardkey] of [[me, 'five001'], [bob, 'eight01']]) await post(alice, 'setc.php', { t, id, cardkey });
+  await expect(status).toHaveText('revealed');
+  await expect(line).toHaveAttribute('data-median', '6.5');
+  await expect(alice.locator('#spread_bars .spread-col.est')).toHaveCount(0);
+  let g = await geometry();
+  expect(g.colTop - g.lineTop).toBeGreaterThanOrEqual(5);
+  expect(Math.abs(g.lineBottom - g.base)).toBeLessThan(1.5);
+
+  // an active item: the 8 is the current estimate (blue frame); the line's top lies above the frame's top
+  const res = await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading: 'Login' } });
+  expect(res.ok()).toBeTruthy();
+  const est = alice.locator('#spread_bars .spread-col.est');
+  await expect(est).toHaveAttribute('data-card', 'eight01');
+  await expect(line).toBeVisible();
+  g = await geometry();
+  expect(g.colTop - g.lineTop).toBeGreaterThanOrEqual(5);
+  expect(g.colTop - g.lineTop).toBeLessThanOrEqual(9);
+  expect(Math.abs(g.lineBottom - g.base)).toBeLessThan(1.5);
+  expect(g.lineTop).toBeGreaterThanOrEqual(g.sideTop); // not cut off on top
+  if (SHOTS) await alice.locator('#spread').screenshot({ path: `${SHOTS}/median-5-8-est-dark.png` });
+  if (SHOTS) {
+    await alice.evaluate(() => document.body.classList.add('light-theme'));
+    await alice.locator('#spread').screenshot({ path: `${SHOTS}/median-5-8-est-light.png` });
+  }
+
+  // phone: the same, and .side (overflow-y auto) does not clip it
+  await alice.setViewportSize({ width: 390, height: 844 });
+  await expect(line).toBeVisible();
+  g = await geometry();
+  expect(g.colTop - g.lineTop).toBeGreaterThanOrEqual(5);
+  expect(Math.abs(g.lineBottom - g.base)).toBeLessThan(1.5);
+  expect(g.lineTop).toBeGreaterThanOrEqual(g.sideTop);
+  if (SHOTS) await alice.locator('#spread').screenshot({ path: `${SHOTS}/median-5-8-est-phone.png` });
+});
