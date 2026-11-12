@@ -1164,11 +1164,11 @@ let gTopicExportBusy = false; // false, or 'copy' | 'csv' while that export load
 
 function topicExportRow() {
     const row = document.createElement('div');
-    row.className = 'row end ti-export';
+    row.className = 'ti-export'; // quiet text buttons like "reopen" in the rows (style.css "B-52 export")
     const button = (act, icon, label, title) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'btn-box';
+        b.className = 'ti-link';
         b.id = 'ti_export_' + act;
         b.dataset.tiAct = act;
         b.title = title;

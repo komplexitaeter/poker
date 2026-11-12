@@ -6329,6 +6329,23 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     .ti-acts .icon-btn { min-width: 40px; min-height: 40px; }
 }
 
+/* B-52 export: "Copy" / "Download CSV" below the done list, right-aligned like "reopen" in the rows above
+ * (Andreas, 2026-11-12: quiet links instead of boxes). Focus ring: .ti-link:focus-visible below */
+.ti-export {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px 20px;
+    margin-top: var(--space-2);
+}
+
+.ti-export .ti-link { min-height: 30px; }
+.ti-export .ti-link[aria-busy="true"] { cursor: progress; opacity: 0.6; }
+
+@media (pointer: coarse) {
+    .ti-export .ti-link { min-height: var(--tap); }
+}
+
 .spread-col.pick:focus-visible,
 .ti-link:focus-visible,
 .ti-next:focus-visible,
