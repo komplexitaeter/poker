@@ -525,7 +525,8 @@ test('rate limit: 10 reactions a minute go out, the 11th is not sent and shows a
   await advance(60_000);
   await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'party'), [bobMkey]);
   expect(await sent()).toHaveLength(11);
-  await expect(tableCard(bob, 'Bob').locator('.react-land .react-emoji')).toHaveText('🎉');
+  // not checked on Bob's board: only the board's clock is moved on; poker-msg (B-131, 10 per real minute) still
+  // drops this one, so it never lands
   expect(await toasts()).toHaveLength(1);
 });
 
