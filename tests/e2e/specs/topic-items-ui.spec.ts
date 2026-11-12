@@ -100,6 +100,7 @@ test('the note stays a note: on the board above the cards, tabs Note · Items 0 
   await expect(alice.locator('#topic_tab_open')).toHaveText('Items 0');
   await expect(alice.locator('#topic_tab_done')).toHaveText('Done 0');
   await expect(alice.locator('#topic_txt')).toBeFocused();
+  await expect(alice.locator('#topic_txt')).toHaveAttribute('placeholder', 'A note for everyone – e.g. today’s goal or how you estimate.');
   await expect(alice.locator('label[for="topic_txt"]')).toHaveText('What are you estimating? (optional, Markdown works)');
   // the entry to the items on "Open": a clearly visible button with a dashed outline, no list yet
   await showTab(alice, 'open');
