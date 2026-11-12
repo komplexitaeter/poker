@@ -1071,7 +1071,7 @@ function topicDate(value) {
 }
 
 /* a done item (history): heading; agreed value (only if there is one), rounds, date of the last round, the spread
- * behind a triangle (a disclosure); edit, delete, reopen */
+ * behind a triangle (a disclosure); delete, reopen. No pen (Andreas): a done item is changed after "reopen" */
 function topicDoneRow(item) {
     const li = document.createElement('li');
     li.dataset.id = String(item.id);
@@ -1127,7 +1127,7 @@ function topicDoneRow(item) {
     reopen.title = 'Back to the open items, right after the current one';
     reopen.setAttribute('aria-label', 'Reopen: ' + item.heading);
     reopen.append(iconSvg('reset'), 'reopen');
-    l2.append(sum, grow, iconButton('pen', 'Edit: ' + item.heading, 'edit', item.id), topicDeleteButton(item), reopen);
+    l2.append(sum, grow, topicDeleteButton(item), reopen);
     li.append(line, l2);
     if (hasDist) {
         const dist = topicDistView(item);
@@ -1318,6 +1318,28 @@ function onTopicListClick(event) {
     }
 }
 
+/* the red "Delete" of an item is on screen (the menu open) */
+function topicConfirmShown() {
+    if (gTopicConfirmDelete === null) return false;
+    const sure = document.querySelector('#topic_box .ti-del-sure');
+    return sure !== null && sure.getClientRects().length > 0;
+}
+
+/* cancels the red "Delete": the trash can again, focused (keyboard: with ring, else quietly), unless the focus went
+ * on to something else (a field, a tab) */
+function cancelTopicDelete(keyboard) {
+    const id = gTopicConfirmDelete;
+    const active = document.activeElement;
+    const elsewhere = active !== null && active !== document.body && !active.matches('.ti-del-sure')
+        && active.closest('#topic_box') !== null && !active.matches('dialog, [role="tabpanel"]');
+    gTopicConfirmDelete = null;
+    renderTopicMenu(true);
+    if (elsewhere) return;
+    const trash = document.querySelector('#topic_box [data-ti-act="delete"][data-ti-id="' + id + '"]');
+    if (trash === null || trash.getClientRects().length === 0) return;
+    if (keyboard) trash.focus(); else focusQuietly(trash);
+}
+
 /* the topics menu is opened (prepareMenuSection in script_feedback.js): the start tab (an opener's wish, else "Items"
  * while items are open, else "Note"), the lists fresh */
 function prepareTopicMenu() {
@@ -1358,17 +1380,21 @@ function initTopicItems() {
         list.addEventListener('pointerup', onTopicGripUp);
         list.addEventListener('pointercancel', onTopicGripUp);
         list.addEventListener('lostpointercapture', onTopicGripUp);
-        list.addEventListener('keydown', event => {
-            if (event.key === 'Escape' && gTopicConfirmDelete !== null) {
-                event.preventDefault();
-                event.stopPropagation();
-                const id = gTopicConfirmDelete;
-                gTopicConfirmDelete = null;
-                renderTopicMenu(true);
-                const trash = list.querySelector('[data-ti-act="delete"][data-ti-id="' + id + '"]');
-                if (trash !== null) trash.focus();
-            }
-        });
+    });
+    // the red "Delete" asks: Escape (before the menu's own Escape, which skips a handled one) and a click beside it
+    // cancel; the focus goes back to the trash can. A tab change cancels in onTopicTab().
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || event.defaultPrevented || !topicConfirmShown()) return;
+        event.preventDefault();
+        cancelTopicDelete(true);
+    }, true);
+    document.addEventListener('click', event => {
+        if (!topicConfirmShown()) return;
+        const target = event.target instanceof Element ? event.target : null;
+        // a button of the lists is handled by onTopicListClick (another trash can, the "Delete" itself, …); it may be
+        // gone already (the lists render anew), so no check for its list
+        if (target !== null && target.closest('[data-ti-act]') !== null) return;
+        cancelTopicDelete(event.detail === 0);
     });
     const bars = document.getElementById('spread_bars');
     if (bars !== null) {

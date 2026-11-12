@@ -769,3 +769,70 @@ test('phone: the note above the cards, the item in the strip, the overlay from t
   await alice.locator('#leave_item .leave-opt[data-mode="close"]').click();
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Second');
 });
+
+test('done items without pen; the red "Delete" cancels on a click beside it, Escape and a tab change (B-52)', async ({ browser }) => {
+  const { alice, t } = await setup(browser, 'Topic UI Delete Confirm');
+  await openTopics(alice);
+  await fillItem(alice, 'First');
+  await fillItem(alice, 'Second');
+  await fillItem(alice, 'Third');
+  const trash = (i: number) => alice.locator('#ti_open [data-ti-act="delete"]').nth(i);
+  const sure = alice.locator('#topic_box [data-ti-act="delete-sure"]');
+
+  // a click beside it (an empty spot of the menu): back to the trash can, nothing deleted, the menu stays open
+  await trash(1).click();
+  await expect(sure).toBeVisible();
+  await alice.locator('#topic_panel_open').click({ position: { x: 4, y: 4 } });
+  await expect(sure).toHaveCount(0);
+  await expect(trash(1)).toBeFocused();
+  await expect(alice.locator('#topic_box')).toBeVisible();
+  await expect(openHeadings(alice)).toHaveText(['First', 'Second', 'Third']);
+
+  // Escape: cancels, the menu stays open
+  await trash(1).click();
+  await expect(sure).toBeFocused();
+  await alice.keyboard.press('Escape');
+  await expect(sure).toHaveCount(0);
+  await expect(trash(1)).toBeFocused();
+  await expect(alice.locator('#topic_box')).toBeVisible();
+  await expect(openHeadings(alice)).toHaveText(['First', 'Second', 'Third']);
+
+  // a tab change: cancels; back on "Items" the trash can again
+  await trash(1).click();
+  await expect(sure).toBeVisible();
+  await showTab(alice, 'note');
+  await showTab(alice, 'open');
+  await expect(sure).toHaveCount(0);
+  await expect(openHeadings(alice)).toHaveText(['First', 'Second', 'Third']);
+
+  // confirming still deletes
+  await trash(1).click();
+  await sure.click();
+  await expect(openHeadings(alice)).toHaveText(['First', 'Third']);
+
+  // a done item: no pen, delete and reopen stay; Escape cancels there too
+  const lists = await (await alice.request.get(`/api/get_topics.php?t=${encodeURIComponent(t)}`)).json();
+  const first = lists.open.find((i: { heading: string }) => i.heading === 'First').id;
+  const res = await alice.request.post(`/api/topic_item_next.php?t=${encodeURIComponent(t)}&item=${first}&mode=close_empty`);
+  expect(res.ok()).toBeTruthy();
+  await expect(alice.locator('#topic_tab_done')).toHaveText('Done 1');
+  await showTab(alice, 'done');
+  const done = alice.locator('#ti_done > li').first();
+  await expect(done.locator('.ti-h')).toHaveText('First');
+  await expect(done.locator('[data-ti-act="edit"]')).toHaveCount(0);
+  await expect(done.locator('[data-ti-act="reopen"]')).toBeVisible();
+  const doneTrash = done.locator('[data-ti-act="delete"]');
+  await doneTrash.click();
+  await expect(sure).toBeFocused();
+  await alice.keyboard.press('Escape');
+  await expect(sure).toHaveCount(0);
+  await expect(doneTrash).toBeFocused();
+  await expect(alice.locator('#topic_box')).toBeVisible();
+  // and a click beside it
+  await doneTrash.click();
+  await expect(sure).toBeVisible();
+  await alice.locator('#topic_panel_done').click({ position: { x: 4, y: 4 } });
+  await expect(sure).toHaveCount(0);
+  await expect(doneTrash).toBeFocused();
+  await expect(alice.locator('#ti_done > li')).toHaveCount(1);
+});
