@@ -1392,6 +1392,15 @@ fieldset:disabled .seg input:checked + span {
 
 .m-tabs [role="tab"]:hover { color: var(--text); border-color: var(--text); }
 
+/* an inactive tab (B-52: "Done 0"): not clickable, muted, skipped by the arrow keys (script_feedback.js) */
+.m-tabs [role="tab"][aria-disabled="true"],
+.m-tabs [role="tab"][aria-disabled="true"]:hover {
+    border-color: var(--line);
+    color: var(--muted);
+    opacity: 0.5;
+    cursor: default;
+}
+
 .m-tabs [role="tab"][aria-selected="true"] {
     border-color: var(--accent);
     background: var(--bg-4);
@@ -6130,10 +6139,10 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .ti-it {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 4px 8px;
-    padding: 4px 2px 4px 10px;
+    gap: 4px 6px;
+    padding: 4px 2px 4px 0;
     background: var(--bg-2);
     border: 1px solid var(--line);
     border-left: 3px solid var(--line-strong);
@@ -6178,7 +6187,35 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .ti-acts .icon-btn:hover:enabled { color: var(--accent); }
 .ti-acts .icon-btn:disabled { opacity: 0.3; cursor: default; }
 .ti-acts .i { width: 16px; height: 16px; }
-.ti-move { display: flex; }
+
+/* the grip in front of an open item (B-52, Andreas): drag it (mouse, touch) or the arrow keys up/down on it.
+ * touch-action: none only here, the list scrolls everywhere else */
+.ti-grip.icon-btn {
+    align-self: stretch;
+    min-width: 28px;
+    padding: 0 2px 0 4px;
+    color: var(--muted);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.ti-grip.icon-btn:hover { color: var(--accent); }
+.ti-grip .i { width: 18px; height: 18px; stroke-width: 3.2; }
+
+/* while dragging: the item follows the pointer (position set by topics.js), the placeholder marks where it lands */
+.ti-it.dragging {
+    z-index: 5;
+    border-color: var(--accent);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 35%);
+}
+.ti-it.dragging .ti-grip { cursor: grabbing; }
+.ti-drop {
+    box-sizing: border-box;
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius-l);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
 
 .ti-del-sure { min-height: 30px !important; padding: 2px 10px !important; }
 
@@ -6218,6 +6255,8 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 }
 
 .ti-add:hover:enabled { color: var(--accent); border-color: var(--accent); }
+.ti-note-add { width: 100%; margin-top: var(--space-3); }
+.ti-note-add[hidden] { display: none; }
 .ti-add:disabled { cursor: not-allowed; opacity: 0.5; }
 .ti-add .i { width: 16px; height: 16px; }
 
