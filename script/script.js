@@ -2798,6 +2798,14 @@ function timerStateFresh(writeGen) {
 
 const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
 
+/* B-130: auto-start 0 = off, 1 = new round, 2 = next item: the hint below the switch and the toast of an own change */
+const TIMER_AUTO_RESTART_HINTS = [
+    'Starts only with play.',
+    'Restarts with every new round.',
+    'Restarts when you move on to the next item \u2013 new rounds within an item keep it running. Without items like New round.',
+];
+const TIMER_AUTO_RESTART_TOASTS = ['Auto-start off', 'Auto-start with every new round', 'Auto-start with every next item'];
+
 function updateTimer(json) {
     gTimer = {
         status: json.timer_status,
@@ -2805,7 +2813,8 @@ function updateTimer(json) {
         visible: json.timer_visibility === 1,
         mode: json.timer_mode === 'TIMER' ? 'TIMER' : 'STOPWATCH',
         timebox: json.timer_timebox > 0 ? json.timer_timebox : 300,
-        autoRestart: json.timer_auto_restart === 1,
+        // B-130: 0 = off, 1 = new round, 2 = next item
+        autoRestart: [1, 2].includes(json.timer_auto_restart) ? json.timer_auto_restart : 0,
     };
     gTimerTime = gTimer.time;
     gTimerBaseTime = new Date();
@@ -2895,7 +2904,11 @@ function updateTimerConfig(force = false) {
     if (gTimer === null || document.getElementById('timer_box') === null) return;
     checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
     checkRadio('tmr_mode', gTimer.mode);
-    checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
+    checkRadio('tmr_auto_restart', String(gTimer.autoRestart));
+    let autoHint = document.getElementById('tmr_auto_restart_hint');
+    // B-130: written only when it changes (a load with the same state changes nothing on the page, B-110)
+    const autoText = TIMER_AUTO_RESTART_HINTS[gTimer.autoRestart] ?? '';
+    if (autoHint !== null && autoHint.textContent !== autoText) autoHint.textContent = autoText;
     document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
 
     let minutes = Math.round(gTimer.timebox / 60);
@@ -3009,7 +3022,12 @@ function saveTimerOther(showError) {
 }
 
 function setTimerAutoRestart(value) {
-    timerAction('set_auto_restart', value).catch(timerSettingFailed);
+    // B-130: the hint follows right away, the toast confirms the saved value
+    let hint = document.getElementById('tmr_auto_restart_hint');
+    if (hint !== null && TIMER_AUTO_RESTART_HINTS[value] !== undefined) hint.textContent = TIMER_AUTO_RESTART_HINTS[value];
+    timerAction('set_auto_restart', value).then(() => {
+        showToast(TIMER_AUTO_RESTART_TOASTS[value] ?? 'Saved', DECK_TOAST_MS);
+    }).catch(timerSettingFailed);
 }
 
 function timerStart() {

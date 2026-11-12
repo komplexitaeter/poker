@@ -566,6 +566,41 @@ function team_has_cards_down($link, string $t): bool
     return $row !== null && (int)$row->cnt > 0;
 }
 
+/* B-130: pok_teams_tbl.timer_auto_restart (B-67 column, 0/1 before B-130; old code restarts only on = 1) */
+const TIMER_AUTO_OFF = 0;
+const TIMER_AUTO_NEW_ROUND = 1;
+const TIMER_AUTO_NEXT_ITEM = 2;
+
+/*
+ * B-130: restarts a visible timer at 0 (TIMER mode: at T-timebox), running, if the team's auto-start setting is one
+ * of $modes. Caller holds the team row lock (same transaction as the round or the item change). Does not notify.
+ */
+function restart_timer_for_auto_modes($link, string $t, array $modes): void
+{
+    $modes = array_values(array_map('intval', $modes));
+    if (count($modes) === 0) return;
+    $marks = implode(',', array_fill(0, count($modes), '?'));
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_start_time = current_timestamp
+                                        ,t.timer_pause_time = null
+                                   where t.id=?
+                                     and t.timer_visibility = 1
+                                     and t.timer_auto_restart in ($marks)");
+    $sql->bind_param('s' . str_repeat('i', count($modes)), $t, ...$modes);
+    $sql->execute();
+}
+
+/* B-130: the team has an active topic item (an open one). false if the item table is missing (code before schema). */
+function team_has_active_item($link, string $t): bool
+{
+    try {
+        return active_item_id($link, $t) !== null;
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return false;
+    }
+}
+
 /* B-52 S1b: a statement failed only because a table (1146) or column (1054) is missing (code deployed before the schema) */
 function is_missing_schema_error(mysqli_sql_exception $e): bool
 {
@@ -661,16 +696,13 @@ function start_new_round($link, string $t): void
     $sql->bind_param('s', $t);
     $sql->execute();
 
-    /* B-67: with "auto-start on new round" a visible timer restarts at 0 (TIMER mode: at T-timebox) and runs.
-       Applies to NEW_ROUND and CANCEL_ROUND; otherwise the timer stays untouched. */
-    $sql = $link->prepare( "update pok_teams_tbl t
-                                     set t.timer_start_time = current_timestamp
-                                        ,t.timer_pause_time = null
-                                   where t.id=?
-                                     and t.timer_visibility = 1
-                                     and t.timer_auto_restart = 1");
-    $sql->bind_param('s', $t);
-    $sql->execute();
+    /* B-67: with auto-start "New round" a visible timer restarts at 0 (TIMER mode: at T-timebox) and runs.
+       Applies to NEW_ROUND and CANCEL_ROUND; otherwise the timer stays untouched. B-130: "Next item" restarts it
+       when an item is left (topic_item_next.php), not with a round inside an item; without an active item (team
+       without open items) it behaves like "New round". */
+    $modes = array(TIMER_AUTO_NEW_ROUND);
+    if (!team_has_active_item($link, $t)) $modes[] = TIMER_AUTO_NEXT_ITEM;
+    restart_timer_for_auto_modes($link, $t, $modes);
 
     $sql = $link->prepare( "update pok_players_tbl p
                                      set card_key = null
@@ -1185,7 +1217,7 @@ function getDao($t, $id) {
         "timer_visibility"=>(Int)$timer_visibility,
         "timer_mode"=>(String)$timer_mode, // B-67: STOPWATCH | TIMER
         "timer_timebox"=>(Int)$timer_timebox, // B-67: seconds, only used in TIMER mode
-        "timer_auto_restart"=>(Int)$timer_auto_restart, // B-67: 1 = new/cancelled round restarts the timer
+        "timer_auto_restart"=>(Int)$timer_auto_restart, // B-67/B-130: 0 = off, 1 = new round, 2 = next item
         "results_order"=>$results_order,
         "show_avg"=>$show_avg,
         "anonymous_mode"=>$anonymous_mode,

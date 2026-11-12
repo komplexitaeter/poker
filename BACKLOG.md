@@ -1789,7 +1789,11 @@ Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
 4.884 vom Limit verworfen – fast alle von wenigen Verbindungen (eine allein 2.129). Wer die JS-Konsole öffnet, kann
 heute dauerhaft 1/s senden. Neu je Verbindung (gleitende Fenster, kein Limit auf Teamebene): **1 pro Sekunde, 10 pro
-Minute, 25 pro 5 Minuten, 40 pro 15 Minuten**; darüber wird verworfen (wie heute, mit Log-Zeile). Im Board die gleichen
+Minute**; darüber wird verworfen (wie heute, mit Log-Zeile). Log-Muster: kurze Ausbrüche bis 24/s (vermutlich
+gehaltene Taste) – Board ignoriert Tastaturwiederholung, eine gehaltene Taste = eine Reaktion.
+Log (Andreas, 2026-11-12): Verwerfungen mit Fenster („rate limit 1s“/„1m“) und der **Code** der Reaktion bei
+Weiterleitung und Verwerfung (nie Absender/Empfänger), damit Nutzung je Reaktion und Limit-Treffer auswertbar sind.
+Kein Widerspruch zu B-110: „nichts in die DB“ bleibt – im Log-File ohne Namen ist es ok. Im Board die gleichen
 Grenzen als Rückmeldung: beim Überschreiten kurzer Hinweis statt stillem Verlust. poker-msg (Ben) + Board (Fred);
 poker-msg-Rollout mit Neustart abends.
 

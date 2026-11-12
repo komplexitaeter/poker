@@ -97,10 +97,11 @@ if ($action=='set_timebox') {
     $sql->execute();
 }
 
-/* B-67: restart the timer with every new or cancelled round (see newround.php) */
+/* B-67/B-130: auto-start of the timer: 0 = off, 1 = with every new or cancelled round (start_new_round()),
+   2 = when an item is left (topic_item_next.php; without an active item like 1) */
 if ($action=='set_auto_restart') {
     $value = filter_input(INPUT_GET, "value") ?? '';
-    if (!in_array($value, ['0', '1'], true)) bad_request($link);
+    if (!in_array($value, ['0', '1', '2'], true)) bad_request($link);
     $auto_restart = (int)$value;
     $sql = $link->prepare( "update pok_teams_tbl t
                                      set t.timer_auto_restart = ?
