@@ -1786,6 +1786,20 @@ den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Ite
 Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 
 ### B-52 Topics als Backlog-Items
+**S1b nach Staging-Test (Andreas, 2026-11-12) – Status: im Sprint:**
+- **Notiz bleibt Notiz:** Das bisherige Topic-Feld ist ein allgemeiner Hinweis (z. B. zum Ablauf), immer sichtbar;
+  Items kommen zusätzlich, durch sie iteriert man. `update_topic.php` wieder wie früher, keine automatische Übernahme
+  alter Topics als Item. Einstieg „+ Add item“ als Button mit gestrichelter Outline.
+- **Letztes Item:** statt „Next item“ ein „Finish item“; danach allgemeiner Modus ohne aktives Item.
+- **Historie je Item:** vereinbarter Wert (nur bei Sets mit Ziel Einigung), Anzahl Schätzrunden, Balken der
+  Verteilung (per Dreieck aufklappbar), Datum der letzten Runde.
+- **Ziel Einigung ja/nein** auch an eigenen Sets einstellbar (Set-Editor). Manuelle Ergebniswahl genau bei Sets mit
+  Ziel Einigung.
+- **Eingeklappte Leiste:** „Next item“ dort lösen (Delia).
+- **dao.php klein halten:** dao liefert nur das aktive Item, Anzahlen und `topics_rev`; die Liste kommt über
+  `api/get_topics.php`, nur wenn sich `topics_rev` geändert hat (Done-Items erst beim Öffnen des Menüs). Kein neuer
+  Signaltyp in poker-msg. **Jede** Änderung an Items (auch Text eines alten/erledigten Items, Ergebnis, Reifegrad,
+  Verteilung beim Rundenwechsel) zählt `topics_rev` hoch – an einer Stelle erzwungen und per Test abgesichert.
 **Erster Schnitt S1 – Vorschlag Kai (2026-11-10), Ziel: bis Mitte Dezember live** (vor der Jahreswechsel-Welle,
 siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbeiten.*
 - Im Topics-Menü statt eines Textfelds eine Liste von Items; je Item Heading (Pflicht) und Description (optional,
