@@ -78,7 +78,7 @@ function prepareMenuSection(sec) {
 function showMenuTab(box, name, focusTab = false) {
     if (box === null) return;
     let tab = box.querySelector('[role="tab"][data-tab="' + name + '"]');
-    if (tab === null) return;
+    if (tab === null || tab.getAttribute('aria-disabled') === 'true') return; // B-52: e.g. "Done 0"
     box.querySelectorAll('[role="tab"]').forEach(t => {
         let selected = t === tab;
         t.setAttribute('aria-selected', selected ? 'true' : 'false');
@@ -320,8 +320,10 @@ function initMenu() {
         box.addEventListener('keydown', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
             if (tab === null) return;
-            let tabs = Array.from(box.querySelectorAll('[role="tab"][data-tab]'));
+            // B-52: a disabled tab (aria-disabled, e.g. "Done 0") is skipped
+            let tabs = Array.from(box.querySelectorAll('[role="tab"][data-tab]:not([aria-disabled="true"])'));
             let i = tabs.indexOf(tab);
+            if (i < 0) return;
             if (event.key === 'ArrowRight') i = (i + 1) % tabs.length;
             else if (event.key === 'ArrowLeft') i = (i - 1 + tabs.length) % tabs.length;
             else if (event.key === 'Home') i = 0;

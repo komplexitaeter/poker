@@ -1785,6 +1785,18 @@ Offene Fragen: Wer darf Timeboxen ändern (vermutlich alle, wie bei
 den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Items existieren damit schon Tage vor der
 Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 
+### B-131 Reaktionen: gestaffeltes Rate-Limit je Verbindung
+Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
+4.884 vom Limit verworfen – fast alle von wenigen Verbindungen (eine allein 2.129). Wer die JS-Konsole öffnet, kann
+heute dauerhaft 1/s senden. Neu je Verbindung (gleitende Fenster, kein Limit auf Teamebene): **1 pro Sekunde, 10 pro
+Minute**; darüber wird verworfen (wie heute, mit Log-Zeile). Log-Muster: kurze Ausbrüche bis 24/s (vermutlich
+gehaltene Taste) – Board ignoriert Tastaturwiederholung, eine gehaltene Taste = eine Reaktion.
+Log (Andreas, 2026-11-12): Verwerfungen mit Fenster („rate limit 1s“/„1m“) und der **Code** der Reaktion bei
+Weiterleitung und Verwerfung (nie Absender/Empfänger), damit Nutzung je Reaktion und Limit-Treffer auswertbar sind.
+Kein Widerspruch zu B-110: „nichts in die DB“ bleibt – im Log-File ohne Namen ist es ok. Im Board die gleichen
+Grenzen als Rückmeldung: beim Überschreiten kurzer Hinweis statt stillem Verlust. poker-msg (Ben) + Board (Fred);
+poker-msg-Rollout mit Neustart abends.
+
 ### B-130 Timer: Auto-Start „Off · New round · Next item“
 Status: im Sprint (Andreas, 2026-11-12). Live-Daten seit 01.11.: 9 Teams nutzen den Timer (5 mit sichtbarer Uhr),
 Timeboxen 1, 5, 10, 41, 60 min – 5/10 min sind Timeboxen je Item, die heute bei jeder neuen Runde neu starten.

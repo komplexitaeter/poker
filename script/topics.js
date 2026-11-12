@@ -51,6 +51,7 @@ let gLeave = null;            // { id, opener } while the "leave this item" over
 let gTopicEditor = null;      // { id: number | 'new' } while the item form is open in the menu
 let gTopicConfirmDelete = null; // id of the item whose trash can asks "Delete?"
 let gTopicDistOpen = new Set(); // ids of done items whose spread is unfolded
+let gTopicDrag = null;         // the open item being dragged by its grip (startTopicDrag)
 let gTopicMenuKey = '';       // what the menu list shows now
 let gTopicViewKey = '';       // what the column shows now
 let gTopicDescMore = false;   // the column: the whole description ("more")
@@ -662,6 +663,139 @@ function topicListItem(id) {
         || (gTopicLists.done || []).find(item => item.id === id) || null;
 }
 
+/* ---------- moving an open item: drag the grip or the arrow keys on it ---------- */
+
+/* shown at once, the reload brings the server's state (an answer started before is dropped, topicListsChanged) */
+function moveTopicItem(from, to) {
+    const open = gTopicLists ? gTopicLists.open : [];
+    if (from < 0 || from >= open.length || to < 0 || to >= open.length || from === to) return;
+    const moved = open[from];
+    topicListsChanged();
+    open.splice(from, 1);
+    open.splice(to, 0, moved);
+    renderTopicMenu(true);
+    const live = document.getElementById('ti_live');
+    if (live !== null) live.textContent = 'Moved to position ' + (to + 1) + ' of ' + open.length + '.';
+    topicWrite('topic_item_move.php', { item: moved.id, to });
+}
+
+function openItemIndex(id) {
+    return gTopicLists ? gTopicLists.open.findIndex(item => item.id === id) : -1;
+}
+
+function onTopicGripKey(event) {
+    const grip = event.target instanceof Element ? event.target.closest('.ti-grip') : null;
+    if (grip === null) return;
+    if (gTopicDrag !== null) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            endTopicDrag(false);
+        }
+        return;
+    }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    if (gTopicEditor !== null) return;
+    const from = openItemIndex(Number(grip.dataset.tiId));
+    moveTopicItem(from, from + (event.key === 'ArrowUp' ? -1 : 1));
+}
+
+/* the drag starts on the grip only (touch-action: none there), so the list keeps scrolling everywhere else. It starts
+ * after a few pixels; the item then follows the pointer (fixed) and a placeholder in the list marks where it lands */
+function onTopicGripDown(event) {
+    const grip = event.target instanceof Element ? event.target.closest('.ti-grip') : null;
+    if (grip === null || gTopicDrag !== null || gTopicEditor !== null) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const li = grip.closest('li.ti-it');
+    const id = Number(grip.dataset.tiId);
+    const from = openItemIndex(id);
+    if (li === null || from < 0) return;
+    event.preventDefault(); // no text selection, no focus jump on touch
+    grip.setPointerCapture(event.pointerId);
+    gTopicDrag = { id, from, grip, li, pointerId: event.pointerId, startY: event.clientY, active: false,
+        offsetY: 0, fixY: 0, placeholder: null, scroller: scrollParent(li.parentElement) };
+}
+
+function scrollParent(element) {
+    for (let el = element; el !== null && el !== document.body; el = el.parentElement) {
+        const style = getComputedStyle(el);
+        if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight) return el;
+    }
+    return null;
+}
+
+function onTopicGripMove(event) {
+    const drag = gTopicDrag;
+    if (drag === null || event.pointerId !== drag.pointerId) return;
+    if (!drag.active) {
+        if (Math.abs(event.clientY - drag.startY) < 4) return;
+        const rect = drag.li.getBoundingClientRect();
+        const placeholder = document.createElement('li');
+        placeholder.className = 'ti-drop';
+        placeholder.setAttribute('aria-hidden', 'true');
+        placeholder.style.height = rect.height + 'px';
+        drag.li.before(placeholder);
+        drag.placeholder = placeholder;
+        drag.offsetY = drag.startY - rect.top;
+        drag.li.classList.add('dragging');
+        Object.assign(drag.li.style, { position: 'fixed', boxSizing: 'border-box', left: rect.left + 'px', width: rect.width + 'px',
+            top: rect.top + 'px', margin: '0' });
+        // a transformed ancestor (the sliding menu) is the containing block of "fixed": correct by what it moved
+        const placed = drag.li.getBoundingClientRect();
+        drag.fixY = placed.top - rect.top;
+        drag.li.style.left = (rect.left - (placed.left - rect.left)) + 'px';
+        drag.active = true;
+    }
+    event.preventDefault();
+    drag.li.style.top = (event.clientY - drag.offsetY - drag.fixY) + 'px';
+    // near the edge of the scrolling panel: scroll along
+    if (drag.scroller !== null) {
+        const box = drag.scroller.getBoundingClientRect();
+        if (event.clientY < box.top + 32) drag.scroller.scrollTop -= 12;
+        else if (event.clientY > box.bottom - 32) drag.scroller.scrollTop += 12;
+    }
+    // the placeholder goes before the first item whose middle lies below the pointer
+    const list = drag.placeholder.parentElement;
+    const others = Array.from(list.children).filter(el => el.classList.contains('ti-it') && el !== drag.li);
+    const before = others.find(el => {
+        const r = el.getBoundingClientRect();
+        return event.clientY < r.top + r.height / 2;
+    });
+    if (before === undefined) {
+        if (list.lastElementChild !== drag.placeholder) list.appendChild(drag.placeholder);
+    } else if (drag.placeholder.nextElementSibling !== before) {
+        list.insertBefore(drag.placeholder, before);
+    }
+}
+
+function onTopicGripUp(event) {
+    if (gTopicDrag === null || event.pointerId !== gTopicDrag.pointerId) return;
+    endTopicDrag(event.type === 'pointerup');
+}
+
+/* drop: the index of the placeholder among the open items (the dragged one left out) -> topic_item_move.php */
+function endTopicDrag(drop) {
+    const drag = gTopicDrag;
+    if (drag === null) return;
+    gTopicDrag = null;
+    if (drag.grip.hasPointerCapture(drag.pointerId)) drag.grip.releasePointerCapture(drag.pointerId);
+    if (!drag.active) return; // a press without moving: nothing happens
+    const list = drag.placeholder.parentElement;
+    const to = Array.from(list.children).filter(el => el !== drag.li && (el.classList.contains('ti-it')
+        || el === drag.placeholder)).indexOf(drag.placeholder);
+    drag.placeholder.remove();
+    drag.li.classList.remove('dragging');
+    drag.li.removeAttribute('style');
+    if (drop && to >= 0 && to !== drag.from) {
+        moveTopicItem(drag.from, to);
+    } else {
+        renderTopicMenu(true);
+    }
+    const grip = document.querySelector('#ti_open .ti-grip[data-ti-id="' + drag.id + '"]');
+    if (grip !== null) focusQuietly(grip);
+}
+
 /* ---------- the topics menu ---------- */
 
 /* the tabs Note · Items · Done (S1c) with their counters, the open items and the done items. force: also while the
@@ -678,6 +812,12 @@ function renderTopicMenu(force = false) {
     if (label !== null && label.textContent !== labelText) label.textContent = labelText;
 
     tabs.hidden = gTopicItems === null;
+    const noteAdd = document.getElementById('topic_note_add');
+    if (noteAdd !== null) {
+        noteAdd.hidden = gTopicItems === null;
+        noteAdd.disabled = !!(gTopicItems && gTopicLists && gTopicLists.limits
+            && gTopicItems.open_count >= gTopicLists.limits.open);
+    }
     if (gTopicItems === null) {
         // an old server: the note alone
         if (gTopicTab !== 'note') showMenuTab(document.getElementById('topic_box'), 'note');
@@ -686,7 +826,20 @@ function renderTopicMenu(force = false) {
     }
     setTextIfChanged(document.getElementById('topic_n_open'), String(gTopicItems.open_count));
     setTextIfChanged(document.getElementById('topic_n_done'), String(gTopicItems.done_count));
-    if (!force && gTopicEditor !== null) return;
+    // Andreas: "Done 0" is inactive (no click, skipped by the arrow keys); the open Done tab emptied -> Items (or Note)
+    const doneTab = document.getElementById('topic_tab_done');
+    const noDone = gTopicItems.done_count === 0;
+    if (doneTab !== null && (doneTab.getAttribute('aria-disabled') === 'true') !== noDone) {
+        if (noDone) doneTab.setAttribute('aria-disabled', 'true'); else doneTab.removeAttribute('aria-disabled');
+    }
+    if (noDone && gTopicTab === 'done') {
+        const box = document.getElementById('topic_box');
+        const hadFocus = box !== null && box.contains(document.activeElement)
+            && (doneBox.contains(document.activeElement) || document.activeElement === doneTab);
+        showMenuTab(box, gTopicItems.open_count > 0 ? 'open' : 'note', hadFocus); // -> onTopicTab() renders
+        return;
+    }
+    if (!force && (gTopicEditor !== null || gTopicDrag !== null)) return;
     const key = JSON.stringify([gTopicItems, gTopicLists, gTopicLoad !== null, gTopicLoadError, gTopicEditor,
         gTopicConfirmDelete, [...gTopicDistOpen], gTopicTab]);
     if (!force && key === gTopicMenuKey) return;
@@ -739,7 +892,7 @@ function topicOpenParts() {
     if (summary.open_count > 0) {
         const head = document.createElement('div');
         head.className = 'ti-head';
-        head.appendChild(textElement('span', 'ti-note', 'top item = the one you talk about now'));
+        head.appendChild(textElement('span', 'ti-note', 'The top item is shown to everyone.'));
         parts.push(head);
         if (lists === null) parts.push(topicLoadState());
     }
@@ -813,16 +966,14 @@ function topicItemRow(item, index, count) {
 
     const acts = document.createElement('span');
     acts.className = 'ti-acts';
-    const up = iconButton('up', 'Move up: ' + item.heading, 'up', item.id);
-    up.disabled = index === 0;
-    const down = iconButton('down', 'Move down: ' + item.heading, 'down', item.id);
-    down.disabled = index === count - 1;
-    const move = document.createElement('span');
-    move.className = 'ti-move';
-    move.append(up, down);
-    acts.append(move, iconButton('pen', 'Edit: ' + item.heading, 'edit', item.id));
+    acts.appendChild(iconButton('pen', 'Edit: ' + item.heading, 'edit', item.id));
     acts.appendChild(topicDeleteButton(item));
-    li.append(main, acts);
+    // the grip in front: drag (mouse, touch, pen) or the arrow keys up/down (Andreas: instead of the arrow buttons)
+    const grip = iconButton('grip', 'Move item: ' + item.heading, 'grip', item.id);
+    grip.classList.add('ti-grip');
+    grip.title = 'Drag to move';
+    grip.setAttribute('aria-describedby', 'ti_grip_hint');
+    li.append(grip, main, acts);
     return li;
 }
 
@@ -1131,8 +1282,6 @@ function onTopicListClick(event) {
     if (button === null || button.disabled) return;
     const act = button.dataset.tiAct;
     const id = button.dataset.tiId ? Number(button.dataset.tiId) : null;
-    const open = gTopicLists ? gTopicLists.open : [];
-    const index = open.findIndex(item => item.id === id);
     if (act !== 'delete-sure' && act !== 'delete') gTopicConfirmDelete = null;
     if (act === 'add') {
         openTopicEditor('new');
@@ -1146,15 +1295,6 @@ function onTopicListClick(event) {
         if (target !== null) focusQuietly(target);
     } else if (act === 'edit') {
         openTopicEditor(id);
-    } else if ((act === 'up' || act === 'down') && index >= 0) {
-        const to = act === 'up' ? index - 1 : index + 1;
-        if (to < 0 || to >= open.length) return;
-        // shown at once, the reload brings the server's state
-        topicListsChanged();
-        const moved = open.splice(index, 1)[0];
-        open.splice(to, 0, moved);
-        renderTopicMenu(true);
-        topicWrite('topic_item_move.php', { item: id, to });
     } else if (act === 'delete') {
         gTopicConfirmDelete = id;
         renderTopicMenu(true);
@@ -1212,6 +1352,12 @@ function initTopicItems() {
     [document.getElementById('topic_list'), document.getElementById('topic_done')].forEach(list => {
         if (list === null) return;
         list.addEventListener('click', onTopicListClick);
+        list.addEventListener('keydown', onTopicGripKey);
+        list.addEventListener('pointerdown', onTopicGripDown);
+        list.addEventListener('pointermove', onTopicGripMove);
+        list.addEventListener('pointerup', onTopicGripUp);
+        list.addEventListener('pointercancel', onTopicGripUp);
+        list.addEventListener('lostpointercapture', onTopicGripUp);
         list.addEventListener('keydown', event => {
             if (event.key === 'Escape' && gTopicConfirmDelete !== null) {
                 event.preventDefault();
@@ -1236,6 +1382,12 @@ function initTopicItems() {
     if (noteEdit !== null) noteEdit.addEventListener('click', () => { gTopicNextTab = 'note'; });
     const itemEdit = document.querySelector('.topic-bar .topic-edit');
     if (itemEdit !== null) itemEdit.addEventListener('click', () => { gTopicNextTab = 'open'; });
+    // "+ Add item" below the note: to "Items", the form open there
+    const noteAdd = document.getElementById('topic_note_add');
+    if (noteAdd !== null) noteAdd.addEventListener('click', () => {
+        showMenuTab(document.getElementById('topic_box'), 'open');
+        openTopicEditor('new');
+    });
     const noteMore = document.getElementById('board_note_more');
     if (noteMore !== null) noteMore.addEventListener('click', toggleBoardNote);
     initLeaveItem();
