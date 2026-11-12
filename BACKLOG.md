@@ -1807,6 +1807,9 @@ Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
   „Bring it back later“ (bleibt offen, ans Ende der Liste, Runden/Verteilung bleiben). Der höchste Wert ist damit nur
   noch Vorschlag, nicht automatisch übernommen. Perspektiven-Sets: Overlay nur mit „Close“ · „Bring it back later“. Backend prüft dieselbe Regel.
   Zusammen mit dem Split in der Leiste nach S1b.
+- **Notiz oben (Andreas, 2026-11-12):** Die Notiz ist ein eigener Abschnitt oben – am liebsten wieder (wie früher)
+  auf dem Board über den Karten, damit alle sie immer sehen (auch bei eingeklappter Seitenleiste). Items bleiben in der
+  Seitenleiste. Gestaltung Delia (Desktop und Mobil), mit S1c.
 - **dao.php klein halten:** dao liefert nur das aktive Item, Anzahlen und `topics_rev`; die Liste kommt über
   `api/get_topics.php`, nur wenn sich `topics_rev` geändert hat (Done-Items erst beim Öffnen des Menüs). Kein neuer
   Signaltyp in poker-msg. **Jede** Änderung an Items (auch Text eines alten/erledigten Items, Ergebnis, Reifegrad,
