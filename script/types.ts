@@ -185,6 +185,20 @@ interface TopicItem {
     // card_key -> count of the last revealed round (no persons); for the active item the running round while revealed
     distribution: { [card_key: string]: number } | null;
     rounds_cnt: number;              // revealed rounds finished while the item was active (the running one not yet)
-    last_round_date: string | null;  // B-52 S1b: end of the last revealed round of the item, 'YYYY-MM-DD hh:mm:ss' (server time)
+    // S1c: dates as ISO 8601 in UTC, e.g. '2026-11-12T10:15:00Z' (new Date(value), format in local time)
+    last_round_date: string | null;  // B-52 S1b: end of the last revealed round of the item
     done_date: string | null;        // when it was finished ("Next item"/"Finish item"), null while open
+}
+
+/* B-52 S1c: answer of api/topic_item_next.php?t=..&item=<active id>&mode=close|close_empty|later[&card=<card_key>]
+   mode missing = close. close: card = the result (only deck aim 'agree', else 409 perspectives), without card the
+   current estimate; close_empty: done without a value (null, result_auto 0); later: stays open, goes to the end of the
+   open list (stays active if it is the only open item), a chosen result is reset.
+   Errors: 400 {error: 'item'|'mode'|'card'}, 409 {error: 'not_active', active_id} | {error: 'perspectives'} */
+export interface TopicItemNextJsonType {
+    ok: true;
+    item_id: number;                 // the item that was closed or brought back later
+    active_id: number | null;        // the active item now (later + only open item: item_id), null = none
+    result_card_key: string | null;  // stored result (later: null)
+    result_auto: number;             // 1 automatic, 0 chosen or deliberately empty (close_empty)
 }
