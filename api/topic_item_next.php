@@ -17,6 +17,7 @@ require_post();
  *   the only open one).
  * In every mode: cards down -> start_new_round() first, as newround.php (snapshot with the note and topic_item_id = this
  * item; the revealed round goes to the item: distribution, rounds_cnt, last_round_date; then all cards up).
+ * B-130: with timer auto-start "Next item" (timer_auto_restart 2) a visible timer restarts in every mode.
  * Answer: {ok, item_id, active_id (new active or null), result_card_key, result_auto} (later: the open item's stored
  * result, null/1); 400 {error: item|mode|card}, 409 {error: not_active, active_id}, 409 {error: perspectives}.
  */
@@ -81,6 +82,10 @@ if ($mode === 'later') {
     }
     finish_topic_item($link, $t, $id, $result, $auto);
 }
+
+/* B-130: auto-start "Next item" restarts the timer when an item is left (every mode, also "later" as the only open
+   item). "New round" was handled by start_new_round() above (only with cards down, as before). */
+restart_timer_for_auto_modes($link, $t, array(TIMER_AUTO_NEXT_ITEM));
 
 $next = active_item_id($link, $t);
 $link->commit();
