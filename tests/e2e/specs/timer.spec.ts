@@ -5,7 +5,7 @@ import { newPlayer, createTeam, joinAsPlayer, pickCard, teamWithTwoPlayers, open
 /**
  * B-66/B-67: timer instead of stopwatch (frontend). The header button :timer opens the timer panel:
  * on/off for everyone, mode Stopwatch | Timer, timebox (presets + other, Timer mode only) and
- * "Auto-start on new round". Every change is saved right away, the panel of everyone else follows.
+ * "Auto-start" (Off / New round / Next item, B-130). Every change is saved right away, the panel of everyone else follows.
  * The corner (bottom right; phones: the row above the deck) shows T−mm:ss / T+mm:ss above the round
  * button with play/pause and reset; past the timebox T+ in amber. B-79: the stopwatch shows just mm:ss.
  * SHOT_DIR (optional): screenshots desktop 1440 and phone 390.
@@ -93,6 +93,44 @@ test('timebox presets, other minutes and auto-start: the other panel follows (B-
 
   await radio(alice, 'tmr_auto_restart', '1').check();
   await expect(radio(bob, 'tmr_auto_restart', '1')).toBeChecked();
+  await alice.context().close();
+  await bob.context().close();
+});
+
+test('auto-start Next item: saved as 2 with a toast and its hint, the other panel follows, kept after reload (B-130)', async ({ browser }) => {
+  const { alice, bob, url } = await teamWithTwoPlayers(browser, 'Timer Next Item');
+  await openTimerPanel(alice);
+  await openTimerPanel(bob);
+  await expect(alice.locator('#tmr_auto_restart .seg label')).toHaveText(['Off', 'New round', 'Next item']);
+  await expect(alice.locator('#tmr_auto_restart_hint')).toHaveText('Starts only with play.');
+
+  // by pointer (a click on the label, as with mouse or touch)
+  await alice.locator('#tmr_auto_restart label', { hasText: 'Next item' }).click();
+  await expect(radio(alice, 'tmr_auto_restart', '2')).toBeChecked();
+  await expect(alice.locator('#toast')).toHaveText('Auto-start with every next item');
+  await expect(alice.locator('#tmr_auto_restart_hint')).toContainText('next item');
+  await expect.poll(() => sql(`select timer_auto_restart from pok_teams_tbl where id = '${teamId(url)}'`)).toBe('2');
+  await expect(radio(bob, 'tmr_auto_restart', '2')).toBeChecked();
+  await expect(bob.locator('#tmr_auto_restart_hint')).toContainText('new rounds within an item keep it running');
+  if (process.env.SHOT_DIR) {
+    await alice.mouse.move(0, 0);
+    await alice.waitForTimeout(2600); // the toast is gone
+    await alice.locator('#timer_box').screenshot({ path: `${process.env.SHOT_DIR}/b130-timer-menu-desktop-dark.png` });
+  }
+
+  // after a reload the panel shows the saved value
+  await alice.reload();
+  await openTimerPanel(alice);
+  await expect(radio(alice, 'tmr_auto_restart', '2')).toBeChecked();
+  await expect(alice.locator('#tmr_auto_restart_hint')).toContainText('next item');
+
+  // by keyboard: the arrow keys move within the group and save
+  await radio(alice, 'tmr_auto_restart', '2').focus();
+  await alice.keyboard.press('ArrowLeft');
+  await expect(radio(alice, 'tmr_auto_restart', '1')).toBeChecked();
+  await expect(alice.locator('#toast')).toHaveText('Auto-start with every new round');
+  await expect(radio(bob, 'tmr_auto_restart', '1')).toBeChecked();
+  await expect(bob.locator('#tmr_auto_restart_hint')).toHaveText('Restarts with every new round.');
   await alice.context().close();
   await bob.context().close();
 });
