@@ -38,8 +38,8 @@ const CS_MIN_CARDS = 2;
 const CS_STYLE_NAMES = { plain: 'Plain', badge: 'Badge', banner: 'Banner', inverted: 'Inverted' };
 /* B-52 S1b: the goal of a set (custom_set_create/save "aim"), with the line that explains it */
 const CS_AIMS = [
-    { aim: 'agree', name: 'Agree on a value', help: 'The team agrees on one value per item, e.g. an estimate.' },
-    { aim: 'perspectives', name: 'Show perspectives', help: 'Only the spread counts, e.g. a health check – no single value.' },
+    { aim: 'agree', name: 'Agree on a value', help: 'The goal is to find a value everyone can agree on.' },
+    { aim: 'perspectives', name: 'Show perspectives', help: 'The goal is to make everyone\'s individual perspective visible.' },
 ];
 const CS_TEXT_OPTION = 'text'; // the option "Text" of the symbol picker
 

@@ -5491,16 +5491,26 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     padding: 16px 24px 0;
     box-sizing: border-box;
 }
+/* the head of the editor: two equal columns over the full width (the line below it, the cards and the card form
+ * use the same width) - Set name over Goal on the left, Style on the right; every control as high as a segment
+ * switch, so the rows line up (B-52 design review) */
 .cs-topf {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: minmax(0, 360px) minmax(0, 420px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "name style" "aim .";
     gap: 0 24px;
     align-items: start;
     padding-bottom: 2px;
     border-bottom: 1px solid var(--line);
     margin-bottom: 14px;
 }
+.cs-namef { grid-area: name; }
+.cs-stylef { grid-area: style; }
+.cs-aimf { grid-area: aim; }
+/* .seg is 2 × 1px border + 2 × 2px padding + its span (min-height tap - 6px plus 2 × 2px padding) */
+.cs-topf .field { min-height: calc(var(--tap) + 4px); }
+.cs-aim-help { margin: 6px 0 0; }
 .cs-lab { display: flex; align-items: baseline; gap: 6px; }
 .cs-opt { font-size: var(--fs-xs); color: var(--muted); }
 .cs-ctr { margin-left: auto; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -5766,7 +5776,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     .cs-head h2 { flex: 1; font-size: var(--fs-m); }
     .cs-sub { order: 3; flex-basis: 100%; padding-bottom: 4px; }
     .cs-body { display: block; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 0; }
-    .cs-topf { grid-template-columns: minmax(0, 1fr); }
+    .cs-topf { grid-template-columns: minmax(0, 1fr); grid-template-areas: "name" "style" "aim"; }
     /* the strip sideways: the card being edited larger, the others small cards only */
     .cs-list {
         flex-direction: row;
@@ -6200,9 +6210,9 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     min-height: var(--tap);
     padding: 6px;
     background: transparent;
-    border: 1px dashed var(--line-strong);
+    border: 1px dashed var(--muted); /* S1b: clearly visible */
     border-radius: var(--radius-l);
-    color: var(--muted);
+    color: var(--text);
     font: var(--fs-s) var(--font);
     cursor: pointer;
 }
@@ -6273,10 +6283,7 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .ti-mat-btn:focus-visible,
 .ti-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ---------- Topic items S1b (B-52, Fred; please review, Delia) ---------- */
-
-/* "+ Add item": a clearly visible button with a dashed outline */
-.ti-add { color: var(--text); border-color: var(--muted); }
+/* --- B-52 S1b: the history of done items --- */
 
 /* done items: agreed value, rounds, date; the triangle unfolds the spread */
 .ti-hist {
@@ -6311,7 +6318,7 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
     .ti-tri { transition: none; }
 }
 
-/* ---------- Topic items S1c (B-52, Fred; please review, Delia) ---------- */
+/* --- B-52 S1c: the note on the board, the tabs of the topics menu, "leave this item", the rail --- */
 
 /* the team's note on the board above the cards (#board_note in main#table): the quoted block of the former topic
  * (topic colour bar), cut to three lines (phones: two) with a fade; "more" unfolds it (then it scrolls inside from
@@ -6441,7 +6448,12 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
     cursor: pointer;
 }
 
-.leave-opt:hover { border-color: var(--accent); }
+@media (hover: hover) {
+    .leave-opt:hover {
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 6%, var(--bg));
+    }
+}
 .leave-opt.primary { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
 .leave-opt-v { margin-left: 2px; color: var(--accent); }
 .leave-opt-h { font-size: var(--fs-xs); color: var(--muted); }
@@ -6452,6 +6464,8 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
     justify-content: flex-end;
     margin-top: var(--space-3);
 }
+
+.leave-item-foot .btn-box { min-height: var(--tap); margin: 0; }
 
 @media (max-width: 799.98px) {
     .leave-item {
@@ -6500,6 +6514,7 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .rail-next.last .i-flag { display: block; }
 
 .rail-acts.split {
+    gap: 2px; /* the rail shows through between the halves: a clear split in both themes */
     width: 52px;
     border: 1px solid var(--accent);
     border-radius: var(--radius-m);
@@ -6524,14 +6539,8 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
     cursor: pointer;
 }
 
-.rail-acts.split > button + button { border-top: 1px solid var(--bg-2); }
 .rail-acts.split > button:enabled:hover { background: transparent; color: var(--accent); }
 .rail-acts.split > button:focus-visible { outline: 2px solid var(--on-accent); outline-offset: -4px; }
 .rail-acts.split > button .i { width: 18px; height: 18px; }
 .rail-acts.split .rail-lbl { display: block; text-align: center; }
 .rail-acts.split .rail-lbl > span { display: block; }
-
-/* B-52 S1b: the goal of an own set (set editor) */
-.cs-aimf { grid-column: 1 / -1; }
-.cs-aimf .seg { max-width: 420px; }
-.cs-aim-help { margin: 4px 0 0; }
