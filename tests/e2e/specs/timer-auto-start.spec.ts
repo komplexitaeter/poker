@@ -126,21 +126,28 @@ test('next item without items behaves like new round', async ({ browser }) => {
   await s.expectRestarted('new round');
 });
 
-test('new round (old value 1): restarts with every round, also inside an item and when leaving it with cards down', async ({ browser }) => {
+test('new round (old value 1): restarts with every round, also inside an item and when leaving it in every mode', async ({ browser }) => {
   const s = await setup(browser, 'AutoStartNewRound', '1');
   const a = await s.addItem('A');
   const b = await s.addItem('B');
+  const c = await s.addItem('C');
   await s.backdate();
   await s.post('newround.php');
   await s.expectRestarted('cancel round inside an item');
   await s.backdate();
   await s.play();
   await s.next(a, 'close');
-  await s.expectRestarted('next item with cards down (new round)');
-  // without cards down leaving an item is no round: unchanged as before B-130
+  await s.expectRestarted('next item with cards down');
+  // leaving an item always starts a new round, also without cards down (Andreas, 2026-11-12)
   await s.backdate();
   await s.next(b, 'close_empty');
-  await s.expectKept('next item without cards down');
+  await s.expectRestarted('close_empty without cards down');
+  await s.backdate();
+  await s.next(c, 'later');
+  await s.expectRestarted('later without cards down (only open item)');
+  await s.backdate();
+  await s.next(c, 'close');
+  await s.expectRestarted('finish item without cards down');
 });
 
 test('off: neither rounds nor leaving an item restart the timer; a hidden timer is never restarted', async ({ browser }) => {
