@@ -1797,7 +1797,9 @@ Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
   Ziel Einigung.
 - **Eingeklappte Leiste:** „Next item“ dort lösen (Delia). Entscheidung (Andreas, 2026-11-12): **Variante B „Split“**
   (`mockups/rail-next/`): ein Block aus zwei gleichwertigen Hälften. Beschriftung muss eindeutig sagen, dass es um
-  „next item“ bzw. „next/new round“ geht – „next“/„round“ allein ist verwirrend. Umsetzung als Folgeschritt nach S1b.
+  „next item“ bzw. „new round“ geht – „next“/„round“ allein ist verwirrend. Beschriftung je Hälfte zweizeilig:
+  „next item“ (letztes Item: „finish item“) und „new round“; „New round“ bleibt überall so (bekannt). Umsetzung als
+  Folgeschritt nach S1b.
 - **dao.php klein halten:** dao liefert nur das aktive Item, Anzahlen und `topics_rev`; die Liste kommt über
   `api/get_topics.php`, nur wenn sich `topics_rev` geändert hat (Done-Items erst beim Öffnen des Menüs). Kein neuer
   Signaltyp in poker-msg. **Jede** Änderung an Items (auch Text eines alten/erledigten Items, Ergebnis, Reifegrad,
