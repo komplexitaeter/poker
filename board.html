@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.57" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.58" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -20,7 +20,7 @@
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/topics.js?v=1.5" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.23" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.24" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -189,7 +189,7 @@
         </section>
 
         <!-- the spread: one stacked bar per deck card (one segment per vote, the count above, the card's
-             value below), the range of the chosen values and the average pointer (board setting show_avg) -->
+             value below), the range of the chosen values, the average pointer and the median line (board setting show_avg) -->
         <aside class="side" aria-label="Round result">
             <section id="spread" class="spread" hidden>
                 <div class="spread-head">
@@ -199,6 +199,8 @@
                 <div class="spread-chart">
                     <div id="spread_bars" class="spread-bars"></div>
                     <img id="spread_index" class="spread-index hidden" src="src/index.png" alt="" />
+                    <!-- B-53: the median (same switch as the average pointer; set by syncMedianLine() in script.js) -->
+                    <span id="spread_median" class="spread-median" hidden><span class="sr-only"></span></span>
                 </div>
                 <!-- B-52 S1 (topics.js): the result of the active topic item. Deck aim 'agree': the dropdown (a click on a
                      bar with votes does the same); 'perspectives': the sentence instead. Only while an item is active. -->
@@ -392,12 +394,12 @@
                         <p id="cet_order_by_hint" class="hint display_none">In anonymous mode, revealed cards are always arranged by card value.</p>
                     </fieldset>
                     <fieldset class="f" id="cet_dark_side">
-                        <legend class="lab">Average pointer</legend>
+                        <legend class="lab">Average and median</legend>
                         <div class="seg">
                             <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
                             <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span>Show</span></label>
                         </div>
-                        <p class="hint">A pointer under the spread shows the average.</p>
+                        <p class="hint">A pointer under the spread shows the average, a dashed line the median.</p>
                     </fieldset>
                     <!-- B-115: B-104 "see changed cards" for the whole team (show_card_changes, changeShowCardChanges());
                          the second hint shows while the setting differs from the running round (round_show_card_changes) -->
@@ -478,7 +480,7 @@
                         <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>New round</span></label>
                         <label><input type="radio" name="tmr_auto_restart" value="2" onchange="setTimerAutoRestart(this.value)"/><span>Next item</span></label>
                     </div>
-                    <p class="hint" id="tmr_auto_restart_hint">Starts only with play.</p>
+                    <p class="hint" id="tmr_auto_restart_hint">You start it yourself.</p>
                 </fieldset>
             </section>
 

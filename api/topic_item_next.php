@@ -19,6 +19,7 @@ require_post();
  * item; the revealed round goes to the item: distribution, rounds_cnt, last_round_date; then all cards up).
  * B-130: with timer auto-start "New round" or "Next item" (timer_auto_restart 1/2) a visible timer restarts in every
  * mode, with or without cards down (leaving an item always starts a new round for the team, Andreas 2026-11-12).
+ * Only "Next item" and no open item left (the last one finished): the timer is reset and paused instead.
  * Answer: {ok, item_id, active_id (new active or null), result_card_key, result_auto} (later: the open item's stored
  * result, null/1); 400 {error: item|mode|card}, 409 {error: not_active, active_id}, 409 {error: perspectives}.
  */
@@ -84,12 +85,19 @@ if ($mode === 'later') {
     finish_topic_item($link, $t, $id, $result, $auto);
 }
 
+$next = active_item_id($link, $t);
+
 /* B-130: leaving an item always starts a new round for the team (Andreas, 2026-11-12): auto-start "New round" and
    "Next item" restart the timer in every mode (also "later" as the only open item), with or without cards down.
-   With cards down start_new_round() above may have restarted it already; restarting again is the same. */
-restart_timer_for_auto_modes($link, $t, array(TIMER_AUTO_NEW_ROUND, TIMER_AUTO_NEXT_ITEM));
-
-$next = active_item_id($link, $t);
+   With cards down start_new_round() above may have restarted it already; restarting again is the same.
+   Exception (Andreas, 2026-11-12): "Next item" and the last open item was finished (close/close_empty, no active
+   item left): the timer is reset and paused like a manual reset; it runs again when someone presses play. */
+if ($next === null) {
+    restart_timer_for_auto_modes($link, $t, array(TIMER_AUTO_NEW_ROUND));
+    reset_timer_for_auto_modes($link, $t, array(TIMER_AUTO_NEXT_ITEM));
+} else {
+    restart_timer_for_auto_modes($link, $t, array(TIMER_AUTO_NEW_ROUND, TIMER_AUTO_NEXT_ITEM));
+}
 $link->commit();
 $link->close();
 
