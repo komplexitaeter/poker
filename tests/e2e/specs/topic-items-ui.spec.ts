@@ -5,7 +5,8 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, setTea
  * B-52 S1/S1b (script/topics.js): the topic list on the board.
  * - S1b: the note stays a note. The topic field (update_topic.php) is the team's note, shown in the column as before;
  *   items come in addition: in the topics menu below the note ("+ Add item", a button with a dashed outline).
- * - More items: the list in the menu (open with "now" on top, done), move with the arrow buttons (keyboard), the
+ * - More items: the list in the menu (open with "now" on top, done), move by dragging the grip (mouse) or with the
+ *   arrow keys on the grip (announced in #ti_live); "Done 0" is an inactive tab (aria-disabled), the
  *   column shows the active item, "+N more · next: …" and the note below. After the reveal "Next item" next to
  *   "New round", for the last open item "Finish item" (then no item is active, the note stays).
  * - The lists come from get_topics.php only while the menu shows them and only when topics_rev changed.
@@ -107,8 +108,14 @@ test('the note stays a note: on the board above the cards, tabs Note · Items 0 
   await expect(add).toHaveText('Add item');
   expect(await add.evaluate(el => getComputedStyle(el).borderTopStyle)).toBe('dashed');
   await expect(alice.locator('#ti_open, #ti_done')).toHaveCount(0);
-  await showTab(alice, 'done');
-  await expect(alice.locator('#topic_done')).toHaveText('Nothing done yet. Items you close show up here.');
+  // "Done 0" is inactive: a click does nothing, the arrow keys skip it (Items -> Note)
+  await expect(alice.locator('#topic_tab_done')).toHaveAttribute('aria-disabled', 'true');
+  await alice.locator('#topic_tab_done').click({ force: true });
+  await expect(alice.locator('#topic_tab_open')).toHaveAttribute('aria-selected', 'true');
+  await alice.locator('#topic_tab_open').focus();
+  await alice.keyboard.press('ArrowRight');
+  await expect(alice.locator('#topic_tab_note')).toHaveAttribute('aria-selected', 'true');
+  await expect(alice.locator('#topic_tab_note')).toBeFocused();
   await showTab(alice, 'note');
   await alice.locator('#topic_txt').fill('PAY-142 pay by invoice\nwith **details**');
   await alice.locator('#topic_save').click();
@@ -149,12 +156,18 @@ test('items in addition to the note: add, move, next item, finish item; the note
   // the note is untouched by the items
   await expect(alice.locator('#topic_txt')).toHaveValue('Timebox: 5 minutes per item');
 
-  // move the third one up with the keyboard (focus stays on the moved item's button)
-  const up = alice.locator('#ti_open [data-ti-act="up"]').nth(2);
-  await up.focus();
-  await alice.keyboard.press('Enter');
+  await expect(alice.locator('#topic_panel_open .ti-note')).toHaveText('The top item is shown to everyone.');
+  await expect(alice.locator('#ti_open [data-ti-act="up"], #ti_open [data-ti-act="down"]')).toHaveCount(0);
+
+  // move the third one up with the arrow keys on its grip (the focus stays on the moved item's grip)
+  const grip = alice.locator('#ti_open .ti-grip').nth(2);
+  await expect(grip).toHaveAccessibleName('Move item: Spike: PDF library');
+  await expect(grip).toHaveAccessibleDescription('Drag, or use the up and down arrow keys.');
+  await grip.focus();
+  await alice.keyboard.press('ArrowUp');
   await expect(openHeadings(alice)).toHaveText(['Login with SSO', 'Spike: PDF library', 'Export orders as CSV']);
-  await expect(alice.locator('#ti_open [data-ti-act="up"]').nth(1)).toBeFocused();
+  await expect(alice.locator('#ti_open .ti-grip').nth(1)).toBeFocused();
+  await expect(alice.locator('#ti_live')).toHaveText('Moved to position 2 of 3.');
   await closeMenu(alice);
 
   // the column: the active item and what comes next; the note stays on the board (not in the column)
@@ -230,6 +243,64 @@ test('items in addition to the note: add, move, next item, finish item; the note
   await expect(alice.locator('#ti_add')).toBeVisible();
   await showTab(alice, 'done');
   await expect(alice.locator('#ti_done > li')).toHaveCount(2);
+});
+
+test('grip: drag with the mouse, arrow keys; "Done 0" inactive; "+ Add item" below the note (B-52 feedback)', async ({ browser }) => {
+  const { alice, t } = await setup(browser, 'Topic UI Drag');
+  // no items: the menu starts on "Note"; "+ Add item" below the note opens the form on "Items"
+  await openTopics(alice);
+  await expect(alice.locator('#topic_tab_note')).toHaveAttribute('aria-selected', 'true');
+  await expect(alice.locator('#topic_note_add')).toBeVisible();
+  await alice.locator('#topic_note_add').click();
+  await expect(alice.locator('#topic_tab_open')).toHaveAttribute('aria-selected', 'true');
+  await expect(alice.locator('#ti_heading')).toBeFocused();
+  await fillItem(alice, 'First');
+  await fillItem(alice, 'Second');
+  await fillItem(alice, 'Third');
+  await expect(openHeadings(alice)).toHaveText(['First', 'Second', 'Third']);
+
+  // drag "Third" by its grip above "First": a placeholder while dragging, the order at once and on the server
+  const grip = alice.locator('#ti_open .ti-grip').nth(2);
+  const from = (await grip.boundingBox())!;
+  const top = (await alice.locator('#ti_open .ti-it').first().boundingBox())!;
+  await alice.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await alice.mouse.down();
+  await alice.mouse.move(from.x + from.width / 2, top.y + 4, { steps: 12 });
+  await expect(alice.locator('#ti_open .ti-drop')).toHaveCount(1);
+  await expect(alice.locator('#ti_open .ti-it.dragging')).toHaveCount(1);
+  await alice.mouse.up();
+  await expect(alice.locator('#ti_open .ti-drop')).toHaveCount(0);
+  await expect(openHeadings(alice)).toHaveText(['Third', 'First', 'Second']);
+  await expect(alice.locator('#ti_open .ti-it.now .ti-h')).toHaveText('Third');
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Third');
+  const lists = await (await alice.request.get(`/api/get_topics.php?t=${encodeURIComponent(t)}`)).json();
+  expect(lists.open.map((i: { heading: string }) => i.heading)).toEqual(['Third', 'First', 'Second']);
+
+  // the keyboard on the grip: up at the top does nothing, down moves it one place (announced)
+  await alice.locator('#ti_open .ti-grip').first().focus();
+  await alice.keyboard.press('ArrowUp');
+  await alice.keyboard.press('ArrowDown');
+  await expect(openHeadings(alice)).toHaveText(['First', 'Third', 'Second']);
+  await expect(alice.locator('#ti_open .ti-grip').nth(1)).toBeFocused();
+  await expect(alice.locator('#ti_live')).toHaveText('Moved to position 2 of 3.');
+
+  // "Done 0" is inactive; it becomes active as soon as an item is done (here: someone else, the menu open)
+  const done = alice.locator('#topic_tab_done');
+  await expect(done).toHaveAttribute('aria-disabled', 'true');
+  const first = lists.open.find((i: { heading: string }) => i.heading === 'First').id;
+  const res = await alice.request.post(`/api/topic_item_next.php?t=${encodeURIComponent(t)}&item=${first}&mode=close_empty`);
+  expect(res.ok()).toBeTruthy();
+  await expect(done).toHaveText('Done 1');
+  await expect(done).not.toHaveAttribute('aria-disabled', 'true');
+  await showTab(alice, 'done');
+  // the last done item deleted: back to "Items", "Done 0" inactive again
+  await alice.locator('#ti_done [data-ti-act="delete"]').click();
+  await alice.locator('#ti_done [data-ti-act="delete-sure"]').click();
+  await expect(done).toHaveText('Done 0');
+  await expect(done).toHaveAttribute('aria-disabled', 'true');
+  await expect(alice.locator('#topic_tab_open')).toHaveAttribute('aria-selected', 'true');
+  await expect(alice.locator('#topic_tab_open')).toBeFocused();
+  await expect(openHeadings(alice)).toHaveText(['Third', 'Second']);
 });
 
 test('history: agreed value, rounds, date of the last round, the spread unfolds (B-52 S1b)', async ({ browser }) => {
