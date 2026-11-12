@@ -192,6 +192,8 @@ nachträglich im Backlog vermerkt.
 - **Aufräumen (Andreas, 2026-11-08):** Ist nichts in Entwicklung, gibt es nur `release` und `master`. Kai kann Remote-Branches
   nicht löschen; gemergte Branches löscht GitHub per Repo-Einstellung „Automatically delete head branches“ (aktiv seit
   2026-11-10) bzw. Andreas. Kai entfernt nach dem Merge die zugehörigen lokalen Worktrees und Branches.
+  Übrig gebliebene Remote-Branches (z. B. Zwischenstände ohne eigenen PR) stören nicht: Andreas geht sie routinemäßig
+  nach jedem Rollout durch und löscht sie (2026-11-12); Kai listet sie im PR `release` → `master` unter „Aufräumen“.
   Ruleset „protect release and master“ (aktiv seit 2026-11-10): `release` und `master` können nicht gelöscht und nicht
   per Force-Push überschrieben werden, kein Bypass. Keine Status-Check- oder PR-Pflicht (Kai pusht Kleinigkeiten direkt
   auf `release`).
