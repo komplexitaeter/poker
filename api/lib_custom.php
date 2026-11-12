@@ -156,12 +156,13 @@ function custom_card_out(array $row, array $symbol_values): array
 
 /*
  * The custom sets of a team that are not deleted, by set id, in their order (sort_order, id). Each:
- * {set_id, deck_id, name, style, rev, cards: [active cards in position order, see custom_card_out()]}.
+ * {set_id, deck_id, name, style, aim, rev, cards: [active cards in position order, see custom_card_out()]}.
+ * aim (B-52 S1b): 'agree' | 'perspectives', the purpose of the set (deck_aim() in api/lib_topics.php).
  * $for_update locks the set rows (callers hold the team row lock first).
  */
 function load_custom_sets($link, string $t, array $catalog, bool $for_update = false): array
 {
-    $sql = $link->prepare("select s.id, s.name, s.style, s.rev
+    $sql = $link->prepare("select s.id, s.name, s.style, s.aim, s.rev
                              from pok_custom_sets_tbl s
                             where s.team_id = ? and s.deleted = 0
                             order by s.sort_order, s.id" . ($for_update ? " for update" : ""));
@@ -171,7 +172,8 @@ function load_custom_sets($link, string $t, array $catalog, bool $for_update = f
     $sets = array();
     while ($row = $result->fetch_assoc()) {
         $sets[(int)$row['id']] = array('set_id' => (int)$row['id'], 'deck_id' => custom_deck_id((int)$row['id']),
-            'name' => $row['name'], 'style' => $row['style'], 'rev' => (int)$row['rev'], 'cards' => array());
+            'name' => $row['name'], 'style' => $row['style'],
+            'aim' => $row['aim'] === 'perspectives' ? 'perspectives' : 'agree', 'rev' => (int)$row['rev'], 'cards' => array());
     }
     if (count($sets) === 0) return $sets;
 
@@ -409,14 +411,19 @@ function custom_source_cards(array $sets, ?int $except_set_id = null): array
     return $cards;
 }
 
-/* name and style of a create/save request: array('name' =>, 'style' =>) or array('error' => code) */
+/*
+ * name, style and aim of a create/save request: array('name' =>, 'style' =>, 'aim' =>) or array('error' => code).
+ * aim (B-52 S1b) is optional: 'agree' | 'perspectives', null if missing (create: 'agree', save: unchanged).
+ */
 function validate_custom_set_head(array $data, array $catalog): array
 {
     $name = body_text($data, 'name', CUSTOM_SET_NAME_MAX, false);
     if ($name === null || $name === '') return array('error' => 'name');
     $style = $data['style'] ?? 'plain';
     if (!is_string($style) || !in_array($style, custom_styles($catalog), true)) return array('error' => 'style');
-    return array('name' => $name, 'style' => $style);
+    $aim = $data['aim'] ?? null;
+    if ($aim !== null && !in_array($aim, DECK_AIMS, true)) return array('error' => 'aim');
+    return array('name' => $name, 'style' => $style, 'aim' => $aim);
 }
 
 /*
@@ -479,12 +486,12 @@ function insert_custom_card($link, int $set_id, int $position, array $card): str
 }
 
 /* creates a set with its cards (no limits checked here), returns the set id */
-function insert_custom_set($link, string $t, string $name, string $style, array $cards): int
+function insert_custom_set($link, string $t, string $name, string $style, array $cards, string $aim = 'agree'): int
 {
-    $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, sort_order)
-                           select ?, ?, ?, least(255, ifnull(max(sort_order), 0) + 1)
+    $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, aim, sort_order)
+                           select ?, ?, ?, ?, least(255, ifnull(max(sort_order), 0) + 1)
                              from pok_custom_sets_tbl where team_id = ?");
-    $sql->bind_param('ssss', $t, $name, $style, $t);
+    $sql->bind_param('sssss', $t, $name, $style, $aim, $t);
     $sql->execute();
     $set_id = (int)$link->insert_id;
     foreach (array_values($cards) as $i => $card) insert_custom_card($link, $set_id, $i, $card);

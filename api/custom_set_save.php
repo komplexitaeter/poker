@@ -1,7 +1,8 @@
 <?php
 /*
  * B-98 S4: saves a custom set of the team (editor "Save"): name, style and the complete card list in order.
- * POST ?t=<team>&set=<set id>, JSON body: {name, style, rev, force: bool (optional), cards: [card, ...]}
+ * POST ?t=<team>&set=<set id>, JSON body: {name, style, aim (optional, missing = unchanged; B-52 S1b), rev,
+ *   force: bool (optional), cards: [card, ...]}
  *   card as in custom_set_create.php plus key: the card_key of an existing card of the set (null/missing = new card;
  *   a catalog card_key or the key of an active card of another own set = new card copied from that card, as in
  *   custom_set_create.php).
@@ -72,12 +73,13 @@ if (count($checked['cards']) > max(custom_cards_max(), count($set['cards']))) {
 $active = array();
 foreach ($set['cards'] as $card) $active[$card['card_key']] = $card;
 $stored = store_custom_cards($link, $set_id, $active, $checked['cards']);
-$changed = $stored['changed'] || $head['name'] !== $set['name'] || $head['style'] !== $set['style'];
+$aim = $head['aim'] ?? $set['aim'];
+$changed = $stored['changed'] || $head['name'] !== $set['name'] || $head['style'] !== $set['style'] || $aim !== $set['aim'];
 
 $result = array('deck' => $team['deck'], 'new_round' => false);
 if ($changed) {
-    $sql = $link->prepare("update pok_custom_sets_tbl set name = ?, style = ?, rev = rev + 1 where id = ? and team_id = ?");
-    $sql->bind_param('ssis', $head['name'], $head['style'], $set_id, $t);
+    $sql = $link->prepare("update pok_custom_sets_tbl set name = ?, style = ?, aim = ?, rev = rev + 1 where id = ? and team_id = ?");
+    $sql->bind_param('sssis', $head['name'], $head['style'], $aim, $set_id, $t);
     $sql->execute();
     if ($team['deck']['id'] === custom_deck_id($set_id))
         $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true, '',

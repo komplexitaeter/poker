@@ -23,15 +23,8 @@ if ($item['status'] !== 'done') topic_fail($link, 409, 'not_done');
 $open = topic_item_counts($link, $t)['open'];
 if ($open >= TOPIC_ITEMS_OPEN_MAX) topic_fail($link, 409, 'limit');
 
-$sql = $link->prepare("update pok_topic_items_tbl
-                          set status = 'open', done_date = null
-                             ,result_card_key = if(result_auto = 1, null, result_card_key)
-                        where id = ? and team_id = ?");
-$sql->bind_param('is', $id, $t);
-$sql->execute();
-place_open_item($link, $t, $id, open_index_for($at, $open));
+reopen_topic_item($link, $t, $id, open_index_for($at, $open));
 
-sync_team_topic($link, $t);
 $active = active_item_id($link, $t);
 $link->commit();
 $link->close();

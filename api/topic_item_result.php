@@ -53,9 +53,7 @@ if ($card === '') {
     $auto = 0;
 }
 
-$sql = $link->prepare("update pok_topic_items_tbl set result_card_key = ?, result_auto = ? where id = ? and team_id = ?");
-$sql->bind_param('siis', $result, $auto, $id, $t);
-$sql->execute();
+set_topic_item_result($link, $t, $id, $result, $auto);
 $link->commit();
 $link->close();
 

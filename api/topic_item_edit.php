@@ -30,12 +30,8 @@ $heading = $heading ?? $item['heading'];
 $description = $description === null ? $item['description'] : null_if_empty($description);
 $ext_id = $ext_id === null ? $item['ext_id'] : null_if_empty($ext_id);
 $maturity = $maturity === false ? ($item['maturity'] === null ? null : (int)$item['maturity']) : $maturity;
-$sql = $link->prepare("update pok_topic_items_tbl set heading = ?, description = ?, ext_id = ?, maturity = ?
-                        where id = ? and team_id = ?");
-$sql->bind_param('sssiis', $heading, $description, $ext_id, $maturity, $id, $t);
-$sql->execute();
+update_topic_item($link, $t, $id, $heading, $description, $ext_id, $maturity);
 
-sync_team_topic($link, $t);
 $active = active_item_id($link, $t);
 $link->commit();
 $link->close();

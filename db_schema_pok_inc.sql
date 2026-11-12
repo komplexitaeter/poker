@@ -688,9 +688,8 @@ select (select count(*) from pok_teams_tbl) teams, (select count(*) from pok_tea
 /* end B-98 backup */
 
 /* B-52 S1: topics as a list of items per team (api/lib_topics.php). The topmost open item (status 'open', lowest
-   position) is the active one; pok_teams_tbl.topic is kept in line with it by the app (round snapshot, stats.php and
-   Grafana keep reading pok_teams_tbl.topic / pok_roundstats_tbl.topic unchanged). The old topic of a team becomes its
-   first item lazily in getDao(). distribution = cards of the last revealed round of the item as JSON {"card_key": count},
+   position) is the active one (S1b: pok_teams_tbl.topic stays the team's note, independent of the items; no lazy
+   takeover of the old topic, see the block B-52 S1b below). distribution = cards of the last revealed round of the item as JSON {"card_key": count},
    no person data. result_card_key: open item = card chosen by the team (result_auto = 0), null = automatic proposal
    (computed by dao.php); done item = the final result (result_auto 1 = automatic, 0 = chosen), null = no single value.
    team_id with the charset of pok_teams_tbl.id (utf8mb3) for joins.
@@ -723,3 +722,67 @@ create table if not exists pok_topic_items_tbl (
 select table_name, table_rows from information_schema.tables
  where table_schema = database() and table_name = 'pok_topic_items_tbl';
 /* end B-52 S1 */
+
+/* B-52 S1b: (1) pok_teams_tbl.topics_rev: +1 with every change of the team's topic items (api/lib_topics.php
+   topic_items_write()), the board loads the lists (api/get_topics.php) only when it changed. (2) last_round_date of an
+   item (last revealed round). (3) aim of a custom set: 'agree' (one agreed value) | 'perspectives' (distribution only).
+   (4) pok_roundstats_tbl.topic_item_id: the active item of a round (no foreign key: items may be deleted).
+   pok_teams_tbl.topic is the team's note again, independent of the items (no data change needed).
+   Additive (new columns with defaults, algorithm = instant), idempotent (each ALTER only if the column is missing),
+   BEFORE deploying the code (dao.php, custom sets and the topic endpoints read the new columns). The S1 block must have
+   run before. If MySQL refuses algorithm = instant (ERROR 1845/1846), replace it by "algorithm = inplace, lock = none".
+   The lock wait timeout makes an ALTER give up after 5 s instead of queueing dao.php calls: just run it again.
+   Not between 23:50 and 0:10 (nightly job reads pok_roundstats_tbl).
+   Run only this block: sed -n '/^\/\* B-52 S1b:/,/^\/\* end B-52 S1b/p' db_schema_pok_inc.sql */
+select table_name, column_name from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'topics_rev'), ('pok_topic_items_tbl', 'last_round_date'),
+                                     ('pok_custom_sets_tbl', 'aim'), ('pok_roundstats_tbl', 'topic_item_id'));
+
+set session lock_wait_timeout = 5;
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'topics_rev') = 0,
+  'alter table pok_teams_tbl
+     add column topics_rev int not null default 0 comment ''B-52 S1b: +1 with every change of the topic items'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_topic_items_tbl' and column_name = 'last_round_date') = 0,
+  'alter table pok_topic_items_tbl
+     add column last_round_date timestamp null comment ''B-52 S1b: end of the last revealed round of the item'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_custom_sets_tbl' and column_name = 'aim') = 0,
+  'alter table pok_custom_sets_tbl
+     add column aim varchar(12) character set ascii collate ascii_bin not null default ''agree''
+       comment ''B-52 S1b: agree | perspectives'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl' and column_name = 'topic_item_id') = 0,
+  'alter table pok_roundstats_tbl
+     add column topic_item_id int unsigned null comment ''B-52 S1b: active topic item of the round (pok_topic_items_tbl.id)'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+select table_name, column_name, column_default from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'topics_rev'), ('pok_topic_items_tbl', 'last_round_date'),
+                                     ('pok_custom_sets_tbl', 'aim'), ('pok_roundstats_tbl', 'topic_item_id'));
+/* end B-52 S1b */
