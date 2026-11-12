@@ -9,14 +9,15 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, setTea
  *   column shows the active item, "+N more · next: …" and the note below. After the reveal "Next item" next to
  *   "New round", for the last open item "Finish item" (then no item is active, the note stays).
  * - The lists come from get_topics.php only while the menu shows them and only when topics_rev changed.
- * - History: a done item shows the agreed value, the rounds, the date of the last round; its spread unfolds.
+ * - History: a done item shows the agreed value, the rounds, the date of the last round; its spread unfolds, built like
+ *   the spread of the results panel (a column per deck card, also without votes; the agreed value marked as .est).
  * - Result: the highest card is marked in the spread; a click on a bar with votes or the dropdown changes it.
  *   Traffic lights (deck aim 'perspectives'): no mark, no dropdown, one sentence instead.
  * - Maturity: set in the item form; in the voting panel name and text, in the results panel the text unfolds
  *   with a click on the triangle; "not set" shows nothing.
  * - The set editor: the goal of an own set (agree on a value / show perspectives).
  * - S1c: the note on the board above the cards (also with the column collapsed); the topics menu with tabs
- *   Note · Open · Done (start: Open while items are open, else Note; Done loads when its tab opens); "Next item" /
+ *   Note · Items · Done (start: Items while items are open, else Note; Done loads when its tab opens); "Next item" /
  *   "Finish item" always ask (#leave_item: close with the estimate / without a value / later; perspectives: close /
  *   later; Enter confirms the suggestion, Cancel, Escape and a click beside it cancel); the rail (collapsed column):
  *   the item marker on top and after the reveal the split "next item" / "new round".
@@ -88,14 +89,14 @@ function countTopicLoads(page: Page) {
 
 const openHeadings = (page: Page) => page.locator('#ti_open .ti-it .ti-h');
 
-test('the note stays a note: on the board above the cards, tabs Note · Open 0 · Done 0 (B-52 S1b, S1c)', async ({ browser }) => {
+test('the note stays a note: on the board above the cards, tabs Note · Items 0 · Done 0 (B-52 S1b, S1c)', async ({ browser }) => {
   const { alice } = await setup(browser, 'Topic UI Note');
   const loads = countTopicLoads(alice);
   await expect(alice.locator('#board_note')).toBeHidden(); // no note: no room
   await openTopics(alice);
   // no items: the menu starts on "Note" with the field focused (no extra click for the simple case)
   await expect(alice.locator('#topic_tab_note')).toHaveAttribute('aria-selected', 'true');
-  await expect(alice.locator('#topic_tab_open')).toHaveText('Open 0');
+  await expect(alice.locator('#topic_tab_open')).toHaveText('Items 0');
   await expect(alice.locator('#topic_tab_done')).toHaveText('Done 0');
   await expect(alice.locator('#topic_txt')).toBeFocused();
   await expect(alice.locator('label[for="topic_txt"]')).toHaveText('What are you estimating? (optional, Markdown works)');
@@ -143,7 +144,7 @@ test('items in addition to the note: add, move, next item, finish item; the note
   await fillItem(alice, 'Spike: PDF library');
   await expect(openHeadings(alice)).toHaveText(['Login with SSO', 'Export orders as CSV', 'Spike: PDF library']);
   await expect(alice.locator('#ti_open .ti-it.now .ti-tag')).toHaveText('now');
-  await expect(alice.locator('#topic_tab_open')).toHaveText('Open 3');
+  await expect(alice.locator('#topic_tab_open')).toHaveText('Items 3');
   await expect(alice.locator('label[for="topic_txt"]')).toHaveText('Note for everyone (optional, Markdown works)');
   // the note is untouched by the items
   await expect(alice.locator('#topic_txt')).toHaveValue('Timebox: 5 minutes per item');
@@ -223,7 +224,7 @@ test('items in addition to the note: add, move, next item, finish item; the note
   await openTopics(alice);
   // nothing open: the menu starts on "Note"
   await expect(alice.locator('#topic_tab_note')).toHaveAttribute('aria-selected', 'true');
-  await expect(alice.locator('#topic_tab_open')).toHaveText('Open 0');
+  await expect(alice.locator('#topic_tab_open')).toHaveText('Items 0');
   await showTab(alice, 'open');
   await expect(alice.locator('#ti_open')).toHaveCount(0);
   await expect(alice.locator('#ti_add')).toBeVisible();
@@ -267,9 +268,28 @@ test('history: agreed value, rounds, date of the last round, the spread unfolds 
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(dist).toBeVisible();
-  await expect(dist.locator('.ti-dist-col')).toHaveCount(2);
-  await expect(dist.locator('.ti-dist-col[data-card="five001"] .ti-dist-n')).toHaveText('2');
-  await expect(dist.locator('.ti-dist-col.est')).toHaveAttribute('data-card', 'eight01');
+  // like the spread of the results panel: a column per card of the deck (in deck order, also without votes: the
+  // base line), a block per vote, the count above; the agreed value marked like the current estimate
+  const deckKeys = await alice.locator('#spread_bars .spread-col').evaluateAll(cols => cols.map(col => col.getAttribute('data-card')));
+  expect(deckKeys.length).toBeGreaterThan(3);
+  expect(await dist.locator('.spread-col').evaluateAll(cols => cols.map(col => col.getAttribute('data-card')))).toEqual(deckKeys);
+  await expect(dist.locator('.spread-col:not(.zero)')).toHaveCount(2);
+  await expect(dist.locator('.spread-col[data-card="five001"] .spread-count')).toHaveText('2');
+  await expect(dist.locator('.spread-col[data-card="five001"] .spread-seg')).toHaveCount(2);
+  await expect(dist.locator('.spread-col[data-card="three01"]')).toHaveClass(/\bzero\b/);
+  await expect(dist.locator('.spread-col[data-card="three01"] .spread-count')).toHaveText('');
+  await expect(dist.locator('.spread-col.est')).toHaveCount(1);
+  await expect(dist.locator('.spread-col.est')).toHaveAttribute('data-card', 'eight01');
+  await expect(dist.locator('.spread-col.top')).toHaveCount(0); // the agreed value is the only accent
+  // the same look: block and base line as in the spread, the columns fit the menu
+  const box = (await dist.boundingBox())!;
+  const menuBox = (await alice.locator('#topic_box').boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(menuBox.x + menuBox.width + 1);
+  const zeroBar = (await dist.locator('.spread-col[data-card="three01"] .spread-bar').boundingBox())!;
+  expect(Math.round(zeroBar.height)).toBe(1);
+  // the deck changed since (a card of the item no longer in it): only the played cards, in catalog order
+  expect(await alice.evaluate(() => (0, eval)('topicDistColumnKeys')({ green01: 1, five001: 2, eight01: 0 }).sort()))
+    .toEqual(['five001', 'green01']);
   // the keyboard closes it again
   await toggle.focus();
   await alice.keyboard.press('Enter');
@@ -288,7 +308,7 @@ test('get_topics.php only when topics_rev changed, done items with their tab (B-
   // the column lives on dao.php alone
   expect(loads).toHaveLength(0);
 
-  // items open: the menu starts on "Open" (the tab focused), loads the open items only
+  // items open: the menu starts on "Items" (the tab focused), loads the open items only
   await openTopics(alice);
   await expect(alice.locator('#topic_tab_open')).toHaveAttribute('aria-selected', 'true');
   await expect(alice.locator('#topic_tab_open')).toBeFocused();
@@ -307,7 +327,7 @@ test('get_topics.php only when topics_rev changed, done items with their tab (B-
   // someone else adds an item while the menu is open: exactly one more load
   expect((await add('Third')).ok()).toBeTruthy();
   await expect(openHeadings(alice)).toHaveText(['First', 'Second', 'Third']);
-  await expect(alice.locator('#topic_tab_open')).toHaveText('Open 3');
+  await expect(alice.locator('#topic_tab_open')).toHaveText('Items 3');
   await expect.poll(() => loads.length).toBe(2);
 
   // a change while the menu is closed: no load until it opens again; the done items only with their tab
@@ -403,7 +423,11 @@ test('traffic lights: no single value, the sentence instead; done item with the 
   await expect(done.locator('.ti-res-val, .ti-res-lab')).toHaveCount(0); // no agreed value
   await expect(done.locator('.ti-rounds')).toHaveText('1 round');
   await done.locator('[data-ti-act="dist"]').click();
-  await expect(done.locator('.ti-dist-col')).toHaveCount(2);
+  // every light of the deck, the two played ones with their votes; no agreed value: the most chosen as in the spread
+  await expect(done.locator('.ti-dist .spread-col')).toHaveCount(await alice.locator('#spread_bars .spread-col').count());
+  await expect(done.locator('.ti-dist .spread-col:not(.zero)')).toHaveCount(2);
+  await expect(done.locator('.ti-dist .spread-col.est')).toHaveCount(0);
+  await expect(done.locator('.ti-dist .spread-col.top')).toHaveAttribute('data-card', 'green01');
 });
 
 test('maturity: set in the form, name and text in the column, unfolds after the reveal, removed again (B-52 S1)', async ({ browser }) => {

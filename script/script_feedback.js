@@ -87,7 +87,7 @@ function showMenuTab(box, name, focusTab = false) {
     box.querySelectorAll('[role="tabpanel"]').forEach(p => { p.hidden = p.getAttribute('data-tab') !== name; });
     if (focusTab) tab.focus();
     if (box.id === 'feedback_box' && name === 'backlog') loadFeedbackBacklog(); // B-57
-    if (box.id === 'topic_box') onTopicTab(name); // B-52 S1c: Note | Open | Done (topics.js; loads Done lazily)
+    if (box.id === 'topic_box') onTopicTab(name); // B-52 S1c: Note | Items | Done (topics.js; loads Done lazily)
 }
 
 function showCsetTab(name, focusTab = false) {

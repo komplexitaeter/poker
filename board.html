@@ -9,18 +9,18 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.55" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.56" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.43" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.44" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
-    <script defer src="script/topics.js?v=1.2" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.20" type="text/javascript"></script>
+    <script defer src="script/topics.js?v=1.3" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.21" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -328,14 +328,14 @@
             </section>
 
             <section id="topic_box" class="menu_sec" data-sec="topic" data-title="Topic" hidden>
-                <!-- B-52 S1c (topics.js): tabs Note · Open · Done with counters (showMenuTab() in script_feedback.js).
-                     Note: the team's note as before (#topic_single, update_topic.php); Open: "+ Add item" and the open
-                     items, the active one on top (#topic_list); Done: the history (#topic_done, loaded when the tab
-                     opens). Starts on Open while items are open, else on Note. Without items support (old server):
+                <!-- B-52 S1c (topics.js): tabs Note · Items · Done with counters (showMenuTab() in script_feedback.js).
+                     Note: the team's note as before (#topic_single, update_topic.php); Items: "+ Add item" and the open
+                     items, the active one on top (#topic_list; tab "Items"); Done: the history (#topic_done, loaded when the tab
+                     opens). Starts on Items while items are open, else on Note. Without items support (old server):
                      no tabs, the note alone. -->
                 <div class="m-tabs ti-tabs" id="topic_tabs" role="tablist" aria-label="Topic" hidden>
                     <button type="button" role="tab" id="topic_tab_note" data-tab="note" aria-selected="true" aria-controls="topic_panel_note">Note</button>
-                    <button type="button" role="tab" id="topic_tab_open" data-tab="open" aria-selected="false" aria-controls="topic_panel_open" tabindex="-1">Open <span id="topic_n_open" class="tab-n">0</span></button>
+                    <button type="button" role="tab" id="topic_tab_open" data-tab="open" aria-selected="false" aria-controls="topic_panel_open" tabindex="-1">Items <span id="topic_n_open" class="tab-n">0</span></button>
                     <button type="button" role="tab" id="topic_tab_done" data-tab="done" aria-selected="false" aria-controls="topic_panel_done" tabindex="-1">Done <span id="topic_n_done" class="tab-n">0</span></button>
                 </div>
                 <div class="m-tabpanel" role="tabpanel" id="topic_panel_note" data-tab="note" aria-labelledby="topic_tab_note">
