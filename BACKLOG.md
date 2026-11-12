@@ -1800,6 +1800,13 @@ Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
   „next item“ bzw. „new round“ geht – „next“/„round“ allein ist verwirrend. Beschriftung je Hälfte zweizeilig:
   „next item“ (letztes Item: „finish item“) und „new round“; „New round“ bleibt überall so (bekannt). Umsetzung als
   Folgeschritt nach S1b.
+- **S1c „Item verlassen“ (Andreas, 2026-11-12):** Es gibt kein klares Kriterium für „fertig“ – manchmal kommt man
+  nicht zu einem Ergebnis. Bei Sets mit Ziel Einigung: Ist es klar (alle Karten mit Wert gleich = Konsens, oder Wert
+  bewusst gewählt), geht „Next item“/„Finish item“ ohne Frage weiter. Sonst fragt ein **Overlay mit Cancel**
+  (funktioniert auch aus der schmalen Leiste): „Close with 8“ (Vorschlag = höchste Karte) · „Close without a value“ ·
+  „Bring it back later“ (bleibt offen, ans Ende der Liste, Runden/Verteilung bleiben). Der höchste Wert ist damit nur
+  noch Vorschlag, nicht automatisch übernommen. Perspektiven-Sets: keine Frage. Backend prüft dieselbe Regel.
+  Zusammen mit dem Split in der Leiste nach S1b.
 - **dao.php klein halten:** dao liefert nur das aktive Item, Anzahlen und `topics_rev`; die Liste kommt über
   `api/get_topics.php`, nur wenn sich `topics_rev` geändert hat (Done-Items erst beim Öffnen des Menüs). Kein neuer
   Signaltyp in poker-msg. **Jede** Änderung an Items (auch Text eines alten/erledigten Items, Ergebnis, Reifegrad,
