@@ -2867,7 +2867,9 @@ function updateTimerConfig(force = false) {
     checkRadio('tmr_mode', gTimer.mode);
     checkRadio('tmr_auto_restart', String(gTimer.autoRestart));
     let autoHint = document.getElementById('tmr_auto_restart_hint');
-    if (autoHint !== null) autoHint.textContent = TIMER_AUTO_RESTART_HINTS[gTimer.autoRestart];
+    // B-130: written only when it changes (a load with the same state changes nothing on the page, B-110)
+    const autoText = TIMER_AUTO_RESTART_HINTS[gTimer.autoRestart] ?? '';
+    if (autoHint !== null && autoHint.textContent !== autoText) autoHint.textContent = autoText;
     document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
 
     let minutes = Math.round(gTimer.timebox / 60);
