@@ -566,6 +566,12 @@ function team_has_cards_down($link, string $t): bool
     return $row !== null && (int)$row->cnt > 0;
 }
 
+/* B-52 S1b: a statement failed only because a table (1146) or column (1054) is missing (code deployed before the schema) */
+function is_missing_schema_error(mysqli_sql_exception $e): bool
+{
+    return in_array($e->getCode(), array(1054, 1146), true);
+}
+
 /*
  * Starts a new round (newround.php; B-98 S2 also update_deck.php when the deck changes while cards are down):
  * snapshot of the round in pok_roundstats_tbl (incl. the deck of the round: deck_id, deck_cards, deck_controls, so
@@ -626,20 +632,24 @@ function start_new_round($link, string $t): void
         $sql->execute();
 
         /* B-52 S1b: the snapshot remembers the active topic item (topic_item_id). A missing column (code deployed
-           before the schema) must not break "New round": the failed statement does not end the transaction. */
+           before the schema) must not break "New round": the failed statement does not end the transaction. Only a
+           missing table/column is skipped; anything else (e.g. a deadlock, which rolls back the whole transaction)
+           is rethrown, so the round never goes on outside the transaction. */
         try {
             link_round_to_active_item($link, $t, (int)$obj->last_id);
         } catch (mysqli_sql_exception $e) {
+            if (!is_missing_schema_error($e)) throw $e;
             error_log('poker new round: topic item of the round not stored: ' . $e->getMessage());
         }
     }
 
     /* B-52 S1: a revealed round is stored at the active topic item (distribution, rounds_cnt) before the cards go up.
        A missing table (code deployed before the schema) must not break "New round": the failed statement does not
-       end the transaction, the round goes on without it. */
+       end the transaction, the round goes on without it. Anything else (e.g. a deadlock) is rethrown (B-52 S1b review). */
     try {
         record_round_on_active_item($link, $t);
     } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
         error_log('poker new round: topic item not updated: ' . $e->getMessage());
     }
 
