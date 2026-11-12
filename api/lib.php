@@ -590,6 +590,23 @@ function restart_timer_for_auto_modes($link, string $t, array $modes): void
     $sql->execute();
 }
 
+/* B-130: a visible timer with one of the given auto-start values (TIMER_AUTO_*) is reset and paused, the same state
+   as a manual reset in timer.php (start and pause time null: PAUSED at 0, TIMER mode at T-timebox). */
+function reset_timer_for_auto_modes($link, string $t, array $modes): void
+{
+    $modes = array_values(array_map('intval', $modes));
+    if (count($modes) === 0) return;
+    $marks = implode(',', array_fill(0, count($modes), '?'));
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_start_time = null
+                                        ,t.timer_pause_time = null
+                                   where t.id=?
+                                     and t.timer_visibility = 1
+                                     and t.timer_auto_restart in ($marks)");
+    $sql->bind_param('s' . str_repeat('i', count($modes)), $t, ...$modes);
+    $sql->execute();
+}
+
 /* B-130: the team has an active topic item (an open one). false if the item table is missing (code before schema). */
 function team_has_active_item($link, string $t): bool
 {
