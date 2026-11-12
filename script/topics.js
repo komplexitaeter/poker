@@ -12,6 +12,16 @@
  *   dropdown; after the reveal "Next item" next to "New round", for the last open item "Finish item" (then no item
  *   is active, the note stays).
  * - Done items (history): agreed value (if any), rounds, date of the last round, the spread behind a triangle.
+ * S1c (Andreas, 2026-11-12):
+ * - The note stands on the board above the cards (#board_note), for everyone and always (also with the column
+ *   collapsed); cut to a few lines, "more" unfolds it. The column shows the item only.
+ * - The topics menu has tabs Note · Open · Done with counters; it starts on Open while items are open, else on Note.
+ *   The done items load when their tab opens (get_topics.php?done=1).
+ * - "Next item" / "Finish item" (column, phone dock, rail) always ask first: the overlay #leave_item (close with the
+ *   current estimate / close without a value / bring it back later; perspectives: close / later), the first choice
+ *   focused, Enter confirms; topic_item_next.php with mode close | close_empty | later.
+ * - The collapsed column (rail): the item marker "1/3" on top, after the reveal "next item" / "new round" as one
+ *   split block (#rail_acts.split).
  * topic_items null (table missing on the server): the old behaviour, no items.
  * Free text only via textContent (or remarkable without HTML); free text goes in the POST body, never in the URL.
  * After every write the board loads itself (apiWrite). */
@@ -33,6 +43,11 @@ let gTopicLoad = null;        // { seq } while a get_topics.php request runs
 let gTopicLoadAgain = false;  // another load was asked for while one ran
 let gTopicLoadSeq = 0;
 let gTopicLoadError = false;  // the last load failed (the menu offers "Try again")
+let gTopicTab = 'note';      // the tab of the topics menu: 'note' | 'open' | 'done'
+let gTopicNextTab = null;     // the tab the menu opens on next (an opener asked for it), else the start rule
+let gTopicNoteMore = false;   // the board note: unfolded ("more")
+let gTopicNoteKey = null;     // what the board note shows now
+let gLeave = null;            // { id, opener } while the "leave this item" overlay is open
 let gTopicEditor = null;      // { id: number | 'new' } while the item form is open in the menu
 let gTopicConfirmDelete = null; // id of the item whose trash can asks "Delete?"
 let gTopicDistOpen = new Set(); // ids of done items whose spread is unfolded
@@ -110,7 +125,7 @@ function maturityBadge(level) {
 
 /* ---------- the column (voting and results panel) ---------- */
 
-/* called by updateDom() before updateSide(): the note as before; with an active item the item and the note below it */
+/* called by updateDom() before updateSide(): the note on the board; the active item in the column (none: no bar) */
 function updateTopicView(json) {
     gTopicItems = validTopicItems(json.topic_items) ? json.topic_items : null;
     gTopic = json.topic;
@@ -119,40 +134,75 @@ function updateTopicView(json) {
     const label = document.querySelector('.topic-bar .topic-label');
     const edit = document.querySelector('.topic-bar .topic-edit');
     const item = activeTopicItem();
+    updateBoardNote(json.topic);
 
     if (item === null) {
-        // as before S1: the note (markdown), no bar without one
-        const key = 's:' + json.topic;
-        if (gTopicViewKey !== key) {
-            gTopicViewKey = key;
-            const hash = json.topic.hashCode().toString();
-            topic.setAttribute('data-hash', hash);
+        // S1c: the note is on the board, the column has no topic bar without an item
+        if (gTopicViewKey !== '') {
+            gTopicViewKey = '';
+            topic.setAttribute('data-hash', '0');
             topic.classList.remove('ti-view');
-            topic.innerHTML = topicMarkdown(json.topic);
-            topic.classList.toggle('display_none', hash === '0');
-            label.textContent = 'topic';
-            edit.setAttribute('aria-label', 'Edit topic');
+            topic.replaceChildren();
+            topic.classList.add('display_none');
         }
     } else {
         const key = 'i:' + JSON.stringify([item.id, item.ext_id, item.heading, item.description, item.maturity,
-            gTopicItems.open_count, gTopicItems.next_heading, json.topic, gTopicRevealed, gTopicDescMore, gTopicMatOpen]);
+            gTopicItems.open_count, gTopicItems.next_heading, gTopicRevealed, gTopicDescMore, gTopicMatOpen]);
         if (gTopicViewKey !== key) {
             gTopicViewKey = key;
             topic.setAttribute('data-hash', key.hashCode().toString());
             topic.classList.add('ti-view');
-            topic.replaceChildren(...topicItemView(item, gTopicItems.open_count, gTopicItems.next_heading, json.topic));
+            topic.replaceChildren(...topicItemView(item, gTopicItems.open_count, gTopicItems.next_heading));
             topic.classList.remove('display_none');
             label.textContent = 'item 1 of ' + gTopicItems.open_count;
-            edit.setAttribute('aria-label', 'Edit topic and items');
+            edit.setAttribute('aria-label', 'Edit items');
             requestAnimationFrame(updateTopicMoreButton);
         }
     }
     renderTopicMenu();
     loadTopicLists();
     updateNextItemButton(json);
+    updateRailItem(json);
+    syncLeaveItem(json);
 }
 
-function topicItemView(item, openCount, nextHeading, note) {
+/* ---------- the note on the board (S1c) ---------- */
+
+/* the team's note above the cards (markdown without HTML); hidden without one (no room taken) */
+function updateBoardNote(note) {
+    const box = document.getElementById('board_note');
+    const text = document.getElementById('board_note_text');
+    if (box === null || text === null) return;
+    const value = typeof note === 'string' ? note : '';
+    if (gTopicNoteKey === value) return;
+    if (gTopicNoteKey !== null && gTopicNoteKey !== value) gTopicNoteMore = false; // a new note starts cut
+    gTopicNoteKey = value;
+    box.hidden = value.trim() === '';
+    text.innerHTML = box.hidden ? '' : topicMarkdown(value);
+    syncBoardNoteMore();
+    requestAnimationFrame(syncBoardNoteMore);
+}
+
+/* "more" only when the note is cut (or unfolded) */
+function syncBoardNoteMore() {
+    const box = document.getElementById('board_note');
+    const text = document.getElementById('board_note_text');
+    const more = document.getElementById('board_note_more');
+    if (box === null || text === null || more === null) return;
+    text.classList.toggle('open', gTopicNoteMore);
+    const cut = !gTopicNoteMore && text.scrollHeight > text.clientHeight + 1;
+    text.classList.toggle('cut', cut);
+    more.hidden = box.hidden || (!gTopicNoteMore && !cut);
+    more.textContent = gTopicNoteMore ? 'less' : 'more';
+    more.setAttribute('aria-expanded', gTopicNoteMore ? 'true' : 'false');
+}
+
+function toggleBoardNote() {
+    gTopicNoteMore = !gTopicNoteMore;
+    syncBoardNoteMore();
+}
+
+function topicItemView(item, openCount, nextHeading) {
     const parts = [];
     const meta = document.createElement('div');
     meta.className = 'ti-meta';
@@ -208,24 +258,13 @@ function topicItemView(item, openCount, nextHeading, note) {
         more.className = 'ti-next';
         more.id = 'ti_next_hint';
         more.title = 'Open the topic list';
-        more.dataset.open = 'topic'; // the menu's own opener handling (script_feedback.js)
+        more.dataset.open = 'topic'; // the menu's own opener handling (script_feedback.js), on the "Open" tab
+        more.addEventListener('click', () => { gTopicNextTab = 'open'; });
         more.setAttribute('aria-controls', 'menu');
         more.textContent = '+' + (openCount - 1) + ' more · next: ' + nextHeading;
         parts.push(more);
     }
 
-    // S1b: the team's note stays visible below the item
-    if (note) {
-        const box = document.createElement('div');
-        box.className = 'ti-note-view';
-        box.id = 'ti_note_view';
-        box.appendChild(textElement('span', 'ti-note-lab', 'note'));
-        const text = document.createElement('div');
-        text.className = 'ti-note-md';
-        text.innerHTML = topicMarkdown(note);
-        box.appendChild(text);
-        parts.push(box);
-    }
     return parts;
 }
 
@@ -374,17 +413,164 @@ function updateNextItemButton(json) {
     button.closest('.dock').classList.toggle('has-next', show);
 }
 
-function nextTopicItem() {
+/* ---------- the rail (collapsed column): the item marker and the split "next item" / "new round" ---------- */
+
+function updateRailItem(json) {
+    const marker = document.getElementById('rail_item');
+    const acts = document.getElementById('rail_acts');
+    const next = document.getElementById('rail_next');
+    if (marker === null || acts === null || next === null) return;
     const item = activeTopicItem();
-    if (item === null) return;
-    const button = document.getElementById('nextitem_btn');
-    const last = button.dataset.last === 'true';
-    button.disabled = true;
+    const count = gTopicItems === null ? 0 : gTopicItems.open_count;
+    marker.hidden = item === null;
+    if (item !== null) {
+        const pos = '1/' + count;
+        const posEl = document.getElementById('rail_item_pos');
+        if (posEl.textContent !== pos) posEl.textContent = pos;
+        marker.setAttribute('aria-label', 'Item 1 of ' + count + ' – open sidebar');
+        marker.title = item.heading;
+    }
+    const revealed = json.all_players_ready && json.players_count > 0;
+    const show = revealed && item !== null;
+    const last = count <= 1;
+    acts.classList.toggle('split', show);
+    next.hidden = !show;
+    next.classList.toggle('last', last);
+    next.setAttribute('aria-label', last ? 'Finish item' : 'Next item');
+    const word = document.getElementById('rail_next_w');
+    const text = last ? 'finish' : 'next';
+    if (word !== null && word.textContent !== text) word.textContent = text;
+}
+
+/* ---------- "leave this item": the overlay behind "Next item" / "Finish item" (S1c) ---------- */
+
+/* the choices for the active item: deck aim 'agree': close with the current estimate (when there is one), close
+ * without a value, later; 'perspectives': close, later. The first one is the suggestion. */
+function leaveItemChoices(json, item) {
+    const aim = json.deck && json.deck.aim === 'perspectives' ? 'perspectives' : 'agree';
+    const later = gTopicItems !== null && gTopicItems.open_count > 1
+        ? 'Stays open and moves to the end of the list' : 'Stays open – it is the only open item';
+    const choices = [];
+    if (aim === 'agree') {
+        if (item.result_card_key !== null) {
+            const card = cardByKey(item.result_card_key);
+            choices.push({ mode: 'close', card: item.result_card_key, text: 'Close with ',
+                value: card ? String(card.text || card.label || item.result_card_key) : item.result_card_key,
+                hint: 'Done – the estimate is kept' });
+        }
+        choices.push({ mode: 'close_empty', text: 'Close without a value', hint: 'Done – no estimate' });
+    } else {
+        choices.push({ mode: 'close', text: 'Close', hint: 'Done – the spread is kept' });
+    }
+    choices.push({ mode: 'later', text: 'Bring it back later', hint: later });
+    return choices;
+}
+
+function leaveItemOpen() {
+    const dialog = document.getElementById('leave_item');
+    return dialog !== null && dialog.open;
+}
+
+/* opener: the button that gets the focus back (#nextitem_btn or #rail_next) */
+function openLeaveItem(opener) {
+    const item = activeTopicItem();
+    const dialog = document.getElementById('leave_item');
+    if (item === null || dialog === null || !gLastJson || dialog.open) return;
+    gLeave = { id: item.id, opener: opener || null };
+    document.getElementById('leave_item_heading').textContent = (item.ext_id ? item.ext_id + ' ' : '') + item.heading;
+    const box = document.getElementById('leave_item_opts');
+    box.replaceChildren(...leaveItemChoices(gLastJson, item).map((choice, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'leave-opt' + (index === 0 ? ' primary' : '');
+        button.dataset.mode = choice.mode;
+        if (choice.card) button.dataset.card = choice.card;
+        const title = textElement('span', 'leave-opt-t', choice.text);
+        if (choice.value !== undefined) title.appendChild(textElement('b', 'leave-opt-v', choice.value));
+        button.append(title, textElement('small', 'leave-opt-h', choice.hint));
+        return button;
+    }));
+    dialog.showModal();
+    const first = box.querySelector('.leave-opt');
+    if (first !== null) first.focus();
+}
+
+function closeLeaveItem() {
+    const dialog = document.getElementById('leave_item');
+    if (dialog !== null && dialog.open) dialog.close();
+}
+
+/* the dialog closed (any way): the focus back to its opener while that can take it */
+function onLeaveItemClosed() {
+    const opener = gLeave === null ? null : gLeave.opener;
+    gLeave = null;
+    if (opener !== null && opener.isConnected && !opener.hidden && opener.offsetParent !== null) {
+        opener.focus({ preventScroll: true });
+    }
+}
+
+/* a board update while the overlay is open: someone else left the item or a new round started -> it closes */
+function syncLeaveItem(json) {
+    if (gLeave === null || !leaveItemOpen()) return;
+    const item = activeTopicItem();
+    const revealed = json.all_players_ready && json.players_count > 0;
+    if (item === null || item.id !== gLeave.id || !revealed) closeLeaveItem();
+}
+
+function leaveItem(mode, card) {
+    const item = activeTopicItem();
+    const id = gLeave === null ? null : gLeave.id;
+    closeLeaveItem();
+    if (item === null || item.id !== id) return;
+    const last = gTopicItems === null || gTopicItems.open_count <= 1;
+    const params = { item: item.id, mode };
+    if (card) params.card = card;
+    const buttons = ['nextitem_btn', 'rail_next'].map(bid => document.getElementById(bid)).filter(b => b !== null);
+    buttons.forEach(button => { button.disabled = true; });
     gTopicDescMore = false;
     gTopicMatOpen = false;
     // 409 not_active: someone else was quicker; the reload shows the new item
-    topicWrite('topic_item_next.php', { item: item.id }, null, [409]).then(() => { button.disabled = false; });
-    measureEvent(last ? 'TOPIC_FINISH_ITEM' : 'TOPIC_NEXT_ITEM');
+    topicWrite('topic_item_next.php', params, null, [409]).then(() => {
+        buttons.forEach(button => { button.disabled = false; });
+    });
+    measureEvent(mode === 'later' ? 'TOPIC_ITEM_LATER' : (last ? 'TOPIC_FINISH_ITEM' : 'TOPIC_NEXT_ITEM'));
+}
+
+function initLeaveItem() {
+    const dialog = document.getElementById('leave_item');
+    if (dialog === null) return;
+    dialog.addEventListener('close', onLeaveItemClosed);
+    document.getElementById('leave_item_cancel').addEventListener('click', closeLeaveItem);
+    dialog.addEventListener('click', event => {
+        const option = event.target instanceof Element ? event.target.closest('.leave-opt') : null;
+        if (option !== null) {
+            leaveItem(option.dataset.mode, option.dataset.card || '');
+            return;
+        }
+        // a click beside the box (on the backdrop: the dialog itself, outside its rectangle) cancels
+        if (event.target === dialog) {
+            const r = dialog.getBoundingClientRect();
+            if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) {
+                closeLeaveItem();
+            }
+        }
+    });
+    dialog.addEventListener('keydown', event => {
+        // Escape: closed here (not only by the dialog's cancel), so the menu panel and the column overlay below it
+        // stay as they are (they skip a handled Escape)
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeLeaveItem();
+            return;
+        }
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        const options = Array.from(dialog.querySelectorAll('.leave-opt'));
+        const index = options.indexOf(document.activeElement);
+        if (index < 0) return;
+        event.preventDefault();
+        const to = (index + (event.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length;
+        options[to].focus();
+    });
 }
 
 /* ---------- writes ---------- */
