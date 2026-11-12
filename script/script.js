@@ -2802,7 +2802,7 @@ const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
 const TIMER_AUTO_RESTART_HINTS = [
     'Starts only with play.',
     'Restarts with every new round.',
-    'Restarts when you move on to the next item \u2013 new rounds within an item keep it running. Without items like New round.',
+    'Restarts with every next item.',
 ];
 const TIMER_AUTO_RESTART_TOASTS = ['Auto-start off', 'Auto-start with every new round', 'Auto-start with every next item'];
 
