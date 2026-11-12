@@ -451,10 +451,10 @@ test('the goal of an own set in the editor: agree or perspectives, saved with th
   const agree = alice.locator('#cs_aim input[value="agree"]');
   const perspectives = alice.locator('#cs_aim input[value="perspectives"]');
   await expect(agree).toBeChecked();
-  await expect(alice.locator('#cs_aim_help')).toHaveText('The team agrees on one value per item, e.g. an estimate.');
+  await expect(alice.locator('#cs_aim_help')).toHaveText('The goal is to find a value everyone can agree on.');
   await alice.locator('#cs_aim label', { hasText: 'Show perspectives' }).click();
   await expect(perspectives).toBeChecked();
-  await expect(alice.locator('#cs_aim_help')).toHaveText('Only the spread counts, e.g. a health check – no single value.');
+  await expect(alice.locator('#cs_aim_help')).toHaveText('The goal is to make everyone\'s individual perspective visible.');
   await alice.locator('#cs_name').fill('Health');
   await alice.locator('#cs_save').click();
   await expect(alice.locator('#cs_editor')).toBeHidden();
