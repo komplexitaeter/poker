@@ -333,6 +333,33 @@ function card_can_be_chosen(?array $info): bool
     return $info !== null && !$info['control'];
 }
 
+/*
+ * The result card the team may choose for an item (topic_item_result.php, "Close with" of topic_item_next.php): a
+ * played card of the item's distribution (for the active item also the running revealed round; also a card without a
+ * value, never a control card) or a card of the team's current deck with a numeric_value. $team from lock_team_deck().
+ */
+function result_card_allowed($link, string $t, array $team, array $item, bool $is_active, string $card,
+                             array $catalog): bool
+{
+    $distribution = decode_distribution($item['distribution']) ?? array();
+    if ($is_active) $distribution = (revealed_distribution($link, $t) ?? array()) + $distribution;
+    $info = card_result_infos($link, $t, array($card), $catalog)[$card] ?? null;
+    return isset($distribution[$card]) ? card_can_be_chosen($info)
+        : (in_array($card, $team['deck']['cards'], true) && card_has_result_value($info));
+}
+
+/*
+ * S1c "Bring it back later": the item stays open with its rounds and distribution, a chosen result is reset (the next
+ * round proposes again), and it goes to the end of the open order (stays active if it is the only open item).
+ */
+function postpone_topic_item($link, string $t, int $id): void
+{
+    topic_items_write($link, $t, "update pok_topic_items_tbl set result_card_key = null, result_auto = 1
+                                   where id = ? and team_id = ? and (result_auto <> 1 or result_card_key is not null)",
+                      'is', $id, $t);
+    place_open_item($link, $t, $id, PHP_INT_MAX);
+}
+
 /* the automatic result of a distribution: for an 'agree' deck the played card with the highest numeric_value, null
    for 'perspectives' or if no played card has a value */
 function auto_result_key(?array $distribution, array $infos, string $aim): ?string
@@ -420,8 +447,16 @@ function load_topics_rev($link, string $t): int
     return is_array($row) ? (int)$row['topics_rev'] : 0;
 }
 
+// S1c: the dates also as unix time (exact for timestamp columns, whatever the session time zone), delivered as UTC
 const TOPIC_ITEM_COLUMNS = "id, ext_id, heading, description, maturity, status, result_card_key, result_auto
-                           ,distribution, rounds_cnt, last_round_date, done_date";
+                           ,distribution, rounds_cnt, last_round_date, done_date
+                           ,unix_timestamp(last_round_date) last_round_ts, unix_timestamp(done_date) done_ts";
+
+/* unix time from the DB -> ISO 8601 in UTC ('2026-11-12T10:15:00Z'), null stays null */
+function iso_utc(int|string|null $unix_time): ?string
+{
+    return $unix_time === null ? null : gmdate('Y-m-d\\TH:i:s\\Z', (int)$unix_time);
+}
 
 /*
  * Open items (rows in their order) as delivered: the first (active) one carries the cards of the running round as
@@ -557,7 +592,7 @@ function topic_item_out(array $row, ?array $distribution): array
         'result_auto' => (int)$row['result_auto'],
         'distribution' => $distribution === null ? null : (object)array_map('intval', $distribution),
         'rounds_cnt' => (int)$row['rounds_cnt'],
-        'last_round_date' => $row['last_round_date'],
-        'done_date' => $row['done_date'],
+        'last_round_date' => iso_utc($row['last_round_ts']),
+        'done_date' => iso_utc($row['done_ts']),
     );
 }

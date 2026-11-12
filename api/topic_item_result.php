@@ -32,23 +32,19 @@ if ($team === null) {
 $item = load_topic_item($link, $t, $id);
 if ($item === null) topic_fail($link, 404, 'item');
 
-$distribution = decode_distribution($item['distribution']) ?? array();
 $active = active_item_id($link, $t);
-if ($active === $id) $distribution = (revealed_distribution($link, $t) ?? array()) + $distribution;
-$infos = card_result_infos($link, $t, array_merge(array_map('strval', array_keys($distribution)), $card === '' ? array() : array($card)), $catalog);
 
 if ($card === '') {
     // automatic: open items compute the proposal in dao.php, done items store it
-    $result = $item['status'] === 'done' ? auto_result_key(decode_distribution($item['distribution']), $infos,
+    $done_distribution = decode_distribution($item['distribution']);
+    $infos = card_result_infos($link, $t, array_map('strval', array_keys((array)$done_distribution)), $catalog);
+    $result = $item['status'] === 'done' ? auto_result_key($done_distribution, $infos,
                                                          deck_aim($team['deck'], $catalog, $team['custom_sets'])) : null;
     $auto = 1;
 } else {
     if (deck_aim($team['deck'], $catalog, $team['custom_sets']) !== 'agree') topic_fail($link, 409, 'perspectives');
     // a played card (also without a value), or a card of the current deck with a value (alternative dropdown)
-    $info = $infos[$card] ?? null;
-    $known = isset($distribution[$card]) ? card_can_be_chosen($info)
-        : (in_array($card, $team['deck']['cards'], true) && card_has_result_value($info));
-    if (!$known) topic_fail($link, 400, 'card');
+    if (!result_card_allowed($link, $t, $team, $item, $active === $id, $card, $catalog)) topic_fail($link, 400, 'card');
     $result = $card;
     $auto = 0;
 }
