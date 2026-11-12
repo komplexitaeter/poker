@@ -2800,9 +2800,9 @@ const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
 
 /* B-130: auto-start 0 = off, 1 = new round, 2 = next item: the hint below the switch and the toast of an own change */
 const TIMER_AUTO_RESTART_HINTS = [
-    'Starts only with play.',
+    'You start it yourself.',
     'Restarts with every new round.',
-    'Restarts when you move on to the next item \u2013 new rounds within an item keep it running. Without items like New round.',
+    'Restarts with every next item.',
 ];
 const TIMER_AUTO_RESTART_TOASTS = ['Auto-start off', 'Auto-start with every new round', 'Auto-start with every next item'];
 
@@ -3277,6 +3277,7 @@ function updateSide(json, glide = true) {
         // empty bars, so the votes grow in on the next reveal
         bars.querySelectorAll('.spread-bar').forEach(bar => bar.replaceChildren());
         toggleStyleClass(pointer, 'hidden', 'visible');
+        syncMedianLine(null); // B-53
         syncRailRange(false); // B-113 (sidebar.js)
         bars.querySelectorAll('.spread-col').forEach(col => syncEstimateColumn(col, { show: false }, 0));
         updateEstimateRow(json, false, {}); // B-52 S1 (topics.js)
@@ -3340,6 +3341,9 @@ function updateSide(json, glide = true) {
         left = calculateIndicatorLefPosition(cardStats,
             key => bars.querySelector('[data-card="' + key + '"]'), pointer);
     }
+    // B-53: the median line, coupled to the same switch as the average pointer; only for decks that aim to agree
+    syncMedianLine(json.show_avg === 1 && !(json.deck && json.deck.aim === 'perspectives')
+        ? medianColumns(cardStats) : null);
     if (left === null) {
         toggleStyleClass(pointer, 'hidden', 'visible');
     } else {
@@ -3353,6 +3357,55 @@ function updateSide(json, glide = true) {
             pointer.classList.remove('no-glide');
         }
     }
+}
+
+/* B-53: the column(s) the median of the votes falls on: { low, high } (card keys; the same key when it lies on one
+ * column) or null. Only votes on cards with a numeric value count (no control cards, no cards without a value, no ∞,
+ * no cards with "range": false), at least two of them. Odd number: the middle vote; even: the two middle votes.
+ * The line splits the columns in deck order, so a deck whose values do not rise in deck order (a custom set) has none. */
+function medianColumns(cardStats) {
+    const valued = gDeck.cards.filter(card => card.value != null && !card.infinite && !card.control
+        && !card.controlCard && card.range !== false);
+    if (valued.some((card, i) => i > 0 && card.value < valued[i - 1].value)) return null;
+    const votes = [];
+    valued.forEach(card => {
+        const n = cardStats[card.key] ? cardStats[card.key].usageCount : 0;
+        for (let i = 0; i < n; i++) votes.push(card);
+    });
+    if (votes.length < 2) return null;
+    const half = votes.length >> 1;
+    const low = votes.length % 2 === 1 ? votes[half] : votes[half - 1];
+    return { low, high: votes[half] };
+}
+
+/* B-53: the dashed median line in the spread (#spread_median, left set here): through the middle of the column of the
+ * median, or halfway between the middles of the two columns of the middle votes. median: medianColumns() or null
+ * (no line). Its sr-only text says where it is ("Median 5", "Median between 5 and 8"). */
+function syncMedianLine(median) {
+    const centerOf = col => { const r = col.getBoundingClientRect(); return r.left + r.width / 2; };
+    const line = document.getElementById('spread_median');
+    const bars = document.getElementById('spread_bars');
+    if (line === null || bars === null) return;
+    const colLow = median ? bars.querySelector('[data-card="' + median.low.key + '"]') : null;
+    const colHigh = median ? bars.querySelector('[data-card="' + median.high.key + '"]') : null;
+    // the column(s) the line runs through: their count on a patch of the background (style.css)
+    const x = colLow && colHigh ? (centerOf(colLow) + centerOf(colHigh)) / 2 : null;
+    bars.querySelectorAll('.spread-col').forEach(col => {
+        const r = col.getBoundingClientRect();
+        col.classList.toggle('median', x !== null && x > r.left && x < r.right);
+    });
+    if (colLow === null || colHigh === null) {
+        line.hidden = true;
+        return;
+    }
+    const left = x - line.parentElement.getBoundingClientRect().left;
+    line.style.left = Math.round(left * 2) / 2 + 'px';
+    const text = median.low.key === median.high.key ? 'Median ' + median.low.label
+        : 'Median between ' + median.low.label + ' and ' + median.high.label;
+    const label = line.querySelector('.sr-only');
+    if (label.textContent !== text) label.textContent = text;
+    line.setAttribute('data-median', median.low.key === median.high.key ? median.low.key : median.low.key + ',' + median.high.key);
+    line.hidden = false;
 }
 
 /* a column of the spread (updateSide; B-52: also the history of done items, topics.js): the count, the bar (blocks

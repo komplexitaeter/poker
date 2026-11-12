@@ -4117,6 +4117,31 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 
 .spread-index.no-glide { transition: none; }
 
+/* B-53: the median, a dashed line from the counts down over the bars (left set by syncMedianLine() in script.js:
+ * through the middle of a column or halfway between two). Muted, not the accent of the estimate; it ends above the
+ * value labels, so the average pointer below them stays free. The count of a column it runs through (.median) lies
+ * on a patch of the column's background, so the number stays readable. */
+.spread-median {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: calc(1rem + 5px + var(--spread-h));
+    margin-left: -1px;
+    background: repeating-linear-gradient(to bottom, var(--muted) 0 3px, transparent 3px 6px);
+    pointer-events: none;
+}
+
+.spread-median[hidden] { display: none; }
+
+.spread-col.median .spread-count {
+    position: relative;
+    z-index: 2;
+    padding: 0 2px;
+    background: var(--bg-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .spread-seg,
     .spread-index { transition: none; }

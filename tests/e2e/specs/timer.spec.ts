@@ -102,7 +102,7 @@ test('auto-start Next item: saved as 2 with a toast and its hint, the other pane
   await openTimerPanel(alice);
   await openTimerPanel(bob);
   await expect(alice.locator('#tmr_auto_restart .seg label')).toHaveText(['Off', 'New round', 'Next item']);
-  await expect(alice.locator('#tmr_auto_restart_hint')).toHaveText('Starts only with play.');
+  await expect(alice.locator('#tmr_auto_restart_hint')).toHaveText('You start it yourself.');
 
   // by pointer (a click on the label, as with mouse or touch)
   await alice.locator('#tmr_auto_restart label', { hasText: 'Next item' }).click();
@@ -111,7 +111,7 @@ test('auto-start Next item: saved as 2 with a toast and its hint, the other pane
   await expect(alice.locator('#tmr_auto_restart_hint')).toContainText('next item');
   await expect.poll(() => sql(`select timer_auto_restart from pok_teams_tbl where id = '${teamId(url)}'`)).toBe('2');
   await expect(radio(bob, 'tmr_auto_restart', '2')).toBeChecked();
-  await expect(bob.locator('#tmr_auto_restart_hint')).toContainText('new rounds within an item keep it running');
+  await expect(bob.locator('#tmr_auto_restart_hint')).toHaveText('Restarts with every next item.');
   if (process.env.SHOT_DIR) {
     await alice.mouse.move(0, 0);
     await alice.waitForTimeout(2600); // the toast is gone
