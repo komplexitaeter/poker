@@ -1791,9 +1791,9 @@ Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reakti
 heute dauerhaft 1/s senden. Neu je Verbindung (gleitende Fenster, kein Limit auf Teamebene): **1 pro Sekunde, 10 pro
 Minute**; darüber wird verworfen (wie heute, mit Log-Zeile). Log-Muster: kurze Ausbrüche bis 24/s (vermutlich
 gehaltene Taste) – Board ignoriert Tastaturwiederholung, eine gehaltene Taste = eine Reaktion.
-Log (Andreas, 2026-11-12): Verwerfungen mit Fenster („rate limit 1s“/„1m“) und – bewusste Abweichung von B-110 – der
-**Code** der Reaktion bei Weiterleitung und Verwerfung (nie Absender/Empfänger), damit Nutzung je Reaktion und
-Limit-Treffer auswertbar sind. Im Board die gleichen
+Log (Andreas, 2026-11-12): Verwerfungen mit Fenster („rate limit 1s“/„1m“) und der **Code** der Reaktion bei
+Weiterleitung und Verwerfung (nie Absender/Empfänger), damit Nutzung je Reaktion und Limit-Treffer auswertbar sind.
+Kein Widerspruch zu B-110: „nichts in die DB“ bleibt – im Log-File ohne Namen ist es ok. Im Board die gleichen
 Grenzen als Rückmeldung: beim Überschreiten kurzer Hinweis statt stillem Verlust. poker-msg (Ben) + Board (Fred);
 poker-msg-Rollout mit Neustart abends.
 
