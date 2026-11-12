@@ -6250,27 +6250,6 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .ti-res { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 .ti-res-val { font-size: var(--fs-m); color: var(--text); }
 
-/* the distribution of a done item without a single value: mini bars with the card below */
-.ti-dist { display: inline-flex; align-items: flex-end; gap: 4px; }
-
-.ti-dist-col {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-    font-size: 10px;
-    --c: var(--line-strong);
-}
-
-.ti-dist-col > i {
-    display: block;
-    width: 8px;
-    background: var(--c);
-    border-radius: 1px;
-}
-
-.ti-dist-col .mini { width: 14px; height: 14px; }
-
 @media (max-width: 799.98px) {
     .ti-grid { grid-template-columns: minmax(0, 1fr); }
     .ti-note { display: none; }
@@ -6308,11 +6287,22 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
 #topic_list .ti-sl { white-space: nowrap; }
 .ti-hist[aria-expanded=true] .ti-tri { transform: rotate(90deg); }
 
-.ti-done .ti-dist { padding: 4px 0 2px 16px; gap: 8px; }
+/* the spread of a done item (topicDistView): the columns of the results panel's spread (.spread-bars, .spread-col,
+ * see "Column"), with its sizes at the column's base width (no --side-grow); the columns share the menu's width
+ * (flex 1 1 0, at most 32px each: many cards, narrower columns). Marked: .est (agreed) or .top as in the spread. */
+.ti-dist.spread-bars {
+    --side-grow: 0px;
+    --spread-h: 48px; /* between the phone strip (34px) and the desktop column (64px): the menu stays compact */
+    --spread-fs: var(--fs-xs);
+    --spread-val-h: max(1.25rem, var(--fs-xs) * 1.85);
+    justify-content: flex-start;
+    padding: 6px 0 4px 16px;
+}
+
+.ti-dist.spread-bars:has(use[href*="#s-light-"]) { --spread-val-h: max(1.875rem, var(--fs-xs) * 2.7); }
+.ti-dist .spread-col { position: relative; } /* anchor of its sr-only text */
+.ti-dist .spread-seg { transition: none; }
 .ti-dist[hidden] { display: none; }
-.ti-dist-n { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.ti-done .ti-dist-col > i { width: 12px; }
-.ti-dist-col.est > i { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 @media (prefers-reduced-motion: reduce) {
     .ti-tri { transition: none; }

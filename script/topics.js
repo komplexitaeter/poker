@@ -15,7 +15,7 @@
  * S1c (Andreas, 2026-11-12):
  * - The note stands on the board above the cards (#board_note), for everyone and always (also with the column
  *   collapsed); cut to a few lines, "more" unfolds it. The column shows the item only.
- * - The topics menu has tabs Note · Open · Done with counters; it starts on Open while items are open, else on Note.
+ * - The topics menu has tabs Note · Items · Done with counters (Andreas: "Items" for the open items); it starts on Items while items are open, else on Note.
  *   The done items load when their tab opens (get_topics.php?done=1).
  * - "Next item" / "Finish item" (column, phone dock, rail) always ask first: the overlay #leave_item (close with the
  *   current estimate / close without a value / bring it back later; perspectives: close / later), the first choice
@@ -258,7 +258,7 @@ function topicItemView(item, openCount, nextHeading) {
         more.className = 'ti-next';
         more.id = 'ti_next_hint';
         more.title = 'Open the topic list';
-        more.dataset.open = 'topic'; // the menu's own opener handling (script_feedback.js), on the "Open" tab
+        more.dataset.open = 'topic'; // the menu's own opener handling (script_feedback.js), on the "Items" tab
         more.addEventListener('click', () => { gTopicNextTab = 'open'; });
         more.setAttribute('aria-controls', 'menu');
         more.textContent = '+' + (openCount - 1) + ' more · next: ' + nextHeading;
@@ -602,7 +602,7 @@ function topicWrite(endpoint, params, form = null, quiet = []) {
 
 /* ---------- the lists (get_topics.php) ---------- */
 
-/* loads the lists while the topics menu shows the tab "Open" (open items) or "Done" (with the done items; S1c: only
+/* loads the lists while the topics menu shows the tab "Items" (open items) or "Done" (with the done items; S1c: only
  * then), only when the dao topics_rev differs from the rev of the last lists (or the done items are missing). One
  * request at a time; asked again meanwhile, the next follows when it is done. An answer that an own change made
  * outdated (topicListsChanged()) is dropped. opening: the menu is about to show it. */
@@ -664,7 +664,7 @@ function topicListItem(id) {
 
 /* ---------- the topics menu ---------- */
 
-/* the tabs Note · Open · Done (S1c) with their counters, the open items and the done items. force: also while the
+/* the tabs Note · Items · Done (S1c) with their counters, the open items and the done items. force: also while the
  * item form is open */
 function renderTopicMenu(force = false) {
     const single = document.getElementById('topic_single');
@@ -729,7 +729,7 @@ function topicLoadState() {
     return textElement('p', 'hint ti-load', 'Loading items …');
 }
 
-/* the tab "Open": the open items (the active one on top) and "+ Add item" */
+/* the tab "Items": the open items (the active one on top) and "+ Add item" */
 function topicOpenParts() {
     const summary = gTopicItems;
     const lists = gTopicLists;
@@ -848,29 +848,52 @@ function topicDistKeys(distribution) {
     return keys.sort((a, b) => rank(a) - rank(b));
 }
 
-/* the spread of a done item: a bar per played card, the count above, the card below */
+/* the columns of a done item's spread (Andreas, after the staging test: like the spread of the results panel).
+ * An item does not keep its deck. So: every card of the current deck (also those without votes, as in the
+ * spread) when it still holds every played card; else the deck has changed since, and the played cards alone
+ * tell the most, in catalog order (sort_order: the order of gCardByKey) – a different deck around them would
+ * only mislead. */
+function topicDistColumnKeys(distribution) {
+    const played = topicDistKeys(distribution);
+    const deck = gDeck ? gDeck.cards.map(card => card.key) : [];
+    if (deck.length > 0 && played.every(key => deck.includes(key))) return deck;
+    const order = [...gCardByKey.keys()];
+    const rank = key => (order.indexOf(key) < 0 ? order.length : order.indexOf(key));
+    return played.sort((a, b) => rank(a) - rank(b));
+}
+
+/* the spread of a done item: the columns of the results panel's spread (spreadColumn, setSpreadSegments in
+ * script.js): a column per card (topicDistColumnKeys), a block per vote, the count above, the card below; the
+ * agreed value marked like the current estimate (.est), without one the most chosen card(s) as in the spread
+ * (.top). No motion: the blocks are there when it unfolds. The columns share the menu's width (style.css). */
 function topicDistView(item) {
     const distribution = item.distribution || {};
-    const keys = topicDistKeys(distribution);
-    const max = Math.max(1, ...keys.map(key => distribution[key]));
+    const keys = topicDistColumnKeys(distribution);
+    const votes = key => (distribution[key] > 0 ? distribution[key] : 0);
+    const total = keys.reduce((sum, key) => sum + votes(key), 0);
+    const top = Math.max(0, ...keys.map(votes));
+    const estMarked = item.result_card_key !== null && keys.includes(item.result_card_key);
     const bars = document.createElement('div');
-    bars.className = 'ti-dist';
+    bars.className = 'spread-bars ti-dist no-anim';
     bars.id = 'ti_dist_' + item.id;
+    bars.style.setProperty('--voters', String(Math.max(1, total)));
     keys.forEach(key => {
         const card = cardByKey(key);
-        const col = document.createElement('span');
-        col.className = 'ti-dist-col' + (item.result_card_key === key ? ' est' : '');
-        col.dataset.card = key;
-        const name = card ? cardName(card) : key;
-        col.title = name + ': ' + distribution[key];
-        col.appendChild(textElement('span', 'ti-dist-n', String(distribution[key])));
-        const bar = document.createElement('i');
-        bar.style.height = Math.max(3, Math.round(distribution[key] / max * 28)) + 'px';
-        if (card && card.color) bar.style.setProperty('--c', 'var(--c-' + card.color + ', var(--line-strong))');
-        col.appendChild(bar);
-        col.appendChild(card ? cardSmall(card, false) : textElement('span', 'sm-text', key));
-        col.appendChild(textElement('span', 'sr-only', name + ': ' + distribution[key] + (distribution[key] === 1 ? ' vote' : ' votes')));
+        const n = votes(key);
+        const col = spreadColumn(card, key);
         bars.appendChild(col);
+        col.classList.toggle('zero', n === 0);
+        col.classList.toggle('est', estMarked && item.result_card_key === key);
+        col.classList.toggle('top', !estMarked && n > 1 && n === top);
+        col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
+        setSpreadSegments(col.querySelector('.spread-bar'), n).forEach(seg => {
+            seg.classList.remove('in');
+            seg.style.transitionDelay = '';
+        });
+        const name = card ? cardName(card) : key;
+        col.title = name + ': ' + n + (n === 1 ? ' vote' : ' votes');
+        col.appendChild(textElement('span', 'sr-only', name + ': ' + n + (n === 1 ? ' vote' : ' votes')
+            + (estMarked && item.result_card_key === key ? ', agreed' : '')));
     });
     return bars;
 }
@@ -1155,7 +1178,7 @@ function onTopicListClick(event) {
     }
 }
 
-/* the topics menu is opened (prepareMenuSection in script_feedback.js): the start tab (an opener's wish, else "Open"
+/* the topics menu is opened (prepareMenuSection in script_feedback.js): the start tab (an opener's wish, else "Items"
  * while items are open, else "Note"), the lists fresh */
 function prepareTopicMenu() {
     gTopicEditor = null;

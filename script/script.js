@@ -3206,21 +3206,7 @@ function updateSide(json, glide = true) {
     const deckCards = gDeck.cards;
     const keys = deckCards.map(card => card.key).join(',');
     if (bars.getAttribute('data-keys') !== keys) {
-        bars.replaceChildren(...deckCards.map(card => {
-            const col = document.createElement('div');
-            col.className = 'spread-col zero';
-            col.setAttribute('data-card', card.key);
-            const count = document.createElement('span');
-            count.className = 'spread-count';
-            const bar = document.createElement('span');
-            bar.className = 'spread-bar';
-            const value = document.createElement('span');
-            value.className = 'spread-value';
-            // B-99 (F6): per symbol mono text or a mini symbol (cards.js cardSmall), never a system emoji
-            value.appendChild(cardSmall(card));
-            col.append(count, bar, value);
-            return col;
-        }));
+        bars.replaceChildren(...deckCards.map(card => spreadColumn(card, card.key)));
         bars.setAttribute('data-keys', keys);
     }
 
@@ -3310,6 +3296,24 @@ function updateSide(json, glide = true) {
             pointer.classList.remove('no-glide');
         }
     }
+}
+
+/* a column of the spread (updateSide; B-52: also the history of done items, topics.js): the count, the bar (blocks
+ * via setSpreadSegments), the value. card: the catalog card or undefined (unknown key: the key as text) */
+function spreadColumn(card, key) {
+    const col = document.createElement('div');
+    col.className = 'spread-col zero';
+    col.setAttribute('data-card', key);
+    const count = document.createElement('span');
+    count.className = 'spread-count';
+    const bar = document.createElement('span');
+    bar.className = 'spread-bar';
+    const value = document.createElement('span');
+    value.className = 'spread-value';
+    // B-99 (F6): per symbol mono text or a mini symbol (cards.js cardSmall), never a system emoji
+    value.appendChild(card ? cardSmall(card) : document.createTextNode(key));
+    col.append(count, bar, value);
+    return col;
 }
 
 /* B-70: a short tip what to do now, in the column (before the reveal where the spread will be, then
