@@ -30,7 +30,7 @@ export interface myJsonType {
     timer_visibility: number;
     timer_mode: string; // B-67: 'STOPWATCH' | 'TIMER'
     timer_timebox: number; // B-67: seconds; TIMER shows T- (timebox - timer_time) until 0, then T+
-    timer_auto_restart: number; // B-67: 1 = New round / Cancel round restart the timer
+    timer_auto_restart: 0 | 1 | 2; // B-67/B-130: auto-start 0 = off, 1 = new round (New/Cancel round), 2 = next item (leaving an item; without an active item like 1)
     results_order: string;
     show_avg: string;
     selected_card_key: string;
