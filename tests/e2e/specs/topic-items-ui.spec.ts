@@ -1,15 +1,20 @@
 import { test, expect, Page, Browser } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, setTeamDeck } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, setTeamDeck, removeExampleSet } from './helpers';
 
 /**
- * B-52 S1 (script/topics.js): the topic list on the board.
- * - One topic as before: the menu has the one field (plus a quiet "+ next item"), the column shows the text as before.
+ * B-52 S1/S1b (script/topics.js): the topic list on the board.
+ * - S1b: the note stays a note. The topic field (update_topic.php) is the team's note, shown in the column as before;
+ *   items come in addition: in the topics menu below the note ("+ Add item", a button with a dashed outline).
  * - More items: the list in the menu (open with "now" on top, done), move with the arrow buttons (keyboard), the
- *   column shows the active item and "+N more · next: …". After the reveal "Next item" next to "New round".
+ *   column shows the active item, "+N more · next: …" and the note below. After the reveal "Next item" next to
+ *   "New round", for the last open item "Finish item" (then no item is active, the note stays).
+ * - The lists come from get_topics.php only while the menu shows them and only when topics_rev changed.
+ * - History: a done item shows the agreed value, the rounds, the date of the last round; its spread unfolds.
  * - Result: the highest card is marked in the spread; a click on a bar with votes or the dropdown changes it.
  *   Traffic lights (deck aim 'perspectives'): no mark, no dropdown, one sentence instead.
  * - Maturity: set in the item form; in the voting panel name and text, in the results panel the text unfolds
  *   with a click on the triangle; "not set" shows nothing.
+ * - The set editor: the goal of an own set (agree on a value / show perspectives).
  */
 
 const DESKTOP = { width: 1280, height: 800 };
@@ -43,7 +48,7 @@ async function closeMenu(page: Page) {
   await expect(page.locator('#topic_box')).toBeHidden();
 }
 
-/** adds an item with the form of the list ("Add item" or the open form of "+ next item") */
+/** adds an item with the form of the list ("+ Add item") */
 async function fillItem(page: Page, heading: string, extId = '', maturity = '') {
   if (await page.locator('#ti_form').count() === 0) await page.locator('#ti_add').click();
   await page.locator('#ti_ext').fill(extId);
@@ -53,41 +58,62 @@ async function fillItem(page: Page, heading: string, extId = '', maturity = '') 
   await expect(page.locator('#ti_form')).toHaveCount(0);
 }
 
+/** counts the requests to get_topics.php of a page (and whether they asked for the done items) */
+function countTopicLoads(page: Page) {
+  const loads: string[] = [];
+  page.on('request', request => {
+    if (request.url().includes('/api/get_topics.php')) loads.push(request.url());
+  });
+  return loads;
+}
+
 const openHeadings = (page: Page) => page.locator('#ti_open .ti-it .ti-h');
 
-test('one topic as before: the field, the text in the column, no list (B-52 S1)', async ({ browser }) => {
-  const { alice } = await setup(browser, 'Topic UI Simple');
+test('the note stays a note: without items as before, "+ Add item" below it (B-52 S1b)', async ({ browser }) => {
+  const { alice } = await setup(browser, 'Topic UI Note');
+  const loads = countTopicLoads(alice);
   await openTopics(alice);
   await expect(alice.locator('#topic_txt')).toBeFocused();
-  await expect(alice.locator('#topic_add_next')).toBeVisible();
-  await expect(alice.locator('#topic_list')).toBeHidden();
+  await expect(alice.locator('label[for="topic_txt"]')).toHaveText('What are you estimating? (optional, Markdown works)');
+  // the entry to the items: a clearly visible button with a dashed outline, no list yet
+  const add = alice.locator('#ti_add');
+  await expect(add).toBeVisible();
+  await expect(add).toHaveText('Add item');
+  expect(await add.evaluate(el => getComputedStyle(el).borderTopStyle)).toBe('dashed');
+  await expect(alice.locator('#ti_open, #ti_done')).toHaveCount(0);
   await alice.locator('#topic_txt').fill('PAY-142 pay by invoice\nwith **details**');
   await alice.locator('#topic_save').click();
   await expect(alice.locator('#topic_box')).toBeHidden();
 
-  // the column: as before (markdown of the text), label "topic", no item parts
+  // the column: as before (markdown of the text), label "topic", no item parts, no "Next item"
   await expect(alice.locator('#topic')).toContainText('PAY-142 pay by invoice');
   await expect(alice.locator('#topic strong')).toHaveText('details');
   await expect(alice.locator('.topic-label')).toHaveText('topic');
-  await expect(alice.locator('#topic .ti-heading, #ti_next_hint')).toHaveCount(0);
+  await expect(alice.locator('#topic .ti-heading, #ti_next_hint, #ti_note_view')).toHaveCount(0);
 
-  // opened again: still the one field with the text
+  // opened again: the note in the field, still no items - and no team without items loads a list
   await openTopics(alice);
   await expect(alice.locator('#topic_txt')).toHaveValue('PAY-142 pay by invoice\nwith **details**');
-  await expect(alice.locator('#topic_list')).toBeHidden();
+  await expect(alice.locator('#ti_open')).toHaveCount(0);
+  expect(loads).toHaveLength(0);
 });
 
-test('several items: add, move with the keyboard, next item, done list with the result (B-52 S1)', async ({ browser }) => {
+test('items in addition to the note: add, move, next item, finish item; the note stays (B-52 S1b)', async ({ browser }) => {
   const { alice, t, ids } = await setup(browser, 'Topic UI List');
   await openTopics(alice);
-  await alice.locator('#topic_txt').fill('Login with SSO');
-  // "+ next item" saves the text first and opens the form for the next one
-  await alice.locator('#topic_add_next').click();
+  await alice.locator('#topic_txt').fill('Timebox: 5 minutes per item');
+  await alice.locator('#topic_save').click();
+  await openTopics(alice);
+  await alice.locator('#ti_add').click();
   await expect(alice.locator('#ti_heading')).toBeFocused();
+  await fillItem(alice, 'Login with SSO');
   await fillItem(alice, 'Export orders as CSV', 'PAY-150');
   await fillItem(alice, 'Spike: PDF library');
   await expect(openHeadings(alice)).toHaveText(['Login with SSO', 'Export orders as CSV', 'Spike: PDF library']);
   await expect(alice.locator('#ti_open .ti-it.now .ti-tag')).toHaveText('now');
+  await expect(alice.locator('label[for="topic_txt"]')).toHaveText('Note for everyone (optional, Markdown works)');
+  // the note is untouched by the items
+  await expect(alice.locator('#topic_txt')).toHaveValue('Timebox: 5 minutes per item');
 
   // move the third one up with the keyboard (focus stays on the moved item's button)
   const up = alice.locator('#ti_open [data-ti-act="up"]').nth(2);
@@ -97,18 +123,20 @@ test('several items: add, move with the keyboard, next item, done list with the 
   await expect(alice.locator('#ti_open [data-ti-act="up"]').nth(1)).toBeFocused();
   await closeMenu(alice);
 
-  // the column: the active item and what comes next
+  // the column: the active item, what comes next, the note below
   await expect(alice.locator('.topic-label')).toHaveText('item 1 of 3');
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Login with SSO');
   await expect(alice.locator('#ti_next_hint')).toHaveText('+2 more · next: Spike: PDF library');
+  await expect(alice.locator('#ti_note_view .ti-note-md')).toHaveText('Timebox: 5 minutes per item');
   await alice.locator('#ti_next_hint').click();
-  await expect(alice.locator('#topic_list')).toBeVisible();
+  await expect(alice.locator('#ti_open')).toBeVisible();
   await closeMenu(alice);
 
   // no "Next item" before the reveal
   await expect(alice.locator('#nextitem_btn')).toBeHidden();
   await reveal(alice, t, ids, ['three01', 'five001', 'eight01']);
   await expect(alice.locator('#nextitem_btn')).toBeVisible();
+  await expect(alice.locator('#nextitem_btn')).toHaveText('Next item');
   await expect(alice.locator('#newroundbtn')).toHaveValue('New round');
   // the highest card is the result
   await expect(alice.locator('#spread_bars .spread-col.est')).toHaveAttribute('data-card', 'eight01');
@@ -132,25 +160,131 @@ test('several items: add, move with the keyboard, next item, done list with the 
   await expect(openHeadings(alice)).toHaveText(['Spike: PDF library', 'Login with SSO', 'Export orders as CSV']);
   await expect(alice.locator('#ti_done > li')).toHaveCount(0);
 
-  // delete asks once more
+  // delete asks once more: two items are left
   await alice.locator('#ti_open [data-ti-act="delete"]').nth(2).click();
   await alice.locator('#ti_open [data-ti-act="delete-sure"]').click();
   await expect(openHeadings(alice)).toHaveText(['Spike: PDF library', 'Login with SSO']);
+  await closeMenu(alice);
+
+  // through to the end: "Next item", then "Finish item" for the last one
+  await reveal(alice, t, ids, ['three01', 'three01', 'three01']);
+  await alice.locator('#nextitem_btn').click();
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Login with SSO');
+  await expect(alice.locator('#ti_next_hint')).toHaveCount(0);
+  await reveal(alice, t, ids, ['five001', 'five001', 'five001']);
+  await expect(alice.locator('#nextitem_btn')).toHaveText('Finish item');
+  await alice.locator('#nextitem_btn').click();
+
+  // the general mode: no active item, the note as before
+  await expect(alice.locator('#topic .ti-heading')).toHaveCount(0);
+  await expect(alice.locator('#topic')).toHaveText('Timebox: 5 minutes per item');
+  await expect(alice.locator('.topic-label')).toHaveText('topic');
+  await expect(alice.locator('#nextitem_btn')).toBeHidden();
+  await expect(alice.locator('#spread_est')).toBeHidden();
+  await openTopics(alice);
+  await expect(alice.locator('#ti_open')).toHaveCount(0);
+  await expect(alice.locator('#ti_done > li')).toHaveCount(2);
+  await expect(alice.locator('#ti_add')).toBeVisible();
+});
+
+test('history: agreed value, rounds, date of the last round, the spread unfolds (B-52 S1b)', async ({ browser }) => {
+  const { alice, t, ids } = await setup(browser, 'Topic UI History');
+  await openTopics(alice);
+  await fillItem(alice, 'Checkout redesign');
+  await fillItem(alice, 'Second topic');
+  await closeMenu(alice);
+  // two rounds for the first item
+  await reveal(alice, t, ids, ['three01', 'five001', 'eight01']);
+  await alice.locator('#newroundbtn').click();
+  await expect(alice.locator('#round_status')).not.toHaveText('revealed');
+  await reveal(alice, t, ids, ['five001', 'five001', 'eight01']);
+  await alice.locator('#nextitem_btn').click();
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Second topic');
+
+  await openTopics(alice);
+  const done = alice.locator('#ti_done > li').first();
+  await expect(done.locator('.ti-h')).toHaveText('Checkout redesign');
+  await expect(done.locator('.ti-res-lab')).toHaveText('agreed');
+  await expect(done.locator('.ti-res-val')).toHaveText('8');
+  await expect(done.locator('.ti-rounds')).toHaveText('2 rounds');
+  // today, short and in the local format of the browser
+  const today = await alice.evaluate(() => new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' }));
+  await expect(done.locator('.ti-date')).toHaveText(today);
+
+  // the spread of the last round behind the triangle
+  const toggle = done.locator('[data-ti-act="dist"]');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  const dist = done.locator('.ti-dist');
+  await expect(dist).toBeHidden();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(dist).toBeVisible();
+  await expect(dist.locator('.ti-dist-col')).toHaveCount(2);
+  await expect(dist.locator('.ti-dist-col[data-card="five001"] .ti-dist-n')).toHaveText('2');
+  await expect(dist.locator('.ti-dist-col.est')).toHaveAttribute('data-card', 'eight01');
+  // the keyboard closes it again
+  await toggle.focus();
+  await alice.keyboard.press('Enter');
+  await expect(dist).toBeHidden();
+  await expect(alice.locator('#ti_done [data-ti-act="dist"]').first()).toBeFocused();
+});
+
+test('get_topics.php only when topics_rev changed, done items with the menu (B-52 S1b)', async ({ browser }) => {
+  const { alice, t, ids } = await setup(browser, 'Topic UI Loads');
+  const add = (heading: string) => alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading } });
+  expect((await add('First')).ok()).toBeTruthy();
+  expect((await add('Second')).ok()).toBeTruthy();
+  await alice.reload();
+  const loads = countTopicLoads(alice);
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('First');
+  // the column lives on dao.php alone
+  expect(loads).toHaveLength(0);
+
+  await openTopics(alice);
+  await expect(openHeadings(alice)).toHaveText(['First', 'Second']);
+  expect(loads).toHaveLength(1);
+  expect(loads[0]).not.toContain('done=1'); // no done items yet
+
+  // a board reload without a change of the items (a card) loads no list; closed and opened again neither
+  await pickCard(alice, 'five001'); // (the click on the deck closes the side panel, B-74)
+  await expect(alice.locator('#round_status')).toContainText('1 of 3 voted');
+  await expect(alice.locator('#topic_box')).toBeHidden();
+  await openTopics(alice);
+  await expect(openHeadings(alice)).toHaveText(['First', 'Second']);
+  expect(loads).toHaveLength(1);
+
+  // someone else adds an item while the menu is open: exactly one more load
+  expect((await add('Third')).ok()).toBeTruthy();
+  await expect(openHeadings(alice)).toHaveText(['First', 'Second', 'Third']);
+  await expect.poll(() => loads.length).toBe(2);
+
+  // a change while the menu is closed: no load until it opens again, then with the done items
+  await closeMenu(alice);
+  await reveal(alice, t, ids, ['three01', 'five001', 'five001']);
+  await alice.locator('#nextitem_btn').click();
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Second');
+  expect(loads).toHaveLength(2);
+  await openTopics(alice);
+  await expect(alice.locator('#ti_done > li')).toHaveCount(1);
+  expect(loads).toHaveLength(3);
+  expect(loads[2]).toContain('done=1');
+  await alice.waitForTimeout(500);
+  expect(loads).toHaveLength(3); // no second request for the same rev
 });
 
 test('the result: a click on a bar, the dropdown, back to auto (B-52 S1)', async ({ browser }) => {
   const { alice, t, ids } = await setup(browser, 'Topic UI Result');
   await openTopics(alice);
-  await alice.locator('#topic_txt').fill('Rate limit');
-  await alice.locator('#topic_save').click();
+  await fillItem(alice, 'Rate limit');
+  await closeMenu(alice);
   await reveal(alice, t, ids, ['three01', 'five001', 'five001']);
 
-  // one item: the result is there as well (the most chosen highlight gives way to it), no "Next item"
+  // one item: the result is there as well (the most chosen highlight gives way to it), "Finish item"
   const est = alice.locator('#spread_bars .spread-col.est');
   await expect(est).toHaveAttribute('data-card', 'five001');
   await expect(alice.locator('#spread_bars .spread-col.top')).toHaveCount(0);
   await expect(alice.locator('#spread_est label')).toHaveText('Current estimate');
-  await expect(alice.locator('#nextitem_btn')).toBeHidden();
+  await expect(alice.locator('#nextitem_btn')).toHaveText('Finish item');
 
   // a bar with votes is a button; one without votes is not
   await expect(alice.locator('#spread_bars [data-card="eight01"]')).not.toHaveAttribute('role', 'button');
@@ -174,14 +308,13 @@ test('the result: a click on a bar, the dropdown, back to auto (B-52 S1)', async
 
   // the server has it as well
   const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${ids[0]}`)).json();
-  expect(dao.topic_items.open[0]).toMatchObject({ result_card_key: 'five001', result_auto: 1 });
+  expect(dao.topic_items.active).toMatchObject({ result_card_key: 'five001', result_auto: 1 });
 });
 
 test('traffic lights: no single value, the sentence instead; done item with the spread (B-52 S1)', async ({ browser }) => {
   const { alice, url, t, ids } = await setup(browser, 'Topic UI Traffic');
   await setTeamDeck(alice, url, 'traffic');
   await openTopics(alice);
-  await alice.locator('#topic_add_next').click();
   await fillItem(alice, 'Release plan Q1 realistic?');
   await fillItem(alice, 'Second topic');
   await closeMenu(alice);
@@ -196,20 +329,16 @@ test('traffic lights: no single value, the sentence instead; done item with the 
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Second topic');
   await openTopics(alice);
   const done = alice.locator('#ti_done > li').first();
-  await expect(done.locator('.ti-res-val')).toHaveCount(0);
+  await expect(done.locator('.ti-res-val, .ti-res-lab')).toHaveCount(0); // no agreed value
+  await expect(done.locator('.ti-rounds')).toHaveText('1 round');
+  await done.locator('[data-ti-act="dist"]').click();
   await expect(done.locator('.ti-dist-col')).toHaveCount(2);
-  await expect(done.locator('.ti-res-lab')).toHaveText('spread');
 });
 
 test('maturity: set in the form, name and text in the column, unfolds after the reveal, removed again (B-52 S1)', async ({ browser }) => {
   const { alice, t, ids } = await setup(browser, 'Topic UI Maturity');
   await openTopics(alice);
-  await alice.locator('#topic_add_next').click();
   await fillItem(alice, 'Pay by invoice', 'PAY-142', 'rough');
-  // one item with a maturity: the list (not the simple field) when the menu opens again
-  await closeMenu(alice);
-  await openTopics(alice);
-  await expect(alice.locator('#topic_list')).toBeVisible();
   await expect(alice.locator('#ti_open .ti-it .mat-name')).toHaveText('rough');
   await closeMenu(alice);
 
@@ -236,5 +365,40 @@ test('maturity: set in the form, name and text in the column, unfolds after the 
   await closeMenu(alice);
   await expect(alice.locator('#topic .mat')).toHaveCount(0);
   await expect(alice.locator('#ti_mat_text')).toHaveCount(0);
-  await expect(alice.locator('#topic .ti-heading')).toHaveText('Pay by invoice'); // ID still there: item view
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Pay by invoice');
+});
+
+test('the goal of an own set in the editor: agree or perspectives, saved with the set (B-52 S1b)', async ({ browser }) => {
+  const { alice, url } = await setup(browser, 'Topic UI Set Goal');
+  await removeExampleSet(url, alice);
+  await alice.locator('#cset_btn').click();
+  await alice.locator('#deck_change').click();
+
+  // from scratch: agree on a value, one line explains it
+  await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_scratch').click();
+  const agree = alice.locator('#cs_aim input[value="agree"]');
+  const perspectives = alice.locator('#cs_aim input[value="perspectives"]');
+  await expect(agree).toBeChecked();
+  await expect(alice.locator('#cs_aim_help')).toHaveText('The team agrees on one value per item, e.g. an estimate.');
+  await alice.locator('#cs_aim label', { hasText: 'Show perspectives' }).click();
+  await expect(perspectives).toBeChecked();
+  await expect(alice.locator('#cs_aim_help')).toHaveText('Only the spread counts, e.g. a health check – no single value.');
+  await alice.locator('#cs_name').fill('Health');
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#cs_editor')).toBeHidden();
+  await expect.poll(async () => (await alice.evaluate(() => (0, eval)('gLastJson'))).custom_sets[0]?.aim).toBe('perspectives');
+
+  // edited: the goal is there, changed back to agree (only the goal changes: Save stores it)
+  await alice.locator('#deck_own_sets .cs-edit').click();
+  await expect(perspectives).toBeChecked();
+  await alice.locator('#cs_aim label', { hasText: 'Agree on a value' }).click();
+  await alice.locator('#cs_save').click();
+  await expect(alice.locator('#cs_editor')).toBeHidden();
+  await expect.poll(async () => (await alice.evaluate(() => (0, eval)('gLastJson'))).custom_sets[0]?.aim).toBe('agree');
+
+  // a copy of traffic lights (a built-in set without a single value) starts with perspectives
+  await alice.locator('#deck_new_set').click();
+  await alice.locator('#cs_from [data-group="traffic"]').click();
+  await expect(perspectives).toBeChecked();
 });

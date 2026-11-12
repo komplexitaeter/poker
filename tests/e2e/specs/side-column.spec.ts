@@ -91,9 +91,9 @@ test('column: status, topic, spread and the round actions at its foot (B-68)', a
   await expect(alice.locator('#spread')).toBeVisible();
   const five = alice.locator('#spread_bars [data-card="five001"]');
   await expect(five.locator('.spread-count')).toHaveText('2');
-  // B-52 S1: with a topic the result of its item (the highest card, here 5) is the only accent instead of "most chosen"
-  await expect(five).toHaveClass(/est/);
-  await expect(five).not.toHaveClass(/top/);
+  // B-52 S1b: the topic is a note (no item), so "most chosen" is the accent as before
+  await expect(five).toHaveClass(/top/);
+  await expect(five).not.toHaveClass(/est/);
   await expect(five.locator('.spread-seg:not(.out)')).toHaveCount(2); // one block per vote
   // a block: the bar height (64px) shared by the 2 players, less the 2px gap; built up from the
   // bottom (the lower block first; in DOM order the top one comes first)

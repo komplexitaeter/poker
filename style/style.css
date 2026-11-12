@@ -6073,15 +6073,19 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
     }
 }
 
-/* the topics menu: "+ next item" left in the row of Undo / Save */
-.ti-add-next { margin-right: auto; }
-
+/* the topics menu (S1b): the note field on top, the items below it, set off by a line */
 .ti-list {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
     text-align: left;
 }
+
+.ti-load,
+.ti-add-hint { margin: 0; }
 
 .ti-head {
     display: flex;
@@ -6268,3 +6272,60 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 .ti-next:focus-visible,
 .ti-mat-btn:focus-visible,
 .ti-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Topic items S1b (B-52, Fred; please review, Delia) ---------- */
+
+/* the column: the team's note below the active item, set off by a dashed line */
+.ti-note-view {
+    width: 100%;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--line);
+    font-size: var(--fs-s);
+}
+
+.ti-note-lab { font-size: var(--fs-xs); color: var(--muted); }
+.ti-note-lab::before { content: "// "; color: var(--line-strong); }
+.ti-note-md > :first-child { margin-top: 0; }
+.ti-note-md > :last-child { margin-bottom: 0; }
+
+/* "+ Add item": a clearly visible button with a dashed outline */
+.ti-add { color: var(--text); border-color: var(--muted); }
+
+/* done items: agreed value, rounds, date; the triangle unfolds the spread */
+.ti-hist {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    padding: 0 6px 0 2px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    color: var(--muted);
+    font: var(--fs-xs) var(--font);
+    text-align: left;
+}
+
+button.ti-hist { cursor: pointer; }
+button.ti-hist:hover { border-color: var(--line-strong); color: var(--text); }
+button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ti-tri { flex: none; fill: currentColor; transition: transform 0.15s; }
+.ti-hist > span,
+#topic_list .ti-sl { white-space: nowrap; }
+.ti-hist[aria-expanded=true] .ti-tri { transform: rotate(90deg); }
+
+.ti-done .ti-dist { padding: 4px 0 2px 16px; gap: 8px; }
+.ti-dist[hidden] { display: none; }
+.ti-dist-n { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ti-done .ti-dist-col > i { width: 12px; }
+.ti-dist-col.est > i { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ti-tri { transition: none; }
+}
+
+/* B-52 S1b: the goal of an own set (set editor) */
+.cs-aimf { grid-column: 1 / -1; }
+.cs-aimf .seg { max-width: 420px; }
+.cs-aim-help { margin: 4px 0 0; }
