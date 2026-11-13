@@ -309,7 +309,8 @@ function refreshTopicView() {
 /* what the spread marks: { show: an active item, aim, key: the result card (agree) or null } */
 function topicEstimate(json) {
     const item = activeTopicItem();
-    if (item === null) return { show: false, aim: 'agree', key: null, item: null };
+    // B-52 S1d: the cards on the table are no round of the active item (it became active while they were down)
+    if (item === null || gTopicItems.round_counts === false) return { show: false, aim: 'agree', key: null, item: null };
     const aim = json.deck && json.deck.aim === 'perspectives' ? 'perspectives' : 'agree';
     return { show: true, aim, key: aim === 'agree' ? item.result_card_key : null, item };
 }
@@ -339,6 +340,13 @@ function updateEstimateRow(json, revealed, cardStats) {
     const note = document.getElementById('spread_note');
     if (row === null || note === null) return;
     const estimate = topicEstimate(json);
+    // B-52 S1d: revealed cards that count for no item - say so instead of an estimate (not while voting)
+    const stale = document.getElementById('spread_stale');
+    if (stale !== null) {
+        const show = revealed && activeTopicItem() !== null && gTopicItems.round_counts === false;
+        if (show && stale.textContent === '') stale.textContent = 'This round started before this item – start a new round to estimate it.';
+        stale.hidden = !show;
+    }
     // kept (invisible inside the hidden spread) before the reveal as well, so nothing moves when the cards turn
     row.hidden = !(estimate.show && estimate.aim === 'agree');
     note.hidden = !(estimate.show && estimate.aim === 'perspectives');

@@ -787,6 +787,41 @@ select table_name, column_name, column_default from information_schema.columns
                                      ('pok_custom_sets_tbl', 'aim'), ('pok_roundstats_tbl', 'topic_item_id'));
 /* end B-52 S1b */
 
+/* B-52 S1d (bug, Andreas 2026-11-13): an item only gets rounds that started while it was active.
+   pok_teams_tbl.round_item_id = the topic item that was active when the first card of the running round went down
+   (setc.php), null after "New round" (start_new_round()). A revealed round counts for the active item only if it is
+   this item (api/lib_topics.php round_topic_item()). No foreign key (items may be deleted).
+   (1) BEFORE deploying the code (dao.php reads the column): additive, algorithm = instant, idempotent. The S1b block
+   must have run before. If MySQL refuses algorithm = instant (ERROR 1845/1846), use "algorithm = inplace, lock = none".
+   (2) Right AFTER deploying the code (optional, one time): teams that have cards down at that moment keep their running
+   round for their active item (otherwise it counts for no item, from the next round on everything is normal).
+   Run only this block: sed -n '/^\/\* B-52 S1d/,/^\/\* end B-52 S1d/p' db_schema_pok_inc.sql */
+select table_name, column_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'round_item_id';
+
+set session lock_wait_timeout = 5;
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'round_item_id') = 0,
+  'alter table pok_teams_tbl
+     add column round_item_id int unsigned null
+       comment ''B-52 S1d: topic item active at the first card of the running round (pok_topic_items_tbl.id)'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+/* (2) after the code deploy: */
+update pok_teams_tbl t
+   set t.round_item_id = (select i.id from pok_topic_items_tbl i
+                           where i.team_id = t.id and i.status = 'open' order by i.position, i.id limit 1)
+ where t.round_item_id is null
+   and exists (select 1 from pok_players_tbl p
+                where p.team_id = t.id and p.player_type = 'PLAYER' and p.card_key is not null);
+
+select count(1) teams_with_round_item from pok_teams_tbl where round_item_id is not null;
+/* end B-52 S1d */
+
 /* B-130: timer auto-start with three values in the existing column pok_teams_tbl.timer_auto_restart (B-67, tinyint):
    0 = off, 1 = new round (unchanged meaning, existing teams keep their behaviour), 2 = next item.
    No DDL needed. Old code only restarts on = 1 and its frontend treats 2 as "off", so a 2 written by the new code

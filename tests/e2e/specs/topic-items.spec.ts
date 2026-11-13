@@ -24,7 +24,8 @@ type Item = {
   status: string; result_card_key: string | null; result_auto: number;
   distribution: Record<string, number> | null; rounds_cnt: number; last_round_date: string | null; done_date: string | null;
 };
-type Summary = { active: Item | null; open_count: number; done_count: number; next_heading: string | null; topics_rev: number };
+type Summary = { active: Item | null; open_count: number; done_count: number; next_heading: string | null; topics_rev: number;
+  round_counts: boolean };
 type Lists = { topics_rev: number; open: Item[]; open_count: number; done_count: number; done?: Item[]; done_offset?: number;
   limits: Record<string, number> };
 
@@ -93,7 +94,8 @@ test('update_topic.php: the note is independent of the items, no takeover of an 
   expect((await save('Agenda: refine first, then estimate')).ok()).toBeTruthy();
   let state = await dao(page, t, ids[0]);
   expect(state.topic).toBe('Agenda: refine first, then estimate');
-  expect(state.topic_items).toEqual({ active: null, open_count: 0, done_count: 0, next_heading: null, topics_rev: 0 });
+  expect(state.topic_items).toEqual({ active: null, open_count: 0, done_count: 0, next_heading: null, topics_rev: 0,
+    round_counts: false });
   expect(mysql(`select count(*) from pok_topic_items_tbl where team_id = '${t}'`)).toBe('0');
 
   // items do not touch the note, the note does not touch the items (nor topics_rev)
@@ -246,7 +248,7 @@ test('next item: distribution and highest value, chosen result, new round, histo
   expect(await finish.json()).toMatchObject({ item_id: second, active_id: null, result_card_key: 'three01' });
   state = await dao(page, t, ids[0]);
   expect(state.topic_items).toEqual({ active: null, open_count: 0, done_count: 2, next_heading: null,
-    topics_rev: state.topic_items.topics_rev });
+    topics_rev: state.topic_items.topics_rev, round_counts: false });
   expect(state.topic).toBe('Sprint 12 refinement');
   expect(state.players.every((p: { display_card_key: string }) => p.display_card_key === 'prgrss1')).toBeTruthy();
   const all = await done(page, t);
@@ -359,6 +361,153 @@ test('reopen: a done item comes back as next or at the end and keeps its rounds'
   expect(list.open.map(i => i.id)).toEqual([a, c, b]);
 });
 
+/* B-52 S1d: the newest round snapshot of the team: "<type_code>|<topic_item_id or null>" */
+function lastRound(t: string): string {
+  return mysql(`select concat(type_code, '|', ifnull(topic_item_id, 'null')) from pok_roundstats_tbl
+                 where team_id = '${t}' order by id desc limit 1`);
+}
+
+test('S1d: an item added while a round is revealed gets neither that round nor its proposal', async ({ browser }) => {
+  const { page, t, ids } = await setup(browser, 'TopicRoundBefore');
+  // a round without items, revealed
+  await play(page, t, ids, ['five001', 'eight01', 'infin01']);
+  const a = await addItem(page, t, 'Alpha');
+
+  // the new item is active, but the cards on the table are not its round
+  let sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  expect(sum.active).toMatchObject({ id: a, distribution: null, result_card_key: null, rounds_cnt: 0 });
+  expect((await open(page, t))[0]).toMatchObject({ id: a, distribution: null, result_card_key: null });
+  // so a played card of that round without a value is no choice for the item (a deck card with a value still is)
+  expect((await post(page, 'topic_item_result.php', { t, item: a, card: 'infin01' })).status()).toBe(400);
+  expect((await post(page, 'topic_item_result.php', { t, item: a, card: 'eight01' })).ok()).toBeTruthy();
+  expect((await post(page, 'topic_item_result.php', { t, item: a, card: '' })).ok()).toBeTruthy();
+
+  // "New round": the old round goes to no item
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe('NEW_ROUND|null');
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(true); // no card down: the next round is the item's
+  expect(sum.active).toMatchObject({ id: a, distribution: null, rounds_cnt: 0, last_round_date: null, result_card_key: null });
+
+  // a round played now is the item's
+  await play(page, t, ids, ['three01', 'five001', 'five001']);
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(true);
+  expect(sum.active).toMatchObject({ id: a, distribution: { five001: 2, three01: 1 }, result_card_key: 'five001' });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe(`NEW_ROUND|${a}`);
+  expect((await summary(page, t, ids[0])).active).toMatchObject({ id: a, rounds_cnt: 1,
+    distribution: { five001: 2, three01: 1 } });
+
+  // a card down before the item is added: that round is not the item's either
+  expect((await post(page, 'topic_item_next.php', { t, item: a })).ok()).toBeTruthy();
+  await play(page, t, ids, ['two0001']);
+  const b = await addItem(page, t, 'Bravo');
+  await play(page, t, ids.slice(1), ['eight01', 'eight01']); // Ben and Cid
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  expect(sum.active).toMatchObject({ id: b, distribution: null });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect((await summary(page, t, ids[0])).active).toMatchObject({ id: b, rounds_cnt: 0, distribution: null });
+});
+
+test('S1d: reopen/move to the top or delete during a revealed round: the round belongs to no item', async ({ browser }) => {
+  const { page, t, ids } = await setup(browser, 'TopicRoundSwitch');
+  const a = await addItem(page, t, 'Alpha');
+  const b = await addItem(page, t, 'Bravo');
+  await play(page, t, ids, ['five001', 'five001', 'five001']);
+  expect((await post(page, 'topic_item_next.php', { t, item: a })).ok()).toBeTruthy(); // Alpha: one round of 5s
+
+  // Bravo's round is revealed, then Alpha comes back to the top
+  await play(page, t, ids, ['eight01', 'eight01', 'thrtn01']);
+  expect((await summary(page, t, ids[0])).active).toMatchObject({ id: b, distribution: { eight01: 2, thrtn01: 1 } });
+  expect((await post(page, 'topic_item_reopen.php', { t, item: a })).ok()).toBeTruthy(); // at the end
+  expect((await post(page, 'topic_item_move.php', { t, item: a, to: 0 })).ok()).toBeTruthy();
+  let sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  // Alpha shows its own last round, not the cards on the table
+  expect(sum.active).toMatchObject({ id: a, distribution: { five001: 3 }, result_card_key: 'five001', rounds_cnt: 1 });
+  expect((await open(page, t))[0]).toMatchObject({ id: a, distribution: { five001: 3 } });
+
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe('NEW_ROUND|null');
+  let list = await open(page, t);
+  expect(list[0]).toMatchObject({ id: a, rounds_cnt: 1, distribution: { five001: 3 } });
+  expect(list[1]).toMatchObject({ id: b, rounds_cnt: 0, distribution: null }); // not to the former item either
+
+  // Alpha's own round counts again
+  await play(page, t, ids, ['three01', 'three01', 'three01']);
+  expect((await summary(page, t, ids[0])).round_counts).toBe(true);
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect((await open(page, t))[0]).toMatchObject({ id: a, rounds_cnt: 2, distribution: { three01: 3 } });
+
+  // delete the active item while its round is revealed: Bravo moves up without that round
+  await play(page, t, ids, ['two0001', 'two0001', 'two0001']);
+  expect((await post(page, 'topic_item_delete.php', { t, item: a })).ok()).toBeTruthy();
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  expect(sum.active).toMatchObject({ id: b, distribution: null, result_card_key: null });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect((await open(page, t))[0]).toMatchObject({ id: b, rounds_cnt: 0, distribution: null });
+});
+
+test('S1d: an item switched while a round is running (not revealed): move, delete, move back', async ({ browser }) => {
+  const { page, t, ids } = await setup(browser, 'TopicRoundRunning');
+  const a = await addItem(page, t, 'Alpha');
+  const b = await addItem(page, t, 'Bravo');
+  const c = await addItem(page, t, 'Charlie');
+  const item = async (id: number) => (await open(page, t)).find(i => i.id === id) as Item;
+
+  // (a) Alpha's round runs (two of three cards), Bravo is moved to the top: the round belongs to no item
+  await play(page, t, ids, ['five001', 'five001']);
+  expect((await post(page, 'topic_item_move.php', { t, item: b, to: 0 })).ok()).toBeTruthy();
+  await play(page, t, ids.slice(2), ['eight01']); // Cid: revealed
+  let sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  expect(sum.active).toMatchObject({ id: b, distribution: null, result_card_key: null });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe('NEW_ROUND|null');
+  expect(await item(a)).toMatchObject({ rounds_cnt: 0, distribution: null });
+  expect(await item(b)).toMatchObject({ rounds_cnt: 0, distribution: null });
+  // the following round counts for the new active item
+  await play(page, t, ids, ['three01', 'three01', 'three01']);
+  expect((await summary(page, t, ids[0])).round_counts).toBe(true);
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe(`NEW_ROUND|${b}`);
+  expect(await item(b)).toMatchObject({ rounds_cnt: 1, distribution: { three01: 3 } });
+
+  // (b) Bravo's round runs, Bravo (active) is deleted: Alpha moves up without that round
+  await play(page, t, ids, ['two0001']);
+  expect((await post(page, 'topic_item_delete.php', { t, item: b })).ok()).toBeTruthy();
+  await play(page, t, ids.slice(1), ['two0001', 'two0001']);
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  expect(sum.active).toMatchObject({ id: a, distribution: null, result_card_key: null });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe('NEW_ROUND|null');
+  expect(await item(a)).toMatchObject({ rounds_cnt: 0, distribution: null });
+  // the following round counts for Alpha
+  await play(page, t, ids, ['five001', 'eight01', 'eight01']);
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe(`NEW_ROUND|${a}`);
+  expect(await item(a)).toMatchObject({ rounds_cnt: 1, distribution: { eight01: 2, five001: 1 } });
+
+  // (c) Alpha's round runs, Charlie goes to the top and Alpha back before the reveal: the round is Alpha's again
+  await play(page, t, ids, ['thrtn01']);
+  expect((await post(page, 'topic_item_move.php', { t, item: c, to: 0 })).ok()).toBeTruthy();
+  expect((await summary(page, t, ids[0])).round_counts).toBe(false);
+  expect((await post(page, 'topic_item_move.php', { t, item: a, to: 0 })).ok()).toBeTruthy();
+  await play(page, t, ids.slice(1), ['thrtn01', 'eight01']);
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(true);
+  expect(sum.active).toMatchObject({ id: a, distribution: { eight01: 1, thrtn01: 2 }, result_card_key: 'thrtn01' });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe(`NEW_ROUND|${a}`);
+  expect(await item(a)).toMatchObject({ rounds_cnt: 2, distribution: { eight01: 1, thrtn01: 2 } });
+  expect(await item(c)).toMatchObject({ rounds_cnt: 0, distribution: null });
+});
+
 test('get_topics.php: open list, done only on request, paging, consistent rev; dao stays small', async ({ browser }) => {
   const { page, t, ids } = await setup(browser, 'TopicLists', ['Ann']);
   const values = Array.from({ length: 100 }, (_, i) => `('${t}', ${i + 1}, 'Item ${i + 1}', repeat('x', 2000))`).join(',');
@@ -392,7 +541,8 @@ test('get_topics.php: open list, done only on request, paging, consistent rev; d
 
   // dao.php has the active item, counts and the rev only - no lists, whatever the size of the lists
   const sum = await summary(page, t, ids[0]);
-  expect(Object.keys(sum).sort()).toEqual(['active', 'done_count', 'next_heading', 'open_count', 'topics_rev']);
+  expect(Object.keys(sum).sort()).toEqual(['active', 'done_count', 'next_heading', 'open_count', 'round_counts',
+    'topics_rev']);
   expect(sum).toMatchObject({ open_count: 100, done_count: 120, next_heading: 'Item 2' });
   expect(sum.active?.heading).toBe('Item 1');
   expect(JSON.stringify(sum).length).toBeLessThan(2600); // one item with a 2000-character description

@@ -700,6 +700,7 @@ function start_new_round($link, string $t): void
        end the transaction, the round goes on without it. Anything else (e.g. a deadlock) is rethrown (B-52 S1b review). */
     try {
         record_round_on_active_item($link, $t);
+        set_round_item($link, $t, null); // S1d: the next round belongs to the item that is active at its first card
     } catch (mysqli_sql_exception $e) {
         if (!is_missing_schema_error($e)) throw $e;
         error_log('poker new round: topic item not updated: ' . $e->getMessage());
@@ -1118,8 +1119,12 @@ function getDao($t, $id) {
             ksort($live_distribution);
             if (count($live_distribution) === 0) $live_distribution = null;
         }
+        // S1d: a card down other than "joined late" (then the round may belong to another item than the active one)
+        $cards_down = false;
+        foreach ($objs as $obj)
+            if ($obj->player_type === 'PLAYER' && $obj->card_key !== null && $obj->card_key !== LATE_CARD_KEY) $cards_down = true;
         $topic_items = topic_items_for_dao($link, $t, $live_distribution, card_catalog(),
-                                           $deck === null ? 'agree' : $deck['aim']);
+                                           $deck === null ? 'agree' : $deck['aim'], $cards_down);
     } catch (mysqli_sql_exception $e) {
         error_log('poker dao: topic items not loaded: ' . $e->getMessage());
     }

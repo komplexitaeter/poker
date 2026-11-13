@@ -469,6 +469,30 @@ test('the result: a click on a bar, the dropdown, back to auto (B-52 S1)', async
   expect(dao.topic_items.active).toMatchObject({ result_card_key: 'five001', result_auto: 1 });
 });
 
+test('an item added after the reveal: no estimate from the cards on the table, the next round is its (B-52 S1d)', async ({ browser }) => {
+  const { alice, t, ids } = await setup(browser, 'Topic UI Round Before');
+  await reveal(alice, t, ids, ['three01', 'five001', 'five001']);
+  await expect(alice.locator('#spread_est')).toBeHidden(); // no item yet
+
+  // added while the round is revealed: active, but the round on the table is not its
+  expect((await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading: 'Late item' } })).ok()).toBeTruthy();
+  await expect(alice.locator('#nextitem_btn')).toHaveText('Finish item');
+  await expect(alice.locator('#spread_est')).toBeHidden();
+  await expect(alice.locator('#spread_bars .spread-col.est')).toHaveCount(0);
+  await expect(alice.locator('#spread_bars .spread-col.pick')).toHaveCount(0);
+  await expect(alice.locator('#spread_stale')).toBeVisible();
+  await expect(alice.locator('#spread_stale')).toHaveText('This round started before this item – start a new round to estimate it.');
+
+  // the next round is the item's: estimate and mark as usual
+  await alice.locator('#newroundbtn').click();
+  await expect(alice.locator('#round_status')).not.toHaveText('revealed');
+  await expect(alice.locator('#spread_stale')).toBeHidden(); // no hint while voting
+  await reveal(alice, t, ids, ['three01', 'eight01', 'five001']);
+  await expect(alice.locator('#spread_est')).toBeVisible();
+  await expect(alice.locator('#spread_stale')).toBeHidden();
+  await expect(alice.locator('#spread_bars .spread-col.est')).toHaveAttribute('data-card', 'eight01');
+});
+
 test('traffic lights: no single value, the sentence instead; done item with the spread (B-52 S1)', async ({ browser }) => {
   const { alice, url, t, ids } = await setup(browser, 'Topic UI Traffic');
   await setTeamDeck(alice, url, 'traffic');
