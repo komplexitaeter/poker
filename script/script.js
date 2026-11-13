@@ -1648,6 +1648,8 @@ function flightAnchor(holder) {
 }
 
 function onReaction(from, to, code) {
+    // B-133: a nudge for me also rings and, in a hidden tab, flashes the title (the shake is dropped there)
+    if (code === REACT_NUDGE && gLastJson !== null && String(gLastJson.mkey) === to) alertNudge();
     if (document.visibilityState !== 'visible') return;
     if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
     const target = reactHolder(to);
@@ -1710,6 +1712,108 @@ function nudgeTarget(target, to) {
     const isMe = gLastJson !== null && String(gLastJson.mkey) === to;
     restartClass(target, 'is-nudged', 700);
     if (isMe) restartClass(target, 'is-nudged-me', 1100);
+}
+
+/* B-133: the nudged one hears a short, quiet two-tone chime (Web Audio, no file) and feels a short vibration, both
+ * behind the switch "Sound on nudge" (per device, localStorage, default on). A hidden tab also flashes the title
+ * until it is visible again (not behind the switch). Browsers only let a page play sound after a click or tap on it:
+ * the AudioContext is made (or resumed) on the first one; before that, the nudge stays silent. */
+const NUDGE_SOUND_KEY = 'NUDGE_SOUND';
+const NUDGE_TITLE_PREFIX = '\u{1F44B} Your turn \u2013 ';
+let gAudioCtx = null;
+let gTitleBase = null;      // the page title without the nudge prefix (setPageTitle())
+let gTitleBlink = null;     // the interval of the flashing title, null when it does not flash
+
+function nudgeSoundOn() {
+    try {
+        return localStorage.getItem(NUDGE_SOUND_KEY) !== '0';
+    } catch (e) {
+        return true;
+    }
+}
+
+function setNudgeSound(value) {
+    try {
+        localStorage.setItem(NUDGE_SOUND_KEY, value === 'on' ? '1' : '0');
+    } catch (e) { /* not remembered */ }
+}
+
+/* the first click, tap or key on the page: make or wake the AudioContext (until it runs) */
+function initNudgeAudio() {
+    checkRadio('cet_nudge_sound', nudgeSoundOn() ? 'on' : 'off');
+    const Ctx = window.AudioContext ?? window.webkitAudioContext;
+    if (typeof Ctx !== 'function') return;
+    const wake = () => {
+        try {
+            if (gAudioCtx === null) gAudioCtx = new Ctx();
+            if (gAudioCtx.state === 'suspended') gAudioCtx.resume().catch(() => {});
+        } catch (e) {
+            gAudioCtx = null;
+            return;
+        }
+        if (gAudioCtx.state === 'running') {
+            document.removeEventListener('pointerdown', wake, true);
+            document.removeEventListener('keydown', wake, true);
+        }
+    };
+    document.addEventListener('pointerdown', wake, true);
+    document.addEventListener('keydown', wake, true);
+}
+
+function alertNudge() {
+    if (nudgeSoundOn()) {
+        playNudgeChime();
+        // only after a tap on the page, else Chrome logs a blocked call
+        if (typeof navigator.vibrate === 'function' && navigator.userActivation?.hasBeenActive !== false) {
+            try { navigator.vibrate([60, 40, 60]); } catch (e) { /* none */ }
+        }
+    }
+    if (document.visibilityState !== 'visible') startTitleBlink();
+}
+
+/* two short sine tones (E5, A5), each with a soft attack and decay, about 280 ms in all */
+function playNudgeChime() {
+    const ctx = gAudioCtx;
+    if (ctx === null || ctx.state !== 'running') return;
+    try {
+        const t0 = ctx.currentTime;
+        [[659.25, 0], [880, 0.13]].forEach(([freq, at]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t0 + at);
+            gain.gain.setValueAtTime(0.0001, t0 + at);
+            gain.gain.exponentialRampToValueAtTime(0.08, t0 + at + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.15);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t0 + at);
+            osc.stop(t0 + at + 0.16);
+        });
+    } catch (e) { /* no sound */ }
+}
+
+/* the page title; while it flashes, the new title is used from the next step on */
+function setPageTitle(title) {
+    gTitleBase = title;
+    if (gTitleBlink === null || !document.title.startsWith(NUDGE_TITLE_PREFIX)) document.title = title;
+    else document.title = NUDGE_TITLE_PREFIX + title;
+}
+
+function startTitleBlink() {
+    if (gTitleBlink !== null) return;
+    if (gTitleBase === null) gTitleBase = document.title;
+    document.title = NUDGE_TITLE_PREFIX + gTitleBase;
+    gTitleBlink = setInterval(() => {
+        document.title = document.title.startsWith(NUDGE_TITLE_PREFIX) ? gTitleBase : NUDGE_TITLE_PREFIX + gTitleBase;
+    }, 1000);
+}
+
+function stopTitleBlink() {
+    if (gTitleBlink === null) return;
+    clearInterval(gTitleBlink);
+    gTitleBlink = null;
+    document.title = gTitleBase;
 }
 
 /* the slot of a new landing on a target (--land-i): the first one free, so landings at once are offset; all taken:
@@ -2118,8 +2222,8 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
         || myJson.ready_players_count !== gJsonBefore.ready_players_count
     ) {
         // R3 review V10 (L7): "2/5 voted · Team Phoenix – Agile Poker"
-        document.title = myJson.ready_players_count + '/' + myJson.players_count + ' voted \u00b7 '
-            + myJson.team_name + ' \u2013 Agile Poker';
+        setPageTitle(myJson.ready_players_count + '/' + myJson.players_count + ' voted \u00b7 '
+            + myJson.team_name + ' \u2013 Agile Poker');
         document.getElementById("team_name").innerText = myJson.team_name;
     }
 
@@ -2253,8 +2357,7 @@ function initializeWSConnection(teamId) {
         gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
         if (typeof e.data !== 'string') return;
         if (e.data.startsWith('react:')) { // B-110: a reaction (never a pull, even if it contained the word)
-            if (document.visibilityState !== 'visible') return; // hidden tab: dropped, not buffered
-            const m = REACT_MSG.exec(e.data);
+            const m = REACT_MSG.exec(e.data); // hidden tab: dropped in onReaction (B-133: a nudge for me still rings)
             if (m !== null) onReaction(m[1], m[2], m[3]);
             return;
         }
@@ -2312,8 +2415,10 @@ function reconnectWSConnection() {
 
 function initWSReconnect() {
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') reconnectWSConnection();
-        else dropReactions(); // B-110: nothing is played late
+        if (document.visibilityState === 'visible') {
+            stopTitleBlink(); // B-133
+            reconnectWSConnection();
+        } else dropReactions(); // B-110: nothing is played late
     });
     window.addEventListener('online', reconnectWSConnection);
     window.addEventListener('pageshow', (event) => {
@@ -2439,6 +2544,7 @@ function loadBoard() {
     initDisplayHandling();
     initSidebar(); // B-113 (sidebar.js)
     initTableInteraction(); // B-110
+    initNudgeAudio(); // B-133
     measureEvent("BOARD_ON_LOAD");
 
     document.getElementById('nameinput').addEventListener('input', function(event) {
