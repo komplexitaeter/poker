@@ -1188,7 +1188,7 @@ function topicExportRow() {
         return b;
     };
     row.append(button('copy', 'copy', 'Copy', 'Copy all done items as a table (paste into a spreadsheet or Jira)'),
-        button('csv', 'down', 'Download CSV', 'Download all done items as a CSV file'));
+        button('csv', 'download', 'Download CSV', 'Download all done items as a CSV file'));
     return row;
 }
 
