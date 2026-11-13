@@ -15,8 +15,9 @@ import * as fs from 'fs';
  *   the spread of the results panel (a column per deck card, also without votes; the agreed value marked as .est).
  * - Result: the highest card is marked in the spread; a click on a bar with votes or the dropdown changes it.
  *   Traffic lights (deck aim 'perspectives'): no mark, no dropdown, one sentence instead.
- * - Maturity: set in the item form; in the voting panel name and text, in the results panel the text unfolds
- *   with a click on the triangle; "not set" shows nothing.
+ * - Maturity: no input in the item form for now (B-132); a stored value (set through the API) is shown: in the
+ *   voting panel name and text, in the results panel the text unfolds with a click on the triangle; editing the
+ *   item keeps it; "not set" shows nothing.
  * - The set editor: the goal of an own set (agree on a value / show perspectives).
  * - S1c: the note on the board above the cards (also with the column collapsed); the topics menu with tabs
  *   Note · Items · Done (start: Items while items are open, else Note; Done loads when its tab opens); "Next item" /
@@ -70,12 +71,11 @@ async function closeMenu(page: Page) {
 }
 
 /** adds an item with the form of the list ("+ Add item") */
-async function fillItem(page: Page, heading: string, extId = '', maturity = '') {
+async function fillItem(page: Page, heading: string, extId = '') {
   if (!await page.locator('#topic_panel_open').isVisible()) await showTab(page, 'open');
   if (await page.locator('#ti_form').count() === 0) await page.locator('#ti_add').click();
   await page.locator('#ti_ext').fill(extId);
   await page.locator('#ti_heading').fill(heading);
-  if (maturity !== '') await page.locator('#ti_form .seg label', { hasText: maturity }).click();
   await page.locator('#ti_save').click();
   await expect(page.locator('#ti_form')).toHaveCount(0);
 }
@@ -503,10 +503,19 @@ test('traffic lights: no single value, the sentence instead; done item with the 
   await expect(done.locator('.ti-dist .spread-col.top')).toHaveAttribute('data-card', 'green01');
 });
 
-test('maturity: set in the form, name and text in the column, unfolds after the reveal, removed again (B-52 S1)', async ({ browser }) => {
+test('maturity: no input in the form, a stored value is shown and kept on edit, removed through the API (B-52 S1, B-132)', async ({ browser }) => {
   const { alice, t, ids } = await setup(browser, 'Topic UI Maturity');
+  const tq = encodeURIComponent(t);
+  // the form has no maturity input (B-132); the value comes through the API
   await openTopics(alice);
-  await fillItem(alice, 'Pay by invoice', 'PAY-142', 'rough');
+  await showTab(alice, 'open');
+  await alice.locator('#ti_add').click();
+  await expect(alice.locator('#ti_form')).toBeVisible();
+  await expect(alice.locator('#ti_form .ti-mat-field, #ti_form input[name="ti_mat"]')).toHaveCount(0);
+  await alice.locator('#ti_form [data-ti-act="cancel"]').click();
+  await expect(alice.locator('#ti_form')).toHaveCount(0);
+  expect((await alice.request.post(`/api/topic_item_add.php?t=${tq}&at=end&maturity=1`,
+    { form: { ext_id: 'PAY-142', heading: 'Pay by invoice' } })).ok()).toBeTruthy();
   await expect(alice.locator('#ti_open .ti-it .mat-name')).toHaveText('rough');
   await closeMenu(alice);
 
@@ -523,17 +532,31 @@ test('maturity: set in the form, name and text in the column, unfolds after the 
   await expect(alice.locator('#ti_mat_text')).toBeVisible();
   await expect(alice.locator('#ti_mat_btn')).toHaveAttribute('aria-expanded', 'true');
 
-  // not set: nothing is shown
+  // editing the heading keeps the maturity (the form sends none = unchanged)
   await openTopics(alice);
+  const edits: string[] = [];
+  alice.on('request', request => {
+    if (request.url().includes('/api/topic_item_edit.php')) edits.push(request.url());
+  });
   await alice.locator('#ti_open [data-ti-act="edit"]').first().click();
-  await expect(alice.locator('#ti_form input[name="ti_mat"][value="1"]')).toBeChecked();
-  await alice.locator('#ti_form .seg label', { hasText: 'not set' }).click();
+  await expect(alice.locator('#ti_form input[name="ti_mat"]')).toHaveCount(0);
+  await alice.locator('#ti_heading').fill('Pay by invoice, B2B');
   await alice.locator('#ti_save').click();
   await expect(alice.locator('#ti_form')).toHaveCount(0);
+  await expect(alice.locator('#ti_open .ti-it .ti-h').first()).toHaveText('Pay by invoice, B2B');
+  await expect(alice.locator('#ti_open .ti-it .mat-name')).toHaveText('rough');
+  expect(edits).toHaveLength(1);
+  expect(new URL(edits[0]).searchParams.has('maturity')).toBe(false);
   await closeMenu(alice);
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Pay by invoice, B2B');
+  await expect(alice.locator('#topic .mat-name')).toHaveText('rough');
+
+  // not set (through the API): nothing is shown
+  const item = (await (await alice.request.get(`/api/get_topics.php?t=${tq}`)).json()).open[0].id;
+  expect((await alice.request.post(`/api/topic_item_maturity.php?t=${tq}&item=${item}&maturity=`)).ok()).toBeTruthy();
   await expect(alice.locator('#topic .mat')).toHaveCount(0);
   await expect(alice.locator('#ti_mat_text')).toHaveCount(0);
-  await expect(alice.locator('#topic .ti-heading')).toHaveText('Pay by invoice');
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Pay by invoice, B2B');
 });
 
 test('the goal of an own set in the editor: agree or perspectives, saved with the set (B-52 S1b)', async ({ browser }) => {
