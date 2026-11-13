@@ -2328,6 +2328,7 @@ const WS_CHECK_MS = 3000;          // how often the connection is checked
 const HB_TIMEOUT_MS = 40000;       // B-81: no 'hb' or 'pull' for this long: the connection is dead
 const CONN_HINT_DELAY_MS = 1200;   // B-86: show the hint only when the trouble lasts longer (no flicker)
 const WRITE_TIMEOUT_MS = 15000;    // B-92: a writing API call that hangs longer is given up
+const WRITE_RETRY_MS = 300;        // B-135: wait before the one retry of an idempotent write after a network error
 
 let gWsTimer = null;          // check / reconnect timer, only one at a time
 let gWsLastMsgAt = 0;         // B-81: when the current connection opened or last received something
@@ -2426,23 +2427,51 @@ function initWSReconnect() {
     });
 }
 
-/* B-81: a writing API call (POST). Never rejects: resolves with the response, or null when the
- * request failed or took longer than WRITE_TIMEOUT_MS. Afterwards (success or not) beforeReload
- * runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
-function apiWrite(url, init = {}, beforeReload = null) {
-    const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
-    if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
+/* B-135: endpoints that only set a state, so running them twice gives the same result. Only these are sent once
+ * more after a pure network error (Safari: "TypeError: Load failed", e.g. when the server closed the HTTP/2
+ * connection): the request may have reached the server anyway. Not in the list: everything that adds or moves
+ * on (newround, topic_item_add/next/reopen/move, delete, feedback, name.php - adds a player), toggles
+ * (timer.php toggle_visibility, start computes from the pause) or saves with a revision (custom_set_*). */
+const WRITE_RETRY_SCRIPTS = new Set([
+    'setc.php', 'update_deck.php', 'update_controls.php', 'update_show_avg.php', 'update_team.php',
+    'update_topic.php', 'update_results_order.php', 'topic_item_result.php'
+]);
+
+function isRetryableWrite(url) {
+    const m = /\/api\/([a-z_]+\.php)/.exec(url);
+    return m !== null && WRITE_RETRY_SCRIPTS.has(m[1]);
+}
+
+/* B-135: a network error of fetch (TypeError), not a timeout or abort (and never an HTTP status: fetch resolves) */
+function isNetworkError(error) {
+    return error instanceof TypeError;
+}
+
+/* one attempt of a write, with its own WRITE_TIMEOUT_MS */
+function fetchWrite(url, init) {
     const options = Object.assign({ method: 'POST' }, init);
     if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
         options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
     }
-    let request;
     try {
-        request = fetch(url, options);
+        return fetch(url, options);
     } catch (e) {
-        request = Promise.reject(e);
+        return Promise.reject(e);
     }
-    return request.catch(error => {
+}
+
+/* B-81: a writing API call (POST). Never rejects: resolves with the response, or null when the
+ * request failed or took longer than WRITE_TIMEOUT_MS. An idempotent write (WRITE_RETRY_SCRIPTS) is sent
+ * once more after WRITE_RETRY_MS when it failed with a network error (B-135). Afterwards (success or not)
+ * beforeReload runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
+function apiWrite(url, init = {}, beforeReload = null) {
+    const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
+    if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
+    return fetchWrite(url, init).catch(error => {
+        if (!isNetworkError(error) || !isRetryableWrite(url)) throw error;
+        console.log('write retry', url, error);
+        return new Promise(resolve => setTimeout(resolve, WRITE_RETRY_MS)).then(() => fetchWrite(url, init));
+    }).catch(error => {
         console.log('write failed', url, error);
         return null;
     }).then(response => {
