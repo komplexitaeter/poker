@@ -1785,6 +1785,25 @@ Offene Fragen: Wer darf Timeboxen ändern (vermutlich alle, wie bei
 den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Items existieren damit schon Tage vor der
 Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
 
+### B-132 Deck je Item, mehrere Fragen je Item (z. B. Reifegrad gemeinsam bestimmen)
+Status: neu (Idee Andreas, 2026-11-13). Weiterführung von B-52/B-129, Leitidee „kontinuierliches Refinement“.
+- **Deck am Item:** Am Item lässt sich hinterlegen, mit welchem Kartendeck geschätzt wird; beim Wechsel aufs Item
+  stellt das Board das Deck um. Dann wechselt man leicht zwischen verschiedenen Arten von Fragen.
+  Voraussetzung: ausgeblendete Karten je Deck speichern (heute nur für das aktuelle Deck des Teams).
+- **Reifegrad bzw. Schätzunsicherheit als eigenes Deck** (Katalog), z. B. new · rough · shaping · ready.
+- **Mehrere Fragen je Item:** Am Item festlegen, ob am Ende zusätzlich gemeinsam der Reifegrad (oder die
+  Unsicherheit) bestimmt wird. Ablauf: der PO trägt einen Reifegrad vorab ein (optional), nach dem Schätzen stimmen
+  alle per Karten über den Reifegrad ab; das Ergebnis landet am Item (Historie je Durchgang).
+- **Bis dahin:** Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); vorhandene Werte werden weiter angezeigt.
+**Zwei Dimensionen (Andreas, 2026-11-13), getrennt umsetzbar:**
+1. **Set je Item** – überschaubarer Umbau: Item merkt sich das Set (Deck-ID + Kartenauswahl); beim Aktivwerden bzw.
+   „Next item“ stellt das Board atomat mit der neuen Runde auf dieses Set um; ohne Angabe gilt das Team-Deck.
+   Dafür Kartenauswahl je Deck speichern statt nur fürs aktuelle Deck. Historie/Export zeigen das Set je Item.
+2. **Anschließende Metafrage** (z. B. Reifegrad, Unsicherheit) – geht tiefer: zweite Abstimmung je Item nach dem
+   Schätzen mit eigenem Deck, Ablauf und Darstellung (wer schaltet weiter, was zeigt das Board dazwischen), Ergebnis
+   je Durchgang in der Historie.
+Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
+
 ### B-131 Reaktionen: gestaffeltes Rate-Limit je Verbindung
 Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
 4.884 vom Limit verworfen – fast alle von wenigen Verbindungen (eine allein 2.129). Wer die JS-Konsole öffnet, kann
