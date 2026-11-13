@@ -2239,3 +2239,13 @@ wie B-09; ungenutzte Felder wegzulassen spart kaum etwas).
 - **Render-Pfad:** Das Frontend rendert nach jedem `pull` den **kompletten** Zustand neu (`updateDao`), keine Deltas.
   Delta-Rendering wäre der eigentliche Hebel, aber größerer Umbau – überschneidet sich mit B-14 (JS-Module) und B-37
   (Resize-Logik). Erst nach denen sinnvoll; hier nur notiert.
+
+### B-133 Nudge mit Ton und Tab-Hinweis
+Status: in Umsetzung (Feedback „Small beep / ringtone for nudge action“, 2026-11-13; Andreas: gleich mit einbauen).
+Der Nudge (B-110) ist bisher rein optisch; wer im Video-Call oder in einem anderen Tab ist, merkt ihn nicht.
+- Nur beim **angestupsten** Spieler: kurzer, leiser Ton (Web Audio, keine Audiodatei), auf Android zusätzlich kurz
+  vibrieren.
+- Tab im Hintergrund: Titel blinkt („👋 Your turn – …“), bis der Tab wieder sichtbar ist. Braucht keine Interaktion.
+- Schalter „Sound on nudge“ im `:you`-Menü, Standard an, je Gerät gemerkt (localStorage).
+- Autoplay-Sperre der Browser: Ton erst nach einem Klick/Tipp auf der Seite (Audio-Kontext wird dabei angelegt),
+  nach Neuladen erneut. iPhone: Stummschalter/gesperrter Bildschirm → kein Ton. Deshalb Ton nur als Zusatz.
