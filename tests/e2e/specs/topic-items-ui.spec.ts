@@ -173,7 +173,7 @@ test('items in addition to the note: add, move, next item, finish item; the note
   await closeMenu(alice);
 
   // the column: the active item and what comes next; the note stays on the board (not in the column)
-  await expect(alice.locator('.topic-label')).toHaveText('item 1 of 3');
+  await expect(alice.locator('.topic-label')).toHaveText('item');
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Login with SSO');
   await expect(alice.locator('#ti_next_hint')).toHaveText('+2 more · next: Spike: PDF library');
   await expect(alice.locator('#board_note_text')).toHaveText('Timebox: 5 minutes per item');
@@ -195,7 +195,7 @@ test('items in addition to the note: add, move, next item, finish item; the note
 
   await leave(alice, 'close');
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Spike: PDF library');
-  await expect(alice.locator('.topic-label')).toHaveText('item 1 of 2');
+  await expect(alice.locator('.topic-label')).toHaveText('item');
   await expect(alice.locator('#round_status')).not.toHaveText('revealed'); // a new round
   await expect(alice.locator('#nextitem_btn')).toBeHidden();
 
@@ -740,10 +740,11 @@ test('the rail: item marker, "next item" / "new round" split only after the reve
   for (const heading of ['One', 'Two']) {
     expect((await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading } })).ok()).toBeTruthy();
   }
-  // voting: the marker "1/2", no split
+  // voting: the marker "2 open" (the open items including the active one), no split
   await expect(alice.locator('#rail_item')).toBeVisible();
-  await expect(alice.locator('#rail_item_pos')).toHaveText('1/2');
-  await expect(alice.locator('#rail_item')).toContainText('item');
+  await expect(alice.locator('#rail_item_count')).toHaveText('2');
+  await expect(alice.locator('#rail_item small')).toHaveText('open');
+  await expect(alice.locator('#rail_item')).toHaveAttribute('aria-label', '2 open items – open sidebar');
   await expect(alice.locator('#rail_next')).toBeHidden();
   // a click on the marker opens the column over the table
   await alice.locator('#rail_item').click();
@@ -774,7 +775,8 @@ test('the rail: item marker, "next item" / "new round" split only after the reve
   await expect(alice.locator('#leave_item')).toBeHidden();
   await expect(alice.locator('#rail_next')).toBeFocused();
   await leave(alice, 'close', '#rail_next');
-  await expect(alice.locator('#rail_item_pos')).toHaveText('1/1');
+  await expect(alice.locator('#rail_item_count')).toHaveText('1');
+  await expect(alice.locator('#rail_item')).toHaveAttribute('aria-label', '1 open item – open sidebar');
   await expect(alice.locator('#rail_next')).toBeHidden();
 
   // the last item: "finish item"

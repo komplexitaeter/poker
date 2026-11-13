@@ -158,7 +158,7 @@ function updateTopicView(json) {
             topic.classList.add('ti-view');
             topic.replaceChildren(...topicItemView(item, gTopicItems.open_count, gTopicItems.next_heading));
             topic.classList.remove('display_none');
-            label.textContent = 'item 1 of ' + gTopicItems.open_count;
+            label.textContent = 'item'; // "// item" (the prefix by style.css)
             edit.setAttribute('aria-label', 'Edit items');
             requestAnimationFrame(updateTopicMoreButton);
         }
@@ -436,10 +436,10 @@ function updateRailItem(json) {
     const count = gTopicItems === null ? 0 : gTopicItems.open_count;
     marker.hidden = item === null;
     if (item !== null) {
-        const pos = '1/' + count;
-        const posEl = document.getElementById('rail_item_pos');
-        if (posEl.textContent !== pos) posEl.textContent = pos;
-        marker.setAttribute('aria-label', 'Item 1 of ' + count + ' – open sidebar');
+        // the open items including the active one (B-52: no "1/3", the active item is always the first)
+        const countEl = document.getElementById('rail_item_count');
+        if (countEl.textContent !== String(count)) countEl.textContent = String(count);
+        marker.setAttribute('aria-label', count + (count === 1 ? ' open item' : ' open items') + ' – open sidebar');
         marker.title = item.heading;
     }
     const revealed = json.all_players_ready && json.players_count > 0;
