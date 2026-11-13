@@ -1165,12 +1165,13 @@ function topicDoneRow(item) {
  * Two buttons below the done list: "Copy" (tab separated with a header row, pastes into Excel, Google Sheets, Jira
  * tables) and "Download CSV" (topics-YYYY-MM-DD.csv, UTF-8 with BOM, comma separated, RFC 4180 quoting). All done items
  * (not only the loaded page): get_topics.php?done=1 page by page. Everything stays in the browser.
+ * Columns: ID, Heading, Description, Agreed value, Votes, Rounds, Last round; no maturity (Andreas, 2026-11-13).
  * Order: chronological by closing, the oldest first – pasted into a backlog or a sheet, the rows then follow the
  * order in which the team estimated them (and new exports append at the end); the list in the menu shows the newest
  * first because there the latest result matters. */
 const TOPIC_EXPORT_PAGE = 100;   // TOPIC_DONE_PAGE_MAX in api/lib_topics.php
 const TOPIC_EXPORT_MAX = 1000;   // TOPIC_ITEMS_TOTAL_MAX: no team has more
-const TOPIC_EXPORT_HEAD = ['ID', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round', 'Maturity'];
+const TOPIC_EXPORT_HEAD = ['ID', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round'];
 let gTopicExportBusy = false; // false, or 'copy' | 'csv' while that export loads
 
 function topicExportRow() {
@@ -1242,7 +1243,6 @@ function topicExportRows(items) {
             topicExportVotes(item.distribution),
             String(item.rounds_cnt || 0),
             date === null ? '' : isoLocalDate(date),
-            maturityValid(item.maturity) ? MATURITY_STAGES[item.maturity] : '',
         ]);
     });
     return rows;
