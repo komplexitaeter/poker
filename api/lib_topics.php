@@ -12,6 +12,13 @@
  *   rest), so parallel writes of one team run one after the other.
  * - A revealed round that ends (start_new_round()) is stored at the active item: distribution (cards per key, no
  *   person data), rounds_cnt + 1, last_round_date, a chosen result is reset (record_round_on_active_item()).
+ * - B-52 S1d (bug, Andreas 2026-11-13): an item only gets rounds that started while it was active. A round starts with
+ *   its first card (setc.php, round_item_on_first_card()): pok_teams_tbl.round_item_id = the active item at that
+ *   moment; start_new_round() clears it. If the active item changes while cards are down (an item added to a team
+ *   without items, reopen/move to the top, "later", delete), the running round belongs to no item
+ *   (round_topic_item() is null): it is not stored at any item, the round snapshot gets no topic_item_id and dao.php /
+ *   get_topics.php show no live distribution and no proposal from it. Not to the former item either: it is no longer
+ *   active, and "Next item"/"later" store a revealed round before they change the active item anyway.
  * - Result rule (Andreas, 2026-11-11): the purpose of the deck (deck_aim(), the ONE place) is 'agree' or 'perspectives'
  *   (catalog "range": false, custom sets: their aim). 'agree': the automatic result is the played card with the highest
  *   numeric_value; control cards and cards without a value (e.g. infinity) are ignored; none with a value -> no automatic
@@ -342,7 +349,7 @@ function result_card_allowed($link, string $t, array $team, array $item, bool $i
                              array $catalog): bool
 {
     $distribution = decode_distribution($item['distribution']) ?? array();
-    if ($is_active) $distribution = (revealed_distribution($link, $t) ?? array()) + $distribution;
+    if ($is_active && round_topic_item($link, $t) === (int)$item['id']) $distribution = (revealed_distribution($link, $t) ?? array()) + $distribution;
     $info = card_result_infos($link, $t, array($card), $catalog)[$card] ?? null;
     return isset($distribution[$card]) ? card_can_be_chosen($info)
         : (in_array($card, $team['deck']['cards'], true) && card_has_result_value($info));
@@ -406,13 +413,14 @@ function revealed_distribution($link, string $t): ?array
 /*
  * start_new_round() (newround.php, "Next item", deck change with cards down): a revealed round is stored at the
  * active item before the cards go up: distribution, rounds_cnt + 1, last_round_date, a chosen result is reset (the
- * next round proposes again). Caller holds the team row lock. Nothing without an active item or a revealed round.
+ * next round proposes again). Caller holds the team row lock. Nothing without an active item or a revealed round,
+ * and nothing if the round started before the item became active (S1d, round_topic_item()).
  */
 function record_round_on_active_item($link, string $t): void
 {
     $distribution = revealed_distribution($link, $t);
     if ($distribution === null) return;
-    $active = active_item_id($link, $t);
+    $active = round_topic_item($link, $t);
     if ($active === null) return;
     $json = json_encode($distribution);
     if (!is_string($json) || strlen($json) > TOPIC_DISTRIBUTION_MAX_BYTES) $json = null; // never "Data too long"; rounds still count
@@ -426,25 +434,75 @@ function record_round_on_active_item($link, string $t): void
 
 /*
  * S1b: the round snapshot (start_new_round(), pok_roundstats_tbl row $roundstat_id) remembers the active item, so
- * rounds can be assigned to items later. null without an active item. Writes pok_roundstats_tbl only.
+ * rounds can be assigned to items later. null without an active item or if the round started before the item became
+ * active (S1d, round_topic_item()). Writes pok_roundstats_tbl only.
  */
 function link_round_to_active_item($link, string $t, int $roundstat_id): void
 {
-    $active = active_item_id($link, $t);
+    $active = round_topic_item($link, $t);
     if ($active === null) return;
     $sql = $link->prepare("update pok_roundstats_tbl set topic_item_id = ? where id = ? and team_id = ?");
     $sql->bind_param('iis', $active, $roundstat_id, $t);
     $sql->execute();
 }
 
+/* S1d: the item the running round belongs to (pok_teams_tbl.round_item_id), null if none or unknown team */
+function load_round_item_id($link, string $t): ?int
+{
+    return load_topics_state($link, $t)['round_item_id'];
+}
+
+/*
+ * S1d: the active item if the running round belongs to it (its first card was put down while the item was active),
+ * else null. Only meaningful while cards are down.
+ */
+function round_topic_item($link, string $t): ?int
+{
+    $active = active_item_id($link, $t);
+    return ($active !== null && load_round_item_id($link, $t) === $active) ? $active : null;
+}
+
+/*
+ * S1d, setc.php (team row locked): a player puts down a card ($had_card: his card before, null or LATE_CARD_KEY = none).
+ * The first card of a round (no other PLAYER has a card down except "joined late") starts the round for the item that
+ * is active now. Writes pok_teams_tbl only.
+ */
+function round_item_on_first_card($link, string $t, string $player_id, ?string $had_card): void
+{
+    if ($had_card !== null && $had_card !== LATE_CARD_KEY) return;
+    $late = LATE_CARD_KEY;
+    $sql = $link->prepare("select count(1) cnt from pok_players_tbl
+                            where team_id = ? and player_type = 'PLAYER' and id <> ?
+                              and card_key is not null and card_key <> ?");
+    $sql->bind_param('sss', $t, $player_id, $late);
+    $sql->execute();
+    if ((int)$sql->get_result()->fetch_assoc()['cnt'] > 0) return;
+    set_round_item($link, $t, active_item_id($link, $t));
+}
+
+/* S1d: pok_teams_tbl.round_item_id (start_new_round(): null, the next round has no card yet) */
+function set_round_item($link, string $t, ?int $item_id): void
+{
+    $sql = $link->prepare("update pok_teams_tbl set round_item_id = ? where id = ?");
+    $sql->bind_param('is', $item_id, $t);
+    $sql->execute();
+}
+
 /* topics_rev of the team (0 for an unknown team) */
 function load_topics_rev($link, string $t): int
 {
-    $sql = $link->prepare("select topics_rev from pok_teams_tbl where id = ?");
+    return load_topics_state($link, $t)['rev'];
+}
+
+/* topics_rev and (S1d) round_item_id of the team in one read */
+function load_topics_state($link, string $t): array
+{
+    $sql = $link->prepare("select topics_rev, round_item_id from pok_teams_tbl where id = ?");
     $sql->bind_param('s', $t);
     $sql->execute();
     $row = $sql->get_result()->fetch_assoc();
-    return is_array($row) ? (int)$row['topics_rev'] : 0;
+    return array('rev' => is_array($row) ? (int)$row['topics_rev'] : 0,
+                 'round_item_id' => (is_array($row) && $row['round_item_id'] !== null) ? (int)$row['round_item_id'] : null);
 }
 
 // S1c: the dates also as unix time (exact for timestamp columns, whatever the session time zone), delivered as UTC
@@ -490,13 +548,18 @@ function open_items_out($link, string $t, array $rows, ?array $live_distribution
 
 /*
  * topic_items of dao.php (kept small, S1b): {active: the active item or null, open_count, done_count, next_heading
- * (heading of the open item after the active one, null if none), topics_rev}. The lists come from get_topics.php.
- * topics_rev is read FIRST: a write in between gives an older rev with newer data (the board loads the list once
- * more), never a newer rev with older data.
+ * (heading of the open item after the active one, null if none), topics_rev, round_counts}. The lists come from
+ * get_topics.php. topics_rev is read FIRST: a write in between gives an older rev with newer data (the board loads the
+ * list once more), never a newer rev with older data.
+ * S1d: round_counts = the running round counts for the active item (no card down yet, or its first card went down
+ * while the item was active); false: the cards on the table are not the item's (no live distribution, no proposal
+ * from them). $cards_down: a PLAYER has a card down other than "joined late".
  */
-function topic_items_for_dao($link, string $t, ?array $live_distribution, array $catalog, string $aim): array
+function topic_items_for_dao($link, string $t, ?array $live_distribution, array $catalog, string $aim,
+                             bool $cards_down): array
 {
-    $rev = load_topics_rev($link, $t);
+    $state = load_topics_state($link, $t);
+    $rev = $state['rev'];
 
     $sql = $link->prepare("select " . TOPIC_ITEM_COLUMNS . "
                              from pok_topic_items_tbl
@@ -513,6 +576,8 @@ function topic_items_for_dao($link, string $t, ?array $live_distribution, array 
     $sql->execute();
     $counts = $sql->get_result()->fetch_assoc();
 
+    $round_counts = count($open) > 0 && (!$cards_down || $state['round_item_id'] === (int)$open[0]['id']);
+    if (!$round_counts) $live_distribution = null;
     $active = count($open) > 0 ? open_items_out($link, $t, array($open[0]), $live_distribution, $catalog, $aim)[0] : null;
     return array(
         'active' => $active,
@@ -520,6 +585,7 @@ function topic_items_for_dao($link, string $t, ?array $live_distribution, array 
         'done_count' => (int)$counts['done_cnt'],
         'next_heading' => isset($open[1]) ? $open[1]['heading'] : null,
         'topics_rev' => $rev,
+        'round_counts' => $round_counts,
     );
 }
 
@@ -532,7 +598,8 @@ function topic_items_for_dao($link, string $t, ?array $live_distribution, array 
 function topic_lists($link, string $t, array $catalog, bool $with_done, int $done_offset, int $done_limit): array
 {
     $link->begin_transaction(MYSQLI_TRANS_START_READ_ONLY | MYSQLI_TRANS_START_WITH_CONSISTENT_SNAPSHOT);
-    $rev = load_topics_rev($link, $t);
+    $state = load_topics_state($link, $t);
+    $rev = $state['rev'];
 
     $sql = $link->prepare("select " . TOPIC_ITEM_COLUMNS . "
                              from pok_topic_items_tbl
@@ -559,7 +626,9 @@ function topic_lists($link, string $t, array $catalog, bool $with_done, int $don
         $done_rows = $sql->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    $live = count($open_rows) > 0 ? revealed_distribution($link, $t) : null;
+    // S1d: the revealed round only if it belongs to the active item (a revealed round has cards down)
+    $live = (count($open_rows) > 0 && $state['round_item_id'] === (int)$open_rows[0]['id'])
+        ? revealed_distribution($link, $t) : null;
     $open = open_items_out($link, $t, $open_rows, $live, $catalog, fn() => team_deck_aim($link, $t, $catalog));
     $link->commit();
 

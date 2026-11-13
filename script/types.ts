@@ -158,6 +158,8 @@ interface TopicItemsSummary {
     done_count: number;
     next_heading: string | null; // heading of the open item after the active one ("next: ..."), null = active is the last
     topics_rev: number;          // changes with every change of any item; load get_topics.php when it differs
+    round_counts: boolean;       // B-52 S1d: the running round counts for the active item (false: it started before
+                                 // the item became active - no live distribution, no proposal from the table)
 }
 
 /* B-52 S1b: api/get_topics.php?t=..[&done=1&done_offset=0&done_limit=50] (api/lib_topics.php topic_lists()) */

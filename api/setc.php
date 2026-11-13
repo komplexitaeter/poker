@@ -73,6 +73,16 @@ if ($me !== null) {
                && $me->card_key !== LATE_CARD_KEY && $new_card !== $me->card_key) {
         $original = $me->card_key; // first change after the reveal (also taking the card back)
     }
+    /* B-52 S1d: the first card of a round decides the topic item the round belongs to (the active one now). A missing
+       column (code deployed before the schema) must not break the card; anything else is rethrown. */
+    if ($new_card !== null && $me->player_type === 'PLAYER') {
+        try {
+            round_item_on_first_card($link, $t, $id, $me->card_key);
+        } catch (mysqli_sql_exception $e) {
+            if (!is_missing_schema_error($e)) throw $e;
+            error_log('poker card: topic item of the round not stored: ' . $e->getMessage());
+        }
+    }
     $sql = $link->prepare("update pok_players_tbl set card_key = ?, original_card_key = ? where id = ? and team_id = ?");
     $sql->bind_param('ssss', $new_card, $original, $id, $t);
     $sql->execute();

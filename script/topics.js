@@ -306,7 +306,8 @@ function refreshTopicView() {
 /* what the spread marks: { show: an active item, aim, key: the result card (agree) or null } */
 function topicEstimate(json) {
     const item = activeTopicItem();
-    if (item === null) return { show: false, aim: 'agree', key: null, item: null };
+    // B-52 S1d: the cards on the table are no round of the active item (it became active while they were down)
+    if (item === null || gTopicItems.round_counts === false) return { show: false, aim: 'agree', key: null, item: null };
     const aim = json.deck && json.deck.aim === 'perspectives' ? 'perspectives' : 'agree';
     return { show: true, aim, key: aim === 'agree' ? item.result_card_key : null, item };
 }
