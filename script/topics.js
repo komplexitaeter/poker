@@ -33,6 +33,9 @@ const MATURITY_TEXTS = [
     'The direction is getting clearer, but everything can still change.',
     'Final polish – we should actually start building.',
 ];
+/* B-132 (Andreas, 2026-11-13): no maturity input in the item form for now; stored values are still shown and kept
+ * (the edit sends no maturity = unchanged). Set to true to bring the input back. */
+const MATURITY_INPUT = false;
 
 
 let gTopicItems = null;       // dao topic_items (the summary); null: the note only (old server)
@@ -1348,6 +1351,38 @@ function topicEditorRow(item) {
     desc.maxLength = limits.description;
     desc.value = item && item.description ? item.description : '';
 
+    const fieldset = MATURITY_INPUT ? maturityFieldset(item) : null;
+
+    const error = textElement('p', 'hint ti-error', '');
+    error.id = 'ti_error';
+    error.setAttribute('role', 'alert');
+    const row = document.createElement('div');
+    row.className = 'row end';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'btn-box';
+    cancel.dataset.tiAct = 'cancel';
+    cancel.textContent = 'Cancel';
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.className = 'btn-box primary';
+    save.id = 'ti_save';
+    save.textContent = 'Save';
+    row.append(cancel, save);
+
+    form.append(grid, labelled('Description (optional, Markdown works)', desc));
+    if (fieldset !== null) form.appendChild(fieldset);
+    form.append(error, row);
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        saveTopicEditor(item);
+    });
+    li.appendChild(form);
+    return li;
+}
+
+/* the maturity input of the item form (hidden for now, MATURITY_INPUT) */
+function maturityFieldset(item) {
     const fieldset = document.createElement('fieldset');
     fieldset.className = 'f ti-mat-field';
     fieldset.appendChild(textElement('legend', 'lab', 'Maturity (optional)'));
@@ -1371,31 +1406,7 @@ function topicEditorRow(item) {
         matHint.textContent = v === '' ? '' : MATURITY_TEXTS[+v];
     });
     fieldset.append(seg, matHint);
-
-    const error = textElement('p', 'hint ti-error', '');
-    error.id = 'ti_error';
-    error.setAttribute('role', 'alert');
-    const row = document.createElement('div');
-    row.className = 'row end';
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'btn-box';
-    cancel.dataset.tiAct = 'cancel';
-    cancel.textContent = 'Cancel';
-    const save = document.createElement('button');
-    save.type = 'submit';
-    save.className = 'btn-box primary';
-    save.id = 'ti_save';
-    save.textContent = 'Save';
-    row.append(cancel, save);
-
-    form.append(grid, labelled('Description (optional, Markdown works)', desc), fieldset, error, row);
-    form.addEventListener('submit', event => {
-        event.preventDefault();
-        saveTopicEditor(item);
-    });
-    li.appendChild(form);
-    return li;
+    return fieldset;
 }
 
 function saveTopicEditor(item) {
@@ -1407,8 +1418,9 @@ function saveTopicEditor(item) {
         heading.focus();
         return;
     }
+    // without the input no maturity is sent: add = not set, edit = unchanged
     const checked = document.querySelector('#ti_form input[name="ti_mat"]:checked');
-    const maturity = checked ? checked.value : '';
+    const maturity = checked ? { maturity: checked.value } : {};
     const form = {
         heading: heading.value,
         description: document.getElementById('ti_desc').value,
@@ -1417,8 +1429,8 @@ function saveTopicEditor(item) {
     const save = document.getElementById('ti_save');
     save.disabled = true;
     const request = item === null
-        ? topicWrite('topic_item_add.php', { at: 'end', maturity }, form)
-        : topicWrite('topic_item_edit.php', { item: item.id, maturity }, form);
+        ? topicWrite('topic_item_add.php', Object.assign({ at: 'end' }, maturity), form)
+        : topicWrite('topic_item_edit.php', Object.assign({ item: item.id }, maturity), form);
     request.then(response => {
         if (response !== null && response.ok) {
             gTopicEditor = null;
