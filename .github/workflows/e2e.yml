@@ -1,8 +1,14 @@
 name: E2E tests
 
-# Full suite on every PR into release and on every push to it (tests the combination of merged PRs).
+# Runs on every PR into release and on every push to it (tests the combination of merged PRs).
 # Not on PRs release -> master: they carry a state that was already tested on release (Kai merges only if the
 # last release run is green). Docs-only changes do not run the suite.
+#
+# Speed (B-134): the suite is split into 3 shards that run in parallel, each with its own app instance.
+# - PRs into release skip the tests tagged @slow (long real waits) for a quick answer.
+# - Pushes to release and manual runs (workflow_dispatch) run the complete suite including @slow.
+# The job "e2e (PHP 8.4)" collects the shards and keeps the name of the required check; it fails unless
+# every shard succeeded. Each shard checks its own PHP log for fatals, deprecations and warnings.
 on:
   push:
     branches: [release]
@@ -20,18 +26,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e:
-    name: e2e (PHP ${{ matrix.php }})
+  shard:
+    name: e2e shard ${{ matrix.shard }}/3 (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         # same version as staging and production (B-22)
         php: ['8.4']
+        shard: [1, 2, 3]
     timeout-minutes: 15
     env:
       # MySQL comes preinstalled on the runner with root/root
       MYSQL_ADMIN: mysql -uroot -proot
+      # PRs leave out the @slow tests; pushes to release and manual runs run everything (B-134)
+      E2E_FILTER: ${{ github.event_name == 'pull_request' && '--grep-invert @slow' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +92,7 @@ jobs:
 
       - name: Run tests
         working-directory: tests/e2e
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shard }}/3 $E2E_FILTER
 
       - name: PHP messages during the test run
         if: always()
@@ -105,9 +114,22 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-report-php${{ matrix.php }}
+          name: e2e-report-php${{ matrix.php }}-shard${{ matrix.shard }}
           path: |
             tests/e2e/playwright-report/
             tests/e2e/test-results/
             ${{ env.E2E_DIR }}/logs/
           retention-days: 14
+
+  # Keeps the name of the required check from before the shards; fails unless every shard succeeded.
+  e2e:
+    name: e2e (PHP 8.4)
+    needs: shard
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: All shards passed
+        run: |
+          echo "shards: ${{ needs.shard.result }}"
+          test "${{ needs.shard.result }}" = success

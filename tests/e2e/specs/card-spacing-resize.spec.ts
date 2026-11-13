@@ -39,7 +39,8 @@ function measureNeighbourDistances(page: Page) {
   });
 }
 
-test('distance between neighbouring cards stays constant while resizing (B-41)', async ({ browser }) => {
+// @slow: ~30 s of real resize steps; not on PRs, only on pushes to release (B-134)
+test('distance between neighbouring cards stays constant while resizing (B-41)', { tag: '@slow' }, async ({ browser }) => {
   test.setTimeout(90_000);
   const alice = await newPlayer(browser);
   const url = await createTeam(alice, 'Spacing Team');

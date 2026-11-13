@@ -137,7 +137,9 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 
 End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
 jedem PR nach `release` und jedem Push darauf, mit PHP 8.4 wie in Produktion; reine `*.md`-Änderungen lösen
-keinen Lauf aus. PRs `release` → `master` laufen nicht erneut: Kai mergt sie nur, wenn der letzte Lauf auf `release`
+keinen Lauf aus. Die Suite läuft in 3 parallelen Shards; der Sammel-Job `e2e (PHP 8.4)` behält den bisherigen Check-Namen (B-134). PRs nach
+`release` lassen Tests mit dem Tag `@slow` weg, Push auf `release` und manueller Start laufen komplett. Neue Tests mit
+echten Wartezeiten ≥ 15 s bekommen `{ tag: '@slow' }`. PRs `release` → `master` laufen nicht erneut: Kai mergt sie nur, wenn der letzte Lauf auf `release`
 (gleicher Stand) grün ist. **Lokal** (Agenten) laufen nur die Specs, die die Änderung betreffen, plus neue Tests; die
 komplette Suite übernimmt die CI (Andreas, 2026-10-28).
 
