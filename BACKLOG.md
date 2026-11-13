@@ -2249,3 +2249,17 @@ Der Nudge (B-110) ist bisher rein optisch; wer im Video-Call oder in einem ander
 - Schalter „Sound on nudge“ im `:you`-Menü, Standard an, je Gerät gemerkt (localStorage).
 - Autoplay-Sperre der Browser: Ton erst nach einem Klick/Tipp auf der Seite (Audio-Kontext wird dabei angelegt),
   nach Neuladen erneut. iPhone: Stummschalter/gesperrter Bildschirm → kein Ton. Deshalb Ton nur als Zusatz.
+
+### B-134 CI schneller
+Status: erledigt (2026-11-13, Andreas). E2E in 3 parallelen Shards (~4 statt ~10 min); PRs nach `release` ohne
+Tests mit Tag `@slow`, Push auf `release` komplett. Sammel-Job behält den Check-Namen `e2e (PHP 8.4)`.
+
+### B-135 Schreib-Requests scheitern in Safari nach langer Tab-Nutzung
+Status: in Umsetzung (Andreas auf Staging, 2026-11-13). Nach einem Kartenset-Wechsel kam ~30 s lang kein Request
+beim Server an (auch kein Heartbeat), Safari meldete `TypeError: Load failed`, bis neu geladen wurde. Ursache sehr
+wahrscheinlich: nginx 1.18 schließt eine HTTP/2-Verbindung nach 1.000 Requests (`http2_max_requests`), ein lange
+offener Board-Tab erreicht das.
+- Server: `http2_max_requests 10000;` in `/etc/nginx/conf.d/http2-max-requests.conf` (Staging erledigt, Live mit dem
+  nächsten Rollout).
+- App: `apiWrite()` wiederholt idempotente Schreib-Requests (Karte legen, Set, Einstellungen) nach einem reinen
+  Netzfehler einmal nach 300 ms; nicht bei New round, Items anlegen/weiterschalten, Löschen, Feedback.
