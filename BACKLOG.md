@@ -1795,8 +1795,14 @@ Status: neu (Idee Andreas, 2026-11-13). Weiterführung von B-52/B-129, Leitidee 
   Unsicherheit) bestimmt wird. Ablauf: der PO trägt einen Reifegrad vorab ein (optional), nach dem Schätzen stimmen
   alle per Karten über den Reifegrad ab; das Ergebnis landet am Item (Historie je Durchgang).
 - **Bis dahin:** Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); vorhandene Werte werden weiter angezeigt.
-Offen: Datenmodell Deck je Item und Karten-Auswahl je Deck; Ablauf mehrerer Fragen (Reihenfolge, wer schaltet weiter);
-Darstellung in Historie und Export.
+**Zwei Dimensionen (Andreas, 2026-11-13), getrennt umsetzbar:**
+1. **Set je Item** – überschaubarer Umbau: Item merkt sich das Set (Deck-ID + Kartenauswahl); beim Aktivwerden bzw.
+   „Next item“ stellt das Board atomat mit der neuen Runde auf dieses Set um; ohne Angabe gilt das Team-Deck.
+   Dafür Kartenauswahl je Deck speichern statt nur fürs aktuelle Deck. Historie/Export zeigen das Set je Item.
+2. **Anschließende Metafrage** (z. B. Reifegrad, Unsicherheit) – geht tiefer: zweite Abstimmung je Item nach dem
+   Schätzen mit eigenem Deck, Ablauf und Darstellung (wer schaltet weiter, was zeigt das Board dazwischen), Ergebnis
+   je Durchgang in der Historie.
+Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
 
 ### B-131 Reaktionen: gestaffeltes Rate-Limit je Verbindung
 Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
