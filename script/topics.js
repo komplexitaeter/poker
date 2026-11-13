@@ -1170,7 +1170,7 @@ function topicDoneRow(item) {
  * first because there the latest result matters. */
 const TOPIC_EXPORT_PAGE = 100;   // TOPIC_DONE_PAGE_MAX in api/lib_topics.php
 const TOPIC_EXPORT_MAX = 1000;   // TOPIC_ITEMS_TOTAL_MAX: no team has more
-const TOPIC_EXPORT_HEAD = ['ID', 'Heading', 'Description', 'Agreed value', 'Rounds', 'Last round', 'Maturity'];
+const TOPIC_EXPORT_HEAD = ['ID', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round', 'Maturity'];
 let gTopicExportBusy = false; // false, or 'copy' | 'csv' while that export loads
 
 function topicExportRow() {
@@ -1222,6 +1222,13 @@ function topicExportValue(key) {
     return String(card.text || card.label || cardName(card) || key);
 }
 
+/* the votes of the item's last revealed round as text, in deck order (topicDistKeys): "13 ×1, 20 ×3"; a card as in
+ * "Agreed value" (topicExportValue: its text, "½", "?", else its name, e.g. "sad ×1, angry ×1"), an unknown key by
+ * itself; '' without a distribution */
+function topicExportVotes(distribution) {
+    return topicDistKeys(distribution).map(key => topicExportValue(key) + ' ×' + distribution[key]).join(', ');
+}
+
 /* the rows of the table: the header row and one row per item (plain strings) */
 function topicExportRows(items) {
     const rows = [TOPIC_EXPORT_HEAD];
@@ -1232,6 +1239,7 @@ function topicExportRows(items) {
             item.heading || '',
             item.description || '',
             topicExportValue(item.result_card_key),
+            topicExportVotes(item.distribution),
             String(item.rounds_cnt || 0),
             date === null ? '' : isoLocalDate(date),
             maturityValid(item.maturity) ? MATURITY_STAGES[item.maturity] : '',

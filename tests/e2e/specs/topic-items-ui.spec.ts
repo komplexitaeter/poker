@@ -923,12 +923,14 @@ test('done items export: Copy as a tab separated table, Download CSV; all items,
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }, first.last_round_date);
   const rows = [
-    ['ID', 'Heading', 'Description', 'Agreed value', 'Rounds', 'Last round', 'Maturity'],
-    ['PROJ-1', 'Login, "quick"', 'First line\n- second, with a comma', '5', String(first.rounds_cnt), day, 'shaping'],
-    ['', "'=SUM(A1:A2)", "'-1 is a formula too", '', '0', '', ''],
-    ["'@me", "'+plus", '', '8', '0', '', ''],
-    ['', 'Four', '', '', '0', '', ''],
-    ['', 'Five', '', '', '0', '', ''],
+    ['ID', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round', 'Maturity'],
+    // Votes: the last revealed round, in deck order, "<card> ×<n>"; empty without a round
+    ['PROJ-1', 'Login, "quick"', 'First line\n- second, with a comma', '5', '3 ×1, 5 ×2', String(first.rounds_cnt), day,
+      'shaping'],
+    ['', "'=SUM(A1:A2)", "'-1 is a formula too", '', '', '0', '', ''],
+    ["'@me", "'+plus", '', '8', '', '0', '', ''],
+    ['', 'Four', '', '', '', '0', '', ''],
+    ['', 'Five', '', '', '', '0', '', ''],
   ];
   const quote = (cell: string, sep: string) =>
     cell.includes(sep) || /["\r\n]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;
