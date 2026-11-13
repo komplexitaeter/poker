@@ -20,7 +20,7 @@
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/topics.js?v=1.13" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.25" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.26" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -510,6 +510,15 @@
                         <label><input type="radio" name="cet_color_mode" value="light" onchange="setColorMode(this.value)"/><span>Light</span></label>
                         <label><input type="radio" name="cet_color_mode" value="dark" onchange="setColorMode(this.value)"/><span>Dark</span></label>
                     </div>
+                </fieldset>
+                <!-- B-133: a short sound (and vibration) when someone nudges you; per device (initNudgeAudio() in script.js) -->
+                <fieldset class="f" id="cet_nudge_sound">
+                    <legend class="lab">Sound on nudge</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="cet_nudge_sound" value="on" onchange="setNudgeSound(this.value)"/><span>On</span></label>
+                        <label><input type="radio" name="cet_nudge_sound" value="off" onchange="setNudgeSound(this.value)"/><span>Off</span></label>
+                    </div>
+                    <p class="hint">A short sound when someone nudges you, after your first click on the page.</p>
                 </fieldset>
                 <p id="user_settings_privacy_link" class="m-links">
                     <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>

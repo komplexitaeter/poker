@@ -563,3 +563,88 @@ test('a held Enter on the nudge circle or an emoji sends one reaction, not one p
   await expect(alice.locator('#react_bar')).toBeHidden();
   await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
 });
+
+/** B-133: an AudioContext that counts started oscillators (window.oscStarts) instead of playing */
+function stubAudio(): void {
+  const w = window as unknown as { oscStarts: number; AudioContext: unknown };
+  w.oscStarts = 0;
+  const param = { setValueAtTime() { /* stub */ }, exponentialRampToValueAtTime() { /* stub */ } };
+  w.AudioContext = class {
+    state = 'suspended';
+    currentTime = 0;
+    destination = {};
+    resume() { this.state = 'running'; return Promise.resolve(); }
+    createOscillator() {
+      return { type: '', frequency: param, connect() { /* stub */ }, start() { w.oscStarts++; }, stop() { /* stub */ } };
+    }
+    createGain() { return { gain: param, connect() { /* stub */ } }; }
+  };
+}
+
+const oscStarts = (page: Page) => page.evaluate(() => (window as unknown as { oscStarts: number }).oscStarts);
+
+test('nudge: sound for the nudged one (switch per device), title flashes in a hidden tab (B-133)', async ({ browser }) => {
+  const { alice, bob, bobMkey } = await setup(browser, 'React Sound');
+  const errors: string[] = [];
+  // no errors or warnings of the page (blocked external resources aside, see newPlayer)
+  bob.on('pageerror', e => errors.push(e.message));
+  bob.on('console', m => {
+    if ((m.type() === 'error' || m.type() === 'warning') && !m.text().startsWith('Failed to load resource')) errors.push(m.text());
+  });
+  type W = { sendReaction: (to: string, code: string) => void };
+  const soundOn = bob.locator('input[name="cet_nudge_sound"][value="on"]');
+  const soundOff = bob.locator('input[name="cet_nudge_sound"][value="off"]');
+
+  // the switch in the "You" menu: on by default, off is kept after a reload
+  await bob.locator('#user_settings_btn').click();
+  await expect(bob.locator('#cet_nudge_sound legend')).toHaveText('Sound on nudge');
+  await expect(soundOn).toBeChecked();
+  await bob.locator('#cet_nudge_sound label', { hasText: 'Off' }).click();
+  await expect(soundOff).toBeChecked();
+  for (const p of [alice, bob]) {
+    await p.context().addInitScript(stubAudio);
+    await p.reload();
+    await expect(tableCard(p, 'Bob')).toBeVisible();
+  }
+  // a click on the page (the menu button) makes the AudioContext
+  await bob.locator('#user_settings_btn').click();
+  await expect(soundOff).toBeChecked();
+  await alice.locator('#user_settings_btn').click();
+  await alice.keyboard.press('Escape');
+
+  // switch off: the nudge is silent
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
+  await expect(tableCard(bob, 'Bob')).toHaveClass(/\bis-nudged-me\b/);
+  expect(await oscStarts(bob)).toBe(0);
+
+  // switch on: the nudged one hears it, the sender does not
+  await bob.locator('#cet_nudge_sound label', { hasText: 'On' }).click();
+  await expect(soundOn).toBeChecked();
+  await bob.keyboard.press('Escape');
+  await alice.waitForTimeout(RATE_LIMIT_MS);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
+  await expect.poll(() => oscStarts(bob)).toBeGreaterThan(0);
+  expect(await oscStarts(alice)).toBe(0);
+
+  // hidden tab: the title flashes until the tab is visible again
+  const title = await bob.title();
+  expect(title).toContain('Agile Poker');
+  await bob.evaluate(() => Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }));
+  await setHidden(bob, true);
+  await alice.waitForTimeout(RATE_LIMIT_MS);
+  const before = await oscStarts(bob);
+  const gotB = await recordReceived(bob);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
+  await expect.poll(gotB).toEqual([`react:0:${bobMkey}:nudge`]);
+  await expect.poll(() => bob.title()).toBe('\u{1F44B} Your turn – ' + title);
+  expect(await oscStarts(bob)).toBeGreaterThan(before); // the sound also in a hidden tab
+  await expect.poll(() => bob.title()).toBe(title); // it flashes
+  await expect.poll(() => bob.title()).toBe('\u{1F44B} Your turn – ' + title);
+  expect(await alice.title()).toBe(title);
+  await bob.evaluate(() => delete (document as unknown as { hidden?: boolean }).hidden);
+  await setHidden(bob, false);
+  await expect(bob).toHaveTitle(title);
+  await bob.waitForTimeout(1500);
+  await expect(bob).toHaveTitle(title);
+  expect(errors).toEqual([]);
+});
