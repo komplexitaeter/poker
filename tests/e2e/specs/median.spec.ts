@@ -232,6 +232,10 @@ test('median line rises above the columns, also above the frame of the current e
   // an active item: the 8 is the current estimate (blue frame); the line's top lies above the frame's top
   const res = await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading: 'Login' } });
   expect(res.ok()).toBeTruthy();
+  // a round counts only for the item that was active at its first card (B-52 S1d): play it again under the item
+  await post(alice, 'newround.php', { t, id: me });
+  for (const [id, cardkey] of [[me, 'five001'], [bob, 'eight01']]) await post(alice, 'setc.php', { t, id, cardkey });
+  await expect(status).toHaveText('revealed');
   const est = alice.locator('#spread_bars .spread-col.est');
   await expect(est).toHaveAttribute('data-card', 'eight01');
   await expect(line).toBeVisible();
