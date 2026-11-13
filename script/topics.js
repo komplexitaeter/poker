@@ -337,6 +337,13 @@ function updateEstimateRow(json, revealed, cardStats) {
     const note = document.getElementById('spread_note');
     if (row === null || note === null) return;
     const estimate = topicEstimate(json);
+    // B-52 S1d: revealed cards that count for no item - say so instead of an estimate (not while voting)
+    const stale = document.getElementById('spread_stale');
+    if (stale !== null) {
+        const show = revealed && activeTopicItem() !== null && gTopicItems.round_counts === false;
+        if (show && stale.textContent === '') stale.textContent = 'This round started before this item – start a new round to estimate it.';
+        stale.hidden = !show;
+    }
     // kept (invisible inside the hidden spread) before the reveal as well, so nothing moves when the cards turn
     row.hidden = !(estimate.show && estimate.aim === 'agree');
     note.hidden = !(estimate.show && estimate.aim === 'perspectives');

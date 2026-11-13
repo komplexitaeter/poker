@@ -480,12 +480,16 @@ test('an item added after the reveal: no estimate from the cards on the table, t
   await expect(alice.locator('#spread_est')).toBeHidden();
   await expect(alice.locator('#spread_bars .spread-col.est')).toHaveCount(0);
   await expect(alice.locator('#spread_bars .spread-col.pick')).toHaveCount(0);
+  await expect(alice.locator('#spread_stale')).toBeVisible();
+  await expect(alice.locator('#spread_stale')).toHaveText('This round started before this item – start a new round to estimate it.');
 
   // the next round is the item's: estimate and mark as usual
   await alice.locator('#newroundbtn').click();
   await expect(alice.locator('#round_status')).not.toHaveText('revealed');
+  await expect(alice.locator('#spread_stale')).toBeHidden(); // no hint while voting
   await reveal(alice, t, ids, ['three01', 'eight01', 'five001']);
   await expect(alice.locator('#spread_est')).toBeVisible();
+  await expect(alice.locator('#spread_stale')).toBeHidden();
   await expect(alice.locator('#spread_bars .spread-col.est')).toHaveAttribute('data-card', 'eight01');
 });
 
