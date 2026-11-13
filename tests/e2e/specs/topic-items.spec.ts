@@ -452,6 +452,62 @@ test('S1d: reopen/move to the top or delete during a revealed round: the round b
   expect((await open(page, t))[0]).toMatchObject({ id: b, rounds_cnt: 0, distribution: null });
 });
 
+test('S1d: an item switched while a round is running (not revealed): move, delete, move back', async ({ browser }) => {
+  const { page, t, ids } = await setup(browser, 'TopicRoundRunning');
+  const a = await addItem(page, t, 'Alpha');
+  const b = await addItem(page, t, 'Bravo');
+  const c = await addItem(page, t, 'Charlie');
+  const item = async (id: number) => (await open(page, t)).find(i => i.id === id) as Item;
+
+  // (a) Alpha's round runs (two of three cards), Bravo is moved to the top: the round belongs to no item
+  await play(page, t, ids, ['five001', 'five001']);
+  expect((await post(page, 'topic_item_move.php', { t, item: b, to: 0 })).ok()).toBeTruthy();
+  await play(page, t, ids.slice(2), ['eight01']); // Cid: revealed
+  let sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  expect(sum.active).toMatchObject({ id: b, distribution: null, result_card_key: null });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe('NEW_ROUND|null');
+  expect(await item(a)).toMatchObject({ rounds_cnt: 0, distribution: null });
+  expect(await item(b)).toMatchObject({ rounds_cnt: 0, distribution: null });
+  // the following round counts for the new active item
+  await play(page, t, ids, ['three01', 'three01', 'three01']);
+  expect((await summary(page, t, ids[0])).round_counts).toBe(true);
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe(`NEW_ROUND|${b}`);
+  expect(await item(b)).toMatchObject({ rounds_cnt: 1, distribution: { three01: 3 } });
+
+  // (b) Bravo's round runs, Bravo (active) is deleted: Alpha moves up without that round
+  await play(page, t, ids, ['two0001']);
+  expect((await post(page, 'topic_item_delete.php', { t, item: b })).ok()).toBeTruthy();
+  await play(page, t, ids.slice(1), ['two0001', 'two0001']);
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(false);
+  expect(sum.active).toMatchObject({ id: a, distribution: null, result_card_key: null });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe('NEW_ROUND|null');
+  expect(await item(a)).toMatchObject({ rounds_cnt: 0, distribution: null });
+  // the following round counts for Alpha
+  await play(page, t, ids, ['five001', 'eight01', 'eight01']);
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe(`NEW_ROUND|${a}`);
+  expect(await item(a)).toMatchObject({ rounds_cnt: 1, distribution: { eight01: 2, five001: 1 } });
+
+  // (c) Alpha's round runs, Charlie goes to the top and Alpha back before the reveal: the round is Alpha's again
+  await play(page, t, ids, ['thrtn01']);
+  expect((await post(page, 'topic_item_move.php', { t, item: c, to: 0 })).ok()).toBeTruthy();
+  expect((await summary(page, t, ids[0])).round_counts).toBe(false);
+  expect((await post(page, 'topic_item_move.php', { t, item: a, to: 0 })).ok()).toBeTruthy();
+  await play(page, t, ids.slice(1), ['thrtn01', 'eight01']);
+  sum = await summary(page, t, ids[0]);
+  expect(sum.round_counts).toBe(true);
+  expect(sum.active).toMatchObject({ id: a, distribution: { eight01: 1, thrtn01: 2 }, result_card_key: 'thrtn01' });
+  expect((await post(page, 'newround.php', { t })).ok()).toBeTruthy();
+  expect(lastRound(t)).toBe(`NEW_ROUND|${a}`);
+  expect(await item(a)).toMatchObject({ rounds_cnt: 2, distribution: { eight01: 1, thrtn01: 2 } });
+  expect(await item(c)).toMatchObject({ rounds_cnt: 0, distribution: null });
+});
+
 test('get_topics.php: open list, done only on request, paging, consistent rev; dao stays small', async ({ browser }) => {
   const { page, t, ids } = await setup(browser, 'TopicLists', ['Ann']);
   const values = Array.from({ length: 100 }, (_, i) => `('${t}', ${i + 1}, 'Item ${i + 1}', repeat('x', 2000))`).join(',');
