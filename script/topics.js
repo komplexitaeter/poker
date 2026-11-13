@@ -1222,14 +1222,11 @@ function topicExportValue(key) {
     return String(card.text || card.label || cardName(card) || key);
 }
 
-/* the votes of the item's last revealed round as text, in deck order (topicDistKeys): "13 ×1, 20 ×3"; a card by
- * the name the spread and the screen reader use (cardName: "sad ×1, angry ×1", "question ×1"), an unknown key by
+/* the votes of the item's last revealed round as text, in deck order (topicDistKeys): "13 ×1, 20 ×3"; a card as in
+ * "Agreed value" (topicExportValue: its text, "½", "?", else its name, e.g. "sad ×1, angry ×1"), an unknown key by
  * itself; '' without a distribution */
 function topicExportVotes(distribution) {
-    return topicDistKeys(distribution).map(key => {
-        const card = cardByKey(key);
-        return (card ? cardName(card) || key : key) + ' ×' + distribution[key];
-    }).join(', ');
+    return topicDistKeys(distribution).map(key => topicExportValue(key) + ' ×' + distribution[key]).join(', ');
 }
 
 /* the rows of the table: the header row and one row per item (plain strings) */
