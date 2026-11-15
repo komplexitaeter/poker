@@ -60,6 +60,7 @@ let gTopicViewKey = '';       // what the column shows now
 let gTopicDescMore = false;   // the column: the whole description ("more")
 let gTopicMatOpen = false;    // results panel: the maturity text unfolded (a click on the triangle)
 let gTopicRevealed = false;
+let gTopicViewId = null;      // id of the item the column shows (null: none)
 
 function topicMarkdown(text) {
     const markDown = new Remarkable({ html: false, xhtmlOut: true, breaks: true, linkify: true, typographer: false });
@@ -139,6 +140,13 @@ function updateTopicView(json) {
     const edit = document.querySelector('.topic-bar .topic-edit');
     const item = activeTopicItem();
     updateBoardNote(json.topic);
+    const itemId = item === null ? null : item.id;
+    if (itemId !== gTopicViewId) {
+        // another item (left here or by someone else): its description and maturity text start folded
+        gTopicViewId = itemId;
+        gTopicDescMore = false;
+        gTopicMatOpen = false;
+    }
 
     if (item === null) {
         // S1c: the note is on the board, the column has no topic bar without an item
@@ -168,6 +176,8 @@ function updateTopicView(json) {
     updateNextItemButton(json);
     updateRailItem(json);
     syncLeaveItem(json);
+    // after the rest of the board is updated (a focused "New round" may be disabled by it)
+    if (gLeaveFocus !== null) requestAnimationFrame(() => setTimeout(keepLeaveFocus, 0));
 }
 
 /* ---------- the note on the board (S1c) ---------- */
@@ -488,10 +498,27 @@ function openLeaveItem(opener) {
     const item = activeTopicItem();
     const dialog = document.getElementById('leave_item');
     if (item === null || dialog === null || !gLastJson || dialog.open) return;
-    gLeave = { id: item.id, opener: opener || null };
+    gLeave = { id: item.id, opener: opener || null, key: '' };
     document.getElementById('leave_item_heading').textContent = (item.ext_id ? item.ext_id + ' ' : '') + item.heading;
+    renderLeaveItemChoices(gLastJson, item);
+    dialog.showModal();
+    const first = document.querySelector('#leave_item_opts .leave-opt');
+    if (first !== null) first.focus();
+}
+
+/* (re)builds the choices when they differ from the shown ones (the estimate or the deck aim changed meanwhile);
+ * a focused choice keeps the focus when it is still there, else the suggestion (the first one) gets it */
+function renderLeaveItemChoices(json, item) {
     const box = document.getElementById('leave_item_opts');
-    box.replaceChildren(...leaveItemChoices(gLastJson, item).map((choice, index) => {
+    if (box === null || gLeave === null) return;
+    const choices = leaveItemChoices(json, item);
+    const key = JSON.stringify(choices);
+    if (key === gLeave.key) return;
+    const rebuild = gLeave.key !== '';
+    gLeave.key = key;
+    const focused = document.activeElement instanceof Element ? document.activeElement.closest('.leave-opt') : null;
+    const focusedMode = focused !== null && box.contains(focused) ? focused.dataset.mode : null;
+    box.replaceChildren(...choices.map((choice, index) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'leave-opt' + (index === 0 ? ' primary' : '');
@@ -502,9 +529,11 @@ function openLeaveItem(opener) {
         button.append(title, textElement('small', 'leave-opt-h', choice.hint));
         return button;
     }));
-    dialog.showModal();
-    const first = box.querySelector('.leave-opt');
-    if (first !== null) first.focus();
+    if (!rebuild || focusedMode === null) return;
+    // "close" with another value is another choice: the focus goes to the suggestion again
+    const same = focusedMode === 'close' && focused.dataset.card !== undefined ? null
+        : box.querySelector('.leave-opt[data-mode="' + focusedMode + '"]');
+    focusQuietly(same !== null ? same : box.querySelector('.leave-opt'));
 }
 
 function closeLeaveItem() {
@@ -512,12 +541,55 @@ function closeLeaveItem() {
     if (dialog !== null && dialog.open) dialog.close();
 }
 
-/* the dialog closed (any way): the focus back to its opener while that can take it */
+/* the dialog closed (any way): the focus back to its opener while that can take it, else (the item was left, its
+ * buttons are disabled meanwhile) to a near control that can */
 function onLeaveItemClosed() {
     const opener = gLeave === null ? null : gLeave.opener;
     gLeave = null;
-    if (opener !== null && opener.isConnected && !opener.hidden && opener.offsetParent !== null) {
+    if (focusUsable(opener)) {
         opener.focus({ preventScroll: true });
+    } else if (opener !== null) {
+        focusAfterLeave(opener);
+    }
+}
+
+const LEAVE_FOCUS_MS = 5000;
+let gLeaveFocus = null;   // { opener, until } after "Next item" / "Finish item": the focus is kept off the page body
+
+function focusUsable(el) {
+    return el instanceof HTMLElement && el.isConnected && !el.hidden && !el.disabled && el.offsetParent !== null
+        && el.closest('[inert]') === null;
+}
+
+/* the opener first, then "new round" beside it, then the same pair in the other layout (column / rail), at last
+ * the heading of the item shown now */
+function focusAfterLeave(opener) {
+    const ids = opener !== null && opener.id === 'rail_next'
+        ? ['rail_next', 'rail_round', 'nextitem_btn', 'newroundbtn']
+        : ['nextitem_btn', 'newroundbtn', 'rail_next', 'rail_round'];
+    let target = ids.map(id => document.getElementById(id)).find(focusUsable) || null;
+    if (target === null) {
+        const heading = document.querySelector('#topic .ti-heading');
+        if (heading !== null && heading.offsetParent !== null) {
+            heading.tabIndex = -1;
+            target = heading;
+        }
+    }
+    if (target !== null) focusQuietly(target, { preventScroll: true });
+}
+
+/* while a leave is fresh: the focus fell to the page body or sits on a control that cannot take it any more (disabled
+ * or hidden by the board update) -> placed again */
+function keepLeaveFocus() {
+    if (gLeaveFocus === null) return;
+    if (Date.now() > gLeaveFocus.until) {
+        gLeaveFocus = null;
+        return;
+    }
+    if (leaveItemOpen()) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body || active === document.documentElement || !focusUsable(active)) {
+        focusAfterLeave(gLeaveFocus.opener);
     }
 }
 
@@ -526,12 +598,17 @@ function syncLeaveItem(json) {
     if (gLeave === null || !leaveItemOpen()) return;
     const item = activeTopicItem();
     const revealed = json.all_players_ready && json.players_count > 0;
-    if (item === null || item.id !== gLeave.id || !revealed) closeLeaveItem();
+    if (item === null || item.id !== gLeave.id || !revealed) {
+        closeLeaveItem();
+        return;
+    }
+    renderLeaveItemChoices(json, item);
 }
 
 function leaveItem(mode, card) {
     const item = activeTopicItem();
     const id = gLeave === null ? null : gLeave.id;
+    const opener = gLeave === null ? null : gLeave.opener;
     closeLeaveItem();
     if (item === null || item.id !== id) return;
     const last = gTopicItems === null || gTopicItems.open_count <= 1;
@@ -539,11 +616,11 @@ function leaveItem(mode, card) {
     if (card) params.card = card;
     const buttons = ['nextitem_btn', 'rail_next'].map(bid => document.getElementById(bid)).filter(b => b !== null);
     buttons.forEach(button => { button.disabled = true; });
-    gTopicDescMore = false;
-    gTopicMatOpen = false;
+    gLeaveFocus = { opener, until: Date.now() + LEAVE_FOCUS_MS };
     // 409 not_active: someone else was quicker; the reload shows the new item
     topicWrite('topic_item_next.php', params, null, [409]).then(() => {
         buttons.forEach(button => { button.disabled = false; });
+        keepLeaveFocus();
     });
     measureEvent(mode === 'later' ? 'TOPIC_ITEM_LATER' : (last ? 'TOPIC_FINISH_ITEM' : 'TOPIC_NEXT_ITEM'));
 }
@@ -552,6 +629,8 @@ function initLeaveItem() {
     const dialog = document.getElementById('leave_item');
     if (dialog === null) return;
     dialog.addEventListener('close', onLeaveItemClosed);
+    // a click of one's own after leaving an item: the focus is the user's again
+    document.addEventListener('pointerdown', () => { gLeaveFocus = null; }, true);
     document.getElementById('leave_item_cancel').addEventListener('click', closeLeaveItem);
     dialog.addEventListener('click', event => {
         const option = event.target instanceof Element ? event.target.closest('.leave-opt') : null;
@@ -600,6 +679,19 @@ function initLeaveItem() {
 }
 
 /* ---------- writes ---------- */
+
+const TOPIC_LIMIT_TEXT = 'Item limit reached \u2013 delete done items to add new ones.';
+
+/* why no item can be added now: 'open' (too many open items), 'total' (open and done together reach limits.total of
+ * get_topics.php; an older server without it: not checked) or null. The count comes from the dao summary (the same as
+ * limits.total_count, but always as fresh as the board) */
+function topicAddBlocked() {
+    const limits = gTopicLists && gTopicLists.limits;
+    if (!gTopicItems || !limits) return null;
+    if (typeof limits.open === 'number' && gTopicItems.open_count >= limits.open) return 'open';
+    if (typeof limits.total === 'number' && gTopicItems.open_count + gTopicItems.done_count >= limits.total) return 'total';
+    return null;
+}
 
 function topicWrite(endpoint, params, form = null, quiet = []) {
     const query = new URLSearchParams(Object.assign({ t: t }, params));
@@ -817,17 +909,12 @@ function renderTopicMenu(force = false) {
     const doneBox = document.getElementById('topic_done');
     const tabs = document.getElementById('topic_tabs');
     if (single === null || list === null || doneBox === null || tabs === null) return;
-    const label = single.querySelector('label.lab');
-    const labelText = topicHasItems() ? 'Note for everyone (optional, Markdown works)'
-        : 'What are you estimating? (optional, Markdown works)';
-    if (label !== null && label.textContent !== labelText) label.textContent = labelText;
-
     tabs.hidden = gTopicItems === null;
     const noteAdd = document.getElementById('topic_note_add');
     if (noteAdd !== null) {
         noteAdd.hidden = gTopicItems === null;
-        noteAdd.disabled = !!(gTopicItems && gTopicLists && gTopicLists.limits
-            && gTopicItems.open_count >= gTopicLists.limits.open);
+        noteAdd.disabled = topicAddBlocked() !== null;
+        noteAdd.title = topicAddBlocked() === 'total' ? TOPIC_LIMIT_TEXT : '';
     }
     if (gTopicItems === null) {
         // an old server: the note alone
@@ -929,7 +1016,9 @@ function topicOpenParts() {
         add.id = 'ti_add';
         add.dataset.tiAct = 'add';
         add.append(iconSvg('plus'), 'Add item');
-        add.disabled = !!(lists && lists.limits && summary.open_count >= lists.limits.open);
+        const blocked = topicAddBlocked();
+        add.disabled = blocked !== null;
+        if (blocked === 'total') add.title = TOPIC_LIMIT_TEXT;
         parts.push(add);
         if (!has) parts.push(textElement('p', 'hint ti-add-hint', 'Several topics? Add them as items and go through them one by one.'));
     }
@@ -1445,9 +1534,16 @@ function saveTopicEditor(item) {
     const save = document.getElementById('ti_save');
     save.disabled = true;
     const request = item === null
-        ? topicWrite('topic_item_add.php', Object.assign({ at: 'end' }, maturity), form)
+        ? topicWrite('topic_item_add.php', Object.assign({ at: 'end' }, maturity), form, [409])
         : topicWrite('topic_item_edit.php', Object.assign({ item: item.id }, maturity), form);
     request.then(response => {
+        if (response !== null && response.status === 409) {
+            // the limit of items (open or all): its own message, not "try again"
+            response.json().catch(() => null).then(answer => {
+                showToast(answer && answer.error === 'limit' ? TOPIC_LIMIT_TEXT : 'Not saved \u2013 please try again',
+                    DECK_TOAST_MS, 'error');
+            });
+        }
         if (response !== null && response.ok) {
             gTopicEditor = null;
             renderTopicMenu(true);

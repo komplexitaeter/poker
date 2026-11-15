@@ -3,10 +3,10 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, setTeamDeck, CON
 
 /**
  * B-53: the median as a dashed line in the spread of the results panel (#spread_median), coupled to the team switch
- * "Average and median" (show_avg). Only votes on cards with a numeric value count (no control cards, no ∞), only
- * for decks that aim to agree, from two such votes on. Positioned by value like the average pointer: the median is
+ * "Average and median" (show_avg). Votes on cards with a numeric value count, ∞ as the highest value (no control
+ * cards), only for decks that aim to agree, from two such votes on. Positioned by value like the average pointer: the median is
  * the middle vote (odd) or the mean of the two middle votes (even); a column with exactly that value: through its
- * middle, else between its neighbouring columns by value.
+ * middle, else between its neighbouring columns by value; between a value and ∞ halfway between their columns.
  */
 const DESKTOP = { width: 1280, height: 800 };
 const SHOTS = process.env.MEDIAN_SHOTS; // directory for manual look checks (screenshots), unset in CI
@@ -32,7 +32,7 @@ async function lineLeft(page: Page): Promise<number> {
   });
 }
 
-test('median line: on the middle column, between two columns by value, ignores control cards and ∞, follows the switch and the deck aim (B-53)',
+test('median line: on the middle column, between two columns by value, ignores control cards, follows the switch and the deck aim (B-53)',
   async ({ browser }) => {
   const alice = await newPlayer(browser, { viewport: DESKTOP });
   const url = await createTeam(alice, 'Median Line');
@@ -56,8 +56,8 @@ test('median line: on the middle column, between two columns by value, ignores c
     await expect(line).toBeHidden();
   };
 
-  // one vote with a value (?, ☕ and ∞ have none): no line
-  await vote(['five001', 'qstmrk1', 'break01', 'infin01']);
+  // one vote with a value (? and ☕ have none): no line
+  await vote(['five001', 'qstmrk1', 'break01', 'break01']);
   await expect(alice.locator('#spread_bars [data-card="five001"] .spread-count')).toHaveText('1');
   await expect(line).toBeHidden();
 
@@ -95,7 +95,7 @@ test('median line: on the middle column, between two columns by value, ignores c
   expect(Math.abs(await lineLeft(alice) - (c5 + (await colCenter(alice, 'eight01') - c5) / 6))).toBeLessThan(1.5);
   if (SHOTS) await alice.locator('#spread').screenshot({ path: `${SHOTS}/median-even-dark.png` });
 
-  // even, both middle votes on the same card (3, 5, 5, ∞ – ∞ does not count: 3, 5, 5): on the 5
+  // even, both middle votes on the same card (3, 5, 5, ∞ – ∞ is the highest value): on the 5
   await newRound();
   await vote(['three01', 'five001', 'five001', 'infin01']);
   await expect(line).toHaveAttribute('data-median', '5');
@@ -258,4 +258,57 @@ test('median line rises above the columns, also above the frame of the current e
   expect(Math.abs(g.lineBottom - g.base)).toBeLessThan(1.5);
   expect(g.lineTop).toBeGreaterThanOrEqual(g.sideTop);
   if (SHOTS) await alice.locator('#spread').screenshot({ path: `${SHOTS}/median-5-8-est-phone.png` });
+});
+
+test('median line with ∞: ∞ counts as the highest value, on the ∞ column or halfway to it (B-53, Andreas)',
+  async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: DESKTOP });
+  const url = await createTeam(alice, 'Median Infinity');
+  const t = new URL(url).searchParams.get('t')!;
+  await joinAsPlayer(alice, url, 'Alice');
+  const me = await alice.evaluate(() => localStorage.getItem('SID')!);
+  await setTeamDeck(alice, url, 'fib-classic', null, CONTROLS_ALL);
+  await post(alice, 'update_show_avg.php', { t, show_avg: '1' });
+  const [bob, carol, dan] = await addPlayersViaApi(alice, url, ['Bob', 'Carol', 'Dan']);
+  await alice.reload();
+  const line = alice.locator('#spread_median');
+  const status = alice.locator('#round_status');
+  const vote = async (cards: string[]) => {
+    for (const [i, id] of [me, bob, carol, dan].entries()) await post(alice, 'setc.php', { t, id, cardkey: cards[i] });
+    await expect(status).toHaveText('revealed');
+  };
+  const newRound = async () => {
+    await post(alice, 'newround.php', { t, id: me });
+    await expect(status).not.toHaveText('revealed');
+    await expect(line).toBeHidden();
+  };
+  const halfway = async (a: string, b: string) => {
+    const ca = await colCenter(alice, a);
+    return ca + (await colCenter(alice, b) - ca) / 2;
+  };
+
+  // 3, 5, ∞, ∞: between the 5 and the ∞, halfway between their columns
+  await vote(['three01', 'five001', 'infin01', 'infin01']);
+  await expect(line).toBeVisible();
+  await expect(line).toHaveAttribute('data-median', '5–∞');
+  await expect(line.locator('.sr-only')).toHaveText('Median between 5 and ∞');
+  expect(Math.abs(await lineLeft(alice) - await halfway('five001', 'infin01'))).toBeLessThan(1.5);
+
+  // 5, ∞, ∞ (the ? does not count): on the ∞ column
+  await newRound();
+  await vote(['five001', 'infin01', 'infin01', 'qstmrk1']);
+  await expect(line).toHaveAttribute('data-median', '∞');
+  await expect(line.locator('.sr-only')).toHaveText('Median ∞');
+  expect(Math.abs(await lineLeft(alice) - await colCenter(alice, 'infin01'))).toBeLessThan(1.5);
+
+  // 3 and ∞ (☕ does not count): halfway between the 3 and the ∞
+  await newRound();
+  await vote(['three01', 'infin01', 'break01', 'break01']);
+  await expect(line).toHaveAttribute('data-median', '3–∞');
+  expect(Math.abs(await lineLeft(alice) - await halfway('three01', 'infin01'))).toBeLessThan(1.5);
+
+  // only one vote with a value besides control cards: ∞ alone is no line
+  await newRound();
+  await vote(['infin01', 'qstmrk1', 'break01', 'break01']);
+  await expect(line).toBeHidden();
 });

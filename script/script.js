@@ -1579,7 +1579,7 @@ function sendReaction(toMkey, code) {
 /* B-131: the same staggered limit as poker-msg (per connection, sliding windows; keep both in step): at most
  * [count, window in ms]. Above it poker-msg drops the reaction silently, so the board does not send it at all and
  * says so (except for the 1 s window: a double click, nothing to say). Per tab, like the connection. */
-const REACT_LIMITS = [[1, 1000], [10, 60 * 1000]];
+const REACT_LIMITS = [[3, 1000], [10, 60 * 1000]];
 const REACT_LIMIT_TOAST_MS = 4000; // the hint at most once in this time, so it does not spam itself
 let gReactSent = [];               // performance.now() of the own reactions sent (the longest window)
 let gReactToastAt = -Infinity;
@@ -1738,26 +1738,33 @@ function setNudgeSound(value) {
     } catch (e) { /* not remembered */ }
 }
 
-/* the first click, tap or key on the page: make or wake the AudioContext (until it runs) */
+/* the first click, tap or key on the page: make or wake the AudioContext (until it runs).
+ * On touch, pointerdown is no user activation (iOS only counts pointerup/touchend/click),
+ * so all of them are heard; the listeners go away once the context really runs. */
+const NUDGE_WAKE_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'];
+
 function initNudgeAudio() {
     checkRadio('cet_nudge_sound', nudgeSoundOn() ? 'on' : 'off');
     const Ctx = window.AudioContext ?? window.webkitAudioContext;
     if (typeof Ctx !== 'function') return;
+    const done = () => {
+        if (gAudioCtx === null || gAudioCtx.state !== 'running') return;
+        NUDGE_WAKE_EVENTS.forEach(type => document.removeEventListener(type, wake, true));
+    };
     const wake = () => {
         try {
             if (gAudioCtx === null) gAudioCtx = new Ctx();
-            if (gAudioCtx.state === 'suspended') gAudioCtx.resume().catch(() => {});
+            if (gAudioCtx.state !== 'running') {
+                const p = gAudioCtx.resume();
+                if (p && typeof p.then === 'function') p.then(done, () => {});
+            }
         } catch (e) {
             gAudioCtx = null;
             return;
         }
-        if (gAudioCtx.state === 'running') {
-            document.removeEventListener('pointerdown', wake, true);
-            document.removeEventListener('keydown', wake, true);
-        }
+        done();
     };
-    document.addEventListener('pointerdown', wake, true);
-    document.addEventListener('keydown', wake, true);
+    NUDGE_WAKE_EVENTS.forEach(type => document.addEventListener(type, wake, true));
 }
 
 function alertNudge() {
@@ -2442,6 +2449,22 @@ function isRetryableWrite(url) {
     return m !== null && WRITE_RETRY_SCRIPTS.has(m[1]);
 }
 
+/* B-135: the same write target (endpoint, team, player/item and the names of the set fields): a newer write of it
+ * makes a pending retry of an older one void (it would overwrite the newer choice) */
+const WRITE_TARGET_PARAMS = ['t', 'id', 'item'];
+const gWriteGen = new Map();   // write key -> number of the latest write started
+
+function writeKey(url) {
+    try {
+        const parsed = new URL(url, location.href);
+        const names = Array.from(new Set(parsed.searchParams.keys())).sort();
+        const target = WRITE_TARGET_PARAMS.map(name => name + '=' + (parsed.searchParams.get(name) ?? ''));
+        return parsed.pathname + '|' + target.join('&') + '|' + names.join(',');
+    } catch (e) {
+        return url;
+    }
+}
+
 /* B-135: a network error of fetch (TypeError), not a timeout or abort (and never an HTTP status: fetch resolves) */
 function isNetworkError(error) {
     return error instanceof TypeError;
@@ -2467,10 +2490,21 @@ function fetchWrite(url, init) {
 function apiWrite(url, init = {}, beforeReload = null) {
     const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
     if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
+    const key = writeKey(url);
+    const gen = (gWriteGen.get(key) || 0) + 1;
+    gWriteGen.set(key, gen);
     return fetchWrite(url, init).catch(error => {
         if (!isNetworkError(error) || !isRetryableWrite(url)) throw error;
-        console.log('write retry', url, error);
-        return new Promise(resolve => setTimeout(resolve, WRITE_RETRY_MS)).then(() => fetchWrite(url, init));
+        return new Promise(resolve => setTimeout(resolve, WRITE_RETRY_MS)).then(() => {
+            // a newer write of the same target started meanwhile: it wins, no retry of the old value (and no error
+            // message: an empty success, the newer write reports for itself)
+            if (gWriteGen.get(key) !== gen) {
+                console.log('write superseded', url);
+                return new Response(null, { status: 204, statusText: 'Superseded' });
+            }
+            console.log('write retry', url, error);
+            return fetchWrite(url, init);
+        });
     }).catch(error => {
         console.log('write failed', url, error);
         return null;
@@ -3494,34 +3528,46 @@ function updateSide(json, glide = true) {
     }
 }
 
-/* B-53: the median of the votes: { value, low, high } or null. Only votes on cards with a numeric value count (no
- * control cards, no cards without a value, no ∞, no cards with "range": false), at least two of them. Odd number: the
- * value of the middle vote; even: the mean of the two middle votes (5 and 13: 9), as the average pointer works on
- * values too. low/high: the neighbouring deck cards it lies between (both the same card when one has exactly that
- * value). The line follows deck order, so a deck whose values do not rise in deck order (a custom set) has none. */
+/* B-53: the median of the votes: { value, low, high, share } or null. Votes on cards with a numeric value count, and
+ * ∞ as the highest value (Andreas); not: control cards, cards without a value, cards with "range": false. At least
+ * two of them. Odd number: the value of the middle vote; even: the mean of the two middle votes (5 and 13: 9), as the
+ * average pointer works on values too. low/high: the neighbouring deck cards it lies between (both the same card when
+ * one has exactly that value; both ∞ when the middle votes are ∞). share: the way from low to high (0..1).
+ * Between a value and ∞ (3, 5, ∞, ∞) there is no mean: the line stands halfway between their columns (value
+ * Infinity, low the card of the finite middle vote, high ∞). The line follows deck order, so a deck whose values do
+ * not rise in deck order (a custom set, ∞ not after the values) has none. */
 function medianColumns(cardStats) {
-    const valued = gDeck.cards.filter(card => card.value != null && !card.infinite && !card.control
+    const valued = gDeck.cards.filter(card => (card.value != null || card.infinite) && !card.control
         && !card.controlCard && card.range !== false);
-    if (valued.some((card, i) => i > 0 && card.value < valued[i - 1].value)) return null;
+    const rank = card => card.infinite ? Infinity : card.value;
+    if (valued.some((card, i) => i > 0 && rank(card) < rank(valued[i - 1]))) return null;
     const votes = [];
     valued.forEach(card => {
         const n = cardStats[card.key] ? cardStats[card.key].usageCount : 0;
-        for (let i = 0; i < n; i++) votes.push(card.value);
+        for (let i = 0; i < n; i++) votes.push(card);
     });
     if (votes.length < 2) return null;
     const half = votes.length >> 1;
-    const value = votes.length % 2 === 1 ? votes[half] : (votes[half - 1] + votes[half]) / 2;
-    const exact = valued.find(card => card.value === value);
-    if (exact) return { value, low: exact, high: exact };
-    const low = valued.filter(card => card.value < value).pop();
-    const high = valued.find(card => card.value > value);
-    return low && high ? { value, low, high } : null;
+    if (votes.length % 2 === 1 || rank(votes[half - 1]) === rank(votes[half])) {
+        const card = votes[half];
+        return { value: rank(card), low: card, high: card, share: 0 };
+    }
+    const lowVote = votes[half - 1];
+    const highVote = votes[half];
+    if (highVote.infinite) return { value: Infinity, low: lowVote, high: highVote, share: 0.5 };
+    const value = (rank(lowVote) + rank(highVote)) / 2;
+    const exact = valued.find(card => rank(card) === value);
+    if (exact) return { value, low: exact, high: exact, share: 0 };
+    const low = valued.filter(card => rank(card) < value).pop();
+    const high = valued.find(card => rank(card) > value);
+    return low && high ? { value, low, high, share: (value - low.value) / (high.value - low.value) } : null;
 }
 
 /* B-53: the dashed median line in the spread (#spread_median, left set here): through the middle of the column with
  * the median's value, else between the middles of its neighbouring columns, by value (median 9 between 8 and 13: a
- * fifth of the way from the 8). median: medianColumns() or null (no line). Its sr-only text says the value
- * ("Median 3", "Median 9"; the card's label when a column has exactly that value). */
+ * fifth of the way from the 8; between a value and ∞: halfway). median: medianColumns() or null (no line). Its
+ * sr-only text and data-median say the value ("Median 3", "Median 9", "Median ∞", "Median between 5 and ∞"; the
+ * card's label when a column has exactly that value). */
 function syncMedianLine(median) {
     const centerOf = col => { const r = col.getBoundingClientRect(); return r.left + r.width / 2; };
     const line = document.getElementById('spread_median');
@@ -3531,8 +3577,7 @@ function syncMedianLine(median) {
     const colHigh = median ? bars.querySelector('[data-card="' + median.high.key + '"]') : null;
     let x = null;
     if (colLow !== null && colHigh !== null) {
-        const share = median.low === median.high ? 0 : (median.value - median.low.value) / (median.high.value - median.low.value);
-        x = centerOf(colLow) + share * (centerOf(colHigh) - centerOf(colLow));
+        x = centerOf(colLow) + median.share * (centerOf(colHigh) - centerOf(colLow));
     }
     if (x === null) {
         line.hidden = true;
@@ -3540,8 +3585,17 @@ function syncMedianLine(median) {
     }
     const left = x - line.parentElement.getBoundingClientRect().left;
     line.style.left = Math.round(left * 2) / 2 + 'px';
-    const value = String(Math.round(median.value * 100) / 100);
-    const text = 'Median ' + (median.low === median.high ? median.low.label : value);
+    let value, text;
+    if (median.low === median.high) {
+        value = median.low.infinite ? '\u221e' : String(Math.round(median.value * 100) / 100);
+        text = 'Median ' + (median.low.infinite ? '\u221e' : median.low.label);
+    } else if (median.high.infinite) {
+        value = String(median.low.value) + '\u2013\u221e';
+        text = 'Median between ' + median.low.label + ' and \u221e';
+    } else {
+        value = String(Math.round(median.value * 100) / 100);
+        text = 'Median ' + value;
+    }
     const label = line.querySelector('.sr-only');
     if (label.textContent !== text) label.textContent = text;
     line.setAttribute('data-median', value);
