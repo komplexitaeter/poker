@@ -7,7 +7,8 @@ require './lib.php';
  * (topic_items.topics_rev) differs from the rev of its last list; the done items only when the menu shows them.
  * GET ?t=<team>&done=1 (optional: with done items)&done_offset=<n> (default 0)&done_limit=<1..100> (default 50)
  * Answer: {topics_rev, open: [all open items in order, open[0] = active], open_count, done_count,
- *          limits: {open, ext_id, heading, description}, with done=1 also done: [newest first], done_offset}
+ *          limits: {open, total, total_count, ext_id, heading, description}, with done=1 also done: [newest first],
+ *          done_offset}. "Add item" is refused (409 limit) at open_count >= limits.open or total_count >= limits.total.
  * Items as in dao.php topic_items.active (script/types.ts TopicItem). 403 unknown team.
  */
 set_header('json');

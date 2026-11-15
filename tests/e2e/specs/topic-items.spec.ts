@@ -527,7 +527,7 @@ test('get_topics.php: open list, done only on request, paging, consistent rev; d
   expect(plain.open_count).toBe(100);
   expect(plain.done_count).toBe(120);
   expect(plain.done).toBeUndefined();
-  expect(plain.limits).toEqual({ open: 100, ext_id: 20, heading: 200, description: 2000 });
+  expect(plain.limits).toEqual({ open: 100, total: 1000, total_count: 220, ext_id: 20, heading: 200, description: 2000 });
   expect(plain.topics_rev).toBe(rev(t));
 
   const page1 = await lists(page, t, { done: 1 });

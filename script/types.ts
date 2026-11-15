@@ -168,7 +168,15 @@ export interface TopicListsJsonType {
     open: TopicItem[];           // all open items in their order, open[0] is the active one
     open_count: number;
     done_count: number;          // all done items of the team
-    limits: { open: number; ext_id: number; heading: number; description: number };
+    // max lengths and limits; "Add item" gets 409 limit at open_count >= open or total_count >= total
+    limits: {
+        open: number;        // max open items per team
+        total: number;       // max items per team incl. done ones
+        total_count: number; // all items of the team now (open_count + done_count)
+        ext_id: number;
+        heading: number;
+        description: number;
+    };
     done?: TopicItem[];          // only with done=1: newest first (done_date), done_limit items from done_offset
     done_offset?: number;        // only with done=1
 }

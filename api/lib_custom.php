@@ -162,10 +162,17 @@ function custom_card_out(array $row, array $symbol_values): array
  */
 function load_custom_sets($link, string $t, array $catalog, bool $for_update = false): array
 {
-    $sql = $link->prepare("select s.id, s.name, s.style, s.aim, s.rev
-                             from pok_custom_sets_tbl s
-                            where s.team_id = ? and s.deleted = 0
-                            order by s.sort_order, s.id" . ($for_update ? " for update" : ""));
+    /* B-52 S1b: without the column aim (code deployed before the S1b schema) every set is 'agree'. Called by getDao()
+       for every team outside its try/catch, so a missing column must not break dao.php (only 1054/1146 is caught). */
+    $from = "  from pok_custom_sets_tbl s
+            where s.team_id = ? and s.deleted = 0
+            order by s.sort_order, s.id" . ($for_update ? " for update" : "");
+    try {
+        $sql = $link->prepare("select s.id, s.name, s.style, s.aim, s.rev " . $from);
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        $sql = $link->prepare("select s.id, s.name, s.style, 'agree' aim, s.rev " . $from);
+    }
     $sql->bind_param('s', $t);
     $sql->execute();
     $result = $sql->get_result();
@@ -488,10 +495,20 @@ function insert_custom_card($link, int $set_id, int $position, array $card): str
 /* creates a set with its cards (no limits checked here), returns the set id */
 function insert_custom_set($link, string $t, string $name, string $style, array $cards, string $aim = 'agree'): int
 {
-    $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, aim, sort_order)
-                           select ?, ?, ?, ?, least(255, ifnull(max(sort_order), 0) + 1)
-                             from pok_custom_sets_tbl where team_id = ?");
-    $sql->bind_param('sssss', $t, $name, $style, $aim, $t);
+    try {
+        $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, aim, sort_order)
+                               select ?, ?, ?, ?, least(255, ifnull(max(sort_order), 0) + 1)
+                                 from pok_custom_sets_tbl where team_id = ?");
+        $sql->bind_param('sssss', $t, $name, $style, $aim, $t);
+    } catch (mysqli_sql_exception $e) {
+        /* B-52 S1b: without the column aim (code before the S1b schema) only the default 'agree' can be stored; this
+           keeps the example set and the deck migration in getDao()/setc.php working */
+        if (!is_missing_schema_error($e) || $aim !== 'agree') throw $e;
+        $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, sort_order)
+                               select ?, ?, ?, least(255, ifnull(max(sort_order), 0) + 1)
+                                 from pok_custom_sets_tbl where team_id = ?");
+        $sql->bind_param('ssss', $t, $name, $style, $t);
+    }
     $sql->execute();
     $set_id = (int)$link->insert_id;
     foreach (array_values($cards) as $i => $card) insert_custom_card($link, $set_id, $i, $card);

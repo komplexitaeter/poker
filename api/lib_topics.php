@@ -637,7 +637,9 @@ function topic_lists($link, string $t, array $catalog, bool $with_done, int $don
         'open' => $open,
         'open_count' => count($open),
         'done_count' => $done_count,
-        'limits' => array('open' => TOPIC_ITEMS_OPEN_MAX, 'ext_id' => TOPIC_EXT_ID_MAX,
+        // total/total_count: all items incl. done ones, topic_item_add.php refuses at total_count >= total (409 limit)
+        'limits' => array('open' => TOPIC_ITEMS_OPEN_MAX, 'total' => TOPIC_ITEMS_TOTAL_MAX,
+                          'total_count' => count($open) + $done_count, 'ext_id' => TOPIC_EXT_ID_MAX,
                           'heading' => TOPIC_HEADING_MAX, 'description' => TOPIC_DESCRIPTION_MAX),
     );
     if ($with_done) {
