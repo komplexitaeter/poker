@@ -1011,12 +1011,13 @@ test('the open overlay follows a new estimate; after leaving the focus is not lo
   await expect(dialog).toBeHidden();
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Beta');
   await expect(alice.locator('#round_status')).not.toHaveText('revealed');
-  await expect.poll(() => alice.evaluate(() => {
-    const el = document.activeElement as HTMLElement | null;
-    return el !== null && el !== document.body && el.offsetParent !== null;
-  })).toBe(true);
-  await alice.waitForTimeout(500); // the reload after the write: the focus stays placed
-  expect(await alice.evaluate(() => document.activeElement !== document.body)).toBe(true);
+  const focusPlaced = () => alice.evaluate(() => {
+    const el = document.activeElement as HTMLButtonElement | null;
+    return el !== null && el !== document.body && el.offsetParent !== null && !el.disabled;
+  });
+  await expect.poll(focusPlaced).toBe(true);
+  await alice.waitForTimeout(800); // the reload after the write: the focus stays placed
+  expect(await focusPlaced()).toBe(true);
 });
 
 test('the description folds again when another item is shown (review)', async ({ browser }) => {
@@ -1061,7 +1062,8 @@ test('the item limit: its own message, "+ Add item" off when all items count up 
   await alice.route('**/api/get_topics.php*', async route => {
     const response = await route.fetch();
     const lists = await response.json();
-    lists.limits.total = 2;
+    lists.limits.total = 2; // the server says 1000 (limits.total_count: open and done together)
+    lists.limits.total_count = lists.open_count + lists.done_count;
     await route.fulfill({ response, json: lists });
   });
   await alice.locator('#topic_tab_note').click();

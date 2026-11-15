@@ -176,7 +176,8 @@ function updateTopicView(json) {
     updateNextItemButton(json);
     updateRailItem(json);
     syncLeaveItem(json);
-    keepLeaveFocus();
+    // after the rest of the board is updated (a focused "New round" may be disabled by it)
+    if (gLeaveFocus !== null) requestAnimationFrame(() => setTimeout(keepLeaveFocus, 0));
 }
 
 /* ---------- the note on the board (S1c) ---------- */
@@ -577,7 +578,8 @@ function focusAfterLeave(opener) {
     if (target !== null) focusQuietly(target, { preventScroll: true });
 }
 
-/* while a leave is fresh: the focus fell to the page body (a focused control was disabled or rebuilt) -> placed again */
+/* while a leave is fresh: the focus fell to the page body or sits on a control that cannot take it any more (disabled
+ * or hidden by the board update) -> placed again */
 function keepLeaveFocus() {
     if (gLeaveFocus === null) return;
     if (Date.now() > gLeaveFocus.until) {
@@ -586,7 +588,7 @@ function keepLeaveFocus() {
     }
     if (leaveItemOpen()) return;
     const active = document.activeElement;
-    if (active === null || active === document.body || active === document.documentElement) {
+    if (active === null || active === document.body || active === document.documentElement || !focusUsable(active)) {
         focusAfterLeave(gLeaveFocus.opener);
     }
 }
@@ -680,8 +682,9 @@ function initLeaveItem() {
 
 const TOPIC_LIMIT_TEXT = 'Item limit reached \u2013 delete done items to add new ones.';
 
-/* why no item can be added now: 'open' (too many open items), 'total' (open and done together, limits.total of
- * get_topics.php; an older server without it: not checked) or null */
+/* why no item can be added now: 'open' (too many open items), 'total' (open and done together reach limits.total of
+ * get_topics.php; an older server without it: not checked) or null. The count comes from the dao summary (the same as
+ * limits.total_count, but always as fresh as the board) */
 function topicAddBlocked() {
     const limits = gTopicLists && gTopicLists.limits;
     if (!gTopicItems || !limits) return null;
