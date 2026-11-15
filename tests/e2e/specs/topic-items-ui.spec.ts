@@ -984,3 +984,90 @@ test('done items export: no buttons without done items (B-52)', async ({ browser
   await expect(alice.locator('#topic_tab_done')).toHaveAttribute('aria-disabled', 'true');
   await expect(alice.locator('#ti_export_copy, #ti_export_csv')).toHaveCount(0);
 });
+
+test('the open overlay follows a new estimate; after leaving the focus is not lost (B-52 S1c, review)', async ({ browser }) => {
+  const { alice, t, ids } = await setup(browser, 'Topic UI Leave Sync');
+  await openTopics(alice);
+  await fillItem(alice, 'Alpha');
+  await fillItem(alice, 'Beta');
+  await closeMenu(alice);
+  await reveal(alice, t, ids, ['three01', 'five001', 'five001']);
+  const dialog = alice.locator('#leave_item');
+  const options = dialog.locator('.leave-opt');
+  await alice.locator('#nextitem_btn').click();
+  await expect(options.first().locator('.leave-opt-t')).toHaveText('Close with 5');
+  await expect(options.first()).toBeFocused();
+
+  // someone else picks another estimate meanwhile: the suggestion follows, it keeps the focus
+  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${ids[0]}`)).json();
+  const item = dao.topic_items.active.id;
+  expect((await alice.request.post(`/api/topic_item_result.php?t=${encodeURIComponent(t)}&item=${item}&card=three01`)).ok()).toBeTruthy();
+  await expect(options.first().locator('.leave-opt-t')).toHaveText('Close with 3');
+  await expect(options.first()).toHaveAttribute('data-card', 'three01');
+  await expect(options.first()).toBeFocused();
+
+  // Enter closes with 3; the focus goes to a control on the page, not to the page body
+  await alice.keyboard.press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Beta');
+  await expect(alice.locator('#round_status')).not.toHaveText('revealed');
+  await expect.poll(() => alice.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    return el !== null && el !== document.body && el.offsetParent !== null;
+  })).toBe(true);
+  await alice.waitForTimeout(500); // the reload after the write: the focus stays placed
+  expect(await alice.evaluate(() => document.activeElement !== document.body)).toBe(true);
+});
+
+test('the description folds again when another item is shown (review)', async ({ browser }) => {
+  const { alice, t, ids } = await setup(browser, 'Topic UI Fold');
+  const long = Array.from({ length: 12 }, (_, i) => `Line ${i + 1} of a long description.`).join('\n\n');
+  for (const heading of ['Alpha', 'Beta']) {
+    expect((await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`,
+      { form: { heading, description: long } })).ok()).toBeTruthy();
+  }
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Alpha');
+  await alice.locator('#ti_desc_more').click();
+  await expect(alice.locator('#ti_desc_more')).toHaveText('less');
+
+  // someone else leaves the item: the next one starts folded
+  await reveal(alice, t, ids, ['three01', 'five001', 'five001']);
+  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${ids[0]}`)).json();
+  expect((await alice.request.post(`/api/topic_item_next.php?t=${encodeURIComponent(t)}&item=${dao.topic_items.active.id}&mode=close_empty`)).ok()).toBeTruthy();
+  await expect(alice.locator('#topic .ti-heading')).toHaveText('Beta');
+  await expect(alice.locator('#ti_desc_view')).toHaveClass(/clamp/);
+  await expect(alice.locator('#ti_desc_more')).toHaveText('more');
+});
+
+test('the item limit: its own message, "+ Add item" off when all items count up to limits.total (review)', async ({ browser }) => {
+  const { alice, t } = await setup(browser, 'Topic UI Limit');
+  await openTopics(alice);
+  await fillItem(alice, 'Alpha');
+
+  // the server says "limit" (409): not "try again"
+  await alice.route('**/api/topic_item_add.php*', route =>
+    route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'limit' }) }));
+  await alice.locator('#ti_add').click();
+  await alice.locator('#ti_heading').fill('Beta');
+  await alice.locator('#ti_save').click();
+  await expect(alice.locator('#toast')).toHaveText('Item limit reached – delete done items to add new ones.');
+  await expect(alice.locator('#ti_save')).toBeEnabled();
+  await alice.unroute('**/api/topic_item_add.php*');
+  await alice.locator('#ti_save').click();
+  await expect(alice.locator('#ti_form')).toHaveCount(0);
+  await expect(openHeadings(alice)).toHaveText(['Alpha', 'Beta']);
+
+  // get_topics.php with limits.total: reached (2 of 2) -> "+ Add item" off
+  await alice.route('**/api/get_topics.php*', async route => {
+    const response = await route.fetch();
+    const lists = await response.json();
+    lists.limits.total = 2;
+    await route.fulfill({ response, json: lists });
+  });
+  await alice.locator('#topic_tab_note').click();
+  await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading: 'Gamma' } });
+  await showTab(alice, 'open');
+  await expect(openHeadings(alice)).toHaveText(['Alpha', 'Beta', 'Gamma']);
+  await expect(alice.locator('#ti_add')).toBeDisabled();
+  await expect(alice.locator('#ti_add')).toHaveAttribute('title', 'Item limit reached – delete done items to add new ones.');
+});

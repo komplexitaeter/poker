@@ -678,6 +678,18 @@ function initLeaveItem() {
 
 /* ---------- writes ---------- */
 
+const TOPIC_LIMIT_TEXT = 'Item limit reached \u2013 delete done items to add new ones.';
+
+/* why no item can be added now: 'open' (too many open items), 'total' (open and done together, limits.total of
+ * get_topics.php; an older server without it: not checked) or null */
+function topicAddBlocked() {
+    const limits = gTopicLists && gTopicLists.limits;
+    if (!gTopicItems || !limits) return null;
+    if (typeof limits.open === 'number' && gTopicItems.open_count >= limits.open) return 'open';
+    if (typeof limits.total === 'number' && gTopicItems.open_count + gTopicItems.done_count >= limits.total) return 'total';
+    return null;
+}
+
 function topicWrite(endpoint, params, form = null, quiet = []) {
     const query = new URLSearchParams(Object.assign({ t: t }, params));
     const init = form === null ? {} : { body: new URLSearchParams(form) };
@@ -903,8 +915,8 @@ function renderTopicMenu(force = false) {
     const noteAdd = document.getElementById('topic_note_add');
     if (noteAdd !== null) {
         noteAdd.hidden = gTopicItems === null;
-        noteAdd.disabled = !!(gTopicItems && gTopicLists && gTopicLists.limits
-            && gTopicItems.open_count >= gTopicLists.limits.open);
+        noteAdd.disabled = topicAddBlocked() !== null;
+        noteAdd.title = topicAddBlocked() === 'total' ? TOPIC_LIMIT_TEXT : '';
     }
     if (gTopicItems === null) {
         // an old server: the note alone
@@ -1006,7 +1018,9 @@ function topicOpenParts() {
         add.id = 'ti_add';
         add.dataset.tiAct = 'add';
         add.append(iconSvg('plus'), 'Add item');
-        add.disabled = !!(lists && lists.limits && summary.open_count >= lists.limits.open);
+        const blocked = topicAddBlocked();
+        add.disabled = blocked !== null;
+        if (blocked === 'total') add.title = TOPIC_LIMIT_TEXT;
         parts.push(add);
         if (!has) parts.push(textElement('p', 'hint ti-add-hint', 'Several topics? Add them as items and go through them one by one.'));
     }
@@ -1522,9 +1536,16 @@ function saveTopicEditor(item) {
     const save = document.getElementById('ti_save');
     save.disabled = true;
     const request = item === null
-        ? topicWrite('topic_item_add.php', Object.assign({ at: 'end' }, maturity), form)
+        ? topicWrite('topic_item_add.php', Object.assign({ at: 'end' }, maturity), form, [409])
         : topicWrite('topic_item_edit.php', Object.assign({ item: item.id }, maturity), form);
     request.then(response => {
+        if (response !== null && response.status === 409) {
+            // the limit of items (open or all): its own message, not "try again"
+            response.json().catch(() => null).then(answer => {
+                showToast(answer && answer.error === 'limit' ? TOPIC_LIMIT_TEXT : 'Not saved \u2013 please try again',
+                    DECK_TOAST_MS, 'error');
+            });
+        }
         if (response !== null && response.ok) {
             gTopicEditor = null;
             renderTopicMenu(true);
