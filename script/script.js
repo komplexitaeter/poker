@@ -1738,26 +1738,33 @@ function setNudgeSound(value) {
     } catch (e) { /* not remembered */ }
 }
 
-/* the first click, tap or key on the page: make or wake the AudioContext (until it runs) */
+/* the first click, tap or key on the page: make or wake the AudioContext (until it runs).
+ * On touch, pointerdown is no user activation (iOS only counts pointerup/touchend/click),
+ * so all of them are heard; the listeners go away once the context really runs. */
+const NUDGE_WAKE_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'];
+
 function initNudgeAudio() {
     checkRadio('cet_nudge_sound', nudgeSoundOn() ? 'on' : 'off');
     const Ctx = window.AudioContext ?? window.webkitAudioContext;
     if (typeof Ctx !== 'function') return;
+    const done = () => {
+        if (gAudioCtx === null || gAudioCtx.state !== 'running') return;
+        NUDGE_WAKE_EVENTS.forEach(type => document.removeEventListener(type, wake, true));
+    };
     const wake = () => {
         try {
             if (gAudioCtx === null) gAudioCtx = new Ctx();
-            if (gAudioCtx.state === 'suspended') gAudioCtx.resume().catch(() => {});
+            if (gAudioCtx.state !== 'running') {
+                const p = gAudioCtx.resume();
+                if (p && typeof p.then === 'function') p.then(done, () => {});
+            }
         } catch (e) {
             gAudioCtx = null;
             return;
         }
-        if (gAudioCtx.state === 'running') {
-            document.removeEventListener('pointerdown', wake, true);
-            document.removeEventListener('keydown', wake, true);
-        }
+        done();
     };
-    document.addEventListener('pointerdown', wake, true);
-    document.addEventListener('keydown', wake, true);
+    NUDGE_WAKE_EVENTS.forEach(type => document.addEventListener(type, wake, true));
 }
 
 function alertNudge() {
