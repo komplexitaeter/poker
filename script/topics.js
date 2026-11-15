@@ -60,6 +60,7 @@ let gTopicViewKey = '';       // what the column shows now
 let gTopicDescMore = false;   // the column: the whole description ("more")
 let gTopicMatOpen = false;    // results panel: the maturity text unfolded (a click on the triangle)
 let gTopicRevealed = false;
+let gTopicViewId = null;      // id of the item the column shows (null: none)
 
 function topicMarkdown(text) {
     const markDown = new Remarkable({ html: false, xhtmlOut: true, breaks: true, linkify: true, typographer: false });
@@ -139,6 +140,13 @@ function updateTopicView(json) {
     const edit = document.querySelector('.topic-bar .topic-edit');
     const item = activeTopicItem();
     updateBoardNote(json.topic);
+    const itemId = item === null ? null : item.id;
+    if (itemId !== gTopicViewId) {
+        // another item (left here or by someone else): its description and maturity text start folded
+        gTopicViewId = itemId;
+        gTopicDescMore = false;
+        gTopicMatOpen = false;
+    }
 
     if (item === null) {
         // S1c: the note is on the board, the column has no topic bar without an item
@@ -168,6 +176,7 @@ function updateTopicView(json) {
     updateNextItemButton(json);
     updateRailItem(json);
     syncLeaveItem(json);
+    keepLeaveFocus();
 }
 
 /* ---------- the note on the board (S1c) ---------- */
@@ -531,12 +540,54 @@ function closeLeaveItem() {
     if (dialog !== null && dialog.open) dialog.close();
 }
 
-/* the dialog closed (any way): the focus back to its opener while that can take it */
+/* the dialog closed (any way): the focus back to its opener while that can take it, else (the item was left, its
+ * buttons are disabled meanwhile) to a near control that can */
 function onLeaveItemClosed() {
     const opener = gLeave === null ? null : gLeave.opener;
     gLeave = null;
-    if (opener !== null && opener.isConnected && !opener.hidden && opener.offsetParent !== null) {
+    if (focusUsable(opener)) {
         opener.focus({ preventScroll: true });
+    } else if (opener !== null) {
+        focusAfterLeave(opener);
+    }
+}
+
+const LEAVE_FOCUS_MS = 5000;
+let gLeaveFocus = null;   // { opener, until } after "Next item" / "Finish item": the focus is kept off the page body
+
+function focusUsable(el) {
+    return el instanceof HTMLElement && el.isConnected && !el.hidden && !el.disabled && el.offsetParent !== null
+        && el.closest('[inert]') === null;
+}
+
+/* the opener first, then "new round" beside it, then the same pair in the other layout (column / rail), at last
+ * the heading of the item shown now */
+function focusAfterLeave(opener) {
+    const ids = opener !== null && opener.id === 'rail_next'
+        ? ['rail_next', 'rail_round', 'nextitem_btn', 'newroundbtn']
+        : ['nextitem_btn', 'newroundbtn', 'rail_next', 'rail_round'];
+    let target = ids.map(id => document.getElementById(id)).find(focusUsable) || null;
+    if (target === null) {
+        const heading = document.querySelector('#topic .ti-heading');
+        if (heading !== null && heading.offsetParent !== null) {
+            heading.tabIndex = -1;
+            target = heading;
+        }
+    }
+    if (target !== null) focusQuietly(target, { preventScroll: true });
+}
+
+/* while a leave is fresh: the focus fell to the page body (a focused control was disabled or rebuilt) -> placed again */
+function keepLeaveFocus() {
+    if (gLeaveFocus === null) return;
+    if (Date.now() > gLeaveFocus.until) {
+        gLeaveFocus = null;
+        return;
+    }
+    if (leaveItemOpen()) return;
+    const active = document.activeElement;
+    if (active === null || active === document.body || active === document.documentElement) {
+        focusAfterLeave(gLeaveFocus.opener);
     }
 }
 
@@ -555,6 +606,7 @@ function syncLeaveItem(json) {
 function leaveItem(mode, card) {
     const item = activeTopicItem();
     const id = gLeave === null ? null : gLeave.id;
+    const opener = gLeave === null ? null : gLeave.opener;
     closeLeaveItem();
     if (item === null || item.id !== id) return;
     const last = gTopicItems === null || gTopicItems.open_count <= 1;
@@ -562,11 +614,11 @@ function leaveItem(mode, card) {
     if (card) params.card = card;
     const buttons = ['nextitem_btn', 'rail_next'].map(bid => document.getElementById(bid)).filter(b => b !== null);
     buttons.forEach(button => { button.disabled = true; });
-    gTopicDescMore = false;
-    gTopicMatOpen = false;
+    gLeaveFocus = { opener, until: Date.now() + LEAVE_FOCUS_MS };
     // 409 not_active: someone else was quicker; the reload shows the new item
     topicWrite('topic_item_next.php', params, null, [409]).then(() => {
         buttons.forEach(button => { button.disabled = false; });
+        keepLeaveFocus();
     });
     measureEvent(mode === 'later' ? 'TOPIC_ITEM_LATER' : (last ? 'TOPIC_FINISH_ITEM' : 'TOPIC_NEXT_ITEM'));
 }
@@ -575,6 +627,8 @@ function initLeaveItem() {
     const dialog = document.getElementById('leave_item');
     if (dialog === null) return;
     dialog.addEventListener('close', onLeaveItemClosed);
+    // a click of one's own after leaving an item: the focus is the user's again
+    document.addEventListener('pointerdown', () => { gLeaveFocus = null; }, true);
     document.getElementById('leave_item_cancel').addEventListener('click', closeLeaveItem);
     dialog.addEventListener('click', event => {
         const option = event.target instanceof Element ? event.target.closest('.leave-opt') : null;
