@@ -3667,8 +3667,8 @@ function tipSide(players, card) {
 }
 
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
- * ("too big to estimate"), null for cards without a value (veto, control cards). Not for the
- * average: infinity stays out of it. */
+ * ("too big to estimate"), null for cards without a value (veto, control cards). ∞ counts as the highest value
+ * here as in the average pointer (it points at ∞ as soon as one ∞ is played) and the median (B-53). */
 function cardRank(card) {
     if (!card) return null;
     if (card.infinite) return Infinity;
