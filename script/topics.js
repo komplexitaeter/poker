@@ -488,10 +488,27 @@ function openLeaveItem(opener) {
     const item = activeTopicItem();
     const dialog = document.getElementById('leave_item');
     if (item === null || dialog === null || !gLastJson || dialog.open) return;
-    gLeave = { id: item.id, opener: opener || null };
+    gLeave = { id: item.id, opener: opener || null, key: '' };
     document.getElementById('leave_item_heading').textContent = (item.ext_id ? item.ext_id + ' ' : '') + item.heading;
+    renderLeaveItemChoices(gLastJson, item);
+    dialog.showModal();
+    const first = document.querySelector('#leave_item_opts .leave-opt');
+    if (first !== null) first.focus();
+}
+
+/* (re)builds the choices when they differ from the shown ones (the estimate or the deck aim changed meanwhile);
+ * a focused choice keeps the focus when it is still there, else the suggestion (the first one) gets it */
+function renderLeaveItemChoices(json, item) {
     const box = document.getElementById('leave_item_opts');
-    box.replaceChildren(...leaveItemChoices(gLastJson, item).map((choice, index) => {
+    if (box === null || gLeave === null) return;
+    const choices = leaveItemChoices(json, item);
+    const key = JSON.stringify(choices);
+    if (key === gLeave.key) return;
+    const rebuild = gLeave.key !== '';
+    gLeave.key = key;
+    const focused = document.activeElement instanceof Element ? document.activeElement.closest('.leave-opt') : null;
+    const focusedMode = focused !== null && box.contains(focused) ? focused.dataset.mode : null;
+    box.replaceChildren(...choices.map((choice, index) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'leave-opt' + (index === 0 ? ' primary' : '');
@@ -502,9 +519,11 @@ function openLeaveItem(opener) {
         button.append(title, textElement('small', 'leave-opt-h', choice.hint));
         return button;
     }));
-    dialog.showModal();
-    const first = box.querySelector('.leave-opt');
-    if (first !== null) first.focus();
+    if (!rebuild || focusedMode === null) return;
+    // "close" with another value is another choice: the focus goes to the suggestion again
+    const same = focusedMode === 'close' && focused.dataset.card !== undefined ? null
+        : box.querySelector('.leave-opt[data-mode="' + focusedMode + '"]');
+    focusQuietly(same !== null ? same : box.querySelector('.leave-opt'));
 }
 
 function closeLeaveItem() {
@@ -526,7 +545,11 @@ function syncLeaveItem(json) {
     if (gLeave === null || !leaveItemOpen()) return;
     const item = activeTopicItem();
     const revealed = json.all_players_ready && json.players_count > 0;
-    if (item === null || item.id !== gLeave.id || !revealed) closeLeaveItem();
+    if (item === null || item.id !== gLeave.id || !revealed) {
+        closeLeaveItem();
+        return;
+    }
+    renderLeaveItemChoices(json, item);
 }
 
 function leaveItem(mode, card) {
