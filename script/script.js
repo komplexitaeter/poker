@@ -1579,7 +1579,7 @@ function sendReaction(toMkey, code) {
 /* B-131: the same staggered limit as poker-msg (per connection, sliding windows; keep both in step): at most
  * [count, window in ms]. Above it poker-msg drops the reaction silently, so the board does not send it at all and
  * says so (except for the 1 s window: a double click, nothing to say). Per tab, like the connection. */
-const REACT_LIMITS = [[1, 1000], [10, 60 * 1000]];
+const REACT_LIMITS = [[3, 1000], [10, 60 * 1000]];
 const REACT_LIMIT_TOAST_MS = 4000; // the hint at most once in this time, so it does not spam itself
 let gReactSent = [];               // performance.now() of the own reactions sent (the longest window)
 let gReactToastAt = -Infinity;

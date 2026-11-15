@@ -9,14 +9,15 @@ import { newPlayer, createTeam, joinAsPlayer, tableCard, stopHbLoads } from './h
  * .is-hit on the card). Several landings on one card at once are offset (--land-i). The nudge circle (.nudge) sends
  * "react:0:<to>:nudge" (anonymous): no flight, no landing, the target shakes (.is-nudged; on the nudged one's board
  * also .is-nudged-me). Anonymous mode: no sender name. A hidden tab drops reactions (nothing is played late).
- * poker-msg checks the format only and forwards at most 1 reaction per connection and second and 10 a minute
- * (B-131); the board keeps to the same limits (a hint above them, none on a double click) and ignores unknown codes.
+ * poker-msg checks the format only and forwards at most 3 reactions per connection and second and 10 a minute
+ * (B-131); the board keeps to the same limits (a hint above the minute limit, none within the second) and ignores
+ * unknown codes.
  * SHOT_DIR (optional): stills of the flight, the landing and a nudge, and a video of a flight.
  */
 const DESKTOP = { width: 1280, height: 800 };
 const TABLET = { width: 1024, height: 768 };
 const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
-const RATE_LIMIT_MS = 1100; // poker-msg: one reaction per connection and second
+const RATE_LIMIT_MS = 1100; // poker-msg: a few reactions per connection and second (B-131: 3, before: 1); a pause keeps clear of it
 
 function teamIdOf(url: string): string {
   const teamId = new URL(url).searchParams.get('t') as string;
@@ -473,7 +474,7 @@ async function installClockOffset(page: Page): Promise<(ms: number) => Promise<v
   return ms => page.evaluate(d => { (window as unknown as { perfOffset: number }).perfOffset += d; }, ms);
 }
 
-test('rate limit: 10 reactions a minute go out, the 11th is not sent and shows a hint, a double click is silent (B-131)',
+test('rate limit: 3 a second and 10 a minute go out, the 4th in a second is silently not sent, the 11th in a minute shows a hint (B-131)',
   async ({ browser }) => {
   const { alice, bob, bobMkey } = await setup(browser, 'React Limit');
   const sent = await recordSent(alice);
@@ -489,17 +490,22 @@ test('rate limit: 10 reactions a minute go out, the 11th is not sent and shows a
   });
   const toasts = () => alice.evaluate(() => (window as unknown as W).toasts.slice());
 
-  // a double click on the nudge circle: one nudge goes out, the second (within 1 s) silently not
+  // a double click on the nudge circle: both nudges go out (3 a second), a third one too
   const bobCard = tableCard(alice, 'Bob');
   await bobCard.hover();
   await bobCard.getByRole('button', { name: 'Nudge Bob' }).dblclick();
-  await alice.waitForTimeout(500);
-  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`]);
+  await alice.waitForTimeout(300);
+  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`, `react:0:${bobMkey}:nudge`]);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'clap'), [bobMkey]);
+  expect(await sent()).toHaveLength(3);
+  // the 4th within the same second: silently not sent (no hint)
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'clap'), [bobMkey]);
+  expect(await sent()).toHaveLength(3);
   expect(await toasts()).toEqual([]);
   await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
 
-  // nine more, one per (faked) second: all go out
-  for (let i = 0; i < 9; i++) {
+  // seven more, one per (faked) second: all go out
+  for (let i = 0; i < 7; i++) {
     await advance(1100);
     await alice.evaluate(([to, c]) => (window as unknown as W).sendReaction(to, c), [bobMkey, i % 2 ? 'nudge' : 'clap']);
   }
@@ -534,7 +540,7 @@ test('a held Enter on the nudge circle or an emoji sends one reaction, not one p
   async ({ browser }) => {
   const { alice, bobMkey } = await setup(browser, 'React Hold');
   const sent = await recordSent(alice);
-  // the 1 s limit would hide the repeats: every repeat comes a (faked) 1.1 s later
+  // the 1 s limit (3) would hide most repeats: every repeat comes a (faked) 1.1 s later
   const advance = await installClockOffset(alice);
   const hold = async (key: string, repeats: number) => {
     await alice.keyboard.down(key);
