@@ -906,11 +906,6 @@ function renderTopicMenu(force = false) {
     const doneBox = document.getElementById('topic_done');
     const tabs = document.getElementById('topic_tabs');
     if (single === null || list === null || doneBox === null || tabs === null) return;
-    const label = single.querySelector('label.lab');
-    const labelText = topicHasItems() ? 'Note for everyone (optional, Markdown works)'
-        : 'What are you estimating? (optional, Markdown works)';
-    if (label !== null && label.textContent !== labelText) label.textContent = labelText;
-
     tabs.hidden = gTopicItems === null;
     const noteAdd = document.getElementById('topic_note_add');
     if (noteAdd !== null) {
