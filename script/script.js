@@ -3532,9 +3532,9 @@ function updateSide(json, glide = true) {
  * ∞ as the highest value (Andreas); not: control cards, cards without a value, cards with "range": false. At least
  * two of them. Odd number: the value of the middle vote; even: the mean of the two middle votes (5 and 13: 9), as the
  * average pointer works on values too. low/high: the neighbouring deck cards it lies between (both the same card when
- * one has exactly that value; both ∞ when the middle votes are ∞). share: the way from low to high (0..1).
- * Between a value and ∞ (3, 5, ∞, ∞) there is no mean: the line stands halfway between their columns (value
- * Infinity, low the card of the finite middle vote, high ∞). The line follows deck order, so a deck whose values do
+ * one has exactly that value; both ∞ when the upper middle vote is ∞). share: the way from low to high (0..1).
+ * Between a value and ∞ (3, 5, ∞, ∞) the median is ∞, as ∞ counts as a very large value (Andreas): the line stands on
+ * the ∞ column, like the average pointer on the ∞ card. The line follows deck order, so a deck whose values do
  * not rise in deck order (a custom set, ∞ not after the values) has none. */
 function medianColumns(cardStats) {
     const valued = gDeck.cards.filter(card => (card.value != null || card.infinite) && !card.control
@@ -3554,7 +3554,7 @@ function medianColumns(cardStats) {
     }
     const lowVote = votes[half - 1];
     const highVote = votes[half];
-    if (highVote.infinite) return { value: Infinity, low: lowVote, high: highVote, share: 0.5 };
+    if (highVote.infinite) return { value: Infinity, low: highVote, high: highVote, share: 0 };
     const value = (rank(lowVote) + rank(highVote)) / 2;
     const exact = valued.find(card => rank(card) === value);
     if (exact) return { value, low: exact, high: exact, share: 0 };
@@ -3565,9 +3565,9 @@ function medianColumns(cardStats) {
 
 /* B-53: the dashed median line in the spread (#spread_median, left set here): through the middle of the column with
  * the median's value, else between the middles of its neighbouring columns, by value (median 9 between 8 and 13: a
- * fifth of the way from the 8; between a value and ∞: halfway). median: medianColumns() or null (no line). Its
- * sr-only text and data-median say the value ("Median 3", "Median 9", "Median ∞", "Median between 5 and ∞"; the
- * card's label when a column has exactly that value). */
+ * fifth of the way from the 8; between a value and ∞ the median is ∞: its column). median: medianColumns() or null
+ * (no line). Its sr-only text and data-median say the value ("Median 3", "Median 9", "Median ∞"; the card's label when
+ * a column has exactly that value). */
 function syncMedianLine(median) {
     const centerOf = col => { const r = col.getBoundingClientRect(); return r.left + r.width / 2; };
     const line = document.getElementById('spread_median');
@@ -3589,9 +3589,6 @@ function syncMedianLine(median) {
     if (median.low === median.high) {
         value = median.low.infinite ? '\u221e' : String(Math.round(median.value * 100) / 100);
         text = 'Median ' + (median.low.infinite ? '\u221e' : median.low.label);
-    } else if (median.high.infinite) {
-        value = String(median.low.value) + '\u2013\u221e';
-        text = 'Median between ' + median.low.label + ' and \u221e';
     } else {
         value = String(Math.round(median.value * 100) / 100);
         text = 'Median ' + value;
