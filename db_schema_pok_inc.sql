@@ -693,8 +693,12 @@ select (select count(*) from pok_teams_tbl) teams, (select count(*) from pok_tea
    no person data. result_card_key: open item = card chosen by the team (result_auto = 0), null = automatic proposal
    (computed by dao.php); done item = the final result (result_auto 1 = automatic, 0 = chosen), null = no single value.
    team_id with the charset of pok_teams_tbl.id (utf8mb3) for joins.
-   Additive (new table only), idempotent (run it again any time), BEFORE deploying the code (dao.php reads the table).
-   The release code never reads or writes it.
+   Additive (new table only), idempotent (run it again any time), BEFORE deploying the code, like S1b and S1d below.
+   The code does NOT work without the schema in general: the topic item endpoints and get_topics.php need it. Only the
+   core paths are guarded against a missing table/column (is_missing_schema_error() in api/lib.php, 1146/1054), so a
+   wrong order does not break the board for all teams: dao.php (topic_items null, custom sets without aim count as
+   'agree'), setc.php, newround.php and update_deck.php (the round is not stored at an item), custom sets with aim
+   'agree' (create, save, example set). A set with aim 'perspectives' needs S1b.
    Run only this block: sed -n '/^\/\* B-52 S1:/,/^\/\* end B-52 S1/p' db_schema_pok_inc.sql */
 select table_name from information_schema.tables
  where table_schema = database() and table_name = 'pok_topic_items_tbl';
@@ -729,8 +733,8 @@ select table_name, table_rows from information_schema.tables
    (4) pok_roundstats_tbl.topic_item_id: the active item of a round (no foreign key: items may be deleted).
    pok_teams_tbl.topic is the team's note again, independent of the items (no data change needed).
    Additive (new columns with defaults, algorithm = instant), idempotent (each ALTER only if the column is missing),
-   BEFORE deploying the code (dao.php, custom sets and the topic endpoints read the new columns). The S1 block must have
-   run before. If MySQL refuses algorithm = instant (ERROR 1845/1846), replace it by "algorithm = inplace, lock = none".
+   BEFORE deploying the code (dao.php, custom sets and the topic endpoints read the new columns; which paths survive a
+   missing column: see the S1 block). The S1 block must have run before. If MySQL refuses algorithm = instant (ERROR 1845/1846), replace it by "algorithm = inplace, lock = none".
    The lock wait timeout makes an ALTER give up after 5 s instead of queueing dao.php calls: just run it again.
    Not between 23:50 and 0:10 (nightly job reads pok_roundstats_tbl).
    Run only this block: sed -n '/^\/\* B-52 S1b:/,/^\/\* end B-52 S1b/p' db_schema_pok_inc.sql */
@@ -791,10 +795,9 @@ select table_name, column_name, column_default from information_schema.columns
    pok_teams_tbl.round_item_id = the topic item that was active when the first card of the running round went down
    (setc.php), null after "New round" (start_new_round()). A revealed round counts for the active item only if it is
    this item (api/lib_topics.php round_topic_item()). No foreign key (items may be deleted).
-   (1) BEFORE deploying the code (dao.php reads the column): additive, algorithm = instant, idempotent. The S1b block
-   must have run before. If MySQL refuses algorithm = instant (ERROR 1845/1846), use "algorithm = inplace, lock = none".
-   (2) Right AFTER deploying the code (optional, one time): teams that have cards down at that moment keep their running
-   round for their active item (otherwise it counts for no item, from the next round on everything is normal).
+   BEFORE deploying the code: additive, algorithm = instant, idempotent. The S1b block must have run before. If MySQL
+   refuses algorithm = instant (ERROR 1845/1846), use "algorithm = inplace, lock = none".
+   The optional one-time update after the deploy is the separate block "Post-deploy B-52 S1d-2" below.
    Run only this block: sed -n '/^\/\* B-52 S1d/,/^\/\* end B-52 S1d/p' db_schema_pok_inc.sql */
 select table_name, column_name from information_schema.columns
  where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'round_item_id';
@@ -811,7 +814,16 @@ prepare b52_stmt from @b52_sql;
 execute b52_stmt;
 deallocate prepare b52_stmt;
 
-/* (2) after the code deploy: */
+select table_name, column_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'round_item_id';
+/* end B-52 S1d */
+
+/* Post-deploy B-52 S1d-2: right AFTER deploying the code, optional, one time. Only needed if topic items already exist
+   at the deploy (staging); on live it is not needed (no items before the deploy). Teams that have cards down at that
+   moment keep their running round for their active item (otherwise it counts for no item, from the next round on
+   everything is normal). Idempotent (only rows with round_item_id null).
+   The header does not start with "B-52 S1d", so the sed command of the S1d block above does not pick it up.
+   Run only this block: sed -n '/^\/\* Post-deploy B-52 S1d-2/,/^\/\* end Post-deploy B-52 S1d-2/p' db_schema_pok_inc.sql */
 update pok_teams_tbl t
    set t.round_item_id = (select i.id from pok_topic_items_tbl i
                            where i.team_id = t.id and i.status = 'open' order by i.position, i.id limit 1)
@@ -820,7 +832,7 @@ update pok_teams_tbl t
                 where p.team_id = t.id and p.player_type = 'PLAYER' and p.card_key is not null);
 
 select count(1) teams_with_round_item from pok_teams_tbl where round_item_id is not null;
-/* end B-52 S1d */
+/* end Post-deploy B-52 S1d-2 */
 
 /* B-130: timer auto-start with three values in the existing column pok_teams_tbl.timer_auto_restart (B-67, tinyint):
    0 = off, 1 = new round (unchanged meaning, existing teams keep their behaviour), 2 = next item.

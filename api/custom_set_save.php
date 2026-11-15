@@ -78,8 +78,15 @@ $changed = $stored['changed'] || $head['name'] !== $set['name'] || $head['style'
 
 $result = array('deck' => $team['deck'], 'new_round' => false);
 if ($changed) {
-    $sql = $link->prepare("update pok_custom_sets_tbl set name = ?, style = ?, aim = ?, rev = rev + 1 where id = ? and team_id = ?");
-    $sql->bind_param('sssis', $head['name'], $head['style'], $aim, $set_id, $t);
+    try {
+        $sql = $link->prepare("update pok_custom_sets_tbl set name = ?, style = ?, aim = ?, rev = rev + 1 where id = ? and team_id = ?");
+        $sql->bind_param('sssis', $head['name'], $head['style'], $aim, $set_id, $t);
+    } catch (mysqli_sql_exception $e) {
+        // B-52 S1b: without the column aim (code before the S1b schema) every set stays 'agree'
+        if (!is_missing_schema_error($e) || $aim !== 'agree') throw $e;
+        $sql = $link->prepare("update pok_custom_sets_tbl set name = ?, style = ?, rev = rev + 1 where id = ? and team_id = ?");
+        $sql->bind_param('ssis', $head['name'], $head['style'], $set_id, $t);
+    }
     $sql->execute();
     if ($team['deck']['id'] === custom_deck_id($set_id))
         $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true, '',
