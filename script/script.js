@@ -2449,6 +2449,22 @@ function isRetryableWrite(url) {
     return m !== null && WRITE_RETRY_SCRIPTS.has(m[1]);
 }
 
+/* B-135: the same write target (endpoint, team, player/item and the names of the set fields): a newer write of it
+ * makes a pending retry of an older one void (it would overwrite the newer choice) */
+const WRITE_TARGET_PARAMS = ['t', 'id', 'item'];
+const gWriteGen = new Map();   // write key -> number of the latest write started
+
+function writeKey(url) {
+    try {
+        const parsed = new URL(url, location.href);
+        const names = Array.from(new Set(parsed.searchParams.keys())).sort();
+        const target = WRITE_TARGET_PARAMS.map(name => name + '=' + (parsed.searchParams.get(name) ?? ''));
+        return parsed.pathname + '|' + target.join('&') + '|' + names.join(',');
+    } catch (e) {
+        return url;
+    }
+}
+
 /* B-135: a network error of fetch (TypeError), not a timeout or abort (and never an HTTP status: fetch resolves) */
 function isNetworkError(error) {
     return error instanceof TypeError;
@@ -2474,10 +2490,21 @@ function fetchWrite(url, init) {
 function apiWrite(url, init = {}, beforeReload = null) {
     const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
     if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
+    const key = writeKey(url);
+    const gen = (gWriteGen.get(key) || 0) + 1;
+    gWriteGen.set(key, gen);
     return fetchWrite(url, init).catch(error => {
         if (!isNetworkError(error) || !isRetryableWrite(url)) throw error;
-        console.log('write retry', url, error);
-        return new Promise(resolve => setTimeout(resolve, WRITE_RETRY_MS)).then(() => fetchWrite(url, init));
+        return new Promise(resolve => setTimeout(resolve, WRITE_RETRY_MS)).then(() => {
+            // a newer write of the same target started meanwhile: it wins, no retry of the old value (and no error
+            // message: an empty success, the newer write reports for itself)
+            if (gWriteGen.get(key) !== gen) {
+                console.log('write superseded', url);
+                return new Response(null, { status: 204, statusText: 'Superseded' });
+            }
+            console.log('write retry', url, error);
+            return fetchWrite(url, init);
+        });
     }).catch(error => {
         console.log('write failed', url, error);
         return null;
