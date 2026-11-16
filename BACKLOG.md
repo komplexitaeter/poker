@@ -27,8 +27,8 @@ die Primärfunktion (Andreas, 2026-11-10).
 
 **Sprint 9 – Aufräumen unter der Haube** (Andreas, 2026-11-16): Refactoring und technische Schulden, nichts für die
 Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging; Rollout danach mit B-12.
-1. B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
-2. B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
+1. ✓ live R5 – B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
+2. ✓ live R5 – B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
 3. B-34 Startdaten asynchron laden
 4. B-14 erster Schnitt (2–3 Module aus `script.js`)
 5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
@@ -45,6 +45,7 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
 - **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R5 (2026-11-16, abends):** B-139 (Emoji-Kontingent), Sprint 9 Schritte 1–2: B-93, B-94, B-97, B-136, B-137, B-138.
 - **R4 (2026-11-16):** B-52 (Topic list), B-53 (Median), B-130 (Timer-Auto-Start), B-131, B-133 (Nudge-Ton),
   B-135 (Write-Retry); dazu B-134 (CI).
 
@@ -279,7 +280,7 @@ Bis dahin ist die Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); 
 Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
 
 ### B-139 Reaktionen mit sichtbarem Tageskontingent
-Status: refined (Andreas, 2026-11-16). Feedback (OTHER, 2026-11-16): „Colleagues keep throwing fish. Can we get a
+Status: live (Rollout 5, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Feedback (OTHER, 2026-11-16): „Colleagues keep throwing fish. Can we get a
 setting to disable throwing of emojis please?“ Auswertung poker-msg-Log: ein Team mit Fisch-Wellen bis 121 Würfe/min
 (mehrere Personen, je unter dem Limit 10/min); sonst 187 Teams unauffällig. Verteilung (559 Reaktionen mit Namen):
 Nudge 43 %, Fisch 47 % (ohne das eine Team 62 % / 24 %), Think, Party, Thumbs, Cake, Clap, Heart zusammen < 10 %.
@@ -309,7 +310,7 @@ nicht wieder geladen). Dann `php8.4 tools/migration/check_deck_migration.php --v
 entscheiden, ob `tools/migration/` aus dem Repo kann (siehe B-126).
 
 ### B-136 Umfrage entfernen
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Die In-App-Umfrage ist praktisch tot (Fund Fred, 2026-10-30: `get_survey.php`
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Die In-App-Umfrage ist praktisch tot (Fund Fred, 2026-10-30: `get_survey.php`
 bindet die User-ID mit `bind_param('i', …)`, `get_survey_id()` vergibt nie eine Umfrage) und wird ausgebaut.
 Umfang: Frontend-Code der Umfrage (u. a. `toggleSurvey()`, Survey-Box, `fillResultsBars()`, CSS),
 `api/get_survey.php` und zugehörige Endpunkte sowie Umfrage-Abfragen in `getDao()`/`api/lib.php` entfernen. Tabellen
@@ -356,13 +357,13 @@ Frühere Entscheidung (2026-10-30) gilt weiter: nicht pro IP oder Team begrenzen
 Erfolgsgeschichte). In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
 
 ### B-94 Neuladen nach Fehlschlag wiederholen
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: neu. Fund Tessa (2026-10-30): `updateDao()` hat kein `.catch`; schlägt das Neuladen nach dem eigenen Schreiben
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: neu. Fund Tessa (2026-10-30): `updateDao()` hat kein `.catch`; schlägt das Neuladen nach dem eigenen Schreiben
 fehl (Netz, 500), bleibt das Board bis zum nächsten `pull`/Neuaufbau (bis 40 s) auf altem Stand. Vorschlag: einmal nach
 kurzer Pause erneut versuchen (B-135 wiederholt nur Schreib-Requests). Außerdem `docs/b81-server-notify.md` auf den
 umgesetzten Heartbeat-Wächter nachziehen (nennt noch `expectPull`).
 
 ### B-97 Assets aufräumen
-Status: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtlicher:
+Status: live (Rollout 5, 2026-11-16). Vorher: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtlicher:
 - Brand-SVGs (`brand_*.svg`, `brand_icon_*.svg`) je ~130 KB (sehr viele Pfade) für ein 20–24-px-Zeichen →
   verkleinern (svgo o. ä.; Delia). Gzip für SVG ist seit 2026-10-22 aktiv.
 - Laut Fund 2026-10-31 lädt das helle Theme zuerst die dunkle Datei und `setColor()` setzt `src` bei jedem Update
@@ -371,12 +372,12 @@ Status: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtl
   löschen oder dorthin verschieben. Vorher Referenzen in HTML/CSS/JS/PHP/JSON prüfen; `src/xcf/` bleibt.
 
 ### B-137 Restliche SQL-Konkatenation auf Prepared Statements
-Status: im Sprint 9, Schritt 2 (Andreas, 2026-11-16). CLAUDE.md nennt noch String-Konkatenation u. a. in
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 2 (Andreas, 2026-11-16). CLAUDE.md nennt noch String-Konkatenation u. a. in
 `validate_team()` (`api/lib.php`), `api/delete.php`, `api/feedback.php`. Alle Reste finden und umstellen, ohne
 Verhaltensänderung.
 
 ### B-138 CI: `php -l` als schneller Vorab-Check
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Alle PHP-Dateien (App, ggf. `tools/`) per `php -l` mit PHP 8.4
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Alle PHP-Dateien (App, ggf. `tools/`) per `php -l` mit PHP 8.4
 prüfen, bevor die E2E-Shards starten; schlägt früh und billig fehl.
 
 ## Offen: Sicherheit & Datenschutz
@@ -393,7 +394,7 @@ Status: refined. Fund Sina, Gedanke Andreas (2026-10-30):
 - REST-Verben erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
 
 ### B-93 poker-msg: Browser-`push` entfernen
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined. Fund Sina (2026-10-30): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an – wer eine Team-ID
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined. Fund Sina (2026-10-30): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an – wer eine Team-ID
 kennt, kann ohne API-Aufruf beliebig viele Pulls an alle Boards des Teams auslösen. Seit B-81 (R2) sendet kein Client
 mehr `push`: `push` in poker-msg entfernen oder über dieselbe Drosselung wie `onNotify` leiten. Nebenbei:
 `api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE.
