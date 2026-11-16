@@ -118,7 +118,9 @@ Andreas 2026-11-10, Fragen für Delia):
 Keine bunten Verläufe, Avatare oder Fächer-Deck – Console Style bleibt.
 Geltend: bewusst **kein Durchschnittswert als Zahl** (Average-Indicator bleibt); Median braucht nur eine Reihenfolge
 (T-Shirt, Sterne, ∞ als größter Wert), Karten ohne Wert (?, ☕, ✋ …) zählen nicht; bei gerader Anzahl liegt die
-Linie zwischen den beiden mittleren Karten.
+Linie nach Wert zwischen den beiden mittleren Karten, zwischen einem Wert und ∞ ist der Median ∞ (Andreas,
+2026-11-15). ∞ ist überall der größte Wert: Spannweite, Average-Zeiger (springt auf ∞) und Median. Median und
+Average-Zeiger gibt es nur mit „Average and median“ und nicht bei Sets mit dem Ziel „perspectives“.
 
 ### B-80 Öffentliche API: Topic-Items von außen anlegen
 Status: neu. Feedback (2026-10-29): „Add API to allow setting the topic.“ Faktisch gibt es `POST
