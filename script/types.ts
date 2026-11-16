@@ -20,7 +20,6 @@ export interface myJsonType {
     id: string;
     color_mode: string;
     hide_teaser: number; // B-57: 1 = feedback panel opened once (no red dot on the feedback menu)
-    survey: string;
     team_name: string;
     cardset_flags: string;
     topic: string; // the team's note (B-52 S1b: independent of the topic items, always shown)
@@ -114,19 +113,6 @@ interface myCardSetup {
     cards: Card[];
 }
 
-interface Survey {
-    survey_id: number;
-    votes_count: number;
-    survey_intro: string;
-    vote_options: VoteOption[];
-}
-
-interface VoteOption {
-    id: number;
-    text: string;
-    total_count: number;
-    votes_percentage: number;
-}
 /* B-57: public list "Ideas & Bugs" - api/get_roadmap.php ({items}) and api/vote_roadmap.php (one RoadmapItem) */
 type RoadmapReaction = 'UP' | 'DOWN'; // shown as 👍 / 👎
 // counts and my_reaction belong to the current phase of the entry (WANT while PLANNED/IN_PROGRESS, DONE when DONE);

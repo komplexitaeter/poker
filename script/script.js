@@ -16,7 +16,6 @@ let gCardByKey = new Map();
 let gDeck = { rev: null, cards: [] };
 // one element per card in the tray (built once, attached while the card is in the deck): key -> { slot, card, keyLabel }
 const gDeckElements = new Map();
-let gSurvey = null;
 let gAllPlayersReady = false;
 let gLastJson = null;
 let gJsonBefore = null;
@@ -2246,7 +2245,6 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
         && !isOnLoad) showConfetty(myJson.players_count);
 
     gAllPlayersReady = myJson.all_players_ready;
-    gSurvey = myJson.survey;
     gUserName = myJson.name;
     updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
@@ -2270,10 +2268,6 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
         if (myJson.color_mode && myJson.color_mode.length > 0) {
             gColorMode = myJson.color_mode;
-        }
-
-        if(gSurvey !== "NO"){
-            document.getElementById("survey-container").style.visibility="visible";
         }
 
         setColor();
@@ -2322,13 +2316,6 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateJediBtn();
 
     if (isOnLoad) {
-
-        const delayMinutes = Math.random() * 10;
-        if(myJson.survey === "LOUD") {
-            setTimeout(function () {
-                toggleSurvey(true);
-            }, Math.round(1000 * 60 * delayMinutes));
-        }
 
         document.body.style.opacity = '1';
 
