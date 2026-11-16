@@ -278,6 +278,13 @@ Dimensionen, getrennt umsetzbar:
 Bis dahin ist die Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); vorhandene Werte werden angezeigt.
 Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
 
+### B-139 Reaktionen für das Team abschaltbar
+Status: refined (Andreas, 2026-11-16). Feedback (OTHER, 2026-11-16): „Colleagues keep throwing fish. Can we get a
+setting to disable throwing of emojis please?“ Entscheidung: Schalter **für das ganze Team** in den Board-Einstellungen
+(wie „Tips“, B-96), Standard **an**. Aus: keine Emoji-Leiste, keine Würfe – das Board sendet keine Reaktionen und
+ignoriert eingehende; Anstupsen (Nudge, B-133) bleibt. poker-msg bleibt unverändert. Neue Teamspalte (Schema, additiv).
+Später denkbar: persönlicher Schalter „Show reactions“ im `:you`-Menü.
+
 ## Offen: Technik & Betrieb
 
 ### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
