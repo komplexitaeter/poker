@@ -56,7 +56,7 @@ Offen: was genau die Präsentier-Ansicht vom Panel zeigt (folgt B-113), Handy.
 ### B-44 Startseite Light-Mode: Logo ohne Schriftzug
 Status: neu. Beim B-36-Review gefunden (Delia, 2026-10-23): Auf `init.html` zeigt das Logo im Light-Mode nur das
 Bildzeichen, der Schriftzug fehlt. Klein.
-Rückfrage (2026-11-16): Besteht das nach der neuen Startseite (R3) noch? Sonst schließen.
+Entscheidung (Andreas, 2026-11-16): offen lassen; Delia prüft bei Gelegenheit, ob es nach R3 noch besteht.
 
 ### B-50 Kleinpaket Qualität
 Status: live R1 (2026-10-28) zum größten Teil, Rest offen:
@@ -120,7 +120,7 @@ Geltend: bewusst **kein Durchschnittswert als Zahl** (Average-Indicator bleibt);
 (T-Shirt, Sterne, ∞ als größter Wert), Karten ohne Wert (?, ☕, ✋ …) zählen nicht; bei gerader Anzahl liegt die
 Linie zwischen den beiden mittleren Karten.
 
-### B-80 Topic per API setzen → öffentliche API
+### B-80 Öffentliche API: Topic-Items von außen anlegen
 Status: neu. Feedback (2026-10-29): „Add API to allow setting the topic.“ Faktisch gibt es `POST
 /api/update_topic.php?t=<team-id>` (Feld `topic`, max. 2000 Zeichen) schon; Boards aktualisieren sich seit B-81 auch
 bei Aufrufen von außen.
@@ -132,7 +132,8 @@ Ideen Kai: eigener Namensraum `/api/v1/…` (interne App-API bleibt frei änderb
 Team-ID in der URL; Key je Team eindeutig (erneutes Anlegen aktualisiert); Webhook mit HMAC-Signatur. REST-Verben
 (`DELETE`) erst hier, die interne API bleibt bei POST (B-91).
 Offen: was „das Ergebnis“ ist (seit B-52: Wert/Verteilung am Item); welche Endpunkte stabil sind.
-Rückfrage (2026-11-16): B-52 ist live – jetzt angehen oder zurückstellen?
+Entscheidung (Andreas, 2026-11-16): offen lassen, umformuliert auf Topic-Items (B-52): Items per API anlegen (z. B.
+aus Jira) und ihr Ergebnis abfragen; noch nicht priorisiert.
 
 ### B-100 Eigene Kartensets als Bezahlfunktion
 Status: neu. Idee Andreas (2026-10-31): eigene Sets (B-98) eventuell später hinter eine Paywall; das Limit (5 Sets je
@@ -287,10 +288,6 @@ Umfang: Frontend-Code der Umfrage (u. a. `toggleSurvey()`, Survey-Box, `fillResu
 `api/get_survey.php` und zugehörige Endpunkte sowie Umfrage-Abfragen in `getDao()`/`api/lib.php` entfernen. Tabellen
 `pok_survey*_tbl` vorerst behalten. Erledigt damit auch `survey_intro` per `innerHTML` (B-43). Ersetzt B-90.
 
-### B-06 Testfälle gemeinsam reverse-engineeren
-Status: neu. Gemeinsam aus dem bestehenden Verhalten fachliche Testfälle ableiten und dokumentieren.
-Rückfrage (2026-11-16): noch gewollt oder schließen?
-
 ### B-10 `poker-msg` modernisieren und absichern
 Status: neu; Teile erledigt (Event-Loop B-19, Heartbeat B-24, Drosselung der Reaktionen B-131). Rest offen:
 - Prozess läuft unter supervisor als `root` → eigener User.
@@ -315,13 +312,7 @@ synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
 „aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
 Sina.
-Rückfrage (2026-11-16): noch gebraucht (seit B-127 gibt es `last_callback_time` je Heartbeat)?
-
-### B-72 Aufräumen: Layout- und Spread-Logik in `script.js`
-Status: neu. Fred (2026-10-28): Das Layout hängt an mehreren Messwegen (`resize`, `ResizeObserver`, globaler
-Bild-`load`-Listener, `no-anim`-Umschalter); der Spread liest seine Spalten aus dem DOM statt aus den Daten. Vorschlag:
-eine `relayout()`-Funktion mit einem Observer, Spread direkt aus den Set-Daten. Ohne Verhaltensänderung.
-Rückfrage (2026-11-16): nach R3/R4 (gerenderte Karten, Sidebar, Median) noch aktuell?
+Entscheidung (Andreas, 2026-11-16): als Idee behalten, z. B. für eine Auswertung „wie lange bis zur Entscheidung“.
 
 ### B-84 Kartenwechsel-Stürme dämpfen
 Status: neu (Andreas, 2026-11-16: „dann müssen wir uns was überlegen“). Befund Access-Log Live 02.–16.11.: an
@@ -408,6 +399,7 @@ von feedback und teamcar gesperrt. Rest offen: `/tools/`-Sperre; teamcar-Repo `c
 - **B-04 Lokale Testumgebung und erste E2E-Tests mit CI** – erledigt 2026-10-16 (Sprint 1): `tests/e2e/setup.sh`,
   Playwright, GitHub Actions.
 - **B-05 E2E-Tests für weitere Funktionen** – geschlossen 2026-11-16: Spec-Abdeckung über die Feature-PRs erreicht.
+- **B-06 Testfälle gemeinsam reverse-engineeren** – geschlossen 2026-11-16: die E2E-Specs decken das Verhalten ab.
 - **B-07 Repo-Hygiene** – erledigt 2026-10-16 (Sprint 1): `.gitignore`, `config.example.php`, README-Installation.
 - **B-08 MySQL-Statistik-Job ins Repo** – erledigt 2026-10-23: `db_jobs_pok.sql` (`pok_active_use_evt` ist
   deaktiviert und lief nie, Tabelle leer – Kandidat zum Aufräumen).
@@ -481,6 +473,8 @@ von feedback und teamcar gesperrt. Rest offen: `/tools/`-Sperre; teamcar-Repo `c
 - **B-69 Kartenleiste mit `<`/`>`-Leisten** – live R2 (2026-11-01), #77: klickbar, Tasten holen Karten ins Bild.
 - **B-70 Tipps in der rechten Spalte** – live R2 (2026-11-01), #76.
 - **B-71 Löschen von Spielern auf Touch-Geräten** – aufgegangen in B-110.
+- **B-72 Aufräumen: Layout- und Spread-Logik** – geschlossen 2026-11-16: durch die Layout-Umbauten (R2–R4) überholt;
+  Aufräumen in `script.js` läuft über B-14.
 - **B-73 Wackelnder Timer-E2E-Test** – live R2 (2026-11-01), #100: echter Fehler (ältere dao-Antwort) behoben.
 - **B-74 Overlay-Menü schließt bei Klick daneben** – live R2 (2026-11-01), #78.
 - **B-75 Kartenleiste auf dem Handy als Karussell** – live R2 (2026-11-01), #81 (mit B-77).
