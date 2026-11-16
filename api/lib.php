@@ -1207,6 +1207,7 @@ function getDao($t, $id) {
         "custom_cards_played"=>$custom_played, // B-98 S4: inactive custom cards still on the table
         "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>custom_cards_max()),
         "topic"=>(String)$topic, // the team's note (B-52 S1b: independent of the topic items again)
+        "survey"=>"NO", // B-136: keeps boards with the old script (open during the deploy) from showing the survey footer; drop later
         "topic_items"=>$topic_items, // B-52 S1b: {active, open_count, done_count, next_heading, topics_rev} (api/lib_topics.php)
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
