@@ -23,6 +23,7 @@ $sql->close();
 $sql = $link->prepare("DELETE FROM pok_feedback_tbl WHERE id=?");
 $sql->bind_param('s', $id);
 $sql->execute();
+$sql->close();
 
 $sql = $link->prepare("DELETE FROM pok_roundstat_details_tbl WHERE player_id=?");
 $sql->bind_param('s', $id);

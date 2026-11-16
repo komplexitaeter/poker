@@ -78,6 +78,7 @@ function validate_team($t, $link) {
         $is_valid = ($obj->cnt == 1);
         $result->close();
     }
+    $sql->close();
 
     return $is_valid;
 }
