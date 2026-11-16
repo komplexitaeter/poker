@@ -2773,15 +2773,21 @@ function setColor() {
     let brandIcon = document.getElementById("brand_icon"); // board only (phones show the mark alone)
     checkRadio('cet_color_mode', gColorMode === "dark" ? 'dark' : 'light');
 
+    // B-97: the logo has no src in the HTML, so the light theme does not load the dark file first;
+    // only set it when the theme changed (setColor() runs again on later updates)
     if (gColorMode === "dark") {
-        brandImg.src = "./src/brand_dark.svg?v=2";
-        if (brandIcon) brandIcon.src = "./src/brand_icon_dark.svg?v=1";
+        setImgSrc(brandImg, "./src/brand_dark.svg?v=3");
+        if (brandIcon) setImgSrc(brandIcon, "./src/brand_icon_dark.svg?v=2");
         document.body.classList.remove('light-theme');
     } else {
-        brandImg.src = "./src/brand_light.svg?v=2";
-        if (brandIcon) brandIcon.src = "./src/brand_icon_light.svg?v=1";
+        setImgSrc(brandImg, "./src/brand_light.svg?v=3");
+        if (brandIcon) setImgSrc(brandIcon, "./src/brand_icon_light.svg?v=2");
         document.body.classList.add('light-theme');
     }
+}
+
+function setImgSrc(img, src) {
+    if (img.getAttribute('src') !== src) img.src = src;
 }
 
 /* B-51: "Appearance" in the "You" section (radio group) */

@@ -789,6 +789,13 @@ textarea.field {
     display: block;
     height: 24px;
     width: auto;
+    aspect-ratio: auto 757.947 / 164.992; /* keeps the room before setColor() sets the src (B-97) */
+}
+
+/* B-97: the src is set by setColor() (script.js) for the current theme; nothing (no alt text) before that */
+#brand:not([src]),
+#brand_icon:not([src]) {
+    visibility: hidden;
 }
 
 /* the mark alone (src/brand_icon_*.svg, same height and position as the mark in the full logo);
