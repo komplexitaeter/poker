@@ -378,18 +378,6 @@ Erweitert (Andreas, 2026-11-16): Brauchen wir Grafana überhaupt? Die 3–4 Char
 integrieren (Daten liegen in den `_stats`-Tabellen). Dann könnte MySQL ganz auf `127.0.0.1` und der Firewall-Teil
 entfiele. Erst die Charts sichten, dann entscheiden.
 
-### B-29 WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten
-Status: neu. Betrifft nicht die Poker-App, läuft aber auf dem Staging-Server. UpdraftPlus-Backups in
-`wp-content/updraft/` waren öffentlich abrufbar (unter nginx wirkt `.htaccess` nicht); seit 2026-10-21 gesperrt
-(`deny all`), ~8 GB alte Backups gelöscht. Ob Backups abgerufen wurden, lässt sich nicht feststellen (unwahrscheinlich).
-WordPress läuft seit 2026-10-21 auf PHP 8.4. Offen:
-- Passwörter aller WP-Konten mit Admin-/Redakteursrechten ändern, Salts in `wp-config.php` neu erzeugen.
-- In Plugins gespeicherte Zugangsdaten (SMTP, API-Schlüssel, Backup-Ziele) rotieren.
-- Vorfall kurz dokumentieren; klären, ob die Seite personenbezogene Daten speichert (DSGVO).
-- UpdraftPlus: Aufbewahrung begrenzen (z. B. 14 DB-Backups), Backups extern speichern.
-- nginx-Logs länger aufbewahren (z. B. 30 Tage); `access_log off` für `.gz`/`.zip` überdenken.
-Rückfrage (2026-11-16): im Poker-Backlog weiterführen oder woanders?
-
 ### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
 Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
 DB aber neben Name und Team → pseudonym, also personenbezogen. Gelöscht wird nur `pok_players_tbl` (2 Monate
