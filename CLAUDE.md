@@ -126,8 +126,8 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 
 ## Bekannte technische Schulden
 
-- Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
-- Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
+- Keine Authentifizierung außer der geheimen Team-ID in der URL (schreibende Aktionen seit B-11 per POST).
+- Kein Linting außer `php -l` in der CI (B-138), keine Unit-Tests; die E2E-Tests decken die Abläufe breit ab.
 - Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
 
