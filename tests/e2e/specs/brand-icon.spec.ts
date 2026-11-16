@@ -41,7 +41,7 @@ test('phones show the logo mark file, large screens the full logo; the theme swi
   await expect.poll(() => icon.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
 });
 
-// Both images are loading="lazy": the hidden one (display:none) is not fetched (~130 KB each).
+// Both images are loading="lazy": the hidden one (display:none) is not fetched.
 for (const [viewport, shown, hidden] of [[PHONE, 'brand_icon_dark', 'brand_dark'], [LARGE, 'brand_dark', 'brand_icon_dark']] as const) {
   test(`at ${viewport.width} px only ${shown}.svg is loaded`, async ({ browser }) => {
     const page = await newPlayer(browser, { viewport });
