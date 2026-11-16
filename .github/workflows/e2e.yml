@@ -9,6 +9,8 @@ name: E2E tests
 # - Pushes to release and manual runs (workflow_dispatch) run the complete suite including @slow.
 # The job "e2e (PHP 8.4)" collects the shards and keeps the name of the required check; it fails unless
 # every shard succeeded. Each shard checks its own PHP log for fatals, deprecations and warnings.
+# Before the shards, the quick job "lint" runs `php -l` on every tracked PHP file (B-138), so a syntax error
+# shows up in seconds; the shards only start when lint passed, and "e2e (PHP 8.4)" fails if lint failed.
 on:
   push:
     branches: [release]
@@ -26,8 +28,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Quick syntax check of all tracked PHP files before the expensive shards start (B-138).
+  lint:
+    name: php lint (PHP 8.4)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          # same version as the shards and production (B-22)
+          php-version: '8.4'
+          coverage: none
+
+      - name: php -l on all tracked PHP files
+        run: |
+          php -v | head -1
+          count=0
+          while IFS= read -r -d '' f; do
+            if ! out=$(php -l "$f" 2>&1); then
+              echo "$out"
+              echo "::error file=$f::PHP syntax error in $f"
+              exit 1
+            fi
+            count=$((count + 1))
+          done < <(git ls-files -z '*.php')
+          echo "$count PHP files without syntax errors"
+
   shard:
     name: e2e shard ${{ matrix.shard }}/3 (PHP ${{ matrix.php }})
+    needs: lint
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -121,15 +153,16 @@ jobs:
             ${{ env.E2E_DIR }}/logs/
           retention-days: 14
 
-  # Keeps the name of the required check from before the shards; fails unless every shard succeeded.
+  # Keeps the name of the required check from before the shards; fails unless lint and every shard succeeded.
   e2e:
     name: e2e (PHP 8.4)
-    needs: shard
+    needs: [lint, shard]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: All shards passed
+      - name: Lint and all shards passed
         run: |
-          echo "shards: ${{ needs.shard.result }}"
+          echo "lint: ${{ needs.lint.result }}, shards: ${{ needs.shard.result }}"
+          test "${{ needs.lint.result }}" = success
           test "${{ needs.shard.result }}" = success
