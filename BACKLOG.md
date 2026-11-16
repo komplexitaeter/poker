@@ -611,3 +611,6 @@ Noch gültige Entscheidungen aus erledigten Einträgen, die sonst nirgends stehe
 - Daten-Updates: betroffene Werte vorher sichern bzw. nach altem Wert unterscheiden (Lehre aus B-42).
 - Nach Server-Umstellungen einen PHP-Endpunkt testen, nicht nur `/` (Lehre aus B-23).
 - Boards sind `noindex` (seit R3).
+- Mockups (`mockups/`) zeigen, in welche Richtung eine Entwicklung gehen könnte. Sie bleiben, solange sie diesen Zweck
+  erfüllen, und werden gelöscht, sobald er sich erledigt hat (umgesetzt oder verworfen); dass sie auf Live abrufbar
+  sind, ist unproblematisch (Andreas, 2026-11-16).
