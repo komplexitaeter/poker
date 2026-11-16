@@ -9,17 +9,18 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.51" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.62" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.40" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.45" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
-    <script defer src="script/script_custom.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/sidebar.js?v=1.16" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.18" type="text/javascript"></script>
+    <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
+    <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
+    <script defer src="script/topics.js?v=1.14" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.29" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -44,6 +45,7 @@
     <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
     <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></symbol>
@@ -55,6 +57,14 @@
     <symbol id="i-dright" viewBox="0 0 24 24"><path d="M5 6l6 6-6 6M12 6l6 6-6 6"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+    <!-- B-52 S1: topic items (move up, add, delete) -->
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <!-- B-52 S1c: "next item" (a chevron against a bar) and "finish item" (a flag) on the rail -->
+    <symbol id="i-skip" viewBox="0 0 24 24"><path d="M6 6l7 6-7 6M17 6v12"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2.5 4.5L17 13H6"/></symbol>
 </svg>
 
 <!-- B-78: phones held sideways (style.css, "Rotate hint"); "Continue anyway" hides it for the session -->
@@ -118,6 +128,10 @@
          data-phase="voting|revealed" (what the rail shows). -->
     <div id="side_rail" class="side-rail">
         <button type="button" id="side_open" class="icon-btn rail-open" aria-label="Open sidebar" title="Open sidebar" aria-expanded="false" aria-controls="sidebar"><svg class="i" aria-hidden="true"><use href="#i-dleft"/></svg></button>
+        <!-- B-52 S1c: the topic items ("3", "open": the open items including the active one), only while an item is
+             active; a click opens the column over the table (like #side_open). Set by topics.js. -->
+        <button type="button" id="rail_item" class="rail-item" aria-label="1 open item – open sidebar" aria-controls="sidebar" hidden><svg class="i" aria-hidden="true"><use href="#i-list"/></svg><b id="rail_item_count">1</b><small>open</small></button>
+        <span class="rail-sep" aria-hidden="true"></span>
         <!-- the round's state straight on the rail (style.css "the rail's tiles"). Voting: "3/6", "voted" and the
              waiting dots (#rail_count by script.js) -->
         <p class="rail-vote rail-tile"><b id="rail_count" class="rail-count">0/0</b><small>voted</small><span class="rail-wait" aria-hidden="true"><i></i><i></i><i></i></span></p>
@@ -138,7 +152,14 @@
             <span id="rail_timer" class="rail-timer" role="timer" aria-label="Timer" data-state="ready" data-over="false"></span>
             <!-- the round button as an icon (mirrors #newroundbtn: disabled, .primary, aria-label and title = its value):
                  "Restart round" ↺ framed, "New round" → filled -->
-            <button type="button" id="rail_round" class="rail-round" aria-label="Restart round" title="Restart round" disabled><svg class="i i-restart" aria-hidden="true"><use href="#i-reset"/></svg><svg class="i i-new" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+            <!-- B-52 S1c (Andreas: variant B "split", mockups/rail-next/): after the reveal while an item is active one
+                 block with two equal halves, each labelled in two lines: "next item" ("finish item" for the last one;
+                 opens the "leave this item" overlay like #nextitem_btn) and "new round" (#rail_round). Otherwise
+                 #rail_round alone as before. .split and #rail_next set by topics.js. -->
+            <div id="rail_acts" class="rail-acts">
+                <button type="button" id="rail_next" class="rail-next" aria-label="Next item" hidden><svg class="i i-skip" aria-hidden="true"><use href="#i-skip"/></svg><svg class="i i-flag" aria-hidden="true"><use href="#i-flag"/></svg><span class="rail-lbl" aria-hidden="true"><span id="rail_next_w">next</span> item</span></button>
+                <button type="button" id="rail_round" class="rail-round" aria-label="Restart round" title="Restart round" disabled><svg class="i i-restart" aria-hidden="true"><use href="#i-reset"/></svg><svg class="i i-new" aria-hidden="true"><use href="#i-arrow"/></svg><span class="rail-lbl" aria-hidden="true"><span>new</span> round</span></button>
+            </div>
         </div>
     </div>
 
@@ -169,7 +190,7 @@
         </section>
 
         <!-- the spread: one stacked bar per deck card (one segment per vote, the count above, the card's
-             value below), the range of the chosen values and the average pointer (board setting show_avg) -->
+             value below), the range of the chosen values, the average pointer and the median line (board setting show_avg) -->
         <aside class="side" aria-label="Round result">
             <section id="spread" class="spread" hidden>
                 <div class="spread-head">
@@ -179,7 +200,20 @@
                 <div class="spread-chart">
                     <div id="spread_bars" class="spread-bars"></div>
                     <img id="spread_index" class="spread-index hidden" src="src/index.png" alt="" />
+                    <!-- B-53: the median (same switch as the average pointer; set by syncMedianLine() in script.js) -->
+                    <span id="spread_median" class="spread-median" hidden><span class="sr-only"></span></span>
                 </div>
+                <!-- B-52 S1 (topics.js): the result of the active topic item. Deck aim 'agree': the dropdown (a click on a
+                     bar with votes does the same); 'perspectives': the sentence instead. Only while an item is active. -->
+                <div id="spread_est" class="spread-est" hidden>
+                    <label for="spread_est_sel">Current estimate</label>
+                    <select id="spread_est_sel" class="field"></select>
+                    <span id="spread_est_why" class="spread-est-why"></span>
+                </div>
+                <!-- B-52 S1d (topics.js, textContent): after the reveal, when the cards on the table are no round of the
+                     active item (it became active while they were down) - in place of the estimate row, muted -->
+                <p id="spread_stale" class="spread-note" hidden></p>
+                <p id="spread_note" class="spread-note" hidden>No single value for this deck &ndash; the spread is what you talk about.</p>
             </section>
             <!-- B-70: what to do now (set by updateTip() in script.js; large screens only). Before the
                  reveal at the top of the spread's (kept) room, then below the spread; nothing moves. -->
@@ -202,11 +236,24 @@
                 </div>
             </div>
             <input id="newroundbtn" class="btn" type="button" onclick="newRound();" value="Restart round" disabled />
+            <!-- B-52 S1/S1b/S1c: after the reveal while an item is active; "Finish item" for the last open one. Always asks
+                 first: the "leave this item" overlay (#leave_item, topics.js) -->
+            <button type="button" id="nextitem_btn" class="btn next-item" onclick="openLeaveItem(this)" hidden><span class="lbl">Next item</span><svg class="i" aria-hidden="true"><use href="#i-next"/></svg></button>
         </div>
     </div>
 
     <!-- the table scrolls on its own; #cbox stays as high as its cards (B-41 height glide) -->
     <main class="table" id="table">
+        <!-- B-52 S1c: the team's note (update_topic.php) on the board above the cards, for everyone and always (also
+             with the column collapsed); no room without a note. Long notes are cut ("more" unfolds them). Markdown
+             without HTML (topics.js). The pen opens the topics menu on its "Note" tab. -->
+        <section id="board_note" class="board-note" aria-label="Note" hidden>
+            <div id="board_note_text" class="board-note-text"></div>
+            <div class="board-note-acts">
+                <button type="button" id="board_note_more" class="ti-link" aria-expanded="false" aria-controls="board_note_text" hidden>more</button>
+                <button type="button" id="board_note_edit" class="icon-btn board-note-edit" data-open="topic" aria-controls="menu" aria-label="Edit note" title="Edit note"><svg class="i" aria-hidden="true"><use href="#i-pen"/></svg></button>
+            </div>
+        </section>
         <div id="cbox"></div>
         <!-- B-110: the observers below the cards, filled by script.js (markup: style.css "Table interaction") -->
         <div id="observers" class="observers" hidden>
@@ -288,11 +335,36 @@
             </section>
 
             <section id="topic_box" class="menu_sec" data-sec="topic" data-title="Topic" hidden>
-                <label class="lab" for="topic_txt">What are you estimating? (optional, Markdown works)</label>
-                <textarea maxlength="1800" rows="7" placeholder="A short description of what you are talking about (e.g. the story you are estimating)" id="topic_txt" class="field" oninput="topicChanged()"></textarea>
-                <div class="row end">
-                    <button type="button" id="topic_reset" class="btn-box" onclick="reset_topic()">Undo</button>
-                    <button type="button" id="topic_save" class="btn-box primary" onclick="save_topic()">Save</button>
+                <!-- B-52 S1c (topics.js): tabs Note · Items · Done with counters (showMenuTab() in script_feedback.js).
+                     Note: the team's note as before (#topic_single, update_topic.php); Items: "+ Add item" and the open
+                     items, the active one on top (#topic_list; tab "Items"); Done: the history (#topic_done, loaded when the tab
+                     opens). Starts on Items while items are open, else on Note. Without items support (old server):
+                     no tabs, the note alone. -->
+                <div class="m-tabs ti-tabs" id="topic_tabs" role="tablist" aria-label="Topic" hidden>
+                    <button type="button" role="tab" id="topic_tab_note" data-tab="note" aria-selected="true" aria-controls="topic_panel_note">Note</button>
+                    <button type="button" role="tab" id="topic_tab_open" data-tab="open" aria-selected="false" aria-controls="topic_panel_open" tabindex="-1">Items <span id="topic_n_open" class="tab-n">0</span></button>
+                    <button type="button" role="tab" id="topic_tab_done" data-tab="done" aria-selected="false" aria-controls="topic_panel_done" aria-disabled="true" tabindex="-1">Done <span id="topic_n_done" class="tab-n">0</span></button>
+                </div>
+                <div class="m-tabpanel" role="tabpanel" id="topic_panel_note" data-tab="note" aria-labelledby="topic_tab_note">
+                <div id="topic_single">
+                    <label class="lab" for="topic_txt">Note for everyone (optional, Markdown works)</label>
+                    <textarea maxlength="1800" rows="7" placeholder="A note for everyone – e.g. today’s goal or how you estimate." id="topic_txt" class="field" oninput="topicChanged()"></textarea>
+                    <div class="row end">
+                        <button type="button" id="topic_reset" class="btn-box" onclick="reset_topic()">Undo</button>
+                        <button type="button" id="topic_save" class="btn-box primary" onclick="save_topic()">Save</button>
+                    </div>
+                    <!-- B-52 (Andreas): "+ Add item" also below the note: switches to "Items" with the form open (topics.js) -->
+                    <button type="button" id="topic_note_add" class="ti-add ti-note-add" hidden><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Add item</button>
+                </div>
+                </div>
+                <div class="m-tabpanel" role="tabpanel" id="topic_panel_open" data-tab="open" aria-labelledby="topic_tab_open" hidden>
+                    <div id="topic_list" class="ti-list"></div>
+                    <!-- B-52: the grips of the open items (topics.js): their description and the announcement of a move -->
+                    <p id="ti_grip_hint" class="sr-only">Drag, or use the up and down arrow keys.</p>
+                    <p id="ti_live" class="sr-only" role="status" aria-live="polite"></p>
+                </div>
+                <div class="m-tabpanel" role="tabpanel" id="topic_panel_done" data-tab="done" aria-labelledby="topic_tab_done" hidden>
+                    <div id="topic_done" class="ti-list"></div>
                 </div>
             </section>
 
@@ -326,12 +398,12 @@
                         <p id="cet_order_by_hint" class="hint display_none">In anonymous mode, revealed cards are always arranged by card value.</p>
                     </fieldset>
                     <fieldset class="f" id="cet_dark_side">
-                        <legend class="lab">Average pointer</legend>
+                        <legend class="lab">Average and median</legend>
                         <div class="seg">
                             <label><input type="radio" name="cet_dark_side" value="0" onchange="pushJediBtn(this.value)"/><span>Hide</span></label>
                             <label><input type="radio" name="cet_dark_side" value="1" onchange="pushJediBtn(this.value)"/><span>Show</span></label>
                         </div>
-                        <p class="hint">A pointer under the spread shows the average.</p>
+                        <p class="hint">A pointer under the spread shows the average, a dashed line the median.</p>
                     </fieldset>
                     <!-- B-115: B-104 "see changed cards" for the whole team (show_card_changes, changeShowCardChanges());
                          the second hint shows while the setting differs from the running round (round_show_card_changes) -->
@@ -403,13 +475,16 @@
                     <p id="tmr_other_hint" class="sr-only">1 to 240 minutes.</p>
                     <p id="tmr_other_error" class="hint tmr-other-error" role="status" hidden>Please enter 1 to 240 minutes.</p>
                 </fieldset>
-                <fieldset class="f" id="tmr_auto_restart">
-                    <legend class="lab">Auto-start on new round</legend>
+                <!-- B-130: Off / New round / Next item (timer_auto_restart 0/1/2); the hint follows the value
+                     (updateTimerConfig() in script.js) -->
+                <fieldset class="f" id="tmr_auto_restart" aria-describedby="tmr_auto_restart_hint">
+                    <legend class="lab">Auto-start</legend>
                     <div class="seg">
                         <label><input type="radio" name="tmr_auto_restart" value="0" onchange="setTimerAutoRestart(this.value)"/><span>Off</span></label>
-                        <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>On</span></label>
+                        <label><input type="radio" name="tmr_auto_restart" value="1" onchange="setTimerAutoRestart(this.value)"/><span>New round</span></label>
+                        <label><input type="radio" name="tmr_auto_restart" value="2" onchange="setTimerAutoRestart(this.value)"/><span>Next item</span></label>
                     </div>
-                    <p class="hint">Restarts with every new round.</p>
+                    <p class="hint" id="tmr_auto_restart_hint">You start it yourself.</p>
                 </fieldset>
             </section>
 
@@ -435,6 +510,15 @@
                         <label><input type="radio" name="cet_color_mode" value="light" onchange="setColorMode(this.value)"/><span>Light</span></label>
                         <label><input type="radio" name="cet_color_mode" value="dark" onchange="setColorMode(this.value)"/><span>Dark</span></label>
                     </div>
+                </fieldset>
+                <!-- B-133: a short sound (and vibration) when someone nudges you; per device (initNudgeAudio() in script.js) -->
+                <fieldset class="f" id="cet_nudge_sound">
+                    <legend class="lab">Sound on nudge</legend>
+                    <div class="seg">
+                        <label><input type="radio" name="cet_nudge_sound" value="on" onchange="setNudgeSound(this.value)"/><span>On</span></label>
+                        <label><input type="radio" name="cet_nudge_sound" value="off" onchange="setNudgeSound(this.value)"/><span>Off</span></label>
+                    </div>
+                    <p class="hint">A short sound when someone nudges you.</p>
                 </fieldset>
                 <p id="user_settings_privacy_link" class="m-links">
                     <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
@@ -495,6 +579,20 @@
                 </div>
             </section>
 
+        </div>
+    </dialog>
+
+    <!-- B-52 S1c: "leave this item" – "Next item" / "Finish item" (column, phone dock, rail) always ask first. A modal
+         dialog (showModal: focus stays inside, Escape and a click beside it cancel, the focus goes back to the button).
+         The choices are built by topics.js (openLeaveItem): deck aim 'agree' "Close with 8" (the current estimate; not
+         without one), "Close without a value", "Bring it back later"; 'perspectives' "Close", "Bring it back later".
+         The first is chosen and focused, Enter confirms it. -->
+    <dialog id="leave_item" class="leave-item" aria-modal="true" aria-labelledby="leave_item_title" aria-describedby="leave_item_heading">
+        <h2 id="leave_item_title">How do you want to leave this item?</h2>
+        <p id="leave_item_heading" class="leave-item-heading"></p>
+        <div id="leave_item_opts" class="leave-item-opts"></div>
+        <div class="leave-item-foot">
+            <button type="button" id="leave_item_cancel" class="btn-box">Cancel</button>
         </div>
     </dialog>
 

@@ -5,6 +5,7 @@ import { newPlayer, createTeam } from './helpers';
 /**
  * B-67: timer instead of stopwatch (backend). timer.php gets the explicit settings set_visibility, set_mode,
  * set_timebox (minutes 1..240, stored in seconds) and set_auto_restart; invalid values are rejected with 400.
+ * (B-130: set_auto_restart also takes 2 = next item, see timer-auto-start.spec.ts.)
  * With auto-restart on and the timer visible, New round and Cancel round restart the timer at 0 and let it run.
  */
 
@@ -72,7 +73,7 @@ test('timer settings are stored, invalid values are rejected with 400', async ({
     ['set_visibility', ['2', '-1', 'true', '', undefined]],
     ['set_mode', ['stopwatch', 'COUNTDOWN', '', undefined]],
     ['set_timebox', ['0', '241', '-5', '2.5', '1e2', 'abc', '', undefined]],
-    ['set_auto_restart', ['2', 'yes', '', undefined]],
+    ['set_auto_restart', ['3', 'yes', '', undefined]],
   ];
   for (const [action, values] of invalid) {
     for (const value of values) {

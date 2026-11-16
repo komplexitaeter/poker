@@ -33,11 +33,11 @@ test('topic with emojis is saved and shown to all players', async ({ browser }) 
   expect((await saved).status()).toBe(200);
 
   for (const page of [alice, bob]) {
-    await expect(page.locator('#topic')).toHaveText(TOPIC);
+    await expect(page.locator('#board_note_text')).toHaveText(TOPIC);
   }
   // still there after a reload, i.e. stored in the database and not only shown locally
   await bob.reload();
-  await expect(bob.locator('#topic')).toHaveText(TOPIC);
+  await expect(bob.locator('#board_note_text')).toHaveText(TOPIC);
 });
 
 test('team name with emojis is saved and shown', async ({ browser }) => {
@@ -75,7 +75,7 @@ test('a new round with emojis in topic and player name is recorded', async ({ br
   await alice.locator('#topic_btn').click();
   await alice.locator('#topic_txt').pressSequentially(TOPIC);
   await alice.locator('#topic_save').click();
-  await expect(bob.locator('#topic')).toHaveText(TOPIC);
+  await expect(bob.locator('#board_note_text')).toHaveText(TOPIC);
 
   await pickCard(alice, 'three01');
   await pickCard(bob, 'five001');

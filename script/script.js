@@ -1077,7 +1077,9 @@ function fitCardsToTable() {
 
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
     // B-110: minus the observers row below the cards (with its margins)
-    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7 - observersHeight();
+    // B-52 S1c: minus the team's note above the cards
+    const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7 - observersHeight()
+        - boardNoteHeight();
 
     const n = cbox.children.length;
     let fit = min;
@@ -1418,6 +1420,14 @@ function updateObservers(observers, myMkey) {
 }
 
 /* the height the observers row takes from the table, with its margins (0 when hidden) */
+/* B-52 S1c: the note above the cards (#board_note) with its margins; 0 without a note */
+function boardNoteHeight() {
+    const box = document.getElementById('board_note');
+    if (box === null || box.hidden) return 0;
+    const style = getComputedStyle(box);
+    return box.offsetHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+}
+
 function observersHeight() {
     const box = document.getElementById('observers');
     if (box === null || box.hidden) return 0;
@@ -1549,7 +1559,7 @@ function openRemoveConfirm(btn) {
 
 /* B-110 part 2: sends "react:<from>:<to>:<code>" over the WebSocket. Nothing happens here before the echo: poker-msg
  * sends the same text to every board of the team, the sender's too, and all of them animate on it (onReaction).
- * Not sent without an open connection (the reaction is lost, as when poker-msg drops it above 1/s).
+ * Not sent without an open connection (the reaction is lost) or above the limit of poker-msg (B-131, reactionAllowed).
  * A nudge is anonymous: from is always 0, also in the message. */
 function sendReaction(toMkey, code) {
     const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : String(gLastJson.mkey ?? ''));
@@ -1557,11 +1567,35 @@ function sendReaction(toMkey, code) {
     const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
     if (!REACT_MSG.test(msg)) return;
     if (gConn === null || gConn.readyState !== WebSocket.OPEN) return;
+    if (!reactionAllowed()) return;
     try {
         gConn.send(msg);
+        gReactSent.push(performance.now());
     } catch (e) {
         console.log('reaction not sent', e);
     }
+}
+
+/* B-131: the same staggered limit as poker-msg (per connection, sliding windows; keep both in step): at most
+ * [count, window in ms]. Above it poker-msg drops the reaction silently, so the board does not send it at all and
+ * says so (except for the 1 s window: a double click, nothing to say). Per tab, like the connection. */
+const REACT_LIMITS = [[3, 1000], [10, 60 * 1000]];
+const REACT_LIMIT_TOAST_MS = 4000; // the hint at most once in this time, so it does not spam itself
+let gReactSent = [];               // performance.now() of the own reactions sent (the longest window)
+let gReactToastAt = -Infinity;
+
+/* false (and the hint, if due) when one more reaction now would be above a limit */
+function reactionAllowed() {
+    const now = performance.now();
+    const longest = REACT_LIMITS[REACT_LIMITS.length - 1][1];
+    gReactSent = gReactSent.filter(t => now - t < longest);
+    const over = REACT_LIMITS.filter(([max, ms]) => gReactSent.filter(t => now - t < ms).length >= max);
+    if (over.length === 0) return true;
+    if (over.some(([, ms]) => ms > 1000) && now - gReactToastAt >= REACT_LIMIT_TOAST_MS) {
+        gReactToastAt = now;
+        showToast('Easy there \u2013 too many reactions. Try again in a moment.', 3000);
+    }
+    return false;
 }
 
 /* the card (#cbox .c) or the observer (#observers .obs) of a mkey, null when not on the board */
@@ -1614,6 +1648,8 @@ function flightAnchor(holder) {
 }
 
 function onReaction(from, to, code) {
+    // B-133: a nudge for me also rings and, in a hidden tab, flashes the title (the shake is dropped there)
+    if (code === REACT_NUDGE && gLastJson !== null && String(gLastJson.mkey) === to) alertNudge();
     if (document.visibilityState !== 'visible') return;
     if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
     const target = reactHolder(to);
@@ -1678,6 +1714,115 @@ function nudgeTarget(target, to) {
     if (isMe) restartClass(target, 'is-nudged-me', 1100);
 }
 
+/* B-133: the nudged one hears a short, quiet two-tone chime (Web Audio, no file) and feels a short vibration, both
+ * behind the switch "Sound on nudge" (per device, localStorage, default on). A hidden tab also flashes the title
+ * until it is visible again (not behind the switch). Browsers only let a page play sound after a click or tap on it:
+ * the AudioContext is made (or resumed) on the first one; before that, the nudge stays silent. */
+const NUDGE_SOUND_KEY = 'NUDGE_SOUND';
+const NUDGE_TITLE_PREFIX = '\u{1F44B} Your turn \u2013 ';
+let gAudioCtx = null;
+let gTitleBase = null;      // the page title without the nudge prefix (setPageTitle())
+let gTitleBlink = null;     // the interval of the flashing title, null when it does not flash
+
+function nudgeSoundOn() {
+    try {
+        return localStorage.getItem(NUDGE_SOUND_KEY) !== '0';
+    } catch (e) {
+        return true;
+    }
+}
+
+function setNudgeSound(value) {
+    try {
+        localStorage.setItem(NUDGE_SOUND_KEY, value === 'on' ? '1' : '0');
+    } catch (e) { /* not remembered */ }
+}
+
+/* the first click, tap or key on the page: make or wake the AudioContext (until it runs).
+ * On touch, pointerdown is no user activation (iOS only counts pointerup/touchend/click),
+ * so all of them are heard; the listeners go away once the context really runs. */
+const NUDGE_WAKE_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'];
+
+function initNudgeAudio() {
+    checkRadio('cet_nudge_sound', nudgeSoundOn() ? 'on' : 'off');
+    const Ctx = window.AudioContext ?? window.webkitAudioContext;
+    if (typeof Ctx !== 'function') return;
+    const done = () => {
+        if (gAudioCtx === null || gAudioCtx.state !== 'running') return;
+        NUDGE_WAKE_EVENTS.forEach(type => document.removeEventListener(type, wake, true));
+    };
+    const wake = () => {
+        try {
+            if (gAudioCtx === null) gAudioCtx = new Ctx();
+            if (gAudioCtx.state !== 'running') {
+                const p = gAudioCtx.resume();
+                if (p && typeof p.then === 'function') p.then(done, () => {});
+            }
+        } catch (e) {
+            gAudioCtx = null;
+            return;
+        }
+        done();
+    };
+    NUDGE_WAKE_EVENTS.forEach(type => document.addEventListener(type, wake, true));
+}
+
+function alertNudge() {
+    if (nudgeSoundOn()) {
+        playNudgeChime();
+        // only after a tap on the page, else Chrome logs a blocked call
+        if (typeof navigator.vibrate === 'function' && navigator.userActivation?.hasBeenActive !== false) {
+            try { navigator.vibrate([60, 40, 60]); } catch (e) { /* none */ }
+        }
+    }
+    if (document.visibilityState !== 'visible') startTitleBlink();
+}
+
+/* two short sine tones (E5, A5), each with a soft attack and decay, about 280 ms in all */
+function playNudgeChime() {
+    const ctx = gAudioCtx;
+    if (ctx === null || ctx.state !== 'running') return;
+    try {
+        const t0 = ctx.currentTime;
+        [[659.25, 0], [880, 0.13]].forEach(([freq, at]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t0 + at);
+            gain.gain.setValueAtTime(0.0001, t0 + at);
+            gain.gain.exponentialRampToValueAtTime(0.08, t0 + at + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.15);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t0 + at);
+            osc.stop(t0 + at + 0.16);
+        });
+    } catch (e) { /* no sound */ }
+}
+
+/* the page title; while it flashes, the new title is used from the next step on */
+function setPageTitle(title) {
+    gTitleBase = title;
+    if (gTitleBlink === null || !document.title.startsWith(NUDGE_TITLE_PREFIX)) document.title = title;
+    else document.title = NUDGE_TITLE_PREFIX + title;
+}
+
+function startTitleBlink() {
+    if (gTitleBlink !== null) return;
+    if (gTitleBase === null) gTitleBase = document.title;
+    document.title = NUDGE_TITLE_PREFIX + gTitleBase;
+    gTitleBlink = setInterval(() => {
+        document.title = document.title.startsWith(NUDGE_TITLE_PREFIX) ? gTitleBase : NUDGE_TITLE_PREFIX + gTitleBase;
+    }, 1000);
+}
+
+function stopTitleBlink() {
+    if (gTitleBlink === null) return;
+    clearInterval(gTitleBlink);
+    gTitleBlink = null;
+    document.title = gTitleBase;
+}
+
 /* the slot of a new landing on a target (--land-i): the first one free, so landings at once are offset; all taken:
  * they overlap ("Gewusel ist ok") */
 function landSlot(target) {
@@ -1725,6 +1870,20 @@ function restartClass(el, cls, ms) {
     }
     el.classList.add(cls);
     timers[cls] = setTimeout(() => el.classList.remove(cls), ms);
+}
+
+/* B-131: a held Enter/Space on a circle or an emoji sends one reaction, not one per key repeat (the repeats would
+ * click the button again and again; with Enter even reopen the emoji bar and throw the next one). The browser
+ * clicks a button on Enter keydown and on Space keyup: a repeated keydown is dropped before it clicks. */
+function onReactKeyRepeat(event) {
+    if (!event.repeat || (event.key !== 'Enter' && event.key !== ' ')) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target === null) return;
+    if (target.closest('#react_bar button, #cbox .c :is(.nudge, .react), #observers .obs :is(.nudge, .react)') === null) {
+        return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
 }
 
 /* one click handler for the table, the observers and the popovers (document, bubbling) */
@@ -1901,6 +2060,7 @@ function initTableInteraction() {
     if (typeof gTapQuery.addEventListener === 'function') gTapQuery.addEventListener('change', onTapQueryChange);
     else if (typeof gTapQuery.addListener === 'function') gTapQuery.addListener(onTapQueryChange); // Safari < 14
     document.addEventListener('keydown', onPopoverKeydown, true);
+    document.addEventListener('keydown', onReactKeyRepeat, true);
     const reposition = () => { repositionPopover(); repositionTapHint(); };
     window.addEventListener('resize', reposition);
     document.getElementById('table').addEventListener('scroll', reposition, { passive: true });
@@ -2059,44 +2219,18 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateFeedbackDot(myJson.hide_teaser === 1); // B-57
 
     checkRadio('cet_user_type', myJson.player_type === "PLAYER" ? 'PLAYER' : 'OBSERVER');
-    let topic = document.getElementById('topic');
-    let topicHash = myJson.topic.hashCode().toString();
-
     playerTypeUpdate(myJson.player_type, myJson.name, myJson.team_name);
 
-    if (topic.getAttribute("data-hash") !== topicHash) {
-
-        topic.setAttribute("data-hash", topicHash);
-        gTopic = myJson.topic;
-
-        let markDown = new Remarkable({
-            html: false, // Enable HTML tags in source
-            xhtmlOut: true, // Use '/' to close single tags (<br />)
-            breaks: true, // Convert '\n' in paragraphs into <br>
-            linkify: true, // Autoconvert URL-like text to links
-            // Enable some language-neutral replacement + quotes beautification
-            typographer: false,
-            // Double + single quotes replacement pairs, when typographer enabled,
-            // and smartquotes on. Set doubles to '«»' for Russian, '„“' for German.
-            quotes: '“”‘’'
-        });
-        topic.innerHTML = markDown.render(myJson.topic);
-
-        if (topicHash === "0") {
-            topic.classList.add("display_none");
-        } else {
-            topic.classList.remove("display_none");
-        }
-
-    }
+    // B-52 S1: the topic, or the active topic item where the topic stands (topics.js)
+    updateTopicView(myJson);
 
     if (document.getElementById("team_name").innerText !== myJson.team_name
         || myJson.players_count !== gJsonBefore.players_count
         || myJson.ready_players_count !== gJsonBefore.ready_players_count
     ) {
         // R3 review V10 (L7): "2/5 voted · Team Phoenix – Agile Poker"
-        document.title = myJson.ready_players_count + '/' + myJson.players_count + ' voted \u00b7 '
-            + myJson.team_name + ' \u2013 Agile Poker';
+        setPageTitle(myJson.ready_players_count + '/' + myJson.players_count + ' voted \u00b7 '
+            + myJson.team_name + ' \u2013 Agile Poker');
         document.getElementById("team_name").innerText = myJson.team_name;
     }
 
@@ -2201,6 +2335,7 @@ const WS_CHECK_MS = 3000;          // how often the connection is checked
 const HB_TIMEOUT_MS = 40000;       // B-81: no 'hb' or 'pull' for this long: the connection is dead
 const CONN_HINT_DELAY_MS = 1200;   // B-86: show the hint only when the trouble lasts longer (no flicker)
 const WRITE_TIMEOUT_MS = 15000;    // B-92: a writing API call that hangs longer is given up
+const WRITE_RETRY_MS = 300;        // B-135: wait before the one retry of an idempotent write after a network error
 
 let gWsTimer = null;          // check / reconnect timer, only one at a time
 let gWsLastMsgAt = 0;         // B-81: when the current connection opened or last received something
@@ -2230,8 +2365,7 @@ function initializeWSConnection(teamId) {
         gWsLastMsgAt = Date.now(); // 'hb', 'pull': the connection is alive
         if (typeof e.data !== 'string') return;
         if (e.data.startsWith('react:')) { // B-110: a reaction (never a pull, even if it contained the word)
-            if (document.visibilityState !== 'visible') return; // hidden tab: dropped, not buffered
-            const m = REACT_MSG.exec(e.data);
+            const m = REACT_MSG.exec(e.data); // hidden tab: dropped in onReaction (B-133: a nudge for me still rings)
             if (m !== null) onReaction(m[1], m[2], m[3]);
             return;
         }
@@ -2289,8 +2423,10 @@ function reconnectWSConnection() {
 
 function initWSReconnect() {
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') reconnectWSConnection();
-        else dropReactions(); // B-110: nothing is played late
+        if (document.visibilityState === 'visible') {
+            stopTitleBlink(); // B-133
+            reconnectWSConnection();
+        } else dropReactions(); // B-110: nothing is played late
     });
     window.addEventListener('online', reconnectWSConnection);
     window.addEventListener('pageshow', (event) => {
@@ -2298,23 +2434,78 @@ function initWSReconnect() {
     });
 }
 
-/* B-81: a writing API call (POST). Never rejects: resolves with the response, or null when the
- * request failed or took longer than WRITE_TIMEOUT_MS. Afterwards (success or not) beforeReload
- * runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
-function apiWrite(url, init = {}, beforeReload = null) {
-    const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
-    if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
+/* B-135: endpoints that only set a state, so running them twice gives the same result. Only these are sent once
+ * more after a pure network error (Safari: "TypeError: Load failed", e.g. when the server closed the HTTP/2
+ * connection): the request may have reached the server anyway. Not in the list: everything that adds or moves
+ * on (newround, topic_item_add/next/reopen/move, delete, feedback, name.php - adds a player), toggles
+ * (timer.php toggle_visibility, start computes from the pause) or saves with a revision (custom_set_*). */
+const WRITE_RETRY_SCRIPTS = new Set([
+    'setc.php', 'update_deck.php', 'update_controls.php', 'update_show_avg.php', 'update_team.php',
+    'update_topic.php', 'update_results_order.php', 'topic_item_result.php'
+]);
+
+function isRetryableWrite(url) {
+    const m = /\/api\/([a-z_]+\.php)/.exec(url);
+    return m !== null && WRITE_RETRY_SCRIPTS.has(m[1]);
+}
+
+/* B-135: the same write target (endpoint, team, player/item and the names of the set fields): a newer write of it
+ * makes a pending retry of an older one void (it would overwrite the newer choice) */
+const WRITE_TARGET_PARAMS = ['t', 'id', 'item'];
+const gWriteGen = new Map();   // write key -> number of the latest write started
+
+function writeKey(url) {
+    try {
+        const parsed = new URL(url, location.href);
+        const names = Array.from(new Set(parsed.searchParams.keys())).sort();
+        const target = WRITE_TARGET_PARAMS.map(name => name + '=' + (parsed.searchParams.get(name) ?? ''));
+        return parsed.pathname + '|' + target.join('&') + '|' + names.join(',');
+    } catch (e) {
+        return url;
+    }
+}
+
+/* B-135: a network error of fetch (TypeError), not a timeout or abort (and never an HTTP status: fetch resolves) */
+function isNetworkError(error) {
+    return error instanceof TypeError;
+}
+
+/* one attempt of a write, with its own WRITE_TIMEOUT_MS */
+function fetchWrite(url, init) {
     const options = Object.assign({ method: 'POST' }, init);
     if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
         options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
     }
-    let request;
     try {
-        request = fetch(url, options);
+        return fetch(url, options);
     } catch (e) {
-        request = Promise.reject(e);
+        return Promise.reject(e);
     }
-    return request.catch(error => {
+}
+
+/* B-81: a writing API call (POST). Never rejects: resolves with the response, or null when the
+ * request failed or took longer than WRITE_TIMEOUT_MS. An idempotent write (WRITE_RETRY_SCRIPTS) is sent
+ * once more after WRITE_RETRY_MS when it failed with a network error (B-135). Afterwards (success or not)
+ * beforeReload runs, then the board loads the current state itself (afterWrite); poker-msg tells the other boards. */
+function apiWrite(url, init = {}, beforeReload = null) {
+    const deckWrite = isDeckWrite(url) ? { doneSeq: Infinity } : null;
+    if (deckWrite !== null) gOwnDeckWrites.push(deckWrite);
+    const key = writeKey(url);
+    const gen = (gWriteGen.get(key) || 0) + 1;
+    gWriteGen.set(key, gen);
+    return fetchWrite(url, init).catch(error => {
+        if (!isNetworkError(error) || !isRetryableWrite(url)) throw error;
+        return new Promise(resolve => setTimeout(resolve, WRITE_RETRY_MS)).then(() => {
+            // a newer write of the same target started meanwhile: it wins, no retry of the old value (and no error
+            // message: an empty success, the newer write reports for itself)
+            if (gWriteGen.get(key) !== gen) {
+                console.log('write superseded', url);
+                return new Response(null, { status: 204, statusText: 'Superseded' });
+            }
+            console.log('write retry', url, error);
+            return fetchWrite(url, init);
+        });
+    }).catch(error => {
         console.log('write failed', url, error);
         return null;
     }).then(response => {
@@ -2416,6 +2607,7 @@ function loadBoard() {
     initDisplayHandling();
     initSidebar(); // B-113 (sidebar.js)
     initTableInteraction(); // B-110
+    initNudgeAudio(); // B-133
     measureEvent("BOARD_ON_LOAD");
 
     document.getElementById('nameinput').addEventListener('input', function(event) {
@@ -2600,6 +2792,7 @@ function toggleTopic(event) {
     let button = document.getElementById('topic_toggle');
     if (getComputedStyle(button).display === 'none') return;
     if (event.target.closest('a')) return; // links in the topic just open
+    if (event.currentTarget && event.currentTarget.id === 'topic' && event.target.closest('button')) return; // B-52
     let expanded = button.getAttribute('aria-expanded') !== 'true';
     button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     button.closest('.topic-bar').setAttribute('data-expanded', expanded ? 'true' : 'false');
@@ -2774,6 +2967,14 @@ function timerStateFresh(writeGen) {
 
 const TIMER_PRESETS = [3, 5, 10, 15, 30, 60];
 
+/* B-130: auto-start 0 = off, 1 = new round, 2 = next item: the hint below the switch and the toast of an own change */
+const TIMER_AUTO_RESTART_HINTS = [
+    'You start it yourself.',
+    'Restarts with every new round.',
+    'Restarts with every next item.',
+];
+const TIMER_AUTO_RESTART_TOASTS = ['Auto-start off', 'Auto-start with every new round', 'Auto-start with every next item'];
+
 function updateTimer(json) {
     gTimer = {
         status: json.timer_status,
@@ -2781,7 +2982,8 @@ function updateTimer(json) {
         visible: json.timer_visibility === 1,
         mode: json.timer_mode === 'TIMER' ? 'TIMER' : 'STOPWATCH',
         timebox: json.timer_timebox > 0 ? json.timer_timebox : 300,
-        autoRestart: json.timer_auto_restart === 1,
+        // B-130: 0 = off, 1 = new round, 2 = next item
+        autoRestart: [1, 2].includes(json.timer_auto_restart) ? json.timer_auto_restart : 0,
     };
     gTimerTime = gTimer.time;
     gTimerBaseTime = new Date();
@@ -2871,7 +3073,11 @@ function updateTimerConfig(force = false) {
     if (gTimer === null || document.getElementById('timer_box') === null) return;
     checkRadio('tmr_visibility', gTimer.visible ? '1' : '0');
     checkRadio('tmr_mode', gTimer.mode);
-    checkRadio('tmr_auto_restart', gTimer.autoRestart ? '1' : '0');
+    checkRadio('tmr_auto_restart', String(gTimer.autoRestart));
+    let autoHint = document.getElementById('tmr_auto_restart_hint');
+    // B-130: written only when it changes (a load with the same state changes nothing on the page, B-110)
+    const autoText = TIMER_AUTO_RESTART_HINTS[gTimer.autoRestart] ?? '';
+    if (autoHint !== null && autoHint.textContent !== autoText) autoHint.textContent = autoText;
     document.getElementById('tmr_timebox').hidden = gTimer.mode !== 'TIMER';
 
     let minutes = Math.round(gTimer.timebox / 60);
@@ -2985,7 +3191,12 @@ function saveTimerOther(showError) {
 }
 
 function setTimerAutoRestart(value) {
-    timerAction('set_auto_restart', value).catch(timerSettingFailed);
+    // B-130: the hint follows right away, the toast confirms the saved value
+    let hint = document.getElementById('tmr_auto_restart_hint');
+    if (hint !== null && TIMER_AUTO_RESTART_HINTS[value] !== undefined) hint.textContent = TIMER_AUTO_RESTART_HINTS[value];
+    timerAction('set_auto_restart', value).then(() => {
+        showToast(TIMER_AUTO_RESTART_TOASTS[value] ?? 'Saved', DECK_TOAST_MS);
+    }).catch(timerSettingFailed);
 }
 
 function timerStart() {
@@ -3179,12 +3390,16 @@ function initDisplayHandling() {
     // a scrollbar coming or going does not change the area the cards are fitted to.
     const table = document.getElementById('table');
     if (table !== null && typeof ResizeObserver === 'function') {
-        new ResizeObserver(() => {
+        const tableObserver = new ResizeObserver(() => {
             const cbox = document.getElementById('cbox');
             if (!fitCardsToTable()) return;
             Array.from(cbox.children).forEach(card => finishAnimations(card, 'flip'));
             finishAnimations(cbox, 'height');
-        }).observe(table, { box: 'border-box' });
+        });
+        tableObserver.observe(table, { box: 'border-box' });
+        // B-52 S1c: the note above the cards shown, unfolded or hidden
+        const note = document.getElementById('board_note');
+        if (note !== null) tableObserver.observe(note, { box: 'border-box' });
     }
 }
 
@@ -3217,21 +3432,7 @@ function updateSide(json, glide = true) {
     const deckCards = gDeck.cards;
     const keys = deckCards.map(card => card.key).join(',');
     if (bars.getAttribute('data-keys') !== keys) {
-        bars.replaceChildren(...deckCards.map(card => {
-            const col = document.createElement('div');
-            col.className = 'spread-col zero';
-            col.setAttribute('data-card', card.key);
-            const count = document.createElement('span');
-            count.className = 'spread-count';
-            const bar = document.createElement('span');
-            bar.className = 'spread-bar';
-            const value = document.createElement('span');
-            value.className = 'spread-value';
-            // B-99 (F6): per symbol mono text or a mini symbol (cards.js cardSmall), never a system emoji
-            value.appendChild(cardSmall(card));
-            col.append(count, bar, value);
-            return col;
-        }));
+        bars.replaceChildren(...deckCards.map(card => spreadColumn(card, card.key)));
         bars.setAttribute('data-keys', keys);
     }
 
@@ -3245,20 +3446,28 @@ function updateSide(json, glide = true) {
         // empty bars, so the votes grow in on the next reveal
         bars.querySelectorAll('.spread-bar').forEach(bar => bar.replaceChildren());
         toggleStyleClass(pointer, 'hidden', 'visible');
+        syncMedianLine(null); // B-53
         syncRailRange(false); // B-113 (sidebar.js)
+        bars.querySelectorAll('.spread-col').forEach(col => syncEstimateColumn(col, { show: false }, 0));
+        updateEstimateRow(json, false, {}); // B-52 S1 (topics.js)
         return;
     }
 
     // B-102: the "joined in" card is no vote
     const cardStats = calculateCardStats(json.players.filter(player => !isLateCardKey(player.display_card_key)));
     const top = Math.max(0, ...Object.values(cardStats).map(stat => stat.usageCount));
+    // B-52 S1: the result of the active topic item is the only accent (deck aim 'agree'); the most chosen card(s)
+    // only while no result is marked. Columns with votes are buttons then (topics.js)
+    const estimate = topicEstimate(json);
+    const estMarked = estimate.show && estimate.aim === 'agree' && estimate.key !== null;
     const chosen = [];
     let unvalued = false; // B-98 S5: a custom card without a value is down (no range then)
     const grown = [];
     Array.from(bars.children).forEach(col => {
         const stat = cardStats[col.getAttribute('data-card')];
         const n = stat ? stat.usageCount : 0;
-        col.classList.toggle('top', n > 1 && n === top);
+        col.classList.toggle('top', !estMarked && n > 1 && n === top);
+        syncEstimateColumn(col, estimate, n);
         col.classList.toggle('zero', n === 0);
         col.querySelector('.spread-count').textContent = n > 0 ? String(n) : '';
         grown.push(...setSpreadSegments(col.querySelector('.spread-bar'), n));
@@ -3294,12 +3503,16 @@ function updateSide(json, glide = true) {
             : ends.map(card => cardSmall(card))));
     }
     syncRailRange(true); // B-113: the same range in the rail (sidebar.js)
+    updateEstimateRow(json, revealed, cardStats); // B-52 S1 (topics.js)
 
     let left = null;
     if (json.show_avg === 1) {
         left = calculateIndicatorLefPosition(cardStats,
             key => bars.querySelector('[data-card="' + key + '"]'), pointer);
     }
+    // B-53: the median line, coupled to the same switch as the average pointer; only for decks that aim to agree
+    syncMedianLine(json.show_avg === 1 && !(json.deck && json.deck.aim === 'perspectives')
+        ? medianColumns(cardStats) : null);
     if (left === null) {
         toggleStyleClass(pointer, 'hidden', 'visible');
     } else {
@@ -3313,6 +3526,95 @@ function updateSide(json, glide = true) {
             pointer.classList.remove('no-glide');
         }
     }
+}
+
+/* B-53: the median of the votes: { value, low, high, share } or null. Votes on cards with a numeric value count, and
+ * ∞ as the highest value (Andreas); not: control cards, cards without a value, cards with "range": false. At least
+ * two of them. Odd number: the value of the middle vote; even: the mean of the two middle votes (5 and 13: 9), as the
+ * average pointer works on values too. low/high: the neighbouring deck cards it lies between (both the same card when
+ * one has exactly that value; both ∞ when the upper middle vote is ∞). share: the way from low to high (0..1).
+ * Between a value and ∞ (3, 5, ∞, ∞) the median is ∞, as ∞ counts as a very large value (Andreas): the line stands on
+ * the ∞ column, like the average pointer on the ∞ card. The line follows deck order, so a deck whose values do
+ * not rise in deck order (a custom set, ∞ not after the values) has none. */
+function medianColumns(cardStats) {
+    const valued = gDeck.cards.filter(card => (card.value != null || card.infinite) && !card.control
+        && !card.controlCard && card.range !== false);
+    const rank = card => card.infinite ? Infinity : card.value;
+    if (valued.some((card, i) => i > 0 && rank(card) < rank(valued[i - 1]))) return null;
+    const votes = [];
+    valued.forEach(card => {
+        const n = cardStats[card.key] ? cardStats[card.key].usageCount : 0;
+        for (let i = 0; i < n; i++) votes.push(card);
+    });
+    if (votes.length < 2) return null;
+    const half = votes.length >> 1;
+    if (votes.length % 2 === 1 || rank(votes[half - 1]) === rank(votes[half])) {
+        const card = votes[half];
+        return { value: rank(card), low: card, high: card, share: 0 };
+    }
+    const lowVote = votes[half - 1];
+    const highVote = votes[half];
+    if (highVote.infinite) return { value: Infinity, low: highVote, high: highVote, share: 0 };
+    const value = (rank(lowVote) + rank(highVote)) / 2;
+    const exact = valued.find(card => rank(card) === value);
+    if (exact) return { value, low: exact, high: exact, share: 0 };
+    const low = valued.filter(card => rank(card) < value).pop();
+    const high = valued.find(card => rank(card) > value);
+    return low && high ? { value, low, high, share: (value - low.value) / (high.value - low.value) } : null;
+}
+
+/* B-53: the dashed median line in the spread (#spread_median, left set here): through the middle of the column with
+ * the median's value, else between the middles of its neighbouring columns, by value (median 9 between 8 and 13: a
+ * fifth of the way from the 8; between a value and ∞ the median is ∞: its column). median: medianColumns() or null
+ * (no line). Its sr-only text and data-median say the value ("Median 3", "Median 9", "Median ∞"; the card's label when
+ * a column has exactly that value). */
+function syncMedianLine(median) {
+    const centerOf = col => { const r = col.getBoundingClientRect(); return r.left + r.width / 2; };
+    const line = document.getElementById('spread_median');
+    const bars = document.getElementById('spread_bars');
+    if (line === null || bars === null) return;
+    const colLow = median ? bars.querySelector('[data-card="' + median.low.key + '"]') : null;
+    const colHigh = median ? bars.querySelector('[data-card="' + median.high.key + '"]') : null;
+    let x = null;
+    if (colLow !== null && colHigh !== null) {
+        x = centerOf(colLow) + median.share * (centerOf(colHigh) - centerOf(colLow));
+    }
+    if (x === null) {
+        line.hidden = true;
+        return;
+    }
+    const left = x - line.parentElement.getBoundingClientRect().left;
+    line.style.left = Math.round(left * 2) / 2 + 'px';
+    let value, text;
+    if (median.low === median.high) {
+        value = median.low.infinite ? '\u221e' : String(Math.round(median.value * 100) / 100);
+        text = 'Median ' + (median.low.infinite ? '\u221e' : median.low.label);
+    } else {
+        value = String(Math.round(median.value * 100) / 100);
+        text = 'Median ' + value;
+    }
+    const label = line.querySelector('.sr-only');
+    if (label.textContent !== text) label.textContent = text;
+    line.setAttribute('data-median', value);
+    line.hidden = false;
+}
+
+/* a column of the spread (updateSide; B-52: also the history of done items, topics.js): the count, the bar (blocks
+ * via setSpreadSegments), the value. card: the catalog card or undefined (unknown key: the key as text) */
+function spreadColumn(card, key) {
+    const col = document.createElement('div');
+    col.className = 'spread-col zero';
+    col.setAttribute('data-card', key);
+    const count = document.createElement('span');
+    count.className = 'spread-count';
+    const bar = document.createElement('span');
+    bar.className = 'spread-bar';
+    const value = document.createElement('span');
+    value.className = 'spread-value';
+    // B-99 (F6): per symbol mono text or a mini symbol (cards.js cardSmall), never a system emoji
+    value.appendChild(card ? cardSmall(card) : document.createTextNode(key));
+    col.append(count, bar, value);
+    return col;
 }
 
 /* B-70: a short tip what to do now, in the column (before the reveal where the spread will be, then
@@ -3365,8 +3667,8 @@ function tipSide(players, card) {
 }
 
 /* B-79: the value of a card for lowest/highest: its numeric value, Infinity for the infinity card
- * ("too big to estimate"), null for cards without a value (veto, control cards). Not for the
- * average: infinity stays out of it. */
+ * ("too big to estimate"), null for cards without a value (veto, control cards). ∞ counts as the highest value
+ * here as in the average pointer (it points at ∞ as soon as one ∞ is played) and the median (B-53). */
 function cardRank(card) {
     if (!card) return null;
     if (card.infinite) return Infinity;

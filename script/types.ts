@@ -23,13 +23,14 @@ export interface myJsonType {
     survey: string;
     team_name: string;
     cardset_flags: string;
-    topic: string;
+    topic: string; // the team's note (B-52 S1b: independent of the topic items, always shown)
+    topic_items: TopicItemsSummary | null; // B-52 S1b: null only if the table/columns are missing on the server
     timer_status: string;
     timer_time: number;
     timer_visibility: number;
     timer_mode: string; // B-67: 'STOPWATCH' | 'TIMER'
     timer_timebox: number; // B-67: seconds; TIMER shows T- (timebox - timer_time) until 0, then T+
-    timer_auto_restart: number; // B-67: 1 = New round / Cancel round restart the timer
+    timer_auto_restart: 0 | 1 | 2; // B-67/B-130: auto-start 0 = off, 1 = new round (New/Cancel round), 2 = next item (leaving an item; without an active item like 1)
     results_order: string;
     show_avg: string;
     selected_card_key: string;
@@ -59,6 +60,7 @@ interface CustomSet {
     deck_id: string;     // 'c-<set_id>', the deck id when the set is in play
     name: string;        // free text: output with textContent only
     style: string;       // plain | badge | banner | inverted (editor "Style"), the look of its cards
+    aim: 'agree' | 'perspectives'; // B-52 S1b: purpose of the set (editor), default agree; custom_set_create/save body "aim"
     rev: number;         // optimistic lock of custom_set_save.php
     cards: CustomCard[]; // active cards in position order
 }
@@ -85,6 +87,10 @@ interface Deck {
     cards: string[];    // card keys of the group, in the group's order
     controls: string[]; // control card keys (per team)
     rev: number;        // deck_rev, changes with every change of the deck
+    // B-52 S1 (api/lib_topics.php deck_aim()): 'agree' = automatic result (highest numeric_value of the played cards,
+    // cards without a value ignored) and range; 'perspectives' = only the distribution (catalog group "range": false,
+    // custom set: its aim, B-52 S1b)
+    aim: 'agree' | 'perspectives';
 }
 
 interface Preset {
@@ -143,4 +149,66 @@ interface Roadmap {
 /* B-127: answer of api/seen.php (light heartbeat of the board) */
 export interface SeenJsonType {
     away_sig: string; // same value as myJsonType.away_sig; a change means: load dao.php
+}
+
+/* B-52 S1b: dao.php topic_items (api/lib_topics.php topic_items_for_dao()), kept small */
+interface TopicItemsSummary {
+    active: TopicItem | null;    // the topmost open item; null = none (general mode, only the note)
+    open_count: number;          // open items incl. the active one
+    done_count: number;
+    next_heading: string | null; // heading of the open item after the active one ("next: ..."), null = active is the last
+    topics_rev: number;          // changes with every change of any item; load get_topics.php when it differs
+    round_counts: boolean;       // B-52 S1d: the running round counts for the active item (false: it started before
+                                 // the item became active - no live distribution, no proposal from the table)
+}
+
+/* B-52 S1b: api/get_topics.php?t=..[&done=1&done_offset=0&done_limit=50] (api/lib_topics.php topic_lists()) */
+export interface TopicListsJsonType {
+    topics_rev: number;          // the rev of exactly these lists (one snapshot)
+    open: TopicItem[];           // all open items in their order, open[0] is the active one
+    open_count: number;
+    done_count: number;          // all done items of the team
+    // max lengths and limits; "Add item" gets 409 limit at open_count >= open or total_count >= total
+    limits: {
+        open: number;        // max open items per team
+        total: number;       // max items per team incl. done ones
+        total_count: number; // all items of the team now (open_count + done_count)
+        ext_id: number;
+        heading: number;
+        description: number;
+    };
+    done?: TopicItem[];          // only with done=1: newest first (done_date), done_limit items from done_offset
+    done_offset?: number;        // only with done=1
+}
+
+interface TopicItem {
+    id: number;
+    ext_id: string | null;      // free text, output with textContent only
+    heading: string;            // free text
+    description: string | null; // markdown like the note (remarkable without HTML)
+    maturity: number | null;    // optional: 0 new, 1 rough, 2 shaping, 3 ready; null = not set (show nothing)
+    status: 'open' | 'done';
+    // open: the chosen card (result_auto 0) or the automatic proposal (result_auto 1); done: the agreed value.
+    // null = no single value (deck aim 'perspectives', no vote, or no played card with a value and none chosen)
+    result_card_key: string | null;
+    result_auto: number;
+    // card_key -> count of the last revealed round (no persons); for the active item the running round while revealed
+    distribution: { [card_key: string]: number } | null;
+    rounds_cnt: number;              // revealed rounds finished while the item was active (the running one not yet)
+    // S1c: dates as ISO 8601 in UTC, e.g. '2026-11-12T10:15:00Z' (new Date(value), format in local time)
+    last_round_date: string | null;  // B-52 S1b: end of the last revealed round of the item
+    done_date: string | null;        // when it was finished ("Next item"/"Finish item"), null while open
+}
+
+/* B-52 S1c: answer of api/topic_item_next.php?t=..&item=<active id>&mode=close|close_empty|later[&card=<card_key>]
+   mode missing = close. close: card = the result (only deck aim 'agree', else 409 perspectives), without card the
+   current estimate; close_empty: done without a value (null, result_auto 0); later: stays open, goes to the end of the
+   open list (stays active if it is the only open item), a chosen result is reset.
+   Errors: 400 {error: 'item'|'mode'|'card'}, 409 {error: 'not_active', active_id} | {error: 'perspectives'} */
+export interface TopicItemNextJsonType {
+    ok: true;
+    item_id: number;                 // the item that was closed or brought back later
+    active_id: number | null;        // the active item now (later + only open item: item_id), null = none
+    result_card_key: string | null;  // stored result (later: null)
+    result_auto: number;             // 1 automatic, 0 chosen or deliberately empty (close_empty)
 }

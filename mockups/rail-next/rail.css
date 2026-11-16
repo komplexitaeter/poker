@@ -1,0 +1,100 @@
+/* "Next item" in the collapsed sidebar (B-52 S1b, B-113). Static, throw-away – not loaded by the app.
+   Base look from ../topics-s1/topics.css (tokens, header, cards, deck); the rail as in style/style.css
+   "Sidebar (B-113)": 60px, open button on top, the round's state, then timer and round button at the bottom. */
+
+body { --rail-w: 60px; --fs-xs: 11px; }
+
+.rail-page { grid-template-columns: 1fr var(--rail-w); }
+.rail-page .table { padding-top: 40px; }
+
+/* ---------- the rail ---------- */
+.rail {
+    display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 0; overflow: hidden;
+    padding: 10px 0 0; background: var(--bg-2); border-left: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted);
+}
+.rail .grow { flex: 1 1 auto; }
+.rail-open { width: 40px; justify-content: center; }
+.rail small { font-size: var(--fs-xs); color: var(--muted); line-height: 1.1; }
+.rail-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; width: calc(var(--rail-w) - 8px); margin-top: 8px; line-height: 1.2; white-space: nowrap; }
+.rail-count { font-size: 15px; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+.rail-wait { display: flex; gap: 3px; margin-top: 2px; }
+.rail-wait i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .6; }
+.rail-result { gap: 0; }
+.rail-bars { display: flex; align-items: flex-end; justify-content: center; gap: 1px; width: 100%; height: 22px; margin-bottom: 5px; }
+.rail-bars i { flex: 0 1 4px; min-width: 1px; height: 1px; background: var(--line-strong); }
+.rail-bars i.top { background: var(--accent); }
+.rail-range { margin: -4px 0 0; font-size: 13px; color: var(--text); }
+.rail-sep { width: 28px; height: 1px; background: var(--line); flex: none; }
+
+/* the item marker (all variants): "1/3" in the topic colour below the open button – what the column's
+   "item 1 of 3" says; a button that opens the overlay (like hovering the rail), never the only way */
+.rail-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; width: 52px; padding: 5px 0 4px;
+    background: none; border: 1px solid transparent; border-radius: 4px; cursor: pointer; color: var(--topic-color);
+}
+.rail-item:hover { border-color: var(--line-strong); }
+.rail-item:focus-visible, .rail-btn:focus-visible, .rail-split button:focus-visible, .peek .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rail-item .i { width: 16px; height: 16px; }
+.rail-item b { font-size: 13px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.rail-item small { color: var(--muted); }
+/* variant C, revealed: the marker becomes the way to "next" – accent frame and label */
+.rail-item.cta { border-color: var(--accent); color: var(--accent); }
+.rail-item.cta small { color: var(--accent); font-weight: bold; }
+.rail-item.cta:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* ---------- the foot: timer and round button(s), down to the rail's edge ---------- */
+.rail-foot { display: flex; flex-direction: column; align-items: center; gap: 8px; align-self: stretch; padding-bottom: 32px; }
+.rail-timer { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* one round button as today (44px): "Restart round" framed, "New round" filled */
+.rail-btn {
+    display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line-strong);
+    border-radius: 4px; background: var(--bg); color: var(--text); cursor: pointer;
+}
+.rail-btn:hover { border-color: var(--accent); color: var(--accent); }
+.rail-btn.primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.rail-btn.primary:hover { background: transparent; color: var(--accent); }
+/* A: "next" framed in the accent (the second choice, quieter than the filled "New round") */
+.rail-btn.next { border-color: var(--accent); color: var(--accent); }
+.rail-btn.next:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* A: a button with its word below it – the word is part of the hit target (no tooltip needed) */
+.rail-act { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.rail-act small { font-size: 10.5px; letter-spacing: -0.02em; }
+.rail-act small.acc { color: var(--accent); font-weight: bold; }
+
+/* B: one block, two equal halves ("next" / "round"), icon and word inside the button */
+.rail-split { display: flex; flex-direction: column; width: 52px; border: 1px solid var(--accent); border-radius: 4px; overflow: hidden; }
+.rail-split button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 50px; padding: 0;
+    border: 0; background: var(--accent); color: var(--on-accent); cursor: pointer; font-size: 10.5px; font-weight: bold; letter-spacing: -0.02em;
+}
+.rail-split button + button { border-top: 1px solid var(--bg-2); }
+.rail-split button:hover { background: transparent; color: var(--accent); }
+.rail-split .i { width: 18px; height: 18px; }
+
+/* ---------- the overlay (hover / click on the rail): the whole column over the table ---------- */
+.peek {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 380px; z-index: 5; display: flex; flex-direction: column; gap: 18px;
+    padding: 14px 16px 32px; background: var(--bg-2); border-left: 2px solid var(--accent); box-shadow: var(--shadow);
+}
+.peek .grow { flex: 1; }
+.peek .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.peek .status .icon-btn { margin-left: auto; }
+.peek .dock { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.peek .dock .btn { min-height: 44px; font-size: 15px; font-weight: bold; background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.peek .dock .btn.flash { outline: 2px solid var(--accent); outline-offset: 3px; }
+.peek .more-items { background: none; border: 0; padding: 0; text-align: left; color: var(--muted); font-size: 13px; }
+.peek .range { font-size: 13px; color: var(--muted); }
+.peek .range b { color: var(--text); }
+
+/* ---------- compare view: the rails side by side at real size ---------- */
+.compare { display: flex; gap: 34px; justify-content: center; align-items: stretch; width: 100%; padding: 0 12px 24px; height: 100%; }
+.compare .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.compare h2 { margin: 0; font-size: 14px; color: var(--text); }
+.compare h2 span { color: var(--muted); font-weight: normal; }
+.compare .pair { display: flex; gap: 14px; flex: 1; min-height: 0; }
+.compare .spec { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.compare .spec > .rail { flex: 1; width: var(--rail-w); border: 1px solid var(--line); border-radius: 4px; }
+.compare .spec > p { margin: 0; font-size: 12px; color: var(--muted); }
+.compare .note { margin: 0; max-width: 300px; font-size: 12px; color: var(--muted); }

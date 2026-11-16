@@ -67,6 +67,7 @@ function prepareMenuSection(sec) {
         document.getElementById('topic_reset').disabled = !gTopicChangePending;
         document.getElementById('topic_save').disabled = !gTopicChangePending;
         if (!gTopicChangePending) document.getElementById('topic_txt').value = gTopic;
+        prepareTopicMenu(); // B-52 S1b: the note field, below it the items (topics.js; loads the lists if needed)
     }
 }
 
@@ -77,7 +78,7 @@ function prepareMenuSection(sec) {
 function showMenuTab(box, name, focusTab = false) {
     if (box === null) return;
     let tab = box.querySelector('[role="tab"][data-tab="' + name + '"]');
-    if (tab === null) return;
+    if (tab === null || tab.getAttribute('aria-disabled') === 'true') return; // B-52: e.g. "Done 0"
     box.querySelectorAll('[role="tab"]').forEach(t => {
         let selected = t === tab;
         t.setAttribute('aria-selected', selected ? 'true' : 'false');
@@ -86,6 +87,7 @@ function showMenuTab(box, name, focusTab = false) {
     box.querySelectorAll('[role="tabpanel"]').forEach(p => { p.hidden = p.getAttribute('data-tab') !== name; });
     if (focusTab) tab.focus();
     if (box.id === 'feedback_box' && name === 'backlog') loadFeedbackBacklog(); // B-57
+    if (box.id === 'topic_box') onTopicTab(name); // B-52 S1c: Note | Items | Done (topics.js; loads Done lazily)
 }
 
 function showCsetTab(name, focusTab = false) {
@@ -128,11 +130,11 @@ function openMenu(sec, opener = null, focusField = true) {
     if (focusField) {
         let field = gMenuSections[sec].focus;
         if (field) {
-            let element = document.getElementById(field);
+            let element = sec === 'topic' ? topicMenuFocus() : document.getElementById(field); // B-52 S1
             if (element === null) element = section.querySelector('button, input, [tabindex]') || section; // R3 F5: deck not loaded yet
             // a radio group (fieldset): its checked radio, as the arrow keys move from there
             if (element.tagName === 'FIELDSET') element = element.querySelector('input:checked') || element.querySelector('input');
-            if (sec === 'topic') element.select();
+            if (sec === 'topic' && element.id === 'topic_txt') element.select();
             else focusQuietly(element);
         } else if (sec === 'index') {
             // back from a section: the focus on its entry, otherwise on the first entry
@@ -318,8 +320,10 @@ function initMenu() {
         box.addEventListener('keydown', function (event) {
             let tab = event.target.closest('[role="tab"][data-tab]');
             if (tab === null) return;
-            let tabs = Array.from(box.querySelectorAll('[role="tab"][data-tab]'));
+            // B-52: a disabled tab (aria-disabled, e.g. "Done 0") is skipped
+            let tabs = Array.from(box.querySelectorAll('[role="tab"][data-tab]:not([aria-disabled="true"])'));
             let i = tabs.indexOf(tab);
+            if (i < 0) return;
             if (event.key === 'ArrowRight') i = (i + 1) % tabs.length;
             else if (event.key === 'ArrowLeft') i = (i - 1 + tabs.length) % tabs.length;
             else if (event.key === 'Home') i = 0;
@@ -337,6 +341,7 @@ function initMenu() {
     });
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || event.defaultPrevented || !menu.open || isModalOpen(menu)) return;
+        if (otherModalOpen(menu)) return; // B-52 S1c: a dialog above the panel (leave item) closes first
         if (typeof connHintVisible === 'function' && connHintVisible()) return; // B-86: the panel is inert
         event.preventDefault();
         closeMenu();

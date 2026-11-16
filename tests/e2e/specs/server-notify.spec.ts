@@ -40,7 +40,7 @@ test('API writes without a browser push update an open board (B-81)', async ({ b
 
   // update_topic.php (topic in the POST body)
   await post(alice, `/api/update_topic.php?t=${t}`, { topic: 'Story from the API' });
-  await expect(alice.locator('#topic')).toContainText('Story from the API');
+  await expect(alice.locator('#board_note_text')).toContainText('Story from the API');
 
   // update_team.php: team name
   await post(alice, `/api/update_team.php?name=${encodeURIComponent('Renamed by API')}&t=${t}`);

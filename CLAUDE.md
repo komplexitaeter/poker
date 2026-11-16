@@ -136,8 +136,10 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 ## Tests
 
 End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
-jedem PR nach `release`/`rollout-3` und jedem Push darauf, mit PHP 8.4 wie in Produktion; reine `*.md`-Änderungen lösen
-keinen Lauf aus. PRs `release` → `master` laufen nicht erneut: Kai mergt sie nur, wenn der letzte Lauf auf `release`
+jedem PR nach `release` und jedem Push darauf, mit PHP 8.4 wie in Produktion; reine `*.md`-Änderungen lösen
+keinen Lauf aus. Die Suite läuft in 3 parallelen Shards; der Sammel-Job `e2e (PHP 8.4)` behält den bisherigen Check-Namen (B-134). PRs nach
+`release` lassen Tests mit dem Tag `@slow` weg, Push auf `release` und manueller Start laufen komplett. Neue Tests mit
+echten Wartezeiten ≥ 15 s bekommen `{ tag: '@slow' }`. PRs `release` → `master` laufen nicht erneut: Kai mergt sie nur, wenn der letzte Lauf auf `release`
 (gleicher Stand) grün ist. **Lokal** (Agenten) laufen nur die Specs, die die Änderung betreffen, plus neue Tests; die
 komplette Suite übernimmt die CI (Andreas, 2026-10-28).
 
@@ -190,8 +192,13 @@ nachträglich im Backlog vermerkt.
 - Mehrere zusammengehörige Feature-Branches darf Kai zu einem Sammel-PR nach `release` zusammenführen.
 - Kleinigkeiten ohne Backlog-Eintrag (Tippfehler, Doku, Backlog-Pflege) direkt auf `release`.
 - **Aufräumen (Andreas, 2026-11-08):** Ist nichts in Entwicklung, gibt es nur `release` und `master`. Kai kann Remote-Branches
-  nicht löschen; gemergte Branches löscht GitHub per Repo-Einstellung „Automatically delete head branches“ bzw. Andreas.
-  Kai entfernt nach dem Merge die zugehörigen lokalen Worktrees.
+  nicht löschen; gemergte Branches löscht GitHub per Repo-Einstellung „Automatically delete head branches“ (aktiv seit
+  2026-11-10) bzw. Andreas. Kai entfernt nach dem Merge die zugehörigen lokalen Worktrees und Branches.
+  Übrig gebliebene Remote-Branches (z. B. Zwischenstände ohne eigenen PR) stören nicht: Andreas geht sie routinemäßig
+  nach jedem Rollout durch und löscht sie (2026-11-12); Kai listet sie im PR `release` → `master` unter „Aufräumen“.
+  Ruleset „protect release and master“ (aktiv seit 2026-11-10): `release` und `master` können nicht gelöscht und nicht
+  per Force-Push überschrieben werden, kein Bypass. Keine Status-Check- oder PR-Pflicht (Kai pusht Kleinigkeiten direkt
+  auf `release`).
 - `poker-msg` bleibt ein eigenes Repo und folgt demselben Ablauf (`release` → `master`).
 - **Rollout 3 ist live (2026-11-06), `rollout-3` ist abgeschlossen.** Seitdem wieder der normale Ablauf (Andreas,
   2026-11-07): Feature-Branches von `release`, PRs nach `release`, Staging auf `release`. Neues geht in kleinen,

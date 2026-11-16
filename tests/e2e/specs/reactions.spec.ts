@@ -9,14 +9,15 @@ import { newPlayer, createTeam, joinAsPlayer, tableCard, stopHbLoads } from './h
  * .is-hit on the card). Several landings on one card at once are offset (--land-i). The nudge circle (.nudge) sends
  * "react:0:<to>:nudge" (anonymous): no flight, no landing, the target shakes (.is-nudged; on the nudged one's board
  * also .is-nudged-me). Anonymous mode: no sender name. A hidden tab drops reactions (nothing is played late).
- * poker-msg checks the format only and forwards at most one reaction per connection and second; the board ignores
+ * poker-msg checks the format only and forwards at most 3 reactions per connection and second and 10 a minute
+ * (B-131); the board keeps to the same limits (a hint above the minute limit, none within the second) and ignores
  * unknown codes.
  * SHOT_DIR (optional): stills of the flight, the landing and a nudge, and a video of a flight.
  */
 const DESKTOP = { width: 1280, height: 800 };
 const TABLET = { width: 1024, height: 768 };
 const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
-const RATE_LIMIT_MS = 1100; // poker-msg: one reaction per connection and second
+const RATE_LIMIT_MS = 1100; // poker-msg: a few reactions per connection and second (B-131: 3, before: 1); a pause keeps clear of it
 
 function teamIdOf(url: string): string {
   const teamId = new URL(url).searchParams.get('t') as string;
@@ -460,4 +461,196 @@ test('shots: circles, flight, landing, two landings, nudge (B-110)', async ({ br
   await alice.mouse.move(5, 5);
   await alice.waitForTimeout(2500);
   await alice.context().close(); // writes the video
+});
+
+/** B-131: moves the page's performance.now() (the clock of the reaction limit) forward, without waiting */
+async function installClockOffset(page: Page): Promise<(ms: number) => Promise<void>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { perfOffset: number };
+    w.perfOffset = 0;
+    const orig = performance.now.bind(performance);
+    performance.now = () => orig() + w.perfOffset;
+  });
+  return ms => page.evaluate(d => { (window as unknown as { perfOffset: number }).perfOffset += d; }, ms);
+}
+
+test('rate limit: 3 a second and 10 a minute go out, the 4th in a second is silently not sent, the 11th in a minute shows a hint (B-131)',
+  async ({ browser }) => {
+  const { alice, bob, bobMkey } = await setup(browser, 'React Limit');
+  const sent = await recordSent(alice);
+  const advance = await installClockOffset(alice);
+  type W = { sendReaction: (to: string, code: string) => void; toasts: string[];
+    showToast: (text: string, ...rest: unknown[]) => void };
+  // counts the hints (showToast is a global function: the board calls it through window)
+  await alice.evaluate(() => {
+    const w = window as unknown as W;
+    w.toasts = [];
+    const orig = w.showToast;
+    w.showToast = (text: string, ...rest: unknown[]) => { w.toasts.push(text); orig(text, ...rest); };
+  });
+  const toasts = () => alice.evaluate(() => (window as unknown as W).toasts.slice());
+
+  // a double click on the nudge circle: both nudges go out (3 a second), a third one too
+  const bobCard = tableCard(alice, 'Bob');
+  await bobCard.hover();
+  await bobCard.getByRole('button', { name: 'Nudge Bob' }).dblclick();
+  await alice.waitForTimeout(300);
+  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`, `react:0:${bobMkey}:nudge`]);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'clap'), [bobMkey]);
+  expect(await sent()).toHaveLength(3);
+  // the 4th within the same second: silently not sent (no hint)
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'clap'), [bobMkey]);
+  expect(await sent()).toHaveLength(3);
+  expect(await toasts()).toEqual([]);
+  await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
+
+  // seven more, one per (faked) second: all go out
+  for (let i = 0; i < 7; i++) {
+    await advance(1100);
+    await alice.evaluate(([to, c]) => (window as unknown as W).sendReaction(to, c), [bobMkey, i % 2 ? 'nudge' : 'clap']);
+  }
+  expect(await sent()).toHaveLength(10);
+  expect(await toasts()).toEqual([]);
+
+  // the 11th within the minute (through the emoji bar): not sent, a friendly hint instead
+  await advance(1100);
+  await throwAt(alice, bobCard, 'heart');
+  await expect(alice.locator('#toast')).toHaveClass(/\btoast-on\b/);
+  await expect(alice.locator('#toast')).toContainText('too many reactions');
+  expect(await sent()).toHaveLength(10);
+  expect(await toasts()).toHaveLength(1);
+  await expect(bob.locator('.react-land')).toHaveCount(0);
+
+  // tried again right away: still not sent, and the hint does not repeat itself
+  await advance(1100);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'cake'), [bobMkey]);
+  expect(await sent()).toHaveLength(10);
+  expect(await toasts()).toHaveLength(1);
+
+  // a minute after the first: one goes out again
+  await advance(60_000);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'party'), [bobMkey]);
+  expect(await sent()).toHaveLength(11);
+  // not checked on Bob's board: only the board's clock is moved on; poker-msg (B-131, 10 per real minute) still
+  // drops this one, so it never lands
+  expect(await toasts()).toHaveLength(1);
+});
+
+test('a held Enter on the nudge circle or an emoji sends one reaction, not one per key repeat (B-131)',
+  async ({ browser }) => {
+  const { alice, bobMkey } = await setup(browser, 'React Hold');
+  const sent = await recordSent(alice);
+  // the 1 s limit (3) would hide most repeats: every repeat comes a (faked) 1.1 s later
+  const advance = await installClockOffset(alice);
+  const hold = async (key: string, repeats: number) => {
+    await alice.keyboard.down(key);
+    for (let i = 0; i < repeats; i++) {
+      await advance(1100);
+      await alice.keyboard.down(key); // Playwright: a key pressed already goes down again with repeat = true
+    }
+    await alice.keyboard.up(key);
+    await alice.waitForTimeout(300);
+  };
+
+  const bobCard = tableCard(alice, 'Bob');
+  await bobCard.hover();
+  await bobCard.getByRole('button', { name: 'Nudge Bob' }).focus();
+  await hold('Enter', 8);
+  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`]);
+
+  // the emoji bar: the held Enter neither throws again nor reopens the bar
+  await advance(1100);
+  await bobCard.hover();
+  await bobCard.locator('.react').click();
+  await alice.locator('#react_bar button[data-react="heart"]').focus();
+  await hold('Enter', 8);
+  const aliceMkey = await tableCard(alice, 'Alice').getAttribute('id') as string;
+  expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`, `react:${aliceMkey}:${bobMkey}:heart`]);
+  await expect(alice.locator('#react_bar')).toBeHidden();
+  await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
+});
+
+/** B-133: an AudioContext that counts started oscillators (window.oscStarts) instead of playing */
+function stubAudio(): void {
+  const w = window as unknown as { oscStarts: number; AudioContext: unknown };
+  w.oscStarts = 0;
+  const param = { setValueAtTime() { /* stub */ }, exponentialRampToValueAtTime() { /* stub */ } };
+  w.AudioContext = class {
+    state = 'suspended';
+    currentTime = 0;
+    destination = {};
+    resume() { this.state = 'running'; return Promise.resolve(); }
+    createOscillator() {
+      return { type: '', frequency: param, connect() { /* stub */ }, start() { w.oscStarts++; }, stop() { /* stub */ } };
+    }
+    createGain() { return { gain: param, connect() { /* stub */ } }; }
+  };
+}
+
+const oscStarts = (page: Page) => page.evaluate(() => (window as unknown as { oscStarts: number }).oscStarts);
+
+test('nudge: sound for the nudged one (switch per device), title flashes in a hidden tab (B-133)', async ({ browser }) => {
+  const { alice, bob, bobMkey } = await setup(browser, 'React Sound');
+  const errors: string[] = [];
+  // no errors or warnings of the page (blocked external resources aside, see newPlayer)
+  bob.on('pageerror', e => errors.push(e.message));
+  bob.on('console', m => {
+    if ((m.type() === 'error' || m.type() === 'warning') && !m.text().startsWith('Failed to load resource')) errors.push(m.text());
+  });
+  type W = { sendReaction: (to: string, code: string) => void };
+  const soundOn = bob.locator('input[name="cet_nudge_sound"][value="on"]');
+  const soundOff = bob.locator('input[name="cet_nudge_sound"][value="off"]');
+
+  // the switch in the "You" menu: on by default, off is kept after a reload
+  await bob.locator('#user_settings_btn').click();
+  await expect(bob.locator('#cet_nudge_sound legend')).toHaveText('Sound on nudge');
+  await expect(soundOn).toBeChecked();
+  await bob.locator('#cet_nudge_sound label', { hasText: 'Off' }).click();
+  await expect(soundOff).toBeChecked();
+  for (const p of [alice, bob]) {
+    await p.context().addInitScript(stubAudio);
+    await p.reload();
+    await expect(tableCard(p, 'Bob')).toBeVisible();
+  }
+  // a click on the page (the menu button) makes the AudioContext
+  await bob.locator('#user_settings_btn').click();
+  await expect(soundOff).toBeChecked();
+  await alice.locator('#user_settings_btn').click();
+  await alice.keyboard.press('Escape');
+
+  // switch off: the nudge is silent
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
+  await expect(tableCard(bob, 'Bob')).toHaveClass(/\bis-nudged-me\b/);
+  expect(await oscStarts(bob)).toBe(0);
+
+  // switch on: the nudged one hears it, the sender does not
+  await bob.locator('#cet_nudge_sound label', { hasText: 'On' }).click();
+  await expect(soundOn).toBeChecked();
+  await bob.keyboard.press('Escape');
+  await alice.waitForTimeout(RATE_LIMIT_MS);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
+  await expect.poll(() => oscStarts(bob)).toBeGreaterThan(0);
+  expect(await oscStarts(alice)).toBe(0);
+
+  // hidden tab: the title flashes until the tab is visible again
+  const title = await bob.title();
+  expect(title).toContain('Agile Poker');
+  await bob.evaluate(() => Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }));
+  await setHidden(bob, true);
+  await alice.waitForTimeout(RATE_LIMIT_MS);
+  const before = await oscStarts(bob);
+  const gotB = await recordReceived(bob);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
+  await expect.poll(gotB).toEqual([`react:0:${bobMkey}:nudge`]);
+  await expect.poll(() => bob.title()).toBe('\u{1F44B} Your turn – ' + title);
+  expect(await oscStarts(bob)).toBeGreaterThan(before); // the sound also in a hidden tab
+  await expect.poll(() => bob.title()).toBe(title); // it flashes
+  await expect.poll(() => bob.title()).toBe('\u{1F44B} Your turn – ' + title);
+  expect(await alice.title()).toBe(title);
+  await bob.evaluate(() => delete (document as unknown as { hidden?: boolean }).hidden);
+  await setHidden(bob, false);
+  await expect(bob).toHaveTitle(title);
+  await bob.waitForTimeout(1500);
+  await expect(bob).toHaveTitle(title);
+  expect(errors).toEqual([]);
 });

@@ -5,6 +5,19 @@ Gemeinsames Backlog für Wartung und Weiterentwicklung. Ablauf siehe `CLAUDE.md`
 Status: `neu` → `refined` (gemeinsam verstanden, bereit für einen Sprint) → `im Sprint` → `erledigt`.
 Reihenfolge = grobe Priorität, wird im Refinement angepasst.
 
+## Leitidee (Andreas, 2026-11-10)
+
+**Refinement ist ein wiederkehrendes Gespräch.** Schätzen ist die Kommunikationsmethode, nicht das Urteil: Es geht
+darum, eine gemeinsame Vorstellung davon zu entwickeln, was man zusammen erreichen will. Items kommen mehrfach ins
+Refinement und werden dabei konkreter (erst lose Ideen, dann Notizen, Mockups, erste Umsetzungen). Ein breiter
+Spread oder „nochmal mitbringen“ ist kein Fehler, sondern genau das, worüber man reden sollte. Viele Teams erleben
+es anders („Item gut vorbereiten, einmal schätzen, umsetzen – alles andere ist ein Fehler“); die App soll den
+iterativen Weg leicht und normal machen (Funktionen, aber auch Sprache und Tipps). Betrifft vor allem B-52, B-53, B-129.
+
+**Daten:** Erwachsene Menschen geben Daten ein und teilen einen Link. Die App behält Items, solange das Team sie
+braucht; die Teams haben selbst in der Hand, was sie löschen oder absichern. Datensicherheit ist wichtig, aber nicht
+die Primärfunktion (Andreas, 2026-11-10).
+
 ## Aktueller Sprint
 
 **Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
@@ -1710,6 +1723,11 @@ Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, deshalb s
 README) per URL erreichbar. Die PHP-Skripte antworten über das Web mit 404 (`tools/migration/common.php`), der Rest ist
 harmlos (öffentlich auf GitHub). Trotzdem sauberer: in nginx beider Server `location ^~ /tools/ { return 404; }`.
 Befehle bereitet Kai vor, Betreiber spielt sie ein.
+**Akut erledigt (2026-11-10, Live, außerhalb poker):** Bei feedback und teamcar war `.git` öffentlich abrufbar
+(Scanner fragten Git-Objekte ab). Regel wie bei poker `location ~ /\.(?!well-known/) { return 404; }` in beiden
+Server-Blöcken ergänzt, geprüft: 404. Keine Token in Remote-URLs; feedback `config.php` ignoriert; teamcar trackt
+`config.php`, das Passwort darin weicht vom Live-Wert ab (kein Leck). Offen (teamcar-Repo, klein): `config.php` aus
+Git nehmen, `config.example.php` + `.gitignore`. Staging-Seiten bei Gelegenheit genauso prüfen.
 
 ### B-127 Leichter Heartbeat statt dao.php alle 30 s
 Status: im Sprint (Andreas, 2026-11-09). **Befund (Live-Logs):** Seit R3 lädt jedes Board bei jedem `hb` von poker-msg
@@ -1729,7 +1747,165 @@ Stand 2026-11-09 (`php8.4 tools/migration/check_deck_migration.php --verify` auf
 0 mismatch die Tabelle `pok_teams_deck_backup_r3` löschen (`drop table`, Befehl bereitet Kai vor, Betreiber führt aus).
 Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
 
+### B-129 Session-Planer: Agenda mit Timeboxen je Item
+Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Ein Item kommt mehrfach auf die Agenda (Leitidee).
+Statt eines festen Ziels je Durchgang (engt zu sehr ein) eher ein **Reifegrad am Item** (Andreas, 2026-11-10): eine
+Eigenschaft, die mit jedem Gespräch wächst (z. B. Idee → grob verstanden → geschärft → bereit; Stufen offen), vom Team
+gesetzt; jeder Durchgang darf alles (reden, Fragen sammeln, schätzen).
+Stufen (Andreas, 2026-11-10):
+- **neu** – wir kennen das Thema noch nicht und müssen es uns mal ansehen
+- **gering** – wir haben eine grobe Idee und können anfangen, die richtigen Fragen zu stellen
+- **mittel** – es wird langsam klarer, in welche Richtung es geht, aber noch kann sich alles wieder ändern
+- **hoch** – der letzte Feinschliff, eigentlich sollten wir mit der Umsetzung starten
+Namen in der App eher beschreibend: *new · rough · shaping · ready* (nicht low/high – klingt nach Note); mit Delia
+im Mockup entscheiden. Darstellung (Andreas, 2026-11-10): **liegendes Dreieck mit Schieberegler, von links nach rechts** –
+links breit (viele offene Fragen, alles möglich), rechts spitz (klar, bereit); der Regler wandert nach rechts und
+sitzt auf der aktuellen Stufe (Bild des Unsicherheitstrichters). Alternative: stehendes Dreieck (Spitze oben),
+unten breit, der Regler wandert nach oben. Delia zeigt beide im Mockup.
+Offen: ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die Timebox-Planung beeinflusst.
+**Feedback zum Mockup (`mockups/planner/`, Andreas, 2026-11-10):**
+- Reifegrad: das **liegende Dreieck** (links → rechts) ist gesetzt.
+- Tabs Agenda / Later / Done schlüssig; „Later“ besser benennen (z. B. „Upcoming“ oder „Backlog“, offen).
+- Agenda-Leiste in der Sidebar (Segmente je Item, Markierung „jetzt“, „on time · 3 items left · ends 10:00“) gefällt sehr.
+- **Einfachster Fall muss einfach bleiben:** ohne Sessionplanung ein Thema eintippen und schätzen, wie heute. Alles
+  andere (ID, Description, Timebox, Session, Reifegrad) ist optional – wer mehr will, gibt mehr ein.
+- Im Mockup noch „T+02:10“ am Timer – in der App gibt es kein T± mehr (B-113), nicht übernehmen. Baut auf B-52 (Item-Karten) und dem Timer
+(B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
+**Idee:**
+- Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
+  B: 5 min, „ganz neu, nur grob vorstellen und erste Fragen sammeln“). Einstellbar z. B. durch Größerziehen der Karte
+  in einer Zeitleiste. Die Session hat ebenfalls eine Timebox; die Summe der Items zeigt, ob die Agenda hineinpasst.
+- Damit gibt es eine **Agenda**: was in der Session insgesamt geschätzt bzw. besprochen werden soll.
+- **Im Meeting:** das aktive Item zeigt seine Restzeit (Überzug amber wie der Timer in der Leiste), dazu ruhig der
+  Gesamtstand („6 min hinter Plan, noch 4 Items“). Nur signalisieren, nichts erzwingen. Ausweg „Parken“: ein Item, das
+  sich festfährt, ans Ende bzw. in die nächste Session.
+- **Agenda vorab:** über den Team-Link für alle einsehbar, dazu „Copy agenda“ zum Verschicken – man kann sich vorher
+  Gedanken machen, keine Überraschungen.
+Offene Fragen: Wer darf Timeboxen ändern (vermutlich alle, wie bei
+den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Items existieren damit schon Tage vor der
+Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
+
+### B-132 Deck je Item, mehrere Fragen je Item (z. B. Reifegrad gemeinsam bestimmen)
+Status: neu (Idee Andreas, 2026-11-13). Weiterführung von B-52/B-129, Leitidee „kontinuierliches Refinement“.
+- **Deck am Item:** Am Item lässt sich hinterlegen, mit welchem Kartendeck geschätzt wird; beim Wechsel aufs Item
+  stellt das Board das Deck um. Dann wechselt man leicht zwischen verschiedenen Arten von Fragen.
+  Voraussetzung: ausgeblendete Karten je Deck speichern (heute nur für das aktuelle Deck des Teams).
+- **Reifegrad bzw. Schätzunsicherheit als eigenes Deck** (Katalog), z. B. new · rough · shaping · ready.
+- **Mehrere Fragen je Item:** Am Item festlegen, ob am Ende zusätzlich gemeinsam der Reifegrad (oder die
+  Unsicherheit) bestimmt wird. Ablauf: der PO trägt einen Reifegrad vorab ein (optional), nach dem Schätzen stimmen
+  alle per Karten über den Reifegrad ab; das Ergebnis landet am Item (Historie je Durchgang).
+- **Bis dahin:** Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); vorhandene Werte werden weiter angezeigt.
+**Zwei Dimensionen (Andreas, 2026-11-13), getrennt umsetzbar:**
+1. **Set je Item** – überschaubarer Umbau: Item merkt sich das Set (Deck-ID + Kartenauswahl); beim Aktivwerden bzw.
+   „Next item“ stellt das Board atomat mit der neuen Runde auf dieses Set um; ohne Angabe gilt das Team-Deck.
+   Dafür Kartenauswahl je Deck speichern statt nur fürs aktuelle Deck. Historie/Export zeigen das Set je Item.
+2. **Anschließende Metafrage** (z. B. Reifegrad, Unsicherheit) – geht tiefer: zweite Abstimmung je Item nach dem
+   Schätzen mit eigenem Deck, Ablauf und Darstellung (wer schaltet weiter, was zeigt das Board dazwischen), Ergebnis
+   je Durchgang in der Historie.
+Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
+
+### B-131 Reaktionen: gestaffeltes Rate-Limit je Verbindung
+Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
+4.884 vom Limit verworfen – fast alle von wenigen Verbindungen (eine allein 2.129). Wer die JS-Konsole öffnet, kann
+heute dauerhaft 1/s senden. Neu je Verbindung (gleitende Fenster, kein Limit auf Teamebene): **1 pro Sekunde, 10 pro
+Minute**; darüber wird verworfen (wie heute, mit Log-Zeile). Log-Muster: kurze Ausbrüche bis 24/s (vermutlich
+gehaltene Taste) – Board ignoriert Tastaturwiederholung, eine gehaltene Taste = eine Reaktion.
+Log (Andreas, 2026-11-12): Verwerfungen mit Fenster („rate limit 1s“/„1m“) und der **Code** der Reaktion bei
+Weiterleitung und Verwerfung (nie Absender/Empfänger), damit Nutzung je Reaktion und Limit-Treffer auswertbar sind.
+Kein Widerspruch zu B-110: „nichts in die DB“ bleibt – im Log-File ohne Namen ist es ok. Im Board die gleichen
+Grenzen als Rückmeldung: beim Überschreiten kurzer Hinweis statt stillem Verlust. poker-msg (Ben) + Board (Fred);
+poker-msg-Rollout mit Neustart abends.
+
+### B-130 Timer: Auto-Start „Off · New round · Next item“
+Status: im Sprint (Andreas, 2026-11-12). Live-Daten seit 01.11.: 9 Teams nutzen den Timer (5 mit sichtbarer Uhr),
+Timeboxen 1, 5, 10, 41, 60 min – 5/10 min sind Timeboxen je Item, die heute bei jeder neuen Runde neu starten.
+Statt Ja/Nein (`timer_auto_restart`) drei Werte: **Off** · **New round** (wie heute „auto-start on new round“) ·
+**Next item** (Neustart nur beim Verlassen eines Items – Close/Close without a value/Bring it back later –, neue Runden
+innerhalb des Items lassen ihn weiterlaufen; ohne Items wie „New round“). Bestehende Teams behalten ihr Verhalten.
+Backend Ben (Schema, Neustart in `topic_item_next.php`), Frontend Fred (Umschalter im Timer-Menü). Geht mit B-52 live.
+
 ### B-52 Topics als Backlog-Items
+**S1b nach Staging-Test (Andreas, 2026-11-12) – Status: im Sprint:**
+- **Notiz bleibt Notiz:** Das bisherige Topic-Feld ist ein allgemeiner Hinweis (z. B. zum Ablauf), immer sichtbar;
+  Items kommen zusätzlich, durch sie iteriert man. `update_topic.php` wieder wie früher, keine automatische Übernahme
+  alter Topics als Item. Einstieg „+ Add item“ als Button mit gestrichelter Outline.
+- **Letztes Item:** statt „Next item“ ein „Finish item“; danach allgemeiner Modus ohne aktives Item.
+- **Historie je Item:** vereinbarter Wert (nur bei Sets mit Ziel Einigung), Anzahl Schätzrunden, Balken der
+  Verteilung (per Dreieck aufklappbar), Datum der letzten Runde.
+- **Ziel Einigung ja/nein** auch an eigenen Sets einstellbar (Set-Editor). Manuelle Ergebniswahl genau bei Sets mit
+  Ziel Einigung.
+- **Eingeklappte Leiste:** „Next item“ dort lösen (Delia). Entscheidung (Andreas, 2026-11-12): **Variante B „Split“**
+  (`mockups/rail-next/`): ein Block aus zwei gleichwertigen Hälften. Beschriftung muss eindeutig sagen, dass es um
+  „next item“ bzw. „new round“ geht – „next“/„round“ allein ist verwirrend. Beschriftung je Hälfte zweizeilig:
+  „next item“ (letztes Item: „finish item“) und „new round“; „New round“ bleibt überall so (bekannt). Umsetzung als
+  Folgeschritt nach S1b.
+- **S1c „Item verlassen“ (Andreas, 2026-11-12):** Es gibt kein klares Kriterium für „fertig“ – manchmal kommt man
+  nicht zu einem Ergebnis. „Next item“/„Finish item“ fragt **immer** nach (Schutz vor Fehlklick, Andreas 2026-11-12) –
+  auch bei Konsens oder bewusst gewähltem Wert; die passende Option ist vorausgewählt (Enter bestätigt). Ein **Overlay mit Cancel**
+  (funktioniert auch aus der schmalen Leiste): „Close with 8“ (8 = die aktuelle Schätzung: automatisch der höchste Wert oder vom Team überschrieben) · „Close without a value“ ·
+  „Bring it back later“ (bleibt offen, ans Ende der Liste, Runden/Verteilung bleiben). Der höchste Wert ist damit nur
+  noch Vorschlag, nicht automatisch übernommen. Perspektiven-Sets: Overlay nur mit „Close“ · „Bring it back later“. Backend prüft dieselbe Regel.
+  Zusammen mit dem Split in der Leiste nach S1b.
+- **Notiz oben (Andreas, 2026-11-12):** Die Notiz ist ein eigener Abschnitt oben – am liebsten wieder (wie früher)
+  auf dem Board über den Karten, damit alle sie immer sehen (auch bei eingeklappter Seitenleiste). Items bleiben in der
+  Seitenleiste. Gestaltung Delia (Desktop und Mobil), mit S1c.
+- **Topics-Menü mit Tabs „Note · Open · Done“ (Andreas, 2026-11-12, nach S1b auf Staging):** statt eines langen
+  Panels. Start-Tab: „Open“, wenn Items offen sind, sonst „Note“ (einfacher Fall bleibt ohne Extra-Klick). Zähler an
+  den Tabs (z. B. „Open 3“, „Done 12“). Done lädt erst beim Öffnen des Tabs (`get_topics.php?done=1`). Mit S1c.
+- **dao.php klein halten:** dao liefert nur das aktive Item, Anzahlen und `topics_rev`; die Liste kommt über
+  `api/get_topics.php`, nur wenn sich `topics_rev` geändert hat (Done-Items erst beim Öffnen des Menüs). Kein neuer
+  Signaltyp in poker-msg. **Jede** Änderung an Items (auch Text eines alten/erledigten Items, Ergebnis, Reifegrad,
+  Verteilung beim Rundenwechsel) zählt `topics_rev` hoch – an einer Stelle erzwungen und per Test abgesichert.
+**Erster Schnitt S1 – Vorschlag Kai (2026-11-10), Ziel: bis Mitte Dezember live** (vor der Jahreswechsel-Welle,
+siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbeiten.*
+- Im Topics-Menü statt eines Textfelds eine Liste von Items; je Item Heading (Pflicht) und Description (optional,
+  Markdown wie heute), ID optional. Anlegen, bearbeiten, umsortieren, löschen – alle dürfen das.
+- Einfachster Fall wie heute: Wer nur ein Thema eintippt, merkt keinen Unterschied (ein Item, kein Listen-Ballast).
+  Das bisherige Topic eines Teams wird beim ersten Laden zum ersten Item.
+- Das oberste offene Item ist das aktive und erscheint dort, wo heute das Topic steht.
+- Nach dem Aufdecken im Results-Panel „Next item“: das aktive Item wird abgeschlossen, das nächste wird aktiv
+  (neue Runde wie heute). Abgeschlossene Items stehen unter „Done“ mit Heading und dem Stand der letzten Runde
+  (Range bzw. Median, je nach Kartenset); wieder öffnen möglich.
+- Neue Tabelle für Items (Ben), Prepared Statements, `notify_team()`; Frontend Fred, Gestaltung Delia
+  (Mockup-Stand `mockups/planner/`).
+- **Nicht in S1:** Timeboxen, Agenda/Session, Reifegrad, „Bring back“/Durchgänge, Copy results, Ergebnisvorschlag.
+**Entscheidungen (Andreas, 2026-11-11) – Status S1: refined:**
+- **Prämisse:** Wer nur ein Topic eingibt wie heute, hat es nicht komplizierter und braucht nicht mehr Klicks.
+- **Rich-Infos zum Item in der Sidebar:** Voting-Panel zeigt das aktive Item (ID, Heading, Description, Reifegrad) und
+  deutet an, dass noch mehr kommt (später oben die Session-Timeline). Results-Panel: Details zur Abstimmung, dort
+  beginnt die Historisierung.
+- **Reifegrad von Anfang an** als echtes Alleinstellungsmerkmal (in S1 klein: liegendes Dreieck, 4 Stufen), Sprache
+  „kontinuierliches Refinement“.
+- **Ergebnis:** bei Karten mit Wert zunächst der höchste gelegte Wert; änderbar durch Klick auf einen Balken im
+  Spread (markierter Balken), alternativ Dropdown.
+- Einfache Liste offen/done (kein Later/Backlog-Tab in S1). Mobil bleibt alles im Menü.
+- **Ergebnisregel (2026-11-11):** Am abgeschlossenen Item wird immer die Verteilung gespeichert (Anzahl je Karte, ohne
+  Personenbezug). Ein einzelner Ergebniswert nur bei Sets mit Zahlenwerten (auch T-Shirt, Sterne: interner
+  `numeric_value`): vorbelegt der höchste gelegte Wert, änderbar. Bei Ampel und Emotionen (`"range": false`) kein
+  Ergebniswert – dort geht es nicht um Einigung.
+- **Reifegrad (Andreas, 2026-11-11, nach dem S1-Mockup):** wird am Item erfasst (z. B. vom PO beim Anlegen/Bearbeiten),
+  um klarzumachen, worum es gerade geht; **optional** (darf leer bleiben, wenn es keinen Sinn macht). Ist er gesetzt,
+  zeigen Voting- und Results-Panel ihn nur an – kein Regler dort. Anzeige = Dreieck **plus** Stufenname, und der
+  Erklärtext muss erreichbar sein (er wirkt, z. B. „noch kann sich alles ändern“): im Voting-Panel direkt darunter
+  sichtbar bzw. per Klick auf das Dreieck aufklappbar – kein reiner Tooltip (Tooltips werden übersehen).
+- Mockup `mockups/topics-s1/` in der Grundidee abgenommen. Weitere Gestaltungspunkte (Vorschläge Kai, ohne Einwand):
+  ein Akzent im Spread (Schätzung statt „meistgewählt“), nur Balken mit Stimmen klickbar + Dropdown für alles,
+  „New round“ und „Next item“ gleichwertig, Mini-Balken unter „done“ bei Perspektiven-Sets, wiedereröffnete Items
+  direkt hinter das aktive, einfacher Fall: erste Zeile = Heading, Rest = Description.
+- **Generisch, nie am Set-Namen (Andreas, 2026-11-11):** Entscheidend ist der Zweck – **Einigung** am Ende (ein Wert,
+  Range, Ergebnis) oder **Perspektiven nebeneinander transparent machen** (nur Verteilung). Das hängt am
+  Anwendungsfall, nicht an den Karten: Ampel z. B. als Squad Health Check (Perspektiven zeigen, nicht umstimmen) vs.
+  Go/No-Go-Call (einer sagt Rot → erstmal Rot, Diskussion, Einigung z. B. auf Gelb; der „höchste Wert“ passt dann).
+  S1: Merkmal am Set mit Default aus dem Katalog (`"range": false` = Perspektiven), Prüfung an genau einer Stelle.
+  **Zahlenwert je Karte (Andreas, 2026-11-11):** `numeric_value` hängt an einzelnen Karten, Sets können gemischt sein.
+  Alle automatischen Ableitungen (vorbelegtes Ergebnis = höchster Wert, Range, Hinweise) nur aus den gelegten Karten
+  mit Wert. Hat keine gelegte Karte einen Wert, gibt es kein automatisches Ergebnis – das Team kann es aber manuell
+  setzen (gelegte Karte wählen), sonst bleibt es leer. **Später (eigener Schritt):** Team kann den Zweck umschalten (je Set
+  bzw. je Item/Runde, z. B. im Results-Panel „agree / show perspectives“); eigene Sets wählen ihn beim Anlegen.
+- Plan: Ben Datenmodell/API (Items-Tabelle, lazy Übernahme des bisherigen Topics als erstes Item, `update_topic.php`
+  bearbeitet weiter das aktive Item, `pok_teams_tbl.topic` bleibt synchron) → Delia parallel S1-Mockup → Fred + Delia
+  Oberfläche → Sina, E2E. Ein einzelnes Topic überschreiben bleibt wie heute (kein Eintrag unter „done“).
+
 Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
 das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
 Rundenhistorie wird heute schon geschrieben (`pok_roundstats_tbl`, `pok_roundstat_details_tbl`) und ließe sich je
@@ -1747,10 +1923,47 @@ Item steht immer der Stand der letzten Runde, bis das Team es als fertig markier
 festgehalten, der Spread lässt sich optional aufklappen. Wer was gelegt hat, vorerst nicht. Danach geht es mit dem
 nächsten noch nicht geschätzten Item weiter.
 Entscheidungen (Andreas, 2026-11-07): Items anlegen, umsortieren, als fertig markieren und wieder öffnen dürfen **alle**
-(Wiederöffnen auch gegen versehentliches Schließen). Fertige Items bleiben vorerst **dauerhaft** am Team-Link.
+(Wiederöffnen auch gegen versehentliches Schließen). ~~Fertige Items bleiben vorerst dauerhaft am Team-Link.~~
 Löschen: ein Item „zum Löschen markieren“, nimmt es niemand zurück, wird es nach ~14 Tagen automatisch gelöscht.
+(Überholt durch den neuen Zuschnitt unten.)
 Vorschlag Kai zu gelöschten Userdaten: Das Ergebnis am Item als Aggregat ohne Personenbezug speichern (Ergebnis,
 Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von Userdaten das Ergebnis nicht.
+**Revidiert (Andreas, 2026-11-10), siehe Leitidee oben:** Das automatische Löschen kurz nach der Session war zu
+sehr von der Datensicherheit geprägt. Iteratives Refinement braucht, dass Items über Wochen wiederkommen. Neu:
+Items bleiben, solange das Team sie braucht; Löschen und Absichern liegen in der Hand des Teams (Items und Team
+selbst löschen, ggf. Link erneuern, später optional PIN). Automatisches Aufräumen höchstens als Sicherheitsnetz bei
+langer Inaktivität. Ein Item hat mehrere **Durchgänge** (je Agenda-Termin eines, mit Stand; Reifegrad am Item, siehe B-129), der Spread über
+die Durchgänge zeigt, wie das gemeinsame Verständnis wächst. Der folgende Zuschnitt vom 2026-11-09 gilt nur noch für
+die Item-Felder, das Abarbeiten und den Export, nicht mehr für die Löschfrist.
+**Neuer Zuschnitt (Andreas, 2026-11-09) – (teilweise überholt) ersetzte „dauerhaft am Team-Link“:** Der Team-Link ist eine Parole, keine
+Zugangskontrolle (wird weitergegeben, nicht zurücknehmbar; die Team-ID ist zudem aus dem Teamnamen abgeleitet,
+`name2id()`, und bei kurzem/bekanntem Namen erratbar). Deshalb keine dauerhafte Historie mit Inhalten:
+- **Topics als Puffer für die Session:** Statt eines Topics optional mehrere. Je Item: ID (optional, z. B. Ticket-Nr.),
+  Heading, Description (optional). Reihenfolge ändern, bearbeiten, löschen – alle dürfen das.
+- **Abarbeiten der Reihe nach;** fertig geschätzte Items erscheinen im Results-Panel nur noch mit ID, Heading und
+  Ergebnis (ggf. Zahl der Runden). Die Description wird beim Abschluss nicht mehr gezeigt.
+- **Geschätzte Items werden automatisch zum Löschen markiert** und nach einer Frist X gelöscht (reicht für die Session
+  und etwas danach).
+- **Später (eigener Eintrag, wenn gewünscht):** Wer an seinem User eine E-Mail hinterlegt, kann sich per Mail eine PIN
+  schicken lassen, die die Historie freischaltet – nur für Runden ab der ersten Runde, in der er nachweislich mit
+  seiner User-ID dabei war.
+Offene Fragen: Frist X (Tage?); wird die Description beim Abschluss gelöscht oder nur ausgeblendet (Vorschlag: gelöscht,
+dann liegt nichts Vertrauliches länger als nötig); Export/„Copy results“ vor dem Löschen (z. B. für Jira); neue Team-IDs
+mit Zufallsanteil trotzdem sinnvoll (Erraten erschweren). E-Mail/PIN: wäre die erste E-Mail-Adresse in der DB
+(Datenschutz), und die User-ID hängt am Browser (localStorage) – geht verloren beim Löschen der Browserdaten bzw. auf
+einem anderen Gerät. Idee Andreas (2026-11-09): Mit hinterlegter E-Mail lässt sich genau das lösen – per Mail-PIN
+bzw. Login-Link die eigene User-ID auf einem neuen Gerät/Browser wiederherstellen (leichter Account ohne Passwort).
+Dafür nötig: E-Mail beim Hinterlegen per PIN bestätigen (sonst könnte jemand fremde Adressen an seine ID binden),
+Mailversand (SMTP, SPF/DKIM), Datenschutzerklärung, Löschen der E-Mail durch den User. Sina prüft vor der Umsetzung.
+**Vorbild (Andreas, 2026-11-10, ein anderes Planning-Poker-Tool angesehen):** Items als **Karten**: Das aktive Item
+liegt oben als Karte, die nächsten schauen als Stapel dahinter hervor (man sieht ohne Liste, dass noch etwas wartet).
+An die Item-Karte hängt sich das Ergebnis (Historisierung je Item), daneben groß der **Ergebnisvorschlag** (siehe
+Gedanke vom 2026-10-29), den das Team vor „Next item“ übernimmt oder ändert. Nur die Idee übernehmen, nicht den Look
+(Console Style bleibt).
+**Export (Andreas, 2026-11-10):** „Copy results“ für die fertigen Item-Karten, bevor sie gelöscht werden – Format
+passend zum Einfügen in Jira/Linear (z. B. je Zeile ID, Heading, Ergebnis; zusätzlich als CSV/Tabelle). Schlanke
+Antwort auf „Jira/Linear support“ der Konkurrenz, ohne eigene Integration. „Ohne Login“ bleibt das Versprechen:
+die E-Mail-PIN ist nur ein Extra, Schätzen und Export gehen immer ohne.
 ### B-53 Ergebnisdarstellung neu
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
@@ -1767,6 +1980,11 @@ echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shi
 Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
 Wert zeigen oder den Bereich „3–5“).
 Roadmap (2026-11-07): öffentlich als „Median indicator“.
+Ideen aus einem anderen Tool (Andreas, 2026-11-10), Fragen für Delia: (1) Phasen sichtbar als Schritte
+(z. B. Discuss → Estimate → Review) mit einer Zeile, was jetzt zu tun ist; (2) durchgehende Farbskala nach Wert
+(niedrig → hoch) für Deck, Balken und gelegte Karten, damit Ausreißer sofort auffallen; (3) Ergebnis nach Wert
+gruppiert: je Wert eine Karte mit den Personen darauf statt einer Karte je Person (bei vielen Spielern übersichtlicher).
+Keine bunten Verläufe, Avatare oder Fächer-Deck – Console Style bleibt.
 
 ### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
 Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
@@ -2021,3 +2239,27 @@ wie B-09; ungenutzte Felder wegzulassen spart kaum etwas).
 - **Render-Pfad:** Das Frontend rendert nach jedem `pull` den **kompletten** Zustand neu (`updateDao`), keine Deltas.
   Delta-Rendering wäre der eigentliche Hebel, aber größerer Umbau – überschneidet sich mit B-14 (JS-Module) und B-37
   (Resize-Logik). Erst nach denen sinnvoll; hier nur notiert.
+
+### B-133 Nudge mit Ton und Tab-Hinweis
+Status: in Umsetzung (Feedback „Small beep / ringtone for nudge action“, 2026-11-13; Andreas: gleich mit einbauen).
+Der Nudge (B-110) ist bisher rein optisch; wer im Video-Call oder in einem anderen Tab ist, merkt ihn nicht.
+- Nur beim **angestupsten** Spieler: kurzer, leiser Ton (Web Audio, keine Audiodatei), auf Android zusätzlich kurz
+  vibrieren.
+- Tab im Hintergrund: Titel blinkt („👋 Your turn – …“), bis der Tab wieder sichtbar ist. Braucht keine Interaktion.
+- Schalter „Sound on nudge“ im `:you`-Menü, Standard an, je Gerät gemerkt (localStorage).
+- Autoplay-Sperre der Browser: Ton erst nach einem Klick/Tipp auf der Seite (Audio-Kontext wird dabei angelegt),
+  nach Neuladen erneut. iPhone: Stummschalter/gesperrter Bildschirm → kein Ton. Deshalb Ton nur als Zusatz.
+
+### B-134 CI schneller
+Status: erledigt (2026-11-13, Andreas). E2E in 3 parallelen Shards (~4 statt ~10 min); PRs nach `release` ohne
+Tests mit Tag `@slow`, Push auf `release` komplett. Sammel-Job behält den Check-Namen `e2e (PHP 8.4)`.
+
+### B-135 Schreib-Requests scheitern in Safari nach langer Tab-Nutzung
+Status: in Umsetzung (Andreas auf Staging, 2026-11-13). Nach einem Kartenset-Wechsel kam ~30 s lang kein Request
+beim Server an (auch kein Heartbeat), Safari meldete `TypeError: Load failed`, bis neu geladen wurde. Ursache sehr
+wahrscheinlich: nginx 1.18 schließt eine HTTP/2-Verbindung nach 1.000 Requests (`http2_max_requests`), ein lange
+offener Board-Tab erreicht das.
+- Server: `http2_max_requests 10000;` in `/etc/nginx/conf.d/http2-max-requests.conf` (Staging erledigt, Live mit dem
+  nächsten Rollout).
+- App: `apiWrite()` wiederholt idempotente Schreib-Requests (Karte legen, Set, Einstellungen) nach einem reinen
+  Netzfehler einmal nach 300 ms; nicht bei New round, Items anlegen/weiterschalten, Löschen, Feedback.

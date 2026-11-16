@@ -28,6 +28,8 @@ and comments stay in English.
   (`createTeam`, `joinAsPlayer`, `pickCard`, `expectTableCard`, `teamWithTwoPlayers`).
 - Table cards show `prgrss1` (not chosen), `done001` (chosen, hidden) and the real card key once all players are ready.
 - Use Playwright's auto-waiting `expect`; never fixed `waitForTimeout` sleeps.
+- A test with real waits of 15 s or more gets `{ tag: '@slow' }` (B-134): CI runs it only on pushes to `release`,
+  not on PRs. Prefer `page.clock` over real waits where possible. CI splits the suite into 3 shards.
 - CDN scripts are served from npm packages by `newPlayer()`; when a page gets a new external script, add it there.
   All other external requests are blocked (in particular the production analytics).
 - Tests describe the current behaviour. If the app behaves unexpectedly, don't change app code: report it as a

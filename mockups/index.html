@@ -58,6 +58,34 @@
     <li><a href="board/?device=desktop">Desktop frame 1280×800</a></li>
 </ul>
 
+<h2>Session planner (B-129 / B-52) – separate mockup</h2>
+<ul>
+    <li><a href="planner/?state=plan">1 Plan – agenda as a timeline (height = timebox), “55 of 60 min planned”</a> · <a href="planner/?state=plan&amp;mode=light">light</a></li>
+    <li><a href="planner/?state=maturity">2 Maturity control – (a) lying vs. (b) standing triangle</a></li>
+    <li><a href="planner/?state=meeting">3 In the meeting – on time</a> · <a href="planner/?state=meeting&amp;pace=behind">behind plan, item over its timebox</a></li>
+    <li><a href="planner/?state=results&amp;pace=behind">4 Results – proposal, “Bring back” / “Next item”, “Copy results”</a></li>
+    <li><a href="planner/?state=history&amp;hist=a">5A One item over several sessions – no history</a> · <a href="planner/?state=history&amp;hist=b">5B with passes</a></li>
+</ul>
+<p><small>Planner parameters: state (plan|maturity|meeting|results|history), mat (a|b), pace (ontime|behind), hist (a|b), mode, clean=1.</small></p>
+
+<h2>Topic list S1 (B-52) – for the first slice</h2>
+<ul>
+    <li><a href="topics-s1/?state=single">1 One topic like today – the menu has one field, only a quiet “+ next item”</a> · <a href="topics-s1/?state=single&amp;menu=0">sidebar while voting</a></li>
+    <li><a href="topics-s1/?state=list">2 Topics menu with several items – open (top = now), done with result and maturity, reopen</a> · <a href="topics-s1/?state=list&amp;edit=1">editing an item</a> · <a href="topics-s1/?state=list&amp;mode=light">light</a></li>
+    <li><a href="topics-s1/?state=voting">3 Sidebar while voting – active item (ID, heading, description, maturity), “+2 more”</a></li>
+    <li><a href="topics-s1/?state=results">4 Results, deck with values – highest card marked as current estimate (click a bar or use the dropdown), maturity, “Next item”</a> · <a href="topics-s1/?state=results&amp;mode=light">light</a></li>
+    <li><a href="topics-s1/?state=traffic">5 Results, traffic lights – spread only, no estimate</a></li>
+    <li>Phone: open <a href="topics-s1/?state=list">2</a> in a narrow window (bottom sheet)</li>
+</ul>
+<p><small>Topic list parameters: state (single|list|voting|results|traffic), menu (0|1), edit=1, hint=0 (no timeline placeholder), mode, clean=1.</small></p>
+
+<h2>"Next item" in the collapsed sidebar (B-52 S1b)</h2>
+<ul>
+    <li><a href="rail-next/?view=compare">All variants side by side (A stack, B split, C item chip)</a> · <a href="rail-next/?view=compare&amp;mode=light">light</a></li>
+    <li><a href="rail-next/?v=a">A on the board</a> · <a href="rail-next/?v=b">B</a> · <a href="rail-next/?v=c">C</a> · <a href="rail-next/?v=c&amp;peek=1&amp;flash=1">C after the click (overlay)</a></li>
+</ul>
+<p><small>Parameters: view (board|compare), v (a|b|c), phase (voting|revealed), items (none|first|last), peek (0|1), mode, clean=1. Key M: states.</small></p>
+
 <h2>Comparison only</h2>
 <ul>
     <li><a href="board/?theme=classic">Today’s look (classic) on the new layout</a> <small>– not offered in the app</small></li>

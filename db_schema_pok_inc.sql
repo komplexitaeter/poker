@@ -686,3 +686,157 @@ select (select count(*) from pok_teams_tbl) teams, (select count(*) from pok_tea
        (select count(*) from pok_teams_deck_backup_r3 where deck_id is null) without_deck,
        (select max(backup_date) from pok_teams_deck_backup_r3) last_backup;
 /* end B-98 backup */
+
+/* B-52 S1: topics as a list of items per team (api/lib_topics.php). The topmost open item (status 'open', lowest
+   position) is the active one (S1b: pok_teams_tbl.topic stays the team's note, independent of the items; no lazy
+   takeover of the old topic, see the block B-52 S1b below). distribution = cards of the last revealed round of the item as JSON {"card_key": count},
+   no person data. result_card_key: open item = card chosen by the team (result_auto = 0), null = automatic proposal
+   (computed by dao.php); done item = the final result (result_auto 1 = automatic, 0 = chosen), null = no single value.
+   team_id with the charset of pok_teams_tbl.id (utf8mb3) for joins.
+   Additive (new table only), idempotent (run it again any time), BEFORE deploying the code, like S1b and S1d below.
+   The code does NOT work without the schema in general: the topic item endpoints and get_topics.php need it. Only the
+   core paths are guarded against a missing table/column (is_missing_schema_error() in api/lib.php, 1146/1054), so a
+   wrong order does not break the board for all teams: dao.php (topic_items null, custom sets without aim count as
+   'agree'), setc.php, newround.php and update_deck.php (the round is not stored at an item), custom sets with aim
+   'agree' (create, save, example set). A set with aim 'perspectives' needs S1b.
+   Run only this block: sed -n '/^\/\* B-52 S1:/,/^\/\* end B-52 S1/p' db_schema_pok_inc.sql */
+select table_name from information_schema.tables
+ where table_schema = database() and table_name = 'pok_topic_items_tbl';
+
+create table if not exists pok_topic_items_tbl (
+  id int unsigned not null auto_increment primary key,
+  team_id varchar(80) character set utf8mb3 collate utf8mb3_general_ci not null,
+  position smallint unsigned not null default 0 comment 'order of the open items (1..n), 0 for done items',
+  ext_id varchar(20) null comment 'optional id of the item, e.g. a ticket number',
+  heading varchar(200) not null,
+  description varchar(2000) null comment 'markdown, like the old topic',
+  maturity tinyint unsigned null comment 'optional: 0 new, 1 rough, 2 shaping, 3 ready; null = not set',
+  status varchar(4) character set ascii collate ascii_bin not null default 'open' comment 'open | done',
+  result_card_key varchar(7) character set ascii collate ascii_bin null,
+  result_auto tinyint not null default 1 comment '1 = automatic (highest value), 0 = chosen by the team',
+  distribution varchar(1000) character set ascii collate ascii_bin null comment 'JSON {card_key: count} of the last revealed round',
+  rounds_cnt smallint unsigned not null default 0 comment 'revealed rounds played while the item was active',
+  done_date timestamp null,
+  creation_date timestamp not null default current_timestamp,
+  update_date timestamp not null default current_timestamp on update current_timestamp,
+  key ix_topic_items_team (team_id, status, position)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-52: topic items of a team';
+
+select table_name, table_rows from information_schema.tables
+ where table_schema = database() and table_name = 'pok_topic_items_tbl';
+/* end B-52 S1 */
+
+/* B-52 S1b: (1) pok_teams_tbl.topics_rev: +1 with every change of the team's topic items (api/lib_topics.php
+   topic_items_write()), the board loads the lists (api/get_topics.php) only when it changed. (2) last_round_date of an
+   item (last revealed round). (3) aim of a custom set: 'agree' (one agreed value) | 'perspectives' (distribution only).
+   (4) pok_roundstats_tbl.topic_item_id: the active item of a round (no foreign key: items may be deleted).
+   pok_teams_tbl.topic is the team's note again, independent of the items (no data change needed).
+   Additive (new columns with defaults, algorithm = instant), idempotent (each ALTER only if the column is missing),
+   BEFORE deploying the code (dao.php, custom sets and the topic endpoints read the new columns; which paths survive a
+   missing column: see the S1 block). The S1 block must have run before. If MySQL refuses algorithm = instant (ERROR 1845/1846), replace it by "algorithm = inplace, lock = none".
+   The lock wait timeout makes an ALTER give up after 5 s instead of queueing dao.php calls: just run it again.
+   Not between 23:50 and 0:10 (nightly job reads pok_roundstats_tbl).
+   Run only this block: sed -n '/^\/\* B-52 S1b:/,/^\/\* end B-52 S1b/p' db_schema_pok_inc.sql */
+select table_name, column_name from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'topics_rev'), ('pok_topic_items_tbl', 'last_round_date'),
+                                     ('pok_custom_sets_tbl', 'aim'), ('pok_roundstats_tbl', 'topic_item_id'));
+
+set session lock_wait_timeout = 5;
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'topics_rev') = 0,
+  'alter table pok_teams_tbl
+     add column topics_rev int not null default 0 comment ''B-52 S1b: +1 with every change of the topic items'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_topic_items_tbl' and column_name = 'last_round_date') = 0,
+  'alter table pok_topic_items_tbl
+     add column last_round_date timestamp null comment ''B-52 S1b: end of the last revealed round of the item'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_custom_sets_tbl' and column_name = 'aim') = 0,
+  'alter table pok_custom_sets_tbl
+     add column aim varchar(12) character set ascii collate ascii_bin not null default ''agree''
+       comment ''B-52 S1b: agree | perspectives'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_roundstats_tbl' and column_name = 'topic_item_id') = 0,
+  'alter table pok_roundstats_tbl
+     add column topic_item_id int unsigned null comment ''B-52 S1b: active topic item of the round (pok_topic_items_tbl.id)'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+select table_name, column_name, column_default from information_schema.columns
+ where table_schema = database()
+   and (table_name, column_name) in (('pok_teams_tbl', 'topics_rev'), ('pok_topic_items_tbl', 'last_round_date'),
+                                     ('pok_custom_sets_tbl', 'aim'), ('pok_roundstats_tbl', 'topic_item_id'));
+/* end B-52 S1b */
+
+/* B-52 S1d (bug, Andreas 2026-11-13): an item only gets rounds that started while it was active.
+   pok_teams_tbl.round_item_id = the topic item that was active when the first card of the running round went down
+   (setc.php), null after "New round" (start_new_round()). A revealed round counts for the active item only if it is
+   this item (api/lib_topics.php round_topic_item()). No foreign key (items may be deleted).
+   BEFORE deploying the code: additive, algorithm = instant, idempotent. The S1b block must have run before. If MySQL
+   refuses algorithm = instant (ERROR 1845/1846), use "algorithm = inplace, lock = none".
+   The optional one-time update after the deploy is the separate block "Post-deploy B-52 S1d-2" below.
+   Run only this block: sed -n '/^\/\* B-52 S1d/,/^\/\* end B-52 S1d/p' db_schema_pok_inc.sql */
+select table_name, column_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'round_item_id';
+
+set session lock_wait_timeout = 5;
+set @b52_sql = if((select count(1) from information_schema.columns
+                    where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'round_item_id') = 0,
+  'alter table pok_teams_tbl
+     add column round_item_id int unsigned null
+       comment ''B-52 S1d: topic item active at the first card of the running round (pok_topic_items_tbl.id)'',
+     algorithm = instant',
+  'select 1');
+prepare b52_stmt from @b52_sql;
+execute b52_stmt;
+deallocate prepare b52_stmt;
+
+select table_name, column_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'round_item_id';
+/* end B-52 S1d */
+
+/* Post-deploy B-52 S1d-2: right AFTER deploying the code, optional, one time. Only needed if topic items already exist
+   at the deploy (staging); on live it is not needed (no items before the deploy). Teams that have cards down at that
+   moment keep their running round for their active item (otherwise it counts for no item, from the next round on
+   everything is normal). Idempotent (only rows with round_item_id null).
+   The header does not start with "B-52 S1d", so the sed command of the S1d block above does not pick it up.
+   Run only this block: sed -n '/^\/\* Post-deploy B-52 S1d-2/,/^\/\* end Post-deploy B-52 S1d-2/p' db_schema_pok_inc.sql */
+update pok_teams_tbl t
+   set t.round_item_id = (select i.id from pok_topic_items_tbl i
+                           where i.team_id = t.id and i.status = 'open' order by i.position, i.id limit 1)
+ where t.round_item_id is null
+   and exists (select 1 from pok_players_tbl p
+                where p.team_id = t.id and p.player_type = 'PLAYER' and p.card_key is not null);
+
+select count(1) teams_with_round_item from pok_teams_tbl where round_item_id is not null;
+/* end Post-deploy B-52 S1d-2 */
+
+/* B-130: timer auto-start with three values in the existing column pok_teams_tbl.timer_auto_restart (B-67, tinyint):
+   0 = off, 1 = new round (unchanged meaning, existing teams keep their behaviour), 2 = next item.
+   No DDL needed. Old code only restarts on = 1 and its frontend treats 2 as "off", so a 2 written by the new code
+   does not break the old one. Check (read only): */
+select timer_auto_restart, count(1) from pok_teams_tbl group by timer_auto_restart;
+/* end B-130 */

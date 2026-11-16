@@ -767,7 +767,8 @@ test('the spread pointer follows the column width (B-113)', async ({ browser }) 
   expect(p.x + p.width / 2).toBeLessThan(eight.x + eight.width);
 });
 
-test('a quiet hint names the phase after »», the pin and the grip, about 2s, 3 times per case (B-113)', async ({ browser }) => {
+// @slow: ~40 s of real hint timings; not on PRs, only on pushes to release (B-134)
+test('a quiet hint names the phase after »», the pin and the grip, about 2s, 3 times per case (B-113)', { tag: '@slow' }, async ({ browser }) => {
   test.setTimeout(120_000); // many hints of ~2s each
   const { alice, bob } = await twoPlayers(browser, 'Sidebar Hint');
   const hint = alice.locator('#side_hint');

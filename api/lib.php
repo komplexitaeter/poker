@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/lib_custom.php'; // B-98 S4: custom sets
+require_once __DIR__ . '/lib_topics.php'; // B-52 S1: topic items
 
 /*
  * Connects with utf8mb4 (B-85), so emojis in names and topics reach the utf8mb4 columns unchanged. Reading the
@@ -565,6 +566,64 @@ function team_has_cards_down($link, string $t): bool
     return $row !== null && (int)$row->cnt > 0;
 }
 
+/* B-130: pok_teams_tbl.timer_auto_restart (B-67 column, 0/1 before B-130; old code restarts only on = 1) */
+const TIMER_AUTO_OFF = 0;
+const TIMER_AUTO_NEW_ROUND = 1;
+const TIMER_AUTO_NEXT_ITEM = 2;
+
+/*
+ * B-130: restarts a visible timer at 0 (TIMER mode: at T-timebox), running, if the team's auto-start setting is one
+ * of $modes. Caller holds the team row lock (same transaction as the round or the item change). Does not notify.
+ */
+function restart_timer_for_auto_modes($link, string $t, array $modes): void
+{
+    $modes = array_values(array_map('intval', $modes));
+    if (count($modes) === 0) return;
+    $marks = implode(',', array_fill(0, count($modes), '?'));
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_start_time = current_timestamp
+                                        ,t.timer_pause_time = null
+                                   where t.id=?
+                                     and t.timer_visibility = 1
+                                     and t.timer_auto_restart in ($marks)");
+    $sql->bind_param('s' . str_repeat('i', count($modes)), $t, ...$modes);
+    $sql->execute();
+}
+
+/* B-130: a visible timer with one of the given auto-start values (TIMER_AUTO_*) is reset and paused, the same state
+   as a manual reset in timer.php (start and pause time null: PAUSED at 0, TIMER mode at T-timebox). */
+function reset_timer_for_auto_modes($link, string $t, array $modes): void
+{
+    $modes = array_values(array_map('intval', $modes));
+    if (count($modes) === 0) return;
+    $marks = implode(',', array_fill(0, count($modes), '?'));
+    $sql = $link->prepare( "update pok_teams_tbl t
+                                     set t.timer_start_time = null
+                                        ,t.timer_pause_time = null
+                                   where t.id=?
+                                     and t.timer_visibility = 1
+                                     and t.timer_auto_restart in ($marks)");
+    $sql->bind_param('s' . str_repeat('i', count($modes)), $t, ...$modes);
+    $sql->execute();
+}
+
+/* B-130: the team has an active topic item (an open one). false if the item table is missing (code before schema). */
+function team_has_active_item($link, string $t): bool
+{
+    try {
+        return active_item_id($link, $t) !== null;
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return false;
+    }
+}
+
+/* B-52 S1b: a statement failed only because a table (1146) or column (1054) is missing (code deployed before the schema) */
+function is_missing_schema_error(mysqli_sql_exception $e): bool
+{
+    return in_array($e->getCode(), array(1054, 1146), true);
+}
+
 /*
  * Starts a new round (newround.php; B-98 S2 also update_deck.php when the deck changes while cards are down):
  * snapshot of the round in pok_roundstats_tbl (incl. the deck of the round: deck_id, deck_cards, deck_controls, so
@@ -623,6 +682,28 @@ function start_new_round($link, string $t): void
                                     ");
         $sql->bind_param('is', $obj->last_id, $t);
         $sql->execute();
+
+        /* B-52 S1b: the snapshot remembers the active topic item (topic_item_id). A missing column (code deployed
+           before the schema) must not break "New round": the failed statement does not end the transaction. Only a
+           missing table/column is skipped; anything else (e.g. a deadlock, which rolls back the whole transaction)
+           is rethrown, so the round never goes on outside the transaction. */
+        try {
+            link_round_to_active_item($link, $t, (int)$obj->last_id);
+        } catch (mysqli_sql_exception $e) {
+            if (!is_missing_schema_error($e)) throw $e;
+            error_log('poker new round: topic item of the round not stored: ' . $e->getMessage());
+        }
+    }
+
+    /* B-52 S1: a revealed round is stored at the active topic item (distribution, rounds_cnt) before the cards go up.
+       A missing table (code deployed before the schema) must not break "New round": the failed statement does not
+       end the transaction, the round goes on without it. Anything else (e.g. a deadlock) is rethrown (B-52 S1b review). */
+    try {
+        record_round_on_active_item($link, $t);
+        set_round_item($link, $t, null); // S1d: the next round belongs to the item that is active at its first card
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        error_log('poker new round: topic item not updated: ' . $e->getMessage());
     }
 
     // B-115: the setting "See changed cards" takes effect with the new round (snapshot for setc.php and getDao())
@@ -633,16 +714,13 @@ function start_new_round($link, string $t): void
     $sql->bind_param('s', $t);
     $sql->execute();
 
-    /* B-67: with "auto-start on new round" a visible timer restarts at 0 (TIMER mode: at T-timebox) and runs.
-       Applies to NEW_ROUND and CANCEL_ROUND; otherwise the timer stays untouched. */
-    $sql = $link->prepare( "update pok_teams_tbl t
-                                     set t.timer_start_time = current_timestamp
-                                        ,t.timer_pause_time = null
-                                   where t.id=?
-                                     and t.timer_visibility = 1
-                                     and t.timer_auto_restart = 1");
-    $sql->bind_param('s', $t);
-    $sql->execute();
+    /* B-67: with auto-start "New round" a visible timer restarts at 0 (TIMER mode: at T-timebox) and runs.
+       Applies to NEW_ROUND and CANCEL_ROUND; otherwise the timer stays untouched. B-130: "Next item" restarts it
+       when an item is left (topic_item_next.php), not with a round inside an item; without an active item (team
+       without open items) it behaves like "New round". */
+    $modes = array(TIMER_AUTO_NEW_ROUND);
+    if (!team_has_active_item($link, $t)) $modes[] = TIMER_AUTO_NEXT_ITEM;
+    restart_timer_for_auto_modes($link, $t, $modes);
 
     $sql = $link->prepare( "update pok_players_tbl p
                                      set card_key = null
@@ -946,6 +1024,7 @@ function getDao($t, $id) {
             }
             $custom_sets = load_custom_sets($link, $t, $catalog);
             $deck = resolve_deck($deck_id, $deck_cards, $deck_controls, (int)$obj->deck_rev, $catalog, $custom_sets);
+            $deck['aim'] = deck_aim($deck, $catalog, $custom_sets); // B-52 S1: 'agree' | 'perspectives' (api/lib_topics.php)
             $deck['changed_by'] = null; // B-98 V6: name of the player who changed the set group last (null = unknown)
         }
     }
@@ -1025,6 +1104,30 @@ function getDao($t, $id) {
             if (is_string($key) && str_starts_with($key, CUSTOM_DECK_PREFIX) && !isset($active_custom[$key])) $missing[] = $key;
     if (count($missing) > 0) $custom_played = array_values(load_custom_cards_by_key($link, $t, $missing, card_catalog()));
 
+
+    /* B-52 S1/S1b: the active topic item (with the cards of the running round while they are revealed), counts and
+       topics_rev; the lists come from get_topics.php. A missing table or column (code deployed before the schema)
+       must not break the board: topic_items null then. */
+    $topic_items = null;
+    try {
+        $live_distribution = null;
+        if ($all_players_ready && $one_ore_more_player_ready) {
+            $live_distribution = array();
+            foreach ($objs as $obj)
+                if ($obj->card_key !== null && $obj->card_key !== LATE_CARD_KEY)
+                    $live_distribution[$obj->card_key] = ($live_distribution[$obj->card_key] ?? 0) + 1;
+            ksort($live_distribution);
+            if (count($live_distribution) === 0) $live_distribution = null;
+        }
+        // S1d: a card down other than "joined late" (then the round may belong to another item than the active one)
+        $cards_down = false;
+        foreach ($objs as $obj)
+            if ($obj->player_type === 'PLAYER' && $obj->card_key !== null && $obj->card_key !== LATE_CARD_KEY) $cards_down = true;
+        $topic_items = topic_items_for_dao($link, $t, $live_distribution, card_catalog(),
+                                           $deck === null ? 'agree' : $deck['aim'], $cards_down);
+    } catch (mysqli_sql_exception $e) {
+        error_log('poker dao: topic items not loaded: ' . $e->getMessage());
+    }
 
     $sql = $link->prepare("SELECT count(1) as user_exists
                                      ,max(u.color_mode) as color_mode
@@ -1126,16 +1229,17 @@ function getDao($t, $id) {
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
         "deck"=>$deck, // B-98: {id, group, cards, controls, rev}, card data in card_catalog.json (B-98 S4: custom_sets)
-        "custom_sets"=>array_values($custom_sets), // B-98 S4: [{set_id, deck_id, name, style, rev, cards}]
+        "custom_sets"=>array_values($custom_sets), // B-98 S4: [{set_id, deck_id, name, style, aim, rev, cards}] (B-52 S1b: aim)
         "custom_cards_played"=>$custom_played, // B-98 S4: inactive custom cards still on the table
         "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>custom_cards_max()),
-        "topic"=>(String)$topic,
+        "topic"=>(String)$topic, // the team's note (B-52 S1b: independent of the topic items again)
+        "topic_items"=>$topic_items, // B-52 S1b: {active, open_count, done_count, next_heading, topics_rev} (api/lib_topics.php)
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
         "timer_visibility"=>(Int)$timer_visibility,
         "timer_mode"=>(String)$timer_mode, // B-67: STOPWATCH | TIMER
         "timer_timebox"=>(Int)$timer_timebox, // B-67: seconds, only used in TIMER mode
-        "timer_auto_restart"=>(Int)$timer_auto_restart, // B-67: 1 = new/cancelled round restarts the timer
+        "timer_auto_restart"=>(Int)$timer_auto_restart, // B-67/B-130: 0 = off, 1 = new round, 2 = next item
         "results_order"=>$results_order,
         "show_avg"=>$show_avg,
         "anonymous_mode"=>$anonymous_mode,
