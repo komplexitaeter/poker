@@ -22,4 +22,5 @@ $link = db_init('utf8mb4');
 $sql = $link->prepare("INSERT INTO pok_feedback_tbl (id, fb_stars, fb_text, fb_type, fb_context) VALUES (?, ?, ?, ?, ?)");
 $sql->bind_param('sisss', $id, $stars, $text, $type, $context);
 $sql->execute();
+$sql->close();
 $link->close();
