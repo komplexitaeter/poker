@@ -1805,7 +1805,8 @@ Status: neu (Idee Andreas, 2026-11-13). Weiterführung von B-52/B-129, Leitidee 
 Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
 
 ### B-131 Reaktionen: gestaffeltes Rate-Limit je Verbindung
-Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
+**Status: live (Rollout 4, 2026-11-16).** Ältere Statusangaben unten sind Historie.
+Damals: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
 4.884 vom Limit verworfen – fast alle von wenigen Verbindungen (eine allein 2.129). Wer die JS-Konsole öffnet, kann
 heute dauerhaft 1/s senden. Neu je Verbindung (gleitende Fenster, kein Limit auf Teamebene): **1 pro Sekunde, 10 pro
 Minute**; darüber wird verworfen (wie heute, mit Log-Zeile). Log-Muster: kurze Ausbrüche bis 24/s (vermutlich
@@ -1817,7 +1818,8 @@ Grenzen als Rückmeldung: beim Überschreiten kurzer Hinweis statt stillem Verlu
 poker-msg-Rollout mit Neustart abends.
 
 ### B-130 Timer: Auto-Start „Off · New round · Next item“
-Status: im Sprint (Andreas, 2026-11-12). Live-Daten seit 01.11.: 9 Teams nutzen den Timer (5 mit sichtbarer Uhr),
+**Status: live (Rollout 4, 2026-11-16).** Ältere Statusangaben unten sind Historie.
+Damals: im Sprint (Andreas, 2026-11-12). Live-Daten seit 01.11.: 9 Teams nutzen den Timer (5 mit sichtbarer Uhr),
 Timeboxen 1, 5, 10, 41, 60 min – 5/10 min sind Timeboxen je Item, die heute bei jeder neuen Runde neu starten.
 Statt Ja/Nein (`timer_auto_restart`) drei Werte: **Off** · **New round** (wie heute „auto-start on new round“) ·
 **Next item** (Neustart nur beim Verlassen eines Items – Close/Close without a value/Bring it back later –, neue Runden
@@ -1825,6 +1827,7 @@ innerhalb des Items lassen ihn weiterlaufen; ohne Items wie „New round“). Be
 Backend Ben (Schema, Neustart in `topic_item_next.php`), Frontend Fred (Umschalter im Timer-Menü). Geht mit B-52 live.
 
 ### B-52 Topics als Backlog-Items
+**Status: live (Rollout 4, 2026-11-16).** Ältere Statusangaben unten sind Historie.
 **S1b nach Staging-Test (Andreas, 2026-11-12) – Status: im Sprint:**
 - **Notiz bleibt Notiz:** Das bisherige Topic-Feld ist ein allgemeiner Hinweis (z. B. zum Ablauf), immer sichtbar;
   Items kommen zusätzlich, durch sie iteriert man. `update_topic.php` wieder wie früher, keine automatische Übernahme
@@ -1965,6 +1968,7 @@ passend zum Einfügen in Jira/Linear (z. B. je Zeile ID, Heading, Ergebnis; zus�
 Antwort auf „Jira/Linear support“ der Konkurrenz, ohne eigene Integration. „Ohne Login“ bleibt das Versprechen:
 die E-Mail-PIN ist nur ein Extra, Schätzen und Export gehen immer ohne.
 ### B-53 Ergebnisdarstellung neu
+**Status: live (Rollout 4, 2026-11-16).** Ältere Statusangaben unten sind Historie.
 Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
 Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
 die Häufigkeitsbalken (`show_card_stats`) stehen. Ziel: Ergebnisse separat und anders darstellen (Verteilung,
@@ -2241,7 +2245,8 @@ wie B-09; ungenutzte Felder wegzulassen spart kaum etwas).
   (Resize-Logik). Erst nach denen sinnvoll; hier nur notiert.
 
 ### B-133 Nudge mit Ton und Tab-Hinweis
-Status: in Umsetzung (Feedback „Small beep / ringtone for nudge action“, 2026-11-13; Andreas: gleich mit einbauen).
+**Status: live (Rollout 4, 2026-11-16).** Ältere Statusangaben unten sind Historie.
+Damals: in Umsetzung (Feedback „Small beep / ringtone for nudge action“, 2026-11-13; Andreas: gleich mit einbauen).
 Der Nudge (B-110) ist bisher rein optisch; wer im Video-Call oder in einem anderen Tab ist, merkt ihn nicht.
 - Nur beim **angestupsten** Spieler: kurzer, leiser Ton (Web Audio, keine Audiodatei), auf Android zusätzlich kurz
   vibrieren.
@@ -2255,7 +2260,8 @@ Status: erledigt (2026-11-13, Andreas). E2E in 3 parallelen Shards (~4 statt ~10
 Tests mit Tag `@slow`, Push auf `release` komplett. Sammel-Job behält den Check-Namen `e2e (PHP 8.4)`.
 
 ### B-135 Schreib-Requests scheitern in Safari nach langer Tab-Nutzung
-Status: in Umsetzung (Andreas auf Staging, 2026-11-13). Nach einem Kartenset-Wechsel kam ~30 s lang kein Request
+**Status: live (Rollout 4, 2026-11-16).** Ältere Statusangaben unten sind Historie.
+Damals: in Umsetzung (Andreas auf Staging, 2026-11-13). Nach einem Kartenset-Wechsel kam ~30 s lang kein Request
 beim Server an (auch kein Heartbeat), Safari meldete `TypeError: Load failed`, bis neu geladen wurde. Ursache sehr
 wahrscheinlich: nginx 1.18 schließt eine HTTP/2-Verbindung nach 1.000 Requests (`http2_max_requests`), ein lange
 offener Board-Tab erreicht das.
