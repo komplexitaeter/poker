@@ -9,18 +9,18 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.62" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.65" media="screen" />
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.45" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.46" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/topics.js?v=1.14" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.29" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.33" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
@@ -85,7 +85,7 @@
 <div class="container" onclick="void(0);">
 
     <header class="head">
-        <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" src="src/brand_dark.svg?v=2" alt="Komplexitäter tools" loading="lazy"/><img id="brand_icon" src="src/brand_icon_dark.svg?v=1" alt="Komplexitäter tools" loading="lazy"/></a>
+        <a class="brand" href="https://komplexitaeter.de/tools" target="_blank"><img id="brand" alt="Komplexitäter tools" loading="lazy"/><img id="brand_icon" alt="Komplexitäter tools" loading="lazy"/></a>
 
         <!-- the team name (textContent from the DAO); a click copies the board link. R3 review polish (Andreas):
              no own name in the header any more, the table shows who you are -->
@@ -292,13 +292,6 @@
         <!-- B-68, F8: devices with a mouse: the letter rows Q–P, A–L, Y–M pick the cards (keys under the cards;
              text set by updateDeckKeys() in script.js) -->
         <p class="deck-hint" aria-hidden="true">press q–p to pick a card</p>
-
-        <footer class="survey-container" id="survey-container">
-            <button id="survey-button" onclick="toggleSurvey()">Survey<i id="survey-arrow" class="arrow up"></i></button>
-            <div id="survey-content" class="survey-closed" data-state="closed">
-
-            </div>
-        </footer>
 
     </div>
 
@@ -602,13 +595,13 @@
 <div id="react_bar" class="tbl-pop react-bar" role="menu" aria-labelledby="react_bar_label" hidden>
     <p id="react_bar_label" class="react-bar-label">throw at <span class="react-bar-name"></span></p>
     <div class="react-bar-row">
-        <button type="button" role="menuitem" data-react="cake" aria-label="Cake">🎂</button>
-        <button type="button" role="menuitem" data-react="heart" aria-label="Heart">❤️</button>
-        <button type="button" role="menuitem" data-react="clap" aria-label="Applause">👏</button>
-        <button type="button" role="menuitem" data-react="party" aria-label="Party">🎉</button>
-        <button type="button" role="menuitem" data-react="think" aria-label="Thinking">🤔</button>
-        <button type="button" role="menuitem" data-react="thumbs" aria-label="Thumbs up">👍</button>
-        <button type="button" role="menuitem" data-react="fish" aria-label="Fish">🐟</button>
+        <button type="button" role="menuitem" data-react="cake" aria-label="Cake"><span class="react-glyph">🎂</span><span class="react-left" aria-hidden="true">1×</span></button>
+        <button type="button" role="menuitem" data-react="heart" aria-label="Heart"><span class="react-glyph">❤️</span><span class="react-left" aria-hidden="true">1×</span></button>
+        <button type="button" role="menuitem" data-react="clap" aria-label="Applause"><span class="react-glyph">👏</span><span class="react-left" aria-hidden="true">1×</span></button>
+        <button type="button" role="menuitem" data-react="party" aria-label="Party"><span class="react-glyph">🎉</span><span class="react-left" aria-hidden="true">1×</span></button>
+        <button type="button" role="menuitem" data-react="think" aria-label="Thinking"><span class="react-glyph">🤔</span><span class="react-left" aria-hidden="true">1×</span></button>
+        <button type="button" role="menuitem" data-react="thumbs" aria-label="Thumbs up"><span class="react-glyph">👍</span><span class="react-left" aria-hidden="true">1×</span></button>
+        <button type="button" role="menuitem" data-react="fish" aria-label="Fish"><span class="react-glyph">🐟</span><span class="react-left" aria-hidden="true">1×</span></button>
     </div>
 </div>
 <div id="rm_confirm" class="tbl-pop rm-confirm" role="dialog" aria-labelledby="rm_confirm_text" hidden>

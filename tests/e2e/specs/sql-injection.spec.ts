@@ -95,7 +95,6 @@ test('a manipulated player id behaves like an unknown id and never returns a 500
     const reads = [
       `./api/dao.php?id=${id}&t=${t}`,
       `./api/get_user.php?id=${id}`,
-      `./api/get_survey.php?id=${id}`,
       `./api/get_roadmap.php?id=${id}`,
     ];
     for (const r of reads) {

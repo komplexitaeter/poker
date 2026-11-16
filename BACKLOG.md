@@ -1,9 +1,14 @@
 # Backlog
 
-Gemeinsames Backlog für Wartung und Weiterentwicklung. Ablauf siehe `CLAUDE.md`, Abschnitt „Zusammenarbeit“.
+Gemeinsames Backlog für Wartung und Weiterentwicklung der Poker-App. Ablauf (Backlog → Refinement → Sprint-Auswahl →
+Planning → Umsetzung → Abschluss) siehe `CLAUDE.md`, Abschnitt „Zusammenarbeit“.
 
-Status: `neu` → `refined` (gemeinsam verstanden, bereit für einen Sprint) → `im Sprint` → `erledigt`.
-Reihenfolge = grobe Priorität, wird im Refinement angepasst.
+**Status:** `neu` → `refined` (gemeinsam verstanden, bereit für einen Sprint) → `im Sprint` → `live (Rollout/Datum)`
+bzw. `erledigt` (Betrieb/Doku ohne Rollout) · `verworfen` · `aufgegangen in B-xx`.
+Offene Einträge stehen in den drei Abschnitten „Offen: …“ (je Abschnitt `refined` vor `neu`, dann nach ID; Priorität setzt Andreas).
+Erledigte und verworfene Einträge stehen nur noch als Kurzzeile unter „Erledigt & verworfen“.
+
+Volltexte und Genese vor dem Aufräumen: `git show 65c605b:BACKLOG.md`.
 
 ## Leitidee (Andreas, 2026-11-10)
 
@@ -20,2246 +25,606 @@ die Primärfunktion (Andreas, 2026-11-10).
 
 ## Aktueller Sprint
 
-**Nächster Sprint (Sprint 8, geplant, Andreas 2026-10-23):** Fundament für B-40 – B-46 bis B-51 (Seitengerüst,
-Touch, Topnav-Buttons, fluide Karten, Kleinpaket Qualität, Menüs neu denken). Planning läuft: Mockup `mockups/` (Delia) – Andreas hat Variante C (Panel/Dock) und Menüs als Side Panel am
-Desktop gewählt; Runde 2 mit „Console Style“, Ergebnisdarstellung (B-53) und Topic-Liste (B-52).
-**Entscheidung Andreas (2026-10-23): Console Style wird der Look der App, ohne Theme-Umschalter (Light/Dark bleibt).**
-Mockup-Runde 3 abgenommen (Andreas, 2026-10-23), Entscheidungen: Board settings als Gruppen; gemerkter Wert wird
-gespeichert (UI noch offen, mit B-52/B-53); Emojis sparsam (Emotions, Ampel, ☕, ✋); „New round“ bleibt Hauptbutton;
-Delegation-Poker-Namen später. Desktop: Menüpunkt öffnet direkt das Side Panel, nur Schließen, kein „<“ zur
-Menü-Übersicht (die gibt es nur mobil). Backlog-Ansicht im Detail später nachschärfen. Karten-Gleiten (FLIP, B-41)
-bleibt genau so. Umsetzung in Schritten: 1 Console-Grundlage + Header/Buttons (B-48, Teile B-50) → 2 Seitengerüst
-Panel/Dock (B-46, B-47) → 3 Menüs als Side Panel/Bottom-Sheet (B-51) → 4 fluide Karten (B-49, notfalls schieben);
-parallel Ben: `symbol` und XXL-Fix in `cards.json`. Danach B-53 (Ergebnisse), B-52 (Topics).
-**Stand 2026-10-27 abends (Sprint 8 umgesetzt):** In `release` zusätzlich: Teaser ausgebaut (#47; Backend-Feld
-`hide_teaser` + DB-Spalte bleiben vorerst), Fit-Korrekturen (#48: Seitenabstand, Zone New Round/Stoppuhr bzw. Dock immer
-reserviert, Lösch-Icon nach Eingabegerät statt Breite, Namen mit „…“), `--card-min` 64 px (#49: 375×667 bis 20 Spieler,
-393×852 bis 25 ohne Scrollen). B-50 teilweise, B-55 offen (Andreas überlegt), `mockups/` bleibt. Nächstes: Andreas
-sichtet Staging, dann PR `release` → `master` (Rollout 1).
-**Rollout-Plan (Andreas, 2026-10-23):** Zwei Rollouts auf Live, ca. eine Woche auseinander.
-1. **Rollout 1 (Ende Sprint 8): neuer Look, gleicher Ablauf** – Schritte 1–3 (+ 4, falls fertig). Topic, Ergebnisse,
-   Durchschnittszeiger und Kartenstatistik fachlich wie heute (Topic im neuen Design am alten Ort als Übergang).
-   Dazu B-55 (Hinweis-Toast + Umfrage). Vor dem Rollout klären: `mockups/` aus `release` nehmen oder mitlaufen lassen.
-2. **Rollout 2 (Andreas, 2026-10-28 neu gedacht):** B-66 Basic Controls (Rundenknopf + Timer unten rechts) und B-67 Timer
-   (T-Minus). Ergebnis-Seitenleiste (B-53) erst mit Rollout 3. Vorher geplant: B-53 (Ergebnisdarstellung) und B-52 (Topic-Backlog,
-   History), mit Ben und Sina. Beginn erst, wenn Rollout 1 als PR nach `master` liegt.
-
-Offen aus Sprint 2: Nachkontrolle von B-19 und B-24 nach der nächsten Werktags-Spitze
-(`FD_SETSIZE`-Warnungen, Spitzenwert und Nachtverlauf von `active_users`). Offen aus Sprint 5: B-20-Nachkontrolle
-(FPM-grep + `free -m`).
-
-Abgeschlossen:
-- **Nach Rollout 1 (live 2026-10-28, PRs #57–#66):** B-64 `stats.php` neu (Tabs Live/Usage/Ideas & Bugs/Tech,
-  Runden pro Tag, aktive Tische = Runde in den letzten 60 min), B-63 eigene Anmeldeseite gegen die nginx-htpasswd
-  (bcrypt, Cookie 30 Tage, `limit_req` nur auf `/stats.php`, Basic Auth entfernt), Feedback-Menü öffnet auf
-  „Backlog“, Promo-Teaser aus, CI-Regel (kein Lauf bei PR → `master` und bei `*.md`, lokal nur betroffene Specs).
-- **Sprint 8 – „Neuer Look“ = Rollout 1** (live 2026-10-28 mit PR #56): Console-Look, Seitengerüst, Menüs als Side
-  Panel/Bottom-Sheet, fluide Karten (B-46 bis B-49, B-51, Teile B-50), Ideas & Bugs (B-57), Promo-Teaser „THE AGILE
-  GAME“ abgeschaltet (#57, Code bleibt). Nächstes: Rollout 2 (B-53, B-52) etwa eine Woche später; Feedback über B-57
-  beobachten, Basis-Kennzahl wiederkehrende User-IDs vorher/nachher.
-- **Sprint 7 – „Konfiguration & CSS aufräumen"** (2026-10-23, live mit PR #35):
-  - B-42: Sortier-Option „im Spiel wählen“ gestrichen, nur noch Kartenwert/Name; im Anonym-Modus fest „Card value“.
-  - B-36 (mit B-37): `style.css` um gut ein Drittel kleiner, Responsive per CSS (ein Breakpoint, 800 px) statt
-    `.mobile`/`.desktop` per JS, gemeinsame Klassen und Tokens. Danach Delias Einschätzung → B-46 bis B-51.
-- **Sprint 6 – „Schlank & performant"** (2026-10-22/23, live mit PR #25 und #28):
-  - Schlank-Spike (Assets, CSS, JS, `dao.php`) mit priorisierten Ergebnissen in B-35 bis B-38. Bewusst nicht verfolgt:
-    tote Bilder löschen (kein Laufzeiteffekt), `dao.php`-Payload (1–2 KB, zu klein für Reduktion).
-  - B-35 (Teil): gzip für SVG auf Live und Staging (~180 KB je Board-Load). Rest von B-35 (SVG/PNG optimieren) offen.
-  - B-39: kein Gleiten beim Resize. B-32: CI-Install ~1 min statt ~12 min.
-  - B-41: Kartenbereich per CSS-Flex statt JS-Positionen, Sortier-Glide per FLIP, Höhe gleitet bei Reihenwechsel;
-    Ursache des Resize-Wobbelns (Timing-Fehler im B-39-Fix) per E2E-Test belegt und behoben; Nachfix für den Abstand
-    des Löschen-Icons.
-  - B-08: MySQL-Event-Jobs als `db_jobs_pok.sql` im Repo. Neu angelegt: B-40 (Design-Epic), B-42 (refined), Design-
-    Agentin Delia.
-- **Sprint 5** (2026-10-22): B-11, B-26, B-27 + Bugfix B-33 – nach `master` gemergt und live (PR #21). Alle Writes
-  laufen per POST (405 ohne POST); Null-Guards in den Topnav-Toggles; Favicons/Touch-Icons nach `src/` + explizit
-  verlinkt; Namensänderung behält die Karte, Verlassen räumt die Karte. **B-20** (Server-Config) bleibt offen: MySQL
-  auf beiden Servern umgestellt (DB neugestartet, Smoketest ok), FPM-Werte vorbereitet – Nachkontrolle (FPM-grep,
-  `free -m`, `log-summary.sh`) ausstehend.
-- **Sprint 4** (2026-10-22): zwei Analyse-Spikes. B-31 (API-Review) → M1–M3 umgesetzt (letzte SQL-Konkatenation raus,
-  JSON-Header, 403 statt leerem 200 bei ungültigem Team), live. B-09 (Analytics) → Ergebnis „so lassen" (Tabelle nur
-  94 MB). B-11 (GET→POST = M4) bewusst herausgehalten, eigener Sprint.
-- **Sprint 3** (2026-10-20): B-21, B-15, B-01, B-02 – nach `master` gemergt. Beim Staging-Test eine B-01-Regression
-  gefunden und behoben (`mkey` kam durch die Prepared-Statement-Umstellung als Zahl statt String → Karten-Animation
-  und -Größe kaputt; E2E-Regressionstest ergänzt). Live inkl. nginx Basic Auth für `stats.php`
-  (Andreas, 2026-10-20); Details in `docs/stats-basic-auth.md`.
-- **Sprint 2** (2026-10-16): B-18, B-19 + B-22, B-24, B-03, B-25 – live auf Staging und Produktion; Daten-Update
-  für B-03 auf Live ausgeführt (26 Teamnamen, 11 Themen, 90 Rundenthemen).
-- **Sprint 1** (2026-10-16): B-04, B-07 – live auf Staging und Produktion.
-
-## Backlog
-
-| ID | Thema | Status |
-|---|---|---|
-| B-01 | SQL-Injection in `api/` beheben | erledigt |
-| B-02 | `stats.php` absichern (XSS, Zugriffsschutz) | erledigt |
-| B-03 | PHP-8.1-Deprecations und kleine Bugs | erledigt |
-| B-04 | Lokale Testumgebung und erste E2E-Tests mit CI | erledigt |
-| B-05 | E2E-Tests für weitere Funktionen | neu |
-| B-06 | Testfälle gemeinsam reverse-engineeren | neu |
-| B-07 | Repo-Hygiene (`.gitignore`, `config.php`, README) | erledigt |
-| B-08 | MySQL-Statistik-Job ins Repo aufnehmen | erledigt |
-| B-09 | Wachstum von `pok_analytics_events_tbl` begrenzen | erledigt (Analyse: so lassen) |
-| B-10 | `poker-msg` modernisieren und absichern | neu |
-| B-11 | Schreibende API-Aufrufe per POST statt GET | erledigt |
-| B-12 | Zeichensätze auf `utf8mb4` vereinheitlichen | neu |
-| B-13 | MySQL-Zugriff von außen einschränken | neu |
-| B-14 | `script/script.js` in Module aufteilen | neu |
-| B-15 | CDN-Abhängigkeiten festnageln oder selbst ausliefern | erledigt |
-| B-16 | Fremddateien und phpMyAdmin in den Webroots absichern | erledigt |
-| B-17 | DB-Zugriff per Client über SSH-Tunnel einrichten | neu |
-| B-18 | Server-Logs von Live sichten | erledigt |
-| B-19 | `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze | im Sprint |
-| B-20 | PHP-FPM und MySQL robuster konfigurieren | refined |
-| B-21 | Race Condition beim Anlegen neuer Nutzer in `getDao()` | erledigt |
-| B-22 | PHP-Upgrade auf 8.4 | erledigt |
-| B-23 | Server aufräumen nach PHP-8.4-Umstellung | neu |
-| B-24 | Heartbeat in `poker-msg`: tote Verbindungen schließen | im Sprint |
-| B-25 | Board blitzt beim Laden kurz mit allen Elementen auf | erledigt |
-| B-26 | `toggle_topic_box`: `Cannot read properties of null` | erledigt |
-| B-27 | `apple-touch-icon` fürs Board/Startseite | erledigt |
-| B-28 | PHP2Shell (CVE-2026-109618/-109619) patchen | erledigt |
-| B-29 | WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten | neu |
-| B-30 | Server auf Ubuntu 24.04 heben (vor April 2027) | neu |
-| B-31 | API-Review / HTTP-Semantik (Spike) | erledigt (Spike + M1–M3; M4 = B-11 erledigt) |
-| B-32 | CI: `playwright install --with-deps` beschleunigen | erledigt |
-| B-33 | Namensänderung setzt Karte auf Kaffeetasse; Verlassen räumt Karte nicht | erledigt |
-| B-34 | Synchrone XMLHttpRequest (deprecated) auf async umstellen | neu |
-| B-35 | Bilder/Assets verschlanken (SVG, PNG, Icons) | auf release (#93) |
-| B-36 | CSS vereinfachen inkl. `.mobile`/`.desktop` → Responsive per CSS (mit B-37) | erledigt |
-| B-37 | Responsive per CSS statt JS (`.mobile`/`.desktop`) | in B-36 aufgegangen |
-| B-38 | `dao.php`-Payload und Render-Pfad verschlanken (Spike) | refined |
-| B-39 | Resize: Karten sofort neu positionieren statt zu animieren | erledigt |
-| B-40 | Look & Feel / UX-UI-Überarbeitung (Epic) | neu |
-| B-41 | Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble) | erledigt |
-| B-42 | Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“ | erledigt |
-| B-43 | `survey_intro` per `innerHTML` prüfen (Sina) | neu |
-| B-44 | Startseite Light-Mode: Logo ohne Schriftzug | neu |
-| B-45 | Toten Stern-Bewertungscode im Feedback entfernen | neu |
-| B-46 | Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste, `dvh`) | erledigt (release) |
-| B-47 | Touch von der Breite trennen, Touch-Ziele ≥ 44 px | erledigt (release) |
-| B-48 | Topnav aus echten Buttons, Hinweise als Text | erledigt (release) |
-| B-49 | Fluide Kartengrößen | erledigt (release) |
-| B-50 | Kleinpaket Qualität (Bewegung, Kontrast, Auswahl, Farbschema) | teilweise (release) |
-| B-51 | Menüs neu denken: Overlays und sinnvolle Struktur | erledigt (release) |
-| B-52 | Topics als Backlog-Items: Topic-Liste, aktives Topic, Historie je Topic | neu |
-| B-53 | Ergebnisdarstellung neu (Verteilung, Zeiger nicht über der Eingabe, Historie) | neu |
-| B-54 | Feedback-Text ohne `encodeURIComponent()` in der URL | erledigt (release) |
-| B-55 | Rollout 1: Hinweis „New look – same game“ und Umfrage zur neuen Optik | verworfen (→ B-57) |
-| B-56 | Players-Menü: Spielerliste mit Status, Entfernen statt Lösch-Icon auf den Karten | neu |
-| B-57 | Ideas & Bugs: Meldungen mit Typ, öffentliche Liste mit Status und Abstimmung, Moderation | neu |
-| B-58 | Geänderte Karte sichtbar machen: ursprüngliche Karte versetzt darunter (statt Sperren) | neu |
-| B-59 | Aufdecken, bevor alle gewählt haben („reveal now“) | neu |
-| B-60 | Spaß-Funktionen: Reaktionen/Emojis, Werfen, Fun-Karten | neu |
-| B-61 | Eigene Kartenwerte / eigene Decks | neu |
-
-### B-01 SQL-Injection in `api/` beheben
-Einige Queries setzen Eingaben direkt in SQL ein: `validate_team()` in `api/lib.php` (läuft bei fast jedem Request),
-`api/delete.php`, `api/feedback.php`, `api/setc.php`, `getDao()` und weitere Stellen in `api/lib.php`. Umstellen auf Prepared Statements.
-Außerdem: `api/timer.php` und `api/get_promo.php` prüfen die Team-ID nicht mit `validate_team()`.
-Offene Fragen: alle Stellen einzeln oder `lib.php` gleich mit einer kleinen Query-Hilfsfunktion?
-
-### B-02 `stats.php` absichern
-Feedback-Texte werden ungefiltert ausgegeben (XSS), die Seite ist ohne Login erreichbar.
-Offene Fragen: Zugriffsschutz per nginx (Basic Auth/IP) oder in PHP? Wird `stats.php` neben Grafana überhaupt noch gebraucht?
-
-### B-03 PHP-8.1-Deprecations und Eingabe-Filter richtig machen
-**Hintergrund:** `FILTER_SANITIZE_STRING` (13 Stellen, deprecated seit PHP 8.1) „bereinigt“ Eingaben vor dem
-Speichern: entfernt alles, was wie ein Tag aussieht, und kodiert `'`/`"` als `&#39;`/`&#34;`. Das Frontend escaped
-bei der Ausgabe aber bereits korrekt (`textContent`/`innerText`, remarkable ohne HTML). Folge sind verfälschte Daten:
-Teamname `Bob's Team` wird live als `Bob&#39;s Team` angezeigt, `Sprint 1 < 2` wird zu `Sprint 1 `,
-`Max < Moritz` zu `Max `. Für SQL spielte der Filter keine Rolle (alle betroffenen Werte gehen über Prepared Statements).
-
-**Ziel:** Rohdaten speichern, bei der Ausgabe escapen (wie das Frontend es schon tut). Keine Deprecations mehr.
-
-**Umfang:**
-- Freitexte (Team-, Spielername, Team/Thema aus dem Einstiegslink in `index.php`): unverändert speichern, nur `trim()`
-  und Längenbegrenzung.
-- Steuerparameter (`tool`, `preset`, `action`, `type`, `display_type`, IDs in `get_promo.php`): gegen erlaubte Werte
-  bzw. Format prüfen.
-- `null`-Fälle (`substr(null)` in `index.php`, `strtolower(null)` in `add_team()`).
-- Einmaliges SQL: `&#39;`/`&#34;` in bestehenden Teamnamen zurückwandeln (Anzahl vorher zählen).
-- Alle Ausgabestellen prüfen (bisher bekannt: `innerHTML` für Thema – sicher; Umfrage-Texte aus der DB; `stats.php` → B-02).
-- CI schlägt fehl, wenn ein Testlauf `Deprecated` ins PHP-Log schreibt.
-- Im Planning ergänzt: Frontend kodiert Namen in URLs nicht (`&`/`#` schneiden Namen ab) → `encodeURIComponent`;
-  `name.php` gibt den Namen als HTML zurück (Debug-Ausgabe, nach Umstellung reflektiertes XSS) → entfernen.
-- Aus dem Security-Review ergänzt: Thema speichern (`save_topic`) kodiert ebenfalls nicht → `encodeURIComponent`;
-  Längenbegrenzung schnitt nach Bytes und zerteilte Umlaute an der Grenze (Spielername mit 15 Zeichen → HTTP 500,
-  Beitritt unmöglich) → Kürzen nach Zeichen (`cut_text()`, ohne `mbstring`, das live für 8.4 nicht installiert ist).
-- In CI gefunden: `save_topic()` meldete die Änderung per WebSocket, bevor der Server das Thema gespeichert hatte;
-  bei langsamem Server luden die Boards das alte Thema → Benachrichtigung erst nach der Antwort (`onload`).
-
-**Akzeptanzkriterien:**
-- E2E-Test: Team- und Spielernamen mit `'`, `"`, `<`, `&` und `<b>…</b>` werden exakt so angezeigt, wie eingegeben,
-  und nicht als HTML interpretiert.
-- Ein kompletter Testlauf erzeugt keine Deprecation; kein `FILTER_SANITIZE_STRING` mehr im Code.
-- Bestehende Teams mit `&#39;`/`&#34;` im Namen werden nach dem Daten-Update korrekt angezeigt.
-
-### B-04 Lokale Testumgebung und erste E2E-Tests mit CI
-**Ziel:** Ein Befehl startet die komplette App lokal (nginx, PHP-FPM, MySQL, `poker-msg`) und führt Playwright-Tests
-aus; GitHub Actions macht dasselbe bei jedem PR und Push auf `release`.
-
-**Umfang:**
-- Setup-Skript für Ubuntu (genutzt von CI und Claude); nginx mit `/poker-msg`-Weiterleitung wie in Produktion,
-  leere DB aus `db_schema_pok.sql`, `poker-msg` aus dessen `release`-Branch. Kein Docker (vorerst).
-- Playwright (Chromium) in `tests/e2e/`.
-- Testfälle: Team anlegen; zwei Spieler treten bei und sehen sich; Karte legen und beim anderen sichtbar; alle
-  gewählt → Ergebnis; neue Runde setzt zurück; Kartenset wechseln, beide sehen das neue Set.
-- GitHub-Actions-Workflow mit PHP 8.1 (wie Produktion).
-- Agent `e2e-tester` und Anleitung in `CLAUDE.md`.
-- nginx-Regel für die Server, damit Test-, Doku- und Konfigurationsdateien nicht öffentlich abrufbar sind
-  (spielt der Betreiber ein).
-
-**Akzeptanzkriterien:**
-- Tests laufen in CI grün gegen `release`.
-- Ein absichtlich eingebauter Fehler lässt einen Test fehlschlagen.
-- Keine Änderung am App-Code.
-
-**Entscheidungen:** Ubuntu-Skript statt Docker, weil künftig Claude entwickelt; CI-Laufzeit von einigen Minuten ist
-akzeptiert, soll aber durch Caching möglichst kurz bleiben.
-
-### B-05 E2E-Tests für weitere Funktionen
-Kartenkonfiguration, Timer, Thema, Anonym-Modus, Ergebnis-Sortierung, Durchschnitt, Spieler entfernen, Feedback.
-Voraussetzung: B-04.
-
-### B-06 Testfälle gemeinsam reverse-engineeren
-Gemeinsam aus dem bestehenden Verhalten fachliche Testfälle ableiten und dokumentieren. Nicht im ersten Sprint.
-
-### B-07 Repo-Hygiene
-`.gitignore` anlegen, `config.php` durch `config.example.php` ersetzen (echte Config bleibt nur auf den Servern),
-Installationsschritt im README anpassen. Umgesetzt zusammen mit B-04.
-
-Einmaliger Deploy-Ablauf pro Server (getestet für beide Ausgangszustände: Staging mit geänderter `config.php`,
-Live mit bereits gestagtem `git rm --cached config.php`):
-
-```bash
-cp config.php ~/config.php.bak
-git reset -q --hard
-git pull --ff-only
-cp ~/config.php.bak config.php
-git status   # sauber
-```
-
-Nicht enthalten (später, eigener Eintrag bei Bedarf): README insgesamt überarbeiten.
-
-### B-08 MySQL-Statistik-Job ins Repo aufnehmen
-Die `_stats`-Tabellen werden von einem MySQL-Event befüllt, das nicht im Repo liegt.
-Definition exportieren (`SHOW CREATE EVENT`) und versionieren.
-
-**Erledigt (2026-10-23):** Export von Live (`mysqldump --events --routines --triggers`, keine Routinen/Trigger vorhanden)
-liegt als `db_jobs_pok.sql` im Repo. Drei Events, `event_scheduler = ON`:
-- `pok_active_users_evt` (minütlich) → `pok_active_user_stats`: aktive Spieler je Zeitfenster.
-- `pok_daily_team_stats_evt` (täglich 23:55) → `pok_daily_teams_stats`: je Team mit Aktivität in 24 h; **`RECURRING`, wenn
-  mehr als 2 Spieler aktiv waren, sonst `EXPLORING`**. Teams mit höchstens 2 aktiven Spielern werden nur am ersten Tag
-  (`team_age < 1`) erfasst.
-- `pok_active_use_evt` → `pok_active_use_stats_tbl`: **deaktiviert, lief nie** – Tabelle bleibt leer (Kandidat zum
-  Aufräumen, nicht dringend).
-
-### B-09 Wachstum von `pok_analytics_events_tbl` begrenzen
-Tabelle wächst unbegrenzt. Aufbewahrungsdauer festlegen, alte Daten löschen oder verdichten.
-
-**Zuerst analysieren (Sprint 4, Analyse-Spike), bevor gelöscht/verdichtet wird:**
-- Wofür werden die Events gebraucht? Vermutlich im Wesentlichen `stats.php` (aggregiert `event_code`-Summen der
-  letzten 14 Tage) und ggf. **Grafana** (externe Instanz, Abfragen noch offen → von Andreas einholen, damit wir
-  keine Events entfernen, die ein Chart braucht).
-- **Schreiblast reduzieren:** Welche Events schreibt das Frontend wie oft? Jeder Event ist ein zusätzlicher Call.
-  Prüfen, welche sich zusammenfassen/weglassen/entprellen lassen (spart Writes *und* Requests).
-- Erst danach die eigentliche Begrenzung: Aufbewahrungsdauer + Lösch-/Verdichtungs-Job.
-
-Offene Fragen: Wie lange werden Rohdaten gebraucht? Wie groß ist die Tabelle heute? Welche `event_code`s nutzt Grafana?
-
-**Spike-Ergebnis (2026-10-22):** Einziger Schreiber `api/measure_event.php` (ein GET je Event, fire-and-forget),
-**kein hochfrequentes Event** (kein Resize-/Poll-/Pull-Tracking) – Volumen entsteht nur durch viele Teilnehmer ×
-Sessions, dominiert von `BOARD_ON_LOAD`. Einziger Repo-Leser: `stats.php` (14-Tage-Fenster). Grafana extern. Tote
-Kanten: `LINK_SIMULATION_INFOS`/`LINK_SIMULATION_LOGIN` werden von stats.php angezeigt, aber nirgends erzeugt
-(dauerhaft 0); `INIT_ON_LOAD`/`OPEN_TOPIC_BOX`/`OPEN_USER_SETTINGS_BOX` werden erzeugt, aber von keinem Repo-Leser
-genutzt. **Tendenz (Andreas, 2026-10-22): so lassen** – die Schreib-Reduktion bringt wenig, das reine Wachstum ist
-voraussichtlich klein. Nächster Schritt: Tabellengröße auf dem Server messen (SQL vorbereitet); bei Bedarf später ein
-Retention-/Pruning-Job auf `creation_date`. Grafana-`event_code`s weiterhin offen.
-
-**Größen-Messung (Live, 2026-10-22):** ~1,19 Mio. Zeilen, **94 MB** (76 MB Daten + 18 MB Index), Tracking seit
-2021-03-23 (~5,5 Jahre). Normale Tagesrate ~700–1.400 Events. **Entscheidung (Andreas): so lassen** – das Wachstum
-ist vernachlässigbar, kein Pruning-Job nötig. Falls die Tabelle irgendwann doch stört, genügt ein einfacher
-Lösch-Job auf `creation_date` (> N Jahre). Beobachtung am Rande: Tagesausreißer 2026-10-13 mit 86.580 Events
-(sonst ~1k); `api/measure_event.php` ist unauthentifiziert und kann von Bots vollgespammt werden – bei der
-Tabellengröße folgenlos, passt zum geheime-URL-Modell. Offene Nebenpunkte (kein Teil von B-09, nur notiert): tote
-`stats.php`-Spalten `LINK_SIMULATION_*` (dauerhaft 0) und die nicht-gelesenen `event_code`s könnten bei Gelegenheit
-in `stats.php` aufgeräumt werden.
-
-### B-10 `poker-msg` modernisieren und absichern
-Ratchet 0.4 wird kaum gepflegt; der Prozess läuft unter supervisor als `root`; keine Begrenzung von Verbindungen
-oder Nachrichtengröße. Läuft nicht als root, Abhängigkeiten aktualisieren oder Alternative prüfen.
-Heartbeat ergänzen: verwaiste Verbindungen (vergessene Tabs, Laptop im Ruhezustand) nach z. B. 2 Minuten schließen.
-
-### B-11 Schreibende API-Aufrufe per POST statt GET
-Zustandsändernde Endpunkte werden per GET aufgerufen (Prefetching, Logs mit Parametern, kein CSRF-Schutz).
-Voraussetzung: B-04, damit Frontend und API gemeinsam umgestellt und getestet werden.
-
-**Refined (2026-10-22):** Scope aus dem B-31-Spike (= M4). Alle zustandsändernden Endpunkte von GET auf POST, je
-Endpunkt gemeinsam mit seinen Frontend-`fetch`-Aufrufen (`method:'POST'` + `body`), gestaffelt pro Endpunkt (Backend +
-Frontend zusammen deployen, sonst 405). Betroffen (~30 fetch-Stellen): name, setc, newround, delete, timer,
-update_team, update_cardset, update_results_order, update_show_avg, update_user, feedback, measure_event, get_promo,
-update_promo, delete_user, addteam; `update_topic.php` ist bereits POST (Vorbild). Team-ID darf weiter per GET-Query
-kommen (Routing), nur die zustandsändernden Nutzdaten in den Body. Nutzen: kein Prefetch/Logging von Writes – **kein**
-CSRF-Schutz (keine Auth). AK: alle Writes laufen per POST; E2E weiter grün; `?v=`-Bump für geänderte JS. Umsetzung in
-2–3 Häppchen, nicht alles in einem PR.
-
-### B-12 Zeichensätze vereinheitlichen
-Tabellen mischen `latin1`, `utf8mb3`, `utf8mb4`. Umstellung auf `utf8mb4` inkl. Verbindung (`set_charset`).
-Größere DB-Änderung, braucht ein Wartungsfenster.
-
-### B-13 MySQL-Zugriff von außen einschränken
-Port 33060 schließen, Port 3306 per Firewall nur für die Grafana-Instanz öffnen, `grafana_usr` auf deren IP
-beschränken und auf Leserechte prüfen.
-
-### B-14 `script/script.js` in Module aufteilen
-1.300 Zeilen mit globalen Variablen. Schrittweise in ES-Module zerlegen, ohne Build-Schritt.
-Voraussetzung: B-04/B-05.
-
-### B-15 CDN-Abhängigkeiten festnageln oder selbst ausliefern
-`board.html` lädt `js-confetti@latest` von jsDelivr – jede neue Version geht ungeprüft live. Auch remarkable,
-qr-code-styling und Font Awesome kommen von CDNs (ohne Integritätsprüfung). Versionen festnageln und
-`integrity`-Attribute setzen oder die Dateien selbst ausliefern. Fällt ein CDN aus, startet das Board nicht
-(`loadBoard()` bricht ohne `QRCodeStyling` ab).
-**Sicherheit:** Live lädt `remarkable` 1.7.1 mit bekannten Schwachstellen (u. a. XSS über präparierte Link-Schemata
-in Markdown-Links laut Security-Review, auslösbar über ein Thema, z. B. per Einstiegslink `/?tool=x&text=…`).
-Im Refinement klären, welche Version welche Lücke behebt (Dependabot schlug 1.7.2 vor, der Review nennt 1.7.4
-oder neuer); Dependabot-PRs #3/#4 hoben nur die Testkopie an. Live (`board.html`) und Tests (`tests/e2e/package.json`, `cdnFiles` in
-`specs/helpers.ts`) gemeinsam anheben.
-
-### B-16 Fremddateien und phpMyAdmin in den Webroots absichern
-Auf dem Staging-Server lagen neben dem Repo `info.php` (phpinfo), `config.php.live` und ein Symlink
-`db -> /usr/share/phpmyadmin` im Webroot; phpMyAdmin war damit öffentlich erreichbar.
-**Erledigt 2026-10-16:** `info.php` und `config.php.live` entfernt, Symlink `db` auf allen Servern gelöscht
-(phpMyAdmin bleibt installiert, ist aber nicht mehr über das Web erreichbar). Ersatz siehe B-17.
-
-### B-17 DB-Zugriff per Client über SSH-Tunnel einrichten
-Ersatz für phpMyAdmin: ein DB-Client auf dem eigenen Rechner (z. B. DBeaver, TablePlus, Sequel Ace) verbindet
-sich per SSH-Tunnel mit MySQL auf dem Server. Kurze Anleitung für das Team, ggf. eigener MySQL-User mit passenden
-Rechten statt root.
-Offene Fragen: Wer braucht Zugriff, auf welche Server? Passt das zu B-13 (MySQL nur für Grafana öffnen)?
-
-### B-18 Server-Logs von Live sichten
-Zusammenfassung der aktuellen Logs per Skript (nur lesend, ohne IPs/Team-IDs), gemeinsam ausgewertet.
-**Erledigt 2026-10-16.** Ergebnisse als B-19, B-20, B-21; Ergänzungen zu B-13. PHP-Fehler landen live im
-nginx-Error-Log (`FastCGI sent in stderr`); Deprecations werden live nicht geloggt (`php.ini`:
-`E_ALL & ~E_DEPRECATED`, die Live-`config.php` setzt kein `error_reporting`). Einzige PHP-Meldung im aktuellen Log:
-der Fatal Error aus B-21. Sonst nur Scanner-404s, harmlose TLS-Fehler, DNS-Warnungen von MySQL.
-
-### B-19 `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze
-`poker-msg_error.log` enthält tausende `stream_select(): You MUST recompile PHP with a larger value of FD_SETSIZE`.
-ReactPHP nutzt mangels Erweiterung die `stream_select`-Schleife, die nur Dateideskriptoren < 1024 verarbeiten kann;
-Verbindungen darüber werden nicht mehr bedient (Boards aktualisieren sich dann nicht). Lösung ohne Code-Änderung:
-PHP-Erweiterung `ev` oder `event` für das CLI-PHP installieren – ReactPHP wählt sie automatisch – und `poker-msg`
-neu starten. Passt zu B-10.
-
-**Nachweis (lokaler Lasttest, 2026-10-16):** 1.100 WebSocket-Clients gegen `poker-msg` ohne Erweiterung → nur 1.000
-Verbindungen, nach einem `push` erhält **kein** Client ein `pull` (auch die ersten 1.000 nicht), ~330.000 Warnungen
-in Sekunden (Leerlauf-Schleife). Live: 449 Verbindungen um 10:30 Uhr, Spitze 8–9 Uhr mit 5–7× mehr Verkehr.
-
-**Zielwert:** 5.000 gleichzeitige Verbindungen (≈ 3–5× der geschätzten heutigen Spitze von 1.000–1.500).
-
-**Umfang:** `pecl install ev`, nur für CLI aktivieren, `poker-msg` neu starten (erst Staging, dann Live);
-supervisor-Info-Log auf `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`, damit die echte Spitze
-von `active_users` messbar wird.
-
-**Akzeptanzkriterien:** `React\EventLoop\Factory::create()` liefert `ExtEvLoop`; nach einem Werktag keine neuen
-`FD_SETSIZE`-Warnungen; Spitzenwert `active_users` aus dem Log bekannt.
-
-**Stand 2026-10-16:** auf Staging und Live umgesetzt (zusammen mit B-22), `ExtEvLoop` bestätigt. Offen: Prüfung
-nach der nächsten Werktags-Spitze (Montag nach 10 Uhr) – `FD_SETSIZE`-Zähler im neuen Fehler-Log und Spitzenwert
-`active_users`.
-
-### B-20 PHP-FPM und MySQL robuster konfigurieren
-- PHP-FPM: `pm.max_children = 5` – am 14.10. (Vorfall `stats.php`) einmal erreicht; für den **8.4-Pool bestätigt**
-  (Stand 2026-10-20). Im Normalbetrieb ausreichend: in der Werktags-Spitze (2026-10-20, 33.767 Req/h um 08:00)
-  **keine** „max_children reached"-Warnung im 8.4-FPM-Log und keine 502/504. Für das Wachstumsziel dennoch knapp –
-  bei ~2,5 GB freiem RAM und realem Worker-Verbrauch deutlich unter `memory_limit` (256 MB) moderat anheben
-  (grob `max_children` 15–25, `start_servers`/`min`/`max_spare_servers` entsprechend). Zusätzlich
-  `request_terminate_timeout` setzen (hängende Requests blockieren nicht alle Worker) und `slowlog` aktivieren.
-- MySQL: `slow_query_log` ist aus (Stand 2026-10-20: 2 Slow Queries > 10 s seit dem letzten Neustart, früher 9) –
-  Log aktivieren und auswerten. `skip-name-resolve` gegen die DNS-Warnungen durch Verbindungsversuche von außen
-  (421 abgebrochene Verbindungen seit dem letzten Neustart, siehe B-13). **Achtung:** `skip-name-resolve` bricht
-  hostbasierte Grants – das externe Grafana (`grafana_usr`) vorher prüfen, sonst nur IP-/`%`-Grants nutzen.
-- Monitoring: `log-summary.sh` liest seit 2026-10-20 PHP 8.4 (vorher 8.1) und zeigt damit die echten 8.4-Pool-Werte.
-
-**Refined (2026-10-22):** Reine Server-Config (Andreas führt aus; Kai bereitet Schnipsel + Befehle vor), nur der
-**poker-Pool**, beide Server. FPM: `pm.max_children = 15`, `start_servers`/`min_spare`/`max_spare` entsprechend,
-`request_terminate_timeout 60s`, `slowlog` + `request_slowlog_timeout 5s`. MySQL: `slow_query_log = ON`,
-`long_query_time = 2`, `slow_query_log_file` prüfen. **`skip-name-resolve` vorerst NICHT** (geringe Priorität, Risiko
-für hostbasierte Grafana-Grants). AK: erhöhte FPM-Werte aktiv auf beiden Servern; Slowlog (FPM + MySQL) läuft; eine
-Nachkontrolle (per `log-summary.sh`) zeigt keine `max_children reached`-Warnung und erfasste Slow Queries.
-
-### B-21 Race Condition beim Anlegen neuer Nutzer in `getDao()`
-Zwei gleichzeitige Requests eines neuen Browsers legen beide den Nutzer an; der zweite scheitert mit
-`Duplicate entry … for key 'pok_user_tbl.PRIMARY'` (PHP Fatal Error, HTTP 500). In den E2E-Logs reproduziert,
-live bestätigt: 1× in 11 Stunden (einzige PHP-Meldung im nginx-Error-Log). Lösung z. B. `INSERT IGNORE`/`ON DUPLICATE KEY UPDATE`.
-
-### B-22 PHP-Upgrade auf 8.4
-**Entscheidung 2026-10-16:** Web-App (PHP-FPM) und `poker-msg` auf Staging und Live gemeinsam auf PHP 8.4 aus dem
-ondrej-PPA, zusammen mit B-19 (`php8.4-ev` als Paket statt `pecl`). Vorher laufen die E2E-Tests in CI gegen 8.1 und 8.4;
-nach der Umstellung auf Live nur noch gegen 8.4.
-
-**Staging umgestellt (2026-10-16):** `ev` 1.2.3 per `pecl -d php_suffix=8.4` gebaut (im PPA gibt es kein
-`php8.4-ev`), nur für CLI aktiviert; `poker-msg` läuft per supervisor mit `/usr/bin/php8.4`, `ulimit -n 20000`,
-Info-Log 50 MB × 5; nginx der Poker-Staging-Seite auf `php8.4-fpm.sock`. Funktionstest ok, keine Fehler im
-`poker-msg`-Log.
-
-**Live umgestellt (2026-10-16, ca. 12:40 UTC):** ondrej-PPA eingerichtet, PHP 8.4 + `php8.4-xml` (für `pecl`)
-installiert, `ev` gebaut und für CLI aktiviert, `poker-msg` auf `php8.4`, Info-Log 50 MB × 5; PHP-8.4-FPM mit den
-angepassten Werten der 8.1-Config (`memory_limit`, `post_max_size`, `upload_max_filesize`); nginx auf
-`php8.4-fpm.sock`. Funktionstest ok, keine neuen PHP-Fehler, `poker-msg`-Fehler-Log leer, nach wenigen Minuten
-451 Verbindungen. CI testet nur noch gegen 8.4.
-
-Live läuft auf PHP 8.1 aus Ubuntu 22.04 (Sicherheitsupdates durch Canonical bis April 2027). Staging hat zusätzlich
-8.2 und 8.4 installiert; dort ist `/usr/bin/php` (CLI, also `poker-msg`) bereits 8.4.
-Offene Fragen: ondrej-PPA mit 8.4 oder Ubuntu 24.04 mit 8.3? Zeitpunkt? Vorher B-03 (Altlasten im Code) und
-`poker-msg` unter der neuen Version testen (Ratchet 0.4, Deprecations). CI zusätzlich mit der Zielversion laufen lassen.
-Erweiterung `ev` (B-19) für die neue Version mit installieren.
-
-### B-23 Server aufräumen nach PHP-8.4-Umstellung
-- Live und Staging: einmal neu starten (am Wochenende), da bei der Installation Systembibliotheken aktualisiert
-  wurden und viele Dienste noch mit den alten laufen (`needrestart`).
-- Paketquelle `ondrej/nginx` entfernen (PPA eingestellt, `apt update` meldet `403 Forbidden`).
-- PHP 8.1 (und auf Live die Build-Pakete `php8.1-dev` usw.) deinstallieren, wenn 8.4 eine Weile stabil läuft;
-  vorher prüfen, dass nichts anderes mehr `php8.1` nutzt (auf Staging laufen weitere Seiten mit 8.1!).
-- Große Upload-Grenzen (`post_max_size`/`upload_max_filesize` 100M, nginx `client_max_body_size 100M`) prüfen –
-  die App lädt keine Dateien hoch.
-
-**Stand 2026-10-21 (Staging, Andreas):**
-- Platte war zu 98 % voll: rund 8 GB UpdraftPlus-Backups der WordPress-Seite seit 2024 gelöscht → 64 % (siehe B-29).
-- `ondrej/nginx`-PPA entfernt (eingestellt seit April 2026). nginx von 1.28 (PPA) auf 1.18 aus dem Ubuntu-Repo
-  zurückgesetzt, wie auf Live; dafür in `flowgame.komplexitaeter.de` `http2 on;` → `listen 443 ssl http2;`.
-  Sicherungen: `/root/nginx-backup-2026-10-21`, `/root/flowgame.komplexitaeter.de.bak`. Alle Updates, Reboot erledigt.
-- Live nutzt den nginx-PPA nicht (nginx 1.18 aus Ubuntu) – dort nichts zu tun.
-- **Korrektur:** PHP 8.1 auf **Live wird noch genutzt** (`teamcar`, `feedbck`) – dort nicht deinstallieren.
-  Pin-Datei `/etc/apt/preferences.d/php8.1-from-ubuntu` vorgeschlagen, damit 8.1 nicht aus dem PPA kommt;
-  `php8.1-mysql` per `apt-mark manual` vor `autoremove` schützen.
-- Staging auf nur noch PHP 8.4 konsolidieren (Bestandsaufnahme gemacht):
-  - 8.0 (nur CLI), 8.1 (FPM, ungenutzt, abgeschaltet): sofort deinstallierbar.
-  - `flowgame` (3 Pools), `kaffeeklatsch`: Pools von 8.3 nach `/etc/php/8.4/fpm/pool.d/` verschieben (Sockets bleiben).
-  - `www.komplexitaeter.de` (WordPress, 8.2): eigener 8.4-Pool `komplexitaeter-www` mit den Werten aus 8.2-`www.conf`
-    (100M Upload, `max_input_vars 3000`, 300 s), `php8.4-imagick` nachinstallieren, vorher WP-Version/Plugins prüfen.
-  - Danach 8.2/8.3 deinstallieren, wenn alles ein paar Tage stabil läuft.
-- **Umgesetzt (2026-10-21, Andreas):** Staging läuft nur noch auf PHP 8.4. Pools `flowgame.conf`, `kaffeeklatsch.conf`,
-  `komplexitaeter-www.conf` (WordPress) in `/etc/php/8.4/fpm/pool.d/`, `php8.4-imagick` installiert, nginx umgestellt;
-  PHP 8.0–8.3 entfernt (purge), Reste alter Kernel entfernt, `apt` ohne offene Updates. Alle Seiten antworten mit 200.
-  Upstream `flowgame_prototype` ebenfalls auf `php8.4-fpm.sock`; keine Verweise auf 8.0–8.3 mehr in nginx.
-- **Live umgestellt (2026-10-21, Andreas):** `teamcar` und `feedback` in eigenen 8.4-Pools (`teamcar.conf`,
-  `feedback.conf`), Erweiterungen `bz2 curl gd intl mbstring zip` für 8.4 nachinstalliert, Syntaxcheck mit `php8.4 -l`
-  ohne Befund. PHP 8.1, `libapache2-mod-php8.1`, `apache2-bin`/`-utils` und **phpMyAdmin** entfernt (purge, war seit
-  B-16 nicht mehr erreichbar). Ubuntus `composer` 2.2 (lief unter 8.4 nicht mehr) samt `php-symfony-*` usw. ersetzt
-  durch offizielles Composer 2.10 in `/usr/local/bin/composer`; `composer install --dry-run` in `poker-msg` ok.
-  Hinweis: Symlink `sites-enabled/feedbck…` zeigt auf `sites-available/feedback…`. `apt` ohne offene Updates.
-  **Damit läuft auf beiden Servern nur noch PHP 8.4.** Offen aus diesem Eintrag: Upload-Grenzen (s. o.).
-- **Dritter Server `vps-b9348783` (2026-10-21, Andreas):** Nebenprojekte, gehört nicht zu Poker (`the-agile-game`,
-  `daily-habit-tracker`, `kfs` mit PHP; `andreas`, `francois`, `fraxicle` statisch). War rund ein Jahr ohne Updates,
-  weil der eingestellte `ondrej/nginx`-PPA `apt update` blockierte. PPA entfernt, alle Updates eingespielt, nginx
-  1.28 → 1.18 (Ubuntu; `http2 on;` in `andreas`, `francois`, `fraxicle` → `listen … http2`), PHP 8.2 → 8.4
-  (Standard-Pool, `php8.4-mbstring`/`-mysql`/`-sqlite3`), PHP 8.2/8.3 entfernt, Neustart.
-  **Panne:** `php8.4-fpm` war beim Umstellen nicht installiert → PHP-Teile von `the-agile-game`,
-  `daily-habit-tracker`, `kfs` lieferten ca. 16:45–17:31 UTC einen 502 (Startseiten statisch, daher fiel es beim
-  `curl`-Test nicht auf). Lehre: nach Umstellung einen PHP-Endpunkt testen, nicht nur `/`.
-- `fraxicle`: Scanner-Anfragen auf `/_adminer/adminer.php.*` – geprüft, kein Adminer und keine `.php`-Dateien im
-  Webroot, nur blindes Scannen. PHP nach der Panne geprüft: `kfs` läuft, `the-agile-game` (statisch, PHP nur für
-  `api/game_state_logger.php`) antwortet wieder (400 statt 502).
-
-### B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen
-**Problem:** Die Zahl der Verbindungen in `poker-msg` steigt kontinuierlich, auch nachts: von derselben IP alle 1–2
-Minuten eine neue Verbindung, die alte bleibt offen. Wahrscheinliche Ursache: ein offener Tab hinter einer
-Firewall/einem Proxy, der ruhige Verbindungen nach 1–2 Minuten kappt. Der Browser verbindet neu (Client prüft alle
-3 s), nginx und `poker-msg` merken vom Abbruch nichts und halten die alte Verbindung (`proxy_read_timeout 86400`)
-bis zu 24 Stunden.
-
-**Lösung:** Ratchets eingebauter Keepalive (`WsServer::enableKeepAlive`): `poker-msg` sendet alle 30 s einen
-WebSocket-Ping, Browser antworten automatisch; wer den vorherigen Ping nicht beantwortet hat, wird geschlossen.
-Intervall per `POKER_MSG_KEEPALIVE` (Tests: 2 s). Zusätzlich nginx `proxy_read_timeout` für `/poker-msg` auf 120 s.
-Der Client verbindet nach einer serverseitigen Trennung innerhalb von 3 s neu und lädt den Board-Stand nach.
-
-**Nachweis:** lokal eingefrorener Client wird nach 1–2 Intervallen getrennt, aktiver Client bleibt verbunden;
-neuer E2E-Test: nach Leerlauf über mehrere Ping-Runden kommen Updates ohne Neuverbindung an.
-
-**Akzeptanzkriterium:** nachts fällt `active_users` auf nahezu 0, statt linear zu steigen.
-
-**Stand 2026-10-16:** auf Staging und Live umgesetzt (`poker-msg` aus `release`/`master` mit Keepalive, nginx
-`proxy_read_timeout 120s` auf beiden Servern). Staging-`poker-msg` dabei von einem lokalen Branch mit dem verworfenen
-Yjs-Versuch („shared area“, lokal gesichert als `backup/shared-area`) auf `release` umgestellt und auf HTTPS-Remote.
-Offen: Kontrolle `active_users` über Nacht.
-
-### B-25 Board blitzt beim Laden kurz mit allen Elementen auf
-Beim Laden des Boards sind teilweise kurz alle Elemente im Standardzustand sichtbar (z. B. der Timer), bevor die
-erste Server-Antwort sie richtig einstellt – auch vor dem Namens-Overlay. Gut reproduzierbar in Safari mit
-Option-Cmd-R (Neuladen ohne Cache). Ursache (vermutet): Das Ausblenden bis zur ersten Antwort stand nur in
-`style/style.css` (`body { opacity: 0 }`); malt der Browser das HTML, bevor das Stylesheet geladen ist, fehlt es.
-In Chrome nicht reproduzierbar (blockiert das Rendern bis zum Stylesheet).
-
-**Fix:** `style="opacity: 0"` direkt am `<body>` von `board.html` und `init.html`; das JavaScript setzt nach der
-ersten Antwort wie bisher `opacity: 1`. E2E-Test: ohne Stylesheet und mit langsamer erster Antwort bleibt das Board
-unsichtbar, danach wird es sichtbar (Gegenprobe ohne Fix schlägt fehl).
-
-**Akzeptanzkriterium:** In Safari mit Option-Cmd-R auf Staging kein Aufblitzen mehr (manuell, Safari ist in CI nicht verfügbar).
-**Erledigt 2026-10-16:** auf Staging in Safari bestätigt, Release nach `master`.
-
-### B-26 `toggle_topic_box`: `Cannot read properties of null`
-Beim Staging-Test zu Sprint 3 gefunden, tritt aber **auch auf Live/`master`** auf (kein Sprint-3-Regressionsfehler, eigener
-Bestandsbug). In der Browser-Konsole:
-`TypeError: Cannot read properties of null (reading 'style') at toggle_topic_box (script/script_feedback.js:197) at toggleTopnav (script/script_feedback.js:6)`.
-`script_feedback.js` ist seit Längerem unverändert. Vermutlich greift `toggle_topic_box()` auf ein Element zu, das in
-bestimmten Zuständen (noch) nicht im DOM ist. Offene Fragen: unter welchen Bedingungen genau (welcher Button/Zustand),
-und ob der Fehler sichtbare Folgen hat oder nur Konsolen-Rauschen ist. Fix vermutlich ein Null-Check vor dem
-`.style`-Zugriff.
-
-**Refined (2026-10-22):** Ursache gefunden – `toggle_topic_box()` liest `getElementById('topic_box')` und greift
-**ohne Null-Check** auf `.style` zu; `#topic_box` existiert nur in `board.html`, nicht in `init.html`. Der Klickhandler
-`toggleTopnav` (schließt bei Klick außerhalb alle Boxen) ruft `toggle_topic_box(false)` auch dort → `e` null →
-TypeError; die danach aufgerufenen Toggles brechen dann ab. Fix: Null-Guard wie bei `toggle_cardset_box`
-(`if (e !== null)`), **plus kurzer Audit** der übrigen Toggles (feedback/info/user_settings), fehlende Guards ergänzen.
-AK: kein TypeError beim Außen-Klick (init.html + board); alle Boxen schließen korrekt; `?v=`-Bump für
-`script_feedback.js` in board.html **und** init.html; optional E2E (keine Konsolenfehler auf init.html beim Außen-Klick).
-
-### B-27 `apple-touch-icon` fürs Board/Startseite
-iOS fragt beim „Zum Home-Bildschirm" `apple-touch-icon.png` und `apple-touch-icon-precomposed.png` im Webroot an;
-beide fehlen → je ~18 404/Tag im nginx-Error-Log (Stand 2026-10-20). Poker wird viel mobil genutzt, daher doppelt
-sinnvoll: ein ordentliches Home-Screen-Icon ablegen (z. B. aus dem vorhandenen Logo in `src/`) und optional per
-`<link rel="apple-touch-icon">` in `board.html`/`init.html` referenzieren. Beseitigt das Log-Rauschen und liefert
-ein sauberes Icon auf dem Homescreen. Klein; kein Backend. Offene Frage: eine Größe (180×180 reicht meist) oder
-mehrere, und ob zusätzlich ein normales `favicon`/`manifest` gepflegt werden soll.
-
-**Refined (2026-10-22):** Basis-Logo `https://www.komplexitaeter.de/wp-content/uploads/logo-small.png` (davon ist auch
-das bestehende `favicon.ico` abgeleitet). Vorgabe (Andreas): **alle Favicons & Touch-Icons nach `src/` umziehen und
-explizit im `<head>` verlinken** statt Root-Auto-Discovery. Konkret: `favicon.ico` (liegt aktuell im Repo-Root,
-git-getrackt, wird ohne `<link>` auto-gefunden) nach `src/` verschieben; aus dem Basis-Logo ein quadratisches
-**180×180 `apple-touch-icon.png` mit opakem Hintergrund** (iOS macht Transparenz schwarz) + ein PNG-favicon (z. B.
-32×32) erzeugen (`convert`/ImageMagick ist vorhanden); alles in `src/`. In `board.html` **und** `init.html`
-`<link rel="icon" href="src/favicon.ico">` (bzw. PNG) und `<link rel="apple-touch-icon" href="src/apple-touch-icon.png">`
-ergänzen. AK: echte iOS-Geräte laden das verlinkte Icon (kein `/apple-touch-icon.png`-Probe-404 mehr), favicon weiter
-sichtbar, iOS „Zum Home-Bildschirm" zeigt das Logo. (Hinweis: blinde Bot-Requests auf `/apple-touch-icon.png` im Root
-können als Scanner-Rauschen weiter 404 liefern – bewusst in Kauf genommen.)
-
-### B-28 PHP2Shell (CVE-2026-109618/-109619) patchen
-**Akut, nachträglich vermerkt (2026-10-21).** BSI-Hinweis BITS-H 2026-297981-1032 (Kritikalität 3/Orange): zwei
-Lücken im PHP-Kern, Codeausführung aus der Ferne ohne Anmeldung, CVSS 9.2, alle PHP-Versionen. Patch von PHP am
-21.10. 14:00 UTC; Details vorab durchgesickert, erste Angriffe gemeldet. Laut Leaks (unbestätigt) Use-after-free bei
-`session.upload_progress`, ausgelöst durch `multipart/form-data`-POST.
-
-Betroffen: Live 8.4 (Poker, ondrej-PPA) und 8.1 (`teamcar`, `feedbck`, Ubuntu); Staging 8.2/8.3/8.4.
-Seit der Konsolidierung am selben Tag (B-23) auf beiden Servern nur noch 8.4 – ein Patch, ein Dienst.
-- Übergangsweise auf beiden Servern `session.upload_progress.enabled = Off` in
-  `/etc/php/<v>/fpm/conf.d/99-php2shell.ini` (Poker nutzt weder POST noch Sessions noch Uploads).
-- 8.4.27 im ondrej-PPA am 21.10. hochgeladen, Pakete wurden noch gebaut (Launchpad zeitweise 503).
-- Nach dem Einspielen: `php8.4-fpm` (Live zusätzlich `php8.1-fpm`) neu starten, `supervisorctl restart poker-msg`.
-- PHP 8.1 von Ubuntu kommt über `unattended-upgrades` automatisch; Stand auf
-  https://ubuntu.com/security/CVE-2026-109618 („jammy / php8.1“).
-- Danach Kompromittierungs-Check: neue `.php`-Dateien seit 20.10., Prozesse/Crontab von `www-data`,
-  ausgehende Verbindungen.
-
-**Stand 2026-10-21 abends:**
-- Alle drei Server (Live, Staging, dritter Server `vps-b9348783` mit Nebenprojekten) laufen nur noch auf PHP 8.4
-  (B-23). Live-8.1 (`teamcar`, `feedbck`) damit erledigt.
-- Notbremse `session.upload_progress.enabled = Off` (offizielle Empfehlung von PHP, zusammen mit **Neustart aller
-  Worker** – `restart`, nicht `reload`) erst gegen 17:30 UTC auf allen drei Servern gesetzt; vorher fehlte sie auf
-  Live und Staging. Laut PHP schließt sie nur einen Angriffsweg – nur das Update schützt vollständig.
-- Laut PHP-Advisory: CVE-2026-109618 = Speicherkorruption bei Out-of-Memory mitten im Request; CVE-2026-109619 =
-  Use-after-free durch Zustand, der zwischen Requests im selben Worker hängen bleibt. Fix in 8.5.12, 8.4.27,
-  8.3.36, 8.2.35; 8.1 und älter offiziell ohne Fix. Teils als aktiv ausgenutzt gemeldet.
-- 8.4.27 auf Launchpad gebaut, Binärpakete aber noch „Pending publication“ – noch nicht installierbar.
-- Kompromittierungs-Check auf allen drei Servern **ohne Befund**: neue `.php`-Dateien nur aus dem Sprint-3-Deploy
-  (20.10.), WordPress-Sprachupdate, AIOS-Firewall-Settings (`__halt_compiler`) und leere WP-Optimize-Cachedateien;
-  keine fremden Prozesse, keine Crontab für `www-data`, keine unerwarteten Verbindungen.
-
-**Akzeptanzkriterium:** PHP 8.4.27 (oder neuer) auf allen drei Servern, `php8.4-fpm` und `poker-msg` neu
-gestartet, Check ohne Befund (✓).
-
-**Erledigt 2026-10-21 (Andreas):** PHP 8.4.27 auf Live, Staging und dem dritten Server eingespielt (Launchpad hatte
-die Pakete stundenlang auf „Pending publication“), supervisor/`poker-msg` dabei über die needrestart-Abfrage mit
-neu gestartet, alle drei Server anschließend neu gebootet. Notbremse (`99-php2shell.ini`) bleibt vorerst liegen,
-schadet nicht. Nicht umgesetzt (bewusst): nginx-Sperre für POST bei Poker, `memory_limit = -1`; automatische
-PHP-Updates aus dem PPA (vorerst nicht gewünscht).
-
-### B-29 WordPress `www.komplexitaeter.de`: Backups waren öffentlich – Nacharbeiten
-Betrifft nicht die Poker-App, läuft aber auf dem Staging-Server. `www.komplexitaeter.de` ist die WordPress-Seite aus
-`/home/ubuntu/neu.komplexitaeter.de/neu/`. UpdraftPlus legt täglich DB-Backups in `wp-content/updraft/` ab und
-löscht keine alten (bis 2026-10-21 rund 8 GB). Das Verzeichnis war **öffentlich abrufbar** (`.htaccess` wirkt unter
-nginx nicht); seit 2026-10-21 gesperrt (`location ^~ /wp-content/updraft/ { deny all; }`, `403`).
-
-Ob Backups abgerufen wurden, lässt sich nicht feststellen: `.gz`/`.zip` sind per `access_log off` vom Logging
-ausgenommen, Logs reichen nur 14 Tage zurück. Dateinamen enthalten eine zufällige ID, keine Verzeichnisliste →
-Abruf unwahrscheinlich, aber nicht ausgeschlossen.
-
-Offen:
-- Passwörter aller WP-Konten mit Admin-/Redakteursrechten ändern, Salts in `wp-config.php` neu erzeugen.
-- In Plugin-Einstellungen gespeicherte Zugangsdaten (SMTP, API-Schlüssel, Backup-Ziele) rotieren.
-- Vorfall kurz dokumentieren; klären, ob die Seite personenbezogene Daten speichert (DSGVO).
-- UpdraftPlus: Aufbewahrung begrenzen (z. B. 14 DB-Backups), Backups extern speichern.
-- nginx-Logs länger aufbewahren (z. B. 30 Tage); `access_log off` für `.gz`/`.zip` überdenken.
-- WordPress auf PHP 8.4 umstellen (siehe B-23).
-
-### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
-Die reguläre Unterstützung für Ubuntu 22.04 endet im April 2027 (danach nur noch ESM über Ubuntu Pro). Beide Server
-auf 24.04 heben, zuerst Staging, vorher Snapshot beim Hoster; Live danach an einem Wochenende.
-Zu beachten: ondrej-PHP-PPA wird beim Upgrade abgeschaltet und muss für `noble` neu eingerichtet werden (sonst fehlt
-PHP 8.4); `ev` für `poker-msg` neu bauen (B-19); nginx wird 1.24; weitere Seiten auf beiden Servern mittesten.
-Offene Fragen: Zeitpunkt; ob Ondřej für Ubuntu langfristig beim PPA bleibt oder auf `packages.sury.org` umzieht;
-vorher Staging auf eine PHP-Version konsolidieren (B-23).
-
-### B-31 API-Review / HTTP-Semantik (Spike)
-Die API ist RPC-artig (ein Skript pro Aktion in `api/*.php`), Schreibzugriffe laufen über GET, Fehler werden ohne
-sauberen HTTP-Statuscode behandelt (`validate_team(...) or exit;` → leerer 200). B-11 (POST statt GET) ist nur ein
-Symptom davon.
-
-**Spike (Analyse, risikofrei, ändert nichts am Live-Verhalten):** Bestandsaufnahme über alle `api/*.php` (+ `stats.php`):
-je Endpunkt Methode, GET/POST-Parameter, Team-Check (`validate_team`), Response (JSON? leer? Echo?), Statuscode bei
-Fehler, Auffälligkeiten. Ergebnis: eine **priorisierte Liste kleiner, einzeln deploybarer Verbesserungen**, z. B.
-(1) HTTP-Semantik: Schreibzugriffe → POST (= B-11, im Kontext), (2) saubere Statuscodes + `Content-Type` statt leerem
-`exit`, (3) einheitliche Response-Form, (4) Team-Check-Abdeckung bestätigen, (5) ggf. Endpunkte konsolidieren.
-
-**Kein REST-Redesign** (widerspricht dem pragmatischen Grundsatz; hoher Aufwand/Risiko an der Live-App bei kaum
-Nutzerwert). Umsetzung einzelner Punkte optional im selben Sprint, wenn sie sich als lohnend zeigen; sonst werden sie
-als eigene kleine Backlog-Einträge priorisiert.
-
-**Spike-Ergebnis (2026-10-22):** Team-Check-Abdeckung nach B-01 **vollständig** (alle team-bezogenen Schreib-Endpunkte
-rufen `validate_team()` vor dem Write; Endpunkte ohne VT sind user-/SID-scoped) – keine Sicherheitslücke. Vorbilder im
-Repo: `update_promo.php` (saubere Statuscodes), `update_topic.php` (bereits POST). Maßnahmen: **M1** Fehler-Contract
-(leerer 200 → Statuscodes), **M2** JSON-Header (`addteam.php`, `get_promo.php`), **M3** letzte SQL-Konkatenation in
-`update_user.php`, **M4 = B-11** GET→POST (~30 fetch-Stellen, eigener Sprint), **M5** Umbenennungen/Konsolidierung
-(nur notiert, u. a. `get_promo.php` ist faktisch `create_promo`). **In Umsetzung (Sprint 4):** M2 + M3 + M1-Minimal
-(403 statt leerem 200 bei ungültigem Team) auf `feature/B-31-api-hygiene`. Kein REST-Redesign.
-
-### B-32 CI: `playwright install --with-deps` beschleunigen
-In `.github/workflows/e2e.yml` lädt der Schritt „Install Chromium" per `npx playwright install --with-deps chromium`.
-Der Browser selbst wird über `actions/cache` gecacht (Key an `package-lock.json`), aber `--with-deps` macht zusätzlich
-jedes Mal ein `apt-get` für die OS-Bibliotheken. Normal in Sekunden durch, am 2026-10-22 bei B-11 aber **~12 min**
-(langsamer apt-Mirror auf dem Runner) – knapp unter dem 15-min-Job-Timeout. Idee: `--with-deps` weglassen (die
-`ubuntu-24.04`-Runner bringen die Playwright-Libs i. d. R. mit) oder die Deps separat cachen/robuster machen
-(Retry/Timeout). Klein, reine CI, kein App-Code. Nice-to-have, nicht dringend.
-
-**Erledigt (release, 2026-10-22, PR #24):** `--with-deps` entfernt → `npx playwright install chromium`. Der
-`ubuntu-24.04`-Runner bringt die nötigen Shared Libraries mit; der Browser-Binary bleibt über `actions/cache`
-gecacht. Ergebnis: der e2e-Job lief in **~1 min** (vorher bis ~12 min, knapp am 15-min-Timeout). Vorgezogen, weil der
-langsame apt-Schritt jeden Lauf bremste.
-
-### B-33 Namensänderung setzt Karte auf `break01`; Verlassen räumt die Karte nicht
-**Beim Staging-Test Sprint 5 gefunden (Andreas), Bestandsbug (auch auf Master).** Benennt sich ein aktiver Spieler um,
-während die Runde „alle fertig" ist, bekommt er plötzlich die Kaffeetasse (`break01`) – das Nachzügler-Verhalten.
-Ursache: `api/name.php` (Zweig „Spieler existiert & ist PLAYER") setzt im UPDATE
-`ppt.card_key = if(all_players_ready=1,'break01',card_key)`. Diese `break01`-Logik ist für echte Nachzügler gedacht
-(INSERT-Zweig + zurückkehrender entfernter Spieler), greift hier aber auch bei einer reinen Umbenennung/Observer-Toggle
-eines aktiven Spielers.
-
-Zusätzlich fiel auf: Beim **Verlassen/Entfernen** wird nur `player_type='REMOVED'` gesetzt (`name.php` Leername,
-`delete.php`) – `card_key` bleibt stehen (ein „Geist-Vote"). Geleert wird `card_key` sonst nur bei neuer Runde
-(`newround.php`) und beim Zurücknehmen (`setc.php`).
-
-**Fix (kombiniert, mit Andreas abgestimmt):**
-1. Beim Verlassen/Entfernen zusätzlich `card_key = null` setzen (in `name.php`-Leername **und** `delete.php`).
-2. In `name.php` die Umbenennung: `ppt.card_key = if(? = 1 and card_key is null, 'break01', card_key)` – Kaffeetasse
-   nur für kartenlose (Wieder-)Einsteiger, aktive Spieler behalten ihre Karte.
-
-**AK:** Umbenennen eines Spielers mit gelegter Karte (auch in fertiger/ aufgedeckter Runde) lässt die Karte
-unverändert; ein entfernter Spieler hat keine Karte mehr; ein kartenloser Spieler, der in eine fertige Runde
-(wieder) eintritt, bekommt weiterhin `break01`. E2E-Test deckt „Umbenennen behält Karte" ab. Reiner Backend-Fix,
-kein `?v=`-Bump.
-
-### B-34 Synchrone XMLHttpRequest (deprecated) auf async umstellen
-Browser-Konsole meldet „Synchronous XMLHttpRequest on the main thread is deprecated" (Bestandscode, nicht neu).
-Drei synchrone XHR (`open(..., false)`):
-- `script/script.js:1050` `loadTextFileAjaxSync()` (via `loadJSON()`) – lädt eine JSON-Konfig synchron. Der Name sagt's
-  schon; Refactor etwas größer, weil der Aufrufer einen synchronen Rückgabewert erwartet (→ async/await oder die
-  Config anders laden).
-- `script/script_feedback.js:502` (Sortierung ändern) und `:511` (Anonymität umschalten) – trivial auf async
-  `fetch(...).then()` umstellbar.
-Harmlos (nur Konsolen-Warnung; synchroner Request blockiert kurz den Main-Thread). **Niedrige Priorität.**
-
-### B-35 Bilder/Assets verschlanken (SVG, PNG, Icons)
-Thema „schlank" auf der Ausliefer-Seite. `src/` enthält ~97 Bilder; auffällig groß sind `brand_light.svg`/
-`brand_dark.svg` (je ~140 KB) und die Karten-PNGs (~44 KB je Stück). Jedes davon geht ungeprüft über die Leitung.
-
-**Refined (2026-10-22):** Reine Asset-Optimierung, **kein** sichtbarer Unterschied im Ergebnis.
-- SVGs durch `svgo` o. ä. verkleinern (Metadaten, Nachkommastellen, unnötige Gruppen) – oft 50–80 % kleiner.
-- Karten-PNGs verlustfrei optimieren (`oxipng`/`pngquant` nur, wenn optisch identisch); prüfen, ob WebP sinnvoll ist
-  (Browser-Support unkritisch, aber doppelte Pflege → erst messen).
-- Nur tatsächlich ausgelieferte Bilder anfassen; `src/xcf/` (GIMP-Quellen) bleibt unberührt.
-- Prüfen, welche Assets überhaupt noch referenziert werden (tote Bilder = B-36-Nachbarthema).
-
-**AK:** gleiche Darstellung in Light/Dark und auf dem Board; messbar kleinere Dateigrößen (vorher/nachher notieren);
-E2E bleibt grün. Klein, reines Frontend/Assets, kein Code.
-
-**Spike-Funde (2026-10-22):** Ausgeliefert (ohne `src/xcf/`) ~1,75 MB: 82 PNG (1,25 MB), 14 SVG (321 KB),
-3 Vendor-JS (184 KB), 1 favicon.ico (15 KB). Größte Einzelposten: `brand_dark.svg`/`brand_light.svg` (je ~140 KB,
-**bei jedem Board-Load** geladen), `logo_qr_code.png` (64 KB), `apple-touch-icon.png` (49 KB), Sterne-Karten
-(`c_*stars*.png` ~42 KB je). Die Brand-SVGs sind **sauber** (512 `<path>`, kein Base64, keine Editor-Reste, keine
-Überpräzision) → `svgo`-Gewinn vermutlich nur moderat.
-- **Höchster Hebel = Server-Kompression (erledigt auf Live 2026-10-22).** Befund: `gzip on` war aktiv, CSS/JS wurden
-  bereits gzipped, aber `image/svg+xml` fehlte in `gzip_types` (nginx.conf) → die Brand-SVGs (281 KB, bei jedem
-  Board-Load) gingen ungepackt raus. Fix: `image/svg+xml` an `gzip_types` angehängt, `nginx -t` + `reload`.
-  Gegencheck Live: `content-encoding: gzip` auf `brand_dark.svg` bestätigt (~180 KB/Board-Load gespart). brotli nicht
-  einkompiliert – bewusst nicht nachgezogen (gzip reicht für diese Größen). **Staging ebenfalls erledigt**
-  (2026-10-22): dort war die ganze `gzip_types`-Zeile auskommentiert (nginx-Default = nur `text/html`, also CSS/JS/SVG
-  ungepackt); einkommentiert + `image/svg+xml` ergänzt, Gegencheck gzip bestätigt. Rand-Notiz: auf Staging bleiben
-  `gzip_vary`/`gzip_comp_level`/`gzip_buffers`/`gzip_http_version` auskommentiert (nginx-Defaults statt Live-Werte) –
-  funktional egal, optional für volle Parität nachziehbar.
-- **9 wirklich tote Bilder (~130 KB), löschbar** (je einzeln gegengeprüft, 0 Treffer in HTML/CSS/JS/PHP/cards.json):
-  `brand.png`, `brand_nobg.png`, `cta_home.png`, `edit.png`, `follow_us.png`, `home.svg`, `info_news.png`,
-  `star_h.png`, `twitter.png`. **Achtung Gegenbeispiel:** `c_done001.png`/`c_prgrss1.png`/`c_prgrss2.png` wirken „tot",
-  sind aber `display_card_key`-Zustände (script.js:296) → **nicht** löschen. Karten-PNGs (`c_*.png`) werden dynamisch
-  aus `cards.json` gebaut (`'src/c_'+card_key+'.png'`) → nicht tot.
-- Karten-PNGs verlustfrei mit `oxipng`/`pngquant` optimieren, nur wenn optisch identisch.
-
-### B-36 Totes/redundantes CSS entfernen, `style.css` aufräumen
-`style/style.css` ist ~1.950 Zeilen mit vielen mehrfach/ähnlich definierten Regeln (laut Andreas „drei-/vierfach").
-Bestandsaufnahme (2026-10-22): 311 Selektoren, 0 `!important`, 144 `var(--)`-Nutzungen bei 30 Definitionen, 23
-`-webkit-`-Präfixe, 0 `@media`, 34 Hex-Farben (25 verschiedene, teils Dubletten der Tokens).
-
-**Refined (2026-10-22):** Aufräumen ohne sichtbare Änderung.
-- Tote Selektoren finden (gegen `board.html`/`init.html` und die im JS gesetzten Klassen) und entfernen.
-- Dubletten/ähnliche Blöcke zusammenführen; wiederkehrende Werte auf die vorhandenen Tokens (`var(--…)`) ziehen,
-  Hex-Dubletten durch Tokens ersetzen.
-- Überflüssige Vendor-Präfixe (`-webkit-`) prüfen – vieles ist heute unnötig (nur lassen, was Safari/iOS real braucht).
-- **Vorsicht:** visuell Pixel-genau gegenprüfen (Board, init, Light/Dark, Overlays). Klassen werden teils dynamisch
-  per JS gesetzt – „im HTML nicht gefunden" heißt nicht automatisch tot. Konservativ vorgehen, im Zweifel behalten.
-
-**AK:** kein sichtbarer Unterschied (Sichtprüfung Board/init, Light/Dark, Topnav-Boxen); messbar kleinere `style.css`;
-`?v=`-Bump für `style.css`; E2E grün. Mittel groß; erst nach dem Schlank-Spike schneiden.
-
-**Neu-Zuschnitt (2026-10-23, Andreas):**
-- **Analyse (Kai, 2026-10-23):** Kaum echte Doppel-Selektoren (5, fast nur Keyframe-Schritte). Die Redundanz steckt
-  in gleichen Deklarationsblöcken für verschiedene Elemente (32 Blöcke, 90 Vorkommen, z. B. `display:none` 15× in
-  zwei Schreibweisen) – jeder Button/jede Box einzeln gestylt statt über eine gemeinsame Basis – und in 117
-  `.mobile`/`.desktop`-Varianten. Dazu 24 verschiedene Hex-Farben neben 30 Tokens, 25 `-webkit-`-Präfixe.
-- **`.mobile`/`.desktop` wird mit aufgeräumt** (B-37 geht in B-36 auf): Responsive über CSS (`@media`) statt über die
-  per JS gesetzten Klassen.
-- **Vereinheitlichen ist ausdrücklich erwünscht:** Elemente, die faktisch gleich aussehen oder gleich aussehen
-  *sollten* (z. B. Buttons, Boxen), bekommen eine gemeinsame Gestaltung, auch wenn ihre Werte heute auseinanderliegen
-  (Rand, Radius, Abstände, Farben). „Kein sichtbarer Unterschied“ heißt: keine ungewollte Veränderung, nicht
-  pixelgenau.
-- **Kein Screenshot-Vergleichstest:** Andreas nimmt auf Staging per Sichtprüfung ab. Delia liefert zur Übergabe
-  Vorher-nachher-Bilder der geänderten Ansichten (einmalig, nicht als dauerhafter Test).
-- Nach B-42, damit die wegfallende Sortier-Leiste nicht mit aufgeräumt wird. Planning folgt nach B-42.
-- Beim B-42-Review gefunden (Delia, 2026-10-23), mit erledigen: Menü-Label „Set players transparency (only **effects**
-  new rounds)“ → „affects“; bei 320 px Breite überlappt das Schloss-Icon den Text von „Show average“, und „Hide names on
-  results (anonymous)“ wird abgeschnitten.
-  Außerdem (Delia): Beim Sortier-Hinweis steht auf Desktop das letzte Wort „value.“ allein in der zweiten Zeile
-  (z. B. `text-wrap: pretty`).
-
-**Planning (Delia, 2026-10-23, freigegeben von Andreas):** 3 PRs mit je einer kurzen Abnahme auf Staging.
-- **PR 1 Aufräumen** (Delia): tote Regeln (u. a. LinkedIn, alte Info-Box, `marquee`/`reaction1`, `#teamlink`/
-  `#teamlist`, leere Blöcke), `-webkit-` auf die 4 nötigen Zeilen, letzte feste Farben als Tokens, Tippfehler
-  „affects“, `text-wrap: pretty` beim Sortier-Hinweis. Bleibt: Tabellen-Regeln (`stats.php` nutzt `style.css`).
-- **PR 2 Responsive per CSS** (Delia CSS/Markup, Fred JS/Tests): ein Breakpoint bei 800 px per `@media` statt
-  `.mobile`/`.desktop`/`sizefit`; Regeln an derselben Stelle umschreiben (Spezifität). JS: `adaptToDevice()` und
-  `sizeClass` raus, `toggleMobileMenu` per `matchMedia`. **`getBrowserWidth()`/`gDisplayType` bleibt für Analytics**
-  (`display_type` in `pok_analytics_events_tbl`, Grafana). Startseite mobil: Logo, Farbschalter und Feedback zeigen
-  (heute fehlt der Farbschalter). Löschen-Icon: auf Touch-Geräten (`hover: none`) immer sichtbar, sonst bei Hover –
-  gleiches Prinzip wie heute, nur nach Gerät statt nach Breite. Neue `responsive.spec.ts` (Burger-Menü, Umschalten
-  ohne Neuladen, `display_type` xs/lg, keine `mobile`/`desktop`/`sizefit`-Klassen mehr).
-- **PR 3 Vereinheitlichen** (Delia): gemeinsame Basis für Buttons, Felder, Menü-Boxen, Overlays (Radius-/Abstands-
-  Tokens); Fixes bei 320 px (Schloss-Icon). Button-Form orientiert sich an den Menü-Grafiken (abgerundet, wie die
-  Topnav-Icons). Lange Menütexte bei 320 px bleiben vorerst (Menüs kommen mit B-40).
-- Bleibt draußen (B-40): Menüs als Overlay, Segment-Schalter, Kartengestaltung, Kartenauswahl mobil, Platz-
-  Konkurrenz, Tastaturbedienung von Burger/Schließen, grundsätzlich bessere Lösung zum Löschen von Spielern.
-
-**Umgesetzt (2026-10-23, PR #32, #33, #34; auf Staging abgenommen von Andreas):** `style.css` 1.918 → 1.219 Zeilen
-(−36 %). PR 1 tote Regeln/Präfixe/Farb-Tokens; PR 2 ein Breakpoint bei 800 px per `@media`, `.mobile`/`.desktop`/
-`sizefit` und `adaptToDevice()` entfernt (Analytics-`display_type` bleibt über `getBrowserWidth()`), Löschen-Icon auf
-Touch-Geräten immer sichtbar, Startseite mobil mit Farbschalter, neue `responsive.spec.ts`; PR 3 gemeinsame Basis
-(`.btn`, `.btn-box`, `.field`, `.menu_box`, `.overlay_panel`, Radius-/Abstands-Tokens), einheitlicher Fokusring,
-Felder mobil 16 px, Fixes bei 320 px. Nachgetragen: `script_feedback.js?v=1.9`.
-
-### B-37 Responsive per CSS statt JS (`.mobile`/`.desktop`)
-Das Layout schaltet derzeit teils über JavaScript zwischen Mobil- und Desktop-Darstellung (Klassen `.mobile`/
-`.desktop`, an `window`-Größe gebunden) statt über CSS. `style.css` enthält **0 `@media`-Queries** – die Umschaltung
-passiert im JS. Das ist fragil (kein echtes Reflow bei Rotation/Resize ohne JS-Lauf, mehr Code) und war Teil der
-Karten-Bug-Historie (Karten wurden „riesig" beim Öffnen der DevTools).
-
-**Noch zu refinen:** Umfang hängt vom Schlank-Spike ab (wie tief steckt die Größenlogik im JS?). Idee: Breakpoints
-über `@media`/Container-Queries in CSS, JS-Größenlogik entfernen oder auf das Nötige reduzieren. Größerer Umbau mit
-Regressionsrisiko → sorgfältig schneiden, viel E2E/Sichtprüfung. Erst nach B-36. Niedrige–mittlere Priorität.
-
-**Spike-Funde (2026-10-22):** `adaptToDevice()` (script.js:842) setzt per `document.body.clientWidth`
-(`getBrowserWidth`, Schwellen 800/991/1199) die Klassen `.mobile`/`.desktop` an **alle** `.sizefit`-Elemente; 98 der
-311 CSS-Regeln hängen daran, **0 `@media`**. Der `resize`-Handler `handleResize()` (script.js:1082) ruft nicht nur
-`adaptToDevice()`, sondern rendert **bei jedem Resize alle Spielerkarten neu** (`updatePlayersCards` + `showCardUsage`)
-– genau das war die Ursache der „Riesen-Karten beim DevTools-Öffnen". Umbau auf echtes CSS-Responsive = größter
-**struktureller** Gewinn (weniger JS, robuster bei Rotation/Resize), aber auch größtes Regressionsrisiko. Reihung:
-nach B-36, ggf. zusammen mit B-14.
-
-**Querverweis (Delia, 2026-10-22):** Die konkrete Layout-Engine-Umstellung des Kartenbereichs (von JS-`getCardPos`/
-`position:absolute` auf echtes Flex-Layout mit `gap`, Sortier-Glide per **FLIP**) ist in **B-41** ausgearbeitet –
-sie löst zugleich das Resize-Wobbeln. Mit Fred gemeinsam schneiden.
+**Sprint 9 – Aufräumen unter der Haube** (Andreas, 2026-11-16): Refactoring und technische Schulden, nichts für die
+Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging; Rollout danach mit B-12.
+1. B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
+2. B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
+3. B-34 Startdaten asynchron laden
+4. B-14 erster Schnitt (2–3 Module aus `script.js`)
+5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
+Jederzeit: B-126 / B-23-Rest (nginx-Sperren, Upload-Grenzen – Befehle für Andreas). Nicht angetastet: B-10.
+
+## Rollouts
+
+Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe „Erledigt & verworfen“.
+
+- **R1 (2026-10-28) – neuer Look, gleicher Ablauf** (#56; danach #57–#66): B-46 bis B-51 (Console Style, Seitengerüst,
+  Menüs als Side Panel/Bottom-Sheet, fluide Karten), B-54, B-57; direkt danach B-63, B-64.
+- **R2 (2026-11-01):** B-66, B-67 (Basic Controls, Timer), B-68, B-69, B-70, B-73, B-74, B-75, B-77, B-78, B-79,
+  B-81 (Server-Notify, poker-msg#3), B-82, B-86, B-85, B-88, B-89, B-92, B-96; DB-Teile B-83/B-87 vorab (2026-10-30).
+- **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
+  B-115, B-116.
+- **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R4 (2026-11-16):** B-52 (Topic list), B-53 (Median), B-130 (Timer-Auto-Start), B-131, B-133 (Nudge-Ton),
+  B-135 (Write-Retry); dazu B-134 (CI).
+
+## Offen: Produkt & Ideen
+
+### B-114 Verdeckt wählen beim Bildschirmteilen
+Status: refined. Roadmap „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
+Problem: Wer den Bildschirm teilt (oft Scrum Master/Moderation), verrät beim Abstimmen die eigene Wahl (Karte im Deck
+hervorgehoben, am eigenen Platz offen). Zwei Tabs derselben Person funktionieren heute schon (gleiche User-ID).
+Entscheidungen (Andreas, 2026-11-05):
+- Reine **Präsentier-Ansicht** in einem zweiten Tab: eigene Karte am Tisch verdeckt bis zum Aufdecken, kein Deck,
+  keine Controls (Deck, Round-Button), Menüs weitgehend weg; dort ein Knopf „Return to user view“. Abgestimmt wird
+  im normalen Tab. Vermutlich kleiner Aufwand (Frontend).
+- Zugang nur für einen in diesem Team bereits registrierten Spieler/Beobachter (User-ID im Browser); sonst normale
+  Ansicht mit Namensabfrage. Kein neuer Weg aufs Board ohne Namen.
+- Lieber kein Parameter in der URL (kopierte Links bleiben normale Links). Vorschlag Kai: Tab per
+  `window.open(url, 'poker-presenter')` öffnen, `window.name` markiert die Ansicht (übersteht Reloads).
+Offen: was genau die Präsentier-Ansicht vom Panel zeigt (folgt B-113), Handy.
 
 ### B-44 Startseite Light-Mode: Logo ohne Schriftzug
-Beim B-36-Review gefunden (Delia, 2026-10-23), schon vorher so: Auf der Startseite (`init.html`) zeigt das Logo im
-Light-Mode nur das Bildzeichen, der Schriftzug fehlt (Screenshot `init_w375_light.png` aus Delias PR-3-Vergleich).
-Klein; vermutlich falsches Bild oder fehlender Light-Mode-Tausch auf der Startseite.
-
-### B-45 Toten Stern-Bewertungscode im Feedback entfernen
-Die Bewertungssterne im Feedback sind seit jeher per CSS ausgeblendet (`display: none`); der Stern-Code in
-`script/script_feedback.js` (u. a. `fb_star_*`, `.blink`) ist damit toter Code. Bei Gelegenheit entfernen (Fred),
-oder bewusst entscheiden, die Sterne wieder einzuführen.
-
-### B-46 bis B-51: Fundament für B-40 (aus Delias Einschätzung, 2026-10-23)
-Nach B-36 hat Delia CSS, Bildschirmgrößen und Touch bewertet: CSS gelb-grün (gut gegliedert, kein `!important`), aber
-**nicht State of the Art** bei Touch und Seitengerüst, Bedienbarkeit rot (Bilder mit `onclick` statt Buttons). Kein
-Big-Bang auf Mobile-first – Desktop-first mit einem Breakpoint bleibt –, aber das Fundament vor der Umgestaltung (B-40)
-verbessern, damit neue Menüs und Karten nicht auf dem starren Gerüst landen. Andreas (2026-10-23): alle sechs Punkte im
-nächsten Sprint angehen. Reihenfolge laut Delia: B-46 → B-47 → B-48 → B-49, B-50 nebenher; B-51 neu dazu (Andreas).
-Bewusst „gut genug“, nicht anfassen: ein Breakpoint und Desktop-first, Durchschnittszeiger per JS,
-`getBrowserWidth()` für Analytics, Invert-Filter für Icons, `opacity: 0` am `body` gegen Flackern.
-
-### B-46 Seitengerüst neu (Kopf / Kartenbereich / Kartenleiste)
-Heute: `.container` `100vh`, `.up-container` `89vh`, Kartenleiste `position: fixed` (feste 89/11-Aufteilung). Am Handy
-ist `vh` wegen der Adressleiste unzuverlässig, im Querformat bleibt kaum Höhe; das ist die technische Wurzel der
-„Platz-Konkurrenz“ (Timer, Topic, „New Round“ vs. Karten, B-40). Ziel: CSS-Grid mit `100dvh`, Kartenbereich scrollt
-allein, Topic/Timer/New Round bekommen feste Zonen, Querformat mitbedacht, Safe-Area optional. Aufwand M (Delia).
-Sichtprüfung auf echten Handys (iOS Safari) hoch und quer.
-
-### B-47 Touch von der Breite trennen, Touch-Ziele ≥ 44 px
-Heute wird „schmal“ mit „Touch“ gleichgesetzt: iPad/Touch-Laptop (≥ 800 px) bekommen Desktop-Größen (Icons 32 px,
-Lösch-Icon 20 px, Thumbnails 27 px), Hinweise nur per Hover, iOS zoomt in Felder (16-px-Regel nur unter 800 px).
-Ziel: `@media (pointer: coarse)` bzw. `(any-pointer: coarse)` für größere Ziele (≥ 44 px) und 16-px-Felder,
-Touch-Alternative zu Hover-only-Elementen, `touch-action: manipulation` (der `body` reagiert auf `ondblclick`).
-Aufwand S (Delia).
-
-### B-48 Topnav aus echten Buttons, Hinweise als Text
-Heute: Topnav-Icons sind `<img onclick>` mit festen `right: …px`-Positionen (bzw. `%` im Burger-Menü), Hinweisblasen
-sind Text in PNGs (`cta_*.png`, nur per Hover, nicht themebar). Ziel: Flex-Leiste mit echten `<button>`-Elementen,
-Hinweise als Text/Tooltips, per Tastatur bedienbar (Fokus, Screenreader). Aufwand M (Delia Markup/CSS, Fred
-Öffnen/Schließen und Fokus). Passt zu B-51.
-
-### B-49 Fluide Kartengrößen
-Heute: Karten fest 100×148 px, Kartenleiste 45/55 px. Ziel: Größe über eine Variable (`--card-w: clamp(…)` +
-`aspect-ratio`) für Tischkarten und Kartenleiste – am kleinen Handy passen mehr Karten nebeneinander, auf großen
-Bildschirmen dürfen sie wachsen. Seit B-41 (Flex-Layout) einfach umsetzbar. Achtung: E2E-Test zum Kartenabstand
-(B-41) prüft feste Abstände → mit anpassen. Aufwand S–M (Delia + Fred; Ben, falls Kartenbilder betroffen). Vor
-„Kartenlayout“ und „Kartenauswahl mobil“ aus B-40.
+Status: neu. Beim B-36-Review gefunden (Delia, 2026-10-23): Auf `init.html` zeigt das Logo im Light-Mode nur das
+Bildzeichen, der Schriftzug fehlt. Klein.
+Entscheidung (Andreas, 2026-11-16): offen lassen; Delia prüft bei Gelegenheit, ob es nach R3 noch besteht.
 
 ### B-50 Kleinpaket Qualität
-- `prefers-reduced-motion` auch für CSS-Animationen (Wackeln, Aufblitzen, Einblenden, Konfetti), heute nur fürs
-  Karten-Gleiten in JS.
-- `user-select: none` nur noch gezielt (Karten, Kartenleiste) statt auf dem ganzen `body` – Topic-Text kopierbar.
-- Kontraste anheben: Datenschutz-Links und deaktivierte Elemente (`--box-disabled` in Dark ca. 1,6:1).
-- Tokens für z-Index und Schriftgrößen; Token-Namen nach Bedeutung statt Einsatzort, einheitliche Schreibweise.
+Status: live R1 (2026-10-28) zum größten Teil, Rest offen:
+- `user-select: none` sitzt noch am ganzen `body` → Topic-Text nicht kopierbar; nur gezielt (Karten, Kartenleiste).
 - Erster Besuch: Farbmodus aus `prefers-color-scheme` (eigener Schalter bleibt).
-- Kleinkram: `font-family: Arial, serif` → `sans-serif`, Alt-Text „Se tup“, leere `<label>`s.
-Aufwand S (Delia), kann nebenher laufen.
-
-### B-51 Menüs neu denken: Overlays und sinnvolle Struktur
-Aus B-40 herausgelöst (Andreas, 2026-10-23): die Menüdialoge als modales Voll-Overlay (halbtransparent zum
-Hintergrund, wie „Become Observer/Player“), damit auch mobil sinnvoll mit responsiven Elementen; dabei die Menüs
-**grundsätzlich überdenken** – welche Einstellungen es gibt, wie sie gruppiert und benannt sind, was in welches Menü
-gehört (vgl. B-42: Sortierung in die Konfiguration, nicht ins Spiel). Delias Idee zur Spieler-Liste („Players“ statt
-Lösch-Icon auf jeder Karte, siehe B-40) passt hierher. Dazu: Ein-/Ausblenden einheitlich machen (heute drei
-Mechanismen: Hilfsklassen, `style.display` in `script_feedback.js`, `style.visibility`), lange Menütexte bei 320 px,
-Segment-Schalter statt Selects, Tastaturbedienung von Burger/Schließen. Erst Konzept (Delia, mit Andreas abstimmen),
-dann Umsetzung (Delia + Fred). Baut auf B-46 und B-48 auf.
-
-### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
-Andreas (2026-10-28), später: Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php` beim Kartenlegen.
-Damit ließe sich „aktiv“ in `stats.php` genau als „hat in den letzten X Minuten eine Karte gewählt“ definieren
-(heute: Runde in der letzten Stunde abgeschlossen, B-63/B-64). Schemaänderung online (ca. 72.000 Zeilen), Ben + Sina.
-
-### B-64 `stats.php` neu: Tabs, Live-Ansicht, sinnvollere Kennzahlen
-Andreas (2026-10-28), sofort umsetzen (unabhängig von den Nutzern, passt zur Beobachtung nach Rollout 1). Refinement:
-- **Tabs** (Console-Look wie die App, ohne Bibliotheken): Live | Nutzung | Ideas & Bugs | Technik.
-- **Live:** aktive Teams/Clients (letzte 5 min), Runden letzte Stunde; Liste laufender Tische **mit Teamnamen**
-  (geschlossener Bereich, Andreas) – Spielerzahl, Beobachter, Deck, Runden heute, aktiv seit, aufgedeckt ja/nein;
-  Verlauf aktive Clients heute. Automatisch neu laden (ca. 30 s). Nie die Team-ID anzeigen (= Zugangsschlüssel).
-- **Nutzung:** nur, was Grafana nicht zeigt (Grafana hat: Daily Teams exploring/recurring, New Rounds, Active Use,
-  Peak Usage). Neu: neue vs. wiederkehrende User-IDs je Woche (Vergleich vor/nach Rollout 1, Tag markieren),
-  Nutzung von Menüs/Funktionen über `pok_analytics_events_tbl` (veraltete Events wie Info-Box/Simulation-Links raus),
-  Anteil Handy. Einfache CSS-Balken.
-- **Ideas & Bugs:** Eingang + öffentliche Liste wie bisher, eigener Tab, Zähler für offene Meldungen.
-- **Technik (klein):** Tabellengrößen (v. a. `pok_analytics_events_tbl`), PHP-Version, Release-Stand.
-- Alle Abfragen mit Zeitbereich und `MAX_EXECUTION_TIME`; Ausgabe nur escaped (Namen sind Nutzereingaben).
-Umsetzung Ben (Abfragen, Struktur), Delia (Look), Review Sina.
-
-### B-63 `stats.php`: eigene Anmeldeseite statt Basic Auth
-**Wieder aufgenommen (Andreas, 2026-10-28), vereinfacht:** Anmeldeseite prüft gegen die vorhandene nginx-Datei
-`/etc/nginx/poker-stats.htpasswd` (eine Stelle für Zugangsdaten, Pflege weiter mit `htpasswd -B`; Einträge bcrypt,
-auf Live umgestellt). Kein Passwort-Hash und kein Secret in `config.php` nötig. Danach `auth_basic` in nginx entfernen.
-Andreas (2026-10-28): Chrome füllt den Basic-Auth-Dialog von `stats.php` nicht aus, und nach jedem Browser-Neustart
-muss man sich neu anmelden. Idee: normales Login-Formular in `stats.php` (Benutzer + Passwort), damit
-Passwortmanager speichern und ausfüllen; danach angemeldet bleiben (z. B. 30 Tage).
-- Passwort nur als Hash in `config.php` (`password_hash`), Vorlage in `config.example.php`.
-- „Angemeldet bleiben“ per signiertem Cookie (HMAC mit Secret aus `config.php`), nicht per PHP-Session: die
-  Session-Dateien räumt Ubuntu nach `session.gc_maxlifetime` (24 min) ab. CSRF-Token für die Moderation bleibt.
-- Schutz gegen Durchprobieren (z. B. Verzögerung nach Fehlversuch oder nginx `limit_req` auf `/stats.php`).
-- nginx-Basic-Auth danach entfernen (Schritt auf beiden Servern) – oder als zweite Schicht behalten? → Sina.
-- `docs/stats-basic-auth.md` und `CLAUDE.md` anpassen.
-Umsetzung Ben, Review Sina.
-
-### B-62 E2E-Tests für den Feedback-Pfad (rudimentär)
-Vorschlag Tessa, Andreas (2026-10-27): ja, aber nur rudimentär; internes Backlog, nicht in der öffentlichen Liste.
-Kernpfad: Meldung absenden (Bug mit Kontext, ohne Team-ID), einmal abstimmen, roter Punkt verschwindet nach dem
-Öffnen des Menüs. Keine Randfälle.
-
-### B-58 Geänderte Karte sichtbar machen (statt Karte sperren)
-Häufigster Nutzerwunsch im Feedback (≈ 9×, 2022–2026): „Karte nach dem Aufdecken sperren“. Andreas (2026-10-27): intern
-heiß diskutiert; Philosophie der App ist „nah an der Physik“ – am Tisch kann man seine Karte auch noch tauschen. Heute
-deshalb das (inzwischen dezentere) Wackeln als Hinweis; manchen reicht das nicht, Sperren finden wir aber ein blödes
-Feature. **Idee Andreas:** Ändert jemand nach dem Aufdecken seine Karte, liegen zwei Karten leicht versetzt
-übereinander; jeder kann nachschauen, was die ursprüngliche Karte war – transparent statt verboten. Refinement nötig
-(Darstellung, mehrfaches Ändern, Anonym-Modus, Daten: ursprüngliche Karte je Runde speichern → Ben).
-**Erweiterung „Let them explain“ (Andreas, 2026-10-29, zusammen mit B-70):** Der Tipp nach dem Aufdecken bezieht sich
-immer auf die **ursprünglich aufgedeckten** Karten. Wer niedrigste/höchste Karte hatte, bleibt in „Let them explain“,
-auch wenn er danach ändert – man soll sich nicht durch Umlegen herausnehmen können (oft beobachtet, dann hört man die
-Gedanken nicht mehr). Änderungen werden angezeigt, z. B. aufgedeckt B:2 C:2 A:4 D:6 → „Let them explain: B, C (2),
-D (6)“; B ändert auf 3 → „Let them explain: B (2→3), C (2), D (6)“. Ggf. kommen neue Extremwerte dazu. Gleiche Datenbasis
-wie oben (ursprüngliche Karte je Runde speichern, Backend). Öffentlich in der
-Backlog-Liste (B-57)? – noch klären.
-
-### B-59 Aufdecken, bevor alle gewählt haben
-Feedback (3×): Button „reveal now“, wenn jemand abwesend ist, statt ihn zu entfernen. Andreas: ins Backlog + öffentlich;
-refinen, Zusammenspiel mit dem Players-Menü (B-56) klären – evtl. fällt uns Smarteres ein.
-Stand (Andreas, 2026-11-01): noch nicht reif. R3-Review (2026-11-02): Abwesende blockieren das Aufdecken; mit der away-Erkennung aus B-110
-könnte „Reveal now“ bzw. „Abwesende nicht mitzählen“ jetzt sinnvoll gelöst werden. Andreas ist von „Reveal now“ als Button nicht überzeugt (Roadmap: 5 👍 / 1 👎);
-Problem dahinter (jemand ist kurz weg) bleibt, Lösung offen – Ideen: „Away“-Status, Abwesende automatisch ausnehmen.
-Lösungsidee Andreas (2026-11-06): Mitspieler pausieren (Pause-Symbol neben dem Mülleimer), siehe B-125.
-
-### B-60 Spaß-Funktionen
-Feedback (≈ 6×): Reaktionen/Emojis, Papierkugeln werfen, Fun-Karten, Emojis im Namen, Musik. Andreas: Backlog +
-öffentlich; er hatte schon einmal ein Mock-up dazu gebaut, fand es cool. Refinement nötig.
-
-### B-61 Eigene Kartenwerte / eigene Decks
-Feedback (≈ 4×): eigene Zahlen/Begriffe, Business-Value-Deck. Andreas: Backlog + öffentlich, aber gut durchdenken;
-offene Frage, ob so etwas irgendwann hinter eine Paywall gehört.
-
-### B-57 Ideas & Bugs: Meldungen, öffentliche Liste, Abstimmung
-**Rolle des Kanals (Andreas, 2026-10-28):** Kommunikationsinstrument zu unseren Usern und Feedbackkanal – keine
-Abstimmung über die Roadmap. Wir bleiben Product Owner; Stimmen sind Hinweise, keine Priorisierung.
-Andreas (2026-10-27), statt der Umfrage B-55 (Team: Verhalten ist das Hauptsignal, Umfrage-Antworten ohne „was“ wenig
-verwertbar): Feedback-Panel erweitern zu „Ideas & Bugs“.
-- **Melden:** Typ Bug / Feature / Other + Text; bei Bugs automatisch technischer Kontext (Browser, Fenstergröße, Touch,
-  App-Version, Hell/Dunkel; **keine** Team-ID). Speicherung privat (neue Spalten `fb_type`, `fb_context` bzw. eigene
-  Tabelle). Bestätigung per Toast („Thanks – we read every message.“).
-- **Öffentliche Liste** darunter: Einträge mit Status (planned / in progress / ✅ done), von uns selbst formuliert
-  (nie Nutzertexte direkt → keine Moderation fremder Inhalte nötig). Reaktion je Eintrag (z. B. ❤️ / 🙈), eine Stimme pro
-  User-ID. Erster Eintrag: „New look ✅“ (ersetzt die Umfrage; einige Tage nach Rollout 1).
-- **Moderation:** Eingang abhaken; Liste anlegen/ändern/Status setzen – in `stats.php` (seit Sprint 3 per nginx Basic
-  Auth geschützt), Aktionen per POST an `stats.php` selbst. Sina reviewt.
-- Aus B-55-Analyse noch offen, falls die Survey-Funktion je wieder genutzt wird: `get_survey.php` `bind_param('i')`
-  → `'s'`; `fillBars[vote_option.id - 1]` → Index; Survey-Box auf `textContent` (B-43). Emojis: Tabellen sind `utf8mb3`
-  → für ❤️/🙈 `utf8mb4` bzw. Codes statt Zeichen speichern.
-- Ergänzend (Team-Konsens): Basis-Kennzahlen vor Rollout 1 festhalten (Ben): wiederkehrende User-IDs, Runden je
-  Session, Menü-Nutzung – Vergleich vorher/nachher.
-Umfang: 2–3 PRs (DB, API, Moderation in `stats.php`, Panel, Tests). **Zeitpunkt (Andreas, 2026-10-27): noch vor Rollout 1.**
-- **Team-Einschätzung nach Umsetzung (2026-10-27), Entscheidungen Andreas:** Kanal = qualitatives Signal, Stimmen sind
-  ein Stimmungsbild, keine Zählung. Bewusst **nicht**: Begrenzung der Stimmen pro Tag (wer den Aufwand treibt, sendet
-  auch ein Signal; echte Absicherung bräuchte mehr als die User-ID), roter Punkt bei neuen Einträgen erneut (nervt
-  Leute, die keine Rückmeldung geben wollen), Textfeld nach 👎 (dafür gibt es „New issue“), Sessions beobachten (zu
-  aufwändig; bekannte Nutzer melden sich, wenn etwas klemmt). Tests: B-62.
-
-### B-56 Players-Menü
-Delias Idee aus B-40/B-51, von Andreas für nach Rollout 1 gewünscht („freue mich sehr“, 2026-10-27): eigener Menüpunkt
-„Players“ im Side Panel / Bottom-Sheet mit Liste aller Spieler und Beobachter (Name, Rolle, Status, z. B. „inaktiv
-seit …“), Entfernen mit Rückfrage. Das Lösch-Icon auf den Karten fällt dann weg (bis dahin: Icon bei Touch immer, mit
-Maus nur bei Hover). Inaktive Spieler auf dem Tisch ggf. blasser. Für „inaktiv seit“ und Beobachter in der Liste
-braucht es Ben (DAO liefert `last_callback_time` heute nur für Spieler). Sina prüfen lassen (Entfernen anderer).
-
-### B-55 Rollout 1: Hinweis und Umfrage zur neuen Optik
-Idee Andreas (2026-10-23): Nutzer nach Rollout 1 fragen, ob die Richtung passt. Bestehende Umfrage-Funktion nutzen
-(`pok_survey_tbl`, `pok_survey_vote_options_tbl`, `pok_survey_votes_tbl`, `api/get_survey.php`, `toggleSurvey()`),
-vermutlich nur per DB-Eintrag: „How do you like the new look?“ (z. B. Love it / Fine / Takes getting used to / Prefer
-the old one), Intro verweist für Freitext auf die Feedback-Funktion. Dazu einmaliger Toast beim ersten Besuch nach dem
-Rollout („New look – same game. Menus moved to the right.“, Toast-Mechanismus aus Schritt 2). Umfrage nicht
-gleichzeitig mit dem Toast, eher ab dem zweiten Besuch. Delia: Umfrage-Box im neuen Look (Schritt 3). Ben: SQL für die
-Umfrage, prüfen ob „ab zweitem Besuch“ ohne Code geht. Sina: B-43 (`survey_intro` per `innerHTML`) dabei miterledigen.
-Auswertung nach einigen Tagen per SQL, getrennt nach wiederkehrenden und neuen Teams.
-
-### B-54 Feedback-Text ohne `encodeURIComponent()`
-Beim B-48-Review gefunden (Fred, 2026-10-23), schon vorher so: `feedback_submit()` in `script/script_feedback.js`
-hängt den Text als `'&text=' + fb_text` an die URL. Mit `&` oder `#` im Feedback kommt der Text abgeschnitten an.
-Fix: `encodeURIComponent()` (Konvention aus CLAUDE.md). Klein (Fred). Ebenso: „Delete User“ ist ein `<a>` ohne
-`href` und per Tastatur nicht erreichbar → `<button>` im Link-Stil (mit B-51 erledigen).
-
-### B-66 „Basic Controls“: Kartenleiste mit Rundenknopf und Timer (Rollout 2)
-Andreas (2026-10-28): Die untere Leiste wird das „Basic Controls Panel“ – alles, was man mindestens zum Spielen
-braucht: Karten wählen, Runde starten, Timer (optional). Desktop: Karten in der Leiste, Rundenknopf + Timer rechts
-in einer Box, die so hoch ist wie die Leiste und (sobald es die rechte Leiste gibt) so breit wie die rechte Leiste –
-es ergibt sich unten rechts ein sauberes „Kreuz“. Mobil: Timer + Rundenknopf liegen über den Karten (ähnlich heute).
-Übergang bis zur rechten Ergebnis-Leiste (Rollout 3): Streuung (Spreads) und optional der Durchschnittszeiger über den
-Controls anzeigen, wenn eine Runde aufgedeckt ist. Mockup-Runde 3 war in dieser Ecke noch unruhig. Erst Konzept
-(Delia), dann Umsetzung (Delia + Fred).
-**Entscheidungen Andreas (2026-10-28) nach Delias Konzept:** Optik wie im ursprünglichen Mockup (Runde 3): Timer
-**über** dem Button, bei aktivem Timer unten rechts für alle die Standard-Symbole Pause/Reset (wie im Mockup). Spreads
-bleiben vorerst, wo sie heute sind (über den Karten); Umzug ins Seitenpanel erst in der nächsten Iteration.
-
-### B-67 Timer statt Stoppuhr (T-Minus)
-Andreas (2026-10-28): Timer nach Raketenstart-Schema. Timebox 0 = wie heute, zählt T+ hoch (Stoppuhr). Timebox z. B.
-5 Minuten = startet bei T−05:00 und läuft gegen 0, danach weiter ins T+. Offen (UX, Delia): Anzeige und Steuerung
-trennen? Einstellungen (an/aus, Timebox, Pause/Reset) im Menü, für alle nur die Anzeige – oder Pause/Reset weiter
-direkt unten? Braucht Ben (Timebox je Team speichern) und Fred.
-**Entscheidungen Andreas (2026-10-28):** Eigenes Menü-Panel „Timer“ wie die anderen Menüs: dort Timer aktivieren
-(dann sehen alle unten rechts Timer + Pause/Reset) und Timebox-Länge festlegen. Timebox 0 bleibt erlaubt = Stoppuhr;
-das muss für den User verständlich erklärt sein. Timer an die Runde gekoppelt: „New round“ und „Cancel round“ setzen zurück und starten bei T−Timebox; Pause/Reset bleiben zusätzlich manuell (Andreas). Im Timer-Panel zusätzlich Schalter „bei jeder Runde neu starten“ an/aus – aus = Timer läuft über
-mehrere Runden, z. B. als Timebox für ein Thema oder die ganze Session (dann auch längere Timeboxen).
-**Final (Andreas, 2026-10-28, nach Screenshot-Mocks auf Basis der echten App – freigegeben zur Umsetzung):**
-Timer-Panel: Timer an/aus · Modus **Stopwatch | Timer** (nur bei Timer: Timebox-Auswahl 3/5/10/15/30/60 + eigene
-Minuten, max. 240) · „Auto-start on new round“ an/aus (New round und Cancel round setzen zurück und starten). Kein
-Erklärtext für „0 = Stoppuhr“ mehr nötig. Defaults: Timer aus, Modus Stopwatch, Auto-Start aus. Migration: Teams mit
-Timer an laufen als Stopwatch ohne Auto-Start weiter – alles wie bisher. Kopfzeile `:timer` (zwischen `:board` und
-`:you`), Stoppuhr-Schalter entfällt. Ecke unten rechts: Timer über dem Button, Play/Pause + Reset als Linien-Icons;
-„Zeit um“ = T+ in Amber, kein Ton. Kartenleiste und Spreads bleiben unverändert.
-
-### B-68 Rechte Spalte (Desktop) + Primärsteuerung unten rechts
-**Gestaltungsprinzip (Andreas, 2026-10-28):** Wer die App das erste Mal öffnet, soll sie einfach finden und nicht
-erschlagen werden – wenige Elemente, klare Hierarchie (Karte wählen, Runde starten), im Zweifel weglassen. Console Style
-ist die Denkrichtung für Gestaltungselemente, nicht für mehr Text oder `//`-Labels. Keine „Border-Schlacht“: Zonen wie
-bei einem Armaturenbrett erkennbar, aber nicht alles mit Linien getrennt.
-Andreas (2026-10-28), nach Team-Runde zu den Controls unten rechts; Umsetzung freigegeben („macht es mal so“):
-- Desktop ab ca. 1200 px: rechte Spalte **immer** sichtbar (kein Ein-/Ausschieben je Runde, Kartengröße bleibt stabil).
-  Oben ein **Status, wo wir gerade sind** (z. B. Abstimmung läuft · 3/5 voted, aufgedeckt, warten auf Spieler) plus
-  Thema; nach dem Aufdecken Spread und optional Durchschnittszeiger (heute über den Karten-Controls).
-- Unten rechts: Timer + Rundenknopf als Teil der unteren Leiste (Primärsteuerung wie im Mockup), so breit wie die Spalte.
-  Der Rundenknopf **ändert seine Position nicht**, wenn der Timer an-/ausgeschaltet wird.
-- Menü-Side-Panel legt sich über die Spalte. Unter ca. 1200 px (Tablet, Phone) wie heute.
-- Themenliste (B-52) und Historie später.
-
-### B-69 Kartenleiste: Blätter-Leisten `<` / `>` statt Scrollleiste
-Andreas (2026-10-28): Passen die Karten nicht in die Leiste, scrollt sie waagerecht. Die Scrollleiste ist unschön
-(besonders auf Mobile), und man versteht nicht, dass man scrollen soll. Idee: am linken bzw. rechten Rand bei Bedarf
-eine schlanke `<`- bzw. `>`-Leiste, die zeigt, dass es weitergeht; Scrollleiste ausblenden, Wischen und Mausrad
-bleiben. Entschieden (Andreas, 2026-10-28): Die Leisten sind nur Hinweis, kein Klick-Blättern. **Geändert (Andreas,
-2026-10-29): Die Leisten sind doch klickbar** – Klick/Tipp blättert um etwa eine sichtbare Breite minus eine Karte
-(Buttons ohne Tab-Stopp). Tasten 1–9/0 holen eine Karte außerhalb des sichtbaren Bereichs ins Bild. Status: auf `release` (#77), Test auf Staging offen.
-
-### B-70 Tipps in der rechten Spalte: was jetzt zu tun ist
-Andreas (2026-10-28), aus der Team-Runde zu B-68: Unter dem Status (und unter dem Spread) ein kurzer Tipp für den
-aktuellen Spieler, wie im Mockup. Allein am Board → Board-Link kopieren und Team einladen; noch nicht gewählt → Karte
-wählen, Ergebnis kommt, sobald alle gewählt haben; gewählt → warten auf (Namen); aufgedeckt → niedrigste und höchste
-Karte (Namen) erklären ihre Wahl; alle gleich → neue Runde. Texte englisch, Ausgabe nur per `textContent`. Erst
-Desktop, Phones später. „Da kommt später noch mehr hin.“ Form wie im Mockup: „Let them explain: **Chris (2)** and
-**Emil (20)**“. Status: auf `release` (#76), Test auf Staging offen.
-
-### B-71 Löschen von Spielern auf Touch-Geräten
-Hinweis (2026-10-30): Der `hb`-Heartbeat aus B-81 könnte die Basis für Präsenz/Verbindungsanzeige sein.
-Andreas (2026-10-28): Auf dem Handy trägt jede Spielerkarte dauerhaft einen Mülleimer – unruhig, wirkt für Neue riskant.
-Lieber mit den vorhandenen Karten arbeiten statt eines eigenen Menüs (vgl. B-56). Langes Drücken ist kaum zu erraten,
-Antippen zum Ein-/Ausblenden der Kontext-Icons muss man auch erst herausfinden. Offen: Lösung (Vorschlag Kai: Mülleimer
-nur auf Karten von Spielern, die nicht mehr verbunden sind – das ist der eigentliche Anwendungsfall). Andreas:
-„geht stark in die richtige Richtung“; zusätzlich anzeigen, dass jemand „off“ ist (Blitz oder farbiger Punkt). Ben prüft,
-wie zuverlässig „nicht verbunden“ erkennbar ist (`last_callback_time`).
-Andreas (2026-10-28): im Kern eine Frage, wie Browser/OS mit Tabs im Hintergrund umgehen. Kai: Desktop drosselt Timer,
-WebSocket bleibt offen (Ping/Pong ohne JS); Handy friert die Seite ein, Verbindung reißt ab. „Off“ = keine Verbindung,
-nicht „Tab unsichtbar“. `last_callback_time` taugt nicht (nur bei Pulls aktualisiert). Vorschlag: Anwesenheit aus
-`poker-msg` (Client meldet User-ID beim Verbinden, `poker-msg` verteilt die Liste der Verbundenen je Team, Karenz
-1–2 min). Betrifft das Repo `poker-msg`. Weitere Varianten (Andreas): (A) `poker-msg` schreibt Status in MySQL;
-(B) `poker-msg` schickt je Board alle ~30 s ein `pull`, wer `dao.php` lädt, setzt `last_callback_time` (Kai empfiehlt B,
-Last ca. +4 `dao.php`/s zur Spitze, ggf. schlanker Ping); (B′) Client fragt selbst alle 30 s (Timer-Drosselung im
-Hintergrund). **Vertagt** (Andreas, 2026-10-28): „noch sind wir da nicht dran“.
-
-### B-72 Aufräumen: Layout- und Spread-Logik in `script.js`
-Fred (2026-10-28): Nach den B-68-Runden hängt das Layout an mehreren Messwegen (`resize`, `ResizeObserver`, globaler
-Bild-`load`-Listener, `no-anim`-Umschalter); der Spread liest seine Spalten aus dem DOM der Kartenleiste statt aus den
-Daten. Vorschlag: eine `relayout()`-Funktion mit einem Observer, Spread direkt aus JSON und `cards.json`. Ca. 1–2 h,
-ohne Verhaltensänderung.
-
-### B-73 Wackelnder Timer-E2E-Test
-**Status: auf `release` (komplexitaeter/poker#100) – echter App-Fehler (ältere dao-Antwort setzte Timer-Radio zurück).**
-Tessa/Delia (2026-10-28): `timer.spec.ts` schlug lokal vereinzelt fehl („Clicking the checkbox did not change its
-state“), vermutlich Race zwischen Klick und Neu-Rendern nach `pull`. Robust machen, bevor es in der CI rot wird.
-
-### B-74 Overlay-Menü schließt bei Klick daneben
-Andreas (2026-10-29): Ist ein Overlay-Menü offen (Side-Panel), soll ein Klick irgendwo außerhalb es schließen. Status:
-auf `release` (#78).
-
-### B-75 Kartenleiste auf dem Handy als Karussell
-Andreas (2026-10-29): Auf dem Handy statt Scrollleiste bzw. `<`/`>`-Leisten (B-69) ein Karussell – „ein Highlight für
-mobile“. Desktop bleibt wie B-69. Prototyp: https://claude.ai/artifact/81tkhDGzDCUYKnGymAaNgT (Delia). Entscheidungen:
-Karte in der Mitte größer (alle Karten vertikal zentriert), Positionsanzeige als Punkte ○○⦿○ (Tipp springt), Antippen
-wählt sofort, Einrasten eine Karte pro Wisch (`scroll-snap-stop: always`), Haptik an (nur Android), kein Ton. Wischen
-und Wählen strikt getrennt (Wischen wählt nie, ein Tipp, der nur den Schwung stoppt, wählt nicht; „gewählt“ sieht anders
-aus als „in der Mitte“). Das Element sitzt immer unten am Bildschirm und rutscht nie unter den unteren Rand – die
-Unterkante am iPhone ist für System-Wischgesten empfindlich (Safe Area, Abstand zum Home-Indikator). Status: auf
-`release` (#81), Test auf dem iPhone (Staging) offen.
-Andreas (2026-10-29): Karussell nur auf Touch-Geräten (unter 800 px **und** `(hover: none) and (pointer: coarse)`);
-schmale Fenster mit Maus/Trackpad bekommen die normale Kartenleiste mit den `<`/`>`-Leisten aus B-69 (Mausrad, Tasten
-1–9/0). Zentrieren nach dem Antippen einer Randkarte mit eigenem rAF-Tween statt nativem Smooth-Scroll (ruckelte auf
-dem iPhone). Status: Branch `feature/B-75-touch-only`.
-Idee für später (Andreas/Kai, 2026-10-29, nur notiert): Karussell auch auf Tablets (Touch ab 800 px), wenn die Karten
-sonst unter eine bequeme Tippgröße (~44 px) schrumpfen würden; mit Maus nie Karussell.
-
-### B-76 Kartenbilder: Name über die Karte, Symbole vertikal zentriert
-Andreas (2026-10-29), „zeitnah“: In den Kartenbildern (`src/c_*.png`, Quellen in `src/xcf/`) ist oben Platz für den
-Spielernamen reserviert, der gar nicht immer genutzt wird (Kartenleiste, Karussell B-75, Spread). Dadurch sitzen die
-Symbole nicht mittig – „etwas mittelhübsch“. Ziel: Den Namen aus der Karte heraus **über** die Karte bringen, danach
-die Symbole in allen Kartenbildern vertikal zentrieren (neu exportieren). Offen: Darstellung des Namens am Tisch
-(über der Karte, Länge/Ellipse, Anonym-Modus), alle Kartensets aus `cards.json` betroffen, Cache-Busting der Bilder,
-Auswirkung auf Kartengröße am Tisch (B-49). Beteiligt: Delia (Gestaltung, Bilder), Fred (Tisch-Rendering).
-
-### B-77 Karussell auf allen Touch-Geräten (auch iPad, schwebende Leiste)
-Andreas (2026-10-29): Auf dem iPad (≥ 800 px, Desktop-Layout) kommt bisher kein Karussell; die Karten der Leiste
-schrumpfen bis 26 px – mit dem Finger fummelig. Entscheidung: **Touch → immer Karussell**, unabhängig von der Breite,
-also auch in der schwebenden Leiste. Dazu: Abstufung an der Leistenbreite statt pro Karte, Karten auf Touch mind. ca.
-44 px, Leiste höher (Mittelkarte, Punkte, Hinweiszeile), Knopf/Timer gehen mit. Überzeugt es nicht, bleibt das iPad
-bei der normalen Leiste (Variante 1). Status: auf `release` (#85), Test auf Geräten offen.
-
-### B-78 Hinweis „Gerät drehen“ bei Handys quer
-Andreas (2026-10-29), iPhone 12 mini: Hochformat geht gut, quer muss man fast überall scrollen. Ein halbtransparentes
-Overlay mit Dreh-Icon bittet darum, das Gerät zu drehen – nur wenn (1) es ein drehbares Touch-Gerät ist (nicht
-Desktop), (2) es quer gehalten wird und (3) die Höhe so knapp ist, dass Querformat keinen Sinn ergibt. Tablets nicht.
-Status: auf `release` (#86), Test auf Geräten offen.
-
-### B-79 Vor Rollout 2: Stoppuhr ohne „T+“, Tipps je Kartenart und Anonym-Modus
-Andreas (2026-10-29), aus der Nutzer-Runde vor Rollout 2 (kein Toast, keine Erklärungen – der Menüpunkt `:timer` spricht
-für sich):
-- Stoppuhr-Modus zeigt die Zeit ohne `T+` (nur `03:12`); `T−`/`T+` nur im Timer-Modus.
-- Tipp nach dem Aufdecken (B-70): Anonym-Modus **immer** allgemein und sanft („Take the chance and talk about what you
-  see.“), keine Ansage, wer erklären soll. Sind unter den tatsächlich gewählten Karten Emoticons oder Ampel-Karten
-  (neues Flag in `cards.json`), allgemein „Talk about the cards you chose.“ (Emoticons haben keine Range, Ampel nur 3
-  Werte → sonst lange Namenslisten). Kontrollkarten (Kaffee, ?, !) bleiben dabei neutral. Sonst wie bisher niedrigste/
-  höchste Karte. Status: auf `release` (#87). Ergänzt: ohne Zahlen-Spanne (nur ∞/✋) ebenfalls „Talk about the cards you chose.“
-
-Ergänzung (Andreas, 2026-10-29, noch in Rollout 2): Wer **?** oder **!** gewählt hat, steht mit Namen in „Let them
-explain“ (außer Anonym-Modus), z. B. „Let them explain: Andreas, Paul (3), Petra (8), Hannes, Maria (?), Jogi (!)“; ohne
-Zahlen-Spanne nur „Let them explain: Maria (?), Jogi (!)“; bei Ampel/Emoticons „Talk about the cards you chose – Maria
-(?), Jogi (!) first.“ Hat jemand **☕** gewählt, kommt „Maybe take a short break.“ dazu (auch anonym); haben alle die
-Tasse genommen, steht nur dieser Satz. Status: auf `release` (#88).
-
-### B-80 Wunsch aus Ideas & Bugs: Topic per API setzen → API dokumentieren
-Feedback (2026-10-29, FEATURE): „Add API to allow setting the topic.“ Andreas (2026-10-29): Die API gibt es faktisch
-schon (`POST /api/update_topic.php?t=<team-id>`, Formularfeld `topic`, max. 2000 Zeichen, Team-ID als Geheimnis);
-es fehlt die Dokumentation. Kern also: kurze öffentliche Doku (Seite oder README-Abschnitt), ggf. auch der
-Anlege-Link `?tool=…&team=…&text=…`. Offen: Eine Änderung von außen erscheint bei offenen Boards erst beim nächsten
-`pull` (der `push` über poker-msg kommt heute nur vom Client) – reicht das, oder braucht es einen serverseitigen
-Push? Welche weiteren Endpunkte dokumentieren wir als „stabil“? Bezug zu B-52.
-Andreas (2026-10-29): Erst mit B-52 (Topics im Plural) zusammen durchdenken – eine öffentliche API ist sofort
-eine Abhängigkeit mehr. Signal an alle Clients siehe B-81.
-Gedanke (2026-10-29): Richtung umdrehen – statt dass wir Jira & Co. anbinden (OAuth, Zugangsdaten speichern, je System
-ein Adapter), schicken andere Systeme Topics an uns (Jira Automation „Send web request“, Skripte, Zapier/n8n). Für uns
-nur ein Endpunkt plus Doku. Später ggf. der Rückweg (Schätzung zurück ins Ticket) als ausgehender Webhook.
-Skizze Andreas (2026-10-29), eigene öffentliche API (REST, OpenAPI/Swagger-Doku):
-- Hinweg: Topic anlegen mit Key (z. B. Ticket-Nr.) und Beschreibung (`add_topic`).
-- Rückweg: Ergebnis je Key abfragen (`get_topic_result`) plus Webhook als Benachrichtigung, wenn ein Ergebnis vorliegt.
-Ideen Kai: eigener Namensraum `/api/v1/…` getrennt von der internen App-API (die bleibt frei änderbar → keine neue
-Abhängigkeit); eigener widerrufbarer API-Key je Team statt Team-ID in der URL (URLs landen in Logs); Key je Team
-eindeutig (erneutes Anlegen aktualisiert); Webhook mit HMAC-Signatur; OpenAPI-Datei im Repo, Doku als statische Seite.
-Offen: Was ist „das Ergebnis“ (finaler Wert, alle Karten, Durchschnitt, Konsens)? Wer legt den finalen Wert fest?
-
-### B-81 Update-Signal vom Webserver an poker-msg
-**Status: auf `release` (2026-10-30, komplexitaeter/poker-msg#3 + komplexitaeter/poker#101), kommt mit Rollout 2. poker-msg muss vor der App deployt werden (Staging erledigt).**
-Idee von Andreas (2026-10-29): Heute schickt nur der Browser nach einer Änderung `push` an poker-msg. Ändert der
-Server selbst etwas (z. B. B-80 per API, später Jobs), erfahren offene Boards nichts. Ein Kanal PHP-Webserver →
-poker-msg, über den PHP „Update Team-ID …“ meldet; poker-msg verteilt dann wie bisher `pull`. Varianten: MQTT o. ä.
-(eigener Broker), Redis Pub/Sub, oder schlicht ein zweiter Listener in poker-msg nur auf localhost (UDP/Unix-Socket
-im selben ReactPHP-Loop, ohne neuen Dienst). Entschieden (Andreas, 2026-10-29): keine Zustellgarantie nötig – die gibt es beim `push` aus dem Browser auch nicht.
-Damit reicht „fire and forget“; Favorit ist der lokale Listener ohne neuen Dienst.
-Erweiterung (Andreas, 2026-10-30): Den Kanal zum **Standardweg für alle schreibenden APIs** machen. Heute: JS ruft die
-API auf, danach schickt JS `push` an poker-msg. Neu: Die API meldet nach erfolgreichem Schreiben selbst an poker-msg,
-das `pull` an alle (inkl. Schreiber) schickt; das `push` aus dem Browser entfällt. Vorteile: kein verlorenes `push`
-bei abgerissener Verbindung (Teil von B-82 erledigt sich), externe Aufrufe (B-80) aktualisieren Boards automatisch,
-eine Stelle statt ~15 `pushDomChange()`-Aufrufe. Zu klären: Übergang (Browser-`push` vorübergehend parallel, doppeltes
-`pull` ist harmlos), Reihenfolge der Deployments (erst poker-msg, dann App), Verhalten wenn poker-msg nicht läuft
-(API bleibt erfolgreich, Senden nicht blockierend).
-Analyse (2026-10-30): `docs/b81-server-notify.md` – 14 pushes, 11 schreibende Endpunkte mit Board-Effekt, `delete_user` betrifft alle Teams des Users (heute Bug), `dao.php` darf nie benachrichtigen; UDP 127.0.0.1 als Kanal; Aufwand gesamt M, zwei PRs (poker-msg, dann poker).
-Entschieden (Andreas, 2026-10-30): **kommt mit Rollout 2**, ohne Doppelweg. Kein Polling als Sicherheitsnetz (verliert auf allen
-Dimensionen). Stattdessen **Heartbeat**: poker-msg schickt jeder Verbindung alle 30 s eine Textnachricht `hb`; das Board merkt
-sich, wann zuletzt etwas ankam (`hb` oder `pull`), und baut nach ~40 s Stille neu auf (+ `updateDao`). Fängt halb offene
-Verbindungen passiver Zuschauer ab. Der Schreiber lädt nach erfolgreicher API-Antwort zusätzlich selbst. Der Heartbeat kann
-später Basis für die Anzeige der Client-Verbindung sein (vgl. B-71 Präsenz).
-Hinweis Fred (2026-10-30, Review B-73): Die Zähler der eigenen Timer-Änderungen (`gTimerWrites`, B-73) müssen
-zurückgesetzt sein, **bevor** der Schreiber nach der API-Antwort selbst `updateDao()` aufruft – sonst wird dieses Laden
-(und ein vorab angekommener `pull`) verworfen und der Timer bleibt bis zum nächsten fremden `pull` stehen.
-
-
-### B-82 Board reagiert nach längerer Pause 5–10 s nicht (WebSocket)
-**Status: auf `release` (2026-10-30, komplexitaeter/poker#92), kommt mit Rollout 2.**
-Beobachtung Andreas (2026-10-29): Kommt man nach einer Weile zu einem Tab zurück (anderes Fenster, Pause), reagiert das
-Board einige Sekunden nicht; in der Konsole ein `InvalidStateError` beim Senden über den WebSocket. Besteht auch live
-(Code in `initializeWSConnection`/`heartbeatWSConnection`/`pushDomChange` seit Rollout 1 unverändert).
-Ursache (Analyse Kai): Das eigene Board lädt nach einer Aktion nicht selbst neu, sondern wartet auf das `pull`-Echo von
-poker-msg. Ist die Verbindung im Hintergrund abgerissen (Schlaf, Netzwechsel, Server-Keepalive), geht `push` ins Leere
-bzw. wirft im Zustand CONNECTING. Der Heartbeat prüft nur alle 3 s per `setTimeout`, im Hintergrund gedrosselt; erst
-nach dem Neuaufbau (`onopen` → `updateDao`) kommt alles nach.
-Vorschlag (klein, Fred): `pushDomChange()` sendet nur bei OPEN, sonst Neuaufbau und `push` nach `onopen` nachholen;
-bei `visibilitychange` (sichtbar) und `online` sofort Verbindung prüfen und `updateDao` – nach langer Abwesenheit
-Verbindung vorsorglich neu aufbauen (kann „halb offen“ sein). E2E: Socket schließen, Karte legen → Board aktualisiert.
-Entschieden (Andreas, 2026-10-29): (1) Fehler beim Senden abfangen, Verbindung neu aufbauen und das `push` danach
-wiederholen – sonst geht es verloren und man muss nochmal klicken. (2) Wird der Tab wieder sichtbar, die Verbindung
-immer kappen und neu aufbauen (plus `updateDao`). Status: refined.
-
-### B-83 Nächtlicher Statistik-Job blockiert `dao.php` (23:55 UTC)
-**Live eingespielt 2026-10-30 (Index + Event).**
-**Status: auf `release` (2026-10-30, komplexitaeter/poker#94), kommt mit Rollout 2.**
-Befund (Logs Live, 2026-10-29): Jede Nacht 23:55–23:58 UTC hängen einzelne `dao.php`-Aufrufe 5–6 s (PHP-FPM-Slowlog);
-MySQL-Slowlog: `UPDATE pok_players_tbl SET last_callback_time …` mit Lock-Wartezeit Ø 46 s. Ursache:
-`pok_daily_team_stats_evt` (`db_jobs_pok.sql`, startet 23:55:32) ist ein `INSERT … SELECT` über `pok_players_tbl` und
-setzt unter REPEATABLE READ Lesesperren; er läuft Minuten, weil `pok_roundstats_tbl` keinen Index auf `team_id` hat.
-Vorschlag (Ben): Index `pok_roundstats_tbl (team_id, type_code, creation_date)` (online) und den Job mit
-`READ COMMITTED` laufen lassen (keine Lesesperren, Binlog ROW). Optional: Index auf `pok_active_user_stats.creation_date`
-für die Grafana-Abfragen (volle Scans, 3–4 s).
-
-### B-84 Schutz gegen Reload-Schleifen (nginx-Limit)
-Befund (2026-10-29): Ein einzelner Client in einem Firmennetz hat das Board 1¾ h lang ~5×/s neu geladen
-(~30.000 Board-Loads, ~150.000 Requests; Auslöser außerhalb unserer Seite, vermutlich eine eingebettete WebKit-Ansicht).
-Ziel: versehentliche Schleifen bremsen, ohne Teams hinter einer gemeinsamen Firmen-IP zu stören. Vorschlag:
-`limit_req` mit Schlüssel Team-ID (`$arg_t`) auf den Board-Aufruf (`/index.php`), z. B. 2 r/s, burst 20, Status 429;
-dazu `measure_event.php` je User-ID (`$arg_id`), z. B. 1 r/s, damit die Statistik sauber bleibt. Leerer Schlüssel
-wird nicht gezählt. Konfiguration für beide Server vorbereiten (Kai/Ben), Andreas spielt ein.
-In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
-Zurückgestellt (Andreas, 2026-10-30): Risiko, mehr kaputt zu machen als zu reparieren; der Fall hat keinem User geschadet.
-Neu gedacht (Andreas, 2026-10-30): **nicht pro IP oder Team** (große, aktive Teams wären eine Erfolgsgeschichte, kein
-Missbrauch), sondern **nur `dao.php` pro User-ID** (`$arg_id`). Messung Live 2026-10-30 (alter Code, ohne B-81): normale
-User bis 16 Aufrufe/s und 116/min (mehrere Tabs, ungebündeltes `push`); die Schleife vom 29.10. lag bei ~10/s über 1¾ h.
-Unterschied ist die Dauer → großer Burst, niedrige Dauerrate, z. B. 3 r/s mit burst 60 (429 darüber). **Erst nach Rollout 2**
-mit demselben Befehl neu messen, dann Zahlen festlegen. Dazu B-94 (Neuladen einmal wiederholen).
-
-### B-85 Topic mit Emoji führt zu HTTP 500
-**Schema live und auf Staging eingespielt 2026-10-30 (Live 36 s); Emojis live mit dem Code-Deploy von Rollout 2.**
-**Status: auf `release` (2026-10-30, komplexitaeter/poker#95), kommt mit Rollout 2.**
-Befund (Logs Live, 2026-10-29): 3× HTTP 500 in `api/update_topic.php` (Exception bei `execute()`), Firefox.
-Vermutete Ursache: `pok_teams_tbl` ist `utf8mb3`, 4-Byte-Zeichen (Emoji) im Topic lassen sich nicht speichern; das Topic
-geht verloren. Prüfen (lokal reproduzieren), dann Spalte `topic` (ggf. auch `pok_roundstats_tbl.topic`, Namen) auf
-`utf8mb4` umstellen. Bezug: technische Schuld „Zeichensätze gemischt“.
-
-### B-86 Verbindungsstatus anzeigen, wenn das Board hängt
-**Status: auf `release` (2026-10-30, komplexitaeter/poker#92), kommt mit Rollout 2.**
-Idee Andreas (2026-10-30), unabhängig von B-82: Dem User zeigen, wenn die Verbindung zum Server gerade fehlt – vor allem,
-wenn er klickt und sich nichts ändert. Erkennung: (1) Nach einem `push` erwartet der Client das eigene `pull`-Echo von
-poker-msg; kommt es nicht innerhalb von ~1 s, gilt die Verbindung als gestört. (2) WebSocket ist nicht offen bzw. lässt
-sich nicht aufbauen. Anzeige: ein Overlay wie der Rotate-Hinweis (B-78), z. B. „Reconnecting to the server …“, **nicht
-wegklickbar** (die App ist in dem Zustand nicht nutzbar); verschwindet von selbst, sobald die Verbindung wieder steht
-(dann `updateDao`). Offen: kurze Verzögerung vor dem Einblenden gegen Flackern bei kurzen Aussetzern; auch fehlgeschlagene
-API-Aufrufe (`fetch`) einbeziehen? Gestaltung Delia, Logik Fred; zusammen mit B-82 umsetzen.
-Test (2026-10-30): Playwright `page.routeWebSocket()` (ab 1.48, wir haben 1.56) – Verbindung im Test schließen, verzögern oder Nachrichten verschlucken, ohne poker-msg zu ändern.
-
-### B-87 Minütlicher Statistik-Job sperrt `pok_players_tbl` kurz
-**Status: auf `release` (komplexitaeter/poker#96) und live eingespielt 2026-10-30.**
-Fund Ben (2026-10-30, bei B-83): `pok_active_users_evt` (`db_jobs_pok.sql`, jede Minute) liest `pok_players_tbl` komplett
-per `INSERT … SELECT` unter REPEATABLE READ und setzt dabei Lesesperren – kurze Wartezeiten für `dao.php` jede Minute.
-Gleicher Fix wie B-83: `set session transaction_isolation = 'READ-COMMITTED'` im Event-Body (binlog_format ROW prüfen).
-
-### B-88 ID-Parameter auf ihr Format prüfen
-**Status: auf `release` (komplexitaeter/poker#99).**
-Fund Sina (2026-10-30, Review B-85): `id` wird mit `FILTER_SANITIZE_FULL_SPECIAL_CHARS` gelesen, das Nicht-ASCII durchlässt
-(`dao.php`, `setc.php`, `name.php`, `get_user.php`, `update_user.php`, `delete_user.php`, `get_survey.php`). Seit der
-utf8mb4-Verbindung (B-85) ergibt ein manipuliertes Emoji in `id` HTTP 500 und einen `PHP Fatal` im Log statt 0 Treffer.
-Nur bei handgemachten Requests, kein Datenzugriff. Vorschlag: `get_id_param()` in `api/lib.php` mit
-`preg_match('/^[A-Za-z0-9_-]{1,16}$/', …)`, sonst `''`.
-
-### B-89 Kleinkram aus den Reviews (JS)
-**Status: auf `release` (komplexitaeter/poker#98).**
-- `script/script_feedback.js` (`initMenu`): `querySelectorAll('section.menu_sec:has([role="tablist"])')` wirft in Browsern
-  ohne `:has()` (Firefox < 121, iOS < 15.4) und bricht `initMenu()` ab (Tabs, Escape, Layout-Wechsel). Fix: `:has()`
-  weglassen, die Handler steigen ohne Tab ohnehin aus (Fred). Ähnlich `menu.matches(':modal')` (erst beim Klick).
-- `script/script_feedback.js`: Umfrage-Optionen (`vote_option.text`) per String in `innerHTML` – auf `textContent`
-  umstellen (Daten nur vom Admin, geringes Risiko; Sina).
-- `gTouchQuery`/`gCarouselQuery` doppelt (Fred).
-- Hinweis: `db_schema_pok_inc.sql` ist als Ganzes nicht idempotent (früher Block `fb_id`); immer nur neue Blöcke einspielen.
-
-### B-90 Umfrage reparieren oder entfernen
-Fund Fred (2026-10-30, bei B-89): Die In-App-Umfrage ist praktisch tot. `api/get_survey.php` bindet die User-ID mit
-`bind_param('i', …)`, User-IDs sind aber alphanumerisch → 0 → findet niemanden; `get_survey_id()` in `api/lib.php` vergibt
-eine Umfrage nur bei `approx_team_age < -110`, also nie. Zusätzlich geht `survey_intro` per `innerHTML` raus (Admin-Text).
-Frage an das Team: Umfragen noch gewollt? Dann reparieren, sonst Code, Tabellen-Nutzung und CSS entfernen.
-Bei Reparatur zusätzlich (Sina): `survey_intro` nicht per `innerHTML` (Text oder Markdown über remarkable ohne HTML); `fillResultsBars()` adressiert Balken per `vote_option.id - 1` → TypeError bei nicht lückenlosen IDs, besser per Element-ID.
-
-### B-91 Entfernen und Löschen nur mit Berechtigung
-Fund Sina (2026-10-30), Gedanke Andreas (2026-10-30):
-- **Anderen Spieler vom Board entfernen** (`api/delete.php`, heute nur `t` + `mkey`): künftig muss der Aufrufer
-  zusätzlich seine eigene User-ID schicken, und er darf nur entfernen, wenn er selbst (nicht entfernter) Mitglied dieses
-  Teams ist. Ziel bleibt der `mkey` des anderen Spielers.
-- **Eigenen User löschen** (`api/delete_user.php`, nur `id`): löscht team-übergreifend. Bleibt auf die eigene ID
-  beschränkt (sie ist das Geheimnis); prüfen, ob ein Bestätigungs-Merkmal sinnvoll ist.
-- **Grundsatz:** Ein Client sieht nur seine eigene User-ID; andere Spieler nur über den `mkey`. Stand heute: `dao.php`
-  liefert für andere Spieler nur Name, `mkey` und Karte – erfüllt. Alle übrigen Antworten (Roadmap, Survey, Promo,
-  Statistik) einmal daraufhin prüfen (Sina) und den Grundsatz in CLAUDE.md aufnehmen.
-- REST-Verben (`DELETE`) erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
-
-### B-92 Ältere dao-Antworten verwerfen (Sequenznummer)
-**Status: auf `release` mit B-81 (komplexitaeter/poker#101).**
-Fund Tessa (2026-10-30, B-73): `updateDao()` schützt nicht gegen die Reihenfolge der Antworten. Kommt eine ältere
-Antwort zuletzt an, überschreibt sie das ganze Board (Karten, Thema, Einstellungen) bis zum nächsten `pull`.
-Vorschlag (Fred): jede Anfrage nummerieren, Antworten mit kleinerer Nummer als die zuletzt übernommene verwerfen
-(~10 Zeilen). Ergänzt B-73 (eigene, noch nicht bestätigte Änderungen), ersetzt es nicht. Den B-73-Test dabei anpassen
-(erwartet heute die Anzeige der älteren Antwort). Gut zusammen mit B-81 umsetzbar. Nebenbei: `fetch` hat kein Timeout
-(`AbortSignal.timeout`), ein hängender `timer.php`-Request blockiert sonst die Timer-Übernahme.
-
-### B-93 poker-msg: Browser-`push` entfernen (nach B-81)
-Fund Sina (2026-10-30, Review B-81): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an. Wer eine Team-ID kennt,
-kann damit ohne API-Aufruf beliebig viele Pulls an alle Boards des Teams auslösen. Nach dem Deploy von B-81 sendet kein
-Client mehr `push` (alte offene Tabs ein paar Tage abwarten): `push` in poker-msg entfernen oder über dieselbe Drosselung wie
-`onNotify` leiten. Nebenbei: `api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE (Kosmetik).
-
-### B-94 Neuladen nach Fehlschlag wiederholen
-Fund Tessa (2026-10-30, Review B-81): `updateDao()` hat kein `.catch`. Schlägt das Neuladen nach dem eigenen Schreiben fehl
-(Netz, 500), bleibt das Board bis zum nächsten `pull` bzw. Neuaufbau (bis 40 s) auf altem Stand. Vorschlag: einmal nach
-kurzer Pause erneut versuchen. Außerdem `docs/b81-server-notify.md` auf den umgesetzten Heartbeat-Wächter nachziehen
-(beschreibt noch `expectPull`).
-
-### B-95 `last_callback_time` höchstens einmal pro Minute schreiben
-Idee Andreas (2026-10-30): `dao.php` schreibt bei jedem Aufruf `last_callback_time` (seit B-81 ~17 % mehr Aufrufe).
-Nur schreiben, wenn der gespeicherte Wert älter als 60 s ist: `UPDATE … SET last_callback_time = current_timestamp
-WHERE id = ? AND team_id = ? AND last_callback_time < current_timestamp - interval 60 second` (trifft sonst 0 Zeilen →
-kein Schreiben, kein Index-Update). Sekundengenauen Zeitstempel des ersten Aufrufs behalten statt auf die Minute zu kürzen.
-Code-Prüfung (Kai, 2026-10-30) – Verwendungen von `last_callback_time`:
-- `stats.php` Live-Tab: aktiv in den letzten 60 Minuten → unkritisch.
-- `api/newround.php`: Spieler löschen nach 2 Monaten Inaktivität; Rundendetails nur für in 24 h aktive Spieler → unkritisch.
-- `db_jobs_pok.sql` Tagesjob (24 h) und Minutenjob `last_day`/`last_hour`/`last_half_hour`/`last_ten_minutes` → unkritisch.
-- Minutenjob `last_minute` (`timestampdiff(minute, …) < 1`) → zählt künftig weniger (Wert bis ~60 s alt). Betrifft nur
-  diese eine Grafana-Kennzahl. Abkürzen auf die volle Minute würde sie noch stärker verfälschen, daher nicht kürzen.
-Mit B-90 zusätzlich die Umfrage-Abfragen aus `getDao()` entfernen.
-**Verworfen (Andreas, 2026-10-30):** Die Ersparnis ist bei unserer Last zu klein; `last_callback_time` bleibt die echte letzte Rückmeldung (bei jedem Aufruf geschrieben). Umfrage-Abfragen ggf. mit B-90.
-
-### B-96 Tipps in der Spalte fürs Team abschaltbar
-Idee Andreas (2026-10-30), refined: Im Board-Menü unter **Board → Team** ein Schalter „Tips“ (Standard **an**), der die Tipps in
-`#round_tip` (B-70/B-79) für das **ganze Team** ein- oder ausschaltet. Nur diese Stelle – die Bedienhinweise „keys 1–9 …“ und
-„tap to pick a card“ bleiben. Hintergrund: Wir glauben zu wissen, was ein guter Hinweis ist, können aber falsch liegen.
-Umsetzung: Spalte in `pok_teams_tbl` (Default 1, online), Schreiben über die Team-API mit `notify_team()`, Feld in `dao.php`,
-Schalter im Menü, `updateTip()` blendet aus. Analytics-Event beim Umschalten, damit wir sehen, wie oft Teams sie abschalten.
-**Status: auf `release` (komplexitaeter/poker#102), kommt mit Rollout 2. SQL-Block B-96 vor dem App-Deploy einspielen.**
-
-### B-97 Logo-SVGs verkleinern, Logo nicht doppelt laden
-Funde Fred/Delia (2026-10-31, Brand-Icon): `brand_*.svg` und `brand_icon_*.svg` sind je ~130 KB (sehr viele Pfade) – für ein
-20-px-Zeichen bzw. ein 24-px-Logo viel zu groß; mit svgo o. ä. verkleinern (Delia). Außerdem lädt das helle Theme zuerst die
-dunkle Datei (Default im HTML) und dann die helle über `setColor()`, und `setColor()` setzt `src` bei jedem Update neu.
-
-### B-98 Kartendecks nach Gruppen statt freier Mischung
-Idee Andreas (2026-10-31): Heute lassen sich alle ~50 Karten frei in ein Deck mischen – flexibel, wird aber vermutlich kaum
-genutzt. Vorschlag: Karten in sinnvolle **Gruppen** (Fibonacci mit den bekannten Unteroptionen, Zahlen 1–10, T-Shirt, Ampel,
-Emotionen, Sterne, später J.U.D.G.E., Delegation, eigene Werte); innerhalb der Gruppe einzelne Karten an/aus; „(+)“ fügt nur
-als Notoption weitere Karten aus dem Gesamtdeck hinzu. Vorher mit Live-Daten prüfen, welche Kombinationen in gespielten
-Runden wirklich vorkommen (`pok_roundstats_tbl.cardset_flags` je Runde, `pok_roundstat_details_tbl.card_key`).
-Passt zum gerenderten Kartenmodell aus der R3-Kartenrunde (Kartenset als Daten).
-Zielbild Andreas (2026-10-31): **vordefinierte Set-Gruppen** (Fibonacci, Ampel, J.U.D.G.E., Delegation Poker, Emotionen,
-Sterne, T-Shirt, Zahlen …); Fibonacci mit **Varianten** (Short, Long, True …), die meisten anderen mit nur einer. Dazu
-**eigene Custom-Set-Gruppen** je Team: Stil wählen (plain/badge/banner/inverted), je Karte Symbol aus der Symbolbibliothek
-(oder Text-Wert), Heading, Description und **numerischer Wert** (für Spread/Sortierung/Durchschnitt). Mock-up läuft (Deck-Menü).
-Ergänzung Andreas (2026-10-31): **Kontrollkarten** (☕, ?, !, ✋/veto …) sind eine eigene Gruppe, die man optional zu jedem
-Set dazunimmt.
-Live-Daten (letzte 30 Tage, Abfrage 2026-10-31): ~1.180 Runden/150 Teams mit dem Top-Deck „Fibonacci 0–100 + ∞ + ☕ ? !“;
-fast alle Decks sind **Fibonacci-Varianten** (Unterschiede: 0, ½, 20/40/100, ∞; „echte“ Fibonacci 21/34/55 bei ~25 Teams)
-**plus Kontrollkarten**. Gemischte Gruppen (Fibonacci + Emotionen/Sterne/4-7-10) nur bei einzelnen Teams. Gelegte Karten:
-3/5/2 je 7–9 Tsd., ☕ 1.907, ? 513, veto 117, ! 28; T-Shirt ~800, Sterne ~270, Emotionen ~55, Ampel 7.
-Entscheidungen Andreas zum Deck-Menü (2026-10-31, Mock-up „Deck-Menü R3“):
-- **Datenmodell:** Setgruppe 1:N Karte (jede Karte gehört zu genau einer Setgruppe; Heading/Description/Farbe hängen an der
-  Karte im Set). Symbol 1:N Karte (ein Symbol in mehreren Sets nutzbar, aber höchstens einmal je Deck).
-- **Menü:** Variante C (erst Gruppe, dann Variante/Steuerkarten/Karten) mit Karten-Fächern aus B. „Eigenes Set definieren“
-  als Vollbild-Overlay mit explizitem **Save**/Cancel (das Team sieht Änderungen erst nach Save).
-- **Migration:** `cardset_flags`, die genau einer Gruppe/Variante (+ Steuerkarten) entsprechen, werden übernommen; alle
-  anderen fallen auf den Standard zurück. Fällt ein Team auf J.U.D.G.E. (mit „6 veto“), wird die Steuerkarte ✋ nicht
-  übernommen – „6 veto“ deckt sie ab; bei allen anderen Gruppen bleibt ✋ wie gewählt.
-- **Standard** für neue Teams und Rückfall: Fibonacci Classic + Steuerkarten.
-- **Steuerkarten** (☕ ? ! ✋) gelten **pro Team**, unabhängig vom Set; immer Stil `plain`. ✋ veto (Steuerkarte) und
-  J.U.D.G.E. „6 veto“ sind verschiedene Karten. „!“ heißt **important**; Texte: need a break / question / important / veto.
-- **Eigene Sets:** bis zu 5 je Team (Limit konfigurierbar, siehe B-100), bis zu 16 Karten je Set (ohne Steuerkarten);
-  Wert statt Symbol nur **Text** (≤ 6 Zeichen, keine Emoji).
-- **Deck-Wechsel bzw. Save eines geänderten Sets während einer Runde:** Hinweis, dann neue Runde.
-- **„Arrange revealed cards by“** bleibt in Settings → Results (gilt fürs Board, unabhängig vom Deck).
-
-### B-99 Rollout 3: Karten neu (gerendert, Skizzen-Stil, Rich-Sets)
-Ergebnis der Mock-up-Runden 2026-10-31 (Delia; Artifacts „Karten R3“ und „Karten im Board“), Entscheidungen Andreas:
-- **Karten werden gerendert** (SVG/CSS) statt PNG; Stil **F1 „Skizze“**: Ziffer/Symbol im Vordergrund, Schraffur, leicht
-  verwackelte Linien (für die App in die Pfade „gebacken“, kein Laufzeit-Filter), Farbe je Wert, farbiger Balken oben,
-  **keine Strichmännchen**, **kein Deck-Name** auf Karten. Statuskarten „thinking“/„ready“ im selben Stil.
-- **Namensschild über der Karte** (B-76), ohne Unterstrich.
-- **Drei Ebenen** je Karte: Symbol – Heading* – Description* (* optional). Tisch (aufgedeckt) zeigt alle vorhandenen Ebenen
-  und nutzt den Platz; Deck/Controls zeigen Symbol (kleiner, wenn Heading) + Heading; Description im Deck über eine
-  Info-Zeile (Desktop: Hover/Fokus) bzw. die Hinweiszeile unter den Punkten (Touch: Karte in der Mitte). Keine
-  Großansicht beim Tippen am Tisch (entfällt, Andreas 2026-10-31). Description in Sans, Rest Mono. Längen: Wert ≤ 6, Heading ≤ 16, Description ≤ 160.
-- **Stil je Set** (Set-Attribut `style`, kein freies CSS): Fibonacci `plain`; J.U.D.G.E. `inverted` (Zahl invertiert, Heading
-  im Strich-Punkt-Rahmen); Delegation eigener Stil (Heading invertiert), **Texte exakt vom Original** (passt laut Andreas zur
-  EULA von Management 3.0), nicht deren Layout.
-- **Sets in R3:** Fibonacci (+ Kontrollkarten), J.U.D.G.E., Delegation, **Ampel, Emotionen, Sterne**; Deck-Gruppen (B-98),
-  eigene Werte (B-61). Fibonacci ohne Erklärtext im Default. Anonym-Modus wie heute.
-- **Später:** Themes (Saison-Rückseiten).
-- **Architektur (Kai, 2026-10-31, von Andreas bestätigt):** Symbole einmal per Generator-Skript als SVG erzeugen (Verwacklung/
-  Schraffur eingerechnet) und committen (kein Build-Schritt), als **Symbolbibliothek** in einer Sprite-Datei (`cards.svg`,
-  `<use href="cards.svg?v=…#id">`, erbt CSS-Farben → hell/dunkel/Wertfarbe/Themes). Die Karte (Rahmen, Balken, Heading,
-  Description, Stil) baut der Client zur Laufzeit als HTML/CSS aus den Set-Daten. Sets referenzieren Symbole per ID; eigene
-  Sets/Werte (B-61) können Symbole aus der Bibliothek wählen statt Bilder hochzuladen. Bibliothek wächst durch neue
-  Symbole im Generator; bei Bedarf Sprite je Set-Gruppe aufteilen.
-- Umsetzung braucht Ben (Kartendaten/Sets/Stile, eigene Werte je Team) und Fred (Rendering statt `<img>`, Info-Zeile,
-  Karussell) und Delia (Motive, Stile). Planung gemeinsam vor Start; R3 hat noch Wochen Zeit.
-
-Entscheidungen Andreas zum Kartenkatalog (2026-10-31):
-- J.U.D.G.E.: Strich-Punkt-Box des Headings immer kartenbreit (mit Rand links/rechts).
-- Sterne: fünf Sterne (vergeben gefüllt, sonst leer) + Heading „3 stars“. T-Shirt: Buchstaben im Skizzen-Stil.
-- Ampel: Headings **green light / yellow light / red light**, Descriptions wie vorgeschlagen.
-- Emotionen: Gesicht als Symbol, **kein Heading**; das heutige Wort (satisfied, annoyed …) ist die Description. Gesichter
-  passen vorerst.
-- Statuskarten: „ready“ = Haken, „thinking“ = **Denkblase mit drei Punkten**, „thinking anonym“ behält das
-  Anonymous-Masken-Motiv (im Skizzen-Stil).
-- Gelbtöne: **dunkle Schrift auf hellen Farben** (Token je Farbe für die Schriftfarbe).
-
-Planning R3 (2026-10-31, Ben/Fred, Entscheidungen Andreas):
-- **Einzelne Karten an/aus** je Gruppe schon in R3; die Migration übernimmt damit auch Teilmengen genau einer Gruppe.
-- **Steuerkarten-Standard** für neue Teams: nur ☕ und ? an (! und ✋ zuschaltbar); bestehende Teams behalten ihre Auswahl.
-- **Aktives eigenes Set löschen:** Rückfall auf den Standard, neue Runde, wenn Karten liegen (vorher Rückfrage).
-- **Farben eigener Karten** nur aus einer festen Token-Palette (mit Schriftfarbe je Farbe).
-- **„(+)“ (Karten aus anderen Sets) gestrichen** – Mischen nur über eigene Sets.
-- **Info-Zeile** in Sets ohne Texte (Fibonacci) nur für Steuerkarten.
-- **Histogramm** bei Bild-Symbolen (Ampel, Emotionen, Sterne): Mini-Symbol, Text per Tooltip/aria-label.
-- **Gleichzeitiges Bearbeiten** eines eigenen Sets: Hinweis „Someone else changed this set“, Save überschreibt.
-- **Tastatur:** Karten von links nach rechts nach Tastaturreihen belegt (q w e r t z u i o p a s d f …) statt Ziffern;
-  physische Taste (`event.code`), damit QWERTY/QWERTZ gleich funktionieren; Beschriftung unter den Karten.
-- Pläne: Ben S0–S5, Fred F1–F7 (Schnitt siehe R3-Plan); erster Schritt parallel: Fred entkoppelt Board-Logik von
-  `<img>`, Ben Schema/Katalog v2/Lazy-Migration/`deck` im DAO, Delia Symbol-Generator `cards.svg`.
-
-### B-100 Idee: eigene Kartensets als Bezahlfunktion
-Idee Andreas (2026-10-31): Eigene Sets (B-98) eventuell später hinter eine Paywall. Für R3 nicht geplant; das Limit (5 Sets
-je Team) wird deshalb konfigurierbar gebaut. Offen: ob überhaupt, Modell, Abrechnung.
-
-### B-101 Tipps in der Spalte für J.U.D.G.E. (Entscheidung statt Schätzung)
-Status: refined (Andreas, 2026-10-31), Teil von R3. Die Tipps (B-70/B-79) sind aufs Schätzen ausgelegt (Spannweite,
-„Let them explain“, „Everyone agrees“). Bei J.U.D.G.E. gilt: **Eine Entscheidung ist angenommen, solange es kein Veto und
-keine offenen Fragen gibt.**
-- Keine 5 (need to talk), keine 6 (veto), kein „?“: „Decision accepted.“ – gibt es 3 (severe concerns) oder 4 (step out),
-  zusätzlich als Angebot: „Concerns from <Name> (3) – want to hear them?“
-- 5, „?“ oder „!“ (zählen wie eine 5): zuerst diese Personen sprechen lassen; danach die 6er („Then hear the veto: <Name> (6)“).
-- Nur 6: Veto anhören.
-- Anonym-Modus: ohne Namen. Tipps abschaltbar wie bisher (B-96).
-Offen/später: ob Delegation, Ampel, Emotionen ebenfalls eigene Tipp-Regeln brauchen.
-
-### B-102 Systemkarte „joined in“ statt automatischer ☕
-Status: refined (Andreas, 2026-10-31), Teil von R3. Wer bei schon aufgedeckten Karten beitritt oder vom Beobachter zum
-Spieler wechselt, bekam bisher automatisch ☕ (`break01`), damit die Karten nicht wieder zugedeckt werden. Probleme: nie
-gewählt, ggf. nicht im Set, löst den Pausen-Tipp aus, verfälscht die ☕-Statistik.
-- Neue **Systemkarte** mit eigenem Key (≤ 7 Zeichen), in keinem Set/Deck, nicht wählbar; der Server setzt sie statt `break01`.
-- Zählt als „hat gelegt“ (Runde bleibt aufgedeckt), ist aber **keine Stimme**: nicht in Histogramm, Spannweite,
-  Durchschnitt, Tipps; kein Pausen-Tipp.
-- Am Tisch eigenes ruhiges Symbol (z. B. Tür mit Pfeil oder Uhr, keine Strichmännchen) + „joined in“ (Andreas: weniger vorwurfsvoll als „joined late“); auch im Anonym-Modus.
-- Wer will, legt noch eine echte Karte – sie ersetzt die Systemkarte. Neue Runde: verschwindet wie alle Karten.
-- Statistik: eigener Key, damit ☕-Zahlen künftig sauber sind (und man sieht, wie oft jemand später kommt).
-
-### B-103 `setc.php`: gelegte Karte gegen das Deck des Teams prüfen
-Status: umgesetzt (rollout-3), freigegeben von Andreas (2026-11-01), Teil von R3. `setc.php` lehnt Keys außerhalb der
-eingeschalteten Deck-Karten und Steuerkarten des Teams mit 400 ab (ohne Schreiben/notify, Deck über `lock_team_deck()`
-inkl. Lazy-Migration, `deck_allows_card()` in `api/lib.php`); Karte zurücknehmen bleibt erlaubt. Ohne gültigen
-`card_catalog.json` keine Prüfung (Board nutzt dann `cards.json`).
-Hinweis Sina (Review B-102, 2026-10-31): `setc.php` speichert jeden formal gültigen `cardkey`, auch Karten außerhalb des
-aktiven Decks bzw. der Steuerkarten des Teams (z. B. per Direktaufruf); sie zählen dann in `getDao()` als Stimme. Kein
-XSS-Risiko (Ausgabe per textContent). Minimaler Fix: Keys ablehnen (400), die weder im Deck noch in den Steuerkarten des
-Teams sind. Nicht priorisiert.
-
-### B-104 „Karte geändert“: Originalschätzung sichtbar
-Status: refined (Andreas, 2026-10-31), Teil von R3. Wer **nach dem Aufdecken** seine Karte ändert, bekommt am Tisch einen
-**versetzten Stapel**: oben die aktuelle Karte, darunter (versetzt, erkennbar) die **Originalschätzung** beim Aufdecken.
-- Änderungen vor dem Aufdecken zählen nicht.
-- Mehrere Änderungen: nur **Original + aktuell** (keine Zwischenstände).
-- Zurück auf die Originalkarte: **kein Stapel** mehr.
-- Histogramm, Spannweite, Durchschnitt, Tipps nutzen die **aktuelle** Karte. Ausnahme „Let them explain“ (Andreas,
-  2026-10-31): Genannt werden die Extremwerte der Karten beim Aufdecken (Original, sonst aktuell) **und** der aktuellen
-  Karten – wer beim Aufdecken ein Extrem war, bleibt drin, wer neu auf ein Extrem wechselt, kommt dazu; Anzeige
-  „Name (5→8)“. „Everyone agrees“ nur nach aktuellen Karten; J.U.D.G.E. (B-101) nur aktuelle Karten.
-- Die Originalkarte zeigt **immer** oben links ihren Wert bzw. ihr Mini-Symbol (Andreas, 2026-10-31), auch Bild- und
-  Steuerkarten, J.U.D.G.E. und kleine Karten auf dem Phone.
-- **Statistik:** Originalkarte wird gespeichert (additive Spalte, Snapshot der Runde) – auswertbar, wie oft Teams nach
-  der Diskussion umschwenken.
-- Anonym-Modus: Stapel ebenfalls (Namen sind dort ohnehin verborgen). Neue Runde: Original wird gelöscht.
-
-### B-105 Anonym-Modus: Spieler-Kennung nach dem Aufdecken pseudonymisieren
-Status: **verworfen** (Andreas, 2026-11-01): Ziel des Modus ist, dass Anwender in der Oberfläche nicht sehen, wer was
-gelegt hat – das ist erreicht. Zuordnung nur über Rohdaten/Entwicklertools ist ok (Pragmatismus).
-Hinweis Sina (Review B-104, 2026-10-31): Im Anonym-Modus bleibt `mkey` je Karte nach dem Aufdecken gleich. Vor dem
-Aufdecken sind Namen und `mkey` zusammen sichtbar (dao.php), danach lassen sich die anonymen Karten – und seit B-104
-auch die Originalschätzung – technisch den Personen zuordnen (nur über die Daten, nicht in der Oberfläche). Abhilfe: im
-Anonym-Modus nach dem Aufdecken je Runde eine zufällige Pseudo-Kennung ausgeben (eigene Karte trotzdem erkennbar, z. B.
-über ein Flag). Nicht priorisiert.
-
-### B-106 Special Card „shruggie“ ¯\_(ツ)_/¯
-Status: refined (Andreas, 2026-11-01), Teil von R3. Haltung „Ich kann es nicht sagen – und das ist absolut ok“ (nach Dirk
-von Gehlen, „Das Pragmatismus-Prinzip“: Ratlosigkeit ist kein Problem, sondern ein Ansatz).
-- Neue **Special Card** (Steuerkarte) wie ☕ ? ! ✋, in jedem Set zuschaltbar, **standardmäßig aus**.
-- Heading **„shruggie“**, Description **„Not knowing isn't a problem – it's a starting point.“**
-- Symbol: das Kaomoji ¯\_(ツ)_/¯ als Linienzeichnung im Skizzen-Stil (kein Strichmännchen), Kleindarstellung `drawing`.
-- Kein Wert: nicht in Histogramm, Spannweite, Durchschnitt; **keine Aufforderung in den Tipps** (ausdrücklich ok),
-  auch bei J.U.D.G.E. nicht wie „?“/„!“.
-
-### B-107 Mehr Emotionen: Varianten „Team Assessment“ und „Mood“
-Status: refined (Andreas, 2026-11-01), Teil von R3 („ausprobieren“). Abgleich mit Standard-Emoji siehe Chat.
-- Variante **Team Assessment**: die bisherigen sechs (satisfied, annoyed, sad, uninterested, angry, enthusiastic), unverändert.
-- Variante **Mood**: zusätzlich **curious** 🤔, **confused** 😕, **worried** 😟, **surprised** 😮, **tired** 🥱,
-  **relieved** 😌 (zwölf insgesamt). Wie bei Fibonacci: Variante = Voreinstellung, Karten frei zu-/abschaltbar.
-- Gesichter im gleichen Skizzen-Stil (helle Fläche, angedeutete Schraffur), je eigene Farbe; Text wie bei den
-  Emotionen: kein Heading, das Wort als Description.
-- Später denkbar: overwhelmed 🤯, tense 😬.
-
-### B-108 Promo-Mechanik ausbauen (pflegbar wie die Umfrage)
-Status: neu, nicht priorisiert. Idee Andreas (2026-11-01): Die Promo-Teaser (`api/get_promo.php`, `api/update_promo.php`,
-`pok_promotions_tbl`, seit Rollout 1 abgeschaltet) so ausbauen, dass wir Hinweise ohne Code-Änderung schalten können –
-analog zur Umfrage (Inhalte in der DB, gepflegt in `stats.php`).
-- Inhalte (Headline, Link, Bild, CTA, Zeitraum, Sprache) in einer Tabelle statt im PHP-Code; anlegen/aktivieren in `stats.php`.
-- Auslöser konfigurierbar (heute: zufällig 30–300 s nach dem Laden, nur Browsersprache `de`).
-- Messung ohne Personenbezug (Sina): Zähler je Promo/Variante, ohne User- und Team-ID; `update_promo.php` prüft heute
-  nur die fortlaufende `id` – beim Umbau entfällt das bzw. wird abgesichert.
-- Gemeinsam mit B-90 (Umfrage reparieren oder entfernen) denken.
-
-### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
-Status: neu, nicht priorisiert. Hinweis Sina (2026-11-01), Gedanken Andreas (2026-11-01).
-**Ausgangslage:** Die User-ID (`localStorage` `SID`) ist zufällig, steht in der DB aber neben Name und Team → pseudonym,
-also personenbezogen. Heute gelöscht wird nur `pok_players_tbl` (2 Monate Inaktivität je Team, `start_new_round()`).
-Dauerhaft gespeichert: `pok_roundstat_details_tbl` (User-ID, Name, Karte je Runde), `pok_analytics_events_tbl`
-(User-ID je Event), `pok_promotions_tbl` (User-ID, Team). „Delete user“ (`api/delete_user.php`) löscht Analytics-Events
-und Promos nicht.
-**Haltung Andreas:** Man könnte argumentieren, dass Wiederfinden nach Jahren die Funktion der App ist. Faktisch ist es
-aber völlig ok, nach einem Jahr kurz den Namen neu einzugeben: Es gibt keinen langlebigen Identifier (E-Mail, Passkey,
-Konto, Telefonnummer), die ID im Browser ist ohnehin flüchtig. **User-ID nach einem Jahr invalidieren: ok.**
-**Sorge:** keine Inkonsistenzen in den historisierten Daten. Muss weiter gut funktionieren, vorher prüfen:
-- Statistik-Jobs (`db_jobs_pok.sql`), v. a. `related_teams_cnt` (wiederkehrende User über User-IDs) und Grafana.
-- Rundenstatistik inkl. B-104 (`original_card_key`) und künftige Auswertungen je User-ID.
-- Ansatz-Idee: Zeilen nicht löschen, sondern nach Frist pseudonymisieren (Name leeren, User-ID durch einen
-  nicht rückführbaren Wert ersetzen bzw. leeren) → Zählungen bleiben stimmig; Ben klärt, was die Jobs brauchen.
-**Umfang:**
-- Frist (Vorschlag 12 Monate nach letzter Aktivität) als nächtlicher MySQL-Event-Job.
-- `delete_user.php` löscht bzw. anonymisiert zusätzlich Analytics-Events und Promos.
-- Datenschutzerklärung (Webseite, Abschnitt „Agile Poker Online Tool“) anpassen: Speicherfrist nennen; ID liegt im
-  **Local Storage**, nicht im „Session Store“ (bleibt also über das Schließen des Browsers hinaus); Rundenstatistik und
-  Nutzungs-Events erwähnen; Hinweis, dass „Delete User“ alles umfasst, erst wenn der Fix live ist.
-
-
-### B-110 Tisch-Interaktion: „away“-Erkennung, Karten-Kontextmenü, Beobachter, Reaktionen
-Status: neu, nicht priorisiert (Ideen Andreas, 2026-11-01; Mockups Delia „Kontextmenü A/B/C“, Analyse Ben). Fasst
-B-56 (Players-Menü) und B-60 (Spaß-Funktionen) am Tisch zusammen. Für nach R3, in Schritten:
-1. **„away“ erkennen** (Andreas: Entfernen ist mission-critical): Board lädt bei jedem `hb` (30 s, mit 0–5 s Zufall)
-   einmal `dao.php`; `getDao()` liefert je Spieler `away`, wenn `last_callback_time` älter als ca. 2 verpasste `hb`
-   ist (Andreas; Schwelle als Konstante, ~70 s). Tab im Hintergrund zählt als „da“ (WebSocket bleibt offen),
-   gesperrtes Handy/eingefrorener Tab nach der Schwelle als „away“. Kein Schema. Neutrales Symbol „Verbindung gestört“
-   (kein 💤/Emoji), Mülleimer an dieser Karte dauerhaft sichtbar (auch ohne Hover). Risiko: Neu-Rendern alle 30 s
-   muss ruhig bleiben (kein Flackern, Eingaben/Fokus bleiben). poker-msg nach offenen Verbindungen fragen: vorerst nicht.
-2. **Beobachter sichtbar**: Zeile „observing: …“ unter dem Tisch (DAO liefert Beobachter mit Name/`mkey`); nur
-   verbundene Beobachter, ohne Mülleimer.
-3. **Kontextmenü / zweiter Kreis** auf Karten (Variante offen: A Popover, B Bottom-Sheet, C zweiter Kreis neben dem
-   Mülleimer): Entfernen, Reaktionen, eigene Karte (Name ändern, beobachten).
-4. **Reaktionen + Nudge**: Emoji fliegt von der eigenen zur gewählten Karte; feste 6 Emojis; kein Team-Schalter
-   (erst bei Bedarf). **Direkt über den WebSocket** (Andreas, 2026-11-01): Board sendet `react:<von-mkey>:<an-mkey>:<code>`,
-   poker-msg leitet es an **alle** Verbindungen derselben Team-Subscription weiter, auch an den Absender (Andreas:
-   alle im Team sehen den Wurf von A zu B; A animiert erst beim Echo, nichts vorab) (kein `react.php`, kein
-   Neuladen). poker-msg prüft das Format streng (nur Codes aus fester Liste, feste Länge) und bremst (z. B. 1/s je
-   Verbindung). „von“ ist fälschbar – bei einer Spaßfunktion vertretbar. Nichts in die DB, keine Statistik.
-   Stand Andreas (2026-11-01, abends): Emoji-Leiste 🎂 ❤️ 👏 🎉 🤔 👍 🐟 (☕ und 👋 raus). **Nudge** ist kein Emoji, sondern
-   ein eigener Kreis neben dem Smiley: Karte wackelt bei allen, ohne Absender (auch in der Nachricht: `react:0:<an>:nudge`).
-Entscheidungen Andreas: jeder darf jeden Spieler entfernen. **Beobachter** (Andreas, 2026-11-01): nicht entfernbar;
-ist ihre Verbindung weg („away“), werden sie in der Beobachter-Zeile einfach ausgeblendet (kein Symbol, kein Mülleimer); im Anonym-Modus dürfen Reaktionen geschickt
-und auch auf anonyme Karten geworfen werden.
-Variante (Andreas, 2026-11-01): **C** – zwei Kreise an der Karte (Smiley → Emoji-Leiste, Mülleimer). Desktop: beide beim
-Hover. Touch-Geräte (wie heute `(hover: none), (pointer: coarse)`, Tablets inklusive): Kreise erst nach Antippen der
-Karte, mit einmaligem Hinweis; Rückfrage beim Entfernen immer (Desktop und Touch, Andreas 2026-11-01). Getrennte Spieler: Verbindungssymbol (WLAN
-durchgestrichen, neutral) und Mülleimer dauerhaft sichtbar.
-### B-111 Setgruppen erklären: Kurztext, 2-Minuten-Video, „Train your team“
-Status: neu, nicht priorisiert. Idee Andreas (R3-Review, 2026-11-02): Jede Setgruppe zielt auf eine Workshop-Methode
-(Estimation, J.U.D.G.E., Delegation Poker, Team Assessment …), wird in der App aber nicht erklärt. Je Setgruppe ein
-kurzes Video (ca. 2 min, auch synthetisch, im eigenen Stil): was ist es, wozu, grober Ablauf. Darunter „Training für
-dein Team buchen“ mit Preisindikation (Trainings = Online-Kurse verschiedener Länge, immer fürs ganze Team; vgl.
-Monetarisierungs-Ideen). Vorschlag Team (Delia/Fred): in Stufen – (1) drei Zeilen Text je Set im Deck-Menü, (2) „▶ 2 min“
-je Set (kein Autoplay, selbst gehostet bzw. erst nach Klick laden – Datenschutz), (3) ruhiger Link „Train your team“;
-nie während einer Abstimmung (Board wird oft geteilt). Offen: Produktion, Hosting, Preis in der App oder auf der Landingpage.
-
-### B-112 Einladen am leeren Tisch
-Status: neu, nicht priorisiert. Aus dem R3-Review (Delia, 2026-11-02): Solange weniger als zwei Spieler am Tisch sind,
-zeigt ein leerer Platz „Invite your team“ (Link kopieren bzw. Teilen-Menü am Handy). Hängt mit V2 (Copy link → Invite)
-zusammen.
-
-### B-113 Seitenleiste je nach Phase: beim Abstimmen schmal, nach dem Aufdecken Ergebnis groß
-Status: neu, nicht priorisiert. Aus Live-Feedback zu R2 (2026-11-05, Scrum Master): Seitenleiste ein- und ausklappbar,
-damit mehr Platz für große Karten bleibt und alles Wichtige auf einen Bildschirm passt (neue Runde, Streuung, Mehrheit).
-Gedanke Andreas (2026-11-05): Beim Abstimmen braucht man die Seitenleiste kaum (besonders wer sich auskennt oder die Tipps
-abgeschaltet hat) – dann eingeklappt bzw. schmal. Nach dem Aufdecken ist das Ergebnis (Spanne, Durchschnitt, Verteilung)
-das Wichtigste und darf eher größer werden. Ideen: Ausklappen per Knopf, Zustand pro Person merken; eingeklappt „New round“
-im Dock und eine kurze Ergebniszeile am Tisch. Hängt mit B-53 (Ergebnisdarstellung, Sidebar zunächst eingeklappt) zusammen.
-Offen: automatisch je Phase oder nur manuell; Verhalten bei geteiltem Bildschirm; Handy unverändert.
-Gedanken für das Refinement (Andreas/Kai, 2026-11-05):
-- Leitplanke: Niemand soll die Panelgröße je Spielsituation selbst nachstellen müssen. Wenn, dann folgt das Panel der
-  Phase automatisch; man kann übersteuern, und das Board merkt sich die Wahl (einmal entscheiden, nicht jede Runde).
-- Ob nach dem Aufdecken die Zusammenfassung rechts oder die aufgedeckten Karten am Tisch wichtiger sind, ist vermutlich
-  individuell und kontextabhängig (Einigkeit, Ausreißer, geteilter Bildschirm). Eher den Tisch selbst lesbarer machen
-  (z. B. Ausreißer am Tisch hervorheben) statt das Panel wichtiger.
-- Mit Topics (B-52) ändert sich die Rolle des Panels (Agenda/Historie). B-113, B-53 und B-52 deshalb zusammen als ein
-  Thema „Board-Layout“ refinen.
-- Lernen statt raten: zwei, drei klickbare Varianten (wie das Deck-Menü-Mockup) in echten Sessions ausprobieren,
-  ggf. mit der Person, von der das Feedback kam.
-Roadmap (2026-11-07): öffentlich als „Resizable sidebar“.
-
-**Refinement (Andreas/Kai, 2026-11-07), Schnitt 1 – Status: refined:** nur Desktop, Mobile bleibt. Default wie heute (nichts
-eingeklappt, Tipps bleiben). Einklappen zur schmalen Leiste (Hover öffnet als Overlay, Pin hält offen), Breite per Griff
-20–60 % (unter ~14 % einklappen, Pfeiltasten), Zustand je Phase (Voting/Revealed) pro Person im Browser, beim
-Phasenwechsel animiert. Spread wächst mit der Breite. Leiste: oben Aufklapp-Pfeil; Voting: „3/6 voted“ + Warte-Punkte;
-Revealed: Spannweite kleinste–größte Karte untereinander (kein „meistgewählt“ – nimmt das Ergebnis vorweg), bei Einigkeit
-eine Karte; ?/☕ zählen nicht, ∞ größte. Unten Uhr/Timer und der Rundenknopf: Voting ↺ „Restart round“ (Rahmen),
-Revealed → „New round“ (gefüllt), Tooltip mit vollem Text; Status oben ist reine Anzeige. Median-Linie (B-53) und
-Items (B-52) nicht in diesem Schnitt. Mock: Delia 2026-11-07.
-### B-114 Verdeckt wählen beim Bildschirmteilen
-Status: neu, nicht priorisiert. Roadmap-Eintrag „Secret selecting for presenters“ (Stand 2026-11-05: 7 👍, 0 👎).
-Problem: Wer seinen Bildschirm teilt (oft Scrum Master/Moderation), verrät beim Abstimmen die eigene Wahl – die gewählte
-Karte ist im Deck hervorgehoben und liegt am eigenen Platz offen.
-Idee Andreas (2026-11-05): Zwei Tabs derselben Person – eine **Presenter-Sicht** zum Teilen (Tisch ohne eigene Wahl bzw.
-verdeckt, kein Deck) und ein **zweiter Tab mit dem Bedienteil** (Deck, ggf. Menüs) zum eigenen Abstimmen; oder das
-Bedienteil in einen zweiten Tab „auslagern“. Man teilt den einen Tab und stimmt im anderen ab, niemand sieht die Wahl.
-Leitplanke: Beide Tabs gehören zur selben User-Session (gleiche User-ID/Name); es darf dadurch keinen Weg aufs Board
-ohne registrierten Spieler mit Namen geben (z. B. Presenter-Sicht nur aus einer bestehenden Session heraus öffnen).
-Offen: Was genau zeigt die Presenter-Sicht, was der Bedien-Tab; Handy. Abhängigkeit zu B-113 (Panel-Anordnung) nur lose:
-B-114 kann unabhängig davon gebaut werden; was die Präsentier-Ansicht vom Panel zeigt, folgt später B-113.
-Hinweis (Andreas, 2026-11-05): Zwei Tabs derselben Person funktionieren heute schon (gleiche User-ID, gleiche Sicht).
-B-114 ist damit im Kern nur ein Ansichtsmodus (z. B. aus dem Menü „Open presenter view“ → neuer Tab mit Parameter):
-eigene Karte am Tisch verdeckt bis zum Aufdecken, kein Deck, keine Hervorhebung – vermutlich kleiner Aufwand (Frontend).
-Präzisierung Andreas (2026-11-05): reine Präsentier-Ansicht – keine Controls (Deck, Round-Button), Menüs weitgehend
-weg; statt „Open presenter view“ dort ein Knopf „Return to user view“ (falls der andere Tab geschlossen wurde).
-Zugang (Andreas, 2026-11-05): Voraussetzung ist ein angemeldeter Spieler dieses Teams. Umsetzung z. B. per URL-Parameter
-(`?t=…&view=presenter`): Der Client zeigt die Präsentier-Ansicht nur, wenn die eigene User-ID (localStorage, also pro
-Browser) in diesem Team bereits mit Namen am Tisch bzw. als Beobachter registriert ist; sonst wird der Parameter ignoriert
-und man landet im normalen Modus (Namensabfrage). Ein versehentlich weitergeschickter Link öffnet beim Empfänger also
-die normale Ansicht. Kein neuer Weg aufs Board ohne Namen.
-Nachtrag: Lieber gar keinen Parameter in der URL (kopierte Links bleiben normale Links). POST in neuen Tab ginge
-(Formular mit `target="_blank"`), macht aber Reload/Zurück unschön. Vorschlag Kai: Tab per `window.open(url, 'poker-presenter')`
-öffnen – der Tab-Name (`window.name`) markiert die Präsentier-Ansicht, steht nicht in der URL und überlebt Reloads;
-zusätzlich gilt die Prüfung „registrierter Spieler dieses Teams“.
-Frühere Idee (Kai): „Presenter“-Schalter, der die eigene Wahl im selben Tab verbirgt – Nachteil: man sieht die eigene
-Wahl selbst nicht mehr.
-
-### B-117 Badges und Feier-Animationen
-Status: neu, nicht priorisiert (Kandidat R4). Anlass: Live-Feedback zu R2 wünscht eine „fancier party animation“ (Laser +
-Konfetti), wenn alle dieselbe Karte legen. Idee Andreas (2026-11-05): nicht einfach einbauen, sondern als Bindungsmaßnahme –
-Teams „erarbeiten“ sich über die Zeit Badges, und mit jedem Badge kommt eine bessere Feier-Animation (z. B. Konfetti →
-Feuerwerk → Laser-Light-Show → Drohnenshow …).
-- Badges hängen am **Team** (Team-ID): Das belohnt, immer denselben Link zu nutzen – gewollt (Andreas).
-- Mögliche Kriterien (Details offen): Anzahl gespielter Runden, Anzahl Spieler, verschiedene genutzte Sets, Anzahl
-  „Strikes“ (alle legen dieselbe Karte). Daten liegen größtenteils schon in der Rundenstatistik.
-- Barrierefreiheit: kein echtes Stroboskop/Flackern (Epilepsie-Risiko, WCAG 2.3.1) – ersetzen (z. B. Disco-Kugel) oder
-  sanft; bei `prefers-reduced-motion` nur eine ruhige Variante.
-- Abschaltbar („Celebrations: On/Off“ in Board → Results), z. B. bei geteiltem Bildschirm oder ernsten Sessions
-  (Consent decision).
-- Klein anfangen: zwei, drei Stufen, nur über Runden und Strikes; Badge-Übersicht und Regeln später.
-- Inkrementell ausbauen (Andreas, 2026-11-05): Stufen so anlegen, dass über die Zeit neue dazukommen (wie Level bei
-  Zwift) – die höchste Stufe ist nie „fertig“, neue Animationen kommen mit späteren Releases oben drauf. Schwellen so
-  wählen, dass bestehende Teams beim Hinzufügen neuer Stufen nicht sofort alles freigeschaltet haben.
-Offen: genaue Schwellen, wo/wie Badges sichtbar sind, wer die Animation auslöst (alle am Tisch gleichzeitig).
-
-### B-118 Wachstum über Produktmechanismen (statt Werbung)
-Status: neu, nach R3 gemeinsam durchdenken. Andreas (2026-11-06): nicht selbst groß bewerben, sondern Mechanismen, die mit
-der Nutzung skalieren. Leitidee: Dinge anbieten, die Leute eher dazu bringen, sie öffentlich zu teilen – ausgelagerte,
-teilbare Seiten, immer mit Link im Header zurück zur SEO-Seite auf komplexitaeter.de.
-- Teilnehmer werden Gastgeber: dezenter Weg vom Board zu „Eigenes Board anlegen“ (5–6 Leute pro Session, nur einer
-  legt an); messbar über neue Teams, die von einem Board aus entstehen.
-- Geteilte Kartensets als öffentliche Seiten (z. B. „Animals – Planning Poker Kartenset“, „In meinem Team nutzen“);
-  Inhalte entstehen durch Nutzer, werden gefunden und verlinkt (vgl. Teilen-Idee, Animals-Set B-116).
-- Ergebnisse zum Teilen: kurze Session-Zusammenfassung als Bild/Link fürs Team-Wiki/Ticket, mit dezentem Absender.
-- Methoden-Seiten (Website) beschreiben, wofür man das Tool nutzt, und verweisen auf Teams/Tool – eigener Kanal.
-- Badges (B-117) zahlen darauf ein (Teams kommen mit demselben Link wieder).
-Daten: Search Console (Website) zeigt bisher ~500 Klicks/3 Monate, fast nur DE; Wachstum kommt heute über geteilte Links.
-Boards selbst bleiben `noindex` (seit R3).
-
-### B-119 T-Shape: Wissenstiefe schätzen, Breite im Team sehen
-Status: neu, Idee Andreas (2026-11-06), lose. Methode „T-Shape“: Jede Person schätzt, wie tief ihr Wissen in einem
-Thema/Skill ist; die Breite ergibt sich über die Verteilung im Team. Ist auf der Website noch nicht richtig beschrieben
-und im Tool nicht gut abgebildet (geht aus der Basisfunktion nicht hervor). Wäre eine neue Dimension des Tools:
-mehrere Themen nacheinander (vgl. B-52 Topics), Ergebnis als Team-Profil statt Einzelrunde. Offen: Kartenset (Tiefe-
-Stufen), Darstellung (Matrix/„T“), Speicherung über Runden hinweg, Methodenbeschreibung zuerst.
-
-### B-120 Bucket-Board: Items gemeinsam in Schätz-Buckets ziehen (Magic Estimation u. a.)
-Status: neu, Idee Andreas (2026-11-06), groß. Wiederverwendbare Mechanik: Die Werte eines Kartensets erscheinen als
-Buckets (Spalten) auf dem Board, Items (vgl. B-52 Topics) werden gemeinsam hineingezogen und verschoben. Damit ginge z. B.
-Magic Estimation (Affinity Estimation); ähnlich die Mechanik von Team as a Car (im Detail anders). Passt zur Linie
-„Methoden verkaufen sich, das Tool liefert den Rahmen“ (B-118, B-119).
-Offen: eigener Modus im Board oder eigenes Tool; Items-Datenmodell (B-52); gemeinsames Ziehen in Echtzeit (heute nur
-„pull“-Signale über poker-msg – reicht das für Drag & Drop, Konflikte bei gleichzeitigem Ziehen?); Handy-Bedienung;
-Ergebnis/Export.
-
-### B-121 Topic-Text gemeinsam bearbeiten (wie Google Docs)
-Status: neu, Idee Andreas (2026-11-06). Den Text hinter dem Schätz-Item (Topic) gleichzeitig bearbeiten können. Ein
-früherer Versuch mit Yjs hat nicht geklappt. Gedanken (Kai): Yjs braucht einen Kanal, der Änderungen zwischen den
-Browsern weiterreicht, und eine Stelle, die den Stand speichert. Passend zu unserem Prinzip „poker-msg ist nur der Kanal“
-könnte poker-msg Yjs-Updates je Team einfach durchreichen (wie die Reaktionen, B-110), PHP speichert den zusammengeführten
-Stand. Einfachere Alternative ohne Yjs: „Alice is editing …“ mit Sperre oder „letzter gewinnt“ plus Live-Vorschau.
-Früherer Versuch (Andreas, 2026-11-06): Der Beispiel-Server von Yjs funktionierte technisch, schied aber aus – der Kanal war
-öffentlich, und die Topic-Texte (die einzig wirklich sensiblen Daten unserer Nutzer) lägen bei einem fremden Dienst.
-Der Versuch, das Yjs-Messaging in poker-msg nachzubauen, scheiterte technisch.
-Idee für einen neuen Anlauf (Kai): poker-msg muss das Yjs-Protokoll nicht verstehen. Es reicht ein dummer Relay je Team
-(Updates base64-kodiert durchreichen, wie bei den Reaktionen). Den Startzustand holt ein neuer Client von PHP (gespeicherte
-Updates als Log); verdichtet wird im Browser (ein Client führt das Log per Yjs zusammen und lädt einen Snapshot hoch). So
-bleibt alles auf unseren Servern und PHP braucht keine Yjs-Bibliothek. Erst als kleiner Prototyp prüfen.
-Offen: Zusammenspiel mit B-52 (mehrere Topics) und B-120 (Bucket-Board); Größe/Rate der Updates (heute 1 Nachricht/s pro
-Verbindung in poker-msg).
-Kanal (Andreas/Kai, 2026-11-06): eher eigener Kanal für die Text-Synchronisation – eigene Route im selben poker-msg-Prozess
-(z. B. `/poker-msg-doc`) mit eigenen Grenzen, nur offen, solange jemand das Topic bearbeitet/liest, Abo pro Topic. So
-bleiben pull/hb/Reaktionen des Boards unberührt; kein zweiter Server nötig (später auslagerbar).
-
-### B-122 Schätzprämisse: kurze Begründung zur eigenen Karte (optionaler Modus)
-Status: neu, Idee Andreas (2026-11-06). Optionaler Modus: Wer eine Karte legt, gibt eine kurze Begründung ein (ca. 150
-Zeichen, „Twitter-artig“): unter welcher Annahme geschätzt wurde. Beim Aufdecken sieht man die Prämissen der anderen
-(ggf. nur die der Extremwerte). Variante: Erst werden alle Prämissen gezeigt, dann darf jede Person ihre Schätzung noch
-einmal anpassen, danach wird aufgedeckt. Offen: Pflicht oder freiwillig im Modus; Anonym-Modus; Darstellung am Tisch;
-Speicherung (sensibler Freitext, wie Topic-Texte behandeln); Zusammenspiel mit B-104/B-115 (geänderte Karten).
-
-### B-123 KI-Teammitglied schätzt mit (Ausbaustufe)
-Status: neu, Idee Andreas (2026-11-06), Ausbaustufe nach B-52/B-121. Wenn Backlog-Items einen erklärenden Text haben
-(ggf. gemeinsam bearbeitet, B-121), könnte optional ein KI-Teammitglied mitschätzen (eigene Karte, ggf. mit Prämisse wie
-B-122). Offen: Datenschutz (Topic-Texte sind die sensibelsten Daten – nur mit ausdrücklicher Zustimmung des Teams,
-Anbieter/Hosting), Kosten, wie die KI-Karte am Tisch und in der Statistik zählt (nicht in Durchschnitt/Einigkeit?).
-
-### B-124 „:labs“-Menü für neue Funktionen
-Status: neu, Idee Andreas (2026-11-06). Ein eigenes Menü „:labs“ im Header (Name entschieden, Andreas 2026-11-06; verworfen: „:beta“, „:experimental“), in dem Teams experimentelle Funktionen
-selbst einschalten (z. B. Schätzprämisse B-122, Bucket-Board B-120, T-Shape B-119, KI-Teammitglied B-123). So lassen sich
-große Ideen mit echten Teams ausprobieren, ohne die Standard-Oberfläche zu verändern; Feedback je Beta-Funktion direkt dort.
-Offen: Einstellung pro Team (Feature-Flags in pok_teams_tbl) oder pro Person; Sichtbarkeit (immer oder nur per Link);
-wann eine Beta-Funktion Standard wird oder wieder verschwindet.
-
-### B-125 Mitspieler pausieren statt entfernen (Lösung für B-59)
-Status: neu, Idee Andreas (2026-11-06), nicht für R3.
-**Use-Case:** Jemand hat den Bildschirm offen gelassen und ist kurz weg. Die Gruppe kommt nicht weiter (Aufdecken
-blockiert), will die Person aber auch nicht vom Tisch entfernen.
-Die away-Erkennung aus B-110 hilft hier nicht: Ein offener Laptop mit sichtbarem Tab sieht „anwesend“ aus. Auch
-Inaktivität (keine Eingabe) taugt nicht, weil Zuhörende ebenfalls nichts tippen. Deshalb bewusst manuell durch das Team.
-**Lösung (Stand Andreas, 2026-11-06, ersetzt die erste Idee „Pause for this round“ im Entfernen-Dialog):**
-- Neben dem Mülleimer am Platz eines Mitspielers ein **Pause-Symbol**. Ein Klick pausiert die Person.
-- Man kann sich auch **selbst** auf Pause setzen (z. B. vor einer kurzen Unterbrechung), Andreas 2026-11-06.
-- Pausiert gilt **so lange, bis die Person selbst wieder aktiv wird** – nicht nur für eine Runde. Sie wird überall
-  ignoriert (blockiert das Aufdecken nicht, `all_players_ready`), bleibt aber am Tisch.
-- Sie bekommt eine Systemkarte „Paused“ (neue Systemkarte wie `late001` aus B-102, kein Teil eines Decks, nicht legbar
-  über `setc.php`).
-- **Aufheben nur durch die Person selbst:** Legt sie eine Karte, ist die Pause einfach weg. Optional bekommt sie (analog
-  zum Hinweis nach dem Entfernen) ein Overlay „You were paused“ mit „OK, I'm back“.
-- **Liegt schon eine Karte, bleibt sie liegen** (Andreas, 2026-11-06). „Paused“ ist dann eher eine Überblendung der
-  Karte als eine Ersatzkarte: Die anderen sehen „X hatte gelegt, ist aber gerade kurz weg“, und das Aufdecken wartet
-  nicht auf X. Ohne gelegte Karte steht die Systemkarte „Paused“ am Platz. Offen: Zählt die überblendete Karte beim
-  Aufdecken mit (Tipps, Statistik)?
-- Technisch: eine weitere Spalte in `pok_players_tbl` (z. B. `paused`), Ben.
-- Offen, wo überall angepasst werden muss: Ready-Status, Tipps (zählt nicht mit), Statistik/Historie
-  (`pok_roundstat_details_tbl`), Sortierung, Ergebnisdarstellung, Verhalten bei neuer Runde (Pause bleibt), Beobachter.
-- Wer darf pausieren: jeder am Tisch (wie Entfernen) – vermutlich ja.
-Roadmap: setzt den öffentlichen Eintrag „Reveal now“ um (Titel bleibt, Andreas 2026-11-06: die Stimmen gelten der Idee; nach Done sagen die Nutzer, ob die Lösung passt).
-
-### B-126 nginx: `/tools/` nicht ausliefern
-Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, deshalb sind `tools/` (Migrations- und Kartenskripte,
-README) per URL erreichbar. Die PHP-Skripte antworten über das Web mit 404 (`tools/migration/common.php`), der Rest ist
-harmlos (öffentlich auf GitHub). Trotzdem sauberer: in nginx beider Server `location ^~ /tools/ { return 404; }`.
-Befehle bereitet Kai vor, Betreiber spielt sie ein.
-**Akut erledigt (2026-11-10, Live, außerhalb poker):** Bei feedback und teamcar war `.git` öffentlich abrufbar
-(Scanner fragten Git-Objekte ab). Regel wie bei poker `location ~ /\.(?!well-known/) { return 404; }` in beiden
-Server-Blöcken ergänzt, geprüft: 404. Keine Token in Remote-URLs; feedback `config.php` ignoriert; teamcar trackt
-`config.php`, das Passwort darin weicht vom Live-Wert ab (kein Leck). Offen (teamcar-Repo, klein): `config.php` aus
-Git nehmen, `config.example.php` + `.gitignore`. Staging-Seiten bei Gelegenheit genauso prüfen.
-
-### B-127 Leichter Heartbeat statt dao.php alle 30 s
-Status: im Sprint (Andreas, 2026-11-09). **Befund (Live-Logs):** Seit R3 lädt jedes Board bei jedem `hb` von poker-msg
-(alle 30 s) komplett `api/dao.php` (away-Erkennung aus B-110). Folge: an einem Montag rund 194 dao-Abrufe je Client
-statt 57 vor R3, insgesamt etwa 140.000 statt 45.000.
-**Lösung:** Neuer Endpunkt `api/seen.php` (GET `id`, `t`): setzt nur `last_callback_time` und liefert `away_sig`, eine
-Signatur (sha1 über die sortierten mkeys) der aktuell abwesenden Personen (Spieler und Beobachter, ohne die eigene,
-ohne `REMOVED`), nie Player-IDs. `dao.php` liefert dasselbe Feld. Das Board ruft bei `hb` nur `seen.php` und lädt
-`dao.php` nur, wenn sich `away_sig` gegenüber dem letzten dao-Load geändert hat (Backend Ben, Client Fred).
-**Akzeptanz:** away-Anzeige wie bisher (Zeitpunkt und Darstellung); `dao.php` nur noch bei `pull`, nach eigenem
-Schreiben und bei geänderter away-Menge.
-
-### B-128 R3-Deck-Backup prüfen und löschen (Mitte Dezember)
-Status: neu (Andreas, 2026-11-09). Die R3-Deck-Migration übernimmt das Deck eines Teams erst beim nächsten Laden.
-Stand 2026-11-09 (`php8.4 tools/migration/check_deck_migration.php --verify` auf Live): 192 ok, 0 mismatch,
-21 danach selbst geändert, rund 24.400 noch nicht wieder geladen. **Mitte Dezember 2026:** Prüfung wiederholen; bei
-0 mismatch die Tabelle `pok_teams_deck_backup_r3` löschen (`drop table`, Befehl bereitet Kai vor, Betreiber führt aus).
-Danach entscheiden, ob `tools/migration/` aus dem Repo kann (siehe auch B-126).
-
-### B-129 Session-Planer: Agenda mit Timeboxen je Item
-Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Ein Item kommt mehrfach auf die Agenda (Leitidee).
-Statt eines festen Ziels je Durchgang (engt zu sehr ein) eher ein **Reifegrad am Item** (Andreas, 2026-11-10): eine
-Eigenschaft, die mit jedem Gespräch wächst (z. B. Idee → grob verstanden → geschärft → bereit; Stufen offen), vom Team
-gesetzt; jeder Durchgang darf alles (reden, Fragen sammeln, schätzen).
-Stufen (Andreas, 2026-11-10):
-- **neu** – wir kennen das Thema noch nicht und müssen es uns mal ansehen
-- **gering** – wir haben eine grobe Idee und können anfangen, die richtigen Fragen zu stellen
-- **mittel** – es wird langsam klarer, in welche Richtung es geht, aber noch kann sich alles wieder ändern
-- **hoch** – der letzte Feinschliff, eigentlich sollten wir mit der Umsetzung starten
-Namen in der App eher beschreibend: *new · rough · shaping · ready* (nicht low/high – klingt nach Note); mit Delia
-im Mockup entscheiden. Darstellung (Andreas, 2026-11-10): **liegendes Dreieck mit Schieberegler, von links nach rechts** –
-links breit (viele offene Fragen, alles möglich), rechts spitz (klar, bereit); der Regler wandert nach rechts und
-sitzt auf der aktuellen Stufe (Bild des Unsicherheitstrichters). Alternative: stehendes Dreieck (Spitze oben),
-unten breit, der Regler wandert nach oben. Delia zeigt beide im Mockup.
-Offen: ob der Spread einen Vorschlag für den Reifegrad liefert; ob er die Timebox-Planung beeinflusst.
-**Feedback zum Mockup (`mockups/planner/`, Andreas, 2026-11-10):**
-- Reifegrad: das **liegende Dreieck** (links → rechts) ist gesetzt.
-- Tabs Agenda / Later / Done schlüssig; „Later“ besser benennen (z. B. „Upcoming“ oder „Backlog“, offen).
-- Agenda-Leiste in der Sidebar (Segmente je Item, Markierung „jetzt“, „on time · 3 items left · ends 10:00“) gefällt sehr.
-- **Einfachster Fall muss einfach bleiben:** ohne Sessionplanung ein Thema eintippen und schätzen, wie heute. Alles
-  andere (ID, Description, Timebox, Session, Reifegrad) ist optional – wer mehr will, gibt mehr ein.
-- Im Mockup noch „T+02:10“ am Timer – in der App gibt es kein T± mehr (B-113), nicht übernehmen. Baut auf B-52 (Item-Karten) und dem Timer
-(B-67) auf. **Problem:** POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
-**Idee:**
-- Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. A: 20 min, „wirklich tief einsteigen“;
-  B: 5 min, „ganz neu, nur grob vorstellen und erste Fragen sammeln“). Einstellbar z. B. durch Größerziehen der Karte
-  in einer Zeitleiste. Die Session hat ebenfalls eine Timebox; die Summe der Items zeigt, ob die Agenda hineinpasst.
-- Damit gibt es eine **Agenda**: was in der Session insgesamt geschätzt bzw. besprochen werden soll.
-- **Im Meeting:** das aktive Item zeigt seine Restzeit (Überzug amber wie der Timer in der Leiste), dazu ruhig der
-  Gesamtstand („6 min hinter Plan, noch 4 Items“). Nur signalisieren, nichts erzwingen. Ausweg „Parken“: ein Item, das
-  sich festfährt, ans Ende bzw. in die nächste Session.
-- **Agenda vorab:** über den Team-Link für alle einsehbar, dazu „Copy agenda“ zum Verschicken – man kann sich vorher
-  Gedanken machen, keine Überraschungen.
-Offene Fragen: Wer darf Timeboxen ändern (vermutlich alle, wie bei
-den Items)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“? Items existieren damit schon Tage vor der
-Session – passt zu B-52, wenn die Löschfrist erst nach dem Schätzen beginnt.
-
-### B-132 Deck je Item, mehrere Fragen je Item (z. B. Reifegrad gemeinsam bestimmen)
-Status: neu (Idee Andreas, 2026-11-13). Weiterführung von B-52/B-129, Leitidee „kontinuierliches Refinement“.
-- **Deck am Item:** Am Item lässt sich hinterlegen, mit welchem Kartendeck geschätzt wird; beim Wechsel aufs Item
-  stellt das Board das Deck um. Dann wechselt man leicht zwischen verschiedenen Arten von Fragen.
-  Voraussetzung: ausgeblendete Karten je Deck speichern (heute nur für das aktuelle Deck des Teams).
-- **Reifegrad bzw. Schätzunsicherheit als eigenes Deck** (Katalog), z. B. new · rough · shaping · ready.
-- **Mehrere Fragen je Item:** Am Item festlegen, ob am Ende zusätzlich gemeinsam der Reifegrad (oder die
-  Unsicherheit) bestimmt wird. Ablauf: der PO trägt einen Reifegrad vorab ein (optional), nach dem Schätzen stimmen
-  alle per Karten über den Reifegrad ab; das Ergebnis landet am Item (Historie je Durchgang).
-- **Bis dahin:** Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); vorhandene Werte werden weiter angezeigt.
-**Zwei Dimensionen (Andreas, 2026-11-13), getrennt umsetzbar:**
-1. **Set je Item** – überschaubarer Umbau: Item merkt sich das Set (Deck-ID + Kartenauswahl); beim Aktivwerden bzw.
-   „Next item“ stellt das Board atomat mit der neuen Runde auf dieses Set um; ohne Angabe gilt das Team-Deck.
-   Dafür Kartenauswahl je Deck speichern statt nur fürs aktuelle Deck. Historie/Export zeigen das Set je Item.
-2. **Anschließende Metafrage** (z. B. Reifegrad, Unsicherheit) – geht tiefer: zweite Abstimmung je Item nach dem
-   Schätzen mit eigenem Deck, Ablauf und Darstellung (wer schaltet weiter, was zeigt das Board dazwischen), Ergebnis
-   je Durchgang in der Historie.
-Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
-
-### B-131 Reaktionen: gestaffeltes Rate-Limit je Verbindung
-Status: im Sprint (Andreas, 2026-11-12). poker-msg-Log seit 03.11.: 3.991 Reaktionen weitergeleitet (149 Teams),
-4.884 vom Limit verworfen – fast alle von wenigen Verbindungen (eine allein 2.129). Wer die JS-Konsole öffnet, kann
-heute dauerhaft 1/s senden. Neu je Verbindung (gleitende Fenster, kein Limit auf Teamebene): **1 pro Sekunde, 10 pro
-Minute**; darüber wird verworfen (wie heute, mit Log-Zeile). Log-Muster: kurze Ausbrüche bis 24/s (vermutlich
-gehaltene Taste) – Board ignoriert Tastaturwiederholung, eine gehaltene Taste = eine Reaktion.
-Log (Andreas, 2026-11-12): Verwerfungen mit Fenster („rate limit 1s“/„1m“) und der **Code** der Reaktion bei
-Weiterleitung und Verwerfung (nie Absender/Empfänger), damit Nutzung je Reaktion und Limit-Treffer auswertbar sind.
-Kein Widerspruch zu B-110: „nichts in die DB“ bleibt – im Log-File ohne Namen ist es ok. Im Board die gleichen
-Grenzen als Rückmeldung: beim Überschreiten kurzer Hinweis statt stillem Verlust. poker-msg (Ben) + Board (Fred);
-poker-msg-Rollout mit Neustart abends.
-
-### B-130 Timer: Auto-Start „Off · New round · Next item“
-Status: im Sprint (Andreas, 2026-11-12). Live-Daten seit 01.11.: 9 Teams nutzen den Timer (5 mit sichtbarer Uhr),
-Timeboxen 1, 5, 10, 41, 60 min – 5/10 min sind Timeboxen je Item, die heute bei jeder neuen Runde neu starten.
-Statt Ja/Nein (`timer_auto_restart`) drei Werte: **Off** · **New round** (wie heute „auto-start on new round“) ·
-**Next item** (Neustart nur beim Verlassen eines Items – Close/Close without a value/Bring it back later –, neue Runden
-innerhalb des Items lassen ihn weiterlaufen; ohne Items wie „New round“). Bestehende Teams behalten ihr Verhalten.
-Backend Ben (Schema, Neustart in `topic_item_next.php`), Frontend Fred (Umschalter im Timer-Menü). Geht mit B-52 live.
+- Token-Namen nach Bedeutung statt Einsatzort, einheitliche Schreibweise. Aufwand S (Delia).
 
 ### B-52 Topics als Backlog-Items
-**S1b nach Staging-Test (Andreas, 2026-11-12) – Status: im Sprint:**
-- **Notiz bleibt Notiz:** Das bisherige Topic-Feld ist ein allgemeiner Hinweis (z. B. zum Ablauf), immer sichtbar;
-  Items kommen zusätzlich, durch sie iteriert man. `update_topic.php` wieder wie früher, keine automatische Übernahme
-  alter Topics als Item. Einstieg „+ Add item“ als Button mit gestrichelter Outline.
-- **Letztes Item:** statt „Next item“ ein „Finish item“; danach allgemeiner Modus ohne aktives Item.
-- **Historie je Item:** vereinbarter Wert (nur bei Sets mit Ziel Einigung), Anzahl Schätzrunden, Balken der
-  Verteilung (per Dreieck aufklappbar), Datum der letzten Runde.
-- **Ziel Einigung ja/nein** auch an eigenen Sets einstellbar (Set-Editor). Manuelle Ergebniswahl genau bei Sets mit
-  Ziel Einigung.
-- **Eingeklappte Leiste:** „Next item“ dort lösen (Delia). Entscheidung (Andreas, 2026-11-12): **Variante B „Split“**
-  (`mockups/rail-next/`): ein Block aus zwei gleichwertigen Hälften. Beschriftung muss eindeutig sagen, dass es um
-  „next item“ bzw. „new round“ geht – „next“/„round“ allein ist verwirrend. Beschriftung je Hälfte zweizeilig:
-  „next item“ (letztes Item: „finish item“) und „new round“; „New round“ bleibt überall so (bekannt). Umsetzung als
-  Folgeschritt nach S1b.
-- **S1c „Item verlassen“ (Andreas, 2026-11-12):** Es gibt kein klares Kriterium für „fertig“ – manchmal kommt man
-  nicht zu einem Ergebnis. „Next item“/„Finish item“ fragt **immer** nach (Schutz vor Fehlklick, Andreas 2026-11-12) –
-  auch bei Konsens oder bewusst gewähltem Wert; die passende Option ist vorausgewählt (Enter bestätigt). Ein **Overlay mit Cancel**
-  (funktioniert auch aus der schmalen Leiste): „Close with 8“ (8 = die aktuelle Schätzung: automatisch der höchste Wert oder vom Team überschrieben) · „Close without a value“ ·
-  „Bring it back later“ (bleibt offen, ans Ende der Liste, Runden/Verteilung bleiben). Der höchste Wert ist damit nur
-  noch Vorschlag, nicht automatisch übernommen. Perspektiven-Sets: Overlay nur mit „Close“ · „Bring it back later“. Backend prüft dieselbe Regel.
-  Zusammen mit dem Split in der Leiste nach S1b.
-- **Notiz oben (Andreas, 2026-11-12):** Die Notiz ist ein eigener Abschnitt oben – am liebsten wieder (wie früher)
-  auf dem Board über den Karten, damit alle sie immer sehen (auch bei eingeklappter Seitenleiste). Items bleiben in der
-  Seitenleiste. Gestaltung Delia (Desktop und Mobil), mit S1c.
-- **Topics-Menü mit Tabs „Note · Open · Done“ (Andreas, 2026-11-12, nach S1b auf Staging):** statt eines langen
-  Panels. Start-Tab: „Open“, wenn Items offen sind, sonst „Note“ (einfacher Fall bleibt ohne Extra-Klick). Zähler an
-  den Tabs (z. B. „Open 3“, „Done 12“). Done lädt erst beim Öffnen des Tabs (`get_topics.php?done=1`). Mit S1c.
+Status: live R4 (2026-11-16), #228–#250 (Items-Liste, Note · Open · Done, Next/Finish item, Historie je Item, Export).
+Rest offen:
+- **Zweck umschaltbar** (eigener Schritt): Team schaltet je Set bzw. je Item/Runde zwischen „agree“ und „show
+  perspectives“ (z. B. im Results-Panel); eigene Sets wählen ihn beim Anlegen.
+- **Done-Liste** zeigt nur die neuesten 50 Items, ohne „mehr laden“; ältere lassen sich nicht wieder öffnen.
+- Nach dem **Löschen eines eigenen Sets** zeigen Done-Items und Export rohe Kartenschlüssel (`c-…`).
+- **Aufräumen bei langer Inaktivität** höchstens als Sicherheitsnetz (Frist offen).
+- **E-Mail-PIN** (Idee Andreas, 2026-11-09, eigener Eintrag bei Bedarf): E-Mail am User hinterlegen (per PIN
+  bestätigt), damit Historie freischalten bzw. die eigene User-ID auf einem neuen Gerät wiederherstellen (leichter
+  Account ohne Passwort). Erste E-Mail-Adresse in der DB → Datenschutz, Mailversand (SPF/DKIM), Löschen durch den
+  User; Sina prüft vorher. „Ohne Login“ bleibt das Versprechen: Schätzen und Export gehen immer ohne.
+- Timeboxen/Agenda → B-129; Set je Item, Metafrage (Reifegrad) → B-132; öffentliche API → B-80.
+- Offene Frage: neue Team-IDs mit Zufallsanteil (heute aus dem Teamnamen abgeleitet, `name2id()`, bei kurzen Namen
+  erratbar; der Team-Link ist eine Parole, keine Zugangskontrolle).
+- Idee (Andreas, 2026-11-10, aus einem anderen Tool): Items als **Kartenstapel** (aktives Item oben, die nächsten
+  schauen dahinter hervor), daneben groß der Ergebnisvorschlag. Nur die Idee, Console Style bleibt.
+
+Geltende Entscheidungen (Andreas, 2026-11-07 bis 2026-11-13):
+- **Einfachster Fall bleibt einfach:** Wer nur ein Topic eingibt wie früher, hat es nicht komplizierter und braucht
+  nicht mehr Klicks. ID, Description, Timebox, Reifegrad sind optional.
+- **Notiz bleibt Notiz:** das bisherige Topic-Feld ist ein allgemeiner, immer sichtbarer Hinweis (oben über den
+  Karten); Items kommen zusätzlich, durch sie iteriert man. Keine automatische Übernahme alter Topics als Item.
+- Items anlegen, bearbeiten, umsortieren, abschließen und wieder öffnen dürfen **alle**.
+- **Items bleiben, solange das Team sie braucht** (Leitidee); Löschen und Absichern liegen beim Team (Items, Team,
+  ggf. Link erneuern). Kein automatisches Löschen kurz nach der Session (verworfen 2026-11-10).
+- „Next item“/„Finish item“ fragt **immer** nach (Overlay mit Cancel, passende Option vorausgewählt): „Close with
+  <Wert>“ · „Close without a value“ · „Bring it back later“ (ans Ende, Runden/Verteilung bleiben); bei
+  Perspektiven-Sets nur „Close“ · „Bring it back later“. Backend prüft dieselbe Regel. In der schmalen Leiste
+  Variante „Split“ (zwei Hälften „next item“/„finish item“ und „new round“).
+- **Generisch, nie am Set-Namen:** Entscheidend ist der Zweck – Einigung (ein Wert) oder Perspektiven nebeneinander
+  (nur Verteilung). Merkmal am Set mit Default aus dem Katalog (`"range": false` = Perspektiven), Prüfung an genau
+  einer Stelle; „Ziel Einigung“ auch an eigenen Sets einstellbar.
+- **Ergebnisregel:** Am abgeschlossenen Item wird immer die Verteilung gespeichert (Anzahl je Karte, ohne
+  Personenbezug). Ein Ergebniswert nur bei Sets mit Ziel Einigung: vorbelegt der höchste gelegte Wert mit
+  `numeric_value` (∞ zählt nicht), vom Team änderbar (Balken im Spread oder Dropdown). Ohne Karte mit Wert kein
+  automatisches Ergebnis, manuell wählbar.
+- **Reifegrad** am Item optional (vom PO gesetzt), in Voting/Results nur angezeigt (Dreieck + Stufenname, Erklärtext
+  sichtbar bzw. aufklappbar, kein reiner Tooltip). Eingabe seit 2026-11-13 ausgeblendet, siehe B-132.
 - **dao.php klein halten:** dao liefert nur das aktive Item, Anzahlen und `topics_rev`; die Liste kommt über
-  `api/get_topics.php`, nur wenn sich `topics_rev` geändert hat (Done-Items erst beim Öffnen des Menüs). Kein neuer
-  Signaltyp in poker-msg. **Jede** Änderung an Items (auch Text eines alten/erledigten Items, Ergebnis, Reifegrad,
-  Verteilung beim Rundenwechsel) zählt `topics_rev` hoch – an einer Stelle erzwungen und per Test abgesichert.
-**Erster Schnitt S1 – Vorschlag Kai (2026-11-10), Ziel: bis Mitte Dezember live** (vor der Jahreswechsel-Welle,
-siehe Explorations-Auswertung): *mehrere Topics als Liste, der Reihe nach abarbeiten.*
-- Im Topics-Menü statt eines Textfelds eine Liste von Items; je Item Heading (Pflicht) und Description (optional,
-  Markdown wie heute), ID optional. Anlegen, bearbeiten, umsortieren, löschen – alle dürfen das.
-- Einfachster Fall wie heute: Wer nur ein Thema eintippt, merkt keinen Unterschied (ein Item, kein Listen-Ballast).
-  Das bisherige Topic eines Teams wird beim ersten Laden zum ersten Item.
-- Das oberste offene Item ist das aktive und erscheint dort, wo heute das Topic steht.
-- Nach dem Aufdecken im Results-Panel „Next item“: das aktive Item wird abgeschlossen, das nächste wird aktiv
-  (neue Runde wie heute). Abgeschlossene Items stehen unter „Done“ mit Heading und dem Stand der letzten Runde
-  (Range bzw. Median, je nach Kartenset); wieder öffnen möglich.
-- Neue Tabelle für Items (Ben), Prepared Statements, `notify_team()`; Frontend Fred, Gestaltung Delia
-  (Mockup-Stand `mockups/planner/`).
-- **Nicht in S1:** Timeboxen, Agenda/Session, Reifegrad, „Bring back“/Durchgänge, Copy results, Ergebnisvorschlag.
-**Entscheidungen (Andreas, 2026-11-11) – Status S1: refined:**
-- **Prämisse:** Wer nur ein Topic eingibt wie heute, hat es nicht komplizierter und braucht nicht mehr Klicks.
-- **Rich-Infos zum Item in der Sidebar:** Voting-Panel zeigt das aktive Item (ID, Heading, Description, Reifegrad) und
-  deutet an, dass noch mehr kommt (später oben die Session-Timeline). Results-Panel: Details zur Abstimmung, dort
-  beginnt die Historisierung.
-- **Reifegrad von Anfang an** als echtes Alleinstellungsmerkmal (in S1 klein: liegendes Dreieck, 4 Stufen), Sprache
-  „kontinuierliches Refinement“.
-- **Ergebnis:** bei Karten mit Wert zunächst der höchste gelegte Wert; änderbar durch Klick auf einen Balken im
-  Spread (markierter Balken), alternativ Dropdown.
-- Einfache Liste offen/done (kein Later/Backlog-Tab in S1). Mobil bleibt alles im Menü.
-- **Ergebnisregel (2026-11-11):** Am abgeschlossenen Item wird immer die Verteilung gespeichert (Anzahl je Karte, ohne
-  Personenbezug). Ein einzelner Ergebniswert nur bei Sets mit Zahlenwerten (auch T-Shirt, Sterne: interner
-  `numeric_value`): vorbelegt der höchste gelegte Wert, änderbar. Bei Ampel und Emotionen (`"range": false`) kein
-  Ergebniswert – dort geht es nicht um Einigung.
-- **Reifegrad (Andreas, 2026-11-11, nach dem S1-Mockup):** wird am Item erfasst (z. B. vom PO beim Anlegen/Bearbeiten),
-  um klarzumachen, worum es gerade geht; **optional** (darf leer bleiben, wenn es keinen Sinn macht). Ist er gesetzt,
-  zeigen Voting- und Results-Panel ihn nur an – kein Regler dort. Anzeige = Dreieck **plus** Stufenname, und der
-  Erklärtext muss erreichbar sein (er wirkt, z. B. „noch kann sich alles ändern“): im Voting-Panel direkt darunter
-  sichtbar bzw. per Klick auf das Dreieck aufklappbar – kein reiner Tooltip (Tooltips werden übersehen).
-- Mockup `mockups/topics-s1/` in der Grundidee abgenommen. Weitere Gestaltungspunkte (Vorschläge Kai, ohne Einwand):
-  ein Akzent im Spread (Schätzung statt „meistgewählt“), nur Balken mit Stimmen klickbar + Dropdown für alles,
-  „New round“ und „Next item“ gleichwertig, Mini-Balken unter „done“ bei Perspektiven-Sets, wiedereröffnete Items
-  direkt hinter das aktive, einfacher Fall: erste Zeile = Heading, Rest = Description.
-- **Generisch, nie am Set-Namen (Andreas, 2026-11-11):** Entscheidend ist der Zweck – **Einigung** am Ende (ein Wert,
-  Range, Ergebnis) oder **Perspektiven nebeneinander transparent machen** (nur Verteilung). Das hängt am
-  Anwendungsfall, nicht an den Karten: Ampel z. B. als Squad Health Check (Perspektiven zeigen, nicht umstimmen) vs.
-  Go/No-Go-Call (einer sagt Rot → erstmal Rot, Diskussion, Einigung z. B. auf Gelb; der „höchste Wert“ passt dann).
-  S1: Merkmal am Set mit Default aus dem Katalog (`"range": false` = Perspektiven), Prüfung an genau einer Stelle.
-  **Zahlenwert je Karte (Andreas, 2026-11-11):** `numeric_value` hängt an einzelnen Karten, Sets können gemischt sein.
-  Alle automatischen Ableitungen (vorbelegtes Ergebnis = höchster Wert, Range, Hinweise) nur aus den gelegten Karten
-  mit Wert. Hat keine gelegte Karte einen Wert, gibt es kein automatisches Ergebnis – das Team kann es aber manuell
-  setzen (gelegte Karte wählen), sonst bleibt es leer. **Später (eigener Schritt):** Team kann den Zweck umschalten (je Set
-  bzw. je Item/Runde, z. B. im Results-Panel „agree / show perspectives“); eigene Sets wählen ihn beim Anlegen.
-- Plan: Ben Datenmodell/API (Items-Tabelle, lazy Übernahme des bisherigen Topics als erstes Item, `update_topic.php`
-  bearbeitet weiter das aktive Item, `pok_teams_tbl.topic` bleibt synchron) → Delia parallel S1-Mockup → Fred + Delia
-  Oberfläche → Sina, E2E. Ein einzelnes Topic überschreiben bleibt wie heute (kein Eintrag unter „done“).
+  `api/get_topics.php` nur bei geändertem `topics_rev` (Done erst beim Öffnen des Tabs). **Jede** Änderung an Items
+  zählt `topics_rev` hoch (an einer Stelle erzwungen, per Test abgesichert). Kein neuer Signaltyp in poker-msg.
+- Historie nur je Item (Timeline: Datum / Items / Zukunft), keine eigene Rundenhistorie; wer was gelegt hat, vorerst
+  nicht. Export „Copy results“ im Format für Jira/Linear statt eigener Integration.
 
-Idee von Andreas (2026-10-23, beim B-51-Mockup): Statt eines einzelnen Topics legt das Team mehrere Topics an (+),
-das oberste ist aktiv. Zu ihm werden so viele Schätzrunden gespielt wie nötig, dann geht es zum nächsten. Die
-Rundenhistorie wird heute schon geschrieben (`pok_roundstats_tbl`, `pok_roundstat_details_tbl`) und ließe sich je
-Topic rückwirkend anzeigen. Berührt Datenmodell/API (Ben). Erst im Mockup (Delia, B-51) zeigen, dann refinen.
-Gedanke Andreas (2026-10-29) zum Ergebnis je Topic: Ein Algorithmus schlägt einen Default vor; Tendenz erst einmal
-der höchste gelegte Wert (∞ zählt nicht – dann ist es zu groß und noch nicht final geschätzt, kein Eintrag). Das Team
-kann den Wert vor „Next Item“ selbst ändern. Details später, zusammen mit der Historisierung.
-Roadmap (2026-11-07): öffentlich als „Topic list“; die Historisierung je Topic baut darauf auf.
-
-Historisierung (Andreas, 2026-11-07): nur zusammen mit den Items, keine eigene Rundenhistorie. Beim Abschluss eines Items
-(„Next item“ / „Finalize item“, Name offen) wird am Item das Ergebnis festgehalten, dazu z. B. die Zahl der Schätzrunden.
-Die einzelnen Runden müssen vermutlich nicht sichtbar sein (Daten liegen ohnehin in pok_roundstats_tbl).
-Darstellung als **Timeline** (Andreas, 2026-11-07): Datum / Items / Zukunft (noch nicht geschätzte Items). Am aktiven
-Item steht immer der Stand der letzten Runde, bis das Team es als fertig markiert; dann wird das Ergebnis final
-festgehalten, der Spread lässt sich optional aufklappen. Wer was gelegt hat, vorerst nicht. Danach geht es mit dem
-nächsten noch nicht geschätzten Item weiter.
-Entscheidungen (Andreas, 2026-11-07): Items anlegen, umsortieren, als fertig markieren und wieder öffnen dürfen **alle**
-(Wiederöffnen auch gegen versehentliches Schließen). ~~Fertige Items bleiben vorerst dauerhaft am Team-Link.~~
-Löschen: ein Item „zum Löschen markieren“, nimmt es niemand zurück, wird es nach ~14 Tagen automatisch gelöscht.
-(Überholt durch den neuen Zuschnitt unten.)
-Vorschlag Kai zu gelöschten Userdaten: Das Ergebnis am Item als Aggregat ohne Personenbezug speichern (Ergebnis,
-Zahl der Runden, Spread als Anzahl je Karte) – dann ändert eine Löschung von Userdaten das Ergebnis nicht.
-**Revidiert (Andreas, 2026-11-10), siehe Leitidee oben:** Das automatische Löschen kurz nach der Session war zu
-sehr von der Datensicherheit geprägt. Iteratives Refinement braucht, dass Items über Wochen wiederkommen. Neu:
-Items bleiben, solange das Team sie braucht; Löschen und Absichern liegen in der Hand des Teams (Items und Team
-selbst löschen, ggf. Link erneuern, später optional PIN). Automatisches Aufräumen höchstens als Sicherheitsnetz bei
-langer Inaktivität. Ein Item hat mehrere **Durchgänge** (je Agenda-Termin eines, mit Stand; Reifegrad am Item, siehe B-129), der Spread über
-die Durchgänge zeigt, wie das gemeinsame Verständnis wächst. Der folgende Zuschnitt vom 2026-11-09 gilt nur noch für
-die Item-Felder, das Abarbeiten und den Export, nicht mehr für die Löschfrist.
-**Neuer Zuschnitt (Andreas, 2026-11-09) – (teilweise überholt) ersetzte „dauerhaft am Team-Link“:** Der Team-Link ist eine Parole, keine
-Zugangskontrolle (wird weitergegeben, nicht zurücknehmbar; die Team-ID ist zudem aus dem Teamnamen abgeleitet,
-`name2id()`, und bei kurzem/bekanntem Namen erratbar). Deshalb keine dauerhafte Historie mit Inhalten:
-- **Topics als Puffer für die Session:** Statt eines Topics optional mehrere. Je Item: ID (optional, z. B. Ticket-Nr.),
-  Heading, Description (optional). Reihenfolge ändern, bearbeiten, löschen – alle dürfen das.
-- **Abarbeiten der Reihe nach;** fertig geschätzte Items erscheinen im Results-Panel nur noch mit ID, Heading und
-  Ergebnis (ggf. Zahl der Runden). Die Description wird beim Abschluss nicht mehr gezeigt.
-- **Geschätzte Items werden automatisch zum Löschen markiert** und nach einer Frist X gelöscht (reicht für die Session
-  und etwas danach).
-- **Später (eigener Eintrag, wenn gewünscht):** Wer an seinem User eine E-Mail hinterlegt, kann sich per Mail eine PIN
-  schicken lassen, die die Historie freischaltet – nur für Runden ab der ersten Runde, in der er nachweislich mit
-  seiner User-ID dabei war.
-Offene Fragen: Frist X (Tage?); wird die Description beim Abschluss gelöscht oder nur ausgeblendet (Vorschlag: gelöscht,
-dann liegt nichts Vertrauliches länger als nötig); Export/„Copy results“ vor dem Löschen (z. B. für Jira); neue Team-IDs
-mit Zufallsanteil trotzdem sinnvoll (Erraten erschweren). E-Mail/PIN: wäre die erste E-Mail-Adresse in der DB
-(Datenschutz), und die User-ID hängt am Browser (localStorage) – geht verloren beim Löschen der Browserdaten bzw. auf
-einem anderen Gerät. Idee Andreas (2026-11-09): Mit hinterlegter E-Mail lässt sich genau das lösen – per Mail-PIN
-bzw. Login-Link die eigene User-ID auf einem neuen Gerät/Browser wiederherstellen (leichter Account ohne Passwort).
-Dafür nötig: E-Mail beim Hinterlegen per PIN bestätigen (sonst könnte jemand fremde Adressen an seine ID binden),
-Mailversand (SMTP, SPF/DKIM), Datenschutzerklärung, Löschen der E-Mail durch den User. Sina prüft vor der Umsetzung.
-**Vorbild (Andreas, 2026-11-10, ein anderes Planning-Poker-Tool angesehen):** Items als **Karten**: Das aktive Item
-liegt oben als Karte, die nächsten schauen als Stapel dahinter hervor (man sieht ohne Liste, dass noch etwas wartet).
-An die Item-Karte hängt sich das Ergebnis (Historisierung je Item), daneben groß der **Ergebnisvorschlag** (siehe
-Gedanke vom 2026-10-29), den das Team vor „Next item“ übernimmt oder ändert. Nur die Idee übernehmen, nicht den Look
-(Console Style bleibt).
-**Export (Andreas, 2026-11-10):** „Copy results“ für die fertigen Item-Karten, bevor sie gelöscht werden – Format
-passend zum Einfügen in Jira/Linear (z. B. je Zeile ID, Heading, Ergebnis; zusätzlich als CSV/Tabelle). Schlanke
-Antwort auf „Jira/Linear support“ der Konkurrenz, ohne eigene Integration. „Ohne Login“ bleibt das Versprechen:
-die E-Mail-PIN ist nur ein Extra, Schätzen und Export gehen immer ohne.
-### B-53 Ergebnisdarstellung neu
-Aus dem B-51-Mockup (Andreas, 2026-10-23): Bewusst **kein Durchschnittswert als Zahl** (fachlich schlecht, nicht alle
-Karten numerisch); der Average-Indicator ist die charmante Lösung, liegt aber über der Kartenleiste (Eingabe), wo auch
-die Häufigkeitsbalken (`show_card_stats`) stehen. Ziel: Ergebnisse separat und anders darstellen (Verteilung,
-Konsens/Ausreißer, Zeiger-Idee erhalten), ggf. mit gespeicherter Historie (passt zu B-52). Vorschlag kommt im
-Mockup (Delia).
-Idee Andreas (2026-10-24) zur Sidebar: Beim ersten Besuch gibt es noch kein Topic, keine Historie, keine Spreads →
-Sidebar zunächst eingeklappt, Board clean wie in Rollout 1; Lösung nötig für „New Round“ und eine aktivierte Stoppuhr.
-Idee Andreas (2026-11-06): **Median als zweiter Indikator** über den Balken, in einer anderen Farbe als der Average-Indikator
-(oder als gestrichelte Linie, die die Stimmen in eine linke und eine rechte Hälfte teilt). Bei gerader Anzahl liegt
-die Linie dann einfach zwischen den beiden mittleren Karten – damit löst sich die Frage unten von selbst.
-Der Median ist der mittlere Wert der sortierten Karten. Ausreißer verzerren ihn nicht, und er liegt immer auf einer
-echten Karte. Er braucht nur eine Reihenfolge, funktioniert also auch für T-Shirt, Sterne und ∞ (als größter Wert).
-Karten ohne Wert (?, ☕, ✋ …) zählen nicht. Offen: Darstellung bei gerader Anzahl (zwei mittlere Karten: oberen
-Wert zeigen oder den Bereich „3–5“).
-Roadmap (2026-11-07): öffentlich als „Median indicator“.
-Ideen aus einem anderen Tool (Andreas, 2026-11-10), Fragen für Delia: (1) Phasen sichtbar als Schritte
-(z. B. Discuss → Estimate → Review) mit einer Zeile, was jetzt zu tun ist; (2) durchgehende Farbskala nach Wert
-(niedrig → hoch) für Deck, Balken und gelegte Karten, damit Ausreißer sofort auffallen; (3) Ergebnis nach Wert
-gruppiert: je Wert eine Karte mit den Personen darauf statt einer Karte je Person (bei vielen Spielern übersichtlicher).
+### B-53 Ergebnisdarstellung
+Status: live R4 (2026-11-16) mit Median-Linie, #237, #241, #242, #256. Rest offen (Ideen aus einem anderen Tool,
+Andreas 2026-11-10, Fragen für Delia):
+1. Phasen sichtbar als Schritte (z. B. Discuss → Estimate → Review) mit einer Zeile, was jetzt zu tun ist.
+2. Durchgehende Farbskala nach Wert (niedrig → hoch) für Deck, Balken und gelegte Karten, damit Ausreißer auffallen.
+3. Ergebnis nach Wert gruppiert: je Wert eine Karte mit den Personen darauf (bei vielen Spielern übersichtlicher).
 Keine bunten Verläufe, Avatare oder Fächer-Deck – Console Style bleibt.
+Geltend: bewusst **kein Durchschnittswert als Zahl** (Average-Indicator bleibt); Median braucht nur eine Reihenfolge
+(T-Shirt, Sterne, ∞ als größter Wert), Karten ohne Wert (?, ☕, ✋ …) zählen nicht; bei gerader Anzahl liegt die
+Linie nach Wert zwischen den beiden mittleren Karten, zwischen einem Wert und ∞ ist der Median ∞ (Andreas,
+2026-11-15). ∞ ist überall der größte Wert: Spannweite, Average-Zeiger (springt auf ∞) und Median. Median und
+Average-Zeiger gibt es nur mit „Average and median“ und nicht bei Sets mit dem Ziel „perspectives“.
 
-### B-43 `survey_intro` per `innerHTML` prüfen (Sina)
-Beim B-36-Planning gefunden (Delia, 2026-10-23): `script/script_feedback.js:~302` schreibt den Einleitungstext von
-Umfragen (`survey_intro`, aus der API) per `innerHTML` in die Seite. Der Inhalt ist Admin-Content aus der DB, keine
-Nutzereingabe. Sina soll einordnen, ob das bleiben kann (gewollte Formatierung) oder auf `textContent`/remarkable
-ohne HTML umgestellt werden sollte. Nicht dringend.
+### B-80 Öffentliche API: Topic-Items von außen anlegen
+Status: neu. Feedback (2026-10-29): „Add API to allow setting the topic.“ Faktisch gibt es `POST
+/api/update_topic.php?t=<team-id>` (Feld `topic`, max. 2000 Zeichen) schon; Boards aktualisieren sich seit B-81 auch
+bei Aufrufen von außen.
+Entscheidungen/Skizze (Andreas, 2026-10-29): erst mit B-52 zusammen durchdenken – eine öffentliche API ist eine
+Abhängigkeit mehr. Richtung umdrehen: andere Systeme schicken Topics an uns (Jira Automation, Skripte, Zapier/n8n),
+statt dass wir Jira & Co. anbinden. Eigene öffentliche API (REST, OpenAPI-Doku): Topic mit Key anlegen (`add_topic`),
+Ergebnis je Key abfragen (`get_topic_result`), Webhook bei Ergebnis.
+Ideen Kai: eigener Namensraum `/api/v1/…` (interne App-API bleibt frei änderbar); widerrufbarer API-Key je Team statt
+Team-ID in der URL; Key je Team eindeutig (erneutes Anlegen aktualisiert); Webhook mit HMAC-Signatur. REST-Verben
+(`DELETE`) erst hier, die interne API bleibt bei POST (B-91).
+Offen: was „das Ergebnis“ ist (seit B-52: Wert/Verteilung am Item); welche Endpunkte stabil sind.
+Entscheidung (Andreas, 2026-11-16): offen lassen, umformuliert auf Topic-Items (B-52): Items per API anlegen (z. B.
+aus Jira) und ihr Ergebnis abfragen; noch nicht priorisiert.
 
-### B-42 Konfiguration vereinfachen: Sortier-Option „im Spiel wählen“
-Andreas möchte die Konfiguration userfreundlicher machen. Erster Kandidat: die Option „Define the sort order in-game“
-(`results_order = 'CHOOSE:…'`, zeigt nach dem Aufdecken die Name/Value-Leiste unter den Karten).
+### B-100 Eigene Kartensets als Bezahlfunktion
+Status: neu. Idee Andreas (2026-10-31): eigene Sets (B-98) eventuell später hinter eine Paywall; das Limit (5 Sets je
+Team) ist deshalb konfigurierbar. Offen: ob überhaupt, Modell, Abrechnung. Ebenso offen für eigene Kartenwerte (B-61).
 
-**Analyse (Live, letzte 180 Tage, Stand 2026-10-23; Runden aus `pok_roundstats_tbl`, Team-Typ aus
-`pok_daily_teams_stats`, Personen aus `pok_roundstat_details_tbl`):**
-- ~40.300 Runden: nach Kartenwert (`SEQUENCE`) 85,2 %, nach Name (`NAME`) 14,2 %, im Spiel wählen (`CHOOSE`) **0,6 %**
-  (232 Runden).
-- `CHOOSE`: 5 Teams (alle recurring), 3 davon an ≥ 3 Tagen; monatlich stabil 1–4 Teams, 0,4–0,7 % der Runden.
-  Je Person: 35 Personen, 23 an ≥ 3 Tagen – von 5.102 regelmäßigen Nutzern (≥ 3 Tage) ≈ 0,5 %; jede nur in einem Team.
-- **Kein einziges Team hat im Spiel auf „Name“ umgeschaltet**: keine Runde mit `CHOOSE:NAME`, nur `CHOOSE:SEQUENCE`.
-  Faktisch sortieren diese Teams immer nach Kartenwert. (Einschränkung: Umschalten innerhalb einer Runde mit
-  Zurückstellen vor der nächsten Runde ist in den Daten nicht sichtbar; ein Analytics-Event dafür gibt es nicht.)
-- Die Wahl Name vs. Kartenwert wird dagegen genutzt: 78 recurring Teams spielen bewusst nach Name.
+### B-108 Promo-Mechanik ausbauen (pflegbar wie die Umfrage)
+Status: neu. Idee Andreas (2026-11-01): Die Promo-Teaser (`api/get_promo.php`, `api/update_promo.php`,
+`pok_promotions_tbl`, seit R1 abgeschaltet, Code und `hide_teaser` bleiben) so ausbauen, dass Hinweise ohne
+Code-Änderung schaltbar sind: Inhalte (Headline, Link, Bild, CTA, Zeitraum, Sprache) in einer Tabelle, gepflegt in
+`stats.php`; Auslöser konfigurierbar (heute zufällig 30–300 s nach dem Laden, nur Browsersprache `de`); Messung ohne
+Personenbezug (Zähler je Promo, ohne User-/Team-ID; `update_promo.php` prüft heute nur die fortlaufende `id`).
+Bleibt vorerst Idee (Andreas, 2026-11-16).
 
-**Optionen (noch nicht entschieden):**
-1. `CHOOSE` streichen: Auswahl nur noch Name / Kartenwert; die 5 Teams einmalig auf `SEQUENCE` umstellen (für sie
-   ändert sich nur, dass die Leiste wegfällt). Klein (Ben: API/Validierung + DB-Update, Fred: Board-Logik).
-2. Umschalter Name/Wert für alle direkt aufs Board, Eintrag im Menü entfällt – Gestaltungsfrage für B-40 (Delia),
-   mehr Platzbedarf unter den Karten.
+### B-111 Setgruppen erklären: Kurztext, 2-Minuten-Video, „Train your team“
+Status: neu. Idee Andreas (R3-Review, 2026-11-02): Jede Setgruppe zielt auf eine Workshop-Methode (Estimation,
+J.U.D.G.E., Delegation Poker, Team Assessment …), wird in der App aber nicht erklärt. Vorschlag (Delia/Fred) in Stufen:
+(1) drei Zeilen Text je Set im Deck-Menü, (2) „▶ 2 min“-Video je Set (kein Autoplay, selbst gehostet bzw. erst nach
+Klick laden), (3) ruhiger Link „Train your team“ (Online-Kurse fürs ganze Team, mit Preisindikation); nie während einer
+Abstimmung. Offen: Produktion, Hosting, Preis in der App oder auf der Landingpage.
 
-**Refined (2026-10-23, Andreas, nach UX-Einschätzung von Delia): Option 1.**
-- Begründung (Andreas, Delia): Die Sortierung ist eine Rahmenbedingung, die man einmal festlegt, keine Spielhandlung.
-  Auf dem Board stehen nur Dinge, die man jede Runde tut; die Leiste nimmt Platz und Aufmerksamkeit genau dort, wo nach
-  dem Aufdecken alle hinschauen, und wird nie bedient. Ob nach Karte oder Name sortiert wird, hängt vom Spielkontext ab
-  (Schätzen → Karte; z. B. Emotionskarten als Stimmungsumfrage → Name, Reihenfolge bleibt stabil).
-- **Kein automatischer Standard je Kartenset** (wäre „versteckte Magie“, z. B. für Teams, die bewusst „nach Name“
-  gewählt haben). Stattdessen steht die Einstellung direkt unter der Kartenset-Auswahl, damit man beides zusammen sieht.
-  Später denkbar (eigener Eintrag, nur wenn Daten es tragen): beim Kartenset-Wechsel einmal vorschlagen statt umstellen.
+### B-112 Einladen am leeren Tisch: leerer Platz
+Status: neu (Andreas, 2026-11-16: bleibt im Backlog). Teil 1 live R3 (2026-11-06), #163/#196: Invite-Button und Tipp
+„Invite your team“. Offen: solange weniger als zwei Spieler da sind, ein leerer Platz am Tisch mit Einladen-Symbol
+(Idee Delia), damit sichtbar ist, dass hier jemand fehlt.
 
-**Zuschnitt:**
-- „Define the sort order in-game“ (`CHOOSE`) entfällt, ebenso die Name/Value-Leiste nach dem Aufdecken.
-- Einstellung im Menü, **direkt unter der Kartenset-Auswahl**: Beschriftung „Arrange revealed cards by“, zwei Optionen
-  **„Card“** (`SEQUENCE`, Standard) und **„Player name“** (`NAME`). Für B-42 reicht das bestehende `<select>`; ein
-  Segment-Schalter fürs ganze Menü kommt mit B-40.
-- **Anonym-Modus:** Dort wird nach dem Aufdecken immer nach Karte sortiert (`api/lib.php`, Zeile ~375), „Player name“
-  greift also nicht. Die Option „Player name“ im Anonym-Modus ausgrauen bzw. mit kurzem Hinweis versehen (Text Delia),
-  damit die Einstellung nicht kaputt wirkt.
-- Bestehende Teams: `CHOOSE:*` → `SEQUENCE` (die 5 Teams sehen dieselbe Reihenfolge wie bisher, nur ohne Leiste).
-  `NAME`-Teams unverändert. Rundenhistorie (`pok_roundstats_tbl`) bleibt unangetastet.
+### B-117 Badges und Feier-Animationen
+Status: neu. Anlass: Live-Feedback zu R2 („fancier party animation“ bei Einigkeit). Idee Andreas (2026-11-05):
+Bindungsmaßnahme – Teams erarbeiten sich Badges, mit jedem Badge eine bessere Feier (Konfetti → Feuerwerk →
+Lasershow …).
+- Badges hängen am **Team** (Team-ID) – belohnt, denselben Link zu nutzen (gewollt).
+- Kriterien (offen): Runden, Spieler, genutzte Sets, „Strikes“ (alle dieselbe Karte); Daten liegen in der
+  Rundenstatistik.
+- Kein Stroboskop/Flackern (WCAG 2.3.1); bei `prefers-reduced-motion` nur eine ruhige Variante.
+- Abschaltbar („Celebrations: On/Off“ in Board → Results).
+- Klein anfangen (zwei, drei Stufen über Runden und Strikes); Stufen so anlegen, dass später neue oben drauf kommen
+  und bestehende Teams nicht sofort alles freigeschaltet haben.
+Offen: Schwellen, Sichtbarkeit der Badges, wer die Animation auslöst. Enthält die Feier-Ideen aus B-60.
 
-**Umsetzungsplan:**
-- **Ben (BE):** `api/update_results_order.php` nimmt nur noch `NAME` und `SEQUENCE` an (Rest → 400), `CHOOSE`-Logik
-  raus. `getDao()` liefert gespeicherte `CHOOSE:*` bis zum Daten-Update robust als `SEQUENCE` aus. SQL für den
-  Betreiber (in `db_schema_pok_inc.sql` dokumentieren, Andreas spielt es nach dem Deploy ein):
-  `update pok_teams_tbl set results_order = 'SEQUENCE' where results_order like 'CHOOSE%';` (vorher Anzahl zählen).
-  Spaltenkommentar von `results_order` auf `[NAME|SEQUENCE]` anpassen.
-- **Fred (FE):** Leiste `#order_by_div` samt `updateOrderByButtons`/`toggleOrderBy` und `CHOOSE`-Zweige in
-  `script.js` entfernen; Menü-Logik (`updateOrderByConfig`, `changeSortOrder`) auf zwei Werte; Anonym-Hinweis
-  (Ausgrauen/Hinweis abhängig von `anonymous_mode`) anbinden. `?v=`-Bumps.
-- **Delia (DES):** Beschriftung, Reihenfolge im Menü (unter Kartenset), Hinweistext und Optik des ausgegrauten
-  Zustands; CSS der Leiste entfernen.
-- **E2E:** Einstellung „Player name“ sortiert nach Name, „Card“ nach Karte; keine Leiste mehr nach dem Aufdecken;
-  Anonym-Modus zeigt den Hinweis und sortiert nach Karte; API lehnt `CHOOSE` ab.
+### B-118 Wachstum über Produktmechanismen (statt Werbung)
+Status: neu. Andreas (2026-11-06): nicht selbst groß bewerben, sondern Mechanismen, die mit der Nutzung skalieren –
+teilbare Seiten, immer mit Link zurück zur SEO-Seite auf komplexitaeter.de.
+- Teilnehmer werden Gastgeber: dezenter Weg vom Board zu „Eigenes Board anlegen“; messbar über neue Teams von Boards.
+- Geteilte Kartensets als öffentliche Seiten („In meinem Team nutzen“), vgl. Animals-Set B-116.
+- Ergebnisse zum Teilen (Session-Zusammenfassung als Bild/Link, mit dezentem Absender).
+- Methoden-Seiten auf der Website; Badges (B-117) zahlen darauf ein.
+Daten: Search Console ~500 Klicks/3 Monate, fast nur DE; Wachstum kommt über geteilte Links. Boards bleiben `noindex`.
 
-**AK:** Menü zeigt unter dem Kartenset „Arrange revealed cards by“ mit „Card“ / „Player name“, Standard „Card“; nach
-dem Aufdecken keine Name/Value-Leiste mehr; Umstellen im Menü sortiert die aufgedeckten Karten sofort um (Gleiten wie
-bei B-41); im Anonym-Modus ist „Player name“ ausgegraut bzw. erklärt; API nimmt nur `NAME`/`SEQUENCE`; nach dem
-Daten-Update keine `CHOOSE`-Werte mehr in `pok_teams_tbl`; E2E grün.
+### B-119 T-Shape: Wissenstiefe schätzen, Breite im Team sehen
+Status: neu, lose (Andreas, 2026-11-06). Jede Person schätzt die Tiefe ihres Wissens je Thema/Skill; die Breite ergibt
+sich über die Verteilung im Team. Neue Dimension: mehrere Themen nacheinander (B-52), Ergebnis als Team-Profil.
+Offen: Kartenset (Tiefe-Stufen), Darstellung (Matrix/„T“), Speicherung über Runden, Methodenbeschreibung zuerst.
 
-**Nachfix nach Staging-Test (Andreas, 2026-10-23):** Option heißt **„Card value“** statt „Card“ (Karte ist zu
-abstrakt, sortiert wird nach dem Kartenwert); Hinweis entsprechend „…arranged by card value.“ Im Anonym-Modus ist das
-**ganze Auswahlfeld deaktiviert** und zeigt fest „Card value“, egal was gespeichert ist; der gespeicherte Wert bleibt
-und erscheint nach dem Ausschalten des Anonym-Modus automatisch wieder.
+### B-120 Bucket-Board: Items gemeinsam in Schätz-Buckets ziehen
+Status: neu, groß (Andreas, 2026-11-06). Werte eines Kartensets als Buckets (Spalten), Items (B-52) werden gemeinsam
+hineingezogen – z. B. Magic Estimation; ähnlich Team as a Car. Linie „Methoden verkaufen sich, das Tool liefert den
+Rahmen“. Offen: eigener Modus oder eigenes Tool; gemeinsames Ziehen in Echtzeit (reichen „pull“-Signale, Konflikte?);
+Handy; Ergebnis/Export.
 
-**Live (2026-10-23, PR #31):** Daten-Update von Andreas eingespielt: 40 Teams umgestellt (29 `CHOOSE:SEQUENCE`,
-11 `CHOOSE:NAME`; die Analyse zählte nur Runden der letzten 180 Tage, die Tabelle enthält alle Teams seit Beginn).
-Alle auf `SEQUENCE` (wie geplant). Für die 11 `CHOOSE:NAME`-Teams wäre `NAME` genauer gewesen; Auswirkung gering
-(keine Runde in den letzten 180 Tagen), Umstellen im Menü ist ein Klick. Lehre: bei Daten-Updates die betroffenen
-Werte vorher sichern bzw. nach altem Wert unterscheiden.
+### B-121 Topic-Text gemeinsam bearbeiten (wie Google Docs)
+Status: neu (Andreas, 2026-11-06). Ein früherer Versuch mit Yjs schied aus: Der Beispiel-Server lief, aber der Kanal
+war öffentlich und die Topic-Texte (die sensibelsten Nutzerdaten) lägen bei einem fremden Dienst; Nachbau in poker-msg
+scheiterte technisch.
+Idee neuer Anlauf (Kai): poker-msg als dummer Relay je Team (Updates base64 durchreichen), Startzustand von PHP
+(Update-Log), Verdichten im Browser (Snapshot hochladen) – alles auf unseren Servern, PHP ohne Yjs-Bibliothek. Kanal
+(Andreas/Kai): eigene Route im selben poker-msg-Prozess (z. B. `/poker-msg-doc`) mit eigenen Grenzen, Abo pro Topic,
+nur offen beim Bearbeiten/Lesen. Einfachere Alternative: „Alice is editing …“ mit Sperre oder „letzter gewinnt“.
+Erst als kleiner Prototyp prüfen. Offen: Zusammenspiel mit B-52/B-120, Größe/Rate der Updates.
 
-### B-41 Kartenbereich auf CSS-Flex + FLIP umstellen (behebt Resize-Wobble)
-**Umgewidmet (2026-10-22, Andreas):** Aus dem Wobble-Finding wird ein eigenständiger, bounded Umbau – **entkoppelt**
-von den großen Epics B-40/B-37. Scope **nur Kartenbereich** (`#cbox` + Karten-Rendering): Positionierung von
-JS-`getCardPos`/`position:absolute` auf echtes **CSS-Flex** (`flex-wrap` + `justify-content:center` + `gap`)
-umstellen; Sortier-Glide per **FLIP** erhalten; beim Resize kein Glide (B-39 bleibt). **Draußen (bleibt B-37/B-40):**
-Karten-*Größe* kommt vorerst weiter über die bestehenden `.mobile`/`.desktop`-Klassen (`adaptToDevice`) – nur die
-Positionierung wird getauscht, nicht das Sizing; Menüs/Overlays/restliches Responsive später. Delia (CSS) + Fred
-(JS/FLIP), ein Branch. Ablauf: kurzes gemeinsames Planning zuerst, dann Umsetzung.
+### B-122 Schätzprämisse: kurze Begründung zur eigenen Karte (optionaler Modus)
+Status: neu (Andreas, 2026-11-06). Wer eine Karte legt, gibt eine kurze Begründung ein (~150 Zeichen): unter welcher
+Annahme geschätzt wurde; beim Aufdecken sieht man die Prämissen (ggf. nur der Extremwerte). Variante: erst alle
+Prämissen zeigen, dann darf jede Person die Schätzung anpassen, dann aufdecken. Offen: Pflicht oder freiwillig;
+Anonym-Modus; Darstellung; Speicherung (sensibler Freitext wie Topic-Texte); Zusammenspiel mit B-104/B-115.
 
-**Planning-Ergebnis (2026-10-22, freigegeben von Andreas nach Mockup-Vergleich):**
-- **Präzisierung „Wobbeln" (Andreas):** gemeint ist nur, dass die **Links-rechts-Abstände benachbarter Karten** beim
-  Resize nicht konstant bleiben. Im Mockup (heutige Logik nachgebaut) bleiben sie konstant, auf Staging nicht → die
-  Ursache steckt in der echten App, nicht in der Anordnung. Sie ist unbekannt, verschwindet aber sehr wahrscheinlich mit
-  der JS-Positionierung.
-- **Gewählt: Variante B** – Anordnung bleibt wie heute (jede Reihe zentriert), aber reines CSS-Flex statt
-  `position:absolute` + `getCardPos`, Sortier-Glide per FLIP (Web Animations API).
-- **CSS (Delia, `style/style.css`):** `div#cbox` → `display:flex`, `flex-wrap:wrap`, `justify-content:center`,
-  `align-content:flex-start`, `gap:15px 10px`; `transition:height` raus (die Höhe animiert künftig JS, siehe unten).
-  `.c`: `position:absolute`/`left`/`margin` raus, **`position:relative`** rein (Delete-
-  Button und Name sind absolut positioniert). `.c_move` und `#cbox.no-anim .c` entfallen. Hinweis: `#cbox` hat
-  `sizefit` und bekommt `.mobile`/`.desktop`.
-- **JS (Fred, `script/script.js`):** `getCardPos` und alle `left/top`-/`cbox.style.height`-Schreibzugriffe entfernen.
-  DOM-Reihenfolge = Anzeige-Reihenfolge: nur falsch stehende Karten per `appendChild` verschieben (sonst starten
-  Wackel-/Fade-in-Animationen neu). FLIP: First (inkl. laufendem Transform) → laufende `flip`-Animationen abbrechen →
-  DOM ändern → Last → `animate()` mit `id:'flip'`, 1 s, `ease`; nur Karten mit First-Position. `cardValueChanged`
-  über das FLIP-Delta auslösen (Verzögerung 1 s bei Bewegung) und per `animationend` wieder entfernen. Anonym-Modus:
-  kein FLIP. `handleResize`: nur `adaptToDevice` + `showCardUsage`, laufende `flip`-Animationen beenden.
-  `prefers-reduced-motion`: kein FLIP. **Höhe springt nicht (Andreas):** Ändert sich durch neue Daten die Zahl der
-  Reihen, gleitet die `#cbox`-Höhe in 1 s mit (Höhe vor/nach der DOM-Änderung messen, `animate()` mit `id:'height'`,
-  wie Mockup mit „Höhe gleitet"). Beim Resize keine Höhenanimation.
-- **Schmale Bildschirme (< 800 px):** heute beginnt die letzte Reihe links im Raster, mit B wird sie zentriert
-  (bewusst, wie Desktop; auf Staging prüfen).
-- **E2E (Fred):** zuerst neuer Test „Abstand benachbarter Karten bleibt beim Resize konstant" (Breiten-Sweep, ±1 px) –
-  muss auf dem **heutigen** Stand fehlschlagen (belegt, dass er Andreas' Wobbeln erfasst), nach dem Umbau grün.
-  `resize-no-anim.spec.ts` auf FLIP umstellen (kein laufendes `flip` nach Resize). Neu: Umsortieren löst `flip` aus;
-  Anonym-Modus löst keins aus. `card-reuse.spec.ts` bleibt (Kommentar anpassen).
-- **Ablauf:** Delia legt `feature/B-41-flex-layout` von `release` an und committet das CSS → Fred: Test zuerst, dann JS,
-  E2E, `?v=`-Bumps (`style.css`, `script.js` in `board.html`/`init.html`) → Review durch Kai → Andreas auf Staging.
-- **AK:** Abstände benachbarter Karten beim Resize konstant (E2E); Umsortieren gleitet, auch über Reihen hinweg;
-  Höhe gleitet bei Reihenwechsel durch neue Daten (springt nicht); kein Gleiten beim Resize; Anonym-Modus ohne Gleiten; kein `getCardPos`/`position:absolute` mehr im Kartenbereich; alle
-  E2E grün.
+### B-123 KI-Teammitglied schätzt mit (Ausbaustufe)
+Status: neu (Andreas, 2026-11-06), nach B-52/B-121. Haben Items einen erklärenden Text, könnte optional eine KI
+mitschätzen (eigene Karte, ggf. mit Prämisse wie B-122). Offen: Datenschutz (nur mit ausdrücklicher Zustimmung des
+Teams, Anbieter/Hosting), Kosten, wie die KI-Karte zählt (nicht in Durchschnitt/Einigkeit?).
 
-**Ursprüngliches Wobble-Finding (bleibt als Begründung):**
-Nach B-39 (Karten springen beim Resize sofort statt zu gleiten) fiel auf: Beim langsamen Ziehen der Fensterbreite
-„wobbeln" die Karten – die Abstände werden kleiner, größer, wieder kleiner. **Kein Regressionsbug** von B-39: Die
-1-Sekunden-Transition hat diesen Effekt vorher nur weichgezeichnet; B-39 hat ihn sichtbar gemacht. Tritt nur beim
-aktiven Fenster-Ziehen auf, nicht im normalen Spiel/auf fester Größe.
+### B-124 „:labs“-Menü für neue Funktionen
+Status: neu (Andreas, 2026-11-06). Eigenes Menü „:labs“ im Header (Name entschieden; verworfen: „:beta“,
+„:experimental“), in dem Teams experimentelle Funktionen selbst einschalten (z. B. B-119, B-120, B-122, B-123) und
+direkt Feedback geben. Offen: Einstellung pro Team (Feature-Flags in `pok_teams_tbl`) oder pro Person; Sichtbarkeit;
+wann eine Funktion Standard wird oder verschwindet.
 
-**Ursachenspuren (für die Untersuchung):**
-- `getCardPos()` (script.js:243) rechnet mit fixer Slotbreite **110 px**; Karten pro Zeile = `floor(gScreenWidth/110)`.
-  Das ist eine Stufenfunktion → an jedem Vielfachen von 110 bricht eine Karte in die nächste Zeile um, die Restzeile
-  wird neu zentriert (`margin`) → Sprung. Dazwischen wandert der Zentrier-Rand stetig. Ergebnis: Sägezahn.
-- Zweites Schwellensystem: `adaptToDevice()`/`getBrowserWidth()` schalten `.mobile`/`.desktop` bei 800/991/1199 um.
-  `.c.mobile` ist real **100 px** breit, der JS-Slot aber **110 px** – Slot ≠ tatsächliche Kartenbreite.
-- Andreas' Hypothese: hängt evtl. auch an **wann/wie oft** das `resize`-Event feuert (kein Throttle/Debounce;
-  `handleResize` rendert pro Event alle Karten neu). Prüfen.
+### B-125 Mitspieler pausieren statt entfernen
+Status: neu (Andreas, 2026-11-06). Löst die Roadmap-Idee „Reveal now“ (B-59; Titel bleibt öffentlich, die Stimmen
+gelten der Idee). Use-Case: Jemand ist kurz weg, Bildschirm offen; die Gruppe kann nicht aufdecken, will die Person
+aber nicht entfernen. Die away-Erkennung (B-110) hilft nicht (offener Tab wirkt anwesend), Inaktivität taugt nicht
+(Zuhörende tippen auch nichts) → bewusst manuell durch das Team.
+- Pause-Symbol neben dem Mülleimer am Platz; jeder am Tisch darf pausieren (vermutlich), auch sich selbst.
+- Pausiert gilt, bis die Person selbst wieder aktiv wird (nicht nur eine Runde; neue Runde: Pause bleibt). Sie blockiert
+  das Aufdecken nicht (`all_players_ready`), bleibt aber am Tisch.
+- Ohne gelegte Karte: Systemkarte „Paused“ (wie „joined in“ aus B-102, nicht über `setc.php` legbar). Liegt schon eine
+  Karte, bleibt sie liegen und wird überblendet.
+- Aufheben nur durch die Person selbst (Karte legen); optional Overlay „You were paused“ mit „OK, I'm back“.
+- Technisch: Spalte in `pok_players_tbl` (z. B. `paused`), Ben.
+Offen: Zählt die überblendete Karte beim Aufdecken (Tipps, Statistik)? Anpassungen an Ready-Status, Tipps,
+Rundenstatistik, Sortierung, Ergebnis, Beobachter.
 
-**Harte Vorgabe (Andreas):** Die Animation, dass Karten an ihre neue Position **gleiten, wenn sich die Sortierung
-ändert** (z. B. nach Aufdecken/neuer Runde), **muss erhalten bleiben**. Geändert werden darf nur das Resize-Verhalten;
-die „kein Gleiten beim Resize"-Eigenschaft aus B-39 bleibt.
+### B-129 Session-Planer: Agenda mit Timeboxen je Item
+Status: neu (Idee Andreas, 2026-11-10; so bei keinem anderen Tool gesehen). Baut auf B-52 (Items) und B-67 (Timer).
+Problem: POs sind unglücklich, wenn es nicht vorangeht – alle hängen 40 Minuten an Item 2.
+- Jedes Item bekommt eine **eigene Timebox**, bewusst unterschiedlich (z. B. 20 min „tief einsteigen“, 5 min „nur
+  grob vorstellen, Fragen sammeln“), z. B. durch Größerziehen in einer Zeitleiste. Die Session hat eine Timebox; die
+  Summe zeigt, ob die Agenda passt.
+- **Im Meeting:** aktives Item zeigt Restzeit (Überzug amber), ruhig der Gesamtstand („6 min hinter Plan, noch 4
+  Items“) – nur signalisieren, nichts erzwingen. „Parken“: festgefahrenes Item ans Ende bzw. in die nächste Session.
+- **Agenda vorab** über den Team-Link einsehbar, „Copy agenda“ zum Verschicken.
+- **Reifegrad am Item** statt festem Ziel je Durchgang; wächst mit jedem Gespräch, vom Team gesetzt. Stufen: neu (noch
+  nicht angesehen) · gering (grobe Idee, richtige Fragen stellen) · mittel (Richtung wird klarer, kann sich noch
+  ändern) · hoch (Feinschliff, eigentlich umsetzen). In der App beschreibend, z. B. *new · rough · shaping · ready*
+  (nicht low/high). Darstellung gesetzt: **liegendes Dreieck** links breit → rechts spitz (Unsicherheitstrichter).
+Feedback zum Mockup `mockups/planner/` (Andreas, 2026-11-10): Tabs Agenda / Later / Done schlüssig („Later“ besser
+benennen); Agenda-Leiste in der Sidebar (Segmente je Item, „jetzt“, „on time · 3 items left · ends 10:00“) gefällt
+sehr; einfachster Fall muss einfach bleiben; kein T± am Timer (gibt es in der App nicht mehr).
+Offen: Wer darf Timeboxen ändern (vermutlich alle)? Hinweis bei Überzug (Ton, Toast)? Was genau macht „Parken“?
+Liefert der Spread einen Vorschlag für den Reifegrad?
 
-**Richtung:** Delia untersucht (Throttle/Debounce des Resize, gleichmäßige Zentrierung ohne Sägezahn, ggf. echtes
-CSS-Layout mit `gap`+`justify-content` statt JS-Pixelmath) und schlägt einen kleinen Fix vor. Die saubere
-Gesamtlösung gehört zu „Kartenlayout verbessern"/Responsive (B-40/B-37).
+### B-132 Deck je Item, mehrere Fragen je Item
+Status: neu (Idee Andreas, 2026-11-13). Weiterführung von B-52/B-129, „kontinuierliches Refinement“. Zwei
+Dimensionen, getrennt umsetzbar:
+1. **Set je Item** (überschaubar): Item merkt sich das Set (Deck-ID + Kartenauswahl); beim Aktivwerden bzw. „Next
+   item“ stellt das Board mit der neuen Runde auf dieses Set um, ohne Angabe gilt das Team-Deck. Dafür Kartenauswahl
+   je Deck speichern statt nur fürs aktuelle Deck. Historie/Export zeigen das Set je Item.
+2. **Anschließende Metafrage** (z. B. Reifegrad, Unsicherheit als eigenes Deck im Katalog): zweite Abstimmung je Item
+   nach dem Schätzen; der PO kann einen Reifegrad vorab eintragen, danach stimmen alle ab; Ergebnis je Durchgang in der
+   Historie. Offen: Ablauf (wer schaltet weiter, was zeigt das Board dazwischen).
+Bis dahin ist die Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); vorhandene Werte werden angezeigt.
+Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
 
-**Analyse-Ergebnis (Delia, 2026-10-22): kein kleiner sauberer Fix – Lösung in B-40/B-37.** Verifiziert per
-Code-Analyse + numerischer Simulation von `getCardPos` über einen Breiten-Sweep:
-- Das Wobbeln entsteht am **Umbruchpunkt** (alle 110 px Breite): eine Karte bricht in die nächste Zeile, jede Zeile
-  wird unabhängig neu zentriert → Sprung ≈ halbe Slotbreite (~55 px). Innerhalb einer Zeile ist der Abstand konstant,
-  dort gibt es kein Wobbeln; sobald alle Karten in **eine** Zeile passen, driftet der Block nur noch sauber mittig.
-- **Event-Frequenz ist NICHT die Ursache** (Hypothese widerlegt): Throttle/Debounce ändert nichts am Sägezahn, der in
-  der Stufenfunktion steckt. Ein reiner Trailing-Debounce (erst nach Drag-Ende neu positionieren) entfernt zwar das
-  sichtbare Wobbeln, bringt aber Lag **und** horizontales Scrollbar-Flackern beim Schmaler-Ziehen (kein
-  `overflow-x`-Clipping) – nicht besser.
-- Der 110-px-Slot vs. echte 100-px-Karte ergibt nur einen konstanten 2-px-Spalt, **kein** Wobbeln – Angleichen löst
-  nichts.
-- **Das Umbrechen-und-Neuzentrieren ist jedem Wrap-Layout eigen** (auch CSS `flex-wrap` springt an seinen Grenzen).
-  Wegrechnen geht nur, indem man das Layout vom JS-Pixelmath auf **echtes CSS** umstellt.
+### B-139 Reaktionen mit sichtbarem Tageskontingent
+Status: refined (Andreas, 2026-11-16). Feedback (OTHER, 2026-11-16): „Colleagues keep throwing fish. Can we get a
+setting to disable throwing of emojis please?“ Auswertung poker-msg-Log: ein Team mit Fisch-Wellen bis 121 Würfe/min
+(mehrere Personen, je unter dem Limit 10/min); sonst 187 Teams unauffällig. Verteilung (559 Reaktionen mit Namen):
+Nudge 43 %, Fisch 47 % (ohne das eine Team 62 % / 24 %), Think, Party, Thumbs, Cake, Clap, Heart zusammen < 10 %.
+Entscheidung (Andreas): kein Abschalter, keine versteckte Grenze, sondern ein **sichtbares Kontingent**: jede Person
+kann **jedes Wurf-Emoji 1× pro Tag** werfen – „man muss sich überlegen, wo man es hinwirft“.
+- Unter jedem Emoji der Leiste steht der Rest, z. B. `1×` / `0×`; bei `0×` ausgegraut (Tooltip/aria: „back tomorrow“).
+- **Nudge ist ausgenommen** (Funktion, kein Wurf; Limits wie bisher).
+- Durchsetzung: Board merkt sich die Würfe je User-ID und Tag (localStorage) für die Anzeige; poker-msg zählt je
+  Werfer-mkey, Emoji und Tag im Speicher (keine DB; nach Neustart beginnt die Zählung neu) und verwirft Würfe über dem
+  Kontingent. Die bisherigen Limits (3/s, 10/min) bleiben.
+Offen: Tagesgrenze für Board und poker-msg gleich festlegen (Vorschlag: 00:00 UTC, damit beide übereinstimmen).
 
-**Wurzel-Lösung (Vorschlag für B-40/B-37), mit Fred gemeinsam zu schneiden:**
-1. Karten von `position:absolute` + JS-`left/top` (`getCardPos`) auf normalen Flow im bestehenden Flex-Container
-   `#cbox` (`display:inline-flex; flex-wrap:wrap; justify-content:center`) umstellen, `gap` statt JS-Margin,
-   `getCardPos` und die manuelle `#cbox`-Höhe entfallen. Umbruch/Zentrierung macht der Browser kontinuierlich und
-   korrekt; der 110-vs-100-Mismatch verschwindet.
-2. **Sortier-Glide erhalten (harte Vorgabe):** Die 1-s-`left/top`-Transition (`.c_move`) funktioniert ohne
-   Absolut-Positionierung nicht mehr → Ersatz per **FLIP** (First-Last-Invert-Play: vor Reorder Positionen messen,
-   nach Reflow per `transform` an alte Stelle setzen, auf `transform:none` animieren). Das ist der eigentliche
-   Zusatzaufwand und der Grund, warum es nicht in ein kleines B-41 passt.
-3. **Kein Glide beim Resize (B-39) bleibt:** beim Resize einfach keine FLIP-Animation auslösen (analog zum heutigen
-   `.no-anim`). Aufwand/Risiko mittel (FLIP + E2E, Animation flaky-anfällig), aber die einzige Lösung, die das Wobbeln
-   glättet UND den Glide erhält. Berührt JS-Verhalten → Fred mit einbinden; CSS/Tokens/Responsive macht Delia.
+## Offen: Technik & Betrieb
 
-Optionaler Mini-Hygiene-Gewinn (kein B-41-Fix, entfernt das Wobbeln NICHT): `requestAnimationFrame`-Coalescing des
-Resize-Handlers (max. ein Reposition pro Frame) – bei der B-40-Umstellung mitnehmen.
+### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
+Status: refined. Reguläre Unterstützung für 22.04 endet im April 2027. Beide Server auf 24.04, zuerst Staging (vorher
+Snapshot beim Hoster), Live danach an einem Wochenende. Zu beachten: ondrej-PHP-PPA wird beim Upgrade abgeschaltet und
+muss für `noble` neu eingerichtet werden (sonst fehlt PHP 8.4); `ev` für `poker-msg` neu bauen; nginx wird 1.24; die
+weiteren Seiten auf beiden Servern mittesten (nach Umstellung einen PHP-Endpunkt testen, nicht nur `/`).
+Offen: Zeitpunkt; ob das PPA langfristig bleibt oder auf `packages.sury.org` umzieht.
 
-**Entscheidung Anonym-Modus (Andreas, 2026-10-23):** Im Anonym-Modus gleiten die Karten grundsätzlich nicht (so war es
-schon vor B-41: `c_move` wurde entfernt; heute `flip = !anonymousMode` in `updatePlayersCards`). Grund: Beim Aufdecken
-werden die Namen durch `******` ersetzt und nach Wert sortiert; eine Gleitbewegung würde verraten, wer welchen Wert
-gewählt hat – ebenso beim Ändern einer Karte nach dem Aufdecken. Eine Verfeinerung (nur bei Aufdecken/neuer Runde
-abschalten) wurde bewusst verworfen: so ist es einfacher und sicherer.
+### B-128 R3-Deck-Backup prüfen und löschen (Mitte Dezember)
+Status: refined, Termin Mitte Dezember 2026 (Andreas, 2026-11-09). Die R3-Deck-Migration übernimmt das Deck eines
+Teams erst beim nächsten Laden (Stand 2026-11-09: 192 ok, 0 mismatch, 21 danach selbst geändert, rund 24.400 noch
+nicht wieder geladen). Dann `php8.4 tools/migration/check_deck_migration.php --verify` auf Live wiederholen; bei
+0 mismatch `pok_teams_deck_backup_r3` löschen (`drop table`, Befehl bereitet Kai vor, Betreiber führt aus). Danach
+entscheiden, ob `tools/migration/` aus dem Repo kann (siehe B-126).
 
-### B-40 Look & Feel / UX-UI-Überarbeitung (Epic)
-Größeres Thema **nach** dem CSS-Refactoring (B-36 als technische Voraussetzung: erst aufräumen, dann umgestalten).
-Ziel: Oberfläche modernisieren und mobil deutlich verbessern – **ohne den bestehenden Charme der App zu verlieren**.
-Dafür eine eigene Design-Rolle (siehe `.claude/agents/`), die gestalten **und** technisch umsetzen kann.
+### B-136 Umfrage entfernen
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Die In-App-Umfrage ist praktisch tot (Fund Fred, 2026-10-30: `get_survey.php`
+bindet die User-ID mit `bind_param('i', …)`, `get_survey_id()` vergibt nie eine Umfrage) und wird ausgebaut.
+Umfang: Frontend-Code der Umfrage (u. a. `toggleSurvey()`, Survey-Box, `fillResultsBars()`, CSS),
+`api/get_survey.php` und zugehörige Endpunkte sowie Umfrage-Abfragen in `getDao()`/`api/lib.php` entfernen. Tabellen
+`pok_survey*_tbl` vorerst behalten. Erledigt damit auch `survey_intro` per `innerHTML` (B-43). Ersetzt B-90.
 
-Ideen-Sammlung von Andreas (2026-10-22, unsortiert, wird im Refinement geschärft und in einzelne Einträge
-geschnitten):
-- **Menüs als modales Voll-Overlay** (halbtransparent zum Hintergrund, wie „Become Observer/Player"), dadurch auch
-  mobil sinnvoller mit responsiven Elementen aufbaubar. → jetzt **B-51**.
-- **Menüs userfreundlicher strukturieren und aufräumen.** → jetzt **B-51**.
-- **Kartenlayout verbessern** – z. B. die Spielernamen besser unter den Karten platzieren.
-  Andreas (2026-10-27): Namen später **über** die Karten setzen; heute passen bei ~100-px-Karten in Mono-Schrift nur
-  ~8–9 Zeichen (Rest „…“, voller Name als Tooltip).
-- **Karten mit Beschriftungen** ermöglichen (z. B. um echtes Delegation Poker zu spielen).
-- **Content und Theming der Karten trennen** – z. B. Fibonacci-Zahlen mal mit Sommer-, mal mit Winterfarben.
-- **Kartenziffern modernisieren.**
-- **„Karte nach dem Aufdecken geändert"**: als zusätzliche Karte dargestellt, die auf die erste gelegt wird, wobei
-  der ursprüngliche Wert noch erkennbar bleibt. **Im Anonym-Modus deaktivieren** (Andreas, 2026-10-23): sonst ließe
-  sich über die geänderte Karte zuordnen, wer welchen Wert gewählt hat.
-- **Kartenauswahl für Mobile deutlich verbessern.**
-- **Mobile-Darstellung allgemein deutlich verbessern.**
-- **Platz-Konkurrenz auflösen:** Timer, Notiz-/Topic-Zettel, „Neue Runde"-Knopf u. a. konkurrieren mit den Karten um
-  den Platz – das nervt. Layout so umbauen, dass diese Elemente den Kartenbereich nicht verdrängen (z. B. eigene
-  Zonen/Leiste, Overlay, oder Karten-Bereich bekommt verlässlich seinen Raum).
+### B-10 `poker-msg` modernisieren und absichern
+Status: neu; Teile erledigt (Event-Loop B-19, Heartbeat B-24, Drosselung der Reaktionen B-131). Rest offen:
+- Prozess läuft unter supervisor als `root` → eigener User.
+- Ratchet 0.4 wird kaum gepflegt → Abhängigkeiten aktualisieren oder Alternative prüfen.
+- Keine Begrenzung von Verbindungen bzw. Nachrichtengröße.
+- Browser-`push` entfernen → B-93.
 
-- **Spieler entfernen ohne Lösch-Icon auf jeder Karte** (Andreas: heute schlechte UX; Ideen von Delia, 2026-10-23):
-  1. Spieler-Liste im Menü („Players“) mit Name, Status (aktiv / inaktiv seit …), Rolle und „Remove“ mit Rückfrage –
-     Delias Empfehlung als Basis (Karten bleiben ruhig, gut mit Touch/Tastatur; Ben müsste „inaktiv seit“ liefern).
-  2. Karte antippen/anklicken öffnet ein kleines Kontextmenü („Remove from table“, später z. B. „Make observer“) –
-     optional als Ergänzung (muss entdeckbar sein).
-  3. Inaktive Spieler blasser darstellen und nur dort „Remove?“ anbieten – als visuelle Hilfe zu 1 (braucht ein
-     verlässliches Aktivitätssignal, Ben/Fred).
-  Bis dahin bleibt das Icon (B-36: auf Touch-Geräten immer sichtbar, sonst bei Hover).
+### B-12 Zeichensätze auf `utf8mb4` vereinheitlichen
+Status: neu. Topic und weitere Spalten sind seit B-85 `utf8mb4`; noch 15× `utf8mb3`, 2× `latin1` (Tabellen/Spalten).
+Umstellung inkl. Verbindung; größere DB-Änderung, braucht ein Wartungsfenster (abends/Wochenende).
 
-Hinweis: Überschneidet sich mit B-37 (Responsive per CSS) – das Responsive-Fundament ist Teil dieses Themas. Vor
-Umsetzung je Punkt eine REQ-artige Schärfung (Ziel, Umfang, Akzeptanzkriterien) und Schnitt in kleine, einzeln
-deploybare Schritte; Verhalten/Datenmodell nur ändern, wo ausdrücklich gewollt (z. B. Karten-Beschriftungen und
-Content/Theming-Trennung berühren Datenmodell/`cards.json` – dann Ben einbinden).
+### B-14 `script/script.js` in Module aufteilen
+Status: neu. `script.js` hat inzwischen 4.090 Zeilen mit globalen Variablen. Schrittweise in ES-Module zerlegen, ohne
+Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
 
-### B-39 Resize: Karten sofort neu positionieren statt zu animieren
-Aus dem Schlank-Spike (2026-10-22) / B-37. Die Kartenpositionen hängen von Bildschirmgröße, Kartengröße, Anzahl und
-Sortierung ab (mehrere Zeilen möglich, muss auch mobil gehen). Bei jedem `resize` berechnet `handleResize()`
-(`script.js:1082`) die Positionen neu und setzt `card.style.left/top`. Auf `.c` liegt aber
-`transition: left 1s, top 1s` (`style.css:415`), sodass die Karten beim Resizen **langsam gleiten** statt sofort zu
-springen – es wirkt, als würden sie kurz verschwinden und wiederkommen. Die Slide-Animation ist für echte
-Zustandsänderungen gedacht (Umsortierung, neue Karte), nicht fürs Resizen.
+### B-34 Synchrone XMLHttpRequest auf async umstellen
+Status: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
+(`loadTextFileAjaxSync()`) für `cards.json`, `card_catalog.json` und den Farbmodus. Der Aufrufer erwartet einen
+synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-Warnung, blockiert kurz den Main-Thread.
 
-**Fix (klein, Frontend-only, abgestimmt mit Andreas 2026-10-22):** Beim Resize die Transition kurz abschalten,
-Positionen sofort setzen, danach wieder aktivieren – plus Debounce gegen Ruckeln beim Ziehen. Konkret: `#cbox` eine
-Klasse `.no-anim` geben (`#cbox.no-anim .c { transition: none; }`), in `handleResize()` vor dem Neupositionieren
-setzen und nach zwei `requestAnimationFrame` wieder entfernen. Echte Umsortierungen animieren unverändert weiter.
+### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
+Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
+„aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
+Sina.
+Entscheidung (Andreas, 2026-11-16): als Idee behalten, z. B. für eine Auswertung „wie lange bis zur Entscheidung“.
 
-**AK:** Beim Resizen/Rotieren springen die Karten sofort an die richtige Position (kein 1-s-Gleiten, kein
-„Verschwinden"); eine echte Umsortierung (z. B. neue Runde, Aufdecken) animiert weiterhin wie bisher; Board und
-Mobil geprüft; `?v=`-Bump für `script.js`/`style.css`; E2E grün. Unabhängig vom größeren B-37 (kann davor laufen).
+### B-84 Kartenwechsel-Stürme dämpfen
+Status: neu (Andreas, 2026-11-16: „dann müssen wir uns was überlegen“). Befund Access-Log Live 02.–16.11.: an
+Werktagen 5–88 User-Minuten mit > 60 `dao.php`-Aufrufen, Spitzen 546/min für einen User. Ursache sind keine hängenden
+Clients, sondern Teams, in denen sehr schnell Karten gewechselt werden (257–330 `setc.php`/min, ~4–5/s): jeder
+Wechsel schickt allen Boards ein `pull`, jedes lädt `dao.php` → ~2.500 Reloads/min (Faktor ≈ Teamgröße). Harmlos für
+die Nutzer, aber unnötige Last.
+Ideen (noch nicht entschieden):
+- Board: schnelle Kartenwechsel zusammenfassen – Karte springt sofort, gesendet wird höchstens alle ~300 ms die zuletzt
+  gewählte.
+- poker-msg: Pull-Fenster je Team bei Bursts von 100 ms auf ~500 ms strecken, sonst 100 ms.
+- Server-seitige Begrenzung `setc.php` je User.
+Frühere Entscheidung (2026-10-30) gilt weiter: nicht pro IP oder Team begrenzen (große, aktive Teams sind eine
+Erfolgsgeschichte). In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
 
-### B-38 `dao.php`-Payload und Render-Pfad verschlanken (Spike)
-`api/dao.php` ist der am häufigsten aufgerufene Endpunkt (jeder Client lädt nach jedem `pull` den kompletten
-Team-Zustand neu). Vor einer Optimierung erst **messen/verstehen** (Spike): Wie groß ist die JSON-Antwort typisch?
-Enthält sie Felder, die der Client nicht nutzt? Rendert das Frontend nach jedem `pull` alles neu oder nur Deltas?
+### B-94 Neuladen nach Fehlschlag wiederholen
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: neu. Fund Tessa (2026-10-30): `updateDao()` hat kein `.catch`; schlägt das Neuladen nach dem eigenen Schreiben
+fehl (Netz, 500), bleibt das Board bis zum nächsten `pull`/Neuaufbau (bis 40 s) auf altem Stand. Vorschlag: einmal nach
+kurzer Pause erneut versuchen (B-135 wiederholt nur Schreib-Requests). Außerdem `docs/b81-server-notify.md` auf den
+umgesetzten Heartbeat-Wächter nachziehen (nennt noch `expectPull`).
 
-**Spike-Ziel:** Bestandsaufnahme `dao.php`-Antwort (Felder, Größe, Häufigkeit) + Frontend-Render-Pfad (`updateDao`
-in `script.js`). Ergebnis: priorisierte Liste (z. B. ungenutzte Felder weglassen, Caching/`ETag`, Delta-Updates) oder
-Entscheidung „so lassen" wie bei B-09. Kein Umbau im Spike. Niedrige Priorität, aber hoher Hebel wegen der Frequenz.
+### B-97 Assets aufräumen
+Status: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtlicher:
+- Brand-SVGs (`brand_*.svg`, `brand_icon_*.svg`) je ~130 KB (sehr viele Pfade) für ein 20–24-px-Zeichen →
+  verkleinern (svgo o. ä.; Delia). Gzip für SVG ist seit 2026-10-22 aktiv.
+- Laut Fund 2026-10-31 lädt das helle Theme zuerst die dunkle Datei und `setColor()` setzt `src` bei jedem Update
+  neu – prüfen, ob seit #103 noch so.
+- `brand.png` und rund 50 alte `c_*.png`, die nach den gerenderten Karten (R3) nur noch in `mockups/` genutzt werden:
+  löschen oder dorthin verschieben. Vorher Referenzen in HTML/CSS/JS/PHP/JSON prüfen; `src/xcf/` bleibt.
 
-**Spike-Funde (2026-10-22):** `api/dao.php` ist nur eine Hülle (`echo json_encode($data_obj)`); den Payload baut
-`getDao()` in `api/lib.php`. Antwort: 25 Skalar-Felder (`name`, `topic`, `timer_*`, `all_players_ready`, …) + ein
-`players`-Array (im Schnitt ~5–6 Einträge). Grob **1–2 KB** – **Payload-Reduktion lohnt nicht** (Tendenz „so lassen"
-wie B-09; ungenutzte Felder wegzulassen spart kaum etwas).
-- `cards.json`-Lesung: pro dao-Request **einmal** (über `sort_players_by_sequence`, `api/lib.php:95`); die zweite
-  Lesung (`:447`) steckt in `add_team()` und läuft nur beim Team-Anlegen. Eine kleine Datei einmal lesen + decoden
-  ist vernachlässigbar (OS-Filecache) → **kein Fix nötig** (ursprünglich fälschlich als „zweimal/Request" notiert).
-- **Render-Pfad:** Das Frontend rendert nach jedem `pull` den **kompletten** Zustand neu (`updateDao`), keine Deltas.
-  Delta-Rendering wäre der eigentliche Hebel, aber größerer Umbau – überschneidet sich mit B-14 (JS-Module) und B-37
-  (Resize-Logik). Erst nach denen sinnvoll; hier nur notiert.
+### B-137 Restliche SQL-Konkatenation auf Prepared Statements
+Status: im Sprint 9, Schritt 2 (Andreas, 2026-11-16). CLAUDE.md nennt noch String-Konkatenation u. a. in
+`validate_team()` (`api/lib.php`), `api/delete.php`, `api/feedback.php`. Alle Reste finden und umstellen, ohne
+Verhaltensänderung.
 
-### B-133 Nudge mit Ton und Tab-Hinweis
-Status: in Umsetzung (Feedback „Small beep / ringtone for nudge action“, 2026-11-13; Andreas: gleich mit einbauen).
-Der Nudge (B-110) ist bisher rein optisch; wer im Video-Call oder in einem anderen Tab ist, merkt ihn nicht.
-- Nur beim **angestupsten** Spieler: kurzer, leiser Ton (Web Audio, keine Audiodatei), auf Android zusätzlich kurz
-  vibrieren.
-- Tab im Hintergrund: Titel blinkt („👋 Your turn – …“), bis der Tab wieder sichtbar ist. Braucht keine Interaktion.
-- Schalter „Sound on nudge“ im `:you`-Menü, Standard an, je Gerät gemerkt (localStorage).
-- Autoplay-Sperre der Browser: Ton erst nach einem Klick/Tipp auf der Seite (Audio-Kontext wird dabei angelegt),
-  nach Neuladen erneut. iPhone: Stummschalter/gesperrter Bildschirm → kein Ton. Deshalb Ton nur als Zusatz.
+### B-138 CI: `php -l` als schneller Vorab-Check
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Alle PHP-Dateien (App, ggf. `tools/`) per `php -l` mit PHP 8.4
+prüfen, bevor die E2E-Shards starten; schlägt früh und billig fehl.
 
-### B-134 CI schneller
-Status: erledigt (2026-11-13, Andreas). E2E in 3 parallelen Shards (~4 statt ~10 min); PRs nach `release` ohne
-Tests mit Tag `@slow`, Push auf `release` komplett. Sammel-Job behält den Check-Namen `e2e (PHP 8.4)`.
+## Offen: Sicherheit & Datenschutz
 
-### B-135 Schreib-Requests scheitern in Safari nach langer Tab-Nutzung
-Status: in Umsetzung (Andreas auf Staging, 2026-11-13). Nach einem Kartenset-Wechsel kam ~30 s lang kein Request
-beim Server an (auch kein Heartbeat), Safari meldete `TypeError: Load failed`, bis neu geladen wurde. Ursache sehr
-wahrscheinlich: nginx 1.18 schließt eine HTTP/2-Verbindung nach 1.000 Requests (`http2_max_requests`), ein lange
-offener Board-Tab erreicht das.
-- Server: `http2_max_requests 10000;` in `/etc/nginx/conf.d/http2-max-requests.conf` (Staging erledigt, Live mit dem
-  nächsten Rollout).
-- App: `apiWrite()` wiederholt idempotente Schreib-Requests (Karte legen, Set, Einstellungen) nach einem reinen
-  Netzfehler einmal nach 300 ms; nicht bei New round, Items anlegen/weiterschalten, Löschen, Feedback.
+### B-91 Entfernen und Löschen nur mit Berechtigung
+Status: refined. Fund Sina, Gedanke Andreas (2026-10-30):
+- **Anderen Spieler entfernen** (`api/delete.php`, heute nur `t` + `mkey`): Aufrufer schickt zusätzlich seine User-ID
+  und darf nur entfernen, wenn er selbst (nicht entfernter) Mitglied des Teams ist. Ziel bleibt der `mkey`.
+- **Eigenen User löschen** (`api/delete_user.php`, nur `id`): bleibt auf die eigene ID beschränkt (sie ist das
+  Geheimnis); prüfen, ob ein Bestätigungs-Merkmal sinnvoll ist.
+- **Grundsatz:** Ein Client sieht nur seine eigene User-ID, andere Spieler nur über den `mkey` (`dao.php` erfüllt das).
+  Übrige Antworten (Roadmap, Survey, Promo, Statistik, `seen.php`, `get_topics.php`) prüfen (Sina) und den Grundsatz
+  in CLAUDE.md aufnehmen.
+- REST-Verben erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
+
+### B-93 poker-msg: Browser-`push` entfernen
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined. Fund Sina (2026-10-30): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an – wer eine Team-ID
+kennt, kann ohne API-Aufruf beliebig viele Pulls an alle Boards des Teams auslösen. Seit B-81 (R2) sendet kein Client
+mehr `push`: `push` in poker-msg entfernen oder über dieselbe Drosselung wie `onNotify` leiten. Nebenbei:
+`api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE.
+
+### B-13 MySQL-Zugriff von außen einschränken – oder Grafana ablösen
+Status: neu. Port 33060 schließen, Port 3306 per Firewall nur für die Grafana-Instanz öffnen, `grafana_usr` auf deren
+Adresse beschränken und auf Leserechte prüfen. MySQL lauscht bewusst auf `0.0.0.0` (CLAUDE.md) – nur mit Rücksprache.
+Erweitert (Andreas, 2026-11-16): Brauchen wir Grafana überhaupt? Die 3–4 Charts dort ließen sich in `stats.php`
+integrieren (Daten liegen in den `_stats`-Tabellen). Dann könnte MySQL ganz auf `127.0.0.1` und der Firewall-Teil
+entfiele. Erst die Charts sichten, dann entscheiden.
+
+### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
+Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
+DB aber neben Name und Team → pseudonym, also personenbezogen. Gelöscht wird nur `pok_players_tbl` (2 Monate
+Inaktivität je Team). Dauerhaft: `pok_roundstat_details_tbl` (User-ID, Name, Karte je Runde),
+`pok_analytics_events_tbl` (User-ID je Event), `pok_promotions_tbl`; „Delete user“ löscht Events und Promos nicht.
+**Haltung Andreas:** User-ID nach einem Jahr invalidieren ist ok (kein langlebiger Identifier, ID im Browser ohnehin
+flüchtig). **Sorge:** keine Inkonsistenzen in den historisierten Daten (Statistik-Jobs, `related_teams_cnt`, Grafana,
+Rundenstatistik inkl. `original_card_key`). Ansatz: nach Frist pseudonymisieren statt löschen (Name leeren, User-ID
+durch nicht rückführbaren Wert ersetzen); Ben klärt, was die Jobs brauchen.
+Umfang: Frist (Vorschlag 12 Monate nach letzter Aktivität) als nächtlicher Event-Job; `delete_user.php` löscht bzw.
+anonymisiert auch Events und Promos; Datenschutzerklärung anpassen (Frist, ID im Local Storage statt „Session
+Store“, Rundenstatistik und Events; „Delete User umfasst alles“ erst, wenn der Fix live ist).
+
+### B-126 nginx: `/tools/` nicht ausliefern
+Status: neu, klein (Kai, 2026-11-06). Der Web-Root ist das ganze Repo, `tools/` (Migrations- und Kartenskripte) ist per
+URL erreichbar (PHP-Skripte antworten mit 404, der Rest ist öffentlich auf GitHub). In nginx beider Server
+`location ^~ /tools/ { return 404; }` (Befehle bereitet Kai vor). Erledigt 2026-11-10 (Live, außerhalb poker): `.git`
+von feedback und teamcar gesperrt. Rest offen: `/tools/`-Sperre; teamcar-Repo `config.php` aus Git nehmen
+(`config.example.php` + `.gitignore`); Staging-Seiten genauso prüfen.
+
+## Erledigt & verworfen
+
+- **B-01 SQL-Injection in `api/` beheben** – live 2026-10-20 (Sprint 3): Prepared Statements, Team-Prüfung auch in
+  `timer.php`/`get_promo.php`.
+- **B-02 `stats.php` absichern** – live 2026-10-20 (Sprint 3): XSS behoben, Zugriffsschutz (später ersetzt durch B-63).
+- **B-03 PHP-8.1-Deprecations und Eingabe-Filter** – live 2026-10-16 (Sprint 2): Rohdaten speichern, bei der Ausgabe
+  escapen; `FILTER_SANITIZE_STRING` raus, `cut_text()`, `encodeURIComponent`, Daten-Update der Teamnamen.
+- **B-04 Lokale Testumgebung und erste E2E-Tests mit CI** – erledigt 2026-10-16 (Sprint 1): `tests/e2e/setup.sh`,
+  Playwright, GitHub Actions.
+- **B-05 E2E-Tests für weitere Funktionen** – geschlossen 2026-11-16: Spec-Abdeckung über die Feature-PRs erreicht.
+- **B-06 Testfälle gemeinsam reverse-engineeren** – geschlossen 2026-11-16: die E2E-Specs decken das Verhalten ab.
+- **B-07 Repo-Hygiene** – erledigt 2026-10-16 (Sprint 1): `.gitignore`, `config.example.php`, README-Installation.
+- **B-08 MySQL-Statistik-Job ins Repo** – erledigt 2026-10-23: `db_jobs_pok.sql` (`pok_active_use_evt` ist
+  deaktiviert und lief nie, Tabelle leer – Kandidat zum Aufräumen).
+- **B-09 Wachstum von `pok_analytics_events_tbl`** – erledigt 2026-10-22, Entscheidung Andreas „so lassen“ (94 MB nach
+  5,5 Jahren); bei Bedarf später einfacher Lösch-Job auf `creation_date`.
+- **B-11 Schreibende API-Aufrufe per POST** – live 2026-10-22 (Sprint 5), #21: alle Writes per POST (405 sonst).
+- **B-15 CDN-Abhängigkeiten festnageln** – live 2026-10-20 (Sprint 3): Versionen fest, Dateien selbst ausgeliefert,
+  remarkable angehoben.
+- **B-16 Fremddateien und phpMyAdmin in den Webroots** – erledigt 2026-10-16: `info.php`, `config.php.live` und
+  `db`-Symlink entfernt.
+- **B-17 DB-Zugriff per Client über SSH-Tunnel** – geschlossen 2026-11-16 (Andreas): kein externer DB-Client nötig,
+  Zugriff per `sudo mysql` auf dem Server reicht.
+- **B-18 Server-Logs von Live sichten** – erledigt 2026-10-16: Ergebnisse in B-19 bis B-21.
+- **B-19 `poker-msg`: Event-Loop ohne 1024-Verbindungen-Grenze** – erledigt 2026-10-16 (Nachkontrolle ok,
+  2026-11-16): Erweiterung `ev` auf beiden Servern, `ExtEvLoop`.
+- **B-20 PHP-FPM und MySQL robuster konfigurieren** – erledigt (Nachkontrolle ok, 2026-11-16): poker-Pool
+  `max_children 15`, `request_terminate_timeout`, Slowlogs FPM/MySQL; `skip-name-resolve` bewusst nicht
+  (Grafana-Grants).
+- **B-21 Race Condition beim Anlegen neuer Nutzer** – live 2026-10-20 (Sprint 3).
+- **B-22 PHP-Upgrade auf 8.4** – erledigt 2026-10-16: Web-App und `poker-msg` auf beiden Servern auf 8.4, CI nur 8.4.
+- **B-23 Server aufräumen nach PHP-8.4-Umstellung** – erledigt 2026-10-21: beide Server nur noch PHP 8.4 (weitere
+  Seiten in eigenen Pools), `ondrej/nginx` entfernt, Composer offiziell. Rest: Upload-Grenzen (`post_max_size`/
+  `upload_max_filesize`/`client_max_body_size` 100M) prüfen – die App lädt nichts hoch.
+- **B-24 Heartbeat in `poker-msg`: tote Verbindungen schließen** – erledigt 2026-10-16 (Nachkontrolle ok,
+  2026-11-16): WebSocket-Ping alle 30 s, nginx `proxy_read_timeout 120s`.
+- **B-25 Board blitzt beim Laden auf** – live 2026-10-16 (Sprint 2): `opacity: 0` direkt am `<body>`.
+- **B-26 `toggle_topic_box`: `Cannot read properties of null`** – live 2026-10-22 (Sprint 5), #21: Null-Guards.
+- **B-27 `apple-touch-icon`** – live 2026-10-22 (Sprint 5), #21: Icons in `src/`, explizit verlinkt.
+- **B-28 PHP2Shell (CVE-2026-109618/-109619)** – erledigt 2026-10-21: PHP 8.4.27 auf allen Servern, Check ohne Befund;
+  Notbremse `99-php2shell.ini` bleibt liegen; automatische PHP-Updates aus dem PPA vorerst nicht gewünscht.
+- **B-31 API-Review / HTTP-Semantik (Spike)** – erledigt 2026-10-22: M1–M3 live (403 statt leerem 200, JSON-Header,
+  letzte SQL-Konkatenation), M4 = B-11. Kein REST-Redesign.
+- **B-32 CI: `playwright install` beschleunigen** – erledigt 2026-10-22, #24: ohne `--with-deps`.
+- **B-33 Namensänderung setzt Karte auf ☕; Verlassen räumt Karte nicht** – live 2026-10-22 (Sprint 5), #21.
+- **B-35 Bilder/Assets verschlanken** – aufgegangen in B-97; erledigt: gzip für SVG auf Live und Staging
+  (2026-10-22), tote Bilder entfernt (#93).
+- **B-36 CSS vereinfachen, Responsive per CSS** – live 2026-10-23, #32–#35: `style.css` −36 %, ein Breakpoint (800 px)
+  per `@media`, gemeinsame Basis-Klassen und Tokens.
+- **B-37 Responsive per CSS statt JS** – aufgegangen in B-36.
+- **B-38 `dao.php`-Payload verschlanken (Spike)** – geschlossen: Spike-Ergebnis „so lassen“ (1–2 KB); Last zusätzlich
+  durch B-127 gesenkt.
+- **B-39 Resize: Karten sofort neu positionieren** – live 2026-10-23 (Sprint 6).
+- **B-40 Look & Feel / UX-UI (Epic)** – geschlossen: abgearbeitet über B-46–B-51, B-99, B-104, B-110.
+- **B-41 Kartenbereich auf CSS-Flex + FLIP** – live 2026-10-23 (Sprint 6): Sortier-Gleiten per FLIP, kein Gleiten beim
+  Resize und im Anonym-Modus.
+- **B-42 Sortier-Option „im Spiel wählen“ gestrichen** – live 2026-10-23, #31/#35: nur „Card value“/„Player name“,
+  im Anonym-Modus fest „Card value“.
+- **B-43 `survey_intro` per `innerHTML`** – aufgegangen in B-136.
+- **B-45 Toten Stern-Bewertungscode im Feedback entfernen** – erledigt.
+- **B-46 Seitengerüst neu** – live R1 (2026-10-28), #56: Grid mit `dvh`, feste Zonen.
+- **B-47 Touch von der Breite trennen, Touch-Ziele ≥ 44 px** – live R1 (2026-10-28), #56.
+- **B-48 Topnav aus echten Buttons** – live R1 (2026-10-28), #56.
+- **B-49 Fluide Kartengrößen** – live R1 (2026-10-28), #49/#56.
+- **B-51 Menüs als Side Panel/Bottom-Sheet** – live R1 (2026-10-28), #56.
+- **B-54 Feedback-Text ohne `encodeURIComponent()`** – live R1 (2026-10-28).
+- **B-55 Hinweis und Umfrage zur neuen Optik** – verworfen 2026-10-27, ersetzt durch B-57.
+- **B-56 Players-Menü** – aufgegangen in B-110.
+- **B-57 Ideas & Bugs** – live R1 (2026-10-28), Abstimmung fortgeführt #200/#209: Meldungen mit Typ und Kontext,
+  öffentliche Liste mit Status und Reaktionen, Moderation in `stats.php`.
+- **B-58 Geänderte Karte sichtbar machen** – aufgegangen in B-104.
+- **B-59 Aufdecken, bevor alle gewählt haben** – aufgegangen in B-125.
+- **B-60 Spaß-Funktionen** – aufgegangen in B-110 (Reaktionen) und B-133 (Nudge); Feier-Animationen → B-117.
+- **B-61 Eigene Kartenwerte / eigene Decks** – aufgegangen in B-98 (eigene Sets live R3); Bezahlfrage → B-100.
+- **B-62 E2E-Tests für den Feedback-Pfad** – erledigt: rudimentärer Kernpfad.
+- **B-63 `stats.php`: eigene Anmeldeseite** – live 2026-10-28: Prüfung gegen die nginx-htpasswd (bcrypt), Cookie
+  30 Tage, `limit_req`, Basic Auth entfernt.
+- **B-64 `stats.php` neu** – live 2026-10-28: Tabs Live/Usage/Ideas & Bugs/Tech; nie die Team-ID anzeigen.
+- **B-66 „Basic Controls“: Rundenknopf + Timer unten rechts** – live R2 (2026-11-01).
+- **B-67 Timer statt Stoppuhr** – live R2 (2026-11-01): Timer-Panel (Stopwatch | Timer, Timebox, Auto-Start).
+- **B-68 Rechte Spalte (Desktop) + Primärsteuerung unten rechts** – live R2 (2026-11-01).
+- **B-69 Kartenleiste mit `<`/`>`-Leisten** – live R2 (2026-11-01), #77: klickbar, Tasten holen Karten ins Bild.
+- **B-70 Tipps in der rechten Spalte** – live R2 (2026-11-01), #76.
+- **B-71 Löschen von Spielern auf Touch-Geräten** – aufgegangen in B-110.
+- **B-72 Aufräumen: Layout- und Spread-Logik** – geschlossen 2026-11-16: durch die Layout-Umbauten (R2–R4) überholt;
+  Aufräumen in `script.js` läuft über B-14.
+- **B-73 Wackelnder Timer-E2E-Test** – live R2 (2026-11-01), #100: echter Fehler (ältere dao-Antwort) behoben.
+- **B-74 Overlay-Menü schließt bei Klick daneben** – live R2 (2026-11-01), #78.
+- **B-75 Kartenleiste auf dem Handy als Karussell** – live R2 (2026-11-01), #81 (mit B-77).
+- **B-76 Name über der Karte, Symbole zentriert** – live R3 (2026-11-06), mit B-99.
+- **B-77 Karussell auf allen Touch-Geräten** – live R2 (2026-11-01), #85.
+- **B-78 Hinweis „Gerät drehen“ bei Handys quer** – live R2 (2026-11-01), #86.
+- **B-79 Stoppuhr ohne „T+“, Tipps je Kartenart und Anonym-Modus** – live R2 (2026-11-01), #87/#88.
+- **B-81 Update-Signal vom Webserver an poker-msg** – live R2 (2026-11-01), #101, poker-msg#3: API meldet per UDP
+  `notify_team()`, Heartbeat `hb`, kein Browser-`push` mehr.
+- **B-82 Board reagiert nach Pause nicht** – live R2 (2026-11-01), #92: Neuaufbau bei Sichtbarkeit und Sendefehler.
+- **B-83 Nächtlicher Statistik-Job blockiert `dao.php`** – live 2026-10-30 (DB), #94: Index + `READ COMMITTED`.
+- **B-85 Topic mit Emoji → HTTP 500** – live R2 (2026-11-01), #95/#97: `utf8mb4` für Topic & Co.
+- **B-86 Verbindungsstatus anzeigen** – live R2 (2026-11-01), #92: Overlay „Reconnecting …“.
+- **B-87 Minütlicher Statistik-Job sperrt `pok_players_tbl`** – live 2026-10-30 (DB), #96: `READ COMMITTED`.
+- **B-88 ID-Parameter auf ihr Format prüfen** – live R2 (2026-11-01), #99: `get_id_param()`.
+- **B-89 Kleinkram aus den Reviews (JS)** – live R2 (2026-11-01), #98. Hinweis: `db_schema_pok_inc.sql` ist als Ganzes
+  nicht idempotent – immer nur neue Blöcke einspielen.
+- **B-90 Umfrage reparieren oder entfernen** – aufgegangen in B-136 (Entscheidung Andreas 2026-11-16: entfernen).
+- **B-92 Ältere dao-Antworten verwerfen** – live R2 (2026-11-01), #101: Sequenznummer in `updateDao()`.
+- **B-95 `last_callback_time` höchstens einmal pro Minute** – verworfen 2026-10-30: Ersparnis zu klein, bleibt die
+  echte letzte Rückmeldung.
+- **B-96 Tipps fürs Team abschaltbar** – live R2 (2026-11-01), #102: Schalter „Tips“ (Board → Team), Analytics-Event.
+- **B-98 Kartendecks nach Gruppen** – live R3 (2026-11-06), #173/#174/#180/#186/#190/#199: Setgruppen mit Varianten,
+  Steuerkarten je Team, eigene Sets, Lazy-Migration (Backup → B-128).
+- **B-99 Karten neu (gerendert, Skizzen-Stil, Rich-Sets)** – live R3 (2026-11-06): Symbolbibliothek `cards.svg`,
+  Karte als HTML/CSS aus Set-Daten. Rest: Themes (z. B. Saison-Rückseiten) als spätere Idee.
+- **B-101 Tipps für J.U.D.G.E.** – live R3 (2026-11-06). Rest: ob Delegation, Ampel, Emotionen eigene Tipp-Regeln
+  brauchen.
+- **B-102 Systemkarte „joined in“ statt automatischer ☕** – live R3 (2026-11-06).
+- **B-103 `setc.php` prüft Karte gegen das Deck** – live R3 (2026-11-06): 400 für Keys außerhalb Deck/Steuerkarten.
+- **B-104 „Karte geändert“: Originalschätzung sichtbar** – live R3 (2026-11-06): versetzter Stapel, Original
+  gespeichert.
+- **B-105 Anonym-Modus pseudonymisieren** – verworfen 2026-11-01: Ziel (in der Oberfläche nicht sichtbar, wer was
+  gelegt hat) ist erreicht; Zuordnung über Rohdaten ist ok.
+- **B-106 Special Card „shruggie“** – live R3 (2026-11-06).
+- **B-107 Mehr Emotionen: „Team Assessment“ und „Mood“** – live R3 (2026-11-06). Rest: später ggf. overwhelmed 🤯,
+  tense 😬.
+- **B-110 Tisch-Interaktion** – live R3 (2026-11-06), u. a. #156: away-Erkennung, Beobachter-Zeile, Kontext-Kreise
+  (Reaktionen, Entfernen), Reaktionen und Nudge über den WebSocket.
+- **B-113 Seitenleiste ein-/ausklappbar** – live 2026-11-09, #205–#223, #225: schmale Leiste, Breite per Griff,
+  Zustand je Phase pro Person (nur Desktop).
+- **B-115 Schalter „See changed cards“** – live R3 (2026-11-06), #191/#194.
+- **B-116 Beispielset „Animals“** – live R3 (2026-11-06), #192.
+- **B-127 Leichter Heartbeat statt `dao.php` alle 30 s** – live 2026-11-09, #224, #225: `api/seen.php` mit `away_sig`,
+  `dao.php` nur bei `pull`, eigenem Schreiben oder geänderter away-Menge.
+- **B-130 Timer: Auto-Start „Off · New round · Next item“** – live R4 (2026-11-16), #235/#238.
+- **B-131 Reaktionen: gestaffeltes Rate-Limit je Verbindung** – live R4 (2026-11-16), #236, poker-msg#8/#9: 3 pro
+  Sekunde, 10 pro Minute je Verbindung; Log mit Fenster und Reaktionscode (nie Absender/Empfänger); Hinweis im Board.
+- **B-133 Nudge mit Ton und Tab-Hinweis** – live R4 (2026-11-16), #251: leiser Ton (Web Audio), Vibration auf Android,
+  blinkender Titel; Schalter „Sound on nudge“ im `:you`-Menü.
+- **B-134 CI schneller** – erledigt 2026-11-13, #252: 3 Shards, PRs nach `release` ohne `@slow`.
+- **B-135 Schreib-Requests scheitern in Safari nach langer Tab-Nutzung** – live R4 (2026-11-16), #253: `apiWrite()`
+  wiederholt idempotente Writes einmal nach Netzfehler; nginx `http2_max_requests 10000` auf Staging und Live.
+
+## Weitere Entscheidungen
+
+Noch gültige Entscheidungen aus erledigten Einträgen, die sonst nirgends stehen
+(Details: `git show 65c605b:BACKLOG.md`).
+
+**Gestaltung**
+- **Console Style** ist der Look der App, ohne Theme-Umschalter; Light/Dark bleibt (Andreas, 2026-10-23). Er ist die
+  Denkrichtung für Gestaltungselemente, nicht für mehr Text oder `//`-Labels.
+- **Gestaltungsprinzip (Andreas, 2026-10-28, B-68):** Wer die App zum ersten Mal öffnet, findet sie einfach und wird
+  nicht erschlagen – wenige Elemente, klare Hierarchie (Karte wählen, Runde starten), im Zweifel weglassen. Zonen wie
+  bei einem Armaturenbrett, aber keine „Border-Schlacht“.
+- Emojis sparsam; „New round“ bleibt Hauptbutton und ändert seine Position nicht, wenn der Timer an/aus geht. Desktop:
+  Menüpunkt öffnet direkt das Side Panel (nur Schließen); die Menü-Übersicht gibt es nur mobil.
+- Bewusst „gut genug“ (B-46–B-51): ein Breakpoint und Desktop-first, Durchschnittszeiger per JS, `getBrowserWidth()`
+  bzw. `display_type` für Analytics, Invert-Filter für Icons, `opacity: 0` am `body` gegen Flackern.
+- Kein Screenshot-Vergleichstest; Andreas nimmt auf Staging per Sichtprüfung ab (B-36).
+- **Anonym-Modus:** Karten gleiten nie (Gleiten würde verraten, wer welchen Wert hat); Sortierung fest nach Kartenwert.
+- Sortierung der aufgedeckten Karten: nur „Card value“ / „Player name“ unter der Kartenset-Auswahl, **kein**
+  automatischer Standard je Kartenset (B-42).
+- **Touch → immer Karussell**, unabhängig von der Breite (auch iPad); mit Maus nie Karussell (B-75, B-77).
+- Timer (B-67): Defaults aus, Modus Stopwatch; Stopwatch ohne T±, Timer T−/T+; „Zeit um“ = T+ in Amber, kein Ton.
+- Seitenleiste (B-113): Niemand soll die Panelgröße je Spielsituation nachstellen müssen – das Panel folgt der Phase,
+  man kann übersteuern, das Board merkt sich die Wahl. Eher den Tisch lesbarer machen als das Panel wichtiger.
+
+**Karten und Decks (R3, Andreas 2026-10-31/11-01)**
+- „Nah an der Physik“: Karten werden nach dem Aufdecken nicht gesperrt, Änderungen werden sichtbar (B-104).
+- Karten gerendert im Skizzen-Stil (Farbe je Wert, keine Strichmännchen, kein Deck-Name auf Karten); drei Ebenen
+  Symbol – Heading – Description (Längen ≤ 6 / ≤ 16 / ≤ 160); Gelbtöne mit dunkler Schrift; Stil je Set (`plain`,
+  `inverted`, …), kein freies CSS. Delegation-Texte exakt vom Original, nicht deren Layout.
+- Datenmodell: Setgruppe 1:N Karte; ein Symbol höchstens einmal je Deck. Standard für neue Teams und Rückfall:
+  Fibonacci Classic + Steuerkarten ☕ und ? (! und ✋ zuschaltbar; shruggie standardmäßig aus).
+- Steuerkarten gelten pro Team, unabhängig vom Set, immer Stil `plain`; „!“ heißt important; ✋ veto ist nicht
+  J.U.D.G.E. „6 veto“.
+- Eigene Sets: bis zu 5 je Team (konfigurierbar, B-100), bis zu 16 Karten; Wert statt Symbol nur Text (≤ 6 Zeichen,
+  keine Emoji); Farben nur aus fester Token-Palette; Mischen nur über eigene Sets („(+)“ gestrichen). Deck-Wechsel
+  oder Save eines geänderten Sets während einer Runde: Hinweis, dann neue Runde. Gleichzeitiges Bearbeiten: Hinweis,
+  Save überschreibt.
+- Tastatur: Karten nach Tastaturreihen (q w e r t …, physische Taste `event.code`), Beschriftung unter den Karten.
+- Systemkarten („joined in“, künftig „Paused“) sind keine Stimme: nicht in Histogramm, Spannweite, Durchschnitt, Tipps.
+- Karte geändert (B-104): Statistik/Spread/Tipps nach aktueller Karte; „Let them explain“ nennt Extremwerte beim
+  Aufdecken **und** aktuelle Extremwerte („Name (5→8)“) – man kann sich nicht durch Umlegen herausnehmen.
+
+**Tisch und Tipps**
+- Tipps (B-70, B-79): Anonym-Modus immer allgemein ohne Namen; bei Ampel/Emotionen bzw. ohne Zahlen-Spanne „Talk about
+  the cards you chose.“; wer ? oder ! gelegt hat, wird genannt; ☕ ergänzt „Maybe take a short break.“; shruggie
+  löst keine Aufforderung aus.
+- Entfernen (B-110): jeder darf jeden Spieler entfernen, Rückfrage immer; Beobachter sind nicht entfernbar und werden
+  bei „away“ in der Beobachter-Zeile ausgeblendet. Reaktionen dürfen auch auf anonyme Karten geworfen werden.
+- Reaktionen laufen direkt über den WebSocket (poker-msg prüft Format streng, bremst), nichts in die DB, keine
+  Statistik; im poker-msg-Log ohne Namen ist ok (B-131). Alle im Team sehen den Wurf, Animation erst beim Echo.
+
+**Technik und Betrieb**
+- Board-Updates „fire and forget“ ohne Zustellgarantie; **kein Polling als Sicherheitsnetz**, stattdessen Heartbeat
+  (B-81).
+- `seen.php`/`away_sig` geben nie Player-IDs heraus (B-127).
+- Ideas & Bugs (B-57) ist Kommunikationsinstrument und Feedbackkanal, keine Abstimmung über die Roadmap; Stimmen sind
+  ein Stimmungsbild. Bewusst nicht: Stimmenlimit pro Tag, roter Punkt bei neuen Einträgen erneut, Textfeld nach 👎.
+- Daten-Updates: betroffene Werte vorher sichern bzw. nach altem Wert unterscheiden (Lehre aus B-42).
+- Nach Server-Umstellungen einen PHP-Endpunkt testen, nicht nur `/` (Lehre aus B-23).
+- Boards sind `noindex` (seit R3).
+- Mockups (`mockups/`) zeigen, in welche Richtung eine Entwicklung gehen könnte. Sie bleiben, solange sie diesen Zweck
+  erfüllen, und werden gelöscht, sobald er sich erledigt hat (umgesetzt oder verworfen); dass sie auf Live abrufbar
+  sind, ist unproblematisch (Andreas, 2026-11-16).

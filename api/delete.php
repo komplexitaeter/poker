@@ -19,6 +19,7 @@ if (strlen($mkey)>0) {
     $sql->bind_param('si', $t, $mkey);
     $sql->execute();
     $removed = $sql->affected_rows > 0;
+    $sql->close();
     $link->close();
 
     if (!$removed) {

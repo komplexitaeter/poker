@@ -27,7 +27,7 @@
     /* stacking order (lowest first) */
     --z-nav: 10;          /* header, above the table */
     --z-promo: 100;
-    --z-panel: 150;       /* menu panel (large screens), above deck, survey and promo */
+    --z-panel: 150;       /* menu panel (large screens), above deck and promo */
     --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
     --z-scrim: 300;       /* QR code backdrop */
     --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
@@ -103,7 +103,7 @@
 body {
     --bg: #0c0e12;          /* page */
     --bg-2: #13161c;        /* header, card back, fields */
-    --bg-3: #1b1f27;        /* menu boxes, survey */
+    --bg-3: #1b1f27;        /* menu boxes */
     --bg-4: #262b35;        /* blocks inside boxes, open phone menu */
     --line: #2a303b;        /* quiet separators */
     --line-strong: #586174; /* borders of controls and cards */
@@ -124,7 +124,6 @@ body {
     --tray-shadow: 0 12px 32px -2px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.8),
         0 0 0 1px rgba(255, 255, 255, 0.12);
     --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
-    --survey-voted_background: rgba(0, 0, 0, 0.67);
     /* B-99 D6/D9: tinted cards (badge style: traffic lights, emotions, stars). Dark: neutral paper with a
      * faint glow of the value colour from the top (--card-glow-end: how far it reaches) and a coloured inner
      * rim, so symbols and texts keep the contrast of the plain card. Light: the whole card tinted. */
@@ -154,7 +153,6 @@ body.light-theme {
     --shadow-color: rgba(0, 0, 0, 0.18);
     --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     --scrim: rgba(29, 32, 39, 0.4);
-    --survey-voted_background: rgba(255, 255, 255, 0.67);
     --card-tint: 13%;   /* light: the whole card flat (no glow, no rim) */
 }
 
@@ -649,7 +647,7 @@ textarea.field {
  * below them on the right (see "Card deck") */
 .down-container {
     grid-area: deck;
-    position: relative; /* anchor of the survey */
+    position: relative;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -659,7 +657,7 @@ textarea.field {
 
 @media (min-width: 800px) {
     .container {
-        --dock-lift: 20px; /* the round button above the tray's bottom edge (.dock, survey) */
+        --dock-lift: 20px; /* the round button above the tray's bottom edge (.dock) */
         grid-template-columns: minmax(0, 1fr) var(--col-w);
         grid-template-rows: auto auto auto minmax(0, 1fr) auto;
         grid-template-areas:
@@ -791,6 +789,13 @@ textarea.field {
     display: block;
     height: 24px;
     width: auto;
+    aspect-ratio: auto 757.947 / 164.992; /* keeps the room before setColor() sets the src (B-97) */
+}
+
+/* B-97: the src is set by setColor() (script.js) for the current theme; nothing (no alt text) before that */
+#brand:not([src]),
+#brand_icon:not([src]) {
+    visibility: hidden;
 }
 
 /* the mark alone (src/brand_icon_*.svg, same height and position as the mark in the full logo);
@@ -2056,7 +2061,9 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  * --arrow-x (the arrow tip, px from the left edge of the box: the middle of the anchor) and .is-below when
  * there is no room above the anchor (the arrow then points up). Show/hide with the hidden attribute.
  *   #react_bar.tbl-pop.react-bar   above the smiley: "throw at <.react-bar-name>", seven button[data-react]:
- *                                  cake heart clap party think thumbs fish
+ *                                  cake heart clap party think thumbs fish, each
+ *                                  <span class="react-glyph">🎂</span><span class="react-left">1×</span>
+ *                                  (B-139: left today; [aria-disabled="true"] when used up)
  *   #rm_confirm.tbl-pop.rm-confirm  on every click on a trash can, above it: "Remove <.rm-name> from the table?",
  *                                  small "<.rm-name> can rejoin at any time.", Cancel / Remove
  *   #tap_hint.tbl-pop.tap-hint      touch only, once (localStorage): "Tap a card …", "Got it"
@@ -2315,7 +2322,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     from { opacity: 0; transform: translateY(-4px) scale(0.96); }
 }
 
-/* the emoji bar: "throw at Name", seven emojis in a row */
+/* the emoji bar: "throw at Name", seven emojis in a row, under each the throws left today (B-139: "1×" / "0×") */
 .react-bar-label {
     margin: 0;
     padding: 0 6px 4px;
@@ -2328,11 +2335,12 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 .react-bar-row { display: flex; gap: 2px; }
 .react-bar button {
     display: grid;
+    grid-template-rows: 1fr auto;
     place-items: center;
     width: 38px;
-    height: 38px;
+    height: 50px;
     margin: 0;
-    padding: 0;
+    padding: 4px 0 3px;
     border: 0;
     border-radius: var(--radius-m);
     background: transparent;
@@ -2345,10 +2353,25 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 .react-bar button:hover,
 .react-bar button:focus-visible { background: var(--bg-4); transform: scale(1.15); }
 .react-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* B-139: the rest of today, quiet console text; used up (aria-disabled): greyed, no bump, a click only shows a toast */
+.react-left {
+    font-family: var(--font);
+    font-size: var(--fs-xs);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--muted);
+}
+.react-bar button[aria-disabled="true"] { cursor: default; } /* still clickable: a toast says why (B-139) */
+.react-bar button[aria-disabled="true"] .react-glyph { filter: grayscale(1); opacity: 0.35; }
+.react-bar button[aria-disabled="true"] .react-left { opacity: 0.6; }
+.react-bar button[aria-disabled="true"]:hover,
+.react-bar button[aria-disabled="true"]:focus-visible,
+.react-bar button[aria-disabled="true"]:active { background: transparent; transform: none; }
 @media (pointer: coarse) {
-    .react-bar button { width: 44px; height: 44px; font-size: 26px; }
+    .react-bar button { width: 44px; height: 58px; font-size: 26px; }
     .react-bar button:hover { background: transparent; transform: none; }
     .react-bar button:active { background: var(--bg-4); transform: scale(1.15); }
+    .react-bar button[aria-disabled="true"]:active { background: transparent; transform: none; }
 }
 
 /* touch: "Remove Name?" at the card, before the trash can removes anyone */
@@ -3819,135 +3842,6 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     .deck-dot::before { transition: none; }
 }
 
-/* ---------- Survey (markup from script_feedback.js) ---------- */
-
-/* B-66/B-68: in the column right above the round actions (.dock), so the two never overlap: the
- * deck's tray is its anchor, the column lies right of it (beyond the tray's gap). The round button
- * ends --dock-lift above the tray's bottom edge, so the survey ends a step above the timer row
- * (button 44px, gaps 8px, timer as high as --tap). Large screens only (hidden on phones). */
-.survey-container {
-    font-size: var(--fs-s);
-    width: auto;
-    max-width: 18rem;
-    position: absolute;
-    bottom: calc(var(--dock-lift, 0px) + 44px + var(--space-2) + var(--tap) + var(--space-2));
-    right: calc(-1 * (var(--side-col, var(--col-w)) + var(--tray-gap, 0px))); /* B-113: the column's width */
-    margin: 0 auto;
-    visibility: hidden;
-    display: unset;
-}
-
-#survey-button {
-    cursor: pointer;
-    display: block;
-    width: auto;
-    margin: auto var(--space-3) auto auto;
-    padding: var(--space-3);
-    background: var(--survey-background);
-    color: var(--text-color);
-    border: 0;
-    text-align: center;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-}
-
-#survey-button:hover { opacity: 0.7; }
-
-/* above the dock it floats: rounded at the bottom too (open: the content's corners).
- * Two rules: browsers without :has() drop a whole selector list that contains it. */
-.survey-container:has(#survey-content.survey-closed) #survey-button { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
-.survey-container #survey-content.survey-open { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
-
-#survey-button .arrow { margin-left: var(--space-3); }
-
-#survey-content {
-    display: block;
-    background: var(--survey-background);
-    color: var(--text-color);
-    width: auto;
-    text-align: left;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-}
-
-.survey-closed {
-    padding: 0 var(--space-3);
-    height: 0;
-    transition: height 1s ease-out 0s, padding 0.2s ease-out 0.8s;
-}
-
-.survey-open {
-    padding: var(--space-3);
-    height: 17.5rem;
-    transition: height 1s ease-out 0s;
-}
-
-#survey_intro,
-#vote_options,
-#vote_results {
-    display: block;
-    margin-bottom: var(--space-3);
-    padding: var(--space-2);
-    background-color: var(--survey-sec-background);
-    border-radius: var(--space-2);
-}
-
-.vote_option,
-.vote_results_bar {
-    display: flex;
-    margin: 0.3rem auto;
-    width: 99%;
-    border-radius: var(--space-3);
-    background-color: transparent;
-}
-
-.vote_option {
-    cursor: pointer;
-    padding: 0.3rem 0 0.3rem var(--space-3);
-    color: var(--text-color);
-    border: 1px solid var(--text-color);
-    justify-content: center;
-}
-
-.vote_option:hover {
-    background-color: var(--medium_color);
-    font-weight: bold;
-}
-
-#vote_count {
-    margin: auto;
-    width: 50%;
-}
-
-.vote_results_bar {
-    border: 1px solid var(--primary-border-color);
-    text-align: left;
-    justify-content: flex-start;
-    align-items: center;
-    position: relative;
-}
-
-.vote_results_bar_value {
-    border-radius: var(--space-3);
-    padding: 0.3rem 0 0.3rem var(--space-3);
-    background: var(--survey-voted_background);
-    width: 0;
-    white-space: nowrap;
-    overflow: visible;
-    text-overflow: ellipsis;
-}
-
-.arrow {
-    border: solid var(--muted);
-    border-width: 0 3px 3px 0;
-    display: inline-block;
-    padding: 3px;
-}
-
-.up { transform: rotate(-135deg); }
-
-.down { transform: rotate(45deg); }
-
 /* ---------- Column (B-68) ---------- */
 
 /* Large screens (from 800px): the column on the right, always there, so the table keeps its size
@@ -5067,7 +4961,6 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
 /* ---------- Small screens: hidden on the board ---------- */
 
 @media (max-width: 799.98px) {
-    .survey-container,
     #promo-tab { display: none; }
 }
 

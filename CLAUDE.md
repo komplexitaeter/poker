@@ -126,10 +126,8 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 
 ## Bekannte technische Schulden
 
-- SQL teils per String-Konkatenation (z. B. `validate_team()` in `api/lib.php`, `api/delete.php`, `api/feedback.php`),
-  teils mit Prepared Statements. Neuer Code nur mit Prepared Statements.
-- Schreibende Aktionen über GET, keine Authentifizierung außer der geheimen Team-ID in der URL.
-- Kein Linting, keine Unit-Tests; E2E-Tests decken bisher nur die Kernabläufe ab.
+- Keine Authentifizierung außer der geheimen Team-ID in der URL (schreibende Aktionen seit B-11 per POST).
+- Kein Linting außer `php -l` in der CI (B-138), keine Unit-Tests; die E2E-Tests decken die Abläufe breit ab.
 - Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
 
@@ -137,7 +135,7 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 
 End-to-End-Tests mit Playwright in `tests/e2e/`. Sie laufen in GitHub Actions (`.github/workflows/e2e.yml`) bei
 jedem PR nach `release` und jedem Push darauf, mit PHP 8.4 wie in Produktion; reine `*.md`-Änderungen lösen
-keinen Lauf aus. Die Suite läuft in 3 parallelen Shards; der Sammel-Job `e2e (PHP 8.4)` behält den bisherigen Check-Namen (B-134). PRs nach
+keinen Lauf aus. Die Suite läuft in 3 parallelen Shards; der Sammel-Job `e2e (PHP 8.4)` behält den bisherigen Check-Namen (B-134). Vorher prüft der Job `php lint (PHP 8.4)` alle versionierten PHP-Dateien per `php -l`; erst wenn er grün ist, starten die Shards, sonst schlägt auch `e2e (PHP 8.4)` fehl (B-138). PRs nach
 `release` lassen Tests mit dem Tag `@slow` weg, Push auf `release` und manueller Start laufen komplett. Neue Tests mit
 echten Wartezeiten ≥ 15 s bekommen `{ tag: '@slow' }`. PRs `release` → `master` laufen nicht erneut: Kai mergt sie nur, wenn der letzte Lauf auf `release`
 (gleicher Stand) grün ist. **Lokal** (Agenten) laufen nur die Specs, die die Änderung betreffen, plus neue Tests; die
@@ -234,7 +232,8 @@ Regel: Reviewt wird immer von einem anderen Agenten als dem Autor.
 - Eingaben **unverändert speichern, bei der Ausgabe escapen**: Freitext (Namen, Themen) über `get_text_param()` aus
   `api/lib.php` lesen (nur `trim` + Längenbegrenzung), nie „vorab bereinigen“. Ausgabe im Frontend nur per
   `textContent`/`innerText` (bzw. remarkable ohne HTML), in der API per `json_encode`. Kein Echo von Eingaben in
-  HTML-Antworten. In SQL nur über Prepared Statements.
+  HTML-Antworten. In SQL nur über Prepared Statements; in den SQL-Text selbst nur Konstanten und
+  `?`-Platzhalterlisten einsetzen, nie Request- oder DB-Werte (B-137).
 - Freitext in URLs im Frontend immer mit `encodeURIComponent()`.
 - ID-Parameter (User-ID `id`, Kartenschlüssel, Event-Codes) immer über `get_id_param()` aus `api/lib.php` lesen (B-88):
   nur `[A-Za-z0-9_-]` mit Höchstlänge, sonst `''`. Bei leerer bzw. zu kurzer ID nichts anlegen, ändern oder löschen.

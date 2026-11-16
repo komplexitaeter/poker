@@ -18,45 +18,8 @@
 </head>
 <body>
 <h1>Agile Poker – mockups</h1>
-<p>Static design mockups for discussion (Sprint 8, B-51/B-52/B-53). Not part of the app, no data is sent anywhere.
-    Round 3: Console is the look. Open a link, then use the small <b>mock</b> tab on the left edge (or key <kbd>M</kbd>) to switch states.</p>
-
-<h2>Everyday flow (like today)</h2>
-<ul>
-    <li><a href="board/?state=voting">Voting – cards being placed, “Cancel round”</a></li>
-    <li><a href="board/">Revealed – spread, the most chosen card is noted silently, “New round”</a></li>
-    <li><a href="board/?result=consensus">Revealed – consensus</a> · <a href="board/?result=close">close</a> · <a href="board/?result=mixed">with ? and ☕</a></li>
-    <li><a href="board/?topics=none&amp;state=voting">No topic at all</a> <small>(topic is optional, like today)</small></li>
-    <li><a href="board/?mode=light">Light mode</a> · <a href="board/?mode=light&amp;state=voting">light, voting</a></li>
-    <li><a href="board/?players=18">18 players</a></li>
-</ul>
-
-<h2>Topic list (optional extension)</h2>
-<ul>
-    <li><a href="board/?topics=backlog">With a topic list – “Next topic” appears next to “New round”</a></li>
-    <li><a href="board/?menu=topics">Topic menu without a list – “+ add next topic” turns it into a list</a></li>
-    <li><a href="board/?topics=backlog&amp;menu=topics">Topic menu with a list</a></li>
-</ul>
-
-<h2>Card sets – spread with symbols</h2>
-<ul>
-    <li><a href="board/?deck=emotions">Emotions</a> · <a href="board/?deck=emotions&amp;result=consensus">emotions, all the same</a></li>
-    <li><a href="board/?deck=tshirt">T-shirt sizes</a> · <a href="board/?deck=traffic">traffic lights</a> · <a href="board/?deck=stars">stars</a> · <a href="board/?deck=judge&amp;result=mixed">JUDGE (with veto)</a> · <a href="board/?deck=delegation">Delegation Poker</a></li>
-</ul>
-
-<h2>Menus</h2>
-<ul>
-    <li><a href="board/?menu=board">Board settings – variant A: groups (recommended)</a> · <a href="board/?menu=board&amp;settings=tabs">variant B: tabs</a></li>
-    <li><a href="board/?timer=0">Stopwatch off</a> <small>(toggle in the header: “Stopwatch [ ]”)</small></li>
-    <li><a href="board/?menu=players">Players</a> · <a href="board/?menu=you">You</a> · <a href="board/?menu=invite">Invite</a></li>
-</ul>
-
-<h2>Phone</h2>
-<ul>
-    <li><a href="board/?device=portrait">Portrait</a> · <a href="board/?device=portrait&amp;state=voting">voting</a> · <a href="board/?device=portrait&amp;menu=index">menu (stopwatch switch)</a> · <a href="board/?device=portrait&amp;menu=board">board settings</a> · <a href="board/?device=portrait&amp;deck=emotions&amp;mode=light">emotions, light</a></li>
-    <li><a href="board/?device=landscape">Landscape</a> · <a href="board/?device=landscape&amp;state=voting">voting</a></li>
-    <li><a href="board/?device=desktop">Desktop frame 1280×800</a></li>
-</ul>
+<p>Static design mockups for discussion. Not part of the app, no data is sent anywhere. Older mockups (board,
+    topic list, rail) are implemented and removed; they remain in the git history.</p>
 
 <h2>Session planner (B-129 / B-52) – separate mockup</h2>
 <ul>
@@ -68,28 +31,5 @@
 </ul>
 <p><small>Planner parameters: state (plan|maturity|meeting|results|history), mat (a|b), pace (ontime|behind), hist (a|b), mode, clean=1.</small></p>
 
-<h2>Topic list S1 (B-52) – for the first slice</h2>
-<ul>
-    <li><a href="topics-s1/?state=single">1 One topic like today – the menu has one field, only a quiet “+ next item”</a> · <a href="topics-s1/?state=single&amp;menu=0">sidebar while voting</a></li>
-    <li><a href="topics-s1/?state=list">2 Topics menu with several items – open (top = now), done with result and maturity, reopen</a> · <a href="topics-s1/?state=list&amp;edit=1">editing an item</a> · <a href="topics-s1/?state=list&amp;mode=light">light</a></li>
-    <li><a href="topics-s1/?state=voting">3 Sidebar while voting – active item (ID, heading, description, maturity), “+2 more”</a></li>
-    <li><a href="topics-s1/?state=results">4 Results, deck with values – highest card marked as current estimate (click a bar or use the dropdown), maturity, “Next item”</a> · <a href="topics-s1/?state=results&amp;mode=light">light</a></li>
-    <li><a href="topics-s1/?state=traffic">5 Results, traffic lights – spread only, no estimate</a></li>
-    <li>Phone: open <a href="topics-s1/?state=list">2</a> in a narrow window (bottom sheet)</li>
-</ul>
-<p><small>Topic list parameters: state (single|list|voting|results|traffic), menu (0|1), edit=1, hint=0 (no timeline placeholder), mode, clean=1.</small></p>
-
-<h2>"Next item" in the collapsed sidebar (B-52 S1b)</h2>
-<ul>
-    <li><a href="rail-next/?view=compare">All variants side by side (A stack, B split, C item chip)</a> · <a href="rail-next/?view=compare&amp;mode=light">light</a></li>
-    <li><a href="rail-next/?v=a">A on the board</a> · <a href="rail-next/?v=b">B</a> · <a href="rail-next/?v=c">C</a> · <a href="rail-next/?v=c&amp;peek=1&amp;flash=1">C after the click (overlay)</a></li>
-</ul>
-<p><small>Parameters: view (board|compare), v (a|b|c), phase (voting|revealed), items (none|first|last), peek (0|1), mode, clean=1. Key M: states.</small></p>
-
-<h2>Comparison only</h2>
-<ul>
-    <li><a href="board/?theme=classic">Today’s look (classic) on the new layout</a> <small>– not offered in the app</small></li>
-</ul>
-<p><small>Parameters: mode, device (desktop|portrait|landscape), state (voting|revealed), result (consensus|close|spread|mixed), deck (fibonacci|emotions|tshirt|traffic|stars|judge|delegation|…), topics (none|single|backlog), menu (index|topics|players|board|you|feedback|invite), settings (groups|tabs), timer=0, players=N, long=1, clean=1 (no mock tab).</small></p>
 </body>
 </html>
