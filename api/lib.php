@@ -878,7 +878,6 @@ function getDao($t, $id) {
     $team_name = null;
     $color_mode = 'dark';
     $hide_teaser = 0;
-    $survey = 'NO';
     $topic = null;
     $results_order = 'NAME';
     $show_avg = 0;
@@ -1131,46 +1130,22 @@ function getDao($t, $id) {
 
     $sql = $link->prepare("SELECT count(1) as user_exists
                                      ,max(u.color_mode) as color_mode
-                                     ,max(u.survey_id) as survey_id
-                                     ,max(u.survey_skipped) as survey_skipped
-                                    ,max((select count(1) 
-                                            from pok_survey_votes_tbl v 
-                                           where v.user_id = u.id 
-                                             and v.survey_id = u.survey_id) ) voted
-                                    ,max(hide_teaser) as hide_teaser
+                                     ,max(hide_teaser) as hide_teaser
                                 FROM pok_user_tbl u WHERE u.id=?");
     $sql->bind_param('s', $id);
     $sql->execute();
     $result = $sql->get_result();
     if ($obj = $result->fetch_object()) {
         if ($obj->user_exists == 0) {
-            $survey_id = get_survey_id($link, $t, $id);
-            if ($survey_id != null) $survey = 'LOUD';
             // Idempotent insert: two parallel DAO calls for a fresh SID (loadBoard + WebSocket onopen)
             // both see user_exists == 0 and try to insert the same PRIMARY key. ON DUPLICATE KEY UPDATE id=id
             // lets the first request win and keeps its row unchanged, instead of a duplicate-key fatal (B-21).
-            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id,survey_id) values(?,?) ON DUPLICATE KEY UPDATE id=id");
-            $sql_i->bind_param('si', $id, $survey_id);
+            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id) values(?) ON DUPLICATE KEY UPDATE id=id");
+            $sql_i->bind_param('s', $id);
             $sql_i->execute();
         } else {
             $color_mode = $obj->color_mode;
             $hide_teaser = $obj->hide_teaser;
-            if ($obj->survey_id > 0) {
-                if ($obj->voted != 0) $survey = 'VOTED';
-                elseif ($obj->survey_skipped != 0)  $survey = 'SILENT';
-                else $survey = 'LOUD';
-            } elseif ($obj->survey_id == -1) {
-                $survey_id = get_survey_id($link, $t, $id);
-                if ($survey_id != null) {
-                    $survey = 'LOUD';
-                    $sql_i = $link->prepare("UPDATE pok_user_tbl SET survey_id=? WHERE id=?");
-                    $sql_i->bind_param('is', $survey_id, $id);
-                } else {
-                    $sql_i = $link->prepare("UPDATE pok_user_tbl SET survey_id=null WHERE id=?");
-                    $sql_i->bind_param('s',$id);
-                }
-                $sql_i->execute();
-            }
         }
     }
 
@@ -1225,7 +1200,6 @@ function getDao($t, $id) {
         "id"=>$id,
         "color_mode"=>(String)$color_mode,
         "hide_teaser"=>(Int)$hide_teaser, // B-57: 1 = feedback panel seen (no red dot)
-        "survey"=>$survey,
         "team_name"=>$team_name,
         "cardset_flags"=>$cardset_flags,
         "deck"=>$deck, // B-98: {id, group, cards, controls, rev}, card data in card_catalog.json (B-98 S4: custom_sets)
@@ -1233,6 +1207,7 @@ function getDao($t, $id) {
         "custom_cards_played"=>$custom_played, // B-98 S4: inactive custom cards still on the table
         "custom_limits"=>array("sets"=>custom_sets_max(), "cards"=>custom_cards_max()),
         "topic"=>(String)$topic, // the team's note (B-52 S1b: independent of the topic items again)
+        "survey"=>"NO", // B-136: keeps boards with the old script (open during the deploy) from showing the survey footer; drop later
         "topic_items"=>$topic_items, // B-52 S1b: {active, open_count, done_count, next_heading, topics_rev} (api/lib_topics.php)
         "timer_status"=>$timer_status,
         "timer_time"=>(Int)$timer_time,
@@ -1322,31 +1297,6 @@ function get_roadmap_items($link, string $user_id, ?int $item_id = null): array 
         );
     }
     return $items;
-}
-
-function get_survey_id($link, $team_id, $user_id) {
-    $survey_id = null;
-    $sql = $link->prepare(" select greatest(team_age, ifnull(related_teams_age, 0)) as approx_team_age
-                              from
-                            (
-                            select t.id, timestampdiff(DAY, t.creation_date, current_timestamp) team_age
-                            ,(SELECT max( timestampdiff(DAY, t2.creation_date, current_timestamp) )
-                              FROM pok_players_tbl p1, pok_players_tbl p2, pok_teams_tbl t2 where p1.team_id =t.id
-                                                                            and p2.id = p1.id
-                                                                            and p2.team_id != p1.team_id
-                                                                            and t2.id = p2.team_id) related_teams_age
-                              from pok_teams_tbl t
-                            where t.id = ?
-                            ) as x
-                            ;");
-    $sql->bind_param('s', $team_id);
-    $sql->execute();
-    $result = $sql->get_result();
-    if ($obj = $result->fetch_object()) {
-        //if ($obj->approx_team_age >= 30) $survey_id = 1;
-        if ($obj->approx_team_age < -110) $survey_id = 1;
-    }
-    return $survey_id;
 }
 
 function add_team($link, $t, $topic=null, $preset_mapping=null): string
