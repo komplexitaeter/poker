@@ -153,6 +153,11 @@ J.U.D.G.E., Delegation Poker, Team Assessment …), wird in der App aber nicht e
 Klick laden), (3) ruhiger Link „Train your team“ (Online-Kurse fürs ganze Team, mit Preisindikation); nie während einer
 Abstimmung. Offen: Produktion, Hosting, Preis in der App oder auf der Landingpage.
 
+### B-112 Einladen am leeren Tisch: leerer Platz
+Status: neu (Andreas, 2026-11-16: bleibt im Backlog). Teil 1 live R3 (2026-11-06), #163/#196: Invite-Button und Tipp
+„Invite your team“. Offen: solange weniger als zwei Spieler da sind, ein leerer Platz am Tisch mit Einladen-Symbol
+(Idee Delia), damit sichtbar ist, dass hier jemand fehlt.
+
 ### B-117 Badges und Feier-Animationen
 Status: neu. Anlass: Live-Feedback zu R2 („fancier party animation“ bei Einigkeit). Idee Andreas (2026-11-05):
 Bindungsmaßnahme – Teams erarbeiten sich Badges, mit jedem Badge eine bessere Feier (Konfetti → Feuerwerk →
@@ -527,8 +532,6 @@ von feedback und teamcar gesperrt. Rest offen: `/tools/`-Sperre; teamcar-Repo `c
   tense 😬.
 - **B-110 Tisch-Interaktion** – live R3 (2026-11-06), u. a. #156: away-Erkennung, Beobachter-Zeile, Kontext-Kreise
   (Reaktionen, Entfernen), Reaktionen und Nudge über den WebSocket.
-- **B-112 Einladen am leeren Tisch** – live R3 (2026-11-06), #163/#196: Invite-Button und Tipp. Rest: leerer Platz
-  „Invite your team“ am Tisch, solange weniger als zwei Spieler da sind.
 - **B-113 Seitenleiste ein-/ausklappbar** – live 2026-11-09, #205–#223, #225: schmale Leiste, Breite per Griff,
   Zustand je Phase pro Person (nur Desktop).
 - **B-115 Schalter „See changed cards“** – live R3 (2026-11-06), #191/#194.
