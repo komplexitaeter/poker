@@ -11,7 +11,8 @@ import { newPlayer, createTeam, joinAsPlayer, tableCard, stopHbLoads } from './h
  * also .is-nudged-me). Anonymous mode: no sender name. A hidden tab drops reactions (nothing is played late).
  * poker-msg checks the format only and forwards at most 3 reactions per connection and second and 10 a minute
  * (B-131); the board keeps to the same limits (a hint above the minute limit, none within the second) and ignores
- * unknown codes.
+ * unknown codes. B-139: every emoji (not the nudge) goes out once a UTC day per person and team; the bar shows what is
+ * left (1× / 0×), counted in localStorage.
  * SHOT_DIR (optional): stills of the flight, the landing and a nudge, and a video of a flight.
  */
 const DESKTOP = { width: 1280, height: 800 };
@@ -171,7 +172,8 @@ test('a reaction lands at the target on every board, the sender only on the echo
       return orig.call(this, data);
     };
   });
-  await throwAt(alice, tableCard(alice, 'Bob'), 'heart');
+  // (another emoji than the next throw: the board counts what it sent, 1 a day each, B-139)
+  await throwAt(alice, tableCard(alice, 'Bob'), 'clap');
   await alice.waitForTimeout(1500);
   for (const p of [alice, bob, olga]) await expect(p.locator('.react-land, .react-fly')).toHaveCount(0);
   for (const seen of [seenA, seenB, seenO]) expect(await seen()).toEqual([]);
@@ -496,10 +498,11 @@ test('rate limit: 3 a second and 10 a minute go out, the 4th in a second is sile
   await bobCard.getByRole('button', { name: 'Nudge Bob' }).dblclick();
   await alice.waitForTimeout(300);
   expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`, `react:0:${bobMkey}:nudge`]);
-  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'clap'), [bobMkey]);
+  // (nudges: an emoji goes out once a day only, B-139; the nudge is not counted)
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
   expect(await sent()).toHaveLength(3);
   // the 4th within the same second: silently not sent (no hint)
-  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'clap'), [bobMkey]);
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'nudge'), [bobMkey]);
   expect(await sent()).toHaveLength(3);
   expect(await toasts()).toEqual([]);
   await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
@@ -507,7 +510,7 @@ test('rate limit: 3 a second and 10 a minute go out, the 4th in a second is sile
   // seven more, one per (faked) second: all go out
   for (let i = 0; i < 7; i++) {
     await advance(1100);
-    await alice.evaluate(([to, c]) => (window as unknown as W).sendReaction(to, c), [bobMkey, i % 2 ? 'nudge' : 'clap']);
+    await alice.evaluate(([to, c]) => (window as unknown as W).sendReaction(to, c), [bobMkey, i === 0 ? 'clap' : 'nudge']);
   }
   expect(await sent()).toHaveLength(10);
   expect(await toasts()).toEqual([]);
@@ -568,6 +571,128 @@ test('a held Enter on the nudge circle or an emoji sends one reaction, not one p
   expect(await sent()).toEqual([`react:0:${bobMkey}:nudge`, `react:${aliceMkey}:${bobMkey}:heart`]);
   await expect(alice.locator('#react_bar')).toBeHidden();
   await expect(alice.locator('#toast')).not.toHaveClass(/\btoast-on\b/);
+});
+
+/** B-139: opens the emoji bar of a card (desktop: hover, smiley) */
+async function openBar(page: Page, card: Locator): Promise<Locator> {
+  await card.hover();
+  await card.locator('.react').click();
+  const bar = page.locator('#react_bar');
+  await expect(bar).toBeVisible();
+  return bar;
+}
+
+test('daily quota: every emoji once a UTC day, greyed when used, the nudge is free, other tabs follow (B-139)',
+  async ({ browser }) => {
+  const { alice, bob, url, bobMkey } = await setup(browser, 'React Quota');
+  const sent = await recordSent(alice);
+  type W = { sendReaction: (to: string, code: string) => void };
+  const aliceMkey = await tableCard(alice, 'Alice').getAttribute('id') as string;
+  const bobCard = tableCard(alice, 'Bob');
+  const btn = (p: Page, code: string) => p.locator(`#react_bar button[data-react="${code}"]`);
+
+  // fresh: 1× under each of the seven emojis
+  let bar = await openBar(alice, bobCard);
+  await expect(bar.locator('.react-left')).toHaveText(Array(7).fill('1×'));
+  await expect(btn(alice, 'fish')).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(btn(alice, 'fish')).toHaveAttribute('aria-label', 'Fish – 1 left today');
+
+  // a fish: goes out and lands
+  await btn(alice, 'fish').click();
+  await expect(bar).toBeHidden();
+  await expect(tableCard(bob, 'Bob').locator('.react-land .react-emoji')).toHaveText('🐟');
+  expect(await sent()).toEqual([`react:${aliceMkey}:${bobMkey}:fish`]);
+  await expect(tableCard(bob, 'Bob').locator('.react-land')).toHaveCount(0, { timeout: 5000 });
+
+  // the bar again: the fish is used up (0×, greyed, aria-disabled, says when it is back), the others are not
+  await alice.waitForTimeout(RATE_LIMIT_MS);
+  bar = await openBar(alice, bobCard);
+  await expect(btn(alice, 'fish').locator('.react-left')).toHaveText('0×');
+  await expect(btn(alice, 'fish')).toHaveAttribute('aria-disabled', 'true');
+  await expect(btn(alice, 'fish')).toHaveAttribute('aria-label', 'Fish – used today, back tomorrow');
+  await expect(btn(alice, 'fish')).toHaveAttribute('title', 'Fish – used today, back tomorrow');
+  expect(await btn(alice, 'fish').locator('.react-glyph').evaluate(el => getComputedStyle(el).filter))
+    .toContain('grayscale');
+  await expect(btn(alice, 'cake').locator('.react-left')).toHaveText('1×');
+  await expect(btn(alice, 'cake')).not.toHaveAttribute('aria-disabled', 'true');
+
+  // a click on 0×: no throw, a toast says why (once, not per click); Enter and a direct call send nothing either
+  await alice.evaluate(() => {
+    const w = window as unknown as { toasts: string[]; showToast: (text: string, ...rest: unknown[]) => void };
+    w.toasts = [];
+    const orig = w.showToast;
+    w.showToast = (text: string, ...rest: unknown[]) => { w.toasts.push(text); orig(text, ...rest); };
+  });
+  const toasts = () => alice.evaluate(() => (window as unknown as { toasts: string[] }).toasts.slice());
+  await btn(alice, 'fish').click({ force: true }); // aria-disabled: Playwright would wait for it to be enabled
+  await expect(alice.locator('#toast')).toHaveClass(/\btoast-on\b/);
+  await expect(alice.locator('#toast')).toHaveText('You\u2019ve used today\u2019s fish \u2013 back tomorrow.');
+  await btn(alice, 'fish').click({ force: true });
+  await btn(alice, 'fish').focus();
+  await alice.keyboard.press('Enter');
+  await alice.keyboard.press(' ');
+  await alice.evaluate(([to]) => (window as unknown as W).sendReaction(to, 'fish'), [bobMkey]);
+  await alice.waitForTimeout(300);
+  await expect(bar).toBeVisible();
+  expect(await sent()).toHaveLength(1);
+  expect(await toasts()).toHaveLength(1);
+  await bob.waitForTimeout(1000);
+  await expect(tableCard(bob, 'Bob').locator('.react-land')).toHaveCount(0);
+
+  // shots of the bar for the review (light and dark)
+  const shots = process.env.SHOT_DIR;
+  if (shots) {
+    await alice.mouse.move(5, 5);
+    for (const mode of ['dark', 'light'] as const) {
+      await colorMode(alice, mode);
+      await alice.waitForTimeout(300);
+      await bar.screenshot({ path: `${shots}/b139-bar-${mode}.png`, animations: 'disabled' });
+    }
+  }
+
+  // another emoji still goes once
+  await btn(alice, 'cake').click();
+  await expect(bar).toBeHidden();
+  expect(await sent()).toEqual([`react:${aliceMkey}:${bobMkey}:fish`, `react:${aliceMkey}:${bobMkey}:cake`]);
+
+  // the nudge is no throw: any number of times (within the rate limits)
+  for (let i = 0; i < 3; i++) {
+    await alice.waitForTimeout(RATE_LIMIT_MS);
+    await bobCard.hover();
+    await bobCard.getByRole('button', { name: 'Nudge Bob' }).click();
+  }
+  expect((await sent()).filter(m => m.endsWith(':nudge'))).toHaveLength(3);
+
+  // a second tab of the same person: the same counts; a throw in one tab shows in the other at once (storage event)
+  const tab2 = await alice.context().newPage();
+  await tab2.goto(url);
+  await expect(tableCard(tab2, 'Bob')).toBeVisible();
+  const bar2 = await openBar(tab2, tableCard(tab2, 'Bob'));
+  await expect(btn(tab2, 'fish').locator('.react-left')).toHaveText('0×');
+  await expect(btn(tab2, 'heart').locator('.react-left')).toHaveText('1×');
+  await alice.waitForTimeout(RATE_LIMIT_MS);
+  await throwAt(alice, bobCard, 'heart');
+  await expect(btn(tab2, 'heart').locator('.react-left')).toHaveText('0×');
+  await expect(btn(tab2, 'heart')).toHaveAttribute('aria-disabled', 'true');
+  await expect(bar2).toBeVisible();
+  await tab2.close();
+
+  // the next UTC day: all back to 1× (only the board's clock moves; poker-msg keeps the real day, so the throw is
+  // only checked as sent, not as landed)
+  const next = new Date(await alice.evaluate(() => Date.now()));
+  next.setUTCHours(24, 0, 5, 0);
+  await alice.clock.setFixedTime(next);
+  // the jump looks like a silent connection to the board (B-81): wait until it has a live one again
+  await expect.poll(() => alice.evaluate(() => (0, eval)('wsConnectionAlive()')), { timeout: 15_000 }).toBe(true);
+  // the fixed clock also stops performance.now(), the clock of the rate limit (B-131): its past throws would
+  // count as "just now", so it starts empty
+  await alice.evaluate(() => (0, eval)('gReactSent = []'));
+  await alice.waitForTimeout(RATE_LIMIT_MS);
+  bar = await openBar(alice, bobCard);
+  await expect(bar.locator('.react-left')).toHaveText(Array(7).fill('1×'));
+  await btn(alice, 'fish').click();
+  await expect(bar).toBeHidden();
+  expect((await sent()).filter(m => m.endsWith(':fish'))).toHaveLength(2);
 });
 
 /** B-133: an AudioContext that counts started oscillators (window.oscStarts) instead of playing */
