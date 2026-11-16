@@ -23,6 +23,17 @@ iterativen Weg leicht und normal machen (Funktionen, aber auch Sprache und Tipps
 braucht; die Teams haben selbst in der Hand, was sie löschen oder absichern. Datensicherheit ist wichtig, aber nicht
 die Primärfunktion (Andreas, 2026-11-10).
 
+## Aktueller Sprint
+
+**Sprint 9 – Aufräumen unter der Haube** (Andreas, 2026-11-16): Refactoring und technische Schulden, nichts für die
+Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging; Rollout danach mit B-12.
+1. B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
+2. B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
+3. B-34 Startdaten asynchron laden
+4. B-14 erster Schnitt (2–3 Module aus `script.js`)
+5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
+Jederzeit: B-126 / B-23-Rest (nginx-Sperren, Upload-Grenzen – Befehle für Andreas). Nicht angetastet: B-10.
+
 ## Rollouts
 
 Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe „Erledigt & verworfen“.
@@ -284,7 +295,7 @@ nicht wieder geladen). Dann `php8.4 tools/migration/check_deck_migration.php --v
 entscheiden, ob `tools/migration/` aus dem Repo kann (siehe B-126).
 
 ### B-136 Umfrage entfernen
-Status: refined (Andreas, 2026-11-16). Die In-App-Umfrage ist praktisch tot (Fund Fred, 2026-10-30: `get_survey.php`
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Die In-App-Umfrage ist praktisch tot (Fund Fred, 2026-10-30: `get_survey.php`
 bindet die User-ID mit `bind_param('i', …)`, `get_survey_id()` vergibt nie eine Umfrage) und wird ausgebaut.
 Umfang: Frontend-Code der Umfrage (u. a. `toggleSurvey()`, Survey-Box, `fillResultsBars()`, CSS),
 `api/get_survey.php` und zugehörige Endpunkte sowie Umfrage-Abfragen in `getDao()`/`api/lib.php` entfernen. Tabellen
@@ -331,7 +342,7 @@ Frühere Entscheidung (2026-10-30) gilt weiter: nicht pro IP oder Team begrenzen
 Erfolgsgeschichte). In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
 
 ### B-94 Neuladen nach Fehlschlag wiederholen
-Status: neu. Fund Tessa (2026-10-30): `updateDao()` hat kein `.catch`; schlägt das Neuladen nach dem eigenen Schreiben
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: neu. Fund Tessa (2026-10-30): `updateDao()` hat kein `.catch`; schlägt das Neuladen nach dem eigenen Schreiben
 fehl (Netz, 500), bleibt das Board bis zum nächsten `pull`/Neuaufbau (bis 40 s) auf altem Stand. Vorschlag: einmal nach
 kurzer Pause erneut versuchen (B-135 wiederholt nur Schreib-Requests). Außerdem `docs/b81-server-notify.md` auf den
 umgesetzten Heartbeat-Wächter nachziehen (nennt noch `expectPull`).
@@ -344,6 +355,15 @@ Status: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtl
   neu – prüfen, ob seit #103 noch so.
 - `brand.png` und rund 50 alte `c_*.png`, die nach den gerenderten Karten (R3) nur noch in `mockups/` genutzt werden:
   löschen oder dorthin verschieben. Vorher Referenzen in HTML/CSS/JS/PHP/JSON prüfen; `src/xcf/` bleibt.
+
+### B-137 Restliche SQL-Konkatenation auf Prepared Statements
+Status: im Sprint 9, Schritt 2 (Andreas, 2026-11-16). CLAUDE.md nennt noch String-Konkatenation u. a. in
+`validate_team()` (`api/lib.php`), `api/delete.php`, `api/feedback.php`. Alle Reste finden und umstellen, ohne
+Verhaltensänderung.
+
+### B-138 CI: `php -l` als schneller Vorab-Check
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Alle PHP-Dateien (App, ggf. `tools/`) per `php -l` mit PHP 8.4
+prüfen, bevor die E2E-Shards starten; schlägt früh und billig fehl.
 
 ## Offen: Sicherheit & Datenschutz
 
@@ -359,7 +379,7 @@ Status: refined. Fund Sina, Gedanke Andreas (2026-10-30):
 - REST-Verben erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
 
 ### B-93 poker-msg: Browser-`push` entfernen
-Status: refined. Fund Sina (2026-10-30): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an – wer eine Team-ID
+Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined. Fund Sina (2026-10-30): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an – wer eine Team-ID
 kennt, kann ohne API-Aufruf beliebig viele Pulls an alle Boards des Teams auslösen. Seit B-81 (R2) sendet kein Client
 mehr `push`: `push` in poker-msg entfernen oder über dieselbe Drosselung wie `onNotify` leiten. Nebenbei:
 `api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE.
