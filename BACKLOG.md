@@ -278,12 +278,19 @@ Dimensionen, getrennt umsetzbar:
 Bis dahin ist die Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); vorhandene Werte werden angezeigt.
 Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
 
-### B-139 Reaktionen für das Team abschaltbar
+### B-139 Reaktionen mit sichtbarem Tageskontingent
 Status: refined (Andreas, 2026-11-16). Feedback (OTHER, 2026-11-16): „Colleagues keep throwing fish. Can we get a
-setting to disable throwing of emojis please?“ Entscheidung: Schalter **für das ganze Team** in den Board-Einstellungen
-(wie „Tips“, B-96), Standard **an**. Aus: keine Emoji-Leiste, keine Würfe – das Board sendet keine Reaktionen und
-ignoriert eingehende; Anstupsen (Nudge, B-133) bleibt. poker-msg bleibt unverändert. Neue Teamspalte (Schema, additiv).
-Später denkbar: persönlicher Schalter „Show reactions“ im `:you`-Menü.
+setting to disable throwing of emojis please?“ Auswertung poker-msg-Log: ein Team mit Fisch-Wellen bis 121 Würfe/min
+(mehrere Personen, je unter dem Limit 10/min); sonst 187 Teams unauffällig. Verteilung (559 Reaktionen mit Namen):
+Nudge 43 %, Fisch 47 % (ohne das eine Team 62 % / 24 %), Think, Party, Thumbs, Cake, Clap, Heart zusammen < 10 %.
+Entscheidung (Andreas): kein Abschalter, keine versteckte Grenze, sondern ein **sichtbares Kontingent**: jede Person
+kann **jedes Wurf-Emoji 1× pro Tag** werfen – „man muss sich überlegen, wo man es hinwirft“.
+- Unter jedem Emoji der Leiste steht der Rest, z. B. `1×` / `0×`; bei `0×` ausgegraut (Tooltip/aria: „back tomorrow“).
+- **Nudge ist ausgenommen** (Funktion, kein Wurf; Limits wie bisher).
+- Durchsetzung: Board merkt sich die Würfe je User-ID und Tag (localStorage) für die Anzeige; poker-msg zählt je
+  Werfer-mkey, Emoji und Tag im Speicher (keine DB; nach Neustart beginnt die Zählung neu) und verwirft Würfe über dem
+  Kontingent. Die bisherigen Limits (3/s, 10/min) bleiben.
+Offen: Tagesgrenze für Board und poker-msg gleich festlegen (Vorschlag: 00:00 UTC, damit beide übereinstimmen).
 
 ## Offen: Technik & Betrieb
 
