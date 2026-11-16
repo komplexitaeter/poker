@@ -892,7 +892,19 @@ let gDaoShownSeq = 0;   // number of the board state shown last
 let gDaoLoading = 0;     // B-110: dao.php loads in flight
 let gAwaySig = null;     // B-127: away_sig of the board state shown last (null: none shown yet / unknown)
 
-function updateDao(isOnLoad) {
+/* B-94: a load that fails (network error, HTTP error, no JSON) is tried once more after DAO_RETRY_MS, else the
+ * board would stay on the old state until the next pull or heartbeat. Only the latest load is retried (an older
+ * one is made void by the newer one), and a load asked for meanwhile replaces the pending retry. The load on page
+ * load sets the page up, so its retry is never dropped: it runs, or the load that replaces it does the set-up. */
+const DAO_RETRY_MS = 800;
+let gDaoRetry = null;    // pending retry: {timer, isOnLoad}
+
+function updateDao(isOnLoad, isRetry = false) {
+    if (gDaoRetry !== null) { // this load brings the newer state anyway
+        clearTimeout(gDaoRetry.timer);
+        isOnLoad = isOnLoad || gDaoRetry.isOnLoad;
+        gDaoRetry = null;
+    }
     const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
     const seq = ++gDaoSeq;
     // B-110: any load does what a pending heartbeat would do (it refreshes last_callback_time and the away state)
@@ -905,9 +917,29 @@ function updateDao(isOnLoad) {
 
     fetch(url)
         .then((response) => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();
         })
         .then((myJson) => {
+            if (myJson === null || typeof myJson !== 'object') throw new Error('no board state');
+            return myJson;
+        })
+        .catch((error) => {
+            console.log('dao.php failed', error);
+            if (!isRetry && (seq === gDaoSeq || isOnLoad)) {
+                const retry = { isOnLoad: isOnLoad, timer: 0 };
+                retry.timer = setTimeout(() => {
+                    if (gDaoRetry !== retry) return;
+                    gDaoRetry = null;
+                    console.log('dao.php retry');
+                    updateDao(retry.isOnLoad, true);
+                }, DAO_RETRY_MS);
+                gDaoRetry = retry;
+            }
+            return null;
+        })
+        .then((myJson) => {
+            if (myJson === null) return;
 
             if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
             gDaoShownSeq = Math.max(gDaoShownSeq, seq);
@@ -922,7 +954,7 @@ function updateDao(isOnLoad) {
             // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
         })
-        .catch(error => console.log('dao.php failed', error))
+        .catch(error => console.log('board update failed', error)) // not retried: the same state would fail again
         .finally(() => { gDaoLoading--; });
 }
 
