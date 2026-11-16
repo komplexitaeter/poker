@@ -1567,6 +1567,7 @@ function openReactBar(btn) {
     const bar = document.getElementById('react_bar');
     bar.querySelector('.react-bar-name').textContent = holderName(holder);
     bar.dataset.to = holderMkey(holder);
+    updateReactBarQuota(); // B-139 (also a new day since the last opening)
     if (gTapQuery.matches) setOpenHolder(holder);
     openPopover(bar, btn, holder, btn);
     const first = bar.querySelector('button[data-react]');
@@ -1598,13 +1599,105 @@ function sendReaction(toMkey, code) {
     const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
     if (!REACT_MSG.test(msg)) return;
     if (gConn === null || gConn.readyState !== WebSocket.OPEN) return;
+    if (code !== REACT_NUDGE && reactLeft(code) <= 0) return; // B-139: used up today (poker-msg would drop it)
     if (!reactionAllowed()) return;
     try {
         gConn.send(msg);
         gReactSent.push(performance.now());
     } catch (e) {
         console.log('reaction not sent', e);
+        return;
     }
+    if (code !== REACT_NUDGE) countReaction(code); // B-139: only what really went out
+}
+
+/* B-139: every emoji of the bar can be thrown REACT_DAILY_QUOTA times a day per person and team (the nudge is no
+ * throw: not counted). Must match the daily quota of poker-msg, which counts per sender mkey, emoji and UTC day and
+ * drops throws above it. The day is the UTC calendar day, the same boundary as poker-msg.
+ * The board counts in localStorage (REACT_USED: { day, used: { "<team>:<user id>": { fish: 1 } } }), so a reload
+ * and other tabs of the same person see it (storage event). Another day: all counts are dropped. Without
+ * localStorage only in memory (per page); poker-msg limits anyway. */
+const REACT_DAILY_QUOTA = 1;
+const REACT_USED_KEY = 'REACT_USED';
+let gReactUsedMem = null; // the last state written, for a browser without (working) localStorage
+
+function reactDay() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function reactUsedOwner() {
+    return String(t ?? '') + ':' + String(sid ?? '');
+}
+
+/* the counts of today (all teams and users of this browser), a fresh object on another day or unreadable data */
+function readReactUsed() {
+    const day = reactDay();
+    let all = gReactUsedMem;
+    try {
+        all = JSON.parse(localStorage.getItem(REACT_USED_KEY) ?? 'null');
+    } catch (e) {
+        // no localStorage (or broken JSON): the memory copy
+    }
+    const ok = all !== null && typeof all === 'object' && all.day === day
+        && all.used !== null && typeof all.used === 'object';
+    return ok ? all : { day, used: {} };
+}
+
+/* how many throws of an emoji are left today for me in this team */
+function reactLeft(code) {
+    const mine = readReactUsed().used[reactUsedOwner()];
+    const n = mine !== null && typeof mine === 'object' ? Number(mine[code]) || 0 : 0;
+    return Math.max(0, REACT_DAILY_QUOTA - n);
+}
+
+function countReaction(code) {
+    const all = readReactUsed();
+    const owner = reactUsedOwner();
+    const mine = all.used[owner] !== null && typeof all.used[owner] === 'object' ? all.used[owner] : {};
+    mine[code] = (Number(mine[code]) || 0) + 1;
+    all.used[owner] = mine;
+    gReactUsedMem = all;
+    try {
+        localStorage.setItem(REACT_USED_KEY, JSON.stringify(all));
+    } catch (e) {
+        // no localStorage: counted in memory only
+    }
+    updateReactBarQuota();
+}
+
+/* the rest under every emoji of the bar ("1×" / "0×"); used up: greyed, aria-disabled, says when it is back */
+function updateReactBarQuota() {
+    const bar = document.getElementById('react_bar');
+    if (bar === null) return;
+    bar.querySelectorAll('button[data-react]').forEach(btn => {
+        const code = btn.dataset.react;
+        if (!Object.hasOwn(REACT_EMOJI, code)) return;
+        if (btn.dataset.name === undefined) btn.dataset.name = btn.getAttribute('aria-label') ?? code;
+        const left = reactLeft(code);
+        const label = btn.dataset.name + (left > 0 ? ' \u2013 ' + left + ' left today' : ' \u2013 used today, back tomorrow');
+        const count = btn.querySelector('.react-left');
+        if (count !== null && count.textContent !== left + '\u00d7') count.textContent = left + '\u00d7';
+        setAttrIfChanged(btn, 'aria-label', label);
+        setAttrIfChanged(btn, 'title', label);
+        if (left > 0) btn.removeAttribute('aria-disabled');
+        else setAttrIfChanged(btn, 'aria-disabled', 'true');
+    });
+}
+
+/* B-139: a click (or Enter/Space) on a used-up emoji throws nothing and says why, like the rate limit hint (B-131):
+ * at most once in REACT_LIMIT_TOAST_MS, so repeated clicks do not spam it */
+let gReactUsedToastAt = -Infinity;
+function reactUsedUpHint(btn) {
+    const now = performance.now();
+    if (now - gReactUsedToastAt < REACT_LIMIT_TOAST_MS) return;
+    gReactUsedToastAt = now;
+    const name = String(btn.dataset.name ?? btn.dataset.react ?? '').toLowerCase();
+    showToast('You\u2019ve used today\u2019s ' + name + ' \u2013 back tomorrow.', 3000);
+}
+
+/* another tab of the same person threw (or a new day began there): the bar follows */
+function onReactUsedStorage(event) {
+    if (event.key === REACT_USED_KEY || event.key === null) updateReactBarQuota();
 }
 
 /* B-131: the same staggered limit as poker-msg (per connection, sliding windows; keep both in step): at most
@@ -1927,6 +2020,7 @@ function onTableClick(event) {
     if (emoji !== null) {
         const code = emoji.dataset.react;
         const to = document.getElementById('react_bar').dataset.to;
+        if (emoji.getAttribute('aria-disabled') === 'true') { reactUsedUpHint(emoji); return; } // B-139: bar stays
         closePopover(true);
         if (Object.hasOwn(REACT_EMOJI, code) && to) sendReaction(to, code);
         return;
@@ -2092,6 +2186,8 @@ function initTableInteraction() {
     else if (typeof gTapQuery.addListener === 'function') gTapQuery.addListener(onTapQueryChange); // Safari < 14
     document.addEventListener('keydown', onPopoverKeydown, true);
     document.addEventListener('keydown', onReactKeyRepeat, true);
+    window.addEventListener('storage', onReactUsedStorage); // B-139
+    updateReactBarQuota();
     const reposition = () => { repositionPopover(); repositionTapHint(); };
     window.addEventListener('resize', reposition);
     document.getElementById('table').addEventListener('scroll', reposition, { passive: true });

@@ -2061,7 +2061,9 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
  * --arrow-x (the arrow tip, px from the left edge of the box: the middle of the anchor) and .is-below when
  * there is no room above the anchor (the arrow then points up). Show/hide with the hidden attribute.
  *   #react_bar.tbl-pop.react-bar   above the smiley: "throw at <.react-bar-name>", seven button[data-react]:
- *                                  cake heart clap party think thumbs fish
+ *                                  cake heart clap party think thumbs fish, each
+ *                                  <span class="react-glyph">🎂</span><span class="react-left">1×</span>
+ *                                  (B-139: left today; [aria-disabled="true"] when used up)
  *   #rm_confirm.tbl-pop.rm-confirm  on every click on a trash can, above it: "Remove <.rm-name> from the table?",
  *                                  small "<.rm-name> can rejoin at any time.", Cancel / Remove
  *   #tap_hint.tbl-pop.tap-hint      touch only, once (localStorage): "Tap a card …", "Got it"
@@ -2320,7 +2322,7 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
     from { opacity: 0; transform: translateY(-4px) scale(0.96); }
 }
 
-/* the emoji bar: "throw at Name", seven emojis in a row */
+/* the emoji bar: "throw at Name", seven emojis in a row, under each the throws left today (B-139: "1×" / "0×") */
 .react-bar-label {
     margin: 0;
     padding: 0 6px 4px;
@@ -2333,11 +2335,12 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 .react-bar-row { display: flex; gap: 2px; }
 .react-bar button {
     display: grid;
+    grid-template-rows: 1fr auto;
     place-items: center;
     width: 38px;
-    height: 38px;
+    height: 50px;
     margin: 0;
-    padding: 0;
+    padding: 4px 0 3px;
     border: 0;
     border-radius: var(--radius-m);
     background: transparent;
@@ -2350,10 +2353,25 @@ body.light-theme .c.is-changed .pc:not(.pc-orig) { box-shadow: -5px -5px 8px -2p
 .react-bar button:hover,
 .react-bar button:focus-visible { background: var(--bg-4); transform: scale(1.15); }
 .react-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* B-139: the rest of today, quiet console text; used up (aria-disabled): greyed, no bump, a click only shows a toast */
+.react-left {
+    font-family: var(--font);
+    font-size: var(--fs-xs);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--muted);
+}
+.react-bar button[aria-disabled="true"] { cursor: default; } /* still clickable: a toast says why (B-139) */
+.react-bar button[aria-disabled="true"] .react-glyph { filter: grayscale(1); opacity: 0.35; }
+.react-bar button[aria-disabled="true"] .react-left { opacity: 0.6; }
+.react-bar button[aria-disabled="true"]:hover,
+.react-bar button[aria-disabled="true"]:focus-visible,
+.react-bar button[aria-disabled="true"]:active { background: transparent; transform: none; }
 @media (pointer: coarse) {
-    .react-bar button { width: 44px; height: 44px; font-size: 26px; }
+    .react-bar button { width: 44px; height: 58px; font-size: 26px; }
     .react-bar button:hover { background: transparent; transform: none; }
     .react-bar button:active { background: var(--bg-4); transform: scale(1.15); }
+    .react-bar button[aria-disabled="true"]:active { background: transparent; transform: none; }
 }
 
 /* touch: "Remove Name?" at the card, before the trash can removes anyone */
