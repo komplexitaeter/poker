@@ -10,6 +10,35 @@
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
     <link rel="stylesheet" href="style/style.css?v=2.65" media="screen" />
+    <!-- B-34: until the page is complete, a spinner after 0.4 s (only on slow loads) and after 12 s a hint with a
+         reload button; inline, so both work without style.css and script.js. Both go when the page shows
+         (revealPage() in script.js sets html.ready). -->
+    <style>
+        html::after{content:'';position:fixed;left:50%;top:50%;width:32px;height:32px;margin:-16px 0 0 -16px;box-sizing:border-box;border-radius:50%;border:3px solid rgba(128,128,128,.25);border-top-color:rgba(128,128,128,.85);opacity:0;pointer-events:none;animation:pk-spin .9s linear infinite,pk-show .2s ease-out .4s forwards}
+        html.ready::after,html.load-fail::after{display:none}
+        @keyframes pk-spin{to{transform:rotate(360deg)}}
+        @keyframes pk-show{to{opacity:1}}
+        @media (prefers-reduced-motion:reduce){html::after{animation:pk-show .2s ease-out .4s forwards}}
+    </style>
+    <script>
+        setTimeout(function () {
+            var h = document.documentElement;
+            if (h.classList.contains('ready')) return;
+            h.classList.add('load-fail');
+            var d = document.createElement('div');
+            d.id = 'load_fail';
+            d.setAttribute('role', 'alert');
+            d.style.cssText = 'position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100vw - 32px);font:16px system-ui,sans-serif;color:rgb(128,128,128);text-align:center;';
+            d.textContent = "Agile Poker can't be loaded right now. We keep trying. ";
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = 'Reload';
+            b.style.cssText = 'display:block;margin:12px auto 0;font:inherit;padding:6px 16px;';
+            b.onclick = function () { location.reload(); };
+            d.appendChild(b);
+            h.appendChild(d);
+        }, 12000);
+    </script>
     <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
@@ -20,13 +49,13 @@
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/topics.js?v=1.14" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.33" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.34" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
 
 
 </head>
 <!-- hidden inline (not only in style.css) so nothing shows before the stylesheet and the first server response arrive -->
-<body onload="loadBoard()" class="body-fade-in" style="opacity: 0" ondblclick="onBodyDblClick(event)">
+<body onload="loadBoard()" class="body-fade-in" style="opacity: 0" aria-busy="true" ondblclick="onBodyDblClick(event)">
 <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
 <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>

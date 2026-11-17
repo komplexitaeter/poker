@@ -423,7 +423,7 @@ function setDeck(deck) {
  * broken on the server) the old way from cardset_flags and cards.json (adapter in deck.js) */
 function setTeamDeck(json) {
     const deck = deckFromServer(json.deck, gCardByKey)
-        || deckFromLegacy(gCardCatalog, String(json.cardset_flags || '').padEnd(gCardsConfig.length, '0'));
+        || deckFromLegacy(gCardCatalog, String(json.cardset_flags || '').padEnd((gCardsConfig || []).length, '0'));
     setDeck(deck);
     updateDeckKeys();
 }
@@ -884,8 +884,9 @@ function pickCardByKey(event) {
 }
 
 /* B-92: every board state asked for gets a number; an answer older than the one shown last is
- * dropped (answers may come in any order). The answer on load is always taken: it sets up the page
- * and asks again right away. */
+ * dropped (answers may come in any order). B-34: the first answer rendered without an error sets up the
+ * page (whichever load brought it: on load, onopen, pull, retry) and asks again right away; an older answer
+ * that comes after the set-up is dropped like any other. */
 let gDaoSeq = 0;        // board states asked for so far
 let gDaoShownSeq = 0;   // number of the board state shown last
 
@@ -895,9 +896,14 @@ let gAwaySig = null;     // B-127: away_sig of the board state shown last (null:
 /* B-94: a load that fails (network error, HTTP error, no JSON) is tried once more after DAO_RETRY_MS, else the
  * board would stay on the old state until the next pull or heartbeat. Only the latest load is retried (an older
  * one is made void by the newer one), and a load asked for meanwhile replaces the pending retry. The load on page
- * load sets the page up, so its retry is never dropped: it runs, or the load that replaces it does the set-up. */
+ * load sets the page up, so its retry is never dropped: it runs, or the load that replaces it does the set-up.
+ * B-34: until the page is set up, every failed load is retried without limit, with a growing wait (800 ms,
+ * 1.6 s, 3.2 s, then every 5 s), so a short outage on load never leaves the page hidden for good. After the
+ * set-up the B-94 rule above applies again (one retry, only the latest load). */
 const DAO_RETRY_MS = 800;
+const DAO_BOOT_RETRY_MAX_MS = 5000;
 let gDaoRetry = null;    // pending retry: {timer, isOnLoad}
+let gBootRetryN = 0;     // B-34: retries before the set-up so far (the wait grows with them)
 
 function updateDao(isOnLoad, isRetry = false) {
     if (gDaoRetry !== null) { // this load brings the newer state anyway
@@ -926,35 +932,44 @@ function updateDao(isOnLoad, isRetry = false) {
         })
         .catch((error) => {
             console.log('dao.php failed', error);
-            if (!isRetry && (seq === gDaoSeq || isOnLoad)) {
+            const booting = !gBoardSetUp; // B-34
+            if ((booting || !isRetry) && (booting || seq === gDaoSeq || isOnLoad)) {
+                const wait = booting
+                    ? Math.min(DAO_RETRY_MS * Math.pow(2, gBootRetryN++), DAO_BOOT_RETRY_MAX_MS)
+                    : DAO_RETRY_MS;
                 const retry = { isOnLoad: isOnLoad, timer: 0 };
                 retry.timer = setTimeout(() => {
                     if (gDaoRetry !== retry) return;
                     gDaoRetry = null;
                     console.log('dao.php retry');
                     updateDao(retry.isOnLoad, true);
-                }, DAO_RETRY_MS);
+                }, wait);
                 gDaoRetry = retry;
             }
             return null;
         })
+        // B-34: no board state is rendered before cards.json and card_catalog.json are there (or given up)
+        .then((myJson) => myJson === null ? null : gConfigReady.then(() => myJson))
         .then((myJson) => {
             if (myJson === null) return;
 
-            if (seq < gDaoShownSeq && !isOnLoad) return; // B-92: a newer state is shown already
+            const setup = !gBoardSetUp; // B-34: the first answer rendered without an error sets up the page
+            if (!setup && seq < gDaoShownSeq) return; // B-92: a newer state is shown already
             gDaoShownSeq = Math.max(gDaoShownSeq, seq);
             noteDeckGroup(myJson, seq);
             gAwaySig = typeof myJson.away_sig === 'string' ? myJson.away_sig : null; // B-127
 
             gLastJson = myJson;
-            updateDom(myJson, isOnLoad, timerStateFresh(timerWrite))
+            updateDom(myJson, setup, timerStateFresh(timerWrite));
             gJsonBefore = myJson;
 
             // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
             // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
         })
-        .catch(error => console.log('board update failed', error)) // not retried: the same state would fail again
+        // not retried: the same state would fail again. B-34: a failed set-up leaves the page hidden; the next
+        // answer (pull, heartbeat, reconnect, double click) tries the set-up again, the watchdog offers a reload
+        .catch(error => console.log('board update failed', error))
         .finally(() => { gDaoLoading--; });
 }
 
@@ -2351,6 +2366,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateTopicView(myJson);
 
     if (document.getElementById("team_name").innerText !== myJson.team_name
+        || gJsonBefore === null // B-34: a set-up that failed half-way may have set the name already
         || myJson.players_count !== gJsonBefore.players_count
         || myJson.ready_players_count !== gJsonBefore.ready_players_count
     ) {
@@ -2373,13 +2389,12 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     setTeamDeck(myJson);
     updateDeckMenu(myJson); // R3 F5 (script_deck.js)
 
-    if (!isOnLoad) {
-        // B-110: the observers first, their row takes room from the cards (fitCardsToTable)
-        updateObservers(Array.isArray(myJson.observers) ? myJson.observers : [], myJson.mkey);
-        if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
-            /* returns true when new cards have been added */
-            setColor();
-        }
+    // B-34: on load too, so the page shows complete at once (on load: no fade-in, no glide)
+    // B-110: the observers first, their row takes room from the cards (fitCardsToTable)
+    updateObservers(Array.isArray(myJson.observers) ? myJson.observers : [], myJson.mkey);
+    if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
+        /* returns true when new cards have been added */
+        setColor();
     }
 
 
@@ -2413,7 +2428,8 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     if (isOnLoad) {
 
-        document.body.style.opacity = '1';
+        gBoardSetUp = true; // B-34: before updateDao below (its failure is retried the B-94 way)
+        showPage();
 
         // a new board opens "Board settings" by itself, without taking the focus (name input first);
         // not on phones, where the sheet would cover the name input
@@ -2714,8 +2730,7 @@ function loadBoard() {
     const urlParams = new URLSearchParams(window.location.search);
     t = urlParams.get("t");
 
-    loadCardConfig();
-    updateDao(true);
+    updateDao(true); // B-34: cards.json and card_catalog.json load since script.js ran (gConfigReady)
     generateQRCode(window.location.href);
     initializeWSConnection(t);
     initWSReconnect();
@@ -2840,19 +2855,23 @@ function becomeUser(type) {
 }
 
 function loadInit() {
-    let url = './api/get_user.php?id=' + localStorage.getItem('SID');
-    gColorMode = loadJSON(url).color_mode;
-    setColor();
-
+    // the form never submits natively, also while the color mode is still loading
     document.getElementById('teamForm').addEventListener('submit', function(event) {
         event.preventDefault();
         addTeam();
     });
-
     initDisplayHandling();
-    document.body.style.opacity = "1";
-    document.getElementById("teaminput").focus();
-    measureEvent("INIT_ON_LOAD");
+
+    // B-34: the page shows once the color mode is known (or after USER_TIMEOUT_MS in dark), never half styled
+    const url = './api/get_user.php?id=' + encodeURIComponent(localStorage.getItem('SID'));
+    fetchJson(url, USER_TIMEOUT_MS).then((user) => {
+        gColorMode = user !== null && typeof user.color_mode === 'string' && user.color_mode !== ''
+            ? user.color_mode : 'dark';
+        setColor();
+        revealPage();
+        document.getElementById("teaminput").focus();
+        measureEvent("INIT_ON_LOAD");
+    });
 }
 
 function measureEvent(eventCode) {
@@ -3378,60 +3397,96 @@ function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
 }
 
 
+/* B-34: the start of the board loads without blocking. cards.json, card_catalog.json and the card symbols
+ * (src/cards.svg) start while the page is parsed (script.js is deferred), in parallel to the rest; dao.php starts
+ * on window load as before. Every board state waits for the card config (gConfigReady); the page shows when the
+ * first board state is rendered completely and the symbols are there (at most SPRITE_WAIT_MS more), all at once.
+ * Until then a spinner shows after 0.4 s (inline CSS in board.html/init.html), and after 12 s a hint with a reload
+ * button (inline script there; the loads go on and the hint goes when the page shows). Nothing loads synchronously. */
+const CONFIG_TIMEOUT_MS = 8000;   // cards.json / card_catalog.json: given up after this (fallback: no v1 cards / v1 only)
+const USER_TIMEOUT_MS = 3000;     // init.html: get_user.php (color mode), after this the page shows in dark
+const SPRITE_WAIT_MS = 1000;      // the page waits this long at most for the card symbols
+let gBoardSetUp = false;          // the first board state has been rendered completely
+let gPageShown = false;
+
+/* GET a JSON object; null on any failure (network, HTTP status, no JSON object, timeout), never rejects */
+function fetchJson(url, timeoutMs) {
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctrl !== null && timeoutMs > 0 ? setTimeout(() => ctrl.abort(), timeoutMs) : 0;
+    return fetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
+        .then((response) => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
+        .then((json) => {
+            if (json === null || typeof json !== 'object') throw new Error('no JSON object');
+            return json;
+        })
+        .catch((error) => {
+            console.log('loading failed: ' + url, error);
+            return null;
+        })
+        .finally(() => clearTimeout(timer));
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/* warms the HTTP cache for the card symbols (<use href="src/cards.svg#...">); never rejects */
+function warmSprite() {
+    if (typeof CARDS_SPRITE !== 'string') return Promise.resolve(null); // cards.js missing
+    return fetch(CARDS_SPRITE)
+        .then(response => response.ok ? response.text() : null)
+        .catch(() => null);
+}
+
+/* the board is set up: shows the page once the card symbols are there (or SPRITE_WAIT_MS passed) */
+function showPage() {
+    if (gPageShown) return;
+    gPageShown = true;
+    Promise.race([gSpriteReady, delay(SPRITE_WAIT_MS)])
+        .then(() => requestAnimationFrame(revealPage));
+}
+
+/* everything in one go: the page fades in (board: .body-fade-in), the spinner and the reload hint go */
+function revealPage() {
+    document.body.style.opacity = '1';
+    document.body.removeAttribute('aria-busy');
+    const root = document.documentElement;
+    root.classList.add('ready');
+    root.classList.remove('load-fail');
+    const hint = document.getElementById('load_fail');
+    if (hint !== null) hint.remove();
+}
+
 function loadCardConfig() {
     /* - cards.json (v1): the old card list, only for the fallback deck from cardset_flags (deck.js, adapter)
        - card_catalog.json (v2, B-98): groups, variants, control cards and the card texts; the deck of the
          team comes from dao ("deck") and refers to these cards (R3 F4)
+       B-34: both in parallel and asynchronous; the promise never rejects (missing files: fallbacks below)
      */
+    return Promise.all([
+        fetchJson('./cards.json?v=3', CONFIG_TIMEOUT_MS),          // bump when cards.json changes (Safari keeps it cached)
+        fetchJson('./card_catalog.json?v=13', CONFIG_TIMEOUT_MS),  // bump when card_catalog.json changes
+    ]).then((files) => {
+        const cardsConf = files[0];
+        gCardsConfig = cardsConf !== null && Array.isArray(cardsConf.cards) ? cardsConf.cards : [];
+        gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
 
-    const url = "./cards.json?v=3"; // bump when cards.json changes (Safari keeps it cached)
-    let jsonCardsConf = loadJSON(url);
-    gCardsConfig = jsonCardsConf.cards;
-    gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
-
-    // B-99 (F1): the card model (deck.js); the tray shows the team's deck once the board state is there.
-    // F2/F4: values, headings, descriptions, groups and styles from card_catalog.json (v2); without it the
-    // cards still show (value as text, no texts) and the deck falls back to cardset_flags
-    let catalogV2 = null;
-    try {
-        catalogV2 = loadJSON('./card_catalog.json?v=13'); // bump when card_catalog.json changes
-    } catch (e) {
-        catalogV2 = null;
-    }
-    gCatalogV2 = catalogV2 && typeof catalogV2 === 'object' ? catalogV2 : null;
-    gCardCatalog = catalogFromLegacy(gCardsConfig, catalogV2Index(catalogV2));
-    // the catalog v2 cards win; v1 cards only for keys v2 does not know
-    gCardByKey = new Map(gCardCatalog.map(entry => [entry.card.key, entry.card]));
-    catalogV2Cards(catalogV2).forEach((card, key) => gCardByKey.set(key, card));
-}
-
-
-// Load JSON text from server hosted file and return JSON parsed object
-function loadJSON(filePath) {
-    // Load json file;
-    let json = loadTextFileAjaxSync(filePath, "application/json");
-    // Parse json
-    return JSON.parse(json);
-}
-
-// Load text with Ajax synchronously: takes path to file and optional MIME type
-function loadTextFileAjaxSync(filePath, mimeType)
-{
-    let xmlHttp = new XMLHttpRequest();
-    xmlHttp.open("GET",filePath,false);
-    if (mimeType != null) {
-        if (xmlHttp.overrideMimeType) {
-            xmlHttp.overrideMimeType(mimeType);
-        }
-    }
-    xmlHttp.send();
-    if (xmlHttp.status === 200 && xmlHttp.readyState === 4 )
-    {
-        return xmlHttp.responseText;
-    }
-    else {
-        return null;
-    }
+        // B-99 (F1): the card model (deck.js); the tray shows the team's deck once the board state is there.
+        // F2/F4: values, headings, descriptions, groups and styles from card_catalog.json (v2); without it the
+        // cards still show (value as text, no texts) and the deck falls back to cardset_flags
+        const catalogV2 = files[1];
+        gCatalogV2 = catalogV2;
+        gCardCatalog = catalogFromLegacy(gCardsConfig, catalogV2Index(catalogV2));
+        // the catalog v2 cards win; v1 cards only for keys v2 does not know
+        gCardByKey = new Map(gCardCatalog.map(entry => [entry.card.key, entry.card]));
+        catalogV2Cards(catalogV2).forEach((card, key) => gCardByKey.set(key, card));
+    }).catch((error) => {
+        console.log('card config failed', error);
+        if (!Array.isArray(gCardsConfig)) gCardsConfig = [];
+    });
 }
 
 
@@ -4210,3 +4265,8 @@ function initPromo(promoId, playoutDelaySec, promoHeadline, promoImgUrl, promoLi
         fetch(url+"converted_a", { method: 'POST' }).then();
     });
 }
+
+/* B-34: started while the page is parsed (script.js is deferred), not on window load; board only (#cbox) */
+const gOnBoard = document.getElementById('cbox') !== null;
+const gConfigReady = gOnBoard ? loadCardConfig() : Promise.resolve();
+const gSpriteReady = gOnBoard ? warmSprite() : Promise.resolve();
