@@ -144,6 +144,8 @@ test('items in addition to the note: add, move, next item, finish item; the note
   await openTopics(alice);
   await alice.locator('#topic_txt').fill('Timebox: 5 minutes per item');
   await alice.locator('#topic_save').click();
+  // the menu fills the field from the last board state: open it again once the saved note is there
+  await expect(alice.locator('#board_note_text')).toHaveText('Timebox: 5 minutes per item');
   await openTopics(alice);
   await showTab(alice, 'open');
   await alice.locator('#ti_add').click();
