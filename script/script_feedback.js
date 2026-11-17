@@ -526,6 +526,15 @@ function topicChanged() {
     document.getElementById("topic_save").disabled = false;
 }
 
+/* while the topics menu is open, the note field follows a new board state, unless the user typed since opening
+ * (gTopicChangePending); typed text is never overwritten */
+function syncTopicField() {
+    if (gTopicChangePending || openMenuSection() !== 'topic') return;
+    const field = document.getElementById('topic_txt');
+    const text = gTopic === null || gTopic === undefined ? '' : gTopic;
+    if (field !== null && field.value !== text) field.value = text;
+}
+
 function reset_topic(){
     gTopicChangePending = false;
     document.getElementById("topic_reset").disabled = true;
@@ -537,6 +546,7 @@ function save_topic(){
     gTopicChangePending = false;
 
     let topic = document.getElementById('topic_txt').value;
+    gTopic = topic; // shown at once when the menu opens again, the board reload brings the saved text
 
     const url = './api/update_topic.php?t='+t;
     // the topic goes in the POST body (form encoded), not in the URL

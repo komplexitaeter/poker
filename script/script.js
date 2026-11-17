@@ -4,7 +4,7 @@
 let t;
 let sid = localStorage.getItem('SID');
 let gConn = null;
-let gColorMode = "dark";
+let gColorMode = readStoredColorMode() || "dark"; // B-141: the mode last used on this device first
 let gScreenWidth = null;
 let gDisplayType = null;
 let gTopic = null;
@@ -2380,6 +2380,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
     // B-52 S1: the topic, or the active topic item where the topic stands (topics.js)
     updateTopicView(myJson);
+    syncTopicField(); // the note field in the open menu follows the board (script_feedback.js)
 
     if (document.getElementById("team_name").innerText !== myJson.team_name
         || gJsonBefore === null // B-34: a set-up that failed half-way may have set the name already
@@ -2396,6 +2397,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
 
         if (myJson.color_mode && myJson.color_mode.length > 0) {
             gColorMode = myJson.color_mode;
+            storeColorMode(gColorMode); // B-141: the server wins over the mode kept on this device
         }
 
         setColor();
@@ -2886,6 +2888,7 @@ function loadInit() {
 
     // B-34: the page shows once the color mode is known, never half styled. If get_user.php fails or takes longer
     // than USER_WAIT_MS, the page shows in the mode of the system; an answer that comes later still applies.
+    // B-141: with a mode kept on this device the page shows at once in it; a different saved mode still applies.
     let shown = false;
     let shownMode = null; // the mode the page showed in (a late answer does not undo a switch made meanwhile)
     const show = () => {
@@ -2904,13 +2907,23 @@ function loadInit() {
         gColorMode = typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     };
-    const waitTimer = setTimeout(() => { if (!shown) { systemMode(); show(); } }, USER_WAIT_MS);
+    const stored = readStoredColorMode();
+    if (stored !== null) {
+        gColorMode = stored;
+        show();
+    }
+    const waitTimer = shown ? null : setTimeout(() => { if (!shown) { systemMode(); show(); } }, USER_WAIT_MS);
     const url = './api/get_user.php?id=' + encodeURIComponent(localStorage.getItem('SID'));
     fetchJsonResult(url, 0).then((result) => {
         const user = result.json;
         if (user !== null && typeof user.color_mode === 'string' && user.color_mode !== '') {
-            if (!shown) gColorMode = user.color_mode;
-            else if (gColorMode === shownMode) { gColorMode = user.color_mode; setColor(); } // late: the saved mode wins
+            if (!shown) {
+                gColorMode = user.color_mode;
+                storeColorMode(gColorMode);
+            } else if (gColorMode === shownMode) { // late: the saved mode wins (unless switched meanwhile)
+                storeColorMode(user.color_mode);
+                if (user.color_mode !== gColorMode) { gColorMode = user.color_mode; setColor(); }
+            }
         } else if (!shown) {
             systemMode();
         }
@@ -2944,6 +2957,27 @@ function setColor() {
         if (brandIcon) setImgSrc(brandIcon, "./src/brand_icon_light.svg?v=2");
         document.body.classList.add('light-theme');
     }
+    // B-141: the page background before body is styled (inline style in the head of board.html/init.html)
+    document.documentElement.classList.toggle('pk-light', gColorMode !== "dark");
+}
+
+/* B-141: the color mode is kept on this device too, so the page starts in it before anything loads (inline script
+ * in the head of board.html/init.html). The server value still wins when it arrives. */
+// the key 'COLOR_MODE' is a literal: gColorMode is set from it at the top of this file (a const here would not exist yet)
+function readStoredColorMode() {
+    try {
+        const mode = localStorage.getItem('COLOR_MODE');
+        return mode === 'light' || mode === 'dark' ? mode : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function storeColorMode(mode) {
+    if (mode !== 'light' && mode !== 'dark') return;
+    try {
+        if (localStorage.getItem('COLOR_MODE') !== mode) localStorage.setItem('COLOR_MODE', mode);
+    } catch (e) { /* no storage: the server value only */ }
 }
 
 function setImgSrc(img, src) {
@@ -2967,7 +3001,8 @@ function switchColorMode(){
     else gColorMode = "dark";
     measureEvent("USE_COLOR_SWITCH");
     setColor();
-    fetch('./api/update_user.php?id=' + localStorage.getItem('SID') + '&color_mode=' + gColorMode, { method: 'POST' }).then();
+    storeColorMode(gColorMode); // B-141
+    fetch('./api/update_user.php?id=' + encodeURIComponent(localStorage.getItem('SID')) + '&color_mode=' + gColorMode, { method: 'POST' }).then();
 }
 
 
