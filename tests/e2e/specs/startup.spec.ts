@@ -245,7 +245,7 @@ test('start page: the form never submits natively while the color mode loads (B-
 test('start page: a saved light mode is there when the page shows, no dark flash (B-34)', async ({ browser }) => {
   const alice = await newPlayer(browser);
   await createTeam(alice, 'Startup Light');
-  // the user row (pok_user_tbl) is created by the first dao.php of the board; update_user.php only updates it
+  // a user with a board (row in pok_user_tbl created by dao.php); update_user.php creates the row itself, too
   await pageReady(alice);
   const sid = await alice.evaluate(() => localStorage.getItem('SID'));
   const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=light`);
@@ -261,7 +261,7 @@ test('start page: a saved light mode is there when the page shows, no dark flash
 test('start page: a slow get_user.php shows the page after 3 s in the system mode, the saved mode follows (B-34)', async ({ browser }) => {
   const alice = await newPlayer(browser, { colorScheme: 'dark' });
   await createTeam(alice, 'Startup Slow User');
-  // the user row (pok_user_tbl) is created by the first dao.php of the board; update_user.php only updates it
+  // a user with a board (row in pok_user_tbl created by dao.php); update_user.php creates the row itself, too
   await pageReady(alice);
   const sid = await alice.evaluate(() => localStorage.getItem('SID'));
   const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=light`);

@@ -1,0 +1,40 @@
+import { test, expect } from '@playwright/test';
+import { newPlayer, createTeam, pageReady } from './helpers';
+
+/**
+ * The user row (pok_user_tbl) used to be created only by the first dao.php of a board, and update_user.php only
+ * updated it. A user who switched the color mode on the start page before ever opening a board lost the setting
+ * silently (0 rows changed). update_user.php now creates the row when needed.
+ */
+test('a new user switches to light mode on the start page, the start page is light after a reload', async ({ browser }) => {
+  const page = await newPlayer(browser, { colorScheme: 'dark' });
+  await page.goto('/');
+  await pageReady(page);
+  await expect(page.locator('body')).not.toHaveClass(/light-theme/);
+
+  const saved = page.waitForResponse(r => r.url().includes('update_user.php') && r.url().includes('color_mode=light'));
+  await page.locator('#cmode_btn').click();
+  await expect(page.locator('body')).toHaveClass(/light-theme/);
+  expect((await saved).ok()).toBeTruthy();
+
+  await page.reload();
+  await pageReady(page);
+  await expect(page.locator('body')).toHaveClass(/light-theme/);
+  const res = await page.request.get(`/api/get_user.php?id=${encodeURIComponent(await page.evaluate(() => localStorage.getItem('SID') ?? ''))}`);
+  expect((await res.json()).color_mode).toBe('light');
+});
+
+test('hide_teaser of a user without a row is stored and shows on the first board load', async ({ browser }) => {
+  const alice = await newPlayer(browser);
+  const url = await createTeam(alice, 'Settings Without Row');
+  const t = new URL(url).searchParams.get('t')!;
+
+  // a brand-new SID that has never loaded a board
+  const sid = ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 16);
+  const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid)}&hide_teaser=1`);
+  expect(res.ok()).toBeTruthy();
+
+  const dao = await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${encodeURIComponent(sid)}`);
+  expect(dao.status()).toBe(200);
+  expect((await dao.json()).hide_teaser).toBe(1);
+});
