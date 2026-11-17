@@ -45,12 +45,14 @@ test('phones show the logo mark file, large screens the full logo; the theme swi
 for (const [viewport, shown, hidden] of [[PHONE, 'brand_icon_dark', 'brand_dark'], [LARGE, 'brand_dark', 'brand_icon_dark']] as const) {
   test(`at ${viewport.width} px only ${shown}.svg is loaded`, async ({ browser }) => {
     const page = await newPlayer(browser, { viewport });
-    const url = await createTeam(page, 'BrandLazy');
+    // listen from the start (a logo fetched while the team is created comes from the memory cache later, without a
+    // request), but only on the board (?t=): the start page shows the full logo at every width
     const loaded: string[] = [];
     page.on('request', request => {
       const file = /src\/(brand[a-z_]*)\.svg/.exec(request.url());
-      if (file) loaded.push(file[1]);
+      if (file && /[?&]t=/.test(request.frame().url())) loaded.push(file[1]);
     });
+    const url = await createTeam(page, 'BrandLazy');
     await joinAsPlayer(page, url, 'Alice');
     await expect.poll(() => page.locator(viewport === PHONE ? '#brand_icon' : '#brand')
       .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0);
