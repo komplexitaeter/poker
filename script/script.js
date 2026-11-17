@@ -3446,7 +3446,8 @@ function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
  * (src/cards.svg) start while the page is parsed (script.js is deferred), in parallel to the rest; dao.php starts
  * on DOMContentLoaded (loadBoard(), board.html: all deferred scripts have run then; images and analytics do not
  * hold it up). Every board state waits for the card config (gConfigReady); the page shows when the
- * first board state is rendered completely and the symbols are there (at most SPRITE_WAIT_MS more), all at once.
+ * first board state is rendered completely, all at once. It does not wait for the card symbols: they appear a
+ * moment later when they come after the board (Andreas, 2026-11-17); warmSprite() only starts their download early.
  * Until then a spinner shows after 0.8 s and fades out when the page shows (inline CSS in board.html/init.html),
  * after 12 s a "Still loading" hint with a reload button (inline script there; the loads go on and the hint goes
  * when the page shows). The invisible page takes no clicks meanwhile. Nothing loads synchronously. */
@@ -3456,7 +3457,6 @@ const CONFIG_RETRY_MAX_MS = 5000; // ... then every 5 s, until it loads or the s
 const DAO_BOOT_TIMEOUT_MS = [8000, 16000, 30000]; // dao.php before the set-up: a hanging load is given up and
                                                   // retried; 1st, 2nd, 3rd and every later try
 const USER_WAIT_MS = 3000;        // init.html: get_user.php (color mode); after this the page shows in the system mode
-const SPRITE_WAIT_MS = 1000;      // the page waits this long at most for the card symbols
 const SPINNER_FADE_MS = 250;      // the spinner fades out in 0.2 s (inline CSS), then it is removed
 let gBoardSetUp = false;          // the first board state has been rendered completely
 let gPageShown = false;
@@ -3512,20 +3512,20 @@ function fetchConfigFile(url) {
     return attempt();
 }
 
-/* warms the HTTP cache for the card symbols (<use href="src/cards.svg#...">); never rejects */
+/* warms the HTTP cache for the card symbols (<use href="src/cards.svg#...">): starts their download while the
+ * page is parsed instead of when the first cards are rendered. Nothing waits for it. */
 function warmSprite() {
-    if (typeof CARDS_SPRITE !== 'string') return Promise.resolve(null); // cards.js missing
-    return fetch(CARDS_SPRITE)
+    if (typeof CARDS_SPRITE !== 'string') return; // cards.js missing
+    fetch(CARDS_SPRITE)
         .then(response => response.ok ? response.text() : null)
         .catch(() => null);
 }
 
-/* the board is set up: shows the page once the card symbols are there (or SPRITE_WAIT_MS passed) */
+/* the board is set up: shows the page with the next frame (the card symbols are not waited for) */
 function showPage() {
     if (gPageShown) return;
     gPageShown = true;
-    Promise.race([gSpriteReady, delay(SPRITE_WAIT_MS)])
-        .then(() => requestAnimationFrame(revealPage));
+    requestAnimationFrame(revealPage);
 }
 
 /* everything in one go: the page fades in (board: .body-fade-in), the spinner fades out, the reload hint goes */
@@ -4360,4 +4360,4 @@ function initPromo(promoId, playoutDelaySec, promoHeadline, promoImgUrl, promoLi
 /* B-34: started while the page is parsed (script.js is deferred), not on window load; board only (#cbox) */
 const gOnBoard = document.getElementById('cbox') !== null;
 const gConfigReady = gOnBoard ? loadCardConfig() : Promise.resolve();
-const gSpriteReady = gOnBoard ? warmSprite() : Promise.resolve();
+if (gOnBoard) warmSprite();

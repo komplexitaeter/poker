@@ -337,7 +337,9 @@ Status: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen)
 synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-Warnung, blockiert kurz den Main-Thread.
 Vorgabe Andreas (2026-11-17): flüssig, nie ein unvollständiger Stand; Spinner nur, wenn das Laden länger dauert.
 Umsetzung: `cards.json`, `card_catalog.json` und `src/cards.svg` laden parallel, sobald `script.js` läuft; das Board
-erscheint erst, wenn der erste Stand vollständig gerendert ist (inkl. Karten), auf einen Schlag. Spinner per Inline-CSS
+erscheint erst, wenn der erste Stand vollständig gerendert ist (inkl. Karten), auf einen Schlag. Auf die
+Kartensymbole (`src/cards.svg`) wartet es nicht, sie blenden ggf. einen Moment später ein; `warmSprite()` startet nur
+ihren Download früh (Andreas, 2026-11-17: Sprite-Warten entfällt, wie bisher live). Spinner per Inline-CSS
 erst nach 0,8 s, nach 12 s Hinweis mit „Reload“; vor dem Aufbau wiederholt `dao.php` ohne Grenze (bis alle 5 s,
 Timeout je Versuch 8 s, 16 s, dann 30 s). Config-Dateien: nur 4xx (außer 408/429) und kaputtes JSON gelten als
 endgültig, 5xx/408/429 werden wie Netzfehler wiederholt. Startseite erscheint nach `get_user.php` (höchstens 3 s,
