@@ -358,6 +358,12 @@ inline im `head` vorab setzen.
 Status: neu (Vorschlag Fred, 2026-11-17, aus B-34). Versionierte Assets (`?v=`) könnten lange und `immutable` gecacht
 werden; spart Revalidierungen beim Start. Befehle für Andreas, beide Server.
 
+### B-143 Rückmeldung bei laufenden Aktionen (Buttons)
+Status: neu (Andreas, 2026-11-17, beim 3G-Test von B-34). Auf langsamem Netz zeigen Buttons wie „Team anlegen“ oder
+„Name speichern“ nicht, dass gerade etwas passiert. Idee: nach ~300 ms Busy-Zustand am Button (Gestaltung Delia,
+Console Style), währenddessen kein zweiter Klick; für alle Aktionen mit Server-Aufruf. Für Nutzer sichtbar, daher
+nicht im Aufräum-Sprint.
+
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
 „aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
