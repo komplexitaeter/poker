@@ -898,7 +898,8 @@ let gAwaySig = null;     // B-127: away_sig of the board state shown last (null:
  * one is made void by the newer one), and a load asked for meanwhile replaces the pending retry. The load on page
  * load sets the page up, so its retry is never dropped: it runs, or the load that replaces it does the set-up.
  * B-34: until the page is set up, every failed load is retried without limit, with a growing wait (800 ms,
- * 1.6 s, 3.2 s, then every 5 s), so a short outage on load never leaves the page hidden for good. After the
+ * 1.6 s, 3.2 s, then every 5 s; a load that hangs is given up after DAO_BOOT_TIMEOUT_MS), so a short outage on
+ * load never leaves the page hidden for good. After the
  * set-up the B-94 rule above applies again (one retry, only the latest load). */
 const DAO_RETRY_MS = 800;
 const DAO_BOOT_RETRY_MAX_MS = 5000;
@@ -906,6 +907,8 @@ let gDaoRetry = null;    // pending retry: {timer, isOnLoad}
 let gBootRetryN = 0;     // B-34: retries before the set-up so far (the wait grows with them)
 
 function updateDao(isOnLoad, isRetry = false) {
+    // B-34: no team yet (e.g. a double click before loadBoard() ran): nothing to load
+    if (typeof t !== 'string' || t === '') return;
     if (gDaoRetry !== null) { // this load brings the newer state anyway
         clearTimeout(gDaoRetry.timer);
         isOnLoad = isOnLoad || gDaoRetry.isOnLoad;
@@ -921,16 +924,21 @@ function updateDao(isOnLoad, isRetry = false) {
     // finished meanwhile (see timerStateFresh)
     const timerWrite = gTimerWrites === 0 ? gTimerWriteGen : -1;
 
-    fetch(url)
+    // B-34: before the set-up a hanging load is given up after DAO_BOOT_TIMEOUT_MS, so it runs into the boot retry
+    const ctrl = !gBoardSetUp && typeof AbortController === 'function' ? new AbortController() : null;
+    const abortTimer = ctrl !== null ? setTimeout(() => ctrl.abort(), DAO_BOOT_TIMEOUT_MS) : 0;
+    fetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
         .then((response) => {
             if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();
         })
         .then((myJson) => {
+            clearTimeout(abortTimer);
             if (myJson === null || typeof myJson !== 'object') throw new Error('no board state');
             return myJson;
         })
         .catch((error) => {
+            clearTimeout(abortTimer);
             console.log('dao.php failed', error);
             const booting = !gBoardSetUp; // B-34
             if ((booting || !isRetry) && (booting || seq === gDaoSeq || isOnLoad)) {
@@ -1024,8 +1032,9 @@ function deckGroupName(groupId) {
  * locked phone, frozen tab) shows as away to the others (dao.php "away", AWAY_AFTER_SEC). Only one such call is
  * pending; any dao.php load meanwhile (pull, own write) replaces it, and none starts while a load is in flight.
  * B-127: the call is the light api/seen.php, not dao.php: it returns only away_sig, the signature of the away persons.
- * dao.php is loaded only when it differs from the one of the board state shown last, or when it is unknown (nothing
- * shown yet) or the call fails (no answer, no JSON, no away_sig): away never gets stuck. */
+ * dao.php is loaded only when it differs from the one of the board state shown last, or when it is unknown, or the
+ * call fails (no answer, no JSON, no away_sig): away never gets stuck. B-34: before the page is set up, dao.php is
+ * always loaded (a heartbeat retries a set-up that failed; a known away_sig alone does not mean the page shows). */
 const HB_LOAD_JITTER_MS = 5000;
 let gHbLoadTimer = null;
 
@@ -1038,7 +1047,9 @@ function scheduleHbLoad() {
 }
 
 function hbSeen() {
-    if (gAwaySig === null) {
+    // B-34: before the set-up (or without a known away_sig) always the full board state: a heartbeat then also
+    // retries a set-up that failed
+    if (gAwaySig === null || !gBoardSetUp) {
         updateDao(false);
         return;
     }
@@ -2862,15 +2873,38 @@ function loadInit() {
     });
     initDisplayHandling();
 
-    // B-34: the page shows once the color mode is known (or after USER_TIMEOUT_MS in dark), never half styled
-    const url = './api/get_user.php?id=' + encodeURIComponent(localStorage.getItem('SID'));
-    fetchJson(url, USER_TIMEOUT_MS).then((user) => {
-        gColorMode = user !== null && typeof user.color_mode === 'string' && user.color_mode !== ''
-            ? user.color_mode : 'dark';
+    // B-34: the page shows once the color mode is known, never half styled. If get_user.php fails or takes longer
+    // than USER_WAIT_MS, the page shows in the mode of the system; an answer that comes later still applies.
+    let shown = false;
+    let shownMode = null; // the mode the page showed in (a late answer does not undo a switch made meanwhile)
+    const show = () => {
+        if (shown) return;
+        shown = true;
+        shownMode = gColorMode;
         setColor();
         revealPage();
-        document.getElementById("teaminput").focus();
+        // only when nobody put the focus somewhere meanwhile
+        if (document.activeElement === null || document.activeElement === document.body) {
+            document.getElementById("teaminput").focus();
+        }
         measureEvent("INIT_ON_LOAD");
+    };
+    const systemMode = () => {
+        gColorMode = typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    };
+    const waitTimer = setTimeout(() => { if (!shown) { systemMode(); show(); } }, USER_WAIT_MS);
+    const url = './api/get_user.php?id=' + encodeURIComponent(localStorage.getItem('SID'));
+    fetchJsonResult(url, 0).then((result) => {
+        const user = result.json;
+        if (user !== null && typeof user.color_mode === 'string' && user.color_mode !== '') {
+            if (!shown) gColorMode = user.color_mode;
+            else if (gColorMode === shownMode) { gColorMode = user.color_mode; setColor(); } // late: the saved mode wins
+        } else if (!shown) {
+            systemMode();
+        }
+        clearTimeout(waitTimer);
+        show();
     });
 }
 
@@ -3401,36 +3435,59 @@ function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
  * (src/cards.svg) start while the page is parsed (script.js is deferred), in parallel to the rest; dao.php starts
  * on window load as before. Every board state waits for the card config (gConfigReady); the page shows when the
  * first board state is rendered completely and the symbols are there (at most SPRITE_WAIT_MS more), all at once.
- * Until then a spinner shows after 0.4 s (inline CSS in board.html/init.html), and after 12 s a hint with a reload
- * button (inline script there; the loads go on and the hint goes when the page shows). Nothing loads synchronously. */
-const CONFIG_TIMEOUT_MS = 8000;   // cards.json / card_catalog.json: given up after this (fallback: no v1 cards / v1 only)
-const USER_TIMEOUT_MS = 3000;     // init.html: get_user.php (color mode), after this the page shows in dark
+ * Until then a spinner shows after 0.8 s and fades out when the page shows (inline CSS in board.html/init.html),
+ * after 12 s a "Still loading" hint with a reload button (inline script there; the loads go on and the hint goes
+ * when the page shows). The invisible page takes no clicks meanwhile. Nothing loads synchronously. */
+const CONFIG_TIMEOUT_MS = 8000;   // cards.json / card_catalog.json: one try is given up after this (and retried)
+const CONFIG_RETRY_MS = [1000, 2000, 4000]; // waits before the first retries of a config file ...
+const CONFIG_RETRY_MAX_MS = 5000; // ... then every 5 s, until it loads or the server answers definitively
+const DAO_BOOT_TIMEOUT_MS = 8000; // dao.php before the set-up: a hanging load is given up and retried
+const USER_WAIT_MS = 3000;        // init.html: get_user.php (color mode); after this the page shows in the system mode
 const SPRITE_WAIT_MS = 1000;      // the page waits this long at most for the card symbols
+const SPINNER_FADE_MS = 250;      // the spinner fades out in 0.2 s (inline CSS), then it is removed
 let gBoardSetUp = false;          // the first board state has been rendered completely
 let gPageShown = false;
 
-/* GET a JSON object; null on any failure (network, HTTP status, no JSON object, timeout), never rejects */
-function fetchJson(url, timeoutMs) {
-    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = ctrl !== null && timeoutMs > 0 ? setTimeout(() => ctrl.abort(), timeoutMs) : 0;
+/* GET a JSON object. Resolves with {json, final}: json is the object or null; final is false when no answer came
+ * (network error, timeout: worth retrying) and true for any answer of the server (HTTP error status, no JSON
+ * object). Never rejects. timeoutMs 0: no timeout. */
+function fetchJsonResult(url, timeoutMs) {
+    const ctrl = typeof AbortController === 'function' && timeoutMs > 0 ? new AbortController() : null;
+    const timer = ctrl !== null ? setTimeout(() => ctrl.abort(), timeoutMs) : 0;
+    let answered = false;
     return fetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
         .then((response) => {
-            if (!response.ok) throw new Error('HTTP ' + response.status);
+            if (!response.ok) { answered = true; throw new Error('HTTP ' + response.status); }
             return response.json();
         })
         .then((json) => {
             if (json === null || typeof json !== 'object') throw new Error('no JSON object');
-            return json;
+            return { json: json, final: true };
         })
         .catch((error) => {
+            // a body that is no JSON (SyntaxError) is an answer too; a cut connection while reading is not
+            if (error instanceof SyntaxError || (error instanceof Error && error.message === 'no JSON object')) answered = true;
             console.log('loading failed: ' + url, error);
-            return null;
+            return { json: null, final: answered };
         })
         .finally(() => clearTimeout(timer));
 }
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/* a file of the card config: retried (1 s, 2 s, 4 s, then every 5 s) until it loads; null only when the server
+ * answered definitively (HTTP error status, broken JSON) */
+function fetchConfigFile(url) {
+    let tries = 0;
+    const attempt = () => fetchJsonResult(url, CONFIG_TIMEOUT_MS).then((result) => {
+        if (result.json !== null || result.final) return result.json;
+        const wait = tries < CONFIG_RETRY_MS.length ? CONFIG_RETRY_MS[tries] : CONFIG_RETRY_MAX_MS;
+        tries++;
+        return delay(wait).then(attempt);
+    });
+    return attempt();
 }
 
 /* warms the HTTP cache for the card symbols (<use href="src/cards.svg#...">); never rejects */
@@ -3449,11 +3506,20 @@ function showPage() {
         .then(() => requestAnimationFrame(revealPage));
 }
 
-/* everything in one go: the page fades in (board: .body-fade-in), the spinner and the reload hint go */
+/* everything in one go: the page fades in (board: .body-fade-in), the spinner fades out, the reload hint goes */
 function revealPage() {
+    const root = document.documentElement;
+    let spin = 0; // the spinner is hidden while the reload hint shows (html.load-fail)
+    try {
+        if (!root.classList.contains('load-fail')) spin = parseFloat(getComputedStyle(root, '::after').opacity) || 0;
+    } catch (e) { spin = 0; }
+    if (spin > 0) { // visible: it fades out from where it is instead of vanishing (inline CSS: .spin-out)
+        root.style.setProperty('--pk-o', String(spin));
+        root.classList.add('spin-out');
+        setTimeout(() => root.classList.remove('spin-out'), SPINNER_FADE_MS);
+    }
     document.body.style.opacity = '1';
     document.body.removeAttribute('aria-busy');
-    const root = document.documentElement;
     root.classList.add('ready');
     root.classList.remove('load-fail');
     const hint = document.getElementById('load_fail');
@@ -3464,12 +3530,18 @@ function loadCardConfig() {
     /* - cards.json (v1): the old card list, only for the fallback deck from cardset_flags (deck.js, adapter)
        - card_catalog.json (v2, B-98): groups, variants, control cards and the card texts; the deck of the
          team comes from dao ("deck") and refers to these cards (R3 F4)
-       B-34: both in parallel and asynchronous; the promise never rejects (missing files: fallbacks below)
+       B-34: both in parallel and asynchronous. A file is retried until it loads; its fallback below only applies
+       when the server answered definitively. The promise resolves only when at least one of them really loaded
+       (else both are tried again every 5 s): the board never shows with an empty deck.
      */
     return Promise.all([
-        fetchJson('./cards.json?v=3', CONFIG_TIMEOUT_MS),          // bump when cards.json changes (Safari keeps it cached)
-        fetchJson('./card_catalog.json?v=13', CONFIG_TIMEOUT_MS),  // bump when card_catalog.json changes
+        fetchConfigFile('./cards.json?v=3'),          // bump when cards.json changes (Safari keeps it cached)
+        fetchConfigFile('./card_catalog.json?v=13'),  // bump when card_catalog.json changes
     ]).then((files) => {
+        if (files[0] === null && files[1] === null) {
+            console.log('card config missing, trying again');
+            return delay(CONFIG_RETRY_MAX_MS).then(loadCardConfig);
+        }
         const cardsConf = files[0];
         gCardsConfig = cardsConf !== null && Array.isArray(cardsConf.cards) ? cardsConf.cards : [];
         gCardsConfig.sort((a,b) => a.sort_order - b.sort_order);
@@ -3483,9 +3555,6 @@ function loadCardConfig() {
         // the catalog v2 cards win; v1 cards only for keys v2 does not know
         gCardByKey = new Map(gCardCatalog.map(entry => [entry.card.key, entry.card]));
         catalogV2Cards(catalogV2).forEach((card, key) => gCardByKey.set(key, card));
-    }).catch((error) => {
-        console.log('card config failed', error);
-        if (!Array.isArray(gCardsConfig)) gCardsConfig = [];
     });
 }
 

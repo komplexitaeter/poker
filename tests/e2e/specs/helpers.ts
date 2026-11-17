@@ -37,6 +37,11 @@ export async function newPlayer(browser: Browser, options: BrowserContextOptions
   return context.newPage();
 }
 
+/** B-34: the page is complete and shown (until then it is invisible and takes no clicks). */
+export async function pageReady(page: Page, timeout = 15_000): Promise<void> {
+  await expect(page.locator('html')).toHaveClass(/(^|\s)ready(\s|$)/, { timeout });
+}
+
 /** Creates a team via the start page and returns the board URL. */
 export async function createTeam(page: Page, teamName: string): Promise<string> {
   await page.goto('/');

@@ -9,26 +9,36 @@
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
     <link rel="stylesheet" href="style/style.css?v=2.65" media="screen" />
-    <!-- B-34: until the page is complete, a spinner after 0.4 s (only on slow loads) and after 12 s a hint with a
-         reload button; inline, so both work without style.css and script.js. Both go when the page shows
-         (revealPage() in script.js sets html.ready). -->
+    <!-- B-34: until the page is complete it takes no clicks, a spinner shows after 0.8 s (only on slow loads) and
+         after 12 s a "Still loading" hint with a reload button; inline, so all of it works without style.css and
+         script.js. When the page shows (revealPage() in script.js sets html.ready) the hint goes and a visible
+         spinner fades out (.spin-out). -->
     <style>
-        html::after{content:'';position:fixed;left:50%;top:50%;width:32px;height:32px;margin:-16px 0 0 -16px;box-sizing:border-box;border-radius:50%;border:3px solid rgba(128,128,128,.25);border-top-color:rgba(128,128,128,.85);opacity:0;pointer-events:none;animation:pk-spin .9s linear infinite,pk-show .2s ease-out .4s forwards}
+        html:not(.ready) body{pointer-events:none}
+        html::after{content:'';position:fixed;left:50%;top:50%;width:32px;height:32px;margin:-16px 0 0 -16px;box-sizing:border-box;border-radius:50%;border:3px solid rgba(128,128,128,.25);border-top-color:rgba(128,128,128,.85);opacity:0;pointer-events:none;animation:pk-spin .9s linear infinite,pk-show .2s ease-out .8s forwards}
         html.ready::after,html.load-fail::after{display:none}
+        html.ready.spin-out::after{display:block;animation:pk-spin .9s linear infinite,pk-hide .2s ease-out forwards}
         @keyframes pk-spin{to{transform:rotate(360deg)}}
         @keyframes pk-show{to{opacity:1}}
-        @media (prefers-reduced-motion:reduce){html::after{animation:pk-show .2s ease-out .4s forwards}}
+        @keyframes pk-hide{from{opacity:var(--pk-o,1)}to{opacity:0}}
+        @media (prefers-reduced-motion:reduce){html::after{animation:pk-show .2s ease-out .8s forwards}html.ready.spin-out::after{animation:pk-hide .2s ease-out forwards}}
     </style>
     <script>
         setTimeout(function () {
             var h = document.documentElement;
             if (h.classList.contains('ready')) return;
             h.classList.add('load-fail');
+            // text with enough contrast (about 6:1 or more) on the dark and on the light page background
+            var dark = false;
+            try {
+                var m = getComputedStyle(document.body).backgroundColor.match(/[\d.]+/g);
+                if (m && m.length >= 3 && (m.length < 4 || parseFloat(m[3]) > 0)) dark = (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) < 128;
+            } catch (e) { /* default: light */ }
             var d = document.createElement('div');
             d.id = 'load_fail';
-            d.setAttribute('role', 'alert');
-            d.style.cssText = 'position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100vw - 32px);font:16px system-ui,sans-serif;color:rgb(128,128,128);text-align:center;';
-            d.textContent = "Agile Poker can't be loaded right now. We keep trying. ";
+            d.setAttribute('role', 'status');
+            d.style.cssText = 'position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100vw - 32px);font:16px system-ui,sans-serif;text-align:center;color:' + (dark ? '#a3a3a3' : '#575757') + ';';
+            d.textContent = 'Still loading\u2026';
             var b = document.createElement('button');
             b.type = 'button';
             b.textContent = 'Reload';
