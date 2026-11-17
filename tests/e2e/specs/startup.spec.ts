@@ -243,7 +243,7 @@ test('start page: the form never submits natively while the color mode loads (B-
   expect(page.url()).not.toContain('searchName');
 });
 
-test('start page: a saved light mode is there when the page shows, no dark flash (B-34)', async ({ browser }) => {
+test('start page: without a kept mode a saved light mode is there when the page shows, no dark flash (B-34, B-141)', async ({ browser }) => {
   const alice = await newPlayer(browser);
   await createTeam(alice, 'Startup Light');
   // the user row (pok_user_tbl) is created by the first dao.php of the board; update_user.php only updates it
@@ -251,6 +251,8 @@ test('start page: a saved light mode is there when the page shows, no dark flash
   const sid = await alice.evaluate(() => localStorage.getItem('SID'));
   const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=light`);
   expect(res.ok()).toBeTruthy();
+  // B-141: nothing kept on this device (else the page shows at once in the kept mode)
+  await alice.evaluate(() => localStorage.removeItem('COLOR_MODE'));
 
   const page = await samePlayer(alice);
   await recordReveal(page);
@@ -259,7 +261,7 @@ test('start page: a saved light mode is there when the page shows, no dark flash
   expect((await shown(page))!.light).toBe(true);
 });
 
-test('start page: a slow get_user.php shows the page after 3 s in the system mode, the saved mode follows (B-34)', async ({ browser }) => {
+test('start page: without a kept mode a slow get_user.php shows the page after 3 s in the system mode, the saved mode follows (B-34, B-141)', async ({ browser }) => {
   const alice = await newPlayer(browser, { colorScheme: 'dark' });
   await createTeam(alice, 'Startup Slow User');
   // the user row (pok_user_tbl) is created by the first dao.php of the board; update_user.php only updates it
@@ -267,6 +269,7 @@ test('start page: a slow get_user.php shows the page after 3 s in the system mod
   const sid = await alice.evaluate(() => localStorage.getItem('SID'));
   const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=light`);
   expect(res.ok()).toBeTruthy();
+  await alice.evaluate(() => localStorage.removeItem('COLOR_MODE')); // B-141: nothing kept on this device
 
   const page = await samePlayer(alice);
   let answeredAt = 0;
@@ -283,6 +286,8 @@ test('start page: a slow get_user.php shows the page after 3 s in the system mod
   expect(s.light).toBe(false);                                 // the system mode (dark)
   await expect(page.locator('#teaminput')).toBeFocused();
   await expect(page.locator('body')).toHaveClass(/light-theme/, { timeout: 10_000 }); // the saved mode follows
+  // B-141: kept on the device, the next start page shows at once in it (no wait for get_user.php)
+  expect(await page.evaluate(() => localStorage.getItem('COLOR_MODE'))).toBe('light');
 });
 
 test('start page: the late reveal does not take the focus away from where the user put it (B-34)', async ({ browser }) => {

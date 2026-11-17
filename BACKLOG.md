@@ -352,9 +352,14 @@ allen Defer-Skripten und dem externen plausible.io; `dao.php` könnte bei `DOMCo
 Bringt auf langsamen Netzen spürbar Zeit, ändert aber die Startreihenfolge (Tests prüfen).
 
 ### B-141 Farbmodus lokal merken gegen dunklen Hintergrund vor dem Laden
-Status: neu (Vorschlag Fred, 2026-11-17, aus B-34). Bis `setColor()` läuft, zeigt die Seite den dunklen Canvas; bei
-hellem Farbmodus fällt das auf langsamen Netzen (mit Spinner) auf. Idee: Farbmodus zusätzlich in `localStorage` und
-inline im `head` vorab setzen.
+Status: umgesetzt, im Sprint 9 (Fred, 2026-11-17; Vorschlag Fred aus B-34, beauftragt Andreas 2026-11-17). Bis `setColor()`
+läuft, zeigt die Seite den dunklen Canvas; bei hellem Farbmodus fällt das auf langsamen Netzen (mit Spinner) auf.
+Umsetzung: Farbmodus zusätzlich in `localStorage` (`COLOR_MODE`), ein Inline-Skript im `head` von `board.html`/`init.html`
+setzt vor dem ersten Frame `html.pk-light` (Hintergrund per Inline-Style, ohne lokalen Wert nach `prefers-color-scheme`).
+Umschalten und ein abweichender Server-Wert (`dao.php` beim Laden, `get_user.php`) aktualisieren den lokalen Wert; der
+Server bleibt Quelle. Startseite mit lokalem Wert sofort sichtbar, ohne lokalen Wert wie bisher (max. 3 s).
+Mitgenommen: Notiz im Menü nach „Save“ sofort aktuell und zieht bei offenem Menü nach, solange nichts getippt ist
+(Fund Tessa); SID in `switchColorMode()` mit `encodeURIComponent()` (Fund Ben).
 
 ### B-142 nginx: `Cache-Control: immutable` für Dateien mit `?v=`
 Status: neu (Vorschlag Fred, 2026-11-17, aus B-34). Versionierte Assets (`?v=`) könnten lange und `immutable` gecacht
