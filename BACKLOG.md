@@ -332,9 +332,31 @@ Status: neu. `script.js` hat inzwischen 4.090 Zeilen mit globalen Variablen. Sch
 Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
 
 ### B-34 Synchrone XMLHttpRequest auf async umstellen
-Status: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
+Status: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen). Vorher: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
 (`loadTextFileAjaxSync()`) für `cards.json`, `card_catalog.json` und den Farbmodus. Der Aufrufer erwartet einen
 synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-Warnung, blockiert kurz den Main-Thread.
+Vorgabe Andreas (2026-11-17): flüssig, nie ein unvollständiger Stand; Spinner nur, wenn das Laden länger dauert.
+Umsetzung: `cards.json`, `card_catalog.json` und `src/cards.svg` laden parallel, sobald `script.js` läuft; das Board
+erscheint erst, wenn der erste Stand vollständig gerendert ist (inkl. Karten), auf einen Schlag. Spinner per Inline-CSS
+erst nach 0,8 s, nach 12 s Hinweis mit „Reload“; vor dem Aufbau wiederholt `dao.php` ohne Grenze (bis alle 5 s,
+Timeout je Versuch 8 s, 16 s, dann 30 s). Config-Dateien: nur 4xx (außer 408/429) und kaputtes JSON gelten als
+endgültig, 5xx/408/429 werden wie Netzfehler wiederholt. Startseite erscheint nach `get_user.php` (höchstens 3 s,
+sonst Systemmodus). Mit umgesetzt (B-140, Andreas 2026-11-17: plausible ist für uns nicht kritisch): Start bei
+`DOMContentLoaded` statt `window.load`, plausible `async`. Test: `tests/e2e/specs/startup.spec.ts`.
+
+### B-140 Board-Start früher: `DOMContentLoaded` statt `load`, plausible async
+Status: mit B-34 umgesetzt (Andreas, 2026-11-17). Vorschlag Fred, 2026-11-17, aus B-34: `loadBoard()` startete erst bei `window.load`, also nach Bildern,
+allen Defer-Skripten und dem externen plausible.io; `dao.php` könnte bei `DOMContentLoaded` starten, plausible `async`.
+Bringt auf langsamen Netzen spürbar Zeit, ändert aber die Startreihenfolge (Tests prüfen).
+
+### B-141 Farbmodus lokal merken gegen dunklen Hintergrund vor dem Laden
+Status: neu (Vorschlag Fred, 2026-11-17, aus B-34). Bis `setColor()` läuft, zeigt die Seite den dunklen Canvas; bei
+hellem Farbmodus fällt das auf langsamen Netzen (mit Spinner) auf. Idee: Farbmodus zusätzlich in `localStorage` und
+inline im `head` vorab setzen.
+
+### B-142 nginx: `Cache-Control: immutable` für Dateien mit `?v=`
+Status: neu (Vorschlag Fred, 2026-11-17, aus B-34). Versionierte Assets (`?v=`) könnten lange und `immutable` gecacht
+werden; spart Revalidierungen beim Start. Befehle für Andreas, beide Server.
 
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
