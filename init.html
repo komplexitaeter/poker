@@ -137,6 +137,6 @@
     <script src="script/script.js?v=3.35" type="text/javascript" defer></script>
     <!-- B-34: the start page starts when the document is parsed and the deferred scripts have run, without
          waiting for images or analytics (window load) -->
-    <script>document.addEventListener('DOMContentLoaded', function () { loadInit(); });</script>
+    <script>document.addEventListener('DOMContentLoaded', function () { setTimeout(loadInit, 0); }); // after the DOMContentLoaded handlers of the deferred scripts</script>
 </body>
 </html>

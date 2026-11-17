@@ -64,7 +64,7 @@
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
          waiting for images or analytics (window load) -->
-    <script>document.addEventListener('DOMContentLoaded', function () { loadBoard(); });</script>
+    <script>document.addEventListener('DOMContentLoaded', function () { setTimeout(loadBoard, 0); }); // after the DOMContentLoaded handlers of the deferred scripts (order of keydown handlers, e.g. Escape)</script>
 
 
 </head>
