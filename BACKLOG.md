@@ -338,11 +338,14 @@ synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-
 Vorgabe Andreas (2026-11-17): flüssig, nie ein unvollständiger Stand; Spinner nur, wenn das Laden länger dauert.
 Umsetzung: `cards.json`, `card_catalog.json` und `src/cards.svg` laden parallel, sobald `script.js` läuft; das Board
 erscheint erst, wenn der erste Stand vollständig gerendert ist (inkl. Karten), auf einen Schlag. Spinner per Inline-CSS
-erst nach 0,4 s, nach 12 s Hinweis mit „Reload“; vor dem Aufbau wiederholt `dao.php` ohne Grenze (bis alle 5 s).
-Startseite erscheint nach `get_user.php` (höchstens 3 s, sonst dunkel). Test: `tests/e2e/specs/startup.spec.ts`.
+erst nach 0,8 s, nach 12 s Hinweis mit „Reload“; vor dem Aufbau wiederholt `dao.php` ohne Grenze (bis alle 5 s,
+Timeout je Versuch 8 s, 16 s, dann 30 s). Config-Dateien: nur 4xx (außer 408/429) und kaputtes JSON gelten als
+endgültig, 5xx/408/429 werden wie Netzfehler wiederholt. Startseite erscheint nach `get_user.php` (höchstens 3 s,
+sonst Systemmodus). Mit umgesetzt (B-140, Andreas 2026-11-17: plausible ist für uns nicht kritisch): Start bei
+`DOMContentLoaded` statt `window.load`, plausible `async`. Test: `tests/e2e/specs/startup.spec.ts`.
 
 ### B-140 Board-Start früher: `DOMContentLoaded` statt `load`, plausible async
-Status: neu (Vorschlag Fred, 2026-11-17, aus B-34). `loadBoard()` startet erst bei `window.load`, also nach Bildern,
+Status: mit B-34 umgesetzt (Andreas, 2026-11-17). Vorschlag Fred, 2026-11-17, aus B-34: `loadBoard()` startete erst bei `window.load`, also nach Bildern,
 allen Defer-Skripten und dem externen plausible.io; `dao.php` könnte bei `DOMContentLoaded` starten, plausible `async`.
 Bringt auf langsamen Netzen spürbar Zeit, ändert aber die Startreihenfolge (Tests prüfen).
 

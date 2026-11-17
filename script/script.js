@@ -898,13 +898,15 @@ let gAwaySig = null;     // B-127: away_sig of the board state shown last (null:
  * one is made void by the newer one), and a load asked for meanwhile replaces the pending retry. The load on page
  * load sets the page up, so its retry is never dropped: it runs, or the load that replaces it does the set-up.
  * B-34: until the page is set up, every failed load is retried without limit, with a growing wait (800 ms,
- * 1.6 s, 3.2 s, then every 5 s; a load that hangs is given up after DAO_BOOT_TIMEOUT_MS), so a short outage on
- * load never leaves the page hidden for good. After the
+ * 1.6 s, 3.2 s, then every 5 s; a load that hangs is given up after DAO_BOOT_TIMEOUT_MS: 8 s, 16 s, then 30 s per
+ * try, so a slow but working server still gets through), so a short outage on load never leaves the page hidden
+ * for good. After the
  * set-up the B-94 rule above applies again (one retry, only the latest load). */
 const DAO_RETRY_MS = 800;
 const DAO_BOOT_RETRY_MAX_MS = 5000;
 let gDaoRetry = null;    // pending retry: {timer, isOnLoad}
 let gBootRetryN = 0;     // B-34: retries before the set-up so far (the wait grows with them)
+let gBootTryN = 0;       // B-34: loads before the set-up so far (the timeout grows with them)
 
 function updateDao(isOnLoad, isRetry = false) {
     // B-34: no team yet (e.g. a double click before loadBoard() ran): nothing to load
@@ -924,9 +926,12 @@ function updateDao(isOnLoad, isRetry = false) {
     // finished meanwhile (see timerStateFresh)
     const timerWrite = gTimerWrites === 0 ? gTimerWriteGen : -1;
 
-    // B-34: before the set-up a hanging load is given up after DAO_BOOT_TIMEOUT_MS, so it runs into the boot retry
+    // B-34: before the set-up a hanging load is given up after DAO_BOOT_TIMEOUT_MS (growing per try), so it runs
+    // into the boot retry
     const ctrl = !gBoardSetUp && typeof AbortController === 'function' ? new AbortController() : null;
-    const abortTimer = ctrl !== null ? setTimeout(() => ctrl.abort(), DAO_BOOT_TIMEOUT_MS) : 0;
+    const bootTimeout = DAO_BOOT_TIMEOUT_MS[Math.min(gBootTryN, DAO_BOOT_TIMEOUT_MS.length - 1)];
+    if (ctrl !== null) gBootTryN++;
+    const abortTimer = ctrl !== null ? setTimeout(() => ctrl.abort(), bootTimeout) : 0;
     fetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
         .then((response) => {
             if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -2737,7 +2742,11 @@ function onBodyDblClick(event) {
     updateDao(false);
 }
 
+let gStarted = false; // B-34: loadBoard() / loadInit() ran (they start on DOMContentLoaded, only once)
+
 function loadBoard() {
+    if (gStarted) return;
+    gStarted = true;
     const urlParams = new URLSearchParams(window.location.search);
     t = urlParams.get("t");
 
@@ -2866,6 +2875,8 @@ function becomeUser(type) {
 }
 
 function loadInit() {
+    if (gStarted) return;
+    gStarted = true;
     // the form never submits natively, also while the color mode is still loading
     document.getElementById('teamForm').addEventListener('submit', function(event) {
         event.preventDefault();
@@ -3433,7 +3444,8 @@ function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
 
 /* B-34: the start of the board loads without blocking. cards.json, card_catalog.json and the card symbols
  * (src/cards.svg) start while the page is parsed (script.js is deferred), in parallel to the rest; dao.php starts
- * on window load as before. Every board state waits for the card config (gConfigReady); the page shows when the
+ * on DOMContentLoaded (loadBoard(), board.html: all deferred scripts have run then; images and analytics do not
+ * hold it up). Every board state waits for the card config (gConfigReady); the page shows when the
  * first board state is rendered completely and the symbols are there (at most SPRITE_WAIT_MS more), all at once.
  * Until then a spinner shows after 0.8 s and fades out when the page shows (inline CSS in board.html/init.html),
  * after 12 s a "Still loading" hint with a reload button (inline script there; the loads go on and the hint goes
@@ -3441,23 +3453,27 @@ function updateCardChangesConfig(showCardChanges, roundShowCardChanges) {
 const CONFIG_TIMEOUT_MS = 8000;   // cards.json / card_catalog.json: one try is given up after this (and retried)
 const CONFIG_RETRY_MS = [1000, 2000, 4000]; // waits before the first retries of a config file ...
 const CONFIG_RETRY_MAX_MS = 5000; // ... then every 5 s, until it loads or the server answers definitively
-const DAO_BOOT_TIMEOUT_MS = 8000; // dao.php before the set-up: a hanging load is given up and retried
+const DAO_BOOT_TIMEOUT_MS = [8000, 16000, 30000]; // dao.php before the set-up: a hanging load is given up and
+                                                  // retried; 1st, 2nd, 3rd and every later try
 const USER_WAIT_MS = 3000;        // init.html: get_user.php (color mode); after this the page shows in the system mode
 const SPRITE_WAIT_MS = 1000;      // the page waits this long at most for the card symbols
 const SPINNER_FADE_MS = 250;      // the spinner fades out in 0.2 s (inline CSS), then it is removed
 let gBoardSetUp = false;          // the first board state has been rendered completely
 let gPageShown = false;
 
-/* GET a JSON object. Resolves with {json, final}: json is the object or null; final is false when no answer came
- * (network error, timeout: worth retrying) and true for any answer of the server (HTTP error status, no JSON
- * object). Never rejects. timeoutMs 0: no timeout. */
+/* GET a JSON object. Resolves with {json, final}: json is the object or null; final is false when a retry may help
+ * (network error, timeout, HTTP 5xx, 408, 429) and true for a definite answer of the server (any other HTTP error
+ * status such as 404 or 410, no JSON object). Never rejects. timeoutMs 0: no timeout. */
 function fetchJsonResult(url, timeoutMs) {
     const ctrl = typeof AbortController === 'function' && timeoutMs > 0 ? new AbortController() : null;
     const timer = ctrl !== null ? setTimeout(() => ctrl.abort(), timeoutMs) : 0;
     let answered = false;
     return fetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
         .then((response) => {
-            if (!response.ok) { answered = true; throw new Error('HTTP ' + response.status); }
+            if (!response.ok) {
+                answered = isFinalStatus(response.status);
+                throw new Error('HTTP ' + response.status);
+            }
             return response.json();
         })
         .then((json) => {
@@ -3473,12 +3489,18 @@ function fetchJsonResult(url, timeoutMs) {
         .finally(() => clearTimeout(timer));
 }
 
+/* B-34: an HTTP error status that a retry will not change (4xx except 408 Request Timeout and 429 Too Many
+ * Requests); 5xx, 408 and 429 are passing troubles */
+function isFinalStatus(status) {
+    return status >= 400 && status < 500 && status !== 408 && status !== 429;
+}
+
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /* a file of the card config: retried (1 s, 2 s, 4 s, then every 5 s) until it loads; null only when the server
- * answered definitively (HTTP error status, broken JSON) */
+ * answered definitively (404, 410 or another 4xx except 408/429, broken JSON); 5xx/408/429 are retried */
 function fetchConfigFile(url) {
     let tries = 0;
     const attempt = () => fetchJsonResult(url, CONFIG_TIMEOUT_MS).then((result) => {

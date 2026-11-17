@@ -145,7 +145,7 @@ test('no spinner on a fast load, the spinner after 0.8 s on a slow one, it fades
   await expect(slow.locator('#cbox .c')).toHaveCount(2);
 });
 
-test('the board loads when the server answers 404/500 for cards.json or card_catalog.json (B-34)', async ({ browser }) => {
+test('the board loads when the server answers 404/410 for cards.json or card_catalog.json (B-34)', async ({ browser }) => {
   const { alice, url } = await teamWithTwoPlayers(browser, 'Startup Missing Config');
 
   const noCards = await samePlayer(alice);
@@ -159,7 +159,7 @@ test('the board loads when the server answers 404/500 for cards.json or card_cat
 
   const noCatalog = await samePlayer(alice);
   const errors2 = collectPageErrors(noCatalog);
-  await noCatalog.route('**/card_catalog.json*', route => route.fulfill({ status: 500, body: 'error' }));
+  await noCatalog.route('**/card_catalog.json*', route => route.fulfill({ status: 410, body: 'gone' }));
   await noCatalog.goto(url);
   await expect.poll(() => noCatalog.evaluate(() => document.body.style.opacity), { timeout: 10_000 }).toBe('1');
   await expect(noCatalog.locator('#cbox .c')).toHaveCount(2);
@@ -309,6 +309,27 @@ test('a config file that does not arrive is retried, the board shows with it (B-
   expect(errors).toEqual([]);
 });
 
+test('a config file answered with 5xx/429 is retried like a network error, the board shows with it (B-34)', async ({ browser }) => {
+  const { alice, url } = await teamWithTwoPlayers(browser, 'Startup Config 5xx');
+  const page = await samePlayer(alice);
+  const errors = collectPageErrors(page);
+  await recordReveal(page);
+  const answers = [503, 500, 429];
+  let tries = 0;
+  await page.route('**/card_catalog.json*', route => {
+    const status = answers[tries++];
+    return status !== undefined ? route.fulfill({ status, body: 'busy' }) : route.continue();
+  });
+  await page.goto(url);
+  await expect.poll(() => shown(page), { timeout: 20_000 }).not.toBeNull();
+  const s = (await shown(page))!;
+  expect(tries).toBe(4);
+  expect(s.catalog).toBe(true); // the real catalog after the retries, not the fallback of a final answer
+  expect(s.cards).toBe(2);
+  expect(s.deck).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
 test('without any card config the board stays hidden, and shows once it is there (B-34)', async ({ browser }) => {
   const { alice, url } = await teamWithTwoPlayers(browser, 'Startup No Config');
   const page = await samePlayer(alice);
@@ -397,7 +418,7 @@ test('a double click before the board starts loads nothing without a team (B-34)
   const errors = collectPageErrors(page);
   const daoUrls: string[] = [];
   page.on('request', req => { if (req.url().includes('/api/dao.php')) daoUrls.push(req.url()); });
-  // a deferred script after script.js comes late: script.js has run, loadBoard() (window load) has not
+  // a deferred script after script.js comes late: script.js has run, loadBoard() (DOMContentLoaded) has not
   let release!: () => void;
   const held = new Promise<void>(r => { release = r; });
   await page.route('**/js-confetti*', async route => { await held; await route.continue(); });
@@ -410,4 +431,86 @@ test('a double click before the board starts loads nothing without a team (B-34)
   expect(daoUrls.length).toBeGreaterThan(0);
   for (const u of daoUrls) expect(new URL(u).searchParams.get('t')).toBe(team);
   expect(errors).toEqual([]);
+});
+
+test('the start does not wait for window load: a hanging plausible.io or a slow image does not hold it up (B-34)', async ({ browser }) => {
+  const { alice, url } = await teamWithTwoPlayers(browser, 'Startup No Window Load');
+  const page = await samePlayer(alice);
+  const errors = collectPageErrors(page);
+  await recordReveal(page);
+  // the context of newPlayer() aborts every external host at once; a page route wins over it, so the analytics
+  // script hangs here (as on a slow or blocked network), and so does the average pointer image
+  let release!: () => void;
+  const held = new Promise<void>(r => { release = r; });
+  let analytics = 0;
+  let image = 0;
+  await page.route(/^https:\/\/plausible\.io\//, async route => { analytics++; await held; await route.abort().catch(() => undefined); });
+  await page.route('**/src/index.png*', async route => { image++; await held; await route.continue().catch(() => undefined); });
+  const started = Date.now();
+  await page.goto(url, { waitUntil: 'commit' });
+  await expect.poll(() => shown(page), { timeout: 10_000 }).not.toBeNull();
+  const s = (await shown(page))!;
+  expect(s.at - started).toBeLessThan(5_000);
+  expect(s.cards).toBe(2);
+  expect(s.deck).toBeGreaterThan(0);
+  expect(analytics).toBe(1);
+  expect(image).toBe(1);
+  expect(await page.evaluate(() => document.readyState)).not.toBe('complete'); // window load is still pending
+  await pickCard(page, 'three01');
+  release();
+  expect(errors).toEqual([]);
+
+  // the start page as well
+  const init = await samePlayer(alice);
+  const initErrors = collectPageErrors(init);
+  let initAnalytics = 0;
+  let release2!: () => void;
+  const held2 = new Promise<void>(r => { release2 = r; });
+  await init.route(/^https:\/\/plausible\.io\//, async route => { initAnalytics++; await held2; await route.abort().catch(() => undefined); });
+  await init.goto('/', { waitUntil: 'commit' });
+  await pageReady(init, 10_000);
+  expect(initAnalytics).toBe(1);
+  expect(await init.evaluate(() => document.readyState)).not.toBe('complete');
+  release2();
+  expect(initErrors).toEqual([]);
+});
+
+test('before the set-up a hanging dao.php is given up after 8 s, 16 s, then 30 s per try (B-34)', async ({ browser }) => {
+  const { alice, url } = await teamWithTwoPlayers(browser, 'Startup Boot Timeout');
+  const page = await samePlayer(alice);
+  // no connection to poker-msg (its onopen loads dao.php too): only the boot loads and their retries count
+  await page.routeWebSocket(/\/poker-msg/, ws => { ws.close(); });
+  // the (fake) time at which the page starts each load of dao.php
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.__daoAt = [] as number[];
+    const orig = window.fetch.bind(window);
+    window.fetch = (input: any, init?: any) => {
+      if (String(input instanceof Request ? input.url : input).includes('/api/dao.php')) w.__daoAt.push(Date.now());
+      return orig(input, init);
+    };
+  });
+  const hanging: { abort: () => Promise<void> }[] = [];
+  await page.route('**/api/dao.php*', route => { hanging.push(route); });
+  await page.clock.install();
+  await page.goto(url, { waitUntil: 'commit' });
+  const daoAt = (): Promise<number[]> => page.evaluate(() => (window as any).__daoAt ?? []);
+  await expect.poll(async () => (await daoAt()).length).toBe(1);
+  // from here on the fake time only moves in steps of 500 ms (the abort and the retry need the real event loop)
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 500);
+  const STEP = 500;
+  for (let i = 0; i < 240 && (await daoAt()).length < 5; i++) {
+    await page.clock.runFor(STEP);
+    await page.waitForTimeout(20);
+  }
+  const at = await daoAt();
+  expect(at.length).toBeGreaterThanOrEqual(5);
+  const gaps = at.slice(1, 5).map((t, i) => t - at[i]);
+  // gap = timeout of the try + wait of the boot retry (800 ms, 1.6 s, 3.2 s, 5 s), plus at most one step
+  const expected = [8_000 + 800, 16_000 + 1_600, 30_000 + 3_200, 30_000 + 5_000];
+  gaps.forEach((gap, i) => {
+    expect(gap).toBeGreaterThanOrEqual(expected[i] - 50); // the first load starts while the clock still runs
+    expect(gap).toBeLessThanOrEqual(expected[i] + STEP + 100);
+  });
+  for (const route of hanging) await route.abort().catch(() => undefined);
 });

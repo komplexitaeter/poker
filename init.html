@@ -48,9 +48,10 @@
             h.appendChild(d);
         }, 12000);
     </script>
-    <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
+    <!-- B-34: analytics async, so it never holds up the deferred scripts or the start -->
+    <script async data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
 </head>
-<body onload="loadInit()" style="opacity: 0" aria-busy="true">
+<body style="opacity: 0" aria-busy="true">
 
     <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
     <svg class="sprite" aria-hidden="true" focusable="false">
@@ -133,6 +134,9 @@
     </main>
 
     <script src="script/script_team.js?v=1.9" type="text/javascript" defer></script>
-    <script src="script/script.js?v=3.34" type="text/javascript" defer></script>
+    <script src="script/script.js?v=3.35" type="text/javascript" defer></script>
+    <!-- B-34: the start page starts when the document is parsed and the deferred scripts have run, without
+         waiting for images or analytics (window load) -->
+    <script>document.addEventListener('DOMContentLoaded', function () { loadInit(); });</script>
 </body>
 </html>

@@ -49,7 +49,8 @@
             h.appendChild(d);
         }, 12000);
     </script>
-    <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
+    <!-- B-34: analytics async, so it never holds up the deferred scripts or the start -->
+    <script async data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
     <script defer src="script/script_feedback.js?v=1.46" type="text/javascript"></script>
@@ -59,13 +60,16 @@
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/topics.js?v=1.14" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.34" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.35" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
+    <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
+         waiting for images or analytics (window load) -->
+    <script>document.addEventListener('DOMContentLoaded', function () { loadBoard(); });</script>
 
 
 </head>
 <!-- hidden inline (not only in style.css) so nothing shows before the stylesheet and the first server response arrive -->
-<body onload="loadBoard()" class="body-fade-in" style="opacity: 0" aria-busy="true" ondblclick="onBodyDblClick(event)">
+<body class="body-fade-in" style="opacity: 0" aria-busy="true" ondblclick="onBodyDblClick(event)">
 <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
 <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>
