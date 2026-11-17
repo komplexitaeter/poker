@@ -3,7 +3,8 @@ import { newPlayer, createTeam, teamWithTwoPlayers, pickCard, deckCards, pageRea
 
 /**
  * B-34: the start of the board and of the start page loads without synchronous requests. The page shows only when
- * it is complete (card config, first board state with all cards, card symbols), all at once. A spinner shows only
+ * it is complete (card config, first board state with all cards), all at once; the card symbols may follow a moment
+ * later (Andreas, 2026-11-17). A spinner shows only
  * when that takes longer than 0.8 s and fades out; failures end in the board or in a hint with a reload button, never
  * in an endless spinner or an empty page. A config file that does not arrive is retried; the board never shows
  * without cards.
@@ -352,37 +353,37 @@ test('without any card config the board stays hidden, and shows once it is there
   expect(errors).toEqual([]);
 });
 
-test('the page waits for the card symbols, at most about 1 s (B-34)', async ({ browser }) => {
+test('a slow cards.svg does not hold up the board, the symbols follow (B-34)', async ({ browser }) => {
   const { alice, url } = await teamWithTwoPlayers(browser, 'Startup Sprite');
-
-  // 0.6 s late: the page shows after the symbols are there
   const page = await samePlayer(alice);
+  const errors = collectPageErrors(page);
   await recordReveal(page);
+  // the card symbols come 3 s late; the download starts early (warmSprite), nothing waits for it
+  let requested = 0;
   let releasedAt = 0;
   await page.route('**/src/cards.svg*', async route => {
-    await new Promise(r => setTimeout(r, 600));
-    if (releasedAt === 0) releasedAt = Date.now(); // the first one (the <use> elements may ask once more)
-    await route.continue();
-  });
-  await page.goto(url);
-  await expect.poll(() => shown(page), { timeout: 10_000 }).not.toBeNull();
-  expect(releasedAt).toBeGreaterThan(0);
-  expect((await shown(page))!.at).toBeGreaterThanOrEqual(releasedAt);
-  await page.close();
-
-  // 4 s late: the page does not wait for them
-  const slow = await samePlayer(alice);
-  await recordReveal(slow);
-  let slowReleasedAt = 0;
-  await slow.route('**/src/cards.svg*', async route => {
-    await new Promise(r => setTimeout(r, 4000));
-    slowReleasedAt = Date.now();
+    requested++;
+    await new Promise(r => setTimeout(r, 3000));
+    if (releasedAt === 0) releasedAt = Date.now();
     await route.continue().catch(() => undefined);
   });
-  await slow.goto(url, { waitUntil: 'domcontentloaded' });
-  await expect.poll(() => shown(slow), { timeout: 10_000 }).not.toBeNull();
-  expect(slowReleasedAt).toBe(0);
-  await expect(slow.locator('#cbox .c')).toHaveCount(2);
+  let daoAt = 0; // the first board state has arrived
+  page.on('requestfinished', req => { if (daoAt === 0 && req.url().includes('/api/dao.php')) daoAt = Date.now(); });
+  const started = Date.now();
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => shown(page), { timeout: 10_000 }).not.toBeNull();
+  const s = (await shown(page))!;
+  expect(releasedAt).toBe(0); // the board showed before the symbols were there
+  expect(s.at - started).toBeLessThan(3_000);
+  expect(daoAt).toBeGreaterThan(0);
+  expect(s.at - daoAt).toBeLessThan(600); // no wait for the symbols after the board state (it was up to 1 s)
+  expect(s.cards).toBe(2);
+  expect(s.deck).toBeGreaterThan(0);
+  expect(requested).toBeGreaterThan(0);
+  // the symbols arrive later and the board works on
+  await expect.poll(() => releasedAt, { timeout: 10_000 }).toBeGreaterThan(0);
+  await pickCard(page, 'three01');
+  expect(errors).toEqual([]);
 });
 
 test('a first board state that breaks the set-up is followed by a later one that shows the board (B-34)', async ({ browser }) => {
