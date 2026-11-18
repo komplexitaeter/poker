@@ -302,10 +302,12 @@ die Anzahl von Items, die „klein genug“ sind. Die Tiere sagen, was als Näch
 - 🐕 Dog – 1 – „Our standard size – this is what we aim for.“
 - 🐎 Horse – 3 – „Too big really, but we keep it – no clear way to cut it yet.“ (3 statt 2: große Items dauern
   überproportional länger)
-- 🐘 Elephant – 8 – „Too big for a sprint – we have an idea how to split it.“
-- 🐋 Whale – 13 – „Far too big – we need a spike or mockup first to find a smaller start.“
-Elefant und Wal haben bewusst Werte: Die Einigung nimmt den Höchstwert als Vorschlag, das Ergebnis „Elefant“ landet am
-Item und signalisiert „schneiden“; in einer Summe wirkt die große Zahl absichtlich absurd.
+- 🐘 Elephant – 999.998 – „Too big for a sprint – we have an idea how to split it.“
+- 🐋 Whale – 999.999 – „Far too big – we need a spike or mockup first to find a smaller start.“
+Elefant und Wal haben bewusst sehr große Werte (Andreas, 2026-11-18): praktisch unendlich, jede Summe oder jeder
+Durchschnitt mit ihnen wird unbrauchbar („passt nicht in einen Sprint“). Die Einigung nimmt den Höchstwert als
+Vorschlag, das Ergebnis „Elefant“ landet am Item und signalisiert „schneiden“. In der App erscheinen nur die Karten
+(Spannweite, Ergebnis, Export), der Durchschnittszeiger springt wie bei ∞ nach rechts.
 Umfang:
 1. Beispielset (B-116, `EXAMPLE_SET_CARDS` in `api/lib_custom.php`) mit den Werten und Beschreibungen oben; bleibt ein
    eigenes Set (Team kann es anpassen/löschen), kein Katalog-Set.
