@@ -293,6 +293,31 @@ kann **jedes Wurf-Emoji 1× pro Tag** werfen – „man muss sich überlegen, wo
   Kontingent. Die bisherigen Limits (3/s, 10/min) bleiben.
 Offen: Tagesgrenze für Board und poker-msg gleich festlegen (Vorschlag: 00:00 UTC, damit beide übereinstimmen).
 
+### B-144 Tier-Schätzung als Methode (Beispielset „Animals“, Methodenseite, eigener Einstieg)
+Status: refined (Andreas, 2026-11-17/18). Anlass: Retro eines Scrum-Teams nach dem Kanban-Workshop – Story Points als
+„Komplexität“ korrelieren schwach mit der Dauer; Schätzen ist das Instrument für den Austausch, geplant wird eher über
+die Anzahl von Items, die „klein genug“ sind. Die Tiere sagen, was als Nächstes zu tun ist:
+- 🐜 Ant – Wert 0 – „Just do it – we don't count it.“
+- 🐁 Mouse – 0,5 – „Small – half of our usual size.“
+- 🐕 Dog – 1 – „Our standard size – this is what we aim for.“
+- 🐎 Horse – 3 – „Too big really, but we keep it – no clear way to cut it yet.“ (3 statt 2: große Items dauern
+  überproportional länger)
+- 🐘 Elephant – 8 – „Too big for a sprint – we have an idea how to split it.“
+- 🐋 Whale – 13 – „Far too big – we need a spike or mockup first to find a smaller start.“
+Elefant und Wal haben bewusst Werte: Die Einigung nimmt den Höchstwert als Vorschlag, das Ergebnis „Elefant“ landet am
+Item und signalisiert „schneiden“; in einer Summe wirkt die große Zahl absichtlich absurd.
+Umfang:
+1. Beispielset (B-116, `EXAMPLE_SET_CARDS` in `api/lib_custom.php`) mit den Werten und Beschreibungen oben; bleibt ein
+   eigenes Set (Team kann es anpassen/löschen), kein Katalog-Set.
+2. Das Beispielset wird intern markiert; im Deck-Menü bei diesem Set ein ruhiger Link „How it works →“ zur
+   Methodenseite (Platzhalter-URL, bis die Seite steht).
+3. Direkter Einstieg wie die anderen Tool-Seiten: `index.php?tool=…&team=…&text=…&preset=Animals` (neues Mapping) legt
+   das Team an, gibt ihm das Beispielset sofort (statt erst beim ersten dao.php) und aktiviert es als Deck.
+4. Vorab analysieren: wie viele Teams das Beispielset noch unverändert haben bzw. nutzen; danach entscheiden, ob es bei
+   bestehenden, unveränderten Sets nachgezogen wird (geänderte Sets nie anfassen).
+Andreas: Methodenseite und Tool-Seite („Tool starten“ mit `preset=Animals`) auf komplexitaeter.de (WordPress, nicht
+in diesem Repo); wir liefern die genaue URL.
+
 ## Offen: Technik & Betrieb
 
 ### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
