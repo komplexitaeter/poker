@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, selectedDeckCards } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, selectedDeckCards, pageReady } from './helpers';
 
 /**
  * B-48: the header is made of real buttons and can be used with the keyboard.
@@ -115,6 +115,7 @@ test('keyboard on a phone: the menu button opens the index with Enter, Escape cl
 test('start page: Tab goes from the team name field to its button, then to the header (B-51)', async ({ browser }) => {
   const page = await newPlayer(browser);
   await page.goto('/');
+  await pageReady(page); // B-34: before the keyboard steps (the page takes the focus to the name field when it shows)
   await expect(page.locator('#teaminput')).toBeVisible();
 
   // explicit tabindex 1/2 (like the name page): Safari without "Press Tab to highlight each item"

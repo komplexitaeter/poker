@@ -10,23 +10,72 @@
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
     <link rel="stylesheet" href="style/style.css?v=2.65" media="screen" />
-    <script defer data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
+    <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
+         setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
+    <script>
+        try {
+            var pkMode = localStorage.getItem('COLOR_MODE');
+            if (pkMode !== 'light' && pkMode !== 'dark') pkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            if (pkMode === 'light') document.documentElement.classList.add('pk-light');
+        } catch (e) { /* dark */ }
+    </script>
+    <!-- B-34: until the page is complete it takes no clicks, a spinner shows after 0.8 s (only on slow loads) and
+         after 12 s a "Still loading" hint with a reload button; inline, so all of it works without style.css and
+         script.js. When the page shows (revealPage() in script.js sets html.ready) the hint goes and a visible
+         spinner fades out (.spin-out). -->
+    <style>
+        html:not(.ready) body{pointer-events:none}
+        html::after{content:'';position:fixed;left:50%;top:50%;width:32px;height:32px;margin:-16px 0 0 -16px;box-sizing:border-box;border-radius:50%;border:3px solid rgba(128,128,128,.25);border-top-color:rgba(128,128,128,.85);opacity:0;pointer-events:none;animation:pk-spin .9s linear infinite,pk-show .2s ease-out .8s forwards}
+        html.ready::after,html.load-fail::after{display:none}
+        html.ready.spin-out::after{display:block;animation:pk-spin .9s linear infinite,pk-hide .2s ease-out forwards}
+        @keyframes pk-spin{to{transform:rotate(360deg)}}
+        @keyframes pk-show{to{opacity:1}}
+        @keyframes pk-hide{from{opacity:var(--pk-o,1)}to{opacity:0}}
+        @media (prefers-reduced-motion:reduce){html::after{animation:pk-show .2s ease-out .8s forwards}html.ready.spin-out::after{animation:pk-hide .2s ease-out forwards}}
+        html{background:#0c0e12}html.pk-light{background:#f7f6f1}
+    </style>
+    <script>
+        setTimeout(function () {
+            var h = document.documentElement;
+            if (h.classList.contains('ready')) return;
+            h.classList.add('load-fail');
+            // text with enough contrast (about 6:1 or more) on the dark and on the light page background
+            var dark = !h.classList.contains('pk-light'); // B-141: the page background follows html.pk-light
+            var d = document.createElement('div');
+            d.id = 'load_fail';
+            d.setAttribute('role', 'status');
+            d.style.cssText = 'position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100vw - 32px);font:16px system-ui,sans-serif;text-align:center;color:' + (dark ? '#a3a3a3' : '#575757') + ';';
+            d.textContent = 'Still loading\u2026';
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = 'Reload';
+            b.style.cssText = 'display:block;margin:12px auto 0;font:inherit;padding:6px 16px;';
+            b.onclick = function () { location.reload(); };
+            d.appendChild(b);
+            h.appendChild(d);
+        }, 12000);
+    </script>
+    <!-- B-34: analytics async, so it never holds up the deferred scripts or the start -->
+    <script async data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.46" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.47" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
     <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
     <script defer src="script/topics.js?v=1.14" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.33" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.37" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
+    <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
+         waiting for images or analytics (window load) -->
+    <script>document.addEventListener('DOMContentLoaded', function () { setTimeout(loadBoard, 0); }); // after the DOMContentLoaded handlers of the deferred scripts (order of keydown handlers, e.g. Escape)</script>
 
 
 </head>
 <!-- hidden inline (not only in style.css) so nothing shows before the stylesheet and the first server response arrive -->
-<body onload="loadBoard()" class="body-fade-in" style="opacity: 0" ondblclick="onBodyDblClick(event)">
+<body class="body-fade-in" style="opacity: 0" aria-busy="true" ondblclick="onBodyDblClick(event)">
 <!-- line icons for the header (stroke = current text color, so they follow light/dark) -->
 <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></symbol>

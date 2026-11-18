@@ -27,8 +27,8 @@ die Primärfunktion (Andreas, 2026-11-10).
 
 **Sprint 9 – Aufräumen unter der Haube** (Andreas, 2026-11-16): Refactoring und technische Schulden, nichts für die
 Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging; Rollout danach mit B-12.
-1. B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
-2. B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
+1. ✓ live R5 – B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
+2. ✓ live R5 – B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
 3. B-34 Startdaten asynchron laden
 4. B-14 erster Schnitt (2–3 Module aus `script.js`)
 5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
@@ -45,6 +45,7 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
 - **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R5 (2026-11-16, abends):** B-139 (Emoji-Kontingent), Sprint 9 Schritte 1–2: B-93, B-94, B-97, B-136, B-137, B-138.
 - **R4 (2026-11-16):** B-52 (Topic list), B-53 (Median), B-130 (Timer-Auto-Start), B-131, B-133 (Nudge-Ton),
   B-135 (Write-Retry); dazu B-134 (CI).
 
@@ -279,7 +280,7 @@ Bis dahin ist die Reifegrad-Eingabe im Item-Formular ausgeblendet (2026-11-13); 
 Offen: Reihenfolge der beiden; Darstellung in Historie und Export.
 
 ### B-139 Reaktionen mit sichtbarem Tageskontingent
-Status: refined (Andreas, 2026-11-16). Feedback (OTHER, 2026-11-16): „Colleagues keep throwing fish. Can we get a
+Status: live (Rollout 5, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Feedback (OTHER, 2026-11-16): „Colleagues keep throwing fish. Can we get a
 setting to disable throwing of emojis please?“ Auswertung poker-msg-Log: ein Team mit Fisch-Wellen bis 121 Würfe/min
 (mehrere Personen, je unter dem Limit 10/min); sonst 187 Teams unauffällig. Verteilung (559 Reaktionen mit Namen):
 Nudge 43 %, Fisch 47 % (ohne das eine Team 62 % / 24 %), Think, Party, Thumbs, Cake, Clap, Heart zusammen < 10 %.
@@ -291,6 +292,33 @@ kann **jedes Wurf-Emoji 1× pro Tag** werfen – „man muss sich überlegen, wo
   Werfer-mkey, Emoji und Tag im Speicher (keine DB; nach Neustart beginnt die Zählung neu) und verwirft Würfe über dem
   Kontingent. Die bisherigen Limits (3/s, 10/min) bleiben.
 Offen: Tagesgrenze für Board und poker-msg gleich festlegen (Vorschlag: 00:00 UTC, damit beide übereinstimmen).
+
+### B-144 Tier-Schätzung als Methode (Beispielset „Animals“, Methodenseite, eigener Einstieg)
+Status: refined (Andreas, 2026-11-17/18). Anlass: Retro eines Scrum-Teams nach dem Kanban-Workshop – Story Points als
+„Komplexität“ korrelieren schwach mit der Dauer; Schätzen ist das Instrument für den Austausch, geplant wird eher über
+die Anzahl von Items, die „klein genug“ sind. Die Tiere sagen, was als Nächstes zu tun ist:
+- 🐜 Ant – Wert 0 – „Just do it – we don't count it.“
+- 🐁 Mouse – 0,5 – „Small – half of our usual size.“
+- 🐕 Dog – 1 – „Our standard size – this is what we aim for.“
+- 🐎 Horse – 3 – „Too big really, but we keep it – no clear way to cut it yet.“ (3 statt 2: große Items dauern
+  überproportional länger)
+- 🐘 Elephant – 999.998 – „Too big for a sprint – we have an idea how to split it.“
+- 🐋 Whale – 999.999 – „Far too big – we need a spike or mockup first to find a smaller start.“
+Elefant und Wal haben bewusst sehr große Werte (Andreas, 2026-11-18): praktisch unendlich, jede Summe oder jeder
+Durchschnitt mit ihnen wird unbrauchbar („passt nicht in einen Sprint“). Die Einigung nimmt den Höchstwert als
+Vorschlag, das Ergebnis „Elefant“ landet am Item und signalisiert „schneiden“. In der App erscheinen nur die Karten
+(Spannweite, Ergebnis, Export), der Durchschnittszeiger springt wie bei ∞ nach rechts.
+Umfang:
+1. Beispielset (B-116, `EXAMPLE_SET_CARDS` in `api/lib_custom.php`) mit den Werten und Beschreibungen oben; bleibt ein
+   eigenes Set (Team kann es anpassen/löschen), kein Katalog-Set.
+2. Das Beispielset wird intern markiert; im Deck-Menü bei diesem Set ein ruhiger Link „How it works →“ zur
+   Methodenseite (Platzhalter-URL, bis die Seite steht).
+3. Direkter Einstieg wie die anderen Tool-Seiten: `index.php?tool=…&team=…&text=…&preset=Animals` (neues Mapping) legt
+   das Team an, gibt ihm das Beispielset sofort (statt erst beim ersten dao.php) und aktiviert es als Deck.
+4. Vorab analysieren: wie viele Teams das Beispielset noch unverändert haben bzw. nutzen; danach entscheiden, ob es bei
+   bestehenden, unveränderten Sets nachgezogen wird (geänderte Sets nie anfassen).
+Andreas: Methodenseite und Tool-Seite („Tool starten“ mit `preset=Animals`) auf komplexitaeter.de (WordPress, nicht
+in diesem Repo); wir liefern die genaue URL.
 
 ## Offen: Technik & Betrieb
 
@@ -309,7 +337,7 @@ nicht wieder geladen). Dann `php8.4 tools/migration/check_deck_migration.php --v
 entscheiden, ob `tools/migration/` aus dem Repo kann (siehe B-126).
 
 ### B-136 Umfrage entfernen
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Die In-App-Umfrage ist praktisch tot (Fund Fred, 2026-10-30: `get_survey.php`
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined (Andreas, 2026-11-16). Die In-App-Umfrage ist praktisch tot (Fund Fred, 2026-10-30: `get_survey.php`
 bindet die User-ID mit `bind_param('i', …)`, `get_survey_id()` vergibt nie eine Umfrage) und wird ausgebaut.
 Umfang: Frontend-Code der Umfrage (u. a. `toggleSurvey()`, Survey-Box, `fillResultsBars()`, CSS),
 `api/get_survey.php` und zugehörige Endpunkte sowie Umfrage-Abfragen in `getDao()`/`api/lib.php` entfernen. Tabellen
@@ -331,9 +359,44 @@ Status: neu. `script.js` hat inzwischen 4.090 Zeilen mit globalen Variablen. Sch
 Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
 
 ### B-34 Synchrone XMLHttpRequest auf async umstellen
-Status: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
+Status: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen). Vorher: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
 (`loadTextFileAjaxSync()`) für `cards.json`, `card_catalog.json` und den Farbmodus. Der Aufrufer erwartet einen
 synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-Warnung, blockiert kurz den Main-Thread.
+Vorgabe Andreas (2026-11-17): flüssig, nie ein unvollständiger Stand; Spinner nur, wenn das Laden länger dauert.
+Umsetzung: `cards.json`, `card_catalog.json` und `src/cards.svg` laden parallel, sobald `script.js` läuft; das Board
+erscheint erst, wenn der erste Stand vollständig gerendert ist (inkl. Karten), auf einen Schlag. Auf die
+Kartensymbole (`src/cards.svg`) wartet es nicht, sie blenden ggf. einen Moment später ein; `warmSprite()` startet nur
+ihren Download früh (Andreas, 2026-11-17: Sprite-Warten entfällt, wie bisher live). Spinner per Inline-CSS
+erst nach 0,8 s, nach 12 s Hinweis mit „Reload“; vor dem Aufbau wiederholt `dao.php` ohne Grenze (bis alle 5 s,
+Timeout je Versuch 8 s, 16 s, dann 30 s). Config-Dateien: nur 4xx (außer 408/429) und kaputtes JSON gelten als
+endgültig, 5xx/408/429 werden wie Netzfehler wiederholt. Startseite erscheint nach `get_user.php` (höchstens 3 s,
+sonst Systemmodus). Mit umgesetzt (B-140, Andreas 2026-11-17: plausible ist für uns nicht kritisch): Start bei
+`DOMContentLoaded` statt `window.load`, plausible `async`. Test: `tests/e2e/specs/startup.spec.ts`.
+
+### B-140 Board-Start früher: `DOMContentLoaded` statt `load`, plausible async
+Status: mit B-34 umgesetzt (Andreas, 2026-11-17). Vorschlag Fred, 2026-11-17, aus B-34: `loadBoard()` startete erst bei `window.load`, also nach Bildern,
+allen Defer-Skripten und dem externen plausible.io; `dao.php` könnte bei `DOMContentLoaded` starten, plausible `async`.
+Bringt auf langsamen Netzen spürbar Zeit, ändert aber die Startreihenfolge (Tests prüfen).
+
+### B-141 Farbmodus lokal merken gegen dunklen Hintergrund vor dem Laden
+Status: umgesetzt, im Sprint 9 (Fred, 2026-11-17; Vorschlag Fred aus B-34, beauftragt Andreas 2026-11-17). Bis `setColor()`
+läuft, zeigt die Seite den dunklen Canvas; bei hellem Farbmodus fällt das auf langsamen Netzen (mit Spinner) auf.
+Umsetzung: Farbmodus zusätzlich in `localStorage` (`COLOR_MODE`), ein Inline-Skript im `head` von `board.html`/`init.html`
+setzt vor dem ersten Frame `html.pk-light` (Hintergrund per Inline-Style, ohne lokalen Wert nach `prefers-color-scheme`).
+Umschalten und ein abweichender Server-Wert (`dao.php` beim Laden, `get_user.php`) aktualisieren den lokalen Wert; der
+Server bleibt Quelle. Startseite mit lokalem Wert sofort sichtbar, ohne lokalen Wert wie bisher (max. 3 s).
+Mitgenommen: Notiz im Menü nach „Save“ sofort aktuell und zieht bei offenem Menü nach, solange nichts getippt ist
+(Fund Tessa); SID in `switchColorMode()` mit `encodeURIComponent()` (Fund Ben).
+
+### B-142 nginx: `Cache-Control: immutable` für Dateien mit `?v=`
+Status: neu (Vorschlag Fred, 2026-11-17, aus B-34). Versionierte Assets (`?v=`) könnten lange und `immutable` gecacht
+werden; spart Revalidierungen beim Start. Befehle für Andreas, beide Server.
+
+### B-143 Rückmeldung bei laufenden Aktionen (Buttons)
+Status: neu (Andreas, 2026-11-17, beim 3G-Test von B-34). Auf langsamem Netz zeigen Buttons wie „Team anlegen“ oder
+„Name speichern“ nicht, dass gerade etwas passiert. Idee: nach ~300 ms Busy-Zustand am Button (Gestaltung Delia,
+Console Style), währenddessen kein zweiter Klick; für alle Aktionen mit Server-Aufruf. Für Nutzer sichtbar, daher
+nicht im Aufräum-Sprint.
 
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
@@ -356,13 +419,13 @@ Frühere Entscheidung (2026-10-30) gilt weiter: nicht pro IP oder Team begrenzen
 Erfolgsgeschichte). In Doku/Repo keine IPs, Firmennamen, Team- oder User-IDs.
 
 ### B-94 Neuladen nach Fehlschlag wiederholen
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: neu. Fund Tessa (2026-10-30): `updateDao()` hat kein `.catch`; schlägt das Neuladen nach dem eigenen Schreiben
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: neu. Fund Tessa (2026-10-30): `updateDao()` hat kein `.catch`; schlägt das Neuladen nach dem eigenen Schreiben
 fehl (Netz, 500), bleibt das Board bis zum nächsten `pull`/Neuaufbau (bis 40 s) auf altem Stand. Vorschlag: einmal nach
 kurzer Pause erneut versuchen (B-135 wiederholt nur Schreib-Requests). Außerdem `docs/b81-server-notify.md` auf den
 umgesetzten Heartbeat-Wächter nachziehen (nennt noch `expectPull`).
 
 ### B-97 Assets aufräumen
-Status: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtlicher:
+Status: live (Rollout 5, 2026-11-16). Vorher: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtlicher:
 - Brand-SVGs (`brand_*.svg`, `brand_icon_*.svg`) je ~130 KB (sehr viele Pfade) für ein 20–24-px-Zeichen →
   verkleinern (svgo o. ä.; Delia). Gzip für SVG ist seit 2026-10-22 aktiv.
 - Laut Fund 2026-10-31 lädt das helle Theme zuerst die dunkle Datei und `setColor()` setzt `src` bei jedem Update
@@ -371,12 +434,12 @@ Status: neu (fasst B-35 zusammen). Auslieferung schlanker und `src/` übersichtl
   löschen oder dorthin verschieben. Vorher Referenzen in HTML/CSS/JS/PHP/JSON prüfen; `src/xcf/` bleibt.
 
 ### B-137 Restliche SQL-Konkatenation auf Prepared Statements
-Status: im Sprint 9, Schritt 2 (Andreas, 2026-11-16). CLAUDE.md nennt noch String-Konkatenation u. a. in
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 2 (Andreas, 2026-11-16). CLAUDE.md nennt noch String-Konkatenation u. a. in
 `validate_team()` (`api/lib.php`), `api/delete.php`, `api/feedback.php`. Alle Reste finden und umstellen, ohne
 Verhaltensänderung.
 
 ### B-138 CI: `php -l` als schneller Vorab-Check
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Alle PHP-Dateien (App, ggf. `tools/`) per `php -l` mit PHP 8.4
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Alle PHP-Dateien (App, ggf. `tools/`) per `php -l` mit PHP 8.4
 prüfen, bevor die E2E-Shards starten; schlägt früh und billig fehl.
 
 ## Offen: Sicherheit & Datenschutz
@@ -393,7 +456,7 @@ Status: refined. Fund Sina, Gedanke Andreas (2026-10-30):
 - REST-Verben erst mit der öffentlichen API (B-80); die interne API bleibt bei POST.
 
 ### B-93 poker-msg: Browser-`push` entfernen
-Status: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined. Fund Sina (2026-10-30): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an – wer eine Team-ID
+Status: live (Rollout 5, 2026-11-16). Vorher: im Sprint 9, Schritt 1 (Andreas, 2026-11-16). Vorher: refined. Fund Sina (2026-10-30): poker-msg nimmt `push` per WebSocket weiter ungedrosselt an – wer eine Team-ID
 kennt, kann ohne API-Aufruf beliebig viele Pulls an alle Boards des Teams auslösen. Seit B-81 (R2) sendet kein Client
 mehr `push`: `push` in poker-msg entfernen oder über dieselbe Drosselung wie `onNotify` leiten. Nebenbei:
 `api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE.
