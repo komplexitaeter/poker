@@ -29,7 +29,7 @@ die Primärfunktion (Andreas, 2026-11-10).
 Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging; Rollout danach mit B-12.
 1. ✓ live R5 – B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
 2. ✓ live R5 – B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
-3. B-34 Startdaten asynchron laden
+3. ✓ live R6 – B-34 Startdaten asynchron laden (dazu B-140, B-141)
 4. B-14 erster Schnitt (2–3 Module aus `script.js`)
 5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
 Jederzeit: B-126 / B-23-Rest (nginx-Sperren, Upload-Grenzen – Befehle für Andreas). Nicht angetastet: B-10.
@@ -45,6 +45,7 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
 - **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R6 (2026-11-18):** B-34 (asynchroner Start), B-140, B-141 (Farbmodus lokal), Farbmodus ohne Board speichern, Notiz im Menü aktuell.
 - **R5 (2026-11-16, abends):** B-139 (Emoji-Kontingent), Sprint 9 Schritte 1–2: B-93, B-94, B-97, B-136, B-137, B-138.
 - **R4 (2026-11-16):** B-52 (Topic list), B-53 (Median), B-130 (Timer-Auto-Start), B-131, B-133 (Nudge-Ton),
   B-135 (Write-Retry); dazu B-134 (CI).
@@ -359,7 +360,7 @@ Status: neu. `script.js` hat inzwischen 4.090 Zeilen mit globalen Variablen. Sch
 Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
 
 ### B-34 Synchrone XMLHttpRequest auf async umstellen
-Status: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen). Vorher: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
+Status: live (Rollout 6, 2026-11-18). Vorher: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen). Vorher: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
 (`loadTextFileAjaxSync()`) für `cards.json`, `card_catalog.json` und den Farbmodus. Der Aufrufer erwartet einen
 synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-Warnung, blockiert kurz den Main-Thread.
 Vorgabe Andreas (2026-11-17): flüssig, nie ein unvollständiger Stand; Spinner nur, wenn das Laden länger dauert.
@@ -374,12 +375,12 @@ sonst Systemmodus). Mit umgesetzt (B-140, Andreas 2026-11-17: plausible ist für
 `DOMContentLoaded` statt `window.load`, plausible `async`. Test: `tests/e2e/specs/startup.spec.ts`.
 
 ### B-140 Board-Start früher: `DOMContentLoaded` statt `load`, plausible async
-Status: mit B-34 umgesetzt (Andreas, 2026-11-17). Vorschlag Fred, 2026-11-17, aus B-34: `loadBoard()` startete erst bei `window.load`, also nach Bildern,
+Status: live (Rollout 6, 2026-11-18). Vorher: mit B-34 umgesetzt (Andreas, 2026-11-17). Vorschlag Fred, 2026-11-17, aus B-34: `loadBoard()` startete erst bei `window.load`, also nach Bildern,
 allen Defer-Skripten und dem externen plausible.io; `dao.php` könnte bei `DOMContentLoaded` starten, plausible `async`.
 Bringt auf langsamen Netzen spürbar Zeit, ändert aber die Startreihenfolge (Tests prüfen).
 
 ### B-141 Farbmodus lokal merken gegen dunklen Hintergrund vor dem Laden
-Status: umgesetzt, im Sprint 9 (Fred, 2026-11-17; Vorschlag Fred aus B-34, beauftragt Andreas 2026-11-17). Bis `setColor()`
+Status: live (Rollout 6, 2026-11-18). Vorher: umgesetzt, im Sprint 9 (Fred, 2026-11-17; Vorschlag Fred aus B-34, beauftragt Andreas 2026-11-17). Bis `setColor()`
 läuft, zeigt die Seite den dunklen Canvas; bei hellem Farbmodus fällt das auf langsamen Netzen (mit Spinner) auf.
 Umsetzung: Farbmodus zusätzlich in `localStorage` (`COLOR_MODE`), ein Inline-Skript im `head` von `board.html`/`init.html`
 setzt vor dem ersten Frame `html.pk-light` (Hintergrund per Inline-Style, ohne lokalen Wert nach `prefers-color-scheme`).
