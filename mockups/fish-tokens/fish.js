@@ -543,6 +543,10 @@ document.addEventListener('click', e => {
     if (react) { const id = react.closest('.c').dataset.id; return bar.to === id ? closeBar() : openBar(id); }
     if (t.closest('.c .nudge')) { const c = t.closest('.c'); c.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-4deg)' }, { transform: 'rotate(4deg)' }, { transform: 'rotate(0)' }], 300); return; }
     if (t.closest('#shieldBadge')) { W.blockerOn = !W.blockerOn; save(); renderTable(); renderMenuIfOpen(); toast(W.blockerOn ? '🛡 Fish blocker on.' : 'Fish blocker paused – your charges stay.'); return; }
+    if (t.closest('#walletChip')) { // pointer: handled on pointerdown/up; keyboard: switch to loading
+        if (e.detail === 0 && !bar.loading) { bar.loading = true; renderBar(); $('#bar .em')?.focus(); }
+        return;
+    }
     const em = t.closest('#bar .em');
     if (em) {
         if (bar.loading) { if (e.detail === 0) loadSlot(em.dataset.k, 1); return; } // pointer: handled on pointerdown
