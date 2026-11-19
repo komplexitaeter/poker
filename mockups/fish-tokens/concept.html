@@ -87,7 +87,6 @@
   balance       int not null default 0,       <span class="c">-- tokens not yet loaded</span>
   creation_date timestamp not null default current_timestamp,
   last_used     timestamp not null default current_timestamp,
-  closed_date   timestamp null,               <span class="c">-- set when merged into another wallet (redeem)</span>
   unique key u_ref (ref), unique key u_code (code_hash),
   check (balance &gt;= 0)
 ) default charset=utf8mb4;
@@ -154,9 +153,15 @@
 <p><b>Code format:</b> 16 characters Crockford Base32 (no I, L, O, U) = 80 bits, shown as
     <code>FISH-7K2Q-9MXD-H4TR-B8WN</code>. Normalized before hashing (upper case, dashes and spaces removed, O→0, I/L→1).
     Generated with <code>random_bytes()</code>.</p>
-<p><b>Renew:</b> <code>update pok_wallets_tbl set code_hash = :new where code_hash = :old and closed_date is null</code> –
-    one statement, old code invalid immediately, <code>ref</code>, balance and loads stay. Other browsers with the old code get
-    401 and show "code no longer valid".</p>
+<p><b>Renew:</b> <code>update pok_wallets_tbl set code_hash = :new where code_hash = :old</code> –
+    one statement, old code invalid immediately, <code>ref</code>, balance and loads stay. This is the emergency brake: every
+    other browser with the old code gets 401 and shows "code no longer valid"; whoever renewed shares the new code again
+    with the people who should keep spending.</p>
+<h3>Sharing and redeem (decided by Andreas, 2026-11-19)</h3>
+<p>The balance belongs to the code, the code is simply shared. Everyone who knows it spends from the same balance and
+    loads – using it on a second device and giving it as a gift are the same thing. <b>Redeem</b> = check the code and store
+    it in this browser; no transfer, the code stays valid for everyone who has it. Simultaneous spending from several
+    browsers is safe because every spend is one guarded update (section 4).</p>
 <p><b>Charset note:</b> <code>pok_players_tbl.id</code> is utf8mb3. We never join across the charsets; react.php reads the
     target's user id by <code>mkey</code> and passes it as a parameter, so indexes are used.</p>
 
@@ -177,18 +182,18 @@
         <td><code>{code?, ref}</code></td></tr>
     <tr><td>wallet_load.php</td><td>t, emoji, n; header</td><td>move n tokens from balance onto an emoji (or <code>blocker</code>); no unloading</td>
         <td>new wallet state, 409 balance too low</td></tr>
-    <tr><td>wallet_redeem.php</td><td>t; header = own code (optional), POST body <code>code</code> = gift code</td>
-        <td>own wallet: merge gift wallet into it (balance and loads added, gift wallet closed); no own wallet: adopt the gift code</td>
-        <td>new wallet state (+ code if adopted), 404 unknown/closed</td></tr>
+    <tr><td>(redeem)</td><td>entered code in the header</td><td>no own endpoint: the board calls <code>wallet.php</code> with the
+        entered code; on 200 it stores the code in localStorage, nothing changes in the DB</td>
+        <td>wallet state, 401 unknown code</td></tr>
     <tr><td>wallet_renew.php</td><td>t; header</td><td>rotate code (see above)</td><td><code>{code}</code> once</td></tr>
     <tr><td>wallet_blocker.php</td><td>t, id, on=0|1; header</td><td>insert/delete <code>pok_blockers_tbl</code> row for user <code>id</code> (must be a player of t)</td>
         <td>new wallet state</td></tr>
     <tr><td>paddle_webhook.php</td><td>raw JSON body, <code>Paddle-Signature</code></td><td>credit / revoke, idempotent</td><td>200 fast, 400 bad signature</td></tr>
 </table>
-<p>Moves in wallet_load/redeem are one transaction with guarded updates, e.g.
+<p>Moves in wallet_load are one transaction with guarded updates, e.g.
     <code>update pok_wallets_tbl set balance = balance - ? where id = ? and balance &gt;= ?</code> → 0 rows = 409; then
-    <code>insert … on duplicate key update tokens = tokens + ?</code>. The redeem merge locks both wallets
-    <code>for update</code> in id order (no deadlock between two simultaneous redeems).</p>
+    <code>insert … on duplicate key update tokens = tokens + ?</code>. Two browsers loading from the same code at once
+    cannot overdraw the balance.</p>
 
 <h3>paddle_webhook.php</h3>
 <ol>
@@ -225,7 +230,7 @@ begin;
   insert ignore into pok_react_quota_tbl values (:id, :code, utc_date());         <span class="c">-- 1 row → source = free</span>
   update pok_wallet_loads_tbl l join pok_wallets_tbl w on w.id = l.wallet_id
      set l.tokens = l.tokens - 1
-   where w.code_hash = :hash and w.closed_date is null
+   where w.code_hash = :hash
      and l.emoji_code = :code and l.tokens &gt; 0;                                   <span class="c">-- else: 1 row → token, 0 → rollback, 409</span>
   <span class="c">-- blocker: only for fish (open question), consumes one charge of the TARGET's wallet</span>
   update pok_wallet_loads_tbl l join pok_blockers_tbl b on b.wallet_id = l.wallet_id
@@ -258,7 +263,7 @@ notify_react($t, $from_mkey, $to_mkey, $code, $blocked);                        
 <h2>5 Abuse and security</h2>
 <ul>
     <li><b>Guessing codes:</b> 80 bits; even 1,000 tries/s for years finds nothing. Still: nginx <code>limit_req</code>
-        on <code>wallet_redeem.php</code>, <code>wallet.php</code> and <code>checkout_start.php</code> (e.g. 10/min per IP,
+        on <code>wallet.php</code> (also used for redeem) and <code>checkout_start.php</code> (e.g. 10/min per IP,
         burst 5), mostly to protect the DB. Unknown code always the same 401/404, no timing difference that matters (hash lookup).</li>
     <li><b>Refunds and chargebacks:</b> Paddle <code>adjustment</code> events (refund, chargeback; only when approved).
         Revoke tokens proportional to the refunded amount (rounded up), taken from balance first, then from loads, then
@@ -306,8 +311,9 @@ notify_react($t, $from_mkey, $to_mkey, $code, $blocked);                        
         (shield on the card, then wallet_blocker.php notifies the team) or only revealed by the bounce?</li>
     <li><b>Nudge loadable?</b> Recommendation: no – it is a function, not a throw, and has no quota.</li>
     <li><b>Refund policy:</b> refunds on request within 14 days, revoke unspent tokens only? (Paddle's own buyer terms apply in any case.)</li>
-    <li><b>Redeem:</b> merge the gift into the own wallet (gift code dies, giver cannot spend twice) – but then "use my code on a
-        second device" needs its own button ("use this code here" = adopt). OK?</li>
+    <li><b>Redeem while holding another code:</b> a browser stores one code. If it already has a code with tokens left and
+        another one is entered, the old one is removed from this browser (its balance stays on that code). Recommendation:
+        warn and offer "copy current code" first – or should the browser keep several codes?</li>
     <li><b>Quota per user id</b> across all teams (as the board shows it today) or per team player (mkey, as poker-msg counts it)?</li>
 </ol>
 </main>
