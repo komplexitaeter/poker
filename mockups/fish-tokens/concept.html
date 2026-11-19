@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Agile Poker – fish tokens: technical concept</title>
+<style>
+    body { font: 15px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; margin: 0; padding: 2rem; background: #0c0e12; color: #d9dee8; }
+    main { max-width: 64rem; }
+    h1 { font-size: 20px; margin: 0 0 .3rem; } h1::before { content: "$ "; color: #5af78e; }
+    h2 { font-size: 15px; margin: 2.4rem 0 .5rem; color: #d9dee8; border-top: 1px solid #1f242d; padding-top: 1.2rem; } h2::before { content: "## "; color: #586174; }
+    h3 { font-size: 15px; margin: 1.2rem 0 .3rem; color: #8b94a5; } h3::before { content: "### "; color: #586174; }
+    p { margin: .4rem 0; color: #b4bccb; }
+    ul, ol { margin: .3rem 0; padding-left: 1.4rem; color: #b4bccb; } li { margin: .25rem 0; }
+    a { color: #84cbff; } a:visited { color: #c9a7ff; }
+    small, .muted { color: #8b94a5; }
+    code { color: #ffd479; }
+    pre { background: #12151b; border: 1px solid #1f242d; border-radius: 4px; padding: .8rem 1rem; overflow-x: auto; color: #d9dee8; font-family: inherit; font-size: 13px; line-height: 1.45; }
+    pre .c { color: #586174; } pre .k { color: #84cbff; } pre .g { color: #5af78e; } pre .r { color: #ff6e6e; }
+    table { border-collapse: collapse; margin: .4rem 0; font-size: 14px; }
+    th, td { text-align: left; padding: .25rem .8rem .25rem 0; vertical-align: top; border-bottom: 1px solid #1f242d; }
+    th { color: #8b94a5; font-weight: normal; }
+    .rec { border-left: 3px solid #5af78e; padding: .2rem .8rem; margin: .6rem 0; color: #d9dee8; }
+    .warn { border-left: 3px solid #ffd479; padding: .2rem .8rem; margin: .6rem 0; color: #d9dee8; }
+    .tag { display: inline-block; border: 1px solid #586174; border-radius: 3px; padding: 0 5px; font-size: 12px; color: #8b94a5; }
+</style>
+</head>
+<body>
+<main>
+<h1>Fish tokens – technical concept</h1>
+<p class="muted">Backend concept (Ben) for discussion with Andreas. Static page, nothing is implemented. Clickable UI:
+    <a href="./">fish-tokens mockup</a> (Delia). Back to <a href="../">all mockups</a>.</p>
+<p>Summary: supporters buy a <em>supporter pack</em> through Paddle and get tokens on an anonymous <em>voucher code</em>
+    (no account, no e-mail on our side). Tokens are loaded onto emojis or a fish blocker. Every throw is decided in MySQL
+    by a new <code>api/react.php</code> (free daily quota first, then loaded tokens, blocker at the target); poker-msg
+    only fans the result out to the team, like <code>pull</code> since B-81.</p>
+
+<!-- ============================================================ -->
+<h2>1 Flow overview</h2>
+<h3>Buy (supporter pack)</h3>
+<pre>
+ Browser                         api/                         Paddle                  MySQL
+ ───────                         ────                         ──────                  ─────
+ [Get tokens]
+   │ POST checkout_start.php ───▶ no code yet? create wallet ─────────────────────────▶ pok_wallets_tbl
+   │ ◀── { code, ref }            (code only returned once,                            (code_hash, ref)
+   │  localStorage: code          stored as sha256)
+   │
+   │ Paddle.Checkout.open({ items:[priceId], customData:{ wallet_ref: ref } })
+   │ ───────────────────────────────────────────────────────▶ checkout, VAT, receipt
+   │                                                           │
+   │                              paddle_webhook.php ◀──────── │ transaction.completed
+   │                              verify Paddle-Signature      │ (raw body, HMAC)
+   │                              tokens := PACKS[price_id] ──────────────────────────▶ purchase (txn UNIQUE)
+   │                                                                                    balance += tokens
+   │ poll POST wallet.php (2 s, max 60 s) until balance changed  ◀── "Thank you, +50 tokens"
+</pre>
+<h3>Throw (every reaction, free or paid)</h3>
+<pre>
+ Thrower                  api/react.php (one transaction)                poker-msg              Team boards
+ ───────                  ──────────────────────────────                 ─────────              ───────────
+ click 🐟 on Bob
+   │ POST ?t&amp;id&amp;to&amp;code ──▶ thrower in team? target in team?
+   │ X-Wallet-Code: …       rate limit (≈3/s per thrower)
+   │                        free quota today?   ── yes ─▶ use it
+   │                                            ── no ──▶ loads[fish]-- (n&gt;0) or 409
+   │                        fish &amp;&amp; Bob has active blocker with charges?
+   │                                            ── yes ─▶ charge--, blocked=1
+   │                        COMMIT
+   │ ◀── { source, blocked, left }        UDP react:&lt;t&gt;:&lt;from&gt;:&lt;to&gt;:fish:&lt;0|1&gt; ─▶ fan-out ──▶ react:…[:blocked]
+   │ animate from response                (127.0.0.1:8444, like pull)        (3/s limit     animate (bounce
+   │ (own echo is ignored)                                                    stays as guard) if blocked)
+</pre>
+<p>Reactions stay fire-and-forget visuals: a board that is reconnecting misses the animation (as today), but nothing
+    is lost – balances and quota live in MySQL and are re-read via <code>wallet.php</code> after reconnect/focus. The
+    thrower animates from the HTTP response, so its own throw works even while the WebSocket is down.</p>
+
+<!-- ============================================================ -->
+<h2>2 Data model (MySQL 8.0, new tables utf8mb4)</h2>
+<pre>
+<span class="c">-- one wallet per voucher code; the code itself is never stored</span>
+<span class="k">create table</span> pok_wallets_tbl (
+  id            int not null auto_increment primary key,
+  ref           char(12) not null,            <span class="c">-- public, random; goes to Paddle custom_data, receipts, support</span>
+  code_hash     char(64) not null,            <span class="c">-- sha256(normalized code), hex</span>
+  balance       int not null default 0,       <span class="c">-- tokens not yet loaded</span>
+  creation_date timestamp not null default current_timestamp,
+  last_used     timestamp not null default current_timestamp,
+  closed_date   timestamp null,               <span class="c">-- set when merged into another wallet (redeem)</span>
+  unique key u_ref (ref), unique key u_code (code_hash),
+  check (balance &gt;= 0)
+) default charset=utf8mb4;
+
+<span class="c">-- loaded tokens per emoji; 'blocker' is a pseudo emoji = fish blocker charges</span>
+<span class="k">create table</span> pok_wallet_loads_tbl (
+  wallet_id  int not null,
+  emoji_code varchar(12) not null,            <span class="c">-- cake, heart, …, fish, blocker</span>
+  tokens     int not null default 0,
+  primary key (wallet_id, emoji_code),
+  check (tokens &gt;= 0)
+) default charset=utf8mb4;
+
+<span class="c">-- active blocker: row exists = user is protected (charges come from the wallet's 'blocker' load)</span>
+<span class="k">create table</span> pok_blockers_tbl (
+  user_id       varchar(16) not null primary key,   <span class="c">-- pok_players_tbl.id</span>
+  wallet_id     int not null,
+  creation_date timestamp not null default current_timestamp,
+  key i_wallet (wallet_id)
+) default charset=utf8mb4;
+
+<span class="c">-- B-139 free quota, replaces the in-memory counter in poker-msg (survives restarts)</span>
+<span class="k">create table</span> pok_react_quota_tbl (
+  user_id    varchar(16) not null,
+  emoji_code varchar(12) not null,
+  day        date not null,                   <span class="c">-- utc_date(), same boundary as the board</span>
+  primary key (user_id, emoji_code, day)
+) default charset=utf8mb4;                    <span class="c">-- event job deletes day &lt; utc_date() - 2</span>
+
+<span class="c">-- rate limit, one row per thrower</span>
+<span class="k">create table</span> pok_react_users_tbl (
+  user_id    varchar(16) not null primary key,
+  last_throw timestamp(3) not null
+) default charset=utf8mb4;
+
+<span class="c">-- purchases; Paddle transaction id UNIQUE = idempotent credit</span>
+<span class="k">create table</span> pok_purchases_tbl (
+  id             int not null auto_increment primary key,
+  paddle_txn_id  varchar(64) not null,
+  wallet_id      int not null,
+  price_id       varchar(64) not null,
+  tokens         int not null,
+  tokens_revoked int not null default 0,      <span class="c">-- refunds/chargebacks</span>
+  amount_minor   int not null, currency char(3) not null,
+  creation_date  timestamp not null default current_timestamp,
+  unique key u_txn (paddle_txn_id), key i_wallet (wallet_id)
+) default charset=utf8mb4;
+
+<span class="c">-- every processed webhook event once (Paddle retries and may send twice)</span>
+<span class="k">create table</span> pok_paddle_events_tbl (
+  event_id     varchar(64) not null primary key,
+  event_type   varchar(64) not null,
+  processed    timestamp not null default current_timestamp
+) default charset=utf8mb4;
+</pre>
+<h3>Store the code or only a hash?</h3>
+<p>The code is a bearer secret like the team id (whoever knows it may spend). Unlike the team id it carries
+    money value, and <code>grafana_usr</code> reads the same MySQL from outside.</p>
+<div class="rec">Recommendation: store only <code>sha256(code)</code>. Lookup by hash is a plain unique-key lookup, costs nothing,
+    and a DB dump or a too-wide Grafana grant does not leak spendable codes. No salt needed: the code has 80 random bits,
+    so precomputation is useless. Consequence: a lost code cannot be "shown again" – support can find the wallet via the
+    Paddle receipt (transaction id → <code>ref</code>) and rotate it to a new code (admin action in <code>stats.php</code>).
+    Additionally: no grants for <code>grafana_usr</code> on the wallet tables.</div>
+<p><b>Code format:</b> 16 characters Crockford Base32 (no I, L, O, U) = 80 bits, shown as
+    <code>FISH-7K2Q-9MXD-H4TR-B8WN</code>. Normalized before hashing (upper case, dashes and spaces removed, O→0, I/L→1).
+    Generated with <code>random_bytes()</code>.</p>
+<p><b>Renew:</b> <code>update pok_wallets_tbl set code_hash = :new where code_hash = :old and closed_date is null</code> –
+    one statement, old code invalid immediately, <code>ref</code>, balance and loads stay. Other browsers with the old code get
+    401 and show "code no longer valid".</p>
+<p><b>Charset note:</b> <code>pok_players_tbl.id</code> is utf8mb3. We never join across the charsets; react.php reads the
+    target's user id by <code>mkey</code> and passes it as a parameter, so indexes are used.</p>
+
+<!-- ============================================================ -->
+<h2>3 Endpoints</h2>
+<p>Conventions as today: <code>require_post()</code>, <code>require_team()</code>, ids via <code>get_id_param()</code>,
+    prepared statements only, JSON via <code>json_encode</code>. All wallet endpoints are called from the board, so they also
+    require a valid team id (cheap barrier against random calls). <b>New:</b> the voucher code travels in the header
+    <code>X-Wallet-Code</code>, never in the URL – the query string ends up in nginx access logs, and a custom header
+    forces a CORS preflight, so other sites cannot send it.</p>
+<table>
+    <tr><th>endpoint</th><th>input</th><th>does</th><th>answer</th></tr>
+    <tr><td>react.php</td><td>t, id, to (mkey), code; header optional</td><td>decide throw (section 4), notify poker-msg</td>
+        <td>200 <code>{source:"free"|"token", blocked, left:{free,tokens}}</code>, 404 target, 409 nothing left, 429 rate</td></tr>
+    <tr><td>wallet.php</td><td>t, id; header</td><td>read only: balance, loads, blocker charges, blocker active for <code>id</code></td>
+        <td><code>{ref, balance, loads:{fish:10,…,blocker:3}, blocker_active}</code>, 401 unknown code</td></tr>
+    <tr><td>checkout_start.php</td><td>t; header optional</td><td>no code: create wallet, return the code once; with code: return its ref</td>
+        <td><code>{code?, ref}</code></td></tr>
+    <tr><td>wallet_load.php</td><td>t, emoji, n; header</td><td>move n tokens from balance onto an emoji (or <code>blocker</code>); no unloading</td>
+        <td>new wallet state, 409 balance too low</td></tr>
+    <tr><td>wallet_redeem.php</td><td>t; header = own code (optional), POST body <code>code</code> = gift code</td>
+        <td>own wallet: merge gift wallet into it (balance and loads added, gift wallet closed); no own wallet: adopt the gift code</td>
+        <td>new wallet state (+ code if adopted), 404 unknown/closed</td></tr>
+    <tr><td>wallet_renew.php</td><td>t; header</td><td>rotate code (see above)</td><td><code>{code}</code> once</td></tr>
+    <tr><td>wallet_blocker.php</td><td>t, id, on=0|1; header</td><td>insert/delete <code>pok_blockers_tbl</code> row for user <code>id</code> (must be a player of t)</td>
+        <td>new wallet state</td></tr>
+    <tr><td>paddle_webhook.php</td><td>raw JSON body, <code>Paddle-Signature</code></td><td>credit / revoke, idempotent</td><td>200 fast, 400 bad signature</td></tr>
+</table>
+<p>Moves in wallet_load/redeem are one transaction with guarded updates, e.g.
+    <code>update pok_wallets_tbl set balance = balance - ? where id = ? and balance &gt;= ?</code> → 0 rows = 409; then
+    <code>insert … on duplicate key update tokens = tokens + ?</code>. The redeem merge locks both wallets
+    <code>for update</code> in id order (no deadlock between two simultaneous redeems).</p>
+
+<h3>paddle_webhook.php</h3>
+<ol>
+    <li>Raw body via <code>file_get_contents('php://input')</code>, verify <b>before</b> <code>json_decode</code>.</li>
+    <li>Header <code>Paddle-Signature: ts=…;h1=…</code>: <code>hash_hmac('sha256', ts . ':' . raw, secret)</code>,
+        compare with <code>hash_equals</code> (accept any <code>h1</code>, Paddle sends two during secret rotation).
+        Reject if <code>|now − ts| &gt; 300 s</code> (replay window). Secret in <code>config.php</code>
+        (<code>_PADDLE_WEBHOOK_SECRET</code>), never in the repo.</li>
+    <li>Transaction: <code>insert into pok_paddle_events_tbl (event_id …)</code> – duplicate key → already processed → 200.</li>
+    <li><code>transaction.completed</code>: wallet by <code>custom_data.wallet_ref</code>; tokens <b>only</b> from our price
+        table (<code>PACKS[price_id]</code> in code/config), never from client data; insert purchase (txn UNIQUE), add balance.</li>
+    <li><code>adjustment.created/updated</code> with action refund or chargeback and status approved: revoke (section 5).</li>
+    <li>Commit, 200. Unknown wallet_ref or price → log, 200 (otherwise Paddle retries forever), handle manually.</li>
+</ol>
+<h3>Wallet before or after checkout?</h3>
+<div class="rec">Recommendation: create the wallet <b>before</b> the checkout (checkout_start.php) and give Paddle only the
+    public <code>ref</code>. The browser already holds its code when the payment finishes, so there is no second secret to
+    hand over after the webhook, and a late webhook just means "pending" until the balance changes. The code itself never
+    reaches Paddle (dashboard, exports, receipts). The alternative – issue the code in the webhook – needs a way to fetch
+    it by transaction id, which turns the transaction id (printed on the receipt) into a second bearer secret. Wallets
+    created but never paid are deleted by the event job after 30 days.</div>
+
+<!-- ============================================================ -->
+<h2>4 Throw and blocker logic (react.php)</h2>
+<pre>
+begin;
+  <span class="c">-- who: the thrower is identified by its user id (secret, like today in the board), never by a client mkey</span>
+  select mkey from pok_players_tbl where id = :id and team_id = :t;              <span class="c">-- none → 403</span>
+  select id, mkey from pok_players_tbl where mkey = :to and team_id = :t;        <span class="c">-- none / self → 404</span>
+  <span class="c">-- rate limit ≈3/s: affected rows 0 → 429 (nothing spent)</span>
+  insert into pok_react_users_tbl values (:id, now(3)) on duplicate key update
+    last_throw = if(last_throw &lt; now(3) - interval 300000 microsecond, now(3), last_throw);
+  <span class="c">-- nudge: no quota, no tokens (only rate limit)</span>
+  insert ignore into pok_react_quota_tbl values (:id, :code, utc_date());         <span class="c">-- 1 row → source = free</span>
+  update pok_wallet_loads_tbl l join pok_wallets_tbl w on w.id = l.wallet_id
+     set l.tokens = l.tokens - 1
+   where w.code_hash = :hash and w.closed_date is null
+     and l.emoji_code = :code and l.tokens &gt; 0;                                   <span class="c">-- else: 1 row → token, 0 → rollback, 409</span>
+  <span class="c">-- blocker: only for fish (open question), consumes one charge of the TARGET's wallet</span>
+  update pok_wallet_loads_tbl l join pok_blockers_tbl b on b.wallet_id = l.wallet_id
+     set l.tokens = l.tokens - 1
+   where b.user_id = :target_user_id and l.emoji_code = 'blocker' and l.tokens &gt; 0;  <span class="c">-- 1 row → blocked</span>
+commit;
+notify_react($t, $from_mkey, $to_mkey, $code, $blocked);                         <span class="c">-- after commit, never on 4xx</span>
+</pre>
+<ul>
+    <li><b>Atomic:</b> two clicks or two devices on the same wallet cannot overspend; the last token goes to exactly one
+        request, the other gets 409. Two throwers at the same blocker: each consumes one charge, the third throw passes.</li>
+    <li><b>Blocked throws are paid:</b> the thrower's free quota or token is spent, the target's charge is spent.</li>
+    <li><b>No auto-retry</b> for react.php (B-135 write-retry excluded): a retry after a timeout could spend twice. A lost
+        throw is cheaper than a double one.</li>
+    <li><b>Quota per user id</b> (as the board already counts it in localStorage, B-139), UTC day. poker-msg drops its
+        in-memory quota.</li>
+</ul>
+<h3>Messages</h3>
+<pre>
+ API → poker-msg (UDP 127.0.0.1:8444):  react:&lt;team_id&gt;:&lt;from_mkey&gt;:&lt;to_mkey&gt;:&lt;code&gt;:&lt;0|1&gt;
+ poker-msg → team (WebSocket):          react:&lt;from&gt;:&lt;to&gt;:&lt;code&gt;            (not blocked, unchanged format)
+                                        react:&lt;from&gt;:&lt;to&gt;:&lt;code&gt;:blocked    (fish flies to target, bounces back to from)
+</pre>
+<p>The blocked flag is a fixed last field on UDP (not optional) because team ids may contain <code>:</code> –
+    poker-msg splits the last four fields from the right, the rest is the team id. Old boards ignore the
+    <code>:blocked</code> variant (their regex is anchored), so the rollout is safe. The echo contains everything a board
+    needs to animate; nobody has to reload <code>dao.php</code>.</p>
+
+<!-- ============================================================ -->
+<h2>5 Abuse and security</h2>
+<ul>
+    <li><b>Guessing codes:</b> 80 bits; even 1,000 tries/s for years finds nothing. Still: nginx <code>limit_req</code>
+        on <code>wallet_redeem.php</code>, <code>wallet.php</code> and <code>checkout_start.php</code> (e.g. 10/min per IP,
+        burst 5), mostly to protect the DB. Unknown code always the same 401/404, no timing difference that matters (hash lookup).</li>
+    <li><b>Refunds and chargebacks:</b> Paddle <code>adjustment</code> events (refund, chargeback; only when approved).
+        Revoke tokens proportional to the refunded amount (rounded up), taken from balance first, then from loads, then
+        blocker charges; never below 0 (CHECK constraints). Tokens already thrown are gone – we accept that loss
+        (amounts are small). Record in <code>tokens_revoked</code>; repeated chargebacks from one wallet → close it manually.</li>
+    <li><b>Personal data:</b> Paddle is merchant of record and holds e-mail, address, payment data. We store only
+        transaction id, price id, amount, tokens, wallet id – not <code>customer_id</code>, not e-mail. The code never goes to
+        Paddle. Privacy policy needs a Paddle paragraph.</li>
+    <li><b>Team id rules unchanged:</b> every endpoint except the webhook checks <code>require_team()</code>; react.php
+        additionally checks that thrower and target are players of that team, so a code alone cannot throw into foreign teams.</li>
+    <li><b>CSRF-like calls:</b> there is no session or cookie to abuse – every request needs secrets the attacker would have
+        to know (team id, user id, code). The custom header <code>X-Wallet-Code</code> additionally prevents simple
+        cross-site form posts (preflight, no CORS allowed). The webhook is authenticated only by its HMAC.</li>
+    <li><b>Spoofing reactions:</b> poker-msg no longer accepts <code>react</code> from WebSocket clients; UDP listens on
+        127.0.0.1 only. The thrower's mkey comes from the DB, not from the client (today a client could claim any <code>from</code>).</li>
+    <li><b>Code in the browser:</b> localStorage, like the user id. Shown in the wallet panel for copying/gifting;
+        "Renew code" is the answer to "I shared it by mistake".</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2>6 Rollout and effort</h2>
+<p>Each step is deployable alone and keeps the live behaviour until the next one. Steps 1–4 are useful without any
+    payment (quota in the DB survives poker-msg restarts, no spoofed <code>from</code>).</p>
+<table>
+    <tr><th>#</th><th>step</th><th>repo</th><th>effort</th></tr>
+    <tr><td>1</td><td>Tables quota/rate (+ wallet tables, unused), <code>react.php</code> with free quota only, <code>notify_react()</code> in lib.php</td><td>poker</td><td><span class="tag">M</span></td></tr>
+    <tr><td>2</td><td>poker-msg: accept UDP <code>react:…</code>, fan out (3/s per thrower as guard); still accept client reacts</td><td>poker-msg</td><td><span class="tag">S</span></td></tr>
+    <tr><td>3</td><td>Frontend: throw via <code>react.php</code>, animate from response, ignore own echo, handle <code>:blocked</code>; bump <code>?v=</code></td><td>poker</td><td><span class="tag">S–M</span></td></tr>
+    <tr><td>4</td><td>poker-msg: stop accepting client reacts, drop in-memory quota (a day after step 3)</td><td>poker-msg</td><td><span class="tag">S</span></td></tr>
+    <tr><td>5</td><td>Wallet endpoints (wallet, load, redeem, renew, blocker), admin "issue code / rotate" in stats.php for tests and support</td><td>poker</td><td><span class="tag">M</span></td></tr>
+    <tr><td>6</td><td>Wallet UI after Delia's mockup (bar with counts, load, blocker, redeem, renew)</td><td>poker</td><td><span class="tag">L</span></td></tr>
+    <tr><td>7</td><td>Paddle: checkout_start, Paddle.js overlay, webhook, sandbox first; legal pages (terms, refund, privacy)</td><td>poker</td><td><span class="tag">M</span> + Paddle review</td></tr>
+</table>
+<p>E2E: one spec per step (throw with quota, 409 after quota, blocked bounce with a seeded wallet); Paddle only
+    against the sandbox with a signed fake webhook. Server steps (SQL from <code>db_schema_pok_inc.sql</code>, nginx
+    <code>limit_req</code>, <code>_PADDLE_*</code> in config.php) prepared as commands for the operator.</p>
+
+<h3>Open questions for Andreas</h3>
+<ol>
+    <li><b>Paddle approval:</b> Paddle's acceptable-use review must accept the product. Pure donations/tips are likely not
+        allowed, so it is sold as a digital good: "Supporter pack – 50 tokens". Without approval no step 7. Paddle needs a
+        public pricing/terms/refund page. VAT is handled by Paddle (prices gross).</li>
+    <li><b>Packs:</b> which prices and token amounts (e.g. €3 → 50, €5 → 100, €10 → 250)? Do tokens expire? (Recommendation: no.)</li>
+    <li><b>Blocker:</b> blocks only fish, or every emoji? Price of a charge in tokens (1 token = 1 charge?)? Visible to others
+        (shield on the card, then wallet_blocker.php notifies the team) or only revealed by the bounce?</li>
+    <li><b>Nudge loadable?</b> Recommendation: no – it is a function, not a throw, and has no quota.</li>
+    <li><b>Refund policy:</b> refunds on request within 14 days, revoke unspent tokens only? (Paddle's own buyer terms apply in any case.)</li>
+    <li><b>Redeem:</b> merge the gift into the own wallet (gift code dies, giver cannot spend twice) – but then "use my code on a
+        second device" needs its own button ("use this code here" = adopt). OK?</li>
+    <li><b>Quota per user id</b> across all teams (as the board shows it today) or per team player (mkey, as poker-msg counts it)?</li>
+</ol>
+</main>
+</body>
+</html>
