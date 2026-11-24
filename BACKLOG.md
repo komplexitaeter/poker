@@ -343,7 +343,15 @@ nach Höhe des Abos). Kandidat: Steady (deutscher Anbieter, kauft Lizenz und ver
 Auszahlung; OAuth-API für den Mitgliedsstatus, Supporter braucht ein Steady-Konto, wir keine E-Mail-Adressen).
 Alternativen: Paddle (Reverse Invoice, monatliche Auszahlung), Stripe Managed Payments. Lemon Squeezy scheidet aus
 (keine Neuanmeldungen, Abschaltung 31.03.2027).
-Offen: Gebühren und Bedingungen von Steady (akzeptieren sie ein Software-Tool?), Abo-Stufen, wie der Status im Board
+Steady (gelesen 2026-11-24): 10 % Provision auf brutto plus Zahlungsgebühren (PayPal 0,35 € + 2,49 %, Lastschrift
+0,20 € + 1 %), keine Grundgebühr; Auszahlung monatlich per PayPal mit Gutschrift (für deutsche Publisher mit USt ab
+11/2026 als E-Rechnung). Bei 3 €/Monat bleiben etwa 1,80–2,00 € netto. OAuth (Authorization Code, nur serverseitig mit
+Client Secret), `GET /api/v1/subscriptions/me` liefert Status, Betrag, Ablauf; Token 7 Tage, Refresh 1 Jahr; Steady
+schickt Name und E-Mail mit (nicht speichern). **Haken:** Steady richtet sich an Creator, die regelmäßig eigene Inhalte
+veröffentlichen (Blog, Newsletter, Podcast) und kauft eine Lizenz an diesen Inhalten – ein Software-Tool passt nicht.
+Vorschlag: komplexitaeter-Supporter-Programm mit Blog/Newsletter als Kern, Poker-Reaktionen als Bonus; vorher bei
+Steady anfragen. Sagen sie nein: Paddle (auf Software ausgerichtet, Abos, monatliche Gutschrift).
+Offen: Antwort von Steady, Abo-Stufen, wie der Status im Board
 ankommt (Login per OAuth, Prüfung serverseitig statt in poker-msg), Datenschutzerklärung. Technisches Vorwissen aus dem
 Token-Konzept: `mockups/fish-tokens/concept.html` (Reaktionen über die API statt WebSocket, Sinas Review).
 
