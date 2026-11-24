@@ -1240,7 +1240,10 @@ function topicDoneRow(item) {
     reopen.title = 'Back to the open items, right after the current one';
     reopen.setAttribute('aria-label', 'Reopen: ' + item.heading);
     reopen.append(iconSvg('reset'), 'reopen');
-    l2.append(sum, grow, topicDeleteButton(item), reopen);
+    const acts = document.createElement('span');
+    acts.className = 'ti-l2-acts';
+    acts.append(topicDeleteButton(item), reopen);
+    l2.append(sum, grow, acts);
     li.append(line, l2);
     if (hasDist) {
         const dist = topicDistView(item);
