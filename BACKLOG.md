@@ -321,6 +321,32 @@ Umfang:
 Andreas: Methodenseite und Tool-Seite („Tool starten“ mit `preset=Animals`) auf komplexitaeter.de (WordPress, nicht
 in diesem Repo); wir liefern die genaue URL.
 
+### B-145 Fisch-Schild: 1× pro Tag einen Fisch abwehren
+Status: refined (Andreas, 2026-11-24). Ergebnis des Prototyps `mockups/fish-tokens/` (Token, Verteilen und Codes
+waren zu kompliziert; das Schild mit Abprall-Animation „brauchen wir auf jeden Fall live“).
+- Auf der **eigenen Karte** steht statt des Smileys ein **Schild-Symbol**. Ein Klick aktiviert das Schild (`1×` pro Tag,
+  gleiche Tagesgrenze wie B-139). Kein Schalter im Profil, kein Aufladen.
+- Das aktive Schild hält **genau einen Fisch** ab, danach ist es verbraucht (spätestens zum Tageswechsel). Andere Emojis
+  gehen durch.
+- Für die anderen ist das aktive Schild **unsichtbar**; erst beim Treffer: Kraftfeld, Fisch prallt ab und landet auf
+  der Karte des Werfers (Animation aus dem Prototyp, mit reduzierter Variante bei `prefers-reduced-motion`).
+- Technik (Vorschlag Kai): wie das Tageskontingent in poker-msg im Speicher (aktive Schilde je mkey und Team);
+  bei einem Fisch auf eine geschützte Karte verteilt poker-msg die Variante „blocked“ an alle. Keine DB; nach einem
+  Neustart von poker-msg sind aktive Schilde weg (vertretbar).
+Offen fürs Planning: Nachrichtenformat (Aktivieren, `blocked`-Echo), Anzeige für den Schild-Besitzer (aktiv / verbraucht),
+Verhalten alter Clients.
+
+### B-146 Supporter-Abo: mehr Reaktionen pro Tag
+Status: Idee (Andreas, 2026-11-24). Statt Token/Codes (Prototyp zu kompliziert) eine bezahlte Mitgliedschaft mit einem
+einfachen Zustand „Supporter ja/nein“: Supporter bekommen mehr Reaktionen pro Tag (z. B. 10× oder 20× statt 1×, evtl.
+nach Höhe des Abos). Kandidat: Steady (deutscher Anbieter, kauft Lizenz und verkauft weiter, Steuerabrechnung je
+Auszahlung; OAuth-API für den Mitgliedsstatus, Supporter braucht ein Steady-Konto, wir keine E-Mail-Adressen).
+Alternativen: Paddle (Reverse Invoice, monatliche Auszahlung), Stripe Managed Payments. Lemon Squeezy scheidet aus
+(keine Neuanmeldungen, Abschaltung 31.03.2027).
+Offen: Gebühren und Bedingungen von Steady (akzeptieren sie ein Software-Tool?), Abo-Stufen, wie der Status im Board
+ankommt (Login per OAuth, Prüfung serverseitig statt in poker-msg), Datenschutzerklärung. Technisches Vorwissen aus dem
+Token-Konzept: `mockups/fish-tokens/concept.html` (Reaktionen über die API statt WebSocket, Sinas Review).
+
 ## Offen: Technik & Betrieb
 
 ### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
