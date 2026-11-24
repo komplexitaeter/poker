@@ -433,6 +433,25 @@ Status: neu (Andreas, 2026-11-17, beim 3G-Test von B-34). Auf langsamem Netz zei
 Console Style), währenddessen kein zweiter Klick; für alle Aktionen mit Server-Aufruf. Für Nutzer sichtbar, daher
 nicht im Aufräum-Sprint.
 
+### B-147 Eigenes Konfetti statt `js-confetti`
+Status: refined (Andreas, 2026-11-24). Vendor `js-confetti` (8 KB) wird nur in `showConfetty()` genutzt (Einigkeit).
+Eigenes Canvas-Konfetti (Delia, ca. 100 Zeilen): eigene Farben/Formen, bei `prefers-reduced-motion` ruhige Variante,
+Anzahl begrenzen (heute `Spieleranzahl³`, bei 12 Leuten 1.728 Stück). Danach Vendor-Datei löschen. Grundlage für
+die Feier-Stufen aus B-117.
+
+### B-148 Eigener Mini-Markdown statt `remarkable`
+Status: refined (Andreas, 2026-11-24). `remarkable` (115 KB, größte Datei des Boards) dient nur der Beschreibung von
+Topic-Items (`topicMarkdown()` in `script/topics.js`). Nachbau als Teilmenge, die **direkt DOM-Elemente** aufbaut
+(nie HTML-Strings, Text nur per `textContent`): Absätze, Zeilenumbrüche, fett/kursiv, Listen, Überschriften,
+Inline-Code, Links (nur `http(s)`, `rel="noopener noreferrer"`, auch automatisch erkannte URLs wie heute `linkify`).
+E2E-Tests mit fiesen Eingaben (HTML, `javascript:`-Links, verschachtelte Markierungen), Review durch Sina.
+Texte mit Markdown außerhalb der Teilmenge sehen danach etwas anders aus (kaum Topic-Items in Nutzung).
+
+### B-149 `qr-code-styling` erst bei Bedarf laden
+Status: refined (Andreas, 2026-11-24). Die Vendor-Datei (65 KB) lädt heute bei jedem Board-Start, gebraucht wird sie
+nur für den QR-Code im Invite. Erst beim Öffnen von Invite nachladen (Skript-Tag dynamisch einfügen, einmalig;
+währenddessen ruhiger Platzhalter, bei Fehler Hinweis statt QR-Code). Kein Nachbau der QR-Kodierung.
+
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
 „aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
