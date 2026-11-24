@@ -37,7 +37,11 @@ Datenfluss bei einer Änderung am Board (seit B-81):
 
 - `index.php` – Einstieg: gültige Team-ID (`?t=`) → `board.html`, sonst `init.html` bzw. Team anlegen.
 - `board.html`, `init.html` – Seiten, kein Template-System.
-- `script/script.js` – gesamte Board-Logik (Vanilla JS, globale `g*`-Variablen), `script_feedback.js`, `script_team.js`.
+- `script/script.js` – Board-Logik (Vanilla JS, globale `g*`-Variablen); seit B-14 ausgelagert als klassische
+  `defer`-Skripte mit gemeinsamen Globals: `reactions.js` (Emoji-Leiste, Würfe, Nudge), `timer.js` (Stoppuhr/Timebox),
+  `connection.js` (WebSocket, `apiWrite`/`fetchWrite`, Verbindungshinweis); dazu `topics.js`, `sidebar.js`, `cards.js`,
+  `deck.js`, `script_deck.js`, `script_custom.js`, `script_feedback.js`, `script_team.js`. Neue Dateien vor `script.js`
+  einbinden und auf oberster Ebene nichts aus anderen Dateien lesen (Ladereihenfolge).
   `script/types.ts` beschreibt nur JSON-Typen, es gibt keinen TypeScript-Build.
 - `style/style.css` – ein Stylesheet, Light/Dark-Mode.
 - `api/*.php` – ein Skript pro Aktion; gemeinsame Funktionen in `api/lib.php` (`db_init()`, `validate_team()`, …).
