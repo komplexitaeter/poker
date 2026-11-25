@@ -33,6 +33,7 @@ const MILESTONES = array(
     '2026-11-09' => 'Sidebar, light heartbeat',
     '2026-11-16' => 'Topic list, median, nudge sound; emoji quota, clean-up',
     '2026-11-18' => 'Async start, colour mode kept locally',
+    '2026-11-25' => 'script.js split, topic panel fix',
 );
 /* login (B-63): htpasswd file of nginx, the only place of the credentials (maintained with htpasswd -B -C 12);
    STATS_COOKIE_SECRET (config.php) is part of the cookie signature key */

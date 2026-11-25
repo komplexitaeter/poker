@@ -29,8 +29,8 @@ die Primärfunktion (Andreas, 2026-11-10).
 Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging; Rollout danach mit B-12.
 1. ✓ live R5 – B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
 2. ✓ live R5 – B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
-3. B-34 Startdaten asynchron laden
-4. B-14 erster Schnitt (2–3 Module aus `script.js`)
+3. ✓ live R6 – B-34 Startdaten asynchron laden (dazu B-140, B-141)
+4. ✓ live R7 – B-14 erster Schnitt: `reactions.js`, `timer.js`, `connection.js` aus `script.js`
 5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
 Jederzeit: B-126 / B-23-Rest (nginx-Sperren, Upload-Grenzen – Befehle für Andreas). Nicht angetastet: B-10.
 
@@ -45,6 +45,9 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
 - **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R7 (2026-11-25):** B-14 erster Schnitt (Reaktionen, Timer, Verbindung als eigene Skripte), Topic-Panel: „reopen“
+  beim Löschen nicht mehr abgeschnitten; Mockup `mockups/fish-tokens/` (B-145/B-146).
+- **R6 (2026-11-18):** B-34 (asynchroner Start), B-140, B-141 (Farbmodus lokal), Farbmodus ohne Board speichern, Notiz im Menü aktuell.
 - **R5 (2026-11-16, abends):** B-139 (Emoji-Kontingent), Sprint 9 Schritte 1–2: B-93, B-94, B-97, B-136, B-137, B-138.
 - **R4 (2026-11-16):** B-52 (Topic list), B-53 (Median), B-130 (Timer-Auto-Start), B-131, B-133 (Nudge-Ton),
   B-135 (Write-Retry); dazu B-134 (CI).
@@ -320,6 +323,40 @@ Umfang:
 Andreas: Methodenseite und Tool-Seite („Tool starten“ mit `preset=Animals`) auf komplexitaeter.de (WordPress, nicht
 in diesem Repo); wir liefern die genaue URL.
 
+### B-145 Fisch-Schild: 1× pro Tag einen Fisch abwehren
+Status: refined (Andreas, 2026-11-24). Ergebnis des Prototyps `mockups/fish-tokens/` (Token, Verteilen und Codes
+waren zu kompliziert; das Schild mit Abprall-Animation „brauchen wir auf jeden Fall live“).
+- Auf der **eigenen Karte** steht statt des Smileys ein **Schild-Symbol**. Ein Klick aktiviert das Schild (`1×` pro Tag,
+  gleiche Tagesgrenze wie B-139). Kein Schalter im Profil, kein Aufladen.
+- Das aktive Schild hält **genau einen Fisch** ab, danach ist es verbraucht (spätestens zum Tageswechsel). Andere Emojis
+  gehen durch.
+- Für die anderen ist das aktive Schild **unsichtbar**; erst beim Treffer: Kraftfeld, Fisch prallt ab und landet auf
+  der Karte des Werfers (Animation aus dem Prototyp, mit reduzierter Variante bei `prefers-reduced-motion`).
+- Technik (Vorschlag Kai): wie das Tageskontingent in poker-msg im Speicher (aktive Schilde je mkey und Team);
+  bei einem Fisch auf eine geschützte Karte verteilt poker-msg die Variante „blocked“ an alle. Keine DB; nach einem
+  Neustart von poker-msg sind aktive Schilde weg (vertretbar).
+Offen fürs Planning: Nachrichtenformat (Aktivieren, `blocked`-Echo), Anzeige für den Schild-Besitzer (aktiv / verbraucht),
+Verhalten alter Clients.
+
+### B-146 Supporter-Abo: mehr Reaktionen pro Tag
+Status: Idee (Andreas, 2026-11-24). Statt Token/Codes (Prototyp zu kompliziert) eine bezahlte Mitgliedschaft mit einem
+einfachen Zustand „Supporter ja/nein“: Supporter bekommen mehr Reaktionen pro Tag (z. B. 10× oder 20× statt 1×, evtl.
+nach Höhe des Abos). Kandidat: Steady (deutscher Anbieter, kauft Lizenz und verkauft weiter, Steuerabrechnung je
+Auszahlung; OAuth-API für den Mitgliedsstatus, Supporter braucht ein Steady-Konto, wir keine E-Mail-Adressen).
+Alternativen: Paddle (Reverse Invoice, monatliche Auszahlung), Stripe Managed Payments. Lemon Squeezy scheidet aus
+(keine Neuanmeldungen, Abschaltung 31.03.2027).
+Steady (gelesen 2026-11-24): 10 % Provision auf brutto plus Zahlungsgebühren (PayPal 0,35 € + 2,49 %, Lastschrift
+0,20 € + 1 %), keine Grundgebühr; Auszahlung monatlich per PayPal mit Gutschrift (für deutsche Publisher mit USt ab
+11/2026 als E-Rechnung). Bei 3 €/Monat bleiben etwa 1,80–2,00 € netto. OAuth (Authorization Code, nur serverseitig mit
+Client Secret), `GET /api/v1/subscriptions/me` liefert Status, Betrag, Ablauf; Token 7 Tage, Refresh 1 Jahr; Steady
+schickt Name und E-Mail mit (nicht speichern). **Haken:** Steady richtet sich an Creator, die regelmäßig eigene Inhalte
+veröffentlichen (Blog, Newsletter, Podcast) und kauft eine Lizenz an diesen Inhalten – ein Software-Tool passt nicht.
+Vorschlag: komplexitaeter-Supporter-Programm mit Blog/Newsletter als Kern, Poker-Reaktionen als Bonus; vorher bei
+Steady anfragen. Sagen sie nein: Paddle (auf Software ausgerichtet, Abos, monatliche Gutschrift).
+Offen: Antwort von Steady, Abo-Stufen, wie der Status im Board
+ankommt (Login per OAuth, Prüfung serverseitig statt in poker-msg), Datenschutzerklärung. Technisches Vorwissen aus dem
+Token-Konzept: `mockups/fish-tokens/concept.html` (Reaktionen über die API statt WebSocket, Sinas Review).
+
 ## Offen: Technik & Betrieb
 
 ### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
@@ -355,11 +392,12 @@ Status: neu. Topic und weitere Spalten sind seit B-85 `utf8mb4`; noch 15× `utf8
 Umstellung inkl. Verbindung; größere DB-Änderung, braucht ein Wartungsfenster (abends/Wochenende).
 
 ### B-14 `script/script.js` in Module aufteilen
-Status: neu. `script.js` hat inzwischen 4.090 Zeilen mit globalen Variablen. Schrittweise in ES-Module zerlegen, ohne
-Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
+Status: erster Schnitt live R7 (2026-11-25): `reactions.js`, `timer.js`, `connection.js` als klassische `defer`-Skripte
+(reiner Umzug, `script.js` 4.398 → 3.349 Zeilen). Weitere Schnitte bei Bedarf; echte ES-Module erst, wenn die
+`onclick`-Handler im HTML abgelöst sind (sonst jede Funktion wieder an `window`). Ohne Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
 
 ### B-34 Synchrone XMLHttpRequest auf async umstellen
-Status: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen). Vorher: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
+Status: live (Rollout 6, 2026-11-18). Vorher: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen). Vorher: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
 (`loadTextFileAjaxSync()`) für `cards.json`, `card_catalog.json` und den Farbmodus. Der Aufrufer erwartet einen
 synchronen Rückgabewert → async/await oder Config anders laden. Nur Konsolen-Warnung, blockiert kurz den Main-Thread.
 Vorgabe Andreas (2026-11-17): flüssig, nie ein unvollständiger Stand; Spinner nur, wenn das Laden länger dauert.
@@ -374,12 +412,12 @@ sonst Systemmodus). Mit umgesetzt (B-140, Andreas 2026-11-17: plausible ist für
 `DOMContentLoaded` statt `window.load`, plausible `async`. Test: `tests/e2e/specs/startup.spec.ts`.
 
 ### B-140 Board-Start früher: `DOMContentLoaded` statt `load`, plausible async
-Status: mit B-34 umgesetzt (Andreas, 2026-11-17). Vorschlag Fred, 2026-11-17, aus B-34: `loadBoard()` startete erst bei `window.load`, also nach Bildern,
+Status: live (Rollout 6, 2026-11-18). Vorher: mit B-34 umgesetzt (Andreas, 2026-11-17). Vorschlag Fred, 2026-11-17, aus B-34: `loadBoard()` startete erst bei `window.load`, also nach Bildern,
 allen Defer-Skripten und dem externen plausible.io; `dao.php` könnte bei `DOMContentLoaded` starten, plausible `async`.
 Bringt auf langsamen Netzen spürbar Zeit, ändert aber die Startreihenfolge (Tests prüfen).
 
 ### B-141 Farbmodus lokal merken gegen dunklen Hintergrund vor dem Laden
-Status: umgesetzt, im Sprint 9 (Fred, 2026-11-17; Vorschlag Fred aus B-34, beauftragt Andreas 2026-11-17). Bis `setColor()`
+Status: live (Rollout 6, 2026-11-18). Vorher: umgesetzt, im Sprint 9 (Fred, 2026-11-17; Vorschlag Fred aus B-34, beauftragt Andreas 2026-11-17). Bis `setColor()`
 läuft, zeigt die Seite den dunklen Canvas; bei hellem Farbmodus fällt das auf langsamen Netzen (mit Spinner) auf.
 Umsetzung: Farbmodus zusätzlich in `localStorage` (`COLOR_MODE`), ein Inline-Skript im `head` von `board.html`/`init.html`
 setzt vor dem ersten Frame `html.pk-light` (Hintergrund per Inline-Style, ohne lokalen Wert nach `prefers-color-scheme`).
@@ -397,6 +435,25 @@ Status: neu (Andreas, 2026-11-17, beim 3G-Test von B-34). Auf langsamem Netz zei
 „Name speichern“ nicht, dass gerade etwas passiert. Idee: nach ~300 ms Busy-Zustand am Button (Gestaltung Delia,
 Console Style), währenddessen kein zweiter Klick; für alle Aktionen mit Server-Aufruf. Für Nutzer sichtbar, daher
 nicht im Aufräum-Sprint.
+
+### B-147 Eigenes Konfetti statt `js-confetti`
+Status: refined (Andreas, 2026-11-24). Vendor `js-confetti` (8 KB) wird nur in `showConfetty()` genutzt (Einigkeit).
+Eigenes Canvas-Konfetti (Delia, ca. 100 Zeilen): eigene Farben/Formen, bei `prefers-reduced-motion` ruhige Variante,
+Anzahl begrenzen (heute `Spieleranzahl³`, bei 12 Leuten 1.728 Stück). Danach Vendor-Datei löschen. Grundlage für
+die Feier-Stufen aus B-117.
+
+### B-148 Eigener Mini-Markdown statt `remarkable`
+Status: refined (Andreas, 2026-11-24). `remarkable` (115 KB, größte Datei des Boards) dient nur der Beschreibung von
+Topic-Items (`topicMarkdown()` in `script/topics.js`). Nachbau als Teilmenge, die **direkt DOM-Elemente** aufbaut
+(nie HTML-Strings, Text nur per `textContent`): Absätze, Zeilenumbrüche, fett/kursiv, Listen, Überschriften,
+Inline-Code, Links (nur `http(s)`, `rel="noopener noreferrer"`, auch automatisch erkannte URLs wie heute `linkify`).
+E2E-Tests mit fiesen Eingaben (HTML, `javascript:`-Links, verschachtelte Markierungen), Review durch Sina.
+Texte mit Markdown außerhalb der Teilmenge sehen danach etwas anders aus (kaum Topic-Items in Nutzung).
+
+### B-149 `qr-code-styling` erst bei Bedarf laden
+Status: refined (Andreas, 2026-11-24). Die Vendor-Datei (65 KB) lädt heute bei jedem Board-Start, gebraucht wird sie
+nur für den QR-Code im Invite. Erst beim Öffnen von Invite nachladen (Skript-Tag dynamisch einfügen, einmalig;
+währenddessen ruhiger Platzhalter, bei Fehler Hinweis statt QR-Code). Kein Nachbau der QR-Kodierung.
 
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich

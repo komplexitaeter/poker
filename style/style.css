@@ -6207,8 +6207,13 @@ table tr:first-child { border-bottom: 1px solid var(--primary-border-color); }
 
 .ti-done .ti-h b { font-weight: normal; color: var(--text); }
 
-.ti-l2 { display: flex; align-items: center; gap: 10px; font-size: var(--fs-xs); }
+/* the row wraps when it gets narrow (long date, wide card): delete and reopen then move below together,
+ * right-aligned. While the red "Delete" asks, "reopen" steps aside, so the confirm needs no more room than
+ * trash + reopen (Escape or a click beside it brings both back) */
+.ti-l2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: var(--fs-xs); }
 .ti-l2 .ti-grow { flex: 1; }
+.ti-l2-acts { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.ti-l2-acts:has(.ti-del-sure) > [data-ti-act="reopen"] { display: none; }
 .ti-l2 .icon-btn { color: var(--muted); min-width: 30px; min-height: 30px; padding: 0 4px; }
 .ti-l2 .icon-btn:hover { color: var(--accent); }
 .ti-l2 .icon-btn .i { width: 15px; height: 15px; }

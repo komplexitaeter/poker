@@ -13,10 +13,26 @@ type Set = { set_id: number; deck_id: string; name: string; style: string; rev: 
   cards: { card_key: string; symbol: string | null; value: string; numeric_value: number | null; color: string;
     heading: string | null }[] };
 
+type Json = { deck: { id: string; cards: string[]; controls: string[] }; custom_sets: Set[] };
 /** the board state shown last (gLastJson, a script-level let of script.js) */
-async function lastJson(page: Page): Promise<{ deck: { id: string; cards: string[]; controls: string[] }; custom_sets: Set[] }> {
+async function lastJson(page: Page): Promise<Json> {
   return page.evaluate(() => (0, eval)('gLastJson'));
 }
+
+/** the board state once it shows what a write or reload led to: gLastJson is null until the first dao.php after a
+ * reload (the board starts asynchronously, B-34), and the reload after a write may still be on its way */
+async function lastJsonWhere(page: Page, ready: (json: Json) => boolean): Promise<Json> {
+  let json = null as Json | null;
+  await expect.poll(async () => {
+    json = await lastJson(page);
+    return json !== null && ready(json);
+  }).toBe(true);
+  return json!;
+}
+
+/** an own set in play: the set is there and the deck is it */
+const ownSetInPlay = (count: number) => (json: Json) =>
+  json.custom_sets.length === count && json.deck.id === json.custom_sets[0]?.deck_id;
 
 const editor = (page: Page) => page.locator('#cs_editor');
 
@@ -111,7 +127,7 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(alice.locator('#deck_edit')).toBeFocused();
 
   // the deck of everybody: the set in its order and style, then the control cards
-  let json = await lastJson(alice);
+  let json = await lastJsonWhere(alice, ownSetInPlay(1));
   const set = json.custom_sets[0];
   expect(set.name).toBe('Risk');
   expect(set.style).toBe('badge');
@@ -173,9 +189,9 @@ test('create an own set in the editor, play it, edit it and delete it', async ({
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#deck_own_sets li')).toHaveCount(0);
   await expect(alice.locator('#toast')).toHaveText('Set deleted');
-  json = await lastJson(alice);
+  json = await lastJsonWhere(alice, j => j.custom_sets.length === 0);
   for (const page of [alice, bob]) {
-    await expect.poll(async () => (await lastJson(page)).deck.id).toBe('fib-classic');
+    await expect.poll(async () => (await lastJson(page))?.deck.id).toBe('fib-classic');
     await expect.poll(() => trayKeys(page)).toContain('three01');
   }
 });
@@ -191,7 +207,7 @@ test('Save creates a set without playing it; "Save & use" of a saved set puts it
   await alice.locator('#cs_save').click();
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#toast')).toHaveText('Set created');
-  expect((await lastJson(alice)).deck.id).toBe('fib-classic');
+  expect((await lastJsonWhere(alice, j => j.custom_sets.length === 1)).deck.id).toBe('fib-classic');
   // the focus on the pen of the new set in the list
   const pen = alice.locator('#deck_own_sets .cs-edit');
   await expect(pen).toBeFocused();
@@ -203,7 +219,8 @@ test('Save creates a set without playing it; "Save & use" of a saved set puts it
   await expect(alice.locator('#toast')).toHaveText('Set saved and in use');
   await expect(alice.locator('#deck_change')).toContainText('Later');
   await expect(bob.locator('#toast')).toHaveText('Alice changed the card set to Later');
-  await expect.poll(async () => (await lastJson(bob)).deck.id).toBe((await lastJson(alice)).custom_sets[0].deck_id);
+  const later = (await lastJsonWhere(alice, ownSetInPlay(1))).custom_sets[0];
+  await expect.poll(async () => (await lastJson(bob))?.deck.id).toBe(later.deck_id);
 });
 
 test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills the editor', async ({ browser }) => {
@@ -253,7 +270,7 @@ test('"+ New set" from a built-in set: the choice, Esc cancels, Fibonacci fills 
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#toast')).toHaveText('Set saved and in use');
 
-  const json = await lastJson(alice);
+  const json = await lastJsonWhere(alice, ownSetInPlay(1));
   const set = json.custom_sets[0];
   expect(set.name).toBe('Our Fibonacci');
   expect(set.cards.map(c => c.value)).toEqual(
@@ -280,7 +297,7 @@ test('"+ New set" copies an own set with all its cards, a template colour includ
     headers: { 'Content-Type': 'application/json' } });
   expect(res.ok()).toBeTruthy();
   await alice.reload();
-  const source = (await lastJson(alice)).custom_sets[0];
+  const source = (await lastJsonWhere(alice, j => j.custom_sets.length === 1)).custom_sets[0];
   expect(source.cards[0].color).toBe('j3');
 
   await alice.locator('#cset_btn').click();
@@ -305,8 +322,7 @@ test('"+ New set" copies an own set with all its cards, a template colour includ
   await alice.locator('#cs_save').click();
   await expect(editor(alice)).toBeHidden();
 
-  await expect.poll(async () => (await lastJson(alice)).custom_sets.length).toBe(2);
-  const copy = (await lastJson(alice)).custom_sets.find(set => set.name === 'Copy')!;
+  const copy = (await lastJsonWhere(alice, j => j.custom_sets.length === 2)).custom_sets.find(set => set.name === 'Copy')!;
   expect(copy.style).toBe('badge');
   expect(copy.cards.map(c => [c.symbol, c.color])).toEqual([['s-3', 'j3'], [null, 'blue']]);
   expect(copy.cards[1]).toMatchObject({ value: 'Hi', heading: 'Head', numeric_value: 7 });
@@ -346,7 +362,7 @@ test('an emoji as card text: counted as one character, played and shown on the t
   await expect(editor(alice)).toBeHidden();
   await expect(alice.locator('#toast')).toHaveText('Set saved and in use');
 
-  const set = (await lastJson(alice)).custom_sets[0];
+  const set = (await lastJsonWhere(alice, ownSetInPlay(1))).custom_sets[0];
   expect(set.cards.map(c => [c.symbol, c.value])).toEqual([[null, '🎉'], ['s-2', '2']]);
   const key = set.cards[0].card_key;
   await expect(bob.locator(`#ctl .ctl[data-card="${key}"] .tv`)).toHaveText('🎉');
@@ -427,7 +443,7 @@ test('a team with a migrated "Our deck" sees its cards', async ({ browser }) => 
   await page.reload();
 
   await expect.poll(async () => (await trayKeys(page)).length).toBe(5);
-  const json = await lastJson(page);
+  const json = await lastJsonWhere(page, j => j.custom_sets.length === 1);
   const set = json.custom_sets[0];
   expect(set.name).toBe('Our deck');
   expect(await trayKeys(page)).toEqual([...set.cards.map(c => c.card_key), 'qstmrk1']);
@@ -790,7 +806,8 @@ for (const way of ['click', 'tap', 'key'] as const) {
     await expect(card).toHaveAttribute('aria-pressed', 'false');
     await expect(tableCard(alice, 'Alice')).toHaveAttribute('data-card', 'prgrss1');
     await expect(tableCard(bob, 'Alice')).toHaveAttribute('data-card', 'prgrss1');
-    expect((await lastJson(alice) as unknown as { selected_card_key: string | null }).selected_card_key).toBeFalsy();
+    await expect.poll(async () => (await lastJson(alice) as unknown as { selected_card_key: string | null }).selected_card_key)
+      .toBeFalsy();
   });
 }
 
