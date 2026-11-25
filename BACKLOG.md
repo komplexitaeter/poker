@@ -30,7 +30,7 @@ Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging;
 1. ✓ live R5 – B-136 Umfrage entfernen · B-93 `push` aus poker-msg · B-94 Neuladen nach Fehler · B-138 CI `php -l`
 2. ✓ live R5 – B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
 3. ✓ live R6 – B-34 Startdaten asynchron laden (dazu B-140, B-141)
-4. B-14 erster Schnitt (2–3 Module aus `script.js`)
+4. ✓ live R7 – B-14 erster Schnitt: `reactions.js`, `timer.js`, `connection.js` aus `script.js`
 5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
 Jederzeit: B-126 / B-23-Rest (nginx-Sperren, Upload-Grenzen – Befehle für Andreas). Nicht angetastet: B-10.
 
@@ -45,6 +45,8 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
 - **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R7 (2026-11-25):** B-14 erster Schnitt (Reaktionen, Timer, Verbindung als eigene Skripte), Topic-Panel: „reopen“
+  beim Löschen nicht mehr abgeschnitten; Mockup `mockups/fish-tokens/` (B-145/B-146).
 - **R6 (2026-11-18):** B-34 (asynchroner Start), B-140, B-141 (Farbmodus lokal), Farbmodus ohne Board speichern, Notiz im Menü aktuell.
 - **R5 (2026-11-16, abends):** B-139 (Emoji-Kontingent), Sprint 9 Schritte 1–2: B-93, B-94, B-97, B-136, B-137, B-138.
 - **R4 (2026-11-16):** B-52 (Topic list), B-53 (Median), B-130 (Timer-Auto-Start), B-131, B-133 (Nudge-Ton),
@@ -390,8 +392,9 @@ Status: neu. Topic und weitere Spalten sind seit B-85 `utf8mb4`; noch 15× `utf8
 Umstellung inkl. Verbindung; größere DB-Änderung, braucht ein Wartungsfenster (abends/Wochenende).
 
 ### B-14 `script/script.js` in Module aufteilen
-Status: neu. `script.js` hat inzwischen 4.090 Zeilen mit globalen Variablen. Schrittweise in ES-Module zerlegen, ohne
-Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
+Status: erster Schnitt live R7 (2026-11-25): `reactions.js`, `timer.js`, `connection.js` als klassische `defer`-Skripte
+(reiner Umzug, `script.js` 4.398 → 3.349 Zeilen). Weitere Schnitte bei Bedarf; echte ES-Module erst, wenn die
+`onclick`-Handler im HTML abgelöst sind (sonst jede Funktion wieder an `window`). Ohne Build-Schritt. Delta-Rendering statt komplettem Neu-Rendern nach jedem `pull` wäre ein Folgeschritt (aus B-38).
 
 ### B-34 Synchrone XMLHttpRequest auf async umstellen
 Status: live (Rollout 6, 2026-11-18). Vorher: im Sprint 9, Schritt 3 (Branch `feature/B-34-async-start`, Review offen). Vorher: neu, niedrige Priorität. Die Feedback-Aufrufe sind umgestellt; offen ist das synchrone `loadJSON()`
