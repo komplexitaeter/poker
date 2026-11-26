@@ -192,9 +192,10 @@ Ohne `--apply` Trockenlauf (dieselben Änderungen, danach Rollback). Ein zweiter
 
 **Sicherung:** `--apply` legt vorher einmalig die Tabelle `pok_topic_items_b150_bak (id, team_id, ext_id, backup_date)`
 an und sichert darin den Schlüssel jedes Items (`insert ignore`: ein späterer Lauf überschreibt den ersten Wert nie).
-Darf der App-User keine Tabelle anlegen, bricht das Skript ab, ohne etwas zu ändern; dann die Tabelle als Admin anlegen
-(`create table` aus `b150_backup()` im Skript) und mit `grant select, insert on <db>.pok_topic_items_b150_bak to
-'pok_usr'@'localhost'` freigeben. Ein Team zurücksetzen (nur vor dem DDL-Block, danach sind `NULL`/doppelte nicht
+Angelegt wird die Tabelle nur, wenn sie fehlt. Darf der App-User keine Tabelle anlegen, bricht das Skript ab, ohne
+etwas zu ändern; dann die Tabelle als Admin anlegen (`create table` aus `b150_backup()` im Skript) und mit
+`grant select, insert on <db>.pok_topic_items_b150_bak to 'pok_usr'@'localhost'` freigeben – ein `create`-Recht
+braucht der App-User dann nicht. Ein Team zurücksetzen (nur vor dem DDL-Block, danach sind `NULL`/doppelte nicht
 mehr erlaubt):
 
 ```sql
