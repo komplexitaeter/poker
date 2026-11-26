@@ -123,7 +123,8 @@ body {
     --tray-shadow: 0 12px 32px -2px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.8),
         0 0 0 1px rgba(255, 255, 255, 0.12);
     --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
-    --scrim-modal: rgba(0, 0, 0, 0.62); /* backdrop behind modal boxes (.leave-item, the new API key) */
+    /* backdrop behind modal boxes (.leave-item, the new API key): light, the page behind is blurred instead */
+    --scrim-modal: rgba(0, 0, 0, 0.3);
     /* B-99 D6/D9: tinted cards (badge style: traffic lights, emotions, stars). Dark: neutral paper with a
      * faint glow of the value colour from the top (--card-glow-end: how far it reaches) and a coloured inner
      * rim, so symbols and texts keep the contrast of the plain card. Light: the whole card tinted. */
@@ -153,7 +154,7 @@ body.light-theme {
     --shadow-color: rgba(0, 0, 0, 0.18);
     --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     --scrim: rgba(29, 32, 39, 0.4);
-    --scrim-modal: rgba(29, 32, 39, 0.5);
+    --scrim-modal: rgba(29, 32, 39, 0.16);
     --card-tint: 13%;   /* light: the whole card flat (no glow, no rim) */
 }
 
@@ -1588,14 +1589,31 @@ fieldset:disabled .seg input:checked + span {
 .m-links a:hover { color: var(--text); }
 
 /* R3 review V10 (L8): "Privacy policy · Imprint" */
-.m-links > span { color: var(--muted); }
+.m-links span { color: var(--muted); }
 
-/* "Delete my data" at the end of the You menu: as tall as the other buttons of the menu ("Create key" right above
- * it, a full tap target on touch), flush with their right edge, the links centred on its line. The small text keeps
- * links and button on one line down to phone width (only below ~340px it moves to a line of its own, on the right). */
+/* You menu: "Privacy policy · Imprint" and "Delete my data" always share one line, also in the panel at its
+ * minimum width with a classic scrollbar (Andreas). The links sit in .m-links-text: short of space, they wrap
+ * there (after the dot, only on the smallest phones), never the button. The button is as tall as the other buttons of the menu ("Create key"
+ * right above it, a full tap target on touch) and flush with their right edge. */
+#user_settings_privacy_link {
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.m-links-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.m-links-text a { white-space: nowrap; }
+
 .menu .m-links .btn-box {
+    flex: none;
     margin-left: auto;
+    padding-left: 10px;
+    padding-right: 10px;
     font-size: var(--fs-s);
+    white-space: nowrap;
 }
 
 /* card set thumbnails */
@@ -6321,12 +6339,12 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
     box-sizing: border-box;
 }
 
-/* the page behind is dimmed and slightly blurred. Literal fallback: older browsers (Safari < 17.4) do not pass
- * custom properties on to ::backdrop. */
+/* the page behind is blurred and only lightly dimmed (Andreas: less dark than the player/observer dialog, more
+ * blur). Literal fallback: older browsers (Safari < 17.4) do not pass custom properties on to ::backdrop. */
 .leave-item::backdrop {
-    background: var(--scrim-modal, rgba(0, 0, 0, 0.6));
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    background: var(--scrim-modal, rgba(0, 0, 0, 0.3));
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
 }
 
 .leave-item h2 {
