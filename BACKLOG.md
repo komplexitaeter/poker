@@ -369,12 +369,13 @@ eigene Skripte) erstmal nicht.
   abfragen, löschen.
 - **Item-Schlüssel als Pflichtfeld** (Andreas): vorbelegt mit `[CODE]-(n+1)`, zusammen mit dem Team eindeutig
   (heute `ext_id`, optional; 10 von 19 Items hatten schon eine). Damit ist ein Import beliebig oft wiederholbar.
-- **API-Schlüssel je Team**, lang, im Header (nicht in der URL), getrennt von der Team-ID: erzeugen, anzeigen, sperren und
-  neu erzeugen im Board-Menü. Grundlage für B-151.
+- **Zugang über die Team-ID**, wie in der App (Andreas, 2026-11-26): kein eigener API-Schlüssel – er würde nichts
+  absichern, was die Team-ID nicht ohnehin öffnet. Möglichst im Header statt in der URL (Access-Logs). Sollte ein Team
+  seinen Link sperren müssen (z. B. in einer Jira-Regel geleakt), wäre „Team-Link erneuern“ das Gegenstück für Web,
+  API und MCP – nur bei Bedarf, eigener Eintrag.
 - Nach jeder Änderung `notify_team()` wie bei der App (Boards aktualisieren sich sofort).
 - Die Logik hinter den Endpunkten so schneiden, dass B-151 sie mitnutzt (REST und MCP rufen dieselben Funktionen).
-Offen fürs Refinement: Format des Ergebnisses (Wert, Verteilung, Runden), Fehlercodes, ob die Team-ID als
-Alternative zum Schlüssel weiter geht (heute schon `update_topic.php`).
+Offen fürs Refinement: Format des Ergebnisses (Wert, Verteilung, Runden), Fehlercodes.
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
@@ -388,7 +389,7 @@ Grundsätze (Andreas):
 - **Keine Aufruf-Limits auf Verdacht** (Anwendungsfälle unbekannt); nur technischer Schutz (z. B. Obergrenze
   gleichzeitig wartender Aufrufe).
 Technik (Vorschlag Kai): dünne MCP-Schicht über den Funktionen aus B-150, ca. 10–12 gröbere Tools statt einem pro
-Aktion; Authentifizierung mit dem API-Schlüssel aus B-150. Benachrichtigung **ohne Polling**: `wait_for_change`, das
+Aktion; Zugang über die Team-ID wie in App und B-150 (kein eigener Schlüssel). Benachrichtigung **ohne Polling**: `wait_for_change`, das
 sofort zurückkehrt, sobald poker-msg eine Änderung des Teams meldet (spätestens nach ca. 25 s „nichts passiert“);
 dafür ein Event-Kanal in poker-msg mit kurzlebigem, per HMAC signiertem Abo-Ticket (poker-msg bleibt ohne DB, kein
 PHP-Worker pro Wartendem). Server-Benachrichtigungen von MCP zusätzlich für Clients, die sie können. Antworten zuerst
