@@ -43,7 +43,8 @@ const DECK_AIMS = array('agree', 'perspectives');
  * spaces: keys stand in URL paths (/api/v1/items/{key}). Unique WITHOUT case: always checked by SQL in the collation
  * of the column (utf8mb4_0900_ai_ci) under the team row lock, never by a PHP string comparison.
  */
-const ITEM_KEY_PATTERN = '/^[A-Za-z0-9][A-Za-z0-9_-]{0,19}$/D';
+const ITEM_KEY_REGEX = '^[A-Za-z0-9][A-Za-z0-9_-]{0,19}$';  // without delimiters: routing table, openapi.json
+const ITEM_KEY_PATTERN = '/' . ITEM_KEY_REGEX . '/D';
 const ITEM_KEY_SUGGEST_TRIES = 1000;
 
 /* a valid item key (pattern and length, see ITEM_KEY_PATTERN) */
@@ -341,6 +342,20 @@ function load_topic_item($link, string $t, int $id): ?array
     $sql->bind_param('is', $id, $t);
     $sql->execute();
     $row = $sql->get_result()->fetch_assoc();
+    return is_array($row) ? $row : null;
+}
+
+/*
+ * B-150: the item of the team with key $key (assoc row) or null. Compared by SQL in the collation of ext_id
+ * ('dmz-4' finds 'DMZ-4'), never in PHP; unique per team (ux_topic_items_team_key).
+ */
+function load_topic_item_by_key($link, string $t, string $key): ?array
+{
+    $sql = $link->prepare("select * from pok_topic_items_tbl where team_id = ? and ext_id = ? limit 1");
+    $sql->bind_param('ss', $t, $key);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    $sql->close();
     return is_array($row) ? $row : null;
 }
 
