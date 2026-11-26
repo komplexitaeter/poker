@@ -279,8 +279,8 @@ function board_card_key(array $board, string $card): string
 
 /*
  * The player $player names: mkey (digits) of a player on the board, else the exact name of exactly one player.
- * Returns [mkey, name]; name null when the board does not show the person (anonymous mode after the reveal: the mkey
- * is still tried). Several players with this name -> 400 invalid_param (pass the mkey), none -> 404 player_not_found.
+ * Returns [mkey, name]. Only people the board shows can be named (anonymous mode after the reveal hides the mkeys of
+ * others, so nobody can be matched to a card by removing them). Several players with this name -> 400 invalid_param (pass the mkey), none -> 404 player_not_found.
  */
 function board_player(array $board, string $player): array
 {
@@ -293,6 +293,5 @@ function board_player(array $board, string $player): array
     if (count($named) > 1) {
         throw new ApiError(400, 'invalid_param', 'player', 'player: several players have this name, pass the mkey');
     }
-    if ($digits) return [(int)$player, null];
     throw new ApiError(404, 'player_not_found');
 }
