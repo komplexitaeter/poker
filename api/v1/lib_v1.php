@@ -445,6 +445,9 @@ function v1_check_value(string $name, array $def, mixed $value, bool $typed): mi
         throw $fail('must not be null');
     }
     $type = $def['type'];
+    // B-151: an id that is text because of a word like "current" (me_key_delete) also takes a JSON number (agents
+    // send ids as numbers); it is checked as its decimal text
+    if ($typed && is_int($value) && $type === 'string' && ($def['accept_integer'] ?? false)) $value = (string)$value;
     if (!$typed && is_string($value) && $type !== 'string') {
         if ($type === 'integer' && preg_match('/^\d{1,6}$/D', $value)) $value = (int)$value;
         elseif ($type === 'boolean' && ($value === 'true' || $value === 'false')) $value = $value === 'true';
@@ -648,7 +651,7 @@ function v1_schema(mixed $schema): array
 /* schema of one parameter (JSON Schema names) */
 function v1_param_schema(array $def): array
 {
-    $schema = ['type' => $def['type']];
+    $schema = ['type' => ($def['accept_integer'] ?? false) ? [$def['type'], 'integer'] : $def['type']];
     $map = ['max_length' => 'maxLength', 'min_length' => 'minLength', 'pattern' => 'pattern', 'enum' => 'enum',
             'minimum' => 'minimum', 'maximum' => 'maximum', 'default' => 'default', 'nullable' => 'nullable'];
     foreach ($map as $from => $to) {

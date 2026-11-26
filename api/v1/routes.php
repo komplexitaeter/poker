@@ -15,6 +15,7 @@
  *                  one tool)]; only routes with this field are MCP tools (docs/mcp-concept.md, section 7)
  *   params         name => [in: path|query|body, type: string|integer|boolean, required, nullable, max_length,
  *                  min_length, pattern, enum, minimum, maximum, default, text (free text: trim, then check the length),
+                  accept_integer (string parameter that also takes a JSON number, checked as its decimal text),
  *                  description, example]
  *   handler        function called as handler(mysqli $link, ?array $actor, array $params): array|V1Answer|null
  *                  (array = JSON body with the first 2xx status of responses, null = 204, V1Answer = another
@@ -518,10 +519,10 @@ return [
         'public' => false, // B-151: MCP me delete_key (key_id is a number or "current")
         'mcp' => ['tool' => 'me', 'action' => 'delete_key'],
         'params' => [
-            'key_id' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 10,
-                         'pattern' => '^(current|[1-9][0-9]{0,8})$',
-                         'description' => 'For delete_key: the id from api_keys as text (e.g. "17"), or "current" for '
-                             . 'the key you are using.'],
+            'key_id' => ['in' => 'path', 'type' => 'string', 'accept_integer' => true, 'required' => true,
+                         'max_length' => 10, 'pattern' => '^(current|[1-9][0-9]{0,8})$',
+                         'description' => 'For delete_key: the id from api_keys (e.g. 17), or "current" for the key '
+                             . 'you are using.'],
         ],
         'handler' => 'v1_me_key_delete',
         'responses' => [200 => ['description' => 'Key deleted']],

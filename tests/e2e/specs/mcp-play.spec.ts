@@ -62,6 +62,7 @@ test('tools/list: play_card, round and me with their actions', async ({ request 
   expect(Object.keys(byName.play_card.inputSchema.properties)).toEqual(['team_id', 'uid', 'api_key', 'action', 'card']);
   expect(byName.me.description).toContain('delete_my_data is NOT possible when you act with an api_key');
   expect(byName.me.annotations.destructiveHint).toBe(true);
+  expect(byName.me.inputSchema.properties.key_id.type).toEqual(['string', 'integer']);
 
   const init = await request.post(MCP, { data: { jsonrpc: '2.0', id: 2, method: 'initialize', params: {} } });
   const instructions = (await init.json()).result.instructions as string;
@@ -199,7 +200,13 @@ test('me with an API key: api_keys, delete_my_data refused (browser_only), delet
 
   await fails(request, 'me', { ...key, action: 'delete_key', key_id: '999999' }, 'key_not_found');
   await fails(request, 'me', { ...key, action: 'delete_key', key_id: 'all' }, 'invalid_param', 'key_id');
-  await fails(request, 'me', { ...key, action: 'delete_key', key_id: created.id }, 'invalid_param', 'key_id'); // a number
+  await fails(request, 'me', { ...key, action: 'delete_key', key_id: 0 }, 'invalid_param', 'key_id');
+  await fails(request, 'me', { ...key, action: 'delete_key', key_id: 999999 }, 'key_not_found'); // a number works too
+  // a second key, deleted by its id as JSON number
+  const second = await v1CreateKey(request, { headers: { [UID_HEADER]: uid, 'X-Poker-Team': t } }, 'Other');
+  const byNumber = await ok(request, 'me', { ...key, action: 'delete_key', key_id: second.id });
+  expect(byNumber.data.message).toBe(`API key ${second.id} is deleted.`);
+  expect(byNumber.data.keys.map((k: any) => k.id)).toEqual([created.id]);
   // a seat without key has no current key
   const anna = (await ok(request, 'join_team', { invite: url, name: 'Anna', role: 'observer' })).data.you;
   await fails(request, 'me', { team_id: t, uid: anna.uid, action: 'delete_key', key_id: 'current' }, 'invalid_param', 'key_id');
