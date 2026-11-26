@@ -54,6 +54,10 @@ Datenfluss bei einer Änderung am Board (seit B-81):
   Superglobals), Fehler als `ApiError` (`api/lib.php`) → flacher Body `{error, message, param}`. Auth: entweder
   `Authorization: Bearer pok_…` (API-Schlüssel, ab B-150 PR 2) oder wie das Board UID im Header `X-Poker-User` plus
   Team in `X-Poker-Team` – nie UID, Team-ID oder Schlüssel in URL oder Body.
+- `/mcp` (B-151, Konzept `docs/mcp-concept.md`) – MCP-Server für KI-Assistenten (Streamable HTTP, JSON-RPC per POST,
+  zustandslos, **nicht versioniert**): nginx `location = /mcp` → derselbe Front-Controller `api/v1/index.php`
+  (erkennt `DOCUMENT_URI`), Logik in `api/v1/lib_mcp.php`. Tools entstehen aus Routen mit `mcp`-Feld in `routes.php`
+  plus `api/v1/mcp_tools.php` (was keine REST-Operation ist); Identität je Aufruf `team_id` + `uid` oder `api_key`.
 - `cards.json` – Kartensets und Sortierung.
 - `stats.php` – interne Nutzungsstatistik mit eigener Anmeldeseite (B-63): prüft gegen die htpasswd-Datei
   `/etc/nginx/poker-stats.htpasswd` (nur bcrypt), angemeldet bleiben 30 Tage per signiertem Cookie

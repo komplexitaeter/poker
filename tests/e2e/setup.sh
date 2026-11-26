@@ -209,6 +209,14 @@ http {
             fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
         }
 
+        # B-151: the MCP server, same front controller (same block as on the servers, docs/mcp-concept.md 8.4)
+        location = /mcp {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root/api/v1/index.php;
+            fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
+            client_max_body_size 64k;
+        }
+
         location ~ \.php\$ {
             include /etc/nginx/fastcgi_params;
             fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
@@ -232,6 +240,8 @@ EOF
     wait_for "app (index.php)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/' | grep -q teaminput"
     # B-150: the front controller of /api/v1 answers
     wait_for "api v1 (api/v1/index.php)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/api/v1/openapi.json' | grep -q '\"openapi\"'"
+    # B-151: the MCP endpoint answers (help page)
+    wait_for "mcp (/mcp)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/mcp' | grep -q 'AI assistants'"
     log "app running on http://127.0.0.1:$E2E_PORT/"
 }
 

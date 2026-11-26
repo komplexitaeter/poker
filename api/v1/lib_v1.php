@@ -14,6 +14,7 @@ require_once __DIR__ . '/../lib_api_keys.php';
 require_once __DIR__ . '/../lib_core_team.php';
 require_once __DIR__ . '/../lib_core_keys.php';
 require_once __DIR__ . '/../lib_core_items.php';
+require_once __DIR__ . '/../lib_core_board.php';
 
 const V1_PREFIX = '/api/v1';
 /* info.version of openapi.json: 1.0.0 + date of the last change of routes.php (maintained by hand) */
@@ -355,9 +356,26 @@ function v1_member_type(mysqli $link, string $t, string $uid): ?string
  */
 function v1_read_body(): array
 {
+    $raw = v1_read_raw_body();
+    if ($raw === '') return [];
+    try {
+        $data = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+    } catch (JsonException $e) {
+        throw new ApiError(400, 'invalid_json', null, 'The body is not valid JSON (UTF-8).');
+    }
+    if (!is_array($data) || !str_starts_with(ltrim($raw, " \t\r\n"), '{')) {
+        throw new ApiError(400, 'invalid_json', null, 'The body must be a JSON object.');
+    }
+    return $data;
+}
+
+/* the body as sent ('' without one), after the checks of Content-Type (415) and size (413) of v1_read_body(); also
+   used by the MCP endpoint (B-151), which decodes JSON-RPC itself */
+function v1_read_raw_body(): string
+{
     $length = (string)($_SERVER['CONTENT_LENGTH'] ?? '');
     $chunked = isset($_SERVER['HTTP_TRANSFER_ENCODING']);
-    if (($length === '' || $length === '0') && !$chunked) return [];
+    if (($length === '' || $length === '0') && !$chunked) return '';
 
     $type = (string)($_SERVER['CONTENT_TYPE'] ?? '');
     if (!preg_match('~^application/json[ \t]*(;[ \t]*charset="?utf-8"?[ \t]*)?$~Di', $type)) {
@@ -369,16 +387,7 @@ function v1_read_body(): array
     $raw = file_get_contents('php://input', false, null, 0, V1_BODY_MAX + 1);
     if ($raw === false) $raw = '';
     if (strlen($raw) > V1_BODY_MAX) throw new ApiError(413, 'too_large', null, 'The body must not be larger than 64 KB.');
-    if ($raw === '') return [];
-    try {
-        $data = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
-    } catch (JsonException $e) {
-        throw new ApiError(400, 'invalid_json', null, 'The body is not valid JSON (UTF-8).');
-    }
-    if (!is_array($data) || !str_starts_with(ltrim($raw, " \t\r\n"), '{')) {
-        throw new ApiError(400, 'invalid_json', null, 'The body must be a JSON object.');
-    }
-    return $data;
+    return $raw;
 }
 
 /*
@@ -492,6 +501,12 @@ function v1_key_delete_current(mysqli $link, array $actor, array $p): ?array
 {
     core_key_delete_current($link, $actor);
     return null;
+}
+
+/* GET /board (B-151, MCP get_board) */
+function v1_board_get(mysqli $link, array $actor, array $p): array
+{
+    return core_board_get($link, $actor, $p['include_items']);
 }
 
 function v1_item_list(mysqli $link, array $actor, array $p): array
@@ -834,6 +849,8 @@ function v1_doc_page(array $routes): string
     $o[] = '<p>Bodies are JSON (<code>Content-Type: application/json</code>, at most 64 KB). Unknown fields are refused.</p>';
     $o[] = '<p>Try it interactively: import <a href="' . v1_h($spec) . '">openapi.json</a> (OpenAPI 3.0) into Postman '
         . 'or the Swagger Editor.</p>';
+    $o[] = '<p>Want to join a board from a chat with Claude, ChatGPT &amp; co.? Use the '
+        . '<a href="/mcp">AI connector</a> instead (not versioned).</p>';
     $o[] = '</section>';
     $o[] = '</div>';
 
