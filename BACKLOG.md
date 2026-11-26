@@ -449,7 +449,19 @@ eigene Skripte) erstmal nicht.
 - **Voraussetzung B-152** (UID vom Server, nie in der URL, in allen internen Endpunkten geprüft).
 - Nach jeder Änderung `notify_team()` wie bei der App (Boards aktualisieren sich sofort).
 - Die Logik hinter den Endpunkten so schneiden, dass B-151 sie mitnutzt (REST und MCP rufen dieselben Funktionen).
-Offen fürs Refinement: Format des Ergebnisses (Wert, Verteilung, Runden), Fehlercodes.
+Refinement (Andreas, 2026-11-26):
+- **Erster Schnitt:** Team anlegen, beitreten (liefert den Schlüssel), Topic/Notiz setzen, Items anlegen/ändern über
+  ihren Schlüssel (Upsert), auflisten, löschen, Ergebnis abfragen.
+- **Schlüssel im You-Menü:** erzeugen (mit Namen, z. B. „Jira“; der Schlüssel wird nur einmal beim Erzeugen angezeigt),
+  auflisten und löschen.
+- **Ergebnis eines Items:** wie im Export (Wert, Verteilung, Runden).
+- **Item-Schlüssel ist Pflicht**, auch im Board, mit lockerer Heuristik als Vorschlag: erstes Item „1“, danach
+  hochzählen; folgt der letzte Schlüssel einem Muster wie `DMZ-004`, wird `DMZ-005` vorgeschlagen (Präfix und
+  Nullen behalten). Ziel: niemand stolpert darüber, wenn es keine echte (z. B. Jira-)ID gibt.
+- **Doku:** eine Seite `/api/v1/` (was geht, Schlüssel erzeugen, `curl`-Beispiel je Endpunkt, Rezept Jira
+  Automation) plus eine von Hand gepflegte `openapi.json` (Power Automate, Zapier, Postman, KI); ein E2E-Test führt
+  die Doku-Beispiele aus.
+Offen: Fehlercodes; Verhalten bestehender Items ohne Schlüssel (Schlüssel nachvergeben?).
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
