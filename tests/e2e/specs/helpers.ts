@@ -1,4 +1,4 @@
-import { test, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+import { test, APIRequestContext, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 
 /**
@@ -260,4 +260,17 @@ export async function removeExampleSet(boardUrl: string, ...pages: Page[]): Prom
           where s.team_id = '${t}' and s.name = 'Animals (Example)';
          delete from pok_custom_sets_tbl where team_id = '${t}' and name = 'Animals (Example)'`);
   for (const page of pages) await page.reload();
+}
+
+/** B-150: a person in a new team for the API /api/v1, joined through the internal API (no browser): team id, UID and
+ * the board's authentication headers (X-Poker-User + X-Poker-Team; API keys follow with B-150 PR 2). */
+export async function newV1Member(request: APIRequestContext, teamName: string, name = 'Anna',
+                                  type: 'player' | 'observer' = 'player') {
+  const created = await request.post(`/api/addteam.php?t=${encodeURIComponent(teamName)}`);
+  expect(created.ok()).toBeTruthy();
+  const t = (await created.json()).id as string;
+  const uid = (await (await request.post('/api/uid.php')).json()).id as string;
+  const joined = await request.post(`/api/name.php?${new URLSearchParams({ t, name, type })}`, asUser(uid));
+  expect(joined.ok()).toBeTruthy();
+  return { t, uid, headers: { [UID_HEADER]: uid, 'X-Poker-Team': t } as Record<string, string> };
 }
