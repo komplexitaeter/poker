@@ -85,5 +85,41 @@ return [
             'text' => 'mcp_board_text',
             'annotations' => ['title' => 'Read the board'],
         ],
+        'play_card' => [
+            'description' => 'Play or take back your card in the current round (players only). Ask the user which card '
+                . '- never pick one for them. card accepts the value as shown on the card ("5", "XL", "☕", "?") or the '
+                . 'card key from get_board. You can change your card until everybody has played; after the reveal a '
+                . 'change is still possible and is shown as changed if the team uses "See changed cards". Control '
+                . 'cards (☕ break, ? question, ! ...) are part of the deck if the team switched them on. Cards of '
+                . 'others stay hidden until every player has played. The result shows the board afterwards.',
+            'text' => 'mcp_seat_text',
+            'annotations' => ['title' => 'Play a card', 'idempotentHint' => true],
+        ],
+        'round' => [
+            'description' => 'Control the round for the whole team. new_round: take all cards back and start over (the '
+                . 'board button "New round" / restart) - the revealed result is kept for the active item. '
+                . 'remove_player: take a player off the table, e.g. someone who left and holds up the reveal because '
+                . 'they have no card (like the trash can on the web; the person can come back). There is no separate '
+                . '"reveal" - cards turn over by themselves when every player has played. Confirm with the user before '
+                . 'removing someone. The result shows the board afterwards.',
+            'text' => 'mcp_seat_text',
+            'annotations' => ['title' => 'Control the round'],
+        ],
+        'me' => [
+            'description' => 'The user\'s own seat: rename (max 15 characters), set_role (player or observer; coming back '
+                . 'after being removed works the same way), leave (get up from this table: you disappear from the '
+                . 'board, your seat stays and can come back with set_role), api_keys (list the user\'s API keys for '
+                . 'this team; delete_key removes one, key_id "current" removes the key you are using right now and ends '
+                . 'your access - creating keys is only possible in the browser), delete_my_data (deletes this person '
+                . 'and everything they wrote in ALL teams, irreversible - only on the user\'s explicit request, confirm '
+                . 'first). '
+                . 'delete_my_data is NOT possible when you act with an api_key: the key stands for the user\'s browser '
+                . 'seat, and deleting it would wipe the user\'s identity in all their teams, including their browser. '
+                . 'Explain that to the user and offer instead: leave (get up from this table) and delete_key with '
+                . 'key_id "current" (ends your access). To delete all their data, the user uses "Delete my data" in '
+                . 'the You menu of the board in the browser.',
+            'text' => 'mcp_seat_text',
+            'annotations' => ['title' => 'Your own seat', 'destructiveHint' => true],
+        ],
     ],
 ];

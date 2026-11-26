@@ -15,6 +15,7 @@ require_once __DIR__ . '/../lib_core_team.php';
 require_once __DIR__ . '/../lib_core_keys.php';
 require_once __DIR__ . '/../lib_core_items.php';
 require_once __DIR__ . '/../lib_core_board.php';
+require_once __DIR__ . '/../lib_core_member.php';
 
 const V1_PREFIX = '/api/v1';
 /* info.version of openapi.json: 1.0.0 + date of the last change of routes.php (maintained by hand) */
@@ -28,6 +29,7 @@ const V1_ERRORS = [
     'invalid_json' => [400, 'The body is not a JSON object.'],
     'missing_param' => [400, 'A required parameter is missing.'],
     'invalid_param' => [400, 'A parameter has the wrong type, length, format or value (lists and objects are never allowed).'],
+    'invalid_card' => [400, 'The card is not in the card set of the team.'],
     'unknown_param' => [400, 'A field in the query or the body is not a parameter of the operation.'],
     'unauthorized' => [401, 'Neither an API key nor user and team were sent.'],
     'invalid_key' => [401, 'The API key has a wrong format, is unknown or was deleted.'],
@@ -38,6 +40,7 @@ const V1_ERRORS = [
     'team_not_found' => [404, 'There is no team with this id.'],
     'item_not_found' => [404, 'The team has no item with this key.'],
     'key_not_found' => [404, 'You have no API key with this id.'],
+    'player_not_found' => [404, 'There is no player with this mkey or name at the table.'],
     'method_not_allowed' => [405, 'The path exists, the method does not (see the Allow header).'],
     'item_closed' => [409, 'The item is done: reopen it first.'],
     'limit_reached' => [409, 'A limit is reached (open items, items, API keys).'],
@@ -442,6 +445,9 @@ function v1_check_value(string $name, array $def, mixed $value, bool $typed): mi
         throw $fail('must not be null');
     }
     $type = $def['type'];
+    // B-151: an id that is text because of a word like "current" (me_key_delete) also takes a JSON number (agents
+    // send ids as numbers); it is checked as its decimal text
+    if ($typed && is_int($value) && $type === 'string' && ($def['accept_integer'] ?? false)) $value = (string)$value;
     if (!$typed && is_string($value) && $type !== 'string') {
         if ($type === 'integer' && preg_match('/^\d{1,6}$/D', $value)) $value = (int)$value;
         elseif ($type === 'boolean' && ($value === 'true' || $value === 'false')) $value = $value === 'true';
@@ -509,6 +515,93 @@ function v1_board_get(mysqli $link, array $actor, array $p): array
     return core_board_get($link, $actor, $p['include_items']);
 }
 
+/*
+ * B-151 (MCP PR D): own seat and round, public: false for now. Every write answers with what it did (message), the
+ * actor ('you') and the board as the actor sees it afterwards, so the agent needs no extra read.
+ */
+function v1_seat_answer(mysqli $link, array $actor, string $message): array
+{
+    $board = core_board_get($link, $actor, false);
+    return ['message' => $message, 'you' => $board['you'], 'board' => $board];
+}
+
+/* PUT /me/card: the card as shown on the board ("5", "XL", "?") or its key */
+function v1_card_play(mysqli $link, array $actor, array $p): array
+{
+    $key = board_card_key(core_board_get($link, $actor, false), $p['card']);
+    core_card_set($link, $actor, $key);
+    $answer = v1_seat_answer($link, $actor, '');
+    $answer['message'] = 'You played "' . $answer['you']['card'] . '".';
+    return $answer;
+}
+
+/* DELETE /me/card */
+function v1_card_withdraw(mysqli $link, array $actor, array $p): array
+{
+    core_card_set($link, $actor, null);
+    return v1_seat_answer($link, $actor, 'You took your card back.');
+}
+
+/* POST /round: new round for the whole team */
+function v1_round_new(mysqli $link, array $actor, array $p): array
+{
+    core_round_new($link, $actor);
+    return v1_seat_answer($link, $actor, 'New round: all cards are taken back.');
+}
+
+/* POST /members/{player}/remove: player = mkey or exact name of a player on the board */
+function v1_member_remove(mysqli $link, array $actor, array $p): array
+{
+    [$mkey, $name] = board_player(core_board_get($link, $actor, false), $p['player']);
+    core_member_remove($link, $actor, $mkey);
+    return v1_seat_answer($link, $actor, ($name === null ? 'The player' : '"' . $name . '"') . ' was taken off the table.');
+}
+
+/* PUT /me/name */
+function v1_me_rename(mysqli $link, array $actor, array $p): array
+{
+    core_member_update($link, $actor, $p['name'], null);
+    return v1_seat_answer($link, $actor, 'Your name at the table is now "' . $p['name'] . '".');
+}
+
+/* PUT /me/role: player or observer (also coming back after being removed) */
+function v1_me_role_set(mysqli $link, array $actor, array $p): array
+{
+    core_member_update($link, $actor, null, api_player_type($p['role']));
+    return v1_seat_answer($link, $actor, 'You are now ' . ($p['role'] === 'player' ? 'a player.' : 'an observer.'));
+}
+
+/* POST /me/leave: get up from this table (REMOVED), the seat stays */
+function v1_me_leave(mysqli $link, array $actor, array $p): array
+{
+    core_member_leave($link, $actor);
+    return v1_seat_answer($link, $actor, 'You left the table. You can come back with set_role (player or observer).');
+}
+
+/* DELETE /me/keys/{key_id}: one of the own keys by id, or "current" = the key of this call */
+function v1_me_key_delete(mysqli $link, array $actor, array $p): array
+{
+    if ($p['key_id'] === 'current') {
+        if ($actor['via'] !== 'key') {
+            throw new ApiError(400, 'invalid_param', 'key_id', 'key_id: "current" only works when you act with an '
+                . 'api_key; pass the id from api_keys.');
+        }
+        core_key_delete_current($link, $actor);
+        return ['message' => 'The API key you were using is deleted: your access ends now. To come back the user '
+            . 'needs a new key or the invite link.'];
+    }
+    core_key_delete($link, $actor, (int)$p['key_id']);
+    return ['message' => 'API key ' . $p['key_id'] . ' is deleted.'] + core_key_list($link, $actor);
+}
+
+/* DELETE /me: "Delete my data" - not with an API key (403 browser_only, core_user_delete()) */
+function v1_me_delete(mysqli $link, array $actor, array $p): array
+{
+    $teams = core_user_delete($link, $actor);
+    return ['message' => 'All data of the user is deleted (' . $teams . ' team' . ($teams === 1 ? '' : 's')
+        . '). This seat is gone; to take part again, join the board anew.'];
+}
+
 function v1_item_list(mysqli $link, array $actor, array $p): array
 {
     return core_item_list($link, $actor, $p['status'], $p['limit'], $p['offset']);
@@ -558,7 +651,7 @@ function v1_schema(mixed $schema): array
 /* schema of one parameter (JSON Schema names) */
 function v1_param_schema(array $def): array
 {
-    $schema = ['type' => $def['type']];
+    $schema = ['type' => $def['type']]; // accept_integer stays "string" here: type arrays trouble some clients
     $map = ['max_length' => 'maxLength', 'min_length' => 'minLength', 'pattern' => 'pattern', 'enum' => 'enum',
             'minimum' => 'minimum', 'maximum' => 'maximum', 'default' => 'default', 'nullable' => 'nullable'];
     foreach ($map as $from => $to) {
