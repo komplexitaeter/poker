@@ -461,7 +461,7 @@ Refinement (Andreas, 2026-11-26):
   auflisten und löschen.
 - **Ergebnis eines Items:** wie im Export (Wert, Verteilung, Runden).
 - **Item-Schlüssel ist Pflicht**, auch im Board, mit lockerer Heuristik als Vorschlag: erstes Item „1“, danach
-  hochzählen; folgt der letzte Schlüssel einem Muster wie `DMZ-004`, wird `DMZ-005` vorgeschlagen (Präfix und
+  hochzählen; folgt der letzte Schlüssel einem Muster wie `TIX-004`, wird `TIX-005` vorgeschlagen (Präfix und
   Nullen behalten). Ziel: niemand stolpert darüber, wenn es keine echte (z. B. Jira-)ID gibt.
 - **Doku:** eine Seite `/api/v1/` (was geht, Schlüssel erzeugen, `curl`-Beispiel je Endpunkt, Rezept Jira
   Automation) plus eine von Hand gepflegte `openapi.json` (Power Automate, Zapier, Postman, KI); ein E2E-Test führt

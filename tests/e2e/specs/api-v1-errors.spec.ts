@@ -116,8 +116,8 @@ test('parameter rules of the table (v1_validate, run with php)', () => {
     echo json_encode($out);`;
   const ok = { heading: 'Hi' };
   const cases: [Record<string, string>, Record<string, unknown>, Record<string, unknown>][] = [
-    [{ key: 'DMZ-4' }, {}, ok],                                         // 0 defaults filled in, optional missing stays missing
-    [{ key: 'DMZ-4' }, { limit: '7', all: 'true' }, { heading: '  Ä€😀  ', description: null, at: 'next', count: 3 }], // 1
+    [{ key: 'TIX-4' }, {}, ok],                                         // 0 defaults filled in, optional missing stays missing
+    [{ key: 'TIX-4' }, { limit: '7', all: 'true' }, { heading: '  Ä€😀  ', description: null, at: 'next', count: 3 }], // 1
     [{ key: 'A.php' }, {}, ok],                                         // 2 pattern
     [{ key: 'Ä-1' }, {}, ok],                                           // 3 pattern (ASCII only)
     [{ key: 'A1' }, { limit: '0' }, ok],                                // 4 minimum
@@ -137,8 +137,8 @@ test('parameter rules of the table (v1_validate, run with php)', () => {
   ];
   const result = JSON.parse(execFileSync('php', ['-r', script, JSON.stringify(cases)], { cwd: root, encoding: 'utf8' }));
   expect(result).toEqual([
-    { ok: { key: 'DMZ-4', limit: 100, heading: 'Hi', at: 'end' } },
-    { ok: { key: 'DMZ-4', limit: 7, all: true, heading: 'Ä€😀', description: null, at: 'next', count: 3 } },
+    { ok: { key: 'TIX-4', limit: 100, heading: 'Hi', at: 'end' } },
+    { ok: { key: 'TIX-4', limit: 7, all: true, heading: 'Ä€😀', description: null, at: 'next', count: 3 } },
     { error: 'invalid_param', param: 'key' },
     { error: 'invalid_param', param: 'key' },
     { error: 'invalid_param', param: 'limit' },

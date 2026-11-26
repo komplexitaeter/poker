@@ -114,7 +114,7 @@ return [
                     'example' => ['team' => ['id' => '<TEAM_ID>', 'name' => 'Dolphins', 'url' => '/?t=<TEAM_ID>',
                                              'note' => 'Sprint 42 refinement'],
                                   'member' => ['name' => 'Jira', 'role' => 'observer'],
-                                  'items' => ['open_count' => 4, 'done_count' => 12, 'active_key' => 'DMZ-004']]],
+                                  'items' => ['open_count' => 4, 'done_count' => 12, 'active_key' => 'TIX-004']]],
         ],
         'errors' => [],
         'example' => ['params' => [], 'as' => 'team_info'],
@@ -147,14 +147,14 @@ return [
         'summary' => 'Create or update an item by its key',
         'description' => 'Creates the item if the team has no item with this key (201), otherwise changes its heading '
             . 'and description (200; status, rounds and result stay). Repeat it as often as you like: the key makes an '
-            . 'import idempotent. Keys are compared case-insensitively (dmz-4 is DMZ-4). A done item cannot be changed '
+            . 'import idempotent. Keys are compared case-insensitively (tix-4 is TIX-4). A done item cannot be changed '
             . '(item_closed): reopen it first. Open boards update at once.',
         'auth' => 'member',
         'params' => [
             'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
                       'pattern' => ITEM_KEY_REGEX,
                       'description' => 'Item key, unique in the team, e.g. a Jira issue key: letters, digits, _ and -, '
-                          . 'starting with a letter or digit.', 'example' => 'DMZ-004'],
+                          . 'starting with a letter or digit.', 'example' => 'TIX-004'],
             'heading' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
                           'max_length' => 200, 'description' => 'Short title shown on the board.',
                           'example' => 'Login with SSO'],
@@ -168,14 +168,14 @@ return [
         'handler' => 'v1_item_upsert',
         'responses' => [
             201 => ['description' => 'Item created', 'schema' => 'Item',
-                    'example' => ['key' => 'DMZ-004', 'heading' => 'Login with SSO',
+                    'example' => ['key' => 'TIX-004', 'heading' => 'Login with SSO',
                                   'description' => 'As a user I want to sign in with my company account.',
                                   'status' => 'open', 'active' => false, 'position' => 3, 'result' => null,
                                   'url' => '/?t=<TEAM_ID>']],
             200 => ['description' => 'Item updated', 'schema' => 'Item'],
         ],
         'errors' => ['item_closed', 'limit_reached'],
-        'example' => ['params' => ['key' => 'DMZ-004', 'heading' => 'Login with SSO',
+        'example' => ['params' => ['key' => 'TIX-004', 'heading' => 'Login with SSO',
                                    'description' => 'As a user I want to sign in with my company account.'],
                       'as' => 'item'],
     ],
@@ -199,7 +199,7 @@ return [
         'handler' => 'v1_item_list',
         'responses' => [
             200 => ['description' => 'The items', 'schema' => 'ItemList',
-                    'example' => ['items' => [['key' => 'DMZ-004', 'heading' => 'Login with SSO', 'description' => null,
+                    'example' => ['items' => [['key' => 'TIX-004', 'heading' => 'Login with SSO', 'description' => null,
                                                 'status' => 'open', 'active' => true, 'position' => 1, 'result' => null,
                                                 'url' => '/?t=<TEAM_ID>']],
                                   'open_count' => 1, 'done_count' => 12]],
@@ -219,12 +219,12 @@ return [
         'auth' => 'member',
         'params' => [
             'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
-                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'DMZ-004'],
+                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'TIX-004'],
         ],
         'handler' => 'v1_item_get',
         'responses' => [
             200 => ['description' => 'The item', 'schema' => 'Item',
-                    'example' => ['key' => 'DMZ-004', 'heading' => 'Login with SSO',
+                    'example' => ['key' => 'TIX-004', 'heading' => 'Login with SSO',
                                   'description' => 'As a user I want to sign in with my company account.',
                                   'status' => 'done', 'active' => false, 'position' => null,
                                   'result' => ['value' => '8', 'card_key' => 'eight01', 'chosen' => false,
@@ -236,7 +236,7 @@ return [
                                   'url' => '/?t=<TEAM_ID>']],
         ],
         'errors' => ['item_not_found'],
-        'example' => ['params' => ['key' => 'DMZ-004']],
+        'example' => ['params' => ['key' => 'TIX-004']],
     ],
 
     'item_reopen' => [
@@ -249,14 +249,14 @@ return [
         'auth' => 'member',
         'params' => [
             'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
-                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'DMZ-004'],
+                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'TIX-004'],
         ],
         'handler' => 'v1_item_reopen',
         'responses' => [
             200 => ['description' => 'The item, open', 'schema' => 'Item'],
         ],
         'errors' => ['item_not_found', 'limit_reached'],
-        'example' => ['params' => ['key' => 'DMZ-004']],
+        'example' => ['params' => ['key' => 'TIX-004']],
     ],
 
     'item_delete' => [
@@ -269,14 +269,14 @@ return [
         'auth' => 'member',
         'params' => [
             'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
-                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'DMZ-004'],
+                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'TIX-004'],
         ],
         'handler' => 'v1_item_delete',
         'responses' => [
             204 => ['description' => 'Item deleted'],
         ],
         'errors' => ['item_not_found'],
-        'example' => ['params' => ['key' => 'DMZ-004']],
+        'example' => ['params' => ['key' => 'TIX-004']],
     ],
 
     'key_create' => [
