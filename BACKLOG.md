@@ -359,6 +359,21 @@ Token-Konzept: `mockups/fish-tokens/concept.html` (Reaktionen über die API stat
 
 ## Offen: Technik & Betrieb
 
+### B-152 UID-Härtung (Vorbereitung für B-150/B-151)
+Status: refined (Andreas, 2026-11-26), Umfang für den nächsten Rollout; für die Nutzer unsichtbar. Enthält den Kern
+von B-91. Die UID (User-ID im Browser, `localStorage.SID`) wird das eigentliche Geheimnis der Person.
+1. **UID vom Server**, wenn der Browser noch keine hat: 16 Zeichen, kryptografisch zufällig (`random_bytes()`, passt in
+   `varchar(16)`). Heute erzeugt der Browser sie aus Zeitstempel + `Math.random()` (`script.js`, ca. 40 Bit Zufall).
+   Bestehende UIDs bleiben gültig.
+2. **UID nie mehr in der URL** (Access-Logs): schreibende Aufrufe im POST-Body, lesende GET-Aufrufe (z. B. `dao.php`,
+   `get_user.php`) per Header (z. B. `X-Poker-User`) – lesend bleibt GET, näher an REST (Andreas).
+3. **UID in allen Endpunkten mitgeben und prüfen**, dass sie im Team registriert ist. Registriert heißt: Zeile in
+   `pok_players_tbl` für das Team, egal ob Player, Observer oder `REMOVED` (entfernt = nur vom Board genommen, bleibt
+   registriert, Schwebezustand zwischen Observer und Player; Andreas). Was eine Rolle darf, bleibt wie im Board.
+   Ausnahmen festlegen: Board öffnen und beitreten ohne Registrierung (`dao.php` für Neue, `name.php`), Team anlegen,
+   Einstellungen über alle Teams (`get_user`/`update_user`, an der UID statt am Team), eigenes Löschen (`delete_user`).
+Planning: Ben listet alle Endpunkte (Übergabe der UID heute, Prüfung heute, Ausnahmen), Sina prüft, dann Plan mit Andreas.
+
 ### B-150 REST-API: Topic und Items von außen setzen (Schritt A)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Ersetzt B-80. Bedarf an den Extremen: einfach „Topic setzen“
 (Feedback 2026-10-29) und die komplette KI-Integration (B-151); die Mitte (Webhooks, Zapier-Bots, Event-Stream für
@@ -377,8 +392,7 @@ eigene Skripte) erstmal nicht.
 - **Ohne Schlüssel** geht nur: Team anlegen und einem Team (per Team-ID) neu beitreten – jeweils mit Name und Rolle
   (Player/Observer). Der Server erzeugt dafür im Hintergrund eine UID und gibt den API-Schlüssel dieser neuen Person
   zurück (die UID braucht der Aufrufer nicht).
-- **Schritt 1 zieht auch die interne API glatt** (Andreas): jeder interne Endpunkt prüft, dass die mitgeschickte UID im
-  Team registriert ist (nicht entfernt), wo er heute nur die Team-ID nimmt oder die UID nicht prüft (Kern von B-91).
+- **Voraussetzung B-152** (UID vom Server, nie in der URL, in allen internen Endpunkten geprüft).
 - Nach jeder Änderung `notify_team()` wie bei der App (Boards aktualisieren sich sofort).
 - Die Logik hinter den Endpunkten so schneiden, dass B-151 sie mitnutzt (REST und MCP rufen dieselben Funktionen).
 Offen fürs Refinement: Format des Ergebnisses (Wert, Verteilung, Runden), Fehlercodes.
@@ -552,7 +566,7 @@ prüfen, bevor die E2E-Shards starten; schlägt früh und billig fehl.
 ## Offen: Sicherheit & Datenschutz
 
 ### B-91 Entfernen und Löschen nur mit Berechtigung
-Status: refined; der Kern (UID-Prüfung in allen internen Endpunkten) kommt mit Schritt 1 von B-150 (Andreas,
+Status: refined; der Kern (UID-Prüfung in allen internen Endpunkten) ist in B-152 aufgegangen (Andreas,
 2026-11-26). Fund Sina, Gedanke Andreas (2026-10-30):
 - **Anderen Spieler entfernen** (`api/delete.php`, heute nur `t` + `mkey`): Aufrufer schickt zusätzlich seine User-ID
   und darf nur entfernen, wenn er selbst (nicht entfernter) Mitglied des Teams ist. Ziel bleibt der `mkey`.
