@@ -57,6 +57,11 @@ test('the UID is taken from the header X-Poker-User; the URL id still works and 
   expect((await post(page, 'setc.php', { t, cardkey: 'three01' }, anna)).ok()).toBeTruthy();
   expect((await post(page, 'setc.php', { t, id: bert, cardkey: 'five001' })).ok()).toBeTruthy();
 
+  // the answer contains the own state of the header's UID: no cache may store it (B-152)
+  const raw = await page.request.get(`/api/dao.php?t=${encodeURIComponent(t)}`, { headers: { [HEADER]: anna } });
+  expect(raw.headers()['cache-control']).toBe('no-store, private');
+  expect(raw.headers()['vary']).toContain('X-Poker-User');
+
   let data = await dao(page, { t }, anna);
   expect(data).toMatchObject({ name: 'Anna', selected_card_key: 'three01' });
   expect(data.players.map((p: { name: string }) => p.name).sort()).toEqual(['Anna', 'Bert']);
