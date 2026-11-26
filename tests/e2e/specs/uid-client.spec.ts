@@ -188,7 +188,7 @@ test('"Delete my data" in one tab: the other tab of the browser never uses the d
   const seen = (await Promise.all(sent)).filter(s => new URL(s.url).pathname.startsWith('/api/'));
   expect(seen.some(s => new URL(s.url).pathname === '/api/dao.php')).toBe(true);
   for (const s of seen) expect(s.uid, s.url).not.toBe(old);
-  // the server does not know the deleted UID again (dao.php would have created its user row)
+  // the server does not know the deleted UID again (dao.php never creates a user row, only name.php/update_user.php)
   expect(old).toMatch(/^[A-Z2-7]{16}$/); // safe to put into the SQL below
   const rows = execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-N', '-B', '-e',
     `select (select count(*) from pok_user_tbl where id = '${old}') + (select count(*) from pok_players_tbl where id = '${old}')`],

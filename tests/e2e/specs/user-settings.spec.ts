@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 import { newPlayer, createTeam, pageReady, getSid, asUser } from './helpers';
 
 /**
- * The user row (pok_user_tbl) used to be created only by the first dao.php of a board, and update_user.php only
- * updated it. A user who switched the color mode on the start page before ever opening a board lost the setting
- * silently (0 rows changed). update_user.php now creates the row when needed.
+ * The user row (pok_user_tbl) is created on joining a board (name.php); dao.php only reads it (missing row: defaults).
+ * A user who switches a setting before ever joining a board has no row yet: update_user.php creates it when needed,
+ * otherwise the setting would be lost silently (0 rows changed).
  */
 test('a new user switches to light mode on the start page, the start page is light after a reload', async ({ browser }) => {
   const page = await newPlayer(browser, { colorScheme: 'dark' });

@@ -248,7 +248,7 @@ test('start page: the form never submits natively while the color mode loads (B-
 test('start page: without a kept mode a saved light mode is there when the page shows, no dark flash (B-34, B-141)', async ({ browser }) => {
   const alice = await newPlayer(browser);
   await createTeam(alice, 'Startup Light');
-  // a user with a board (row in pok_user_tbl created by dao.php); update_user.php creates the row itself, too
+  // a user with a board; update_user.php creates the row in pok_user_tbl when needed (dao.php only reads it)
   await pageReady(alice);
   const res = await alice.request.post('/api/update_user.php?color_mode=light', asUser(await getSid(alice)));
   expect(res.ok()).toBeTruthy();
@@ -265,7 +265,7 @@ test('start page: without a kept mode a saved light mode is there when the page 
 test('start page: without a kept mode a slow get_user.php shows the page after 3 s in the system mode, the saved mode follows (B-34, B-141)', async ({ browser }) => {
   const alice = await newPlayer(browser, { colorScheme: 'dark' });
   await createTeam(alice, 'Startup Slow User');
-  // a user with a board (row in pok_user_tbl created by dao.php); update_user.php creates the row itself, too
+  // a user with a board; update_user.php creates the row in pok_user_tbl when needed (dao.php only reads it)
   await pageReady(alice);
   const res = await alice.request.post('/api/update_user.php?color_mode=light', asUser(await getSid(alice)));
   expect(res.ok()).toBeTruthy();
