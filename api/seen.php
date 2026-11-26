@@ -13,10 +13,10 @@ set_header('json');
  * an empty signature (no 4xx for normal boards). No notify_team(): a read-like call must never notify (B-81).
  */
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL) ?? '', 0, 80);
 
-if (strlen($id) < 10) die();
+if ($id === '') die(); // B-152: get_uid() is '' below 10 characters
 
 $link = db_init();
 touch_player($link, $id, $t);

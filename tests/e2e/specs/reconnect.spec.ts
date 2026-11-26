@@ -46,7 +46,7 @@ async function proxyPokerMsg(page: Page): Promise<MsgProxy> {
 async function withProxy(page: Page): Promise<MsgProxy> {
   const proxy = await proxyPokerMsg(page);
   await page.reload();
-  await expect.poll(() => page.evaluate('gConn.readyState')).toBe(1);
+  await expect.poll(() => page.evaluate('gConn?.readyState')).toBe(1); // B-152: null until the UID is there
   await expect(page.locator('#conn_hint')).toBeHidden();
   return proxy;
 }
@@ -132,7 +132,7 @@ test('passive viewer, silent connection (no hb): rebuilt after 40 s, the hint un
   proxy.refuse = false;
   proxy.silent = false;
   await alice.clock.runFor(3000);
-  await expect.poll(() => alice.evaluate('gConn.readyState')).toBe(1);
+  await expect.poll(() => alice.evaluate('gConn?.readyState')).toBe(1);
   await expect(hint).toBeHidden();
   await expectTableCard(alice, 'Bob', 'done001');
 });
@@ -167,10 +167,10 @@ test('short break below the delay: no reconnect hint (B-86)', async ({ browser }
   await watchConnHint(alice);
 
   await proxy.current!.close();
-  await expect.poll(() => alice.evaluate('gConn.readyState')).toBe(3); // CLOSED
+  await expect.poll(() => alice.evaluate('gConn?.readyState')).toBe(3); // CLOSED
   await alice.clock.runFor(400);
   await expect.poll(() => proxy.connections).toBe(2);
-  await expect.poll(() => alice.evaluate('gConn.readyState')).toBe(1);
+  await expect.poll(() => alice.evaluate('gConn?.readyState')).toBe(1);
   await alice.clock.runFor(2000); // well past the delay of the hint
 
   await expect(alice.locator('#conn_hint')).toBeHidden();

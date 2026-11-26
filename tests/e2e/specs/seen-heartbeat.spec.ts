@@ -1,12 +1,12 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, userRequest } from './helpers';
 
 /**
  * B-127 (API level): api/seen.php is the light heartbeat of the board. It marks the own board as connected (like
  * dao.php, B-110) and returns only {away_sig}: sha1 over the sorted mkeys of the away persons (players and observers,
- * not REMOVED, never the own one), '' when nobody is away. dao.php delivers the same away_sig. Never player ids.
+ * since B-154 also removed persons, never the own one), '' when nobody is away. dao.php delivers the same away_sig. Never player ids.
  * last_callback_time is moved back per SQL, so the test does not wait.
  */
 
@@ -46,11 +46,13 @@ function sig(mkeys: number[]): string {
 }
 
 async function post(page: Page, endpoint: string, params: Record<string, string>) {
-  return page.request.post(`/api/${endpoint}?${new URLSearchParams(params).toString()}`);
+  const { query, options } = userRequest(params); // B-152: the id in the header
+  return page.request.post(`/api/${endpoint}?${query}`, options);
 }
 
 async function get(page: Page, endpoint: string, t: string, id: string) {
-  const res = await page.request.get(`/api/${endpoint}?${new URLSearchParams({ t, id }).toString()}`);
+  const { query, options } = userRequest({ t, id });
+  const res = await page.request.get(`/api/${endpoint}?${query}`, options);
   expect(res.ok()).toBeTruthy();
   return res;
 }
@@ -86,11 +88,14 @@ test('seen.php: marks the board connected and returns the same away_sig as dao.p
   expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([olgaMkey]) });
   expect(lastLoadSecondsAgo(t, alice)).toBeLessThan(5);
 
-  // a removed player does not count, even when away
+  // B-154: a removed player counts like an observer (he is in the observer list while connected)
   lastLoadAgo(t, bob, 120);
   expect((await post(page, 'delete.php', { t, mkey: String(bobMkey) })).ok()).toBeTruthy();
+  expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([bobMkey, olgaMkey]) });
+  expect((await (await get(page, 'dao.php', t, alice)).json()).away_sig).toBe(sig([bobMkey, olgaMkey]));
+  // his board connects again: no longer away
+  await get(page, 'seen.php', t, bob);
   expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([olgaMkey]) });
-  expect((await (await get(page, 'dao.php', t, alice)).json()).away_sig).toBe(sig([olgaMkey]));
 
   // too short id: empty answer like dao.php; unknown team: no error, empty signature, nothing changed
   expect(await (await get(page, 'seen.php', t, 'SHORT')).text()).toBe('');

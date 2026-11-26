@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCards, selectedDeckCards, pickCard,
-  tableCard, setTeamDeck, FIB_ALL, CONTROLS_ALL } from './helpers';
+  tableCard, setTeamDeck, FIB_ALL, CONTROLS_ALL, asUser } from './helpers';
 
 /* B-99 F8 (Andreas):
  *   15  control cards on the table show heading and description in every set (small cards: a few whole lines)
@@ -17,7 +17,7 @@ function teamParam(url: string): string {
 }
 
 async function setCard(page: Page, url: string, id: string, key: string): Promise<void> {
-  expect((await page.request.post(`/api/setc.php?id=${id}&cardkey=${key}&t=${teamParam(url)}`)).ok()).toBeTruthy();
+  expect((await page.request.post(`/api/setc.php?cardkey=${key}&t=${teamParam(url)}`, asUser(id))).ok()).toBeTruthy();
 }
 
 /* navigator.keyboard as a browser without it (Firefox, Safari) or with a given layout map (Chromium) */

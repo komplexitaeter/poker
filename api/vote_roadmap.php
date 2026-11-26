@@ -11,16 +11,16 @@ require './lib.php';
 require_post();
 set_header('json');
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 $item = filter_input(INPUT_GET, "item", FILTER_VALIDATE_INT, array("options" => array("min_range" => 1)));
 $reaction = get_text_param("reaction", 10);
 
-if (strlen($id) < 10 || !is_int($item) || !in_array($reaction, array_merge(ROADMAP_REACTIONS, ['NONE']), true)) {
+if ($id === '' || !is_int($item) || !in_array($reaction, array_merge(ROADMAP_REACTIONS, ['NONE']), true)) {
     http_response_code(400);
     exit;
 }
 
-$link = db_init('utf8mb4');
+$link = db_init();
 
 // only users who joined a board (player or observer), so not every random id can vote
 // (dao.php creates a pok_user_tbl row for any id, so that table is no proof)

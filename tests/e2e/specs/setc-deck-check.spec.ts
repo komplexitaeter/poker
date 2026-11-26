@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi, setTeamDeck } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, setTeamDeck, asUser } from './helpers';
 
 /**
  * B-103: setc.php only stores cards of the team's deck (cards switched on) and its active control cards. Any other
@@ -22,7 +22,7 @@ function teamIdOf(url: string): string {
 }
 
 async function setc(page: Page, t: string, id: string, cardkey: string) {
-  return page.request.post(`/api/setc.php?${new URLSearchParams({ t, id, cardkey }).toString()}`);
+  return page.request.post(`/api/setc.php?${new URLSearchParams({ t, cardkey }).toString()}`, asUser(id));
 }
 
 test('setc.php rejects cards outside the team deck and control cards', async ({ browser }) => {

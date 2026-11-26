@@ -3,7 +3,7 @@ require '../config.php';
 require './lib.php';
 require_post();
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 // no feedback without a valid id (B-88); the client always sends its SID
 if ($id === '') exit;
 $stars = (int)filter_input(INPUT_GET, "stars", FILTER_SANITIZE_NUMBER_INT );
@@ -17,7 +17,7 @@ if (!in_array($type, FEEDBACK_TYPES, true)) $type = 'OTHER';
 $context = $type === 'BUG' ? get_text_param("context", 500) : '';
 if ($context === '') $context = null;
 
-$link = db_init('utf8mb4');
+$link = db_init();
 
 $sql = $link->prepare("INSERT INTO pok_feedback_tbl (id, fb_stars, fb_text, fb_type, fb_context) VALUES (?, ?, ?, ?, ?)");
 $sql->bind_param('sisss', $id, $stars, $text, $type, $context);

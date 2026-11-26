@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, getSid, asUser } from './helpers';
 
 /**
  * B-42: the sort option "Define the sort order in-game" (CHOOSE) is removed.
@@ -13,7 +13,7 @@ const DB_ARGS = ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e'];
 
 function setStoredResultsOrder(teamId: string, value: string): void {
   // team ids and values are plain [A-Z0-9:] here, so building the statement is safe
-  expect(teamId).toMatch(/^[A-Za-z0-9]+$/);
+  expect(teamId).toMatch(/^[A-Za-z0-9_-]+$/);
   expect(value).toMatch(/^[A-Z:]+$/);
   execFileSync('mysql', [...DB_ARGS, '-e',
     `update pok_teams_tbl set results_order = '${value}' where id = '${teamId}'`],
@@ -23,10 +23,10 @@ function setStoredResultsOrder(teamId: string, value: string): void {
 async function newTeam(page: Page, name: string) {
   const boardUrl = await createTeam(page, name);
   const teamId = new URL(boardUrl).searchParams.get('t') as string;
-  const sid = (await page.evaluate(() => localStorage.getItem('SID'))) as string;
+  const sid = await getSid(page);
   const dao = async () => {
     const res = await page.request.get(
-      `./api/dao.php?id=${encodeURIComponent(sid)}&t=${encodeURIComponent(teamId)}`);
+      `./api/dao.php?t=${encodeURIComponent(teamId)}`, asUser(sid));
     expect(res.ok()).toBeTruthy();
     return res.json();
   };

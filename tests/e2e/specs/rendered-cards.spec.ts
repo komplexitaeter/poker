@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCards, pickCard, tableCard, setTeamDeck } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, deckCard, deckCards, pickCard, tableCard, setTeamDeck, asUser } from './helpers';
 
 /* B-99 (R3, F2/F3): cards are rendered (script/cards.js, symbols from src/cards.svg) instead of images. */
 
@@ -27,7 +27,7 @@ function setUnknownCard(url: string, id: string, key: string): void {
 }
 
 async function setCard(page: Page, url: string, id: string, key: string): Promise<void> {
-  const res = await page.request.post(`/api/setc.php?id=${id}&cardkey=${key}&t=${teamParam(url)}`);
+  const res = await page.request.post(`/api/setc.php?cardkey=${key}&t=${teamParam(url)}`, asUser(id));
   expect(res.ok()).toBeTruthy();
 }
 

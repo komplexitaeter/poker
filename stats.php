@@ -34,6 +34,7 @@ const MILESTONES = array(
     '2026-11-16' => 'Topic list, median, nudge sound; emoji quota, clean-up',
     '2026-11-18' => 'Async start, colour mode kept locally',
     '2026-11-25' => 'script.js split, topic panel fix',
+    '2026-11-26' => 'UID from the server, only in a header; removed players as observers',
 );
 /* login (B-63): htpasswd file of nginx, the only place of the credentials (maintained with htpasswd -B -C 12);
    STATS_COOKIE_SECRET (config.php) is part of the cookie signature key */
@@ -252,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $post_action !== 'login') {
     }
 
     $action = $post_action;
-    $link = db_init('utf8mb4');
+    $link = db_init();
 
     if ($action === 'feedback_done') {
         // tick off (done=1) or reopen (done=0) one feedback; the first done date is kept
@@ -437,7 +438,7 @@ $error = null;
 $open_feedback_cnt = 0;
 
 if ($auth_user !== null) try {   // not logged in: login form only, no query
-    $link = db_init('utf8mb4');
+    $link = db_init();
     $db_offset = set_db_time_zone($link, $time_zone_offset);
     $open_feedback_cnt = rows($link, "select /*+ MAX_EXECUTION_TIME(2000) */ count(1) as cnt
                                         from pok_feedback_tbl where done_date is null")[0]['cnt'];

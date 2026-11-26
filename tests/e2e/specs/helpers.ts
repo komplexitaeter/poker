@@ -42,6 +42,27 @@ export async function pageReady(page: Page, timeout = 15_000): Promise<void> {
   await expect(page.locator('html')).toHaveClass(/(^|\s)ready(\s|$)/, { timeout });
 }
 
+/** B-152: the header that carries the user id (UID) to the API; never put the UID into a URL. */
+export const UID_HEADER = 'X-Poker-User';
+
+/** B-152: request options that send the given UID in the header X-Poker-User (page.request.get/post). */
+export function asUser<T extends { headers?: Record<string, string> }>(uid: string, options?: T) {
+  return { ...(options ?? {}), headers: { ...(options?.headers ?? {}), [UID_HEADER]: uid } };
+}
+
+/** B-152: API parameters with the user id as "id": the query string without it, and request options that send it in
+ * the header X-Poker-User (the old URL parameter id goes away with BE-2). */
+export function userRequest(params: Record<string, string>) {
+  const { id, ...rest } = params;
+  return { query: new URLSearchParams(rest).toString(), options: id === undefined ? {} : asUser(id) };
+}
+
+/** B-152: the UID (localStorage SID) of the page, once the board or start page has one (it comes from uid.php). */
+export async function getSid(page: Page): Promise<string> {
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('SID'))).not.toBeNull();
+  return (await page.evaluate(() => localStorage.getItem('SID'))) as string;
+}
+
 /** Creates a team via the start page and returns the board URL. */
 export async function createTeam(page: Page, teamName: string): Promise<string> {
   await page.goto('/');
@@ -70,7 +91,7 @@ export async function addPlayersViaApi(page: Page, boardUrl: string, names: stri
   for (const [i, name] of names.entries()) {
     const id = `E2EAPI${Date.now().toString(36)}${i}`.slice(0, 16).toUpperCase();
     const res = await page.request.post(
-      `/api/name.php?id=${id}&type=player&name=${encodeURIComponent(name)}&t=${encodeURIComponent(t)}`);
+      `/api/name.php?type=player&name=${encodeURIComponent(name)}&t=${encodeURIComponent(t)}`, asUser(id));
     expect(res.ok()).toBeTruthy();
     ids.push(id);
   }

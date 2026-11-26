@@ -2,7 +2,6 @@
 /* global Remarkable */
 
 let t;
-let sid = localStorage.getItem('SID');
 let gConn = null;
 let gColorMode = readStoredColorMode() || "dark"; // B-141: the mode last used on this device first
 let gScreenWidth = null;
@@ -24,12 +23,80 @@ let gJsonBefore = null;
 // a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
 const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 let gUserName = null;
-let gPromoInitiated = false;
 
-if (sid === null) {
-    let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
-    localStorage.setItem('SID', uid);
-    sid = uid;
+/* B-152: the user id (UID, localStorage 'SID') is the secret of the person. A browser without one gets it from the
+ * server (api/uid.php, 16 characters, 80 bits), never from Math.random. It travels only in the header X-Poker-User
+ * (apiFetch), never in a URL. Readers use getUid(); whoever needs it for sure waits for ensureUid(). */
+const UID_STORE_KEY = 'SID';
+const UID_HEADER = 'X-Poker-User';
+const UID_PATTERN = /^[A-Za-z0-9_-]{10,16}$/; // as get_uid() in api/lib.php; existing UIDs of old clients stay valid
+let gUid = null;          // the UID of this page, once known
+let gUidPromise = null;   // the one pending ensureUid() of this page
+
+function readStoredUid() {
+    try {
+        const uid = localStorage.getItem(UID_STORE_KEY);
+        return typeof uid === 'string' && UID_PATTERN.test(uid) ? uid : null;
+    } catch (e) {
+        return null; // no storage: the UID of this page only (gUid)
+    }
+}
+
+/* the UID of this page, '' while none is known yet (then ensureUid() gets one) */
+function getUid() {
+    if (gUid === null) gUid = readStoredUid();
+    return gUid ?? '';
+}
+
+/* resolves with the UID: the stored one, else a new one of api/uid.php. One request per page at a time; it is
+ * retried (1 s, 2 s, 4 s, then every 5 s) until it works - meanwhile everything that needs the UID waits (the board
+ * stays in its loading state, B-34). Another tab may have stored a UID meanwhile: an existing one wins. */
+function ensureUid() {
+    if (getUid() !== '') return Promise.resolve(gUid);
+    if (gUidPromise !== null) return gUidPromise;
+    let tries = 0;
+    const attempt = () => fetch('./api/uid.php', { method: 'POST', cache: 'no-store' })
+        .then(response => response.ok ? response.json() : Promise.reject(new Error('HTTP ' + response.status)))
+        .then(json => {
+            const fresh = json !== null && typeof json === 'object' && typeof json.id === 'string' ? json.id : '';
+            if (!UID_PATTERN.test(fresh)) throw new Error('no uid');
+            const stored = readStoredUid(); // another tab was faster: its UID wins
+            if (stored !== null) return stored;
+            try { localStorage.setItem(UID_STORE_KEY, fresh); } catch (e) { /* this page only */ }
+            return fresh;
+        })
+        .catch(error => {
+            console.log('uid.php failed', error);
+            const stored = readStoredUid();
+            if (stored !== null) return stored;
+            const wait = tries < CONFIG_RETRY_MS.length ? CONFIG_RETRY_MS[tries] : CONFIG_RETRY_MAX_MS;
+            tries++;
+            return delay(wait).then(attempt);
+        });
+    gUidPromise = attempt().then(uid => {
+        gUid = uid;
+        gUidPromise = null;
+        return uid;
+    });
+    return gUidPromise;
+}
+
+/* B-152: another tab of this browser deleted the user ("Delete user": SID removed, storage cleared) or stored
+ * another UID: this page forgets its UID, getUid() reads the storage again and ensureUid() gets a new one if none is
+ * there. Never keeps a deleted UID (dao.php would create it again). Not fired in the tab that made the change. */
+window.addEventListener('storage', (event) => {
+    if (event.key === null || event.key === UID_STORE_KEY) gUid = null;
+});
+
+/* B-152: every call of the own API (relative ./api/ URL) goes through here: it waits for the UID and sends it in the
+ * header X-Poker-User. Other URLs (other hosts, static files) are fetched as they are, never with the UID. */
+function apiFetch(url, init = {}) {
+    if (typeof url !== 'string' || !url.startsWith('./api/')) return fetch(url, init);
+    return ensureUid().then(uid => {
+        const headers = new Headers(init.headers || undefined);
+        headers.set(UID_HEADER, uid);
+        return fetch(url, Object.assign({}, init, { headers: headers }));
+    });
 }
 
 String.prototype.hashCode = function() {
@@ -63,7 +130,7 @@ function getBrowserWidth(){
 }
 
 function newRound() {
-    let url = './api/newround.php?t=' + t;
+    let url = './api/newround.php?t=' + encodeURIComponent(t);
     apiWrite(url);
 }
 
@@ -150,7 +217,7 @@ function controlsDsp(playerType) {
 }
 
 function deletePlayer(mkey) {
-    let url = './api/delete.php?mkey=' + encodeURIComponent(mkey) + '&t=' + t;
+    let url = './api/delete.php?mkey=' + encodeURIComponent(mkey) + '&t=' + encodeURIComponent(t);
     apiWrite(url);
 }
 
@@ -173,13 +240,13 @@ function setC(e) {
     let url = null;
     if (element.classList.contains('selected')) {
         if (!gAllPlayersReady) {
-            url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + '&t=' + t;
+            url = './api/setc.php?cardkey=' + '&t=' + encodeURIComponent(t);
             element.classList.remove('selected');
             element.setAttribute('aria-pressed', 'false');
         }
     }
     else
-        url = './api/setc.php?id=' + localStorage.getItem('SID') + '&cardkey=' + encodeURIComponent(deckCardKey(element)) + '&t=' + t;
+        url = './api/setc.php?cardkey=' + encodeURIComponent(deckCardKey(element)) + '&t=' + encodeURIComponent(t);
 
     if (url !== null) apiWrite(url);
 }
@@ -913,7 +980,7 @@ function updateDao(isOnLoad, isRetry = false) {
         isOnLoad = isOnLoad || gDaoRetry.isOnLoad;
         gDaoRetry = null;
     }
-    const url = './api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + t;
+    const url = './api/dao.php?t=' + encodeURIComponent(t);
     const seq = ++gDaoSeq;
     // B-110: any load does what a pending heartbeat would do (it refreshes last_callback_time and the away state)
     clearTimeout(gHbLoadTimer);
@@ -929,7 +996,7 @@ function updateDao(isOnLoad, isRetry = false) {
     const bootTimeout = DAO_BOOT_TIMEOUT_MS[Math.min(gBootTryN, DAO_BOOT_TIMEOUT_MS.length - 1)];
     if (ctrl !== null) gBootTryN++;
     const abortTimer = ctrl !== null ? setTimeout(() => ctrl.abort(), bootTimeout) : 0;
-    fetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
+    apiFetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
         .then((response) => {
             if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();
@@ -972,9 +1039,6 @@ function updateDao(isOnLoad, isRetry = false) {
             gLastJson = myJson;
             updateDom(myJson, setup, timerStateFresh(timerWrite));
             gJsonBefore = myJson;
-
-            // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
-            // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
         })
         // not retried: the same state would fail again. B-34: a failed set-up leaves the page hidden; the next
@@ -1056,7 +1120,7 @@ function hbSeen() {
         return;
     }
     const seq = gDaoSeq;
-    fetch('./api/seen.php?id=' + localStorage.getItem('SID') + '&t=' + t)
+    apiFetch('./api/seen.php?t=' + encodeURIComponent(t))
         .then(response => response.json())
         .then(json => {
             if (json === null || typeof json !== 'object' || typeof json.away_sig !== 'string') {
@@ -1970,15 +2034,18 @@ function loadBoard() {
     const urlParams = new URLSearchParams(window.location.search);
     t = urlParams.get("t");
 
-    updateDao(true); // B-34: cards.json and card_catalog.json load since script.js ran (gConfigReady)
+    // B-152: the first board load, the connection and the page view only with a UID (first visit: from uid.php)
+    ensureUid().then(() => {
+        updateDao(true); // B-34: cards.json and card_catalog.json load since script.js ran (gConfigReady)
+        initializeWSConnection(t);
+        measureEvent("BOARD_ON_LOAD");
+    });
     generateQRCode(window.location.href);
-    initializeWSConnection(t);
     initWSReconnect();
     initDisplayHandling();
     initSidebar(); // B-113 (sidebar.js)
     initTableInteraction(); // B-110
     initNudgeAudio(); // B-133
-    measureEvent("BOARD_ON_LOAD");
 
     document.getElementById('nameinput').addEventListener('input', function(event) {
         updateBecomeUserButtons(event.target);
@@ -2069,7 +2136,7 @@ function keyUpDown(event) {
 }
 
 function updateBecomeUserButtons(nameInput) {
-    if ( nameInput.value.length === 0) {
+    if (nameInput.value.trim().length === 0) { // B-152: a name of spaces only is no name (name.php: 400)
         document.getElementById("become_player_btn").disabled = true;
         document.getElementById("become_observer_btn").disabled = true;
     } else {
@@ -2087,9 +2154,9 @@ function becomeObserver() {
 }
 
 function becomeUser(type) {
-    let name = document.getElementById("nameinput").value;
+    let name = document.getElementById("nameinput").value.trim();
     if (name.length > 0) {
-        let url = './api/name.php?id=' + localStorage.getItem('SID') + '&type=' + type + '&name=' + encodeURIComponent(name) + '&t=' + t;
+        let url = './api/name.php?type=' + type + '&name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(t);
         apiWrite(url);
     }
 }
@@ -2130,9 +2197,13 @@ function loadInit() {
         gColorMode = stored;
         show();
     }
+    // B-152: a browser without a UID has no saved settings: no get_user.php (the page view gets the UID)
+    if (getUid() === '') {
+        if (!shown) { systemMode(); show(); }
+        return;
+    }
     const waitTimer = shown ? null : setTimeout(() => { if (!shown) { systemMode(); show(); } }, USER_WAIT_MS);
-    const url = './api/get_user.php?id=' + encodeURIComponent(localStorage.getItem('SID'));
-    fetchJsonResult(url, 0).then((result) => {
+    fetchJsonResult('./api/get_user.php', 0).then((result) => {
         const user = result.json;
         if (user !== null && typeof user.color_mode === 'string' && user.color_mode !== '') {
             if (!shown) {
@@ -2151,10 +2222,9 @@ function loadInit() {
 }
 
 function measureEvent(eventCode) {
-    const url = "./api/measure_event.php?id="+sid
-            +"&event_code="+eventCode
+    const url = "./api/measure_event.php?event_code="+eventCode
             +"&display_type="+getBrowserWidth();
-    fetch(url, { method: 'POST' }).then();
+    apiFetch(url, { method: 'POST' }).catch(() => {});
 }
 
 
@@ -2220,7 +2290,7 @@ function switchColorMode(){
     measureEvent("USE_COLOR_SWITCH");
     setColor();
     storeColorMode(gColorMode); // B-141
-    fetch('./api/update_user.php?id=' + encodeURIComponent(localStorage.getItem('SID')) + '&color_mode=' + gColorMode, { method: 'POST' }).then();
+    apiFetch('./api/update_user.php?color_mode=' + gColorMode, { method: 'POST' }).catch(() => {});
 }
 
 
@@ -2454,7 +2524,7 @@ function fetchJsonResult(url, timeoutMs) {
     const ctrl = typeof AbortController === 'function' && timeoutMs > 0 ? new AbortController() : null;
     const timer = ctrl !== null ? setTimeout(() => ctrl.abort(), timeoutMs) : 0;
     let answered = false;
-    return fetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
+    return apiFetch(url, ctrl !== null ? { signal: ctrl.signal } : {})
         .then((response) => {
             if (!response.ok) {
                 answered = isFinalStatus(response.status);
@@ -3261,87 +3331,26 @@ function showDeleteUserOverlay(openIt=true) {
 }
 
 function deleteUser() {
-    let url = './api/delete_user.php?id=' + sid;
-    // B-81: the API tells the boards of all the user's teams; this page is left, so no reload here
-    fetch(url, { method: 'POST' }).then(()=>{
-        localStorage.clear();
-        sid = '-1';
-        document.location = 'about:blank';
+    // B-152: the UID leaves the storage before the request: delete_user.php tells the boards of all the user's teams
+    // (B-81) maybe before its answer is here, and other tabs of this browser must not load them with the deleted UID
+    // (dao.php would create it again). They drop it on the storage event and get a new one when they need one.
+    const uid = getUid();
+    try { localStorage.removeItem(UID_STORE_KEY); } catch (e) { /* no storage */ }
+    apiFetch('./api/delete_user.php', { method: 'POST' }).then(() => {
+        let fresh = null; // a new UID another tab got meanwhile stays
+        try {
+            fresh = readStoredUid();
+            localStorage.clear();
+            if (fresh !== null && fresh !== uid) localStorage.setItem(UID_STORE_KEY, fresh);
+        } catch (e) { /* no storage */ }
+        gUid = null; // whatever needs a UID afterwards gets a new one (ensureUid)
+        document.location = 'about:blank'; // this page is left, so no reload here
+    }, () => {
+        // not deleted: the UID goes back, unless another tab has a new one already
+        try { if (readStoredUid() === null && uid !== '') localStorage.setItem(UID_STORE_KEY, uid); } catch (e) { /* none */ }
     });
 }
 
-
-function getBrowserLanguage() {
-    return (navigator.languages && navigator.languages[0]) || navigator.language || navigator.userLanguage;
-}
-
-
-function getPromo() {
-    if (getBrowserLanguage().startsWith('de') && !gPromoInitiated) {
-        fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + getBrowserWidth(), { method: 'POST' })
-            .then(response => response.json())
-            .then(promoData => {
-                initPromo(
-                    promoData.promo_id,
-                    promoData.playout_delay_sec,
-                    promoData.promo_headline,
-                    promoData.promo_img_url,
-                    promoData.promo_link_url,
-                    promoData.promo_cta
-                );
-                gPromoInitiated = true;
-            });
-    }
-}
-
-
-function initPromo(promoId, playoutDelaySec, promoHeadline, promoImgUrl, promoLinkUrl, promoCTA) {
-    const url = "api/update_promo.php?id="+promoId+"&action=";
-
-    const promoTab = document.getElementById('promo-tab');
-    const promoQuestionSpan = document.getElementById('promo-question');
-    const promoClose = promoTab.querySelector('.promo-close');
-    const promoImage = promoTab.querySelector('.promo-image');
-    const promoLink = promoTab.querySelector('.promo-link');
-
-    promoQuestionSpan.textContent = promoHeadline;
-    promoImage.src = promoImgUrl;
-    promoLink.textContent = promoCTA;
-
-
-    setTimeout(function () {
-        promoTab.classList.remove('promo-hidden');
-        fetch(url+"played_out", { method: 'POST' }).then();
-    }, playoutDelaySec * 1000);
-
-    promoQuestionSpan.addEventListener('mouseover', function () {
-        promoTab.classList.add('promo-expanded');
-        fetch(url+"expanded", { method: 'POST' }).then();
-    });
-
-    promoTab.addEventListener('mouseleave', function () {
-        promoTab.classList.remove('promo-expanded');
-    });
-
-    promoClose.addEventListener('click', function (e) {
-        e.stopPropagation();
-        promoTab.style.display = 'none';
-        fetch(url+"hided", { method: 'POST' }).then();
-    });
-
-    promoImage.addEventListener('click', function (e) {
-        e.stopPropagation();
-        promoTab.style.display = 'none';
-        window.open(promoLinkUrl, '_blank');
-        fetch(url+"converted_img", { method: 'POST' }).then();
-    });
-    promoLink.addEventListener('click', function (e) {
-        e.stopPropagation();
-        promoTab.style.display = 'none';
-        window.open(promoLinkUrl, '_blank');
-        fetch(url+"converted_a", { method: 'POST' }).then();
-    });
-}
 
 /* B-34: started while the page is parsed (script.js is deferred), not on window load; board only (#cbox) */
 const gOnBoard = document.getElementById('cbox') !== null;

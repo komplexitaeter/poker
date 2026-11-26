@@ -2,7 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { createSocket } from 'node:dgram';
 import * as path from 'node:path';
-import { newPlayer, createTeam, joinAsPlayer, expectTableCard, tableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, expectTableCard, tableCard, asUser } from './helpers';
 
 /**
  * B-81: writing endpoints notify poker-msg themselves (UDP "pull:<team_id>" to 127.0.0.1:8444), poker-msg sends
@@ -14,8 +14,10 @@ const teamOf = (url: string) => new URL(url).searchParams.get('t') ?? '';
 const newSid = (prefix: string) => (prefix + Date.now().toString(36) + Math.random().toString(36).slice(2))
   .replace(/[^A-Za-z0-9]/g, '').slice(0, 16).toUpperCase();
 
-async function post(page: Page, url: string, form?: Record<string, string>): Promise<void> {
-  const res = await page.request.post(url, form ? { form } : undefined);
+/* uid: the user id, sent in the header X-Poker-User (B-152) */
+async function post(page: Page, url: string, form?: Record<string, string>, uid?: string): Promise<void> {
+  const options = form ? { form } : {};
+  const res = await page.request.post(url, uid === undefined ? options : asUser(uid, options));
   expect(res.status(), `${url}: ${await res.text()}`).toBe(200);
 }
 
@@ -27,11 +29,11 @@ test('API writes without a browser push update an open board (B-81)', async ({ b
   const bob = newSid('N');
 
   // name.php: a new player appears
-  await post(alice, `/api/name.php?id=${bob}&type=player&name=Bob&t=${t}`);
+  await post(alice, `/api/name.php?type=player&name=Bob&t=${t}`, undefined, bob);
   await expectTableCard(alice, 'Bob', 'prgrss1');
 
   // setc.php: Bob's card is down
-  await post(alice, `/api/setc.php?id=${bob}&cardkey=three01&t=${t}`);
+  await post(alice, `/api/setc.php?cardkey=three01&t=${t}`, undefined, bob);
   await expectTableCard(alice, 'Bob', 'done001');
 
   // newround.php: back to "not chosen"
@@ -47,7 +49,7 @@ test('API writes without a browser push update an open board (B-81)', async ({ b
   await expect(alice.locator('#team_name')).toHaveText('Renamed by API');
 
   // a rejected write (403, unknown team) still answers as before
-  const res = await alice.request.post(`/api/setc.php?id=${bob}&cardkey=three01&t=NoSuchTeam`);
+  const res = await alice.request.post('/api/setc.php?cardkey=three01&t=NoSuchTeam', asUser(bob));
   expect(res.status()).toBe(403);
 });
 
@@ -61,12 +63,12 @@ test('delete_user.php updates the boards of all teams of the user (B-81)', async
 
   // one user (same id) in both teams
   const dave = newSid('D');
-  await post(alice, `/api/name.php?id=${dave}&type=player&name=Dave&t=${encodeURIComponent(teamOf(url1))}`);
-  await post(carol, `/api/name.php?id=${dave}&type=player&name=Dave&t=${encodeURIComponent(teamOf(url2))}`);
+  await post(alice, `/api/name.php?type=player&name=Dave&t=${encodeURIComponent(teamOf(url1))}`, undefined, dave);
+  await post(carol, `/api/name.php?type=player&name=Dave&t=${encodeURIComponent(teamOf(url2))}`, undefined, dave);
   await expectTableCard(alice, 'Dave', 'prgrss1');
   await expectTableCard(carol, 'Dave', 'prgrss1');
 
-  await post(alice, `/api/delete_user.php?id=${dave}`);
+  await post(alice, '/api/delete_user.php', undefined, dave);
   await expect(tableCard(alice, 'Dave')).toHaveCount(0);
   await expect(tableCard(carol, 'Dave')).toHaveCount(0);
 });

@@ -1,6 +1,6 @@
 import { test, expect, Page, Browser } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, asUser } from './helpers';
 
 /**
  * B-130: timer auto-start with three values in pok_teams_tbl.timer_auto_restart (timer.php set_auto_restart):
@@ -27,12 +27,15 @@ async function setup(browser: Browser, name: string, autoStart: string) {
   expect(t).toMatch(/^[A-Za-z0-9_-]+$/); // safe for the SQL below
   const [ann, ben] = await addPlayersViaApi(page, url, ['Ann', 'Ben']);
   const post = async (endpoint: string, params: Record<string, string | number> = {}, form?: Record<string, string>) => {
-    const res = await page.request.post(`/api/${endpoint}?${q({ t, ...params })}`, form ? { form } : {});
+    const { id, ...rest } = params; // B-152: the user id in the header X-Poker-User
+    const options = form ? { form } : {};
+    const res = await page.request.post(`/api/${endpoint}?${q({ t, ...rest })}`,
+      id === undefined ? options : asUser(String(id), options));
     expect(res.status(), endpoint).toBe(200);
     return res;
   };
   const dao = async () => {
-    const res = await page.request.get(`/api/dao.php?${q({ t, id: ann })}`);
+    const res = await page.request.get(`/api/dao.php?${q({ t })}`, asUser(ann));
     expect(res.ok()).toBeTruthy();
     return res.json();
   };

@@ -31,7 +31,7 @@ Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging;
 2. ✓ live R5 – B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
 3. ✓ live R6 – B-34 Startdaten asynchron laden (dazu B-140, B-141)
 4. ✓ live R7 – B-14 erster Schnitt: `reactions.js`, `timer.js`, `connection.js` aus `script.js`
-5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
+5. ✓ B-12 Zeichensätze `utf8mb4`: Schema live 2026-11-26 (von Hand, ca. 1 Min.), Code mit dem nächsten Rollout
 Jederzeit: B-126 / B-23-Rest (nginx-Sperren, Upload-Grenzen – Befehle für Andreas). Nicht angetastet: B-10.
 
 ## Rollouts
@@ -45,6 +45,10 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
 - **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R8 (2026-11-26, abends):** B-152 Schritte BE-1/FE-1 (UID vom Server, nur noch im Header), B-154 (Entfernte als
+  Observer), Promo-Reste und `update_cardset.php` entfernt, B-12-Code (`db_init()`). Dazu B-156 (kryptische Team-IDs für neue Teams)
+  und der Deadlock-Fix beim gleichzeitigen Anlegen von Sets (#279, B-155). BE-2 folgt, sobald das Access-Log
+  keine `id=`-Aufrufe mehr zeigt.
 - **R7 (2026-11-25):** B-14 erster Schnitt (Reaktionen, Timer, Verbindung als eigene Skripte), Topic-Panel: „reopen“
   beim Löschen nicht mehr abgeschnitten; Mockup `mockups/fish-tokens/` (B-145/B-146).
 - **R6 (2026-11-18):** B-34 (asynchroner Start), B-140, B-141 (Farbmodus lokal), Farbmodus ohne Board speichern, Notiz im Menü aktuell.
@@ -138,7 +142,7 @@ Linie nach Wert zwischen den beiden mittleren Karten, zwischen einem Wert und �
 Average-Zeiger gibt es nur mit „Average and median“ und nicht bei Sets mit dem Ziel „perspectives“.
 
 ### B-80 Öffentliche API: Topic-Items von außen anlegen
-Status: neu. Feedback (2026-10-29): „Add API to allow setting the topic.“ Faktisch gibt es `POST
+Status: aufgegangen in B-150/B-151 (Andreas, 2026-11-26). Bisher: neu. Feedback (2026-10-29): „Add API to allow setting the topic.“ Faktisch gibt es `POST
 /api/update_topic.php?t=<team-id>` (Feld `topic`, max. 2000 Zeichen) schon; Boards aktualisieren sich seit B-81 auch
 bei Aufrufen von außen.
 Entscheidungen/Skizze (Andreas, 2026-10-29): erst mit B-52 zusammen durchdenken – eine öffentliche API ist eine
@@ -359,6 +363,140 @@ Token-Konzept: `mockups/fish-tokens/concept.html` (Reaktionen über die API stat
 
 ## Offen: Technik & Betrieb
 
+### B-152 UID-Härtung (Vorbereitung für B-150/B-151)
+Status: refined (Andreas, 2026-11-26), Umfang für den nächsten Rollout; für die Nutzer unsichtbar. Enthält den Kern
+von B-91. Die UID (User-ID im Browser, `localStorage.SID`) wird das eigentliche Geheimnis der Person.
+1. **UID vom Server**, wenn der Browser noch keine hat: 16 Zeichen, kryptografisch zufällig (`random_bytes()`, passt in
+   `varchar(16)`). Heute erzeugt der Browser sie aus Zeitstempel + `Math.random()` (`script.js`, ca. 40 Bit Zufall).
+   Bestehende UIDs bleiben gültig.
+2. **UID nie mehr in der URL** (Access-Logs): schreibende Aufrufe im POST-Body, lesende GET-Aufrufe (z. B. `dao.php`,
+   `get_user.php`) per Header (z. B. `X-Poker-User`) – lesend bleibt GET, näher an REST (Andreas).
+3. **UID in allen Endpunkten mitgeben und prüfen**, dass sie im Team registriert ist. Registriert heißt: Zeile in
+   `pok_players_tbl` für das Team, egal ob Player, Observer oder `REMOVED` (entfernt = nur vom Board genommen, bleibt
+   registriert, Schwebezustand zwischen Observer und Player; Andreas). Was eine Rolle darf, bleibt wie im Board.
+   Ausnahmen festlegen: Board öffnen und beitreten ohne Registrierung (`dao.php` für Neue, `name.php`), Team anlegen,
+   Einstellungen über alle Teams (`get_user`/`update_user`, an der UID statt am Team), eigenes Löschen (`delete_user`).
+Planning (Inventar Ben, Entscheidungen Andreas, 2026-11-26):
+- Heute prüft fast kein Endpunkt die Mitgliedschaft (`newround`, `timer`, `topic_item_*` nur Team-ID; `update_deck`
+  speichert eine beliebige ID als „changed by“; `setc` lässt auch Observer eine Karte legen).
+- **Transport:** UID für **alle** Aufrufe im Header `X-Poker-User` (eine zentrale Funktion `apiFetch`, nur für relative
+  `./api/`-URLs); nirgends mehr `id=`/`player_id=` in URLs. Gewinn: UID raus aus URLs und Logs – **kein** CSRF-Schutz
+  (die UID steckt in keinem Cookie, CSRF gibt es hier nicht; nicht darauf verlassen, falls je Cookies kommen).
+- **Regeln:** Team-Endpunkte verlangen eine registrierte UID (Player, Observer oder `REMOVED`); **nur Karten legen**
+  (`setc`) ist für Observer und `REMOVED` gesperrt, sonst gilt „registriert = darf“. Ohne Registrierung: `dao.php`,
+  `seen.php` (Anwesenheit nur für Mitglieder), `get_topics.php`, `name.php` (Beitreten), Team anlegen (`addteam.php`
+  und weiterhin per GET-Link `index.php?tool=…` für die Tool-Seiten), `get_user`/`update_user` (teamübergreifend),
+  `delete_user` (eigenes Löschen), `get_roadmap` (teamübergreifend, eigene Votes), `measure_event` (gültige UID
+  verlangen, sonst nichts speichern; bis B-153 entschieden ist). Feedback: Mitglied in irgendeinem Team (wie
+  `vote_roadmap`). `REMOVED` darf auch andere entfernen (`delete.php`, Andreas: nur Karten legen entfällt) – damit
+  überholt B-152 die B-91-Formulierung „nicht entferntes Mitglied“. Bewusste Folge von „Team-Link = Zugang“: wer den
+  Link hat, kann beitreten und sich auf `REMOVED` setzen und ist dann unsichtbar, darf aber alles außer Karten legen.
+- **Entfernen:** Promo-Endpunkte (`get_promo`, `update_promo`, toter Code, `update_promo` ohne jede Prüfung) samt JS;
+  `update_cardset.php` (altes Deck-Menü, ohne Aufrufer).
+- Reaktionen (Absender in poker-msg frei wählbar): erst mit B-151, wenn Reaktionen über die API laufen.
+- **Schritte:** BE-1 Server nimmt UID aus Header, Body oder URL an, neuer Endpunkt `api/uid.php` (16 Zeichen, 80 Bit,
+  schreibt nichts in die DB), noch ohne Prüfung → FE-1 Frontend: `ensureUid()`/`getUid()`, `apiFetch` mit Header,
+  E2E-Helfer und ca. 22 Specs anpassen (BE-1 + FE-1 in einen Rollout) → BE-2 etwa eine Woche später: Mitgliedschaft
+  prüfen, keine UID mehr aus der URL (vorher im Access-Log prüfen, dass keine alten `id=`-Aufrufe mehr kommen).
+- Neue Tests: `uid.php`; erster Besuch ohne SID ohne `id=` in URLs; Tabellentest „jeder Team-Endpunkt ohne/mit fremder
+  UID → 403, mit `REMOVED` nicht (außer Karte)“; zwei Tabs beim ersten Besuch → dieselbe SID; eine Spec über die
+  Kernabläufe: kein Request mit `id=`, `player_id=` oder der SID in der URL; ab BE-2: UID nur in Body/URL → 403.
+- Ergänzungen aus Sinas Review (2026-11-26):
+  - zentral in `api/lib.php`: `get_uid()` (Header, `[A-Za-z0-9_-]{10,16}`, sonst `''`) und `require_member($link, $t,
+    $uid)` direkt nach `require_team()`, 403 vor jedem Schreiben und vor `notify_team()`; Header gewinnt vor Body/URL.
+  - BE-2 akzeptiert die UID **nur** aus dem Header (nicht aus dem Body).
+  - `uid.php`: POST, `Cache-Control: no-store, private`, Base32 aus `random_bytes(10)` (16 Zeichen, 80 Bit). Kein
+    Rückfall auf `Math.random`, wenn `uid.php` fehlschlägt; zwei Tabs: nach der Antwort `localStorage` erneut lesen,
+    eine vorhandene SID gewinnt. Nach „Delete user“ eine neue UID holen (heute `sid = '-1'`).
+  - `name.php` legt keinen neuen Nutzer mit leerem Namen an (400); tote `id=` bei `update_show_avg` entfernen.
+  - Nach BE-2: Anfragen mit `id=` in der URL eine Zeit lang zählen (alte offene Tabs → Reload nötig); Betreiber löscht
+    danach rotierte Access-Logs mit `id=` und prüft nginx-`log_format` bzw. FPM-`access.format` auf Header/Body.
+  - CLAUDE.md-Regeln: UID nur per Header über `apiFetch`, nie in URLs/Logs; Team-Endpunkte `require_team()` +
+    `require_member()`; Antworten enthalten nur die eigene UID, andere Personen nur über den `mkey` (aus B-91).
+
+### B-154 Entfernte Spieler als Observer anzeigen
+Status: refined (Andreas, 2026-11-26), kann mit B-152 in denselben Rollout. Ein entfernter Spieler (`REMOVED`) ist im
+Grunde von Player auf Observer gesetzt: Für alle anderen steht er in der Observer-Liste, solange sein Board verbunden
+ist (gleiche Regel wie für Observer, B-110), ohne eigene Kennzeichnung. Einziger Unterschied: Er selbst sieht wie
+heute den Hinweis, dass ihn jemand entfernt hat, mit der Wahl, wieder Player zu werden oder als Observer
+weiterzumachen. Technik: `getDao()` nimmt verbundene `REMOVED`-Zeilen in die Observer-Liste (`mkey`, Name, nie die
+UID). Damit ist niemand mehr unsichtbar am Tisch (Folge von „Team-Link = Zugang“ aus B-152).
+
+### B-153 Measure-Events: entfernen oder verschlanken
+Status: neu (Andreas überlegt, 2026-11-26). `api/measure_event.php` schreibt 15 Ereignisse (Seitenaufrufe
+`BOARD_ON_LOAD`/`INIT_ON_LOAD`, Menüaufrufe, Farbwechsel, Timer/Tipps/Kartenänderungen an/aus, Topic-Item-Aktionen) in
+`pok_analytics_events_tbl` (wächst unbegrenzt, Live 179 MB, 1,5 Mio. Zeilen). Gelesen nur vom Nutzungs-Tab in
+`stats.php` (Funktionsnutzung, Mobilanteil). Seitenaufrufe misst plausible ohnehin; `BOARD_ON_LOAD` enthält das
+Rauschen von Reload-Schleifen; Auswertungen der letzten Wochen liefen über die Fachtabellen.
+- Variante A – entfernen: Endpunkt, JS-Aufrufe (`measureEvent()`), Bereich in `stats.php`; Tabelle nach Export droppen.
+- Variante B – verschlanken: nur Funktions-Events, keine Seitenaufrufe; Löschjob für Einträge älter als 90 Tage.
+Offen: A oder B; was aus dem Nutzungs-Tab wirklich gebraucht wird.
+
+### B-150 REST-API: Topic und Items von außen setzen (Schritt A)
+Konzept: `docs/api-v1-concept.md` (Ben, Review Sina, von Andreas abgenommen 2026-11-26).
+Status: neu, Richtung entschieden (Andreas, 2026-11-26). Ersetzt B-80. Bedarf an den Extremen: einfach „Topic setzen“
+(Feedback 2026-10-29) und die komplette KI-Integration (B-151); die Mitte (Webhooks, Zapier-Bots, Event-Stream für
+eigene Skripte) erstmal nicht.
+- Eigener, versionierter Namensraum `/api/v1/…` mit JSON (die interne App-API bleibt frei änderbar), kurze Doku-Seite
+  mit `curl`- und Jira-Automation-Beispiel, möglichst OpenAPI-Beschreibung.
+- Endpunkte: Team-Notiz (Topic) setzen; Items anlegen/ändern über ihren Schlüssel (Upsert), auflisten, Ergebnis
+  abfragen, löschen.
+- **Item-Schlüssel als Pflichtfeld** (Andreas): vorbelegt mit `[CODE]-(n+1)`, zusammen mit dem Team eindeutig
+  (heute `ext_id`, optional; 10 von 19 Items hatten schon eine). Damit ist ein Import beliebig oft wiederholbar.
+- **API-Schlüssel je Person und Team** (Andreas, 2026-11-26): Pendant zur UID, die der Browser hält. Alles ist
+  team-öffentlich, aber nutzer-authentifiziert; der Schlüssel steht für genau eine Person in genau einem Team, die
+  Team-ID muss nicht mitgegeben werden. Im Header, gespeichert nur als Hash, mehrere je Person (z. B. Jira, KI),
+  einzeln sperren und neu erzeugen; Verwaltung im You-Menü. Die API darf die Team-ID bzw. den Team-Link ausliefern
+  (wer den Schlüssel hat, kannte die Team-ID schon).
+- **Ohne Schlüssel** geht nur: Team anlegen und einem Team (per Team-ID) neu beitreten – jeweils mit Name und Rolle
+  (Player/Observer). Der Server erzeugt dafür im Hintergrund eine UID und gibt den API-Schlüssel dieser neuen Person
+  zurück (die UID braucht der Aufrufer nicht).
+- **Voraussetzung B-152** (UID vom Server, nie in der URL, in allen internen Endpunkten geprüft).
+- Nach jeder Änderung `notify_team()` wie bei der App (Boards aktualisieren sich sofort).
+- Die Logik hinter den Endpunkten so schneiden, dass B-151 sie mitnutzt (REST und MCP rufen dieselben Funktionen).
+Refinement (Andreas, 2026-11-26):
+- **Erster Schnitt:** Team anlegen, beitreten (liefert den Schlüssel), Topic/Notiz setzen, Items anlegen/ändern über
+  ihren Schlüssel (Upsert), auflisten, löschen, Ergebnis abfragen.
+- **Schlüssel im You-Menü:** erzeugen (mit Namen, z. B. „Jira“; der Schlüssel wird nur einmal beim Erzeugen angezeigt),
+  auflisten und löschen.
+- **Ergebnis eines Items:** wie im Export (Wert, Verteilung, Runden).
+- **Item-Schlüssel ist Pflicht**, auch im Board, mit lockerer Heuristik als Vorschlag: erstes Item „1“, danach
+  hochzählen; folgt der letzte Schlüssel einem Muster wie `DMZ-004`, wird `DMZ-005` vorgeschlagen (Präfix und
+  Nullen behalten). Ziel: niemand stolpert darüber, wenn es keine echte (z. B. Jira-)ID gibt.
+- **Doku:** eine Seite `/api/v1/` (was geht, Schlüssel erzeugen, `curl`-Beispiel je Endpunkt, Rezept Jira
+  Automation) plus eine von Hand gepflegte `openapi.json` (Power Automate, Zapier, Postman, KI); ein E2E-Test führt
+  die Doku-Beispiele aus.
+Bestehende Items ohne Schlüssel bekommen einmalig einen nach derselben Heuristik (Andreas; wenige Items).
+Offen: Fehlercodes; wie Doku/Spec aus dem Code entstehen (kein Auseinanderlaufen).
+
+### B-151 MCP: die komplette App für KI-Clients (Schritt B)
+Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
+mitmachen: Team anlegen/ändern, Board-Setup, Sets wählen und eigene Sets verwalten, Karten legen, Runden- und
+Item-Steuerung, Items samt Ergebnissen, Timer, Feedback, Reaktionen.
+Grundsätze (Andreas):
+- **Genau die Funktionen der Weboberfläche, nicht mehr und nicht weniger.** Alles, was die Oberfläche verhindert, muss
+  der Server verhindern (verdeckte Karten vor dem Aufdecken: `getDao()` schickt schon nur Platzhalter; Fisch-
+  Kontingent: heute in poker-msg, MCP-Würfe müssen durch dieselbe Prüfung). Sina prüft je Tool: Server oder nur UI?
+- **Keine Kennzeichnung** von Agenten (nicht unterscheidbar, Automatisierung über das Web geht heute schon).
+- **Keine Aufruf-Limits auf Verdacht** (Anwendungsfälle unbekannt); nur technischer Schutz (z. B. Obergrenze
+  gleichzeitig wartender Aufrufe).
+Technik (Vorschlag Kai): dünne MCP-Schicht über den Funktionen aus B-150, ca. 10–12 gröbere Tools statt einem pro
+Aktion; Zugang mit dem API-Schlüssel aus B-150. **Am Tisch anmelden** ist Teil der Sitzungsinitialisierung (Andreas):
+entweder mit einem vorhandenen Schlüssel als jemand, der schon da ist (dann wählen: Player oder Observer), oder neu
+mit Team-ID, Name und Rolle – dann erzeugt der Server UID und Schlüssel (wie Beitreten in B-150). Benachrichtigung **ohne Polling**: `wait_for_change`, das
+sofort zurückkehrt, sobald poker-msg eine Änderung des Teams meldet (spätestens nach ca. 25 s „nichts passiert“);
+dafür ein Event-Kanal in poker-msg mit kurzlebigem, per HMAC signiertem Abo-Ticket (poker-msg bleibt ohne DB, kein
+PHP-Worker pro Wartendem). Server-Benachrichtigungen von MCP zusätzlich für Clients, die sie können. Antworten zuerst
+als Text/Emoji (Tisch, Karten, Status); eine grafische Ansicht über MCP-UI-Erweiterungen später.
+Datenschutz: Namen und Texte der Mitspieler gehen an die KI eines Dritten → Hinweis in der Datenschutzerklärung;
+Texte anderer Spieler sind für den Agenten fremder Input (Prompt-Injection), Hinweis in den Tool-Beschreibungen.
+**Anwesenheit** (Andreas, 2026-11-26): `wait_for_change` ist das Lebenszeichen. Solange ein Agent dort eine Verbindung
+offen hat, ist er „da“ (wie ein offener Tab); kein eigener Heartbeat-Kanal. Der Aufruf kehrt nach spätestens ca. 25 s
+zurück und wird sofort neu gestellt, das liegt sicher unter der Away-Frist (`AWAY_AFTER_SEC` = 70 s). Technisch:
+`last_callback_time` beim Start und bei jeder Rückkehr setzen. Ruft der Agent nichts mehr auf, wird er nach derselben
+Frist wie im Web „away“; keine Sonderfrist. Dazu ein Tool zum sauberen Gehen (wie ein geschlossener Tab).
+Schritte: Mitspielen (inkl. Event-Kanal) → Items und Runden → Rest. Verwandt: B-123 (eine von uns betriebene KI).
+
 ### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
 Status: refined. Reguläre Unterstützung für 22.04 endet im April 2027. Beide Server auf 24.04, zuerst Staging (vorher
 Snapshot beim Hoster), Live danach an einem Wochenende. Zu beachten: ondrej-PHP-PPA wird beim Upgrade abgeschaltet und
@@ -388,8 +526,11 @@ Status: neu; Teile erledigt (Event-Loop B-19, Heartbeat B-24, Drosselung der Rea
 - Browser-`push` entfernen → B-93.
 
 ### B-12 Zeichensätze auf `utf8mb4` vereinheitlichen
-Status: neu. Topic und weitere Spalten sind seit B-85 `utf8mb4`; noch 15× `utf8mb3`, 2× `latin1` (Tabellen/Spalten).
-Umstellung inkl. Verbindung; größere DB-Änderung, braucht ein Wartungsfenster (abends/Wochenende).
+Status: Schema live (2026-11-26, Staging und Live von Hand, Block „B-12“ in `db_schema_pok_inc.sql`, #276). Alle
+Textspalten und Tabellen-Defaults sind `utf8mb4_0900_ai_ci`, außer bewusst `ascii_bin` (Kartenschlüssel, Deck, Status).
+Live: 14 Tabellen, längste Dauer Rundendetails 26 s, Analytics 18 s, Rest unter 10 s; vorher Backup. Code (`db_init()`
+ohne `$charset`) geht mit dem nächsten Rollout live. Neue Tabellen: `team_id` usw. als `utf8mb4_0900_ai_ci`.
+Mögliche Folgethemen: Survey-Tabellen und `pok_teams_deck_backup_r3` droppen; B-57-Block idempotent machen.
 
 ### B-14 `script/script.js` in Module aufteilen
 Status: erster Schnitt live R7 (2026-11-25): `reactions.js`, `timer.js`, `connection.js` als klassische `defer`-Skripte
@@ -455,6 +596,38 @@ Status: refined (Andreas, 2026-11-24). Die Vendor-Datei (65 KB) lädt heute bei 
 nur für den QR-Code im Invite. Erst beim Öffnen von Invite nachladen (Skript-Tag dynamisch einfügen, einmalig;
 währenddessen ruhiger Platzhalter, bei Fehler Hinweis statt QR-Code). Kein Nachbau der QR-Kodierung.
 
+### B-155 Transaktionen und Sperren systematisch
+Status: refined (Andreas, 2026-11-26). Anlass: Deadlock in der CI (Rollout 8, #279): `insert … select max(sort_order)`
+setzte unter REPEATABLE READ eine Lücken-Sperre auf `ix_custom_sets_team`; zwei neue Teams in derselben Lücke
+blockierten sich gegenseitig – die Team-Zeilen-Sperre schützt nur innerhalb eines Teams. Behoben in #279 (Ursache
+entfernt, `db_transaction()`/`api_transaction()` mit Retry bei 1213/1205, Lock-Wartezeit 5 s, 503 statt Fatal).
+Mit v1/MCP (B-150/B-151) kommt mehr Nebenläufigkeit dazu. Umfang:
+1. Inventar aller schreibenden Pfade: welche Tabellen in welcher Reihenfolge, welche Sperre zuerst.
+2. Regeln (CLAUDE.md): zuerst die Team-Zeile sperren (`for update`), dann Tabellen in fester Reihenfolge
+   (`pok_teams_tbl` → `pok_players_tbl` → übrige); vor der Sperre keine konsistente Lesung in derselben Transaktion;
+   keine `insert … select` auf geteilten Indizes; eindeutige Schlüssel vor dem Insert bestimmen, nie per nachträglichem
+   Update (heute noch `insert_custom_card()`: Karte mit `card_key = NULL` einfügen, dann setzen); schreibende
+   Kernfunktionen laufen über `db_transaction()`.
+3. Retry auch für `setc.php`, `update_deck.php`, `update_controls.php` (`lock_team_deck()` kann bei alten gemischten
+   Decks ein Set anlegen) und alle weiteren Transaktionen aus dem Inventar.
+4. Lasttest in der CI: viele parallele Teams und Schreibzugriffe (wie `custom-sets-concurrency.spec.ts`), PHP-Log muss
+   sauber bleiben.
+
+### B-156 Kryptische Team-IDs für neue Teams
+Status: refined (Andreas, 2026-11-26), gleich mit angehen (vor bzw. mit B-150). Heute entsteht die Team-ID aus dem
+Namen (`name2id()`/`get_team_id()` in `api/lib.php`, mit `rand()`), bei kurzen Namen erratbar; mit der API
+(`team_join`) wird das skriptbar (Fund Sina). Neu angelegte Teams bekommen eine ID mit kryptografischem Zufall
+(`random_bytes()`), für Board, Tool-Links (`index.php?tool=…`) und API gleich. Bestehende Team-IDs bleiben gültig
+(Links der Teams). Offen fürs Planning: Format/Länge (passt in `varchar(80)`, URL-tauglich), ob ein lesbarer
+Namensteil davor bleibt.
+Umsetzung (Ben, 2026-11-26, Branch `feature/B-156-team-ids`): `new_team_id()` in `api/lib.php` für alle Wege
+(`add_team()` → `addteam.php`, `index.php?tool=…`, später `team_create`). Format: lesbarer Präfix aus dem Teamnamen
+(a-z/0-9, sonst `-`, Umlaute ausgeschrieben, höchstens 12 Zeichen, leer → `team`) + `-` + 16 Zeichen Base32 klein
+(`a-z2-7`, 80 Bit aus `random_bytes()`), höchstens 29 Zeichen. Schutz kommt nur aus dem Zufallsteil; der Präfix hilft
+beim Wiedererkennen des Links und verrät nichts, was das Board nicht ohnehin zeigt. Nur Kleinbuchstaben, weil
+`pok_teams_tbl.id` case-insensitiv vergleicht. `name2id()`/`get_team_id()` (mit `rand()`) entfernt; alte IDs bleiben
+gültig. Passt zu `FILTER_SANITIZE_URL`, `validate_team()` und poker-msg (`[\x21-\x7E]{1,80}`). E2E: `team-ids.spec.ts`.
+
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
 „aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
@@ -502,7 +675,8 @@ prüfen, bevor die E2E-Shards starten; schlägt früh und billig fehl.
 ## Offen: Sicherheit & Datenschutz
 
 ### B-91 Entfernen und Löschen nur mit Berechtigung
-Status: refined. Fund Sina, Gedanke Andreas (2026-10-30):
+Status: refined; der Kern (UID-Prüfung in allen internen Endpunkten) ist in B-152 aufgegangen (Andreas,
+2026-11-26). Fund Sina, Gedanke Andreas (2026-10-30):
 - **Anderen Spieler entfernen** (`api/delete.php`, heute nur `t` + `mkey`): Aufrufer schickt zusätzlich seine User-ID
   und darf nur entfernen, wenn er selbst (nicht entfernter) Mitglied des Teams ist. Ziel bleibt der `mkey`.
 - **Eigenen User löschen** (`api/delete_user.php`, nur `id`): bleibt auf die eigene ID beschränkt (sie ist das

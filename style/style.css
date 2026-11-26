@@ -26,8 +26,7 @@
     --range-lh: 1.25rem;
     /* stacking order (lowest first) */
     --z-nav: 10;          /* header, above the table */
-    --z-promo: 100;
-    --z-panel: 150;       /* menu panel (large screens), above deck and promo */
+    --z-panel: 150;       /* menu panel (large screens), above the deck */
     --z-toast: 250;       /* short messages (showToast), above the deck and the menu panel */
     --z-scrim: 300;       /* QR code backdrop */
     --z-overlay: 301;     /* full screen overlays (name input, delete user, QR code) */
@@ -4792,68 +4791,6 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     }
 }
 
-/* ---------- Promo tab ---------- */
-
-.promo-tab {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    background-color: var(--survey-background);
-    color: var(--text-color);
-    border-top-right-radius: 10px;
-    z-index: var(--z-promo);
-    box-shadow: 0 0 10px var(--shadow-color);
-    transition: height 0.3s ease-in-out, bottom 0.8s ease-in-out;
-    height: 40px;
-    overflow: hidden;
-    width: auto;
-    white-space: nowrap;
-}
-
-.promo-tab.promo-expanded { height: 280px; }
-
-.promo-tab.promo-hidden { bottom: -40px; }
-
-#promo-question { padding: 10px; }
-
-.promo-question {
-    padding: 10px 40px 10px 20px;
-    cursor: pointer;
-    font-size: var(--fs-m);
-}
-
-.promo-content { padding-top: 20px; }
-
-.promo-image {
-    height: auto;
-    max-height: 170px;
-    object-fit: contain;
-    cursor: pointer;
-    border-radius: var(--radius-l);
-}
-
-.promo-link {
-    display: block;
-    margin: 10px 0 20px;
-    color: var(--bluish);
-    text-decoration: none;
-}
-
-.promo-close {
-    position: absolute;
-    top: 7px;
-    right: 5px;
-    background: none;
-    border: none;
-    color: var(--text-color);
-    cursor: pointer;
-    font-size: var(--fs-l);
-    line-height: 0;
-    padding: 0;
-}
-
-.promo-close-icon { display: block; }
-
 /* ---------- Toast (showToast in script.js) ---------- */
 
 /* A short message that pops up from the bottom edge like toast from a toaster, stays a
@@ -4956,12 +4893,6 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
         padding: 12px 6px;
         margin: 0;
     }
-}
-
-/* ---------- Small screens: hidden on the board ---------- */
-
-@media (max-width: 799.98px) {
-    #promo-tab { display: none; }
 }
 
 /* ---------- stats.php ---------- */

@@ -130,9 +130,10 @@ function isRetryableWrite(url) {
     return m !== null && WRITE_RETRY_SCRIPTS.has(m[1]);
 }
 
-/* B-135: the same write target (endpoint, team, player/item and the names of the set fields): a newer write of it
- * makes a pending retry of an older one void (it would overwrite the newer choice) */
-const WRITE_TARGET_PARAMS = ['t', 'id', 'item'];
+/* B-135: the same write target (endpoint, team, item and the names of the set fields): a newer write of it
+ * makes a pending retry of an older one void (it would overwrite the newer choice). B-152: the player is always the
+ * own UID (header X-Poker-User, the same for all writes of the page), so it is no part of the key. */
+const WRITE_TARGET_PARAMS = ['t', 'item'];
 const gWriteGen = new Map();   // write key -> number of the latest write started
 
 function writeKey(url) {
@@ -158,7 +159,7 @@ function fetchWrite(url, init) {
         options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
     }
     try {
-        return fetch(url, options);
+        return apiFetch(url, options); // B-152: with the UID in the header
     } catch (e) {
         return Promise.reject(e);
     }

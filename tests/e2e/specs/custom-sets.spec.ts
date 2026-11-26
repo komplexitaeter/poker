@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi, removeExampleSet } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, removeExampleSet, asUser } from './helpers';
 
 /**
  * B-98 S4: custom sets of a team (api/custom_set_create.php, custom_set_save.php, custom_set_delete.php, deck
@@ -40,11 +40,13 @@ function api(page: Page, t: string) {
     save: (set: number, body: unknown) => page.request.post(`/api/custom_set_save.php?${q({ set: String(set) })}`,
       { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }),
     remove: (set: number) => page.request.post(`/api/custom_set_delete.php?${q({ set: String(set) })}`),
-    deck: (deck: string, extra = '') => page.request.post(`/api/update_deck.php?${q({ deck })}${extra}`),
-    setc: (id: string, cardkey: string) => page.request.post(`/api/setc.php?${q({ id, cardkey })}`),
+    // B-152: uid (who changes it) in the header X-Poker-User
+    deck: (deck: string, extra = '', uid: string | null = null) =>
+      page.request.post(`/api/update_deck.php?${q({ deck })}${extra}`, uid === null ? {} : asUser(uid)),
+    setc: (id: string, cardkey: string) => page.request.post(`/api/setc.php?${q({ cardkey })}`, asUser(id)),
     newround: () => page.request.post(`/api/newround.php?${q({})}`),
     dao: async (id: string) => {
-      const res = await page.request.get(`/api/dao.php?${new URLSearchParams({ id, t }).toString()}`);
+      const res = await page.request.get(`/api/dao.php?${new URLSearchParams({ t }).toString()}`, asUser(id));
       expect(res.ok()).toBeTruthy();
       return res.json();
     },
@@ -237,8 +239,8 @@ test('B-98: single cards of a custom set on/off (update_deck.php cards), kept co
   const other = await (await a.create({ name: 'Other', style: 'plain', cards: RISK })).json();
   const rounds = () => Number(sql(`select count(1) from pok_roundstats_tbl where team_id = '${t}'`));
   const storedCards = () => sql(`select ifnull(deck_cards, 'NULL') from pok_teams_tbl where id = '${t}'`);
-  expect((await a.deck(other.set.deck_id, `&id=${anna}`)).ok()).toBeTruthy();
-  expect(await (await a.deck(set.deck_id, `&id=${anna}`)).json()).toMatchObject({ changed: true, deck: { cards: keys } });
+  expect((await a.deck(other.set.deck_id, '', anna)).ok()).toBeTruthy();
+  expect(await (await a.deck(set.deck_id, '', anna)).json()).toMatchObject({ changed: true, deck: { cards: keys } });
   expect((await a.dao(anna)).deck.changed_by).toBe('Anna');
 
   // invalid: fewer than two cards, a key of another set, a catalog key, a removed key, malformed
@@ -248,7 +250,7 @@ test('B-98: single cards of a custom set on/off (update_deck.php cards), kept co
   expect(storedCards()).toBe(keys.join(','));
 
   // a selection in any order: deck in set order, the set stays complete, same group -> changed_by stays
-  let body = await (await a.deck(set.deck_id, `&id=${ben}&cards=${keys[3]},${keys[0]},${keys[1]}`)).json();
+  let body = await (await a.deck(set.deck_id, `&cards=${keys[3]},${keys[0]},${keys[1]}`, ben)).json();
   expect(body).toMatchObject({ changed: true, new_round: false, deck: { id: set.deck_id, cards: [keys[0], keys[1], keys[3]] } });
   let dao = await a.dao(anna);
   expect(dao.deck.cards).toEqual([keys[0], keys[1], keys[3]]);
@@ -436,11 +438,6 @@ test('old mixed decks become a custom set "Our deck" (idempotent, parallel loads
   expect(sql(`select concat_ws('|', deck_id, deck_cards, deck_controls) from pok_teams_tbl where id = '${t}'`))
     .toBe(`${set.deck_id}|${dao.deck.cards.join(',')}|qstmrk1`);
 
-  // the old deck menu chooses the same cards again: the set is reused
-  expect((await page.request.post(`/api/update_cardset.php?t=${t}&cardset_flags=${flags([2, 3, 4, 18, 43])}`)).ok()).toBeTruthy();
-  expect((await a.dao(anna)).deck.id).toBe(set.deck_id);
-  expect(setCount()).toBe('1');
-
   // Fibonacci 1 2 3 5 8 13 + Numbers 4 6 7 + ☕: the cards in the old order (sort_order)
   reset(flags([2, 3, 4, 5, 6, 7, 8, 9, 10, 24]));
   const dao2 = await a.dao(anna);
@@ -527,25 +524,23 @@ test('B-98 V6: dao names who changed the set group last (deck.changed_by)', asyn
 
   expect(await changedBy()).toBeNull(); // nobody changed it yet
   // another group: Alice
-  expect((await a.deck('judge', `&id=${alice}`)).ok()).toBeTruthy();
+  expect((await a.deck('judge', '', alice)).ok()).toBeTruthy();
   expect(await changedBy()).toBe('Alice');
   // the same group (single cards): stays Alice
-  expect((await a.deck('judge', `&id=${bob}&cards=jdg1,jdg2`)).ok()).toBeTruthy();
+  expect((await a.deck('judge', '&cards=jdg1,jdg2', bob)).ok()).toBeTruthy();
   expect(await changedBy()).toBe('Alice');
   // activating a custom set (create with activate): Bob
-  const res = await page.request.post(`/api/custom_set_create.php?${new URLSearchParams({ t, id: bob })}`,
-    { data: JSON.stringify({ name: 'Mine', style: 'plain', cards: RISK, activate: true }) });
+  const res = await page.request.post(`/api/custom_set_create.php?${new URLSearchParams({ t })}`,
+    asUser(bob, { data: JSON.stringify({ name: 'Mine', style: 'plain', cards: RISK, activate: true }) }));
   expect(res.ok()).toBeTruthy();
   const set = (await res.json()).set;
   expect(await changedBy()).toBe('Bob');
   // deleting the active set (fallback to the default deck): Alice
-  expect((await page.request.post(`/api/custom_set_delete.php?${new URLSearchParams({ t, set: String(set.set_id), id: alice })}`)).ok())
+  expect((await page.request.post(`/api/custom_set_delete.php?${new URLSearchParams({ t, set: String(set.set_id) })}`, asUser(alice))).ok())
     .toBeTruthy();
   expect(await changedBy()).toBe('Alice');
-  // the old deck menu: T-shirt by Bob; without id the writer is unknown
-  const tshirt = Array<string>(46).fill('0');
-  [25, 26, 27, 28, 29, 30, 31].forEach(i => tshirt[i] = '1');
-  expect((await page.request.post(`/api/update_cardset.php?t=${t}&id=${bob}&cardset_flags=${tshirt.join('')}`)).ok()).toBeTruthy();
+  // T-shirt by Bob; without id the writer is unknown
+  expect((await a.deck('tshirt', '', bob)).ok()).toBeTruthy();
   expect(await changedBy()).toBe('Bob');
   expect((await a.deck('fib-classic')).ok()).toBeTruthy();
   expect(await changedBy()).toBeNull();

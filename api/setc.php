@@ -5,7 +5,7 @@ require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 // card keys are up to 7 characters a-z0-9 (cards.json); a manipulated key changes nothing (B-88)
 $cardkey = get_id_param("cardkey", 7);
 if ($cardkey === '' && (string)filter_input(INPUT_GET, "cardkey") !== '') exit;

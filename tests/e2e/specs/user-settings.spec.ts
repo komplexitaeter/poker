@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, pageReady } from './helpers';
+import { newPlayer, createTeam, pageReady, getSid, asUser } from './helpers';
 
 /**
  * The user row (pok_user_tbl) used to be created only by the first dao.php of a board, and update_user.php only
@@ -20,7 +20,7 @@ test('a new user switches to light mode on the start page, the start page is lig
   await page.reload();
   await pageReady(page);
   await expect(page.locator('body')).toHaveClass(/light-theme/);
-  const res = await page.request.get(`/api/get_user.php?id=${encodeURIComponent(await page.evaluate(() => localStorage.getItem('SID') ?? ''))}`);
+  const res = await page.request.get('/api/get_user.php', asUser(await getSid(page)));
   expect((await res.json()).color_mode).toBe('light');
 });
 
@@ -31,10 +31,10 @@ test('hide_teaser of a user without a row is stored and shows on the first board
 
   // a brand-new SID that has never loaded a board
   const sid = ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 16);
-  const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid)}&hide_teaser=1`);
+  const res = await alice.request.post('/api/update_user.php?hide_teaser=1', asUser(sid));
   expect(res.ok()).toBeTruthy();
 
-  const dao = await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${encodeURIComponent(sid)}`);
+  const dao = await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}`, asUser(sid));
   expect(dao.status()).toBe(200);
   expect((await dao.json()).hide_teaser).toBe(1);
 });

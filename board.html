@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.66" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.67" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -59,17 +59,17 @@
     <script async data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.47" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.48" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
-    <script defer src="script/script_deck.js?v=1.28" type="text/javascript"></script>
-    <script defer src="script/script_custom.js?v=1.18" type="text/javascript"></script>
+    <script defer src="script/script_deck.js?v=1.29" type="text/javascript"></script>
+    <script defer src="script/script_custom.js?v=1.19" type="text/javascript"></script>
     <script defer src="script/sidebar.js?v=1.18" type="text/javascript"></script>
-    <script defer src="script/topics.js?v=1.15" type="text/javascript"></script>
-    <script defer src="script/reactions.js?v=1" type="text/javascript"></script>
+    <script defer src="script/topics.js?v=1.16" type="text/javascript"></script>
+    <script defer src="script/reactions.js?v=2" type="text/javascript"></script>
     <script defer src="script/timer.js?v=1" type="text/javascript"></script>
-    <script defer src="script/connection.js?v=1" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.38" type="text/javascript"></script>
+    <script defer src="script/connection.js?v=2" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.41" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
          waiting for images or analytics (window load) -->
@@ -704,17 +704,6 @@
     <input class="btn topnav" type="button" value="Cancel" onclick="showDeleteUserOverlay(false)" />
     <!-- R3 review V10 (L61): the dangerous one in red (style.css .btn.danger) -->
     <input id="delete_user_ok" class="btn topnav danger" type="button" value="Delete my data" onclick="deleteUser()" />
-</div>
-
-<div id="promo-tab" class="promo-tab promo-hidden">
-    <div class="promo-question">
-        <span id="promo-question"></span>
-        <button class="promo-close" aria-label="Close"><svg class="promo-close-icon" viewBox="0 0 512 512" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111 248-248S393 8 256 8zm121.6 313.1c4.7 4.7 4.7 12.3 0 17L338 377.6c-4.7 4.7-12.3 4.7-17 0L256 312l-65.1 65.6c-4.7 4.7-12.3 4.7-17 0L134.4 338c-4.7-4.7-4.7-12.3 0-17l65.6-65-65.6-65.1c-4.7-4.7-4.7-12.3 0-17l39.5-39.6c4.7-4.7 12.3-4.7 17 0l65 65.7 65.1-65.6c4.7-4.7 12.3-4.7 17 0l39.6 39.5c4.7 4.7 4.7 12.3 0 17L312 256l65.6 65.1z"/></svg></button>
-    </div>
-    <div class="promo-content">
-        <img src="" alt="Promo Image" class="promo-image">
-        <a href="#" class="promo-link"></a>
-    </div>
 </div>
 
 </body>

@@ -3,10 +3,10 @@ require_once __DIR__ . '/lib_custom.php'; // B-98 S4: custom sets
 require_once __DIR__ . '/lib_topics.php'; // B-52 S1: topic items
 
 /*
- * Connects with utf8mb4 (B-85), so emojis in names and topics reach the utf8mb4 columns unchanged. Reading the
- * remaining utf8mb3 columns works the same. $charset only for special cases.
+ * Connects with utf8mb4 (B-85), the character set of all text columns (B-12), so emojis in names and topics are
+ * stored unchanged.
  */
-function db_init(string $charset = 'utf8mb4') {
+function db_init() {
     $link = mysqli_init();
     mysqli_real_connect(
         $link,
@@ -16,7 +16,7 @@ function db_init(string $charset = 'utf8mb4') {
         _MYSQL_DB,
         _MYSQL_PORT
     );
-    $link->set_charset($charset);
+    $link->set_charset('utf8mb4');
     return $link;
 }
 
@@ -33,7 +33,7 @@ function get_text_param(string $name, int $max_length): string {
  * Reads an id-like GET parameter (B-88): the value only if it consists of 1 to $max_length characters
  * A-Z, a-z, 0-9, '_' or '-', otherwise ''. Player/user ids (SID) are 16 characters A-Z0-9 at most
  * (script.js), '-1' marks a deleted user. A manipulated id (emoji, HTML characters, too long) thus behaves
- * like an unknown id and never reaches MySQL as a string the utf8mb3 columns cannot hold (HTTP 500).
+ * like an unknown id (before B-12 such a string made the utf8mb3 id columns fail with HTTP 500).
  */
 function get_id_param(string $name, int $max_length = 16): string {
     $value = filter_input(INPUT_GET, $name);
@@ -48,19 +48,33 @@ function cut_text(string $value, int $max_length): string {
     return preg_match('/^.{0,' . $max_length . '}/us', $value, $match) ? $match[0] : '';
 }
 
+/*
+ * B-152: JSON and event-stream answers are never stored by any cache (no-store, private) and vary by X-Poker-User:
+ * once the UID travels only in the header, dao.php?t=... has the same URL for everybody in a team but contains the
+ * own UID-bound state, so a shared cache (e.g. a corporate TLS proxy) must never keep or reuse it. Nothing relies on
+ * caching these answers (every board load and pull fetches them anew).
+ */
 function set_header($content_type) {
+    $private = false;
     if ($content_type=='json') {
         header('Content-Type: application/json; charset=utf-8');
+        $private = true;
     }
     else if ($content_type=='event-stream') {
         header("Content-Type: text/event-stream; charset=utf-8");
+        $private = true;
     }
     else if ($content_type=='svg') {
         header('Content-type: image/svg+xml');
     }
     header('Pragma-directive: no-cache');
     header('Cache-directive: no-cache');
-    header('Cache-control: no-cache');
+    if ($private) {
+        header('Cache-Control: no-store, private');
+        header('Vary: X-Poker-User');
+    } else {
+        header('Cache-control: no-cache');
+    }
     header('Pragma: no-cache');
     header('Expires: 0');
 }
@@ -106,6 +120,83 @@ function require_post() {
         http_response_code(405);
         exit;
     }
+}
+
+/*
+ * B-152: the user id (UID, localStorage.SID in the browser) is the secret of a person. Valid: 10 to 16 characters
+ * A-Z, a-z, 0-9, '_' or '-' (new UIDs from new_uid(): 16 characters Base32; older ones from the browser: about 16
+ * characters A-Z0-9). The minimum length keeps empty, '-1' (deleted user) and guessable short ids out.
+ */
+const UID_PATTERN = '/^[A-Za-z0-9_-]{10,16}$/D';
+
+/*
+ * B-152: reads the UID of the request. Sources in this order, the first one that is present decides (an invalid value
+ * there gives '', no fallback to the next source):
+ *   1. header X-Poker-User (the transport from FE-1 on, for GET and POST),
+ *   2. form body field 'uid' (POST, application/x-www-form-urlencoded or multipart; BE-1 only, transitional),
+ *   3. URL parameter $url_param (today's clients: 'id'; BE-1 only, transitional - BE-2 drops 2. and 3.).
+ * A source with an empty value counts as absent: an empty header ("X-Poker-User:") falls through to the body and the
+ * URL in BE-1 (in BE-2, with the header as the only source, it simply gives '').
+ * Returns the UID or '' (missing or invalid). Never echo it for another person; responses only contain the own UID.
+ */
+function get_uid(string $url_param = 'id'): string {
+    $sources = array(
+        $_SERVER['HTTP_X_POKER_USER'] ?? null,
+        filter_input(INPUT_POST, 'uid'),
+        filter_input(INPUT_GET, $url_param),
+    );
+    foreach ($sources as $value) {
+        if (!is_string($value) || $value === '') continue;
+        return preg_match(UID_PATTERN, $value) ? $value : '';
+    }
+    return '';
+}
+
+/*
+ * B-152: a new UID, 80 bits from random_bytes() as 16 characters Base32 (RFC 4648 alphabet A-Z2-7, no padding), so it
+ * fits varchar(16) and UID_PATTERN. Not stored anywhere (api/uid.php hands it out, the board registers it on joining).
+ */
+function new_uid(): string {
+    return random_base32_80();
+}
+
+/* 80 bits from random_bytes() as 16 characters Base32 (RFC 4648 alphabet, upper case); B-152 new_uid(), B-156 team ids */
+function random_base32_80(): string {
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    $bits = '';
+    foreach (str_split(random_bytes(10)) as $byte) {
+        $bits .= str_pad(decbin(ord($byte)), 8, '0', STR_PAD_LEFT);
+    }
+    $out = '';
+    foreach (str_split($bits, 5) as $chunk) {
+        $out .= $alphabet[bindec($chunk)];
+    }
+    return $out; // 80 bits / 5 = 16 characters
+}
+
+/*
+ * B-152: the UID must be registered in the team: a row in pok_players_tbl for (team_id, id), whatever the player_type
+ * (PLAYER, OBSERVER or REMOVED - removed means only taken off the board, still registered; Andreas 2026-11-26).
+ * With $to_play_card (setc.php) only a PLAYER passes: observers and removed persons must not play a card.
+ * Otherwise HTTP 403 (empty body) and exit - call it right after require_team(), before any write and before
+ * notify_team(). Returns the player_type of the UID.
+ * BE-1: defined, but not called by any endpoint yet (no behaviour change for old clients); BE-2 switches it on.
+ */
+function require_member($link, string $t, string $uid, bool $to_play_card = false): string {
+    $type = null;
+    if ($uid !== '' && $t !== '') {
+        $sql = $link->prepare("select player_type from pok_players_tbl where team_id = ? and id = ?");
+        $sql->bind_param('ss', $t, $uid);
+        $sql->execute();
+        $row = $sql->get_result()->fetch_row();
+        $sql->close();
+        if ($row !== null) $type = (string)$row[0];
+    }
+    if ($type === null || ($to_play_card && $type !== 'PLAYER')) {
+        http_response_code(403);
+        exit;
+    }
+    return $type;
 }
 
 /*
@@ -402,8 +493,8 @@ function resolve_deck(?string $deck_id, ?string $deck_cards, ?string $deck_contr
  * B-98 S2: the old bitmask (cardset_flags, cards.json v1) for a resolved deck, so boards and the old deck menu that
  * still read cardset_flags show the same deck (until R3 S5). Cards without legacy_index (new cards, custom cards) are
  * left out. J.U.D.G.E./Delegation cards map to the old number cards at the same positions.
- * Known gap until boards reload (F5): an old board shows these decks as the old number cards, and choosing in the old
- * deck menu (update_cardset.php) resets deck_id, so the deck is derived from the flags again (number cards).
+ * Known gap until boards reload (F5): an old board shows these decks as the old number cards. (The old deck menu
+ * update_cardset.php is gone since B-152.)
  */
 function deck_to_cardset_flags(array $deck, array $catalog): string
 {
@@ -619,6 +710,60 @@ function team_has_active_item($link, string $t): bool
     }
 }
 
+/* a transaction failed only because of a deadlock (1213) or a lock wait timeout (1205): it may simply be run again */
+function is_retryable_db_error(mysqli_sql_exception $e): bool
+{
+    return in_array($e->getCode(), array(1205, 1213), true);
+}
+
+/*
+ * Runs $work() in a transaction and commits; returns its result. On a deadlock or lock wait timeout the transaction is
+ * rolled back and run again (up to $attempts times in all, short random backoff), so $work must only touch the
+ * database (no output, no notify_team()) and must be safe to repeat. Anything else, and the last retryable failure, is
+ * rolled back and thrown. Nothing is retried after a successful commit. $work may roll back and exit itself (custom_fail()).
+ * Sets innodb_lock_wait_timeout = 5 s for the rest of the request (connection).
+ */
+function db_transaction($link, callable $work, int $attempts = 3): mixed
+{
+    /* short lock waits: with the default 50 s, three attempts could hold a request (and its FPM worker) for minutes,
+       long after nginx gave up (504 after 60 s). Session scope: one connection per request. */
+    $link->query("set session innodb_lock_wait_timeout = 5");
+    for ($attempt = 1; ; $attempt++) {
+        $link->begin_transaction();
+        try {
+            $result = $work();
+            $link->commit();
+            return $result;
+        } catch (Throwable $e) {
+            try {
+                $link->rollback();
+            } catch (mysqli_sql_exception $ignored) {
+                // the connection is gone: the server rolled back already
+            }
+            if (!($e instanceof mysqli_sql_exception) || !is_retryable_db_error($e) || $attempt >= $attempts) throw $e;
+            usleep(random_int(20000, 80000) * $attempt);
+        }
+    }
+}
+
+/*
+ * db_transaction() for an API script: if the transaction still fails with a deadlock or lock wait timeout after all
+ * attempts, the request ends with 503 (temporary, the client may try again) instead of an uncaught exception (HTTP
+ * 500 and a "PHP Fatal error" in the log).
+ */
+function api_transaction($link, callable $work): mixed
+{
+    try {
+        return db_transaction($link, $work);
+    } catch (mysqli_sql_exception $e) {
+        if (!is_retryable_db_error($e)) throw $e;
+        error_log('poker api: transaction given up after retries (' . $e->getCode() . '): ' . $e->getMessage());
+        http_response_code(503);
+        header('Retry-After: 1');
+        exit;
+    }
+}
+
 /* B-52 S1b: a statement failed only because a table (1146) or column (1054) is missing (code deployed before the schema) */
 function is_missing_schema_error(mysqli_sql_exception $e): bool
 {
@@ -731,85 +876,44 @@ function start_new_round($link, string $t): void
     $sql->execute();
 }
 
-function name2id($name) {
-    $id='';
-    $mix=array(
-        "0" => array('0','O','o'),
-        "1" => array('1','I','T'),
-        "2" => array('2','Z','z'),
-        "3" => array('3','E'),
-        "4" => array('4','A'),
-        "5" => array('5','F'),
-        "6" => array('6','S','G'),
-        "7" => array('7','T'),
-        "8" => array('8','H'),
-        "9" => array('9','g'),
-        "a" => array('a','A','4'),
-        "b" => array('b','B','3'),
-        "c" => array('c','C'),
-        "d" => array('d','D','0','O'),
-        "e" => array('e','E','3'),
-        "f" => array('f','F','1'),
-        "g" => array('g','G','6'),
-        "h" => array('h','H','8'),
-        "i" => array('i','I','J','1'),
-        "j" => array('j','J','I'),
-        "k" => array('k','K','5'),
-        "l" => array('l','L','7'),
-        "m" => array('m','M'),
-        "n" => array('n','N'),
-        "o" => array('o','O','0'),
-        "p" => array('p','P'),
-        "q" => array('q','Q'),
-        "r" => array('r','R'),
-        "s" => array('s','S','6','9'),
-        "t" => array('t','T','1','7'),
-        "u" => array('u','U'),
-        "v" => array('v','V','U'),
-        "w" => array('w','W'),
-        "x" => array('x','X'),
-        "y" => array('y','Y'),
-        "z" => array('z','Z','2'),
-        "." => array('-','_'),
-        "-" => array('-','_'),
-        "_" => array('-','_'),
-        "?" => array('S'),
-        " " => array('_'),
-        "*" => array('0','1','2','3','4','5','6','7','8','9')
-    );
-    $null_signs = array('x','X','0','o','O');
+/*
+ * B-156: id of a new team = readable prefix from the team name + '-' + 16 characters Base32 (80 bits from
+ * random_bytes()), e.g. "sprint-team-k3x7q2mzab4cd5ef". Only the random part protects the board; the prefix just helps
+ * people recognise their link (history, bookmarks) and shows nothing that the board would not show anyway.
+ * Lower case only: the column has a case-insensitive collation, so ids must not differ only in case.
+ * Format ^[a-z0-9]+(-[a-z0-9]+)*-[a-z2-7]{16}$, at most 12 + 1 + 16 = 29 characters (varchar(80), passes
+ * FILTER_SANITIZE_URL and the team id check of poker-msg). Ids of existing teams (made by the former name2id()) stay valid.
+ * Used by every way to create a team: addteam.php, index.php?tool=..., later team_create (B-150).
+ */
+const TEAM_ID_PREFIX_MAX = 12;
 
-    for ($i=0;$i<strlen($name);$i++) {
-        if (!isset($mix[strtolower($name[$i])]) or !$signs = $mix[strtolower($name[$i])]) {
-            $signs = $null_signs;
-        }
-        $id.=$signs[rand(0,count($signs)-1)];
-    }
-
-    return $id;
+/* B-156: readable part of a new team id: lower case a-z/0-9 of the name, everything else becomes one '-',
+   at most TEAM_ID_PREFIX_MAX characters, 'team' when nothing is left (e.g. a name of emojis only). German umlauts
+   are spelled out, other non-ASCII letters are dropped. */
+function team_id_prefix(string $name): string {
+    $name = strtr($name, array('ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue', 'ß' => 'ss'));
+    $slug = trim((string)preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
+    $slug = rtrim(substr($slug, 0, TEAM_ID_PREFIX_MAX), '-');
+    return $slug === '' ? 'team' : $slug;
 }
 
-function get_team_id($name, $link) {
-
-    $sql = $link->prepare("select count(1) cnt from pok_teams_tbl where id=?");
-    $id = name2id($name);
-
-    for ($i=0;$i<80;$i++) {
-        $sql->bind_param("s", $id);
+/* B-156: a fresh team id (format above) that is not used yet. With 80 random bits a clash is practically
+   impossible; the check only makes sure we never hand out an existing board. */
+function new_team_id(mysqli $link, string $name): string {
+    $prefix = team_id_prefix($name);
+    $sql = $link->prepare("select count(1) cnt from pok_teams_tbl where id = ?");
+    for ($i = 0; $i < 3; $i++) {
+        $id = $prefix . '-' . strtolower(random_base32_80());
+        $sql->bind_param('s', $id);
         $sql->execute();
-        $result = $sql->get_result();
-        $obj = $result->fetch_object();
-
-        if ($obj->cnt == 0){
-            break;
-        } else {
-            if ($i>(strlen($name)/2)) {
-                $id = name2id($id.'*');
-            }
+        $taken = (int)$sql->get_result()->fetch_object()->cnt > 0;
+        if (!$taken) {
+            $sql->close();
+            return $id;
         }
     }
-
-    return $id;
+    $sql->close();
+    throw new RuntimeException('B-156: no free team id');
 }
 
 
@@ -829,7 +933,8 @@ function touch_player($link, string $id, string $t): void {
     $sql->execute();
 }
 
-/* B-127: signature of the set of away persons (players and observers, not REMOVED, never the own one), '' for none.
+/* B-127: signature of the set of away persons (players, observers and, since B-154, removed persons; never the own
+   one), '' for none.
    Only a hash of the public mkeys, never a player id (SID). getDao() and seen.php both use it, so the board loads
    dao.php after a heartbeat only when the set changed. */
 function away_sig(array $mkeys): string {
@@ -845,7 +950,6 @@ function load_away_sig($link, string $id, string $t): string {
               FROM pok_players_tbl p
              WHERE p.team_id = ?
                AND p.id <> ?
-               AND p.player_type <> 'REMOVED'
                AND unix_timestamp(p.last_callback_time) < unix_timestamp() - ?");
     $away_after_sec = AWAY_AFTER_SEC;
     $sql->bind_param('ssi', $t, $id, $away_after_sec);
@@ -955,9 +1059,9 @@ function getDao($t, $id) {
         $needs_setup = (bool)$obj->needs_setup;
         $deck_changed_by = $obj->deck_changed_by; // B-98 V6: player id, the name comes from the players below
 
-        /* B-98: lazy migration - a team without deck_id gets the deck derived from its cardset_flags (also after the
-           old deck menu changed them, update_cardset.php resets deck_id). Only if the flags are still the ones read
-           here, so a parallel update_cardset.php is never overwritten. No notify_team(): dao.php must never notify. */
+        /* B-98: lazy migration - a team without deck_id (not loaded since rollout 3) gets the deck derived from its
+           cardset_flags. Only if the flags are still the ones read here, so a parallel write is never overwritten.
+           No notify_team(): dao.php must never notify. */
         $catalog = card_catalog();
         if (!isset($catalog['default_deck'])) {
             $deck = null; // broken or half deployed card_catalog.json: deliver no deck, store nothing
@@ -976,20 +1080,18 @@ function getDao($t, $id) {
                     /* A lock wait timeout or deadlock must not break the board: roll back, deliver the derived deck,
                        the next load migrates (B-116 review, Sina). */
                     try {
-                        $link->begin_transaction();
-                        $sql_m = $link->prepare("select cardset_flags, deck_id, deck_cards, deck_controls
-                                                   from pok_teams_tbl where id = ? for update");
-                        $sql_m->bind_param('s', $t);
-                        $sql_m->execute();
-                        $locked = $sql_m->get_result()->fetch_assoc();
-                        if (is_array($locked) && $locked['deck_id'] === null) {
-                            $migrated = migrate_team_deck_locked($link, $t, $locked['cardset_flags'], $catalog, true);
-                        } else if (is_array($locked)) {
-                            $migrated = $locked;
-                        }
-                        $link->commit();
+                        // a deadlock or lock wait timeout is retried first (db_transaction())
+                        $migrated = db_transaction($link, function () use ($link, $t, $catalog, $migrated): array {
+                            $sql_m = $link->prepare("select cardset_flags, deck_id, deck_cards, deck_controls
+                                                       from pok_teams_tbl where id = ? for update");
+                            $sql_m->bind_param('s', $t);
+                            $sql_m->execute();
+                            $locked = $sql_m->get_result()->fetch_assoc();
+                            if (is_array($locked) && $locked['deck_id'] === null)
+                                return migrate_team_deck_locked($link, $t, $locked['cardset_flags'], $catalog, true);
+                            return is_array($locked) ? $locked : $migrated;
+                        });
                     } catch (mysqli_sql_exception $e) {
-                        $link->rollback();
                         error_log('poker dao: deck migration of a team skipped, retried on the next load: ' . $e->getMessage());
                     }
                     $deck_id = $migrated['deck_id'];
@@ -1018,7 +1120,6 @@ function getDao($t, $id) {
                         $deck_controls = $given['deck_controls'];
                     }
                 } catch (mysqli_sql_exception $e) {
-                    $link->rollback();
                     error_log('poker dao: example set of a team skipped, retried on the next load: ' . $e->getMessage());
                 }
             }
@@ -1049,7 +1150,9 @@ function getDao($t, $id) {
 
             // B-110: the own board is loading right now, so the own person is never away
             $obj->away = ($obj->id != $id && (int)$obj->away === 1);
-            if ($obj->away && $obj->player_type !== 'REMOVED') $away_mkeys[] = $obj->mkey; // B-127, see load_away_sig()
+            /* B-127, see load_away_sig(). B-154: removed persons count too - they are in the observer list while
+               connected, so their going away has to change the signature (the boards load dao.php then). */
+            if ($obj->away) $away_mkeys[] = $obj->mkey;
 
             if ($deck !== null && $obj->id === $deck_changed_by) $deck['changed_by'] = $obj->name; // B-98 V6
 
@@ -1080,9 +1183,12 @@ function getDao($t, $id) {
 
 
                 $objs[] = $obj;
-            } elseif ($obj->player_type === 'OBSERVER' && !$obj->away) {
+            } elseif (($obj->player_type === 'OBSERVER' || $obj->player_type === 'REMOVED') && !$obj->away) {
                 /* B-110: observers without connection are simply left out (Andreas, 2026-11-01). The own observer
-                   row is included (like the own card in players); the board finds it by mkey. Never the id. */
+                   row is included (like the own card in players); the board finds it by mkey. Never the id.
+                   B-154: a removed player (REMOVED) is an observer for everybody else, without own marking, under
+                   the same rule (only while his board is connected), so nobody sits at the table unseen. His own
+                   board still knows from player_type (own row above) that he was removed and shows the overlay. */
                 $observers[] = (object) array(
                     "name"=>$obj->name,
                     // mkey must stay a string in the JSON (compared with ===, see below)
@@ -1310,7 +1416,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
         $t = 'Team';
     }
 
-    $id = get_team_id($t, $link);
+    $id = new_team_id($link, $t);
 
     /* determine preset from cards.json config file */
     $cards_conf = json_decode(file_get_contents(dirname(__DIR__).'/cards.json'), true);

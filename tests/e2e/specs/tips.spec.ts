@@ -1,6 +1,6 @@
 import { test, expect, Page, Browser } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, addPlayersViaApi, deckCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, addPlayersViaApi, deckCard, asUser, getSid } from './helpers';
 
 /**
  * B-70: below the round status line a short tip tells the current user what to do now (large
@@ -12,7 +12,7 @@ const PHONE = { width: 390, height: 844 };
 async function setCard(page: Page, boardUrl: string, id: string, cardKey: string): Promise<void> {
   const t = new URL(boardUrl).searchParams.get('t') ?? '';
   const res = await page.request.post(
-    `/api/setc.php?id=${encodeURIComponent(id)}&cardkey=${cardKey}&t=${encodeURIComponent(t)}`);
+    `/api/setc.php?cardkey=${cardKey}&t=${encodeURIComponent(t)}`, asUser(id));
   expect(res.ok()).toBeTruthy();
 }
 
@@ -73,7 +73,7 @@ test('tip: invite, pick, wait, explain, agree; none on phones (B-70)', async ({ 
   expect(await below(alice, '#spread', '#round_tip')).toBe(true);
 
   // revealed, all the same: agreement
-  const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
+  const aliceId = await getSid(alice);
   for (const id of [aliceId, bob, cleo, dan, eve]) await setCard(alice, url, id, 'five001');
   await alice.reload();
   await expect(tip).toHaveText('Everyone agrees – on to the next topic.');
@@ -93,12 +93,12 @@ async function teamWithDeck(browser: Browser, team: string, preset: string, othe
   const url = alice.url();
   await joinAsPlayer(alice, url, 'Alice');
   const ids = await addPlayersViaApi(alice, url, others);
-  const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
+  const aliceId = await getSid(alice);
   // everyone votes (Alice first) in a new round, then the board reloads (revealed). A new round each time: a card
   // changed after the reveal keeps its player among the extremes of the reveal (B-104, card-changed.spec.ts)
   const t = new URL(url).searchParams.get('t') ?? '';
   const vote = async (cards: string[]) => {
-    const res = await alice.request.post(`/api/newround.php?${new URLSearchParams({ t, id: aliceId }).toString()}`);
+    const res = await alice.request.post(`/api/newround.php?${new URLSearchParams({ t }).toString()}`, asUser(aliceId));
     expect(res.ok()).toBeTruthy();
     for (const [i, id] of [aliceId, ...ids].entries()) placeCard(t, id, cards[i]);
     await alice.reload();

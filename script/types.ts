@@ -8,7 +8,8 @@ export interface Player {
     i: number;
 }
 
-/* B-110: a connected observer (observers without connection are not delivered); the own observer row is included */
+/* B-110: a connected observer (observers without connection are not delivered); the own observer row is included.
+   B-154: also connected removed players (REMOVED), without own marking */
 export interface Observer {
     name: string;
     mkey: string;

@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, getSid, asUser } from './helpers';
 
 /**
  * B-96: team setting "Tips" (backend). update_team.php takes show_tips = 0/1 (exactly these values, anything else is
@@ -10,9 +10,9 @@ test('show_tips defaults to 1, is stored per team and ignores invalid values', a
   const page = await newPlayer(browser);
   const boardUrl = await createTeam(page, 'TipsToggleTeam');
   const t = encodeURIComponent(new URL(boardUrl).searchParams.get('t') as string);
-  const sid = encodeURIComponent((await page.evaluate(() => localStorage.getItem('SID'))) as string);
+  const sid = await getSid(page);
   const showTips = async () => {
-    const res = await page.request.get(`./api/dao.php?id=${sid}&t=${t}`);
+    const res = await page.request.get(`./api/dao.php?t=${t}`, asUser(sid));
     expect(res.ok()).toBeTruthy();
     return (await res.json()).show_tips;
   };

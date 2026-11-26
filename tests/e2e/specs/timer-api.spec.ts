@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, getSid, asUser } from './helpers';
 
 /**
  * B-67: timer instead of stopwatch (backend). timer.php gets the explicit settings set_visibility, set_mode,
@@ -21,20 +21,20 @@ async function newTeam(page: Page, name: string) {
   const boardUrl = await createTeam(page, name);
   const teamId = new URL(boardUrl).searchParams.get('t') as string;
   // team ids are plain [A-Za-z0-9] here, so building the test statements below is safe
-  expect(teamId).toMatch(/^[A-Za-z0-9]+$/);
-  const sid = (await page.evaluate(() => localStorage.getItem('SID'))) as string;
+  expect(teamId).toMatch(/^[A-Za-z0-9_-]+$/);
+  const sid = await getSid(page);
   const t = encodeURIComponent(teamId);
   const dao = async () => {
-    const res = await page.request.get(`./api/dao.php?id=${encodeURIComponent(sid)}&t=${t}`);
+    const res = await page.request.get(`./api/dao.php?t=${t}`, asUser(sid));
     expect(res.ok()).toBeTruthy();
     return res.json();
   };
   const timer = (action: string, value?: string) => page.request.post(
     `./api/timer.php?t=${t}&action=${action}` + (value === undefined ? '' : `&value=${encodeURIComponent(value)}`));
-  const post = async (url: string) => expect((await page.request.post(url)).ok()).toBeTruthy();
+  const post = async (url: string) => expect((await page.request.post(url, asUser(sid))).ok()).toBeTruthy();
   // join as the only player (the creator is not a player yet)
-  await post(`./api/name.php?id=${encodeURIComponent(sid)}&type=player&name=Alice&t=${t}`);
-  const pickCard = () => post(`./api/setc.php?id=${encodeURIComponent(sid)}&cardkey=three01&t=${t}`);
+  await post(`./api/name.php?type=player&name=Alice&t=${t}`);
+  const pickCard = () => post(`./api/setc.php?cardkey=three01&t=${t}`);
   const newRound = () => post(`./api/newround.php?t=${t}`);
   // let the timer look as if it had been started 100 s ago
   const backdateTimer = () => sql(
