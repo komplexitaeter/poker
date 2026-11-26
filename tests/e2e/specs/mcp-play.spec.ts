@@ -62,7 +62,7 @@ test('tools/list: play_card, round and me with their actions', async ({ request 
   expect(Object.keys(byName.play_card.inputSchema.properties)).toEqual(['team_id', 'uid', 'api_key', 'action', 'card']);
   expect(byName.me.description).toContain('delete_my_data is NOT possible when you act with an api_key');
   expect(byName.me.annotations.destructiveHint).toBe(true);
-  expect(byName.me.inputSchema.properties.key_id.type).toEqual(['string', 'integer']);
+  expect(byName.me.inputSchema.properties.key_id.type).toBe('string'); // numbers are accepted all the same
 
   const init = await request.post(MCP, { data: { jsonrpc: '2.0', id: 2, method: 'initialize', params: {} } });
   const instructions = (await init.json()).result.instructions as string;

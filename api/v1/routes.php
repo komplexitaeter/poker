@@ -15,7 +15,7 @@
  *                  one tool)]; only routes with this field are MCP tools (docs/mcp-concept.md, section 7)
  *   params         name => [in: path|query|body, type: string|integer|boolean, required, nullable, max_length,
  *                  min_length, pattern, enum, minimum, maximum, default, text (free text: trim, then check the length),
-                  accept_integer (string parameter that also takes a JSON number, checked as its decimal text),
+                  accept_integer (string parameter that also takes a JSON number, checked as its decimal text; the schema says string),
  *                  description, example]
  *   handler        function called as handler(mysqli $link, ?array $actor, array $params): array|V1Answer|null
  *                  (array = JSON body with the first 2xx status of responses, null = 204, V1Answer = another

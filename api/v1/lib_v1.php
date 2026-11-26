@@ -651,7 +651,7 @@ function v1_schema(mixed $schema): array
 /* schema of one parameter (JSON Schema names) */
 function v1_param_schema(array $def): array
 {
-    $schema = ['type' => ($def['accept_integer'] ?? false) ? [$def['type'], 'integer'] : $def['type']];
+    $schema = ['type' => $def['type']]; // accept_integer stays "string" here: type arrays trouble some clients
     $map = ['max_length' => 'maxLength', 'min_length' => 'minLength', 'pattern' => 'pattern', 'enum' => 'enum',
             'minimum' => 'minimum', 'maximum' => 'maximum', 'default' => 'default', 'nullable' => 'nullable'];
     foreach ($map as $from => $to) {
