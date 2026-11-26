@@ -5,7 +5,8 @@ import { newPlayer, createTeam, userRequest } from './helpers';
 /**
  * B-110 (steps 1+2, API level): dao.php delivers "away" per player (no dao.php load for AWAY_AFTER_SEC = 70 s, the own
  * card never) and the connected observers ({name, mkey}, never the id); observers without connection are left out.
- * api/delete.php removes players only, never observers (400, nothing changed). last_callback_time is moved back per
+ * api/delete.php removes players only, never observers (400, nothing changed). B-154: a removed player (REMOVED) is in
+ * the observer list like an observer (connected only, never the id); his own board still gets player_type REMOVED. last_callback_time is moved back per
  * SQL, so the test does not wait.
  */
 
@@ -98,4 +99,33 @@ test('dao.php: away per player, connected observers only, delete.php spares obse
   expect((await post(page, 'delete.php', { t, mkey: bobMkey })).status()).toBe(400);
   state = await dao(page, t, alice);
   expect(state.players.map((p: Player) => p.name)).toEqual(['Alice']);
+  // B-154: Bob's board is away (120 s), so he is not in the observer list (Olga connected, Oscar away)
+  lastLoadAgo(t, olga, 0);
+  lastLoadAgo(t, oscar, 300);
+  state = await dao(page, t, alice);
+  expect(state.observers.map((o: Observer) => o.name)).toEqual(['Olga']);
+
+  // B-154: Bob's board loads: he is REMOVED himself (overlay) and finds his own row by mkey in the observers
+  state = await dao(page, t, bob);
+  expect(state.player_type).toBe('REMOVED');
+  expect(state.observers.map((o: Observer) => `${o.name}:${o.mkey === bobMkey}`)).toEqual(['Bob:true', 'Olga:false']);
+  // for Alice he is a connected observer now (name and mkey only, never the id), not a player
+  state = await dao(page, t, alice);
+  expect(state.players.map((p: Player) => p.name)).toEqual(['Alice']);
+  expect(state.observers.map((o: Observer) => o.name)).toEqual(['Bob', 'Olga']);
+  const bobObserver = state.observers.find((o: Observer) => o.name === 'Bob');
+  expect(Object.keys(bobObserver).sort()).toEqual(['mkey', 'name']);
+  expect(bobObserver.mkey).toBe(bobMkey);
+  expect(JSON.stringify(state)).not.toContain(bob);
+  // away again: left out like an observer
+  lastLoadAgo(t, bob, 75);
+  state = await dao(page, t, alice);
+  expect(state.observers.map((o: Observer) => o.name)).toEqual(['Olga']);
+
+  // Bob joins again as a player: on the table, no longer an observer
+  expect((await post(page, 'name.php', { t, id: bob, name: 'Bob', type: 'player' })).ok()).toBeTruthy();
+  await dao(page, t, bob);
+  state = await dao(page, t, alice);
+  expect(state.players.map((p: Player) => p.name)).toEqual(['Alice', 'Bob']);
+  expect(state.observers.map((o: Observer) => o.name)).toEqual(['Olga']);
 });

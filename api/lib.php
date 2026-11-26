@@ -915,7 +915,8 @@ function touch_player($link, string $id, string $t): void {
     $sql->execute();
 }
 
-/* B-127: signature of the set of away persons (players and observers, not REMOVED, never the own one), '' for none.
+/* B-127: signature of the set of away persons (players, observers and, since B-154, removed persons; never the own
+   one), '' for none.
    Only a hash of the public mkeys, never a player id (SID). getDao() and seen.php both use it, so the board loads
    dao.php after a heartbeat only when the set changed. */
 function away_sig(array $mkeys): string {
@@ -931,7 +932,6 @@ function load_away_sig($link, string $id, string $t): string {
               FROM pok_players_tbl p
              WHERE p.team_id = ?
                AND p.id <> ?
-               AND p.player_type <> 'REMOVED'
                AND unix_timestamp(p.last_callback_time) < unix_timestamp() - ?");
     $away_after_sec = AWAY_AFTER_SEC;
     $sql->bind_param('ssi', $t, $id, $away_after_sec);
@@ -1135,7 +1135,9 @@ function getDao($t, $id) {
 
             // B-110: the own board is loading right now, so the own person is never away
             $obj->away = ($obj->id != $id && (int)$obj->away === 1);
-            if ($obj->away && $obj->player_type !== 'REMOVED') $away_mkeys[] = $obj->mkey; // B-127, see load_away_sig()
+            /* B-127, see load_away_sig(). B-154: removed persons count too - they are in the observer list while
+               connected, so their going away has to change the signature (the boards load dao.php then). */
+            if ($obj->away) $away_mkeys[] = $obj->mkey;
 
             if ($deck !== null && $obj->id === $deck_changed_by) $deck['changed_by'] = $obj->name; // B-98 V6
 
@@ -1166,9 +1168,12 @@ function getDao($t, $id) {
 
 
                 $objs[] = $obj;
-            } elseif ($obj->player_type === 'OBSERVER' && !$obj->away) {
+            } elseif (($obj->player_type === 'OBSERVER' || $obj->player_type === 'REMOVED') && !$obj->away) {
                 /* B-110: observers without connection are simply left out (Andreas, 2026-11-01). The own observer
-                   row is included (like the own card in players); the board finds it by mkey. Never the id. */
+                   row is included (like the own card in players); the board finds it by mkey. Never the id.
+                   B-154: a removed player (REMOVED) is an observer for everybody else, without own marking, under
+                   the same rule (only while his board is connected), so nobody sits at the table unseen. His own
+                   board still knows from player_type (own row above) that he was removed and shows the overlay. */
                 $observers[] = (object) array(
                     "name"=>$obj->name,
                     // mkey must stay a string in the JSON (compared with ===, see below)
