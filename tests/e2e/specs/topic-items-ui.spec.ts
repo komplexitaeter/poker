@@ -324,7 +324,7 @@ test('history: agreed value, rounds, date of the last round, the spread unfolds 
   await openTopics(alice);
   await showTab(alice, 'done');
   const done = alice.locator('#ti_done > li').first();
-  await expect(done.locator('.ti-h')).toHaveText('Checkout redesign');
+  await expect(done.locator('.ti-h')).toHaveText('1 Checkout redesign'); // B-150: every item has a key (suggestion 1)
   await expect(done.locator('.ti-res-lab')).toHaveText('agreed');
   await expect(done.locator('.ti-res-val')).toHaveText('8');
   await expect(done.locator('.ti-rounds')).toHaveText('2 rounds');
@@ -637,7 +637,7 @@ test('leaving an item always asks: suggestion, Enter, Cancel, Escape, click besi
   await alice.locator('#nextitem_btn').click();
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('h2')).toHaveText('How do you want to leave this item?');
-  await expect(alice.locator('#leave_item_heading')).toHaveText('Alpha');
+  await expect(alice.locator('#leave_item_heading')).toHaveText('1 Alpha'); // B-150: every item has a key (suggestion 1)
   await expect(dialog.locator('.leave-opt-t')).toHaveText(['Close with 5', 'Close without a value', 'Bring it back later']);
   await expect(options.first()).toBeFocused();
   await expect(options.first()).toHaveClass(/primary/);
@@ -692,7 +692,7 @@ test('leaving an item always asks: suggestion, Enter, Cancel, Escape, click besi
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Beta');
   await openTopics(alice);
   await showTab(alice, 'done');
-  await expect(alice.locator('#ti_done > li .ti-h')).toHaveText(['Gamma', 'Alpha']);
+  await expect(alice.locator('#ti_done > li .ti-h')).toHaveText(['3 Gamma', '1 Alpha']); // B-150: keys 1, 2, 3 (suggestion)
   await expect(alice.locator('#ti_done > li').first().locator('.ti-res-val')).toHaveCount(0);
   await expect(alice.locator('#ti_done > li').nth(1).locator('.ti-res-val')).toHaveText('5');
   await closeMenu(alice);
@@ -870,7 +870,7 @@ test('done items without pen; the red "Delete" cancels on a click beside it, Esc
   await expect(alice.locator('#topic_tab_done')).toHaveText('Done 1');
   await showTab(alice, 'done');
   const done = alice.locator('#ti_done > li').first();
-  await expect(done.locator('.ti-h')).toHaveText('First');
+  await expect(done.locator('.ti-h')).toHaveText('1 First'); // B-150: every item has a key (suggestion 1)
   await expect(done.locator('[data-ti-act="edit"]')).toHaveCount(0);
   await expect(done.locator('[data-ti-act="reopen"]')).toBeVisible();
   const doneTrash = done.locator('[data-ti-act="delete"]');
@@ -901,7 +901,7 @@ test('done items export: Copy as a tab separated table, Download CSV; all items,
   };
   await add({ ext_id: 'PROJ-1', heading: 'Login, "quick"', description: 'First line\n- second, with a comma' }, '&maturity=2');
   await add({ heading: '=SUM(A1:A2)', description: '-1 is a formula too' });
-  await add({ ext_id: '@me', heading: '+plus' });
+  await add({ ext_id: 'ME-7', heading: '+plus' }); // B-150: a key never starts with a formula character
   await add({ heading: 'Four' });
   await add({ heading: 'Five' });
   const activeId = async () => (await (await alice.request.get(`/api/get_topics.php?t=${tq}`)).json()).open[0].id;
@@ -929,10 +929,11 @@ test('done items export: Copy as a tab separated table, Download CSV; all items,
     ['ID', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round'],
     // Votes: the last revealed round, in deck order, "<card> ×<n>"; empty without a round
     ['PROJ-1', 'Login, "quick"', 'First line\n- second, with a comma', '5', '3 ×1, 5 ×2', String(first.rounds_cnt), day],
-    ['', "'=SUM(A1:A2)", "'-1 is a formula too", '', '', '0', ''],
-    ["'@me", "'+plus", '', '8', '', '0', ''],
-    ['', 'Four', '', '', '', '0', ''],
-    ['', 'Five', '', '', '', '0', ''],
+    // B-150: items added without a key get the suggestion of the server (PROJ-1 -> PROJ-2, ME-7 -> ME-8 -> ME-9)
+    ['PROJ-2', "'=SUM(A1:A2)", "'-1 is a formula too", '', '', '0', ''],
+    ['ME-7', "'+plus", '', '8', '', '0', ''],
+    ['ME-8', 'Four', '', '', '', '0', ''],
+    ['ME-9', 'Five', '', '', '', '0', ''],
   ];
   const quote = (cell: string, sep: string) =>
     cell.includes(sep) || /["\r\n]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;

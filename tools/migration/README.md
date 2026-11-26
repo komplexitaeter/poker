@@ -174,3 +174,28 @@ haben, behalten die von `store_team_deck()` geschriebenen Flags.
 
 Nach dem erfolgreichen Abschluss von R3 kann die Backup-Tabelle (nach Rücksprache) gelöscht werden; der
 Prüf-Checkout auf Live mit `rm -rf /home/ubuntu/poker-r3-check`.
+
+# B-150: Item-Schlüssel auffüllen (`b150_item_keys.php`)
+
+Ab B-150 PR 3 ist der Item-Schlüssel (`pok_topic_items_tbl.ext_id`, im Board „Key“, in der API `key`) Pflicht:
+nur `[A-Za-z0-9][A-Za-z0-9_-]{0,19}`, je Team eindeutig ohne Groß-/Kleinschreibung (Konzept `docs/api-v1-concept.md`,
+Abschnitt 7). Das Skript gibt alten Items einmalig einen gültigen Schlüssel, danach zieht der Block
+„B-150 item keys“ in `db_schema_pok_inc.sql` das Schema fest (`not null` + eindeutiger Index `(team_id, ext_id)`).
+
+- leer → Vorschlag wie im Board (`item_key_suggest()`: `DMZ-004` → `DMZ-005`, sonst Anzahl + 1);
+- ungültige Zeichen → durch `-` ersetzt, `-`/`_` an den Enden entfernt, auf 20 Zeichen gekürzt (nichts übrig → Vorschlag);
+- doppelt (auch `dmz-4`/`DMZ-4`) → das spätere bekommt `-2`, `-3` …;
+- jeder Endwert wird gegen das Muster und per SQL (Kollation der Spalte) auf Eindeutigkeit geprüft.
+
+Je Team eine Transaktion unter der Team-Sperre; Ausgabe nur Zählwerte und `alt -> neu`, ohne Team-IDs und Überschriften.
+Ohne `--apply` Trockenlauf (dieselben Änderungen, danach Rollback). Ein zweiter Lauf meldet 0.
+
+Reihenfolge je Server (abends): Code deployen → Trockenlauf → `--apply` → DDL-Block.
+
+```bash
+cd <Web-Root>   # Live: /home/ubuntu/poker/public_html, Staging: /home/ubuntu/poker-staging.komplexitaeter.de/public_html
+php tools/migration/b150_item_keys.php            # Trockenlauf
+php tools/migration/b150_item_keys.php --apply
+sed -n '/^\/\* B-150 item keys:/,/^\/\* end B-150 item keys/p' db_schema_pok_inc.sql \
+  | sudo mysql --defaults-file=/etc/mysql/debian.cnf <db>   # Live pok_db, Staging pok_staging
+```

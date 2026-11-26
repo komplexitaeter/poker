@@ -473,6 +473,16 @@ Umsetzung PR 2 (Ben, 2026-11-26, Branch `feature/B-150-pr2-keys`): Tabelle `pok_
 `team_create`, `team_join`, `team_note_set` (auch hinter `update_topic.php`), `key_create` (nur Board), `key_list`,
 `key_delete`, `key_delete_current`; `delete_user.php` löscht Schlüssel über alle Teams. Jeder Aufruf mit Schlüssel
 zählt als Anwesenheit (`touch_player()`, Konzept 5.4), damit fallen API-Personen nicht unter die 2-Monats-Aufräumregel.
+Umsetzung PR 3, Backend (Ben, 2026-11-26, Branch `feature/B-150-pr3-item-keys`): Item-Schlüssel Pflicht
+(`ITEM_KEY_PATTERN`, eindeutig je Team per SQL in der Kollation), Heuristik `next_item_key()`/`item_key_suggest()` in
+`api/lib_topics.php` mit Testtabelle `tests/e2e/fixtures/item-keys.json` (statt `tests/fixtures/item_keys.json`),
+Vorschlag als `next_key` in `get_topics.php`; Kernfunktionen `core_item_create/patch/delete` in
+`api/lib_core_items.php`, `topic_item_add/edit/delete.php` als Wrapper (fehlender Schlüssel beim Anlegen → Vorschlag,
+damit alte Boards weiterlaufen; neue Fehler 400 `ext_id`, 409 `key_taken`); Auffüllskript
+`tools/migration/b150_item_keys.php` (README dort), DDL-Block „B-150 item keys“ (nach dem Skript). Abweichungen vom
+Konzept: ungültige Schlüssel verlieren `-`/`_` an beiden Enden (nicht nur vorn); beim Bearbeiten bleibt ein
+unverändert gesendeter Schlüssel ungeprüft und ein leerer wird nur bei einem Item ohne Schlüssel durch den Vorschlag
+ersetzt (alte Items bleiben bis zur Migration bearbeitbar). Board-Teil (Vorbelegung, „Key already used“) folgt (Fred).
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig

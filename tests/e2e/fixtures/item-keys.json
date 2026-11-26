@@ -1,0 +1,23 @@
+{
+  "_comment": "B-150: test table of the item key suggestion (docs/api-v1-concept.md 7.3), shared by PHP next_item_key() (api/lib_topics.php) and the board's JS. last = key of the item created last (null = no item or no key), count = number of items of the team, taken = keys in use (compared case-insensitively), expected = the suggestion.",
+  "cases": [
+    { "last": null, "count": 0, "taken": [], "expected": "1", "note": "first item" },
+    { "last": "1", "count": 1, "taken": ["1"], "expected": "2" },
+    { "last": "7", "count": 3, "taken": ["7"], "expected": "8" },
+    { "last": "DMZ-004", "count": 4, "taken": ["DMZ-004"], "expected": "DMZ-005", "note": "prefix and zeros kept" },
+    { "last": "A-09", "count": 1, "taken": ["A-09"], "expected": "A-10" },
+    { "last": "X-99", "count": 1, "taken": ["X-99"], "expected": "X-100" },
+    { "last": "099", "count": 1, "taken": ["099"], "expected": "100" },
+    { "last": "PRJ-0009", "count": 1, "taken": ["PRJ-0009"], "expected": "PRJ-0010" },
+    { "last": "DMZ-004", "count": 4, "taken": ["DMZ-004", "dmz-005", "DMZ-006"], "expected": "DMZ-007", "note": "taken ones skipped, case-insensitively" },
+    { "last": "Story", "count": 2, "taken": ["Story", "x"], "expected": "3", "note": "no number at the end: count + 1" },
+    { "last": "Story", "count": 2, "taken": ["Story", "3", "4"], "expected": "5" },
+    { "last": null, "count": 5, "taken": ["a", "b"], "expected": "6", "note": "last item without a key (before the migration)" },
+    { "last": "ABCDEFGHIJKLMNOPQR99", "count": 1, "taken": ["ABCDEFGHIJKLMNOPQR99"], "expected": "2", "note": "longer than 20 characters: count + 1" },
+    { "last": "PRJ 4", "count": 1, "taken": ["PRJ 4"], "expected": "2", "note": "old invalid key: no invalid suggestion" },
+    { "last": "12345678901234567890", "count": 1, "taken": ["12345678901234567890"], "expected": "12345678901234567891", "note": "no integer overflow" },
+    { "last": "99999999999999999999", "count": 1, "taken": ["99999999999999999999"], "expected": "2", "note": "21 digits are too long: count + 1" },
+    { "last": "A1B2", "count": 2, "taken": ["A1B2"], "expected": "A1B3" },
+    { "last": "0", "count": 1, "taken": ["0"], "expected": "1" }
+  ]
+}

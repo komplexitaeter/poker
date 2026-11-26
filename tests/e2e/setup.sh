@@ -114,6 +114,11 @@ CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PWD';
 CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PWD';
 GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'localhost';
 GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'127.0.0.1';
+-- B-150: scratch database of item-keys.spec.ts (migration script on items from before the key rule)
+DROP DATABASE IF EXISTS ${DB_NAME}_mig;
+CREATE DATABASE ${DB_NAME}_mig;
+GRANT ALL ON ${DB_NAME}_mig.* TO '$DB_USER'@'localhost';
+GRANT ALL ON ${DB_NAME}_mig.* TO '$DB_USER'@'127.0.0.1';
 EOF
     $MYSQL_ADMIN "$DB_NAME" < "$REPO_DIR/db_schema_pok.sql"
     # pending schema changes, as on the servers before the next merge into db_schema_pok.sql (check queries -> /dev/null)
