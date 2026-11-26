@@ -6,10 +6,12 @@
  *
  * 'tools': name => tool of its own (listed before the route tools, in this order)
  *   description    English, for the agent (the data hint is added by lib_mcp.php)
- *   identity       none (no team_id/uid/api_key) | key (api_key only: join_team)
+ *   identity       none (no team_id/uid/api_key) | key (api_key only: join_team) | seat (team_id + uid or api_key,
+ *                  like a route tool: wait_for_change)
  *   params         name => definition as in routes.php without 'in' (type, required, text, min_length, max_length,
  *                  pattern, enum, default, description); 'required' is shown in the schema
- *   handler        mcp_<tool>(mysqli $link, array $params, ?string $key): array ['structured' => ..., 'text' => ...]
+ *   handler        mcp_<tool>(mysqli $link, array $params, ?string $key): array ['structured' => ..., 'text' => ...];
+ *                  with identity seat the third parameter is the actor (array)
  *   annotations    MCP tool annotations
  * 'routes': tool name => description and text view of a tool built from the routes with this 'mcp.tool'
  *   description    English, for the agent
@@ -74,6 +76,26 @@ return [
             'annotations' => ['title' => 'Join a board', 'readOnlyHint' => false, 'destructiveHint' => false,
                               'idempotentHint' => false, 'openWorldHint' => false],
         ],
+        // B-151 PR C (concept 5.3, 8): the wait itself is held by poker-msg, see lib_mcp_wait.php
+        'wait_for_change' => [
+            'description' => 'Wait until something changes at the table, then return what changed and the new board. '
+                . 'Returns at the latest after about 25 seconds with changed=false. While you keep calling it, you '
+                . 'count as present at the table (like an open browser tab); stop calling it when the user is done. '
+                . 'Pass the version from your last result (any tool) as since. Typical loop: call, tell the user '
+                . 'briefly what happened (e.g. "Ben played - waiting for Cleo", "Revealed: 5 x3, 8 x1"), call again '
+                . 'with the new version. If the result says busy, wait retry_after seconds and call again.',
+            'identity' => 'seat',
+            'params' => [
+                'since' => ['type' => 'string', 'required' => true, 'min_length' => 1, 'max_length' => MCP_VERSION_MAX,
+                            'pattern' => MCP_VERSION_PATTERN,
+                            'description' => 'version from your last result (any tool).'],
+                'timeout' => ['type' => 'integer', 'minimum' => 1, 'maximum' => MCP_WAIT_MAX, 'default' => MCP_WAIT_MAX,
+                              'description' => 'Maximum seconds to wait.'],
+            ],
+            'handler' => 'mcp_wait_for_change',
+            'annotations' => ['title' => 'Wait for a change at the table', 'readOnlyHint' => true,
+                              'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
+        ],
     ],
     'routes' => [
         'get_board' => [
@@ -81,7 +103,8 @@ return [
                 . 'the table (players with "has played" or, after the reveal, their card; observers), who is away, the '
                 . 'round state (waiting for N players or revealed with distribution, range and suggested value), '
                 . 'timer, card set and settings. Cards of others stay hidden until every player has a card down - '
-                . 'exactly like on the web. Use it when the user asks "what\'s going on?".',
+                . 'exactly like on the web. Use it when the user asks "what\'s going on?"; to follow the table over time use '
+                . 'wait_for_change instead of calling this repeatedly.',
             'text' => 'mcp_board_text',
             'annotations' => ['title' => 'Read the board'],
         ],

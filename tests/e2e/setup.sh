@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Starts a local copy of the poker app for the e2e tests:
 # nginx (port 8080) -> PHP-FPM for the app, /poker-msg -> poker-msg WebSocket server (127.0.0.1:8443,
-# notify channel udp 127.0.0.1:8444 for the API, B-81),
+# notify channel udp 127.0.0.1:8444 for the API, B-81, MCP wait endpoint http 127.0.0.1:8445, B-151),
 # MySQL database created from db_schema_pok.sql plus the pending changes in db_schema_pok_inc.sql.
 #
 # Usage: tests/e2e/setup.sh start|stop
@@ -138,12 +138,14 @@ EOF
     fi
     # no-op if vendor/ matches composer.lock
     composer install -q --no-interaction --working-dir="$msg_dir"
-    POKER_MSG_KEEPALIVE="$POKER_MSG_KEEPALIVE" nohup php "$msg_dir/bin/msg-server.php" > "$E2E_DIR/logs/poker-msg.log" 2>&1 &
+    # B-151: MCP wait endpoint on the same port as on the servers (nginx location /_mcp_wait/ below)
+    POKER_MSG_KEEPALIVE="$POKER_MSG_KEEPALIVE" POKER_MSG_HTTP_PORT=8445 nohup php "$msg_dir/bin/msg-server.php" > "$E2E_DIR/logs/poker-msg.log" 2>&1 &
     echo $! > "$E2E_DIR/poker-msg.pid"
     wait_for "poker-msg" bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443'
     # B-81: the API notifies poker-msg via UDP 127.0.0.1:8444 (default of both sides)
     wait_for "poker-msg notify channel" grep -q 'Notify channel listening' "$E2E_DIR/logs/poker-msg.log"
-    log "poker-msg running on 127.0.0.1:8443 (notify udp 8444)"
+    wait_for "poker-msg MCP wait endpoint" bash -c 'exec 3<>/dev/tcp/127.0.0.1/8445'
+    log "poker-msg running on 127.0.0.1:8443 (notify udp 8444, MCP wait http 8445)"
 
     # --- php-fpm
     local fpm="${PHP_FPM:-$(compgen -c php-fpm | sort -r | head -1)}"
@@ -215,6 +217,51 @@ http {
             fastcgi_param SCRIPT_FILENAME \$document_root/api/v1/index.php;
             fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
             client_max_body_size 64k;
+        }
+
+        # B-151: wait_for_change - PHP hands the open request to poker-msg via X-Accel-Redirect and gets it back
+        # (same blocks as on the servers, docs/mcp-concept.md 8.4)
+        location ^~ /_mcp_wait/ {
+            internal;
+            proxy_pass http://127.0.0.1:8445;
+            proxy_http_version 1.1;
+            proxy_pass_request_body off;
+            proxy_pass_request_headers off;
+            proxy_set_header Content-Length "";
+            proxy_read_timeout 35s;
+            error_page 502 504 = @mcp_wait_failed;
+        }
+
+        location @mcp_wait_failed {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root/api/v1/index.php;
+            fastcgi_param POKER_MCP_PHASE down;
+            fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
+        }
+
+        location ^~ /_mcp_result/ {
+            internal;
+            include /etc/nginx/fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root/api/v1/index.php;
+            fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
+        }
+
+        # test only (mcp-wait.spec.ts): /mcp whose wait goes to a port without poker-msg -> @mcp_wait_failed
+        location = /_e2e/mcp-msg-down {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root/api/v1/index.php;
+            fastcgi_param POKER_MCP_PHASE call;
+            fastcgi_param POKER_MCP_WAIT_PREFIX /_e2e_mcp_wait_down/;
+            fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
+        }
+
+        location ^~ /_e2e_mcp_wait_down/ {
+            internal;
+            proxy_pass http://127.0.0.1:1;
+            proxy_pass_request_body off;
+            proxy_pass_request_headers off;
+            proxy_set_header Content-Length "";
+            error_page 502 504 = @mcp_wait_failed;
         }
 
         location ~ \.php\$ {
