@@ -116,14 +116,17 @@ function b150_fix_team(mysqli $link, string $t, bool &$orphan): array
 
 /*
  * Backup before --apply (review Sina): table pok_topic_items_b150_bak keeps the key of every item as it was before the
- * first --apply (id, team_id, ext_id). Created once (create table if not exists); rows already backed up stay as they
- * are (insert ignore on the primary key id), so a second run never overwrites the original value. Read without locks
- * (plain select, then inserts in batches; no insert ... select on the items table, B-155). Restore of a single team:
- * see tools/migration/README.md. Drop the table once B-150 is live and checked.
+ * first --apply (id, team_id, ext_id). Created once, only if it is missing (MySQL checks the CREATE privilege even for
+ * "create table if not exists", so an admin-created table plus "grant select, insert" is enough); rows already backed
+ * up stay as they are (insert ignore on the primary key id), so a second run never overwrites the original value.
+ * Read without locks (plain select, then inserts in batches; no insert ... select on the items table, B-155). Restore
+ * of a single team: see tools/migration/README.md. Drop the table once B-150 is live and checked.
  */
 function b150_backup(mysqli $link): int
 {
-    $link->query("create table if not exists pok_topic_items_b150_bak (
+    $exists = $link->query("select 1 from information_schema.tables
+                             where table_schema = database() and table_name = 'pok_topic_items_b150_bak'")->fetch_row();
+    if (!is_array($exists)) $link->query("create table if not exists pok_topic_items_b150_bak (
                     id int unsigned not null primary key comment 'pok_topic_items_tbl.id',
                     team_id varchar(80) not null,
                     ext_id varchar(20) null comment 'key before tools/migration/b150_item_keys.php --apply',
