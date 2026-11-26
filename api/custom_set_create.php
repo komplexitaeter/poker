@@ -33,32 +33,36 @@ $head = validate_custom_set_head($data, $catalog);
 if (isset($head['error'])) custom_fail(400, $head['error']);
 $activate = ($data['activate'] ?? false) === true;
 
-$link->begin_transaction();
-$team = lock_team_deck($link, $t, $catalog); // the team row lock serializes all changes of the team's sets
-if ($team === null) {
-    $link->rollback();
-    http_response_code(403);
-    exit;
-}
-// cards are validated under the lock: a card may copy an active card of another own set (custom_source_cards())
-$checked = validate_custom_cards($data['cards'] ?? null, array(), $catalog, custom_source_cards($team['custom_sets']));
-if (isset($checked['error'])) {
-    $link->rollback();
-    custom_fail(400, $checked['error'], isset($checked['index']) ? array('index' => $checked['index']) : array());
-}
-if (count($checked['cards']) > custom_cards_max()) {
-    $link->rollback();
-    custom_fail(400, 'too_many_cards', array('max' => custom_cards_max()));
-}
-if (count($team['custom_sets']) >= custom_sets_max()) {
-    $link->rollback();
-    custom_fail(400, 'set_limit', array('max' => custom_sets_max()));
-}
-$set_id = insert_custom_set($link, $t, $head['name'], $head['style'], $checked['cards'], $head['aim'] ?? 'agree');
-$result = array('deck' => $team['deck'], 'new_round' => false);
-if ($activate) $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true, $player_id);
-$set = load_custom_sets($link, $t, $catalog)[$set_id];
-$link->commit();
+// deadlocks and lock wait timeouts are retried, after the last attempt 503 (api_transaction())
+$done = api_transaction($link, function () use ($link, $t, $catalog, $data, $head, $activate, $player_id): array {
+    $team = lock_team_deck($link, $t, $catalog); // the team row lock serializes all changes of the team's sets
+    if ($team === null) {
+        $link->rollback();
+        http_response_code(403);
+        exit;
+    }
+    // cards are validated under the lock: a card may copy an active card of another own set (custom_source_cards())
+    $checked = validate_custom_cards($data['cards'] ?? null, array(), $catalog, custom_source_cards($team['custom_sets']));
+    if (isset($checked['error'])) {
+        $link->rollback();
+        custom_fail(400, $checked['error'], isset($checked['index']) ? array('index' => $checked['index']) : array());
+    }
+    if (count($checked['cards']) > custom_cards_max()) {
+        $link->rollback();
+        custom_fail(400, 'too_many_cards', array('max' => custom_cards_max()));
+    }
+    if (count($team['custom_sets']) >= custom_sets_max()) {
+        $link->rollback();
+        custom_fail(400, 'set_limit', array('max' => custom_sets_max()));
+    }
+    $set_id = insert_custom_set($link, $t, $head['name'], $head['style'], $checked['cards'], $head['aim'] ?? 'agree');
+    $result = array('deck' => $team['deck'], 'new_round' => false);
+    if ($activate) $result = custom_update_team_deck($link, $t, $team, $catalog, custom_deck_id($set_id), true, $player_id);
+    $set = load_custom_sets($link, $t, $catalog)[$set_id];
+    return array('set' => $set, 'result' => $result);
+});
+$set = $done['set'];
+$result = $done['result'];
 $link->close();
 
 notify_team($t); // B-81: the deck menus of the team show the new set

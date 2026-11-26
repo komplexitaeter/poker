@@ -492,22 +492,27 @@ function insert_custom_card($link, int $set_id, int $position, array $card): str
     return $key;
 }
 
-/* creates a set with its cards (no limits checked here), returns the set id */
+/*
+ * creates a set with its cards (no limits checked here), returns the set id. The caller holds the team row lock, which
+ * serializes all writes of the team's sets, so sort_order is read without a lock: an "insert ... select max()" took a
+ * shared gap lock on ix_custom_sets_team, and two new teams next to each other in that index (no sets yet) deadlocked
+ * on their inserts (CI 2026-11-26).
+ */
 function insert_custom_set($link, string $t, string $name, string $style, array $cards, string $aim = 'agree'): int
 {
+    $sql = $link->prepare("select least(255, ifnull(max(sort_order), 0) + 1) from pok_custom_sets_tbl where team_id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $sort_order = (int)$sql->get_result()->fetch_row()[0];
     try {
-        $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, aim, sort_order)
-                               select ?, ?, ?, ?, least(255, ifnull(max(sort_order), 0) + 1)
-                                 from pok_custom_sets_tbl where team_id = ?");
-        $sql->bind_param('sssss', $t, $name, $style, $aim, $t);
+        $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, aim, sort_order) values(?, ?, ?, ?, ?)");
+        $sql->bind_param('ssssi', $t, $name, $style, $aim, $sort_order);
     } catch (mysqli_sql_exception $e) {
         /* B-52 S1b: without the column aim (code before the S1b schema) only the default 'agree' can be stored; this
            keeps the example set and the deck migration in getDao()/setc.php working */
         if (!is_missing_schema_error($e) || $aim !== 'agree') throw $e;
-        $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, sort_order)
-                               select ?, ?, ?, least(255, ifnull(max(sort_order), 0) + 1)
-                                 from pok_custom_sets_tbl where team_id = ?");
-        $sql->bind_param('ssss', $t, $name, $style, $t);
+        $sql = $link->prepare("insert into pok_custom_sets_tbl(team_id, name, style, sort_order) values(?, ?, ?, ?)");
+        $sql->bind_param('sssi', $t, $name, $style, $sort_order);
     }
     $sql->execute();
     $set_id = (int)$link->insert_id;
@@ -622,28 +627,29 @@ const EXAMPLE_SET_CARDS = array(
  */
 function give_example_set($link, string $t, array $catalog): ?array
 {
-    $migrated = null;
-    $link->begin_transaction();
-    $sql = $link->prepare("select cardset_flags, deck_id, example_set_given from pok_teams_tbl where id = ? for update");
-    $sql->bind_param('s', $t);
-    $sql->execute();
-    $row = $sql->get_result()->fetch_assoc();
-    if (is_array($row) && (int)$row['example_set_given'] === 0) {
-        if ($row['deck_id'] === null)
-            $migrated = migrate_team_deck_locked($link, $t, $row['cardset_flags'], $catalog, true);
-        if (count(load_custom_sets($link, $t, $catalog)) < custom_sets_max()) {
-            $cards = array();
-            foreach (EXAMPLE_SET_CARDS as $card)
-                $cards[] = array('key' => null, 'symbol' => null, 'text' => $card['text'], 'heading' => $card['heading'],
-                                 'description' => null, 'numeric' => (string)$card['numeric'], 'color' => $card['color']);
-            insert_custom_set($link, $t, EXAMPLE_SET_NAME, EXAMPLE_SET_STYLE, $cards);
-        }
-        $sql = $link->prepare("update pok_teams_tbl set example_set_given = 1 where id = ?");
+    // a deadlock or lock wait timeout is retried (db_transaction()); the last one is thrown to getDao()
+    return db_transaction($link, function () use ($link, $t, $catalog): ?array {
+        $migrated = null;
+        $sql = $link->prepare("select cardset_flags, deck_id, example_set_given from pok_teams_tbl where id = ? for update");
         $sql->bind_param('s', $t);
         $sql->execute();
-    }
-    $link->commit();
-    return $migrated;
+        $row = $sql->get_result()->fetch_assoc();
+        if (is_array($row) && (int)$row['example_set_given'] === 0) {
+            if ($row['deck_id'] === null)
+                $migrated = migrate_team_deck_locked($link, $t, $row['cardset_flags'], $catalog, true);
+            if (count(load_custom_sets($link, $t, $catalog)) < custom_sets_max()) {
+                $cards = array();
+                foreach (EXAMPLE_SET_CARDS as $card)
+                    $cards[] = array('key' => null, 'symbol' => null, 'text' => $card['text'], 'heading' => $card['heading'],
+                                     'description' => null, 'numeric' => (string)$card['numeric'], 'color' => $card['color']);
+                insert_custom_set($link, $t, EXAMPLE_SET_NAME, EXAMPLE_SET_STYLE, $cards);
+            }
+            $sql = $link->prepare("update pok_teams_tbl set example_set_given = 1 where id = ?");
+            $sql->bind_param('s', $t);
+            $sql->execute();
+        }
+        return $migrated;
+    });
 }
 
 /*
