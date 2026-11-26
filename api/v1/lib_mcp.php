@@ -414,6 +414,9 @@ function mcp_actor(mysqli $link, array $args): array
 function v1_call(mysqli $link, string $op_id, array $args, array $actor): mixed
 {
     $route = v1_operations(v1_routes())[$op_id];
+    // only a key is refused for browser routes: an MCP seat (team_id + uid, via mcp_seat) counts as a browser on
+    // purpose (concept decision 1, "the agent is the user's browser"), so browser routes with an 'mcp' field are open
+    // to seats - exactly like the board itself
     if ($route['auth'] === 'browser' && $actor['via'] === 'key') throw new ApiError(403, 'browser_only');
     $result = $route['handler']($link, $actor, mcp_validate_args($route['params'] ?? [], $args));
     return $result instanceof V1Answer ? $result->body : $result;

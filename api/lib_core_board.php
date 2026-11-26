@@ -27,6 +27,7 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
     $catalog = card_catalog();
     $players = $dao['players'];
     $revealed = $dao['all_players_ready'] && $dao['players_count'] > 0;
+    $anonymous_revealed = $revealed && (int)$dao['anonymous_mode'] === 1;
 
     // texts of every card the view shows: the table, the own card, the deck
     $deck = $dao['deck'];
@@ -49,7 +50,10 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         if (!$played) $waiting_for[] = $player->name;
         $card = ($revealed && $played && $key !== BOARD_HIDDEN_CARD_KEY) ? $key : null;
         if ($card !== null && $card !== LATE_CARD_KEY) $distribution[$card] = ($distribution[$card] ?? 0) + 1;
-        $entry = ['name' => $player->name, 'mkey' => $player->mkey, 'played' => $played, 'card' => $text($card),
+        // anonymous mode after the reveal: no mkey of others, else name (before) and card (after) could be matched
+        // through it; the own one stays (the agent finds its own row by it)
+        $mkey = ($anonymous_revealed && $player->mkey !== (string)$dao['mkey']) ? null : $player->mkey;
+        $entry = ['name' => $player->name, 'mkey' => $mkey, 'played' => $played, 'card' => $text($card),
                   'away' => (bool)$player->away];
         if ($player->original_card_key !== null) $entry['card_before_change'] = $text($player->original_card_key);
         $out_players[] = $entry;

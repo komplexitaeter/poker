@@ -203,6 +203,29 @@ test('get_board shows who played but hides the cards of others until every playe
   expect(revealed.text).toContain('Revealed: 5 ×1, 13 ×1 · range 5–13 · suggestion "13"');
 });
 
+test('get_board in anonymous mode: after the reveal no mkey of others (no match of name and card), the own one stays', async ({ request }) => {
+  const anna = (await ok(request, 'create_team', { name: 'MCP Anon', member_name: 'Anna', role: 'player' })).data;
+  const t = anna.team.id as string;
+  const bob = (await ok(request, 'join_team', { invite: t, name: 'Bob', role: 'player' })).data.you;
+  const anon = await request.post(`/api/update_team.php?${new URLSearchParams({ t, anonymous_request_toggle: '1' })}`,
+    asUser(anna.you.uid));
+  expect(anon.ok()).toBeTruthy();
+
+  const before = (await ok(request, 'get_board', { team_id: t, uid: anna.you.uid })).data;
+  expect(before.settings.anonymous).toBe(true);
+  expect(before.players.find((p: any) => p.name === 'Bob').mkey).toBe(bob.mkey); // before the reveal like the web
+
+  for (const [uid, cardkey] of [[anna.you.uid, 'three01'], [bob.uid, 'eight01']]) {
+    expect((await request.post(`/api/setc.php?${new URLSearchParams({ t, cardkey })}`, asUser(uid))).ok()).toBeTruthy();
+  }
+  const after = (await ok(request, 'get_board', { team_id: t, uid: anna.you.uid })).data;
+  expect(after.round.state).toBe('revealed');
+  expect(after.players.map((p: any) => p.name)).toEqual(['******', '******']);
+  expect(after.players.filter((p: any) => p.mkey !== null).map((p: any) => p.mkey)).toEqual([anna.you.mkey]);
+  expect(JSON.stringify(after.players)).not.toContain(`"mkey":"${bob.mkey}"`);
+  expect(after.players.map((p: any) => p.card).sort()).toEqual(['3', '8']);
+});
+
 test('protocol and identity errors', async ({ request }) => {
   // Origin of another site (browser, DNS rebinding) -> 403; our own origin is fine
   const foreign = await request.post(MCP, { data: { jsonrpc: '2.0', id: 1, method: 'ping' },
