@@ -594,6 +594,31 @@ Status: refined (Andreas, 2026-11-24). Die Vendor-Datei (65 KB) lädt heute bei 
 nur für den QR-Code im Invite. Erst beim Öffnen von Invite nachladen (Skript-Tag dynamisch einfügen, einmalig;
 währenddessen ruhiger Platzhalter, bei Fehler Hinweis statt QR-Code). Kein Nachbau der QR-Kodierung.
 
+### B-155 Transaktionen und Sperren systematisch
+Status: refined (Andreas, 2026-11-26). Anlass: Deadlock in der CI (Rollout 8, #279): `insert … select max(sort_order)`
+setzte unter REPEATABLE READ eine Lücken-Sperre auf `ix_custom_sets_team`; zwei neue Teams in derselben Lücke
+blockierten sich gegenseitig – die Team-Zeilen-Sperre schützt nur innerhalb eines Teams. Behoben in #279 (Ursache
+entfernt, `db_transaction()`/`api_transaction()` mit Retry bei 1213/1205, Lock-Wartezeit 5 s, 503 statt Fatal).
+Mit v1/MCP (B-150/B-151) kommt mehr Nebenläufigkeit dazu. Umfang:
+1. Inventar aller schreibenden Pfade: welche Tabellen in welcher Reihenfolge, welche Sperre zuerst.
+2. Regeln (CLAUDE.md): zuerst die Team-Zeile sperren (`for update`), dann Tabellen in fester Reihenfolge
+   (`pok_teams_tbl` → `pok_players_tbl` → übrige); vor der Sperre keine konsistente Lesung in derselben Transaktion;
+   keine `insert … select` auf geteilten Indizes; eindeutige Schlüssel vor dem Insert bestimmen, nie per nachträglichem
+   Update (heute noch `insert_custom_card()`: Karte mit `card_key = NULL` einfügen, dann setzen); schreibende
+   Kernfunktionen laufen über `db_transaction()`.
+3. Retry auch für `setc.php`, `update_deck.php`, `update_controls.php` (`lock_team_deck()` kann bei alten gemischten
+   Decks ein Set anlegen) und alle weiteren Transaktionen aus dem Inventar.
+4. Lasttest in der CI: viele parallele Teams und Schreibzugriffe (wie `custom-sets-concurrency.spec.ts`), PHP-Log muss
+   sauber bleiben.
+
+### B-156 Kryptische Team-IDs für neue Teams
+Status: refined (Andreas, 2026-11-26), gleich mit angehen (vor bzw. mit B-150). Heute entsteht die Team-ID aus dem
+Namen (`name2id()`/`get_team_id()` in `api/lib.php`, mit `rand()`), bei kurzen Namen erratbar; mit der API
+(`team_join`) wird das skriptbar (Fund Sina). Neu angelegte Teams bekommen eine ID mit kryptografischem Zufall
+(`random_bytes()`), für Board, Tool-Links (`index.php?tool=…`) und API gleich. Bestehende Team-IDs bleiben gültig
+(Links der Teams). Offen fürs Planning: Format/Länge (passt in `varchar(80)`, URL-tauglich), ob ein lesbarer
+Namensteil davor bleibt.
+
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
 „aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
