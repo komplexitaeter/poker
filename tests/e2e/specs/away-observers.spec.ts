@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, userRequest } from './helpers';
 
 /**
  * B-110 (steps 1+2, API level): dao.php delivers "away" per player (no dao.php load for AWAY_AFTER_SEC = 70 s, the own
@@ -31,11 +31,13 @@ function lastLoadAgo(t: string, id: string, seconds: number): void {
 }
 
 async function post(page: Page, endpoint: string, params: Record<string, string>) {
-  return page.request.post(`/api/${endpoint}?${new URLSearchParams(params).toString()}`);
+  const { query, options } = userRequest(params); // B-152: the id in the header
+  return page.request.post(`/api/${endpoint}?${query}`, options);
 }
 
 async function dao(page: Page, t: string, id: string) {
-  const res = await page.request.get(`/api/dao.php?${new URLSearchParams({ t, id }).toString()}`);
+  const { query, options } = userRequest({ t, id });
+  const res = await page.request.get(`/api/dao.php?${query}`, options);
   expect(res.ok()).toBeTruthy();
   return res.json();
 }

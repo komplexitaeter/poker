@@ -240,6 +240,12 @@ Regel: Reviewt wird immer von einem anderen Agenten als dem Autor.
 - Freitext in URLs im Frontend immer mit `encodeURIComponent()`.
 - ID-Parameter (User-ID `id`, Kartenschlüssel, Event-Codes) immer über `get_id_param()` aus `api/lib.php` lesen (B-88):
   nur `[A-Za-z0-9_-]` mit Höchstlänge, sonst `''`. Bei leerer bzw. zu kurzer ID nichts anlegen, ändern oder löschen.
+- **UID (User-ID, `localStorage.SID`) ist das Geheimnis der Person (B-152):** Sie kommt vom Server (`api/uid.php`,
+  16 Zeichen, 80 Bit), nie aus `Math.random`. Sie geht nur im Header `X-Poker-User` an die API, nie in URLs (also nie
+  in Access-Logs) oder in Logs. Im Frontend jeder Aufruf der eigenen API über `apiFetch()` (bzw. `apiWrite()`/
+  `fetchJsonResult()`, die es nutzen; setzt den Header nur für relative `./api/`-URLs); die UID lesen nur `getUid()`,
+  wer sie sicher braucht, wartet auf `ensureUid()`. Kein `id=`/`player_id=` in API-URLs, auch nicht in E2E-Tests
+  (Helfer `asUser()`, `getSid()` in `tests/e2e/specs/helpers.ts`).
 - Nach Änderungen an JS-Dateien die Versionsnummer im Script-Tag (`?v=…`) in `board.html`/`init.html` erhöhen.
   Nach Änderungen an `cards.json` die Versionsnummer in `loadCardConfig()` (`./cards.json?v=…`, `script/script.js`) erhöhen
   (Safari hält die Datei sonst im Cache). Ebenso: `style/cards.css` (`?v=` in `board.html`), die Symbolbibliothek

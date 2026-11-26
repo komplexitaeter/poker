@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, tableCard, expectTableCard } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, tableCard, expectTableCard, getSid, asUser } from './helpers';
 
 /**
  * B-104: whoever changes his card after the reveal keeps the card of the reveal as original_card_key (only the first
@@ -23,7 +23,7 @@ function teamIdOf(url: string): string {
 }
 
 async function setCard(page: Page, t: string, id: string, cardkey: string) {
-  const res = await page.request.post(`/api/setc.php?${new URLSearchParams({ t, id, cardkey }).toString()}`);
+  const res = await page.request.post(`/api/setc.php?${new URLSearchParams({ t, cardkey }).toString()}`, asUser(id));
   expect(res.ok()).toBeTruthy();
 }
 
@@ -259,7 +259,7 @@ test('let them explain: an extreme of the reveal stays named, a new extreme join
   const url = await createTeam(page, 'Card Changed Tip');
   await joinAsPlayer(page, url, 'Alice');
   const t = teamIdOf(url);
-  const alice = await page.evaluate(() => localStorage.getItem('SID') ?? '');
+  const alice = await getSid(page);
   const [bob, carol, dan] = await addPlayersViaApi(page, url, ['Bob', 'Carol', 'Dan']);
   await page.reload();
   const tip = page.locator('#round_tip');

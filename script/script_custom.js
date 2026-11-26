@@ -1493,7 +1493,7 @@ function csSave(play) {
     gCs.busy = play ? 'play' : 'save';
     csRenderFoot();
     if (gCs.set === null) {
-        csPost('./api/custom_set_create.php?t=' + team + '&id=' + encodeURIComponent(sid), { ...body, activate: play })
+        csPost('./api/custom_set_create.php?t=' + team, { ...body, activate: play })
             .then(result => csSaved(result, play ? 'played' : 'created'));
         return;
     }
@@ -1526,7 +1526,7 @@ function csSave(play) {
 function csDelete() {
     if (gCs.busy !== null || gCs.set === null) return;
     gCs.busy = 'delete';
-    const url = './api/custom_set_delete.php?t=' + encodeURIComponent(t) + '&id=' + encodeURIComponent(sid)
+    const url = './api/custom_set_delete.php?t=' + encodeURIComponent(t)
         + '&set=' + encodeURIComponent(String(gCs.set.set_id));
     csPost(url, {}).then(result => {
         if ((result.status === 200 && result.answer) || result.status === 404) {

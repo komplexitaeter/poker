@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, userRequest } from './helpers';
 
 /**
  * B-127 (API level): api/seen.php is the light heartbeat of the board. It marks the own board as connected (like
@@ -46,11 +46,13 @@ function sig(mkeys: number[]): string {
 }
 
 async function post(page: Page, endpoint: string, params: Record<string, string>) {
-  return page.request.post(`/api/${endpoint}?${new URLSearchParams(params).toString()}`);
+  const { query, options } = userRequest(params); // B-152: the id in the header
+  return page.request.post(`/api/${endpoint}?${query}`, options);
 }
 
 async function get(page: Page, endpoint: string, t: string, id: string) {
-  const res = await page.request.get(`/api/${endpoint}?${new URLSearchParams({ t, id }).toString()}`);
+  const { query, options } = userRequest({ t, id });
+  const res = await page.request.get(`/api/${endpoint}?${query}`, options);
   expect(res.ok()).toBeTruthy();
   return res;
 }

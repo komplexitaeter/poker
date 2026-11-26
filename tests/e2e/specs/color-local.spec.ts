@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pageReady } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pageReady, getSid, asUser } from './helpers';
 
 /**
  * B-141: the color mode is kept on this device (localStorage COLOR_MODE) and set inline in the head, so the page
@@ -81,8 +81,7 @@ test('board: with a kept light mode the board is light from the first frame (B-1
   const url = await createTeam(alice, 'Color Local Board');
   await joinAsPlayer(alice, url, 'Alice');
   // light saved on the server (the user row exists since the first dao.php) and kept on the device
-  const sid = await alice.evaluate(() => localStorage.getItem('SID'));
-  const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=light`);
+  const res = await alice.request.post('/api/update_user.php?color_mode=light', asUser(await getSid(alice)));
   expect(res.ok()).toBeTruthy();
   await alice.evaluate(() => localStorage.setItem('COLOR_MODE', 'light'));
 
@@ -103,7 +102,7 @@ test('board: switching keeps the mode on the device, a different saved mode of t
   await joinAsPlayer(alice, url, 'Alice');
   await expect(alice.locator('body')).not.toHaveClass(/light-theme/);
 
-  // the switch keeps the mode (and the URL carries the SID encoded)
+  // the switch keeps the mode (B-152: the UID goes in the header, never in the URL)
   const written = alice.waitForRequest(r => r.url().includes('/api/update_user.php') && r.url().includes('color_mode=light'));
   await alice.locator('#cmode_btn').click();
   await written;
@@ -112,8 +111,7 @@ test('board: switching keeps the mode on the device, a different saved mode of t
   expect(await alice.evaluate(() => localStorage.getItem('COLOR_MODE'))).toBe('light');
 
   // another device switched to dark meanwhile: on the next load the server value wins and is kept
-  const sid = await alice.evaluate(() => localStorage.getItem('SID'));
-  const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=dark`);
+  const res = await alice.request.post('/api/update_user.php?color_mode=dark', asUser(await getSid(alice)));
   expect(res.ok()).toBeTruthy();
   await alice.reload();
   await pageReady(alice);

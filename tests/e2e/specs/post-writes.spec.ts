@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, getSid, asUser } from './helpers';
 
 /**
  * B-11: writing API endpoints require POST. A plain GET must be rejected with 405,
@@ -24,9 +24,9 @@ test('the read endpoint dao.php still answers a GET', async ({ browser }) => {
   const page = await newPlayer(browser);
   const boardUrl = await createTeam(page, 'ReadTeam');
   const teamId = new URL(boardUrl).searchParams.get('t') as string;
-  const sid = (await page.evaluate(() => localStorage.getItem('SID'))) as string;
+  const sid = await getSid(page);
 
   const res = await page.request.get(
-    `./api/dao.php?id=${encodeURIComponent(sid)}&t=${encodeURIComponent(teamId)}`);
+    `./api/dao.php?t=${encodeURIComponent(teamId)}`, asUser(sid));
   expect(res.ok()).toBeTruthy();
 });

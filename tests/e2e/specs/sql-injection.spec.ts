@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, getSid, asUser } from './helpers';
 
 // The API builds its SQL with bound parameters only (B-01). A manipulated team id must
 // therefore match literally (i.e. nothing), never broaden the WHERE clause: it must not
@@ -7,9 +7,7 @@ import { newPlayer, createTeam, joinAsPlayer } from './helpers';
 // must round-trip through getDao unchanged.
 
 /** The SID (player id) the board stored in localStorage after joining. */
-async function sid(page: import('@playwright/test').Page): Promise<string> {
-  return page.evaluate(() => localStorage.getItem('SID') as string);
-}
+const sid = getSid;
 
 /** The team id from a board URL. */
 function teamId(boardUrl: string): string {
@@ -38,7 +36,7 @@ test('an injected team id neither leaks other teams nor returns a 500', async ({
 
   // A legitimate request still returns the own team's data.
   const ok = await alice.request.get(
-    `./api/dao.php?id=${aliceSid}&t=${encodeURIComponent(teamId(victimUrl))}`);
+    `./api/dao.php?t=${encodeURIComponent(teamId(victimUrl))}`, asUser(aliceSid));
   expect(ok.status()).toBe(200);
   const okBody = await ok.json();
   expect(okBody.team_name).toBe('Victim Team');
@@ -46,7 +44,7 @@ test('an injected team id neither leaks other teams nor returns a 500', async ({
 
   // No injection may expose the foreign player or crash the endpoint.
   for (const t of INJECTIONS) {
-    const res = await alice.request.get(`./api/dao.php?id=${aliceSid}&t=${encodeURIComponent(t)}`);
+    const res = await alice.request.get(`./api/dao.php?t=${encodeURIComponent(t)}`, asUser(aliceSid));
     expect(res.status(), `status for t=${t}`).toBeLessThan(500);
     expect(await res.text(), `body for t=${t}`).not.toContain('CarolForeignXZ');
   }
@@ -54,7 +52,7 @@ test('an injected team id neither leaks other teams nor returns a 500', async ({
   // The foreign team is still intact (the DROP TABLE attempt did nothing).
   const carolSid = await sid(carol);
   const foreign = await carol.request.get(
-    `./api/dao.php?id=${carolSid}&t=${encodeURIComponent(teamId(foreignUrl))}`);
+    `./api/dao.php?t=${encodeURIComponent(teamId(foreignUrl))}`, asUser(carolSid));
   expect(foreign.status()).toBe(200);
   expect((await foreign.json()).players.map((p: { name: string }) => p.name)).toContain('CarolForeignXZ');
 });
@@ -66,7 +64,7 @@ test('a player name with quotes round-trips through getDao unchanged', async ({ 
   await joinAsPlayer(alice, url, playerName);
 
   const res = await alice.request.get(
-    `./api/dao.php?id=${await sid(alice)}&t=${encodeURIComponent(teamId(url))}`);
+    `./api/dao.php?t=${encodeURIComponent(teamId(url))}`, asUser(await sid(alice)));
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(body.name).toBe(playerName);
@@ -91,29 +89,30 @@ test('a manipulated player id behaves like an unknown id and never returns a 500
   const t = encodeURIComponent(teamId(url));
 
   for (const bad of BAD_IDS) {
+    // B-152: the user id goes in the header X-Poker-User; a header takes Latin-1 only, so it is sent percent-encoded
     const id = encodeURIComponent(bad);
     const reads = [
-      `./api/dao.php?id=${id}&t=${t}`,
-      `./api/get_user.php?id=${id}`,
-      `./api/get_roadmap.php?id=${id}`,
+      `./api/dao.php?t=${t}`,
+      './api/get_user.php',
+      './api/get_roadmap.php',
     ];
     for (const r of reads) {
-      const res = await alice.request.get(r);
+      const res = await alice.request.get(r, asUser(id));
       expect(res.status(), `GET ${r}`).toBeLessThan(500);
       expect(await res.text(), `GET ${r}`).not.toContain('Fatal');
     }
-    const writes = [
-      `./api/name.php?id=${id}&type=player&name=Mallory&t=${t}`,
-      `./api/setc.php?id=${id}&cardkey=three01&t=${t}`,
-      `./api/setc.php?id=${aliceSid}&cardkey=${id}&t=${t}`,
-      `./api/update_user.php?id=${id}&color_mode=light`,
-      `./api/measure_event.php?id=${id}&event_code=E2E&display_type=e2e`,
-      `./api/measure_event.php?id=${aliceSid}&event_code=${id}&display_type=${id}`,
-      `./api/feedback.php?id=${id}&stars=5&type=OTHER&text=b88`,
-      `./api/vote_roadmap.php?id=${id}&item=1&reaction=UP`,
+    const writes: [string, string][] = [
+      [id, `./api/name.php?type=player&name=Mallory&t=${t}`],
+      [id, `./api/setc.php?cardkey=three01&t=${t}`],
+      [aliceSid, `./api/setc.php?cardkey=${id}&t=${t}`],
+      [id, './api/update_user.php?color_mode=light'],
+      [id, './api/measure_event.php?event_code=E2E&display_type=e2e'],
+      [aliceSid, `./api/measure_event.php?event_code=${id}&display_type=${id}`],
+      [id, './api/feedback.php?stars=5&type=OTHER&text=b88'],
+      [id, './api/vote_roadmap.php?item=1&reaction=UP'],
     ];
-    for (const w of writes) {
-      const res = await alice.request.post(w);
+    for (const [uid, w] of writes) {
+      const res = await alice.request.post(w, asUser(uid));
       expect(res.status(), `POST ${w}`).toBeLessThan(500);
       expect(await res.text(), `POST ${w}`).not.toContain('Fatal');
     }
@@ -122,7 +121,7 @@ test('a manipulated player id behaves like an unknown id and never returns a 500
   // Alice is untouched: still the only player, without a card; no "Mallory" joined (name.php must not create a
   // player with an empty id). Checked before delete_user.php runs, which would remove such a row again.
   const expectOnlyAlice = async () => {
-    const res = await alice.request.get(`./api/dao.php?id=${aliceSid}&t=${t}`);
+    const res = await alice.request.get(`./api/dao.php?t=${t}`, asUser(aliceSid));
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.name).toBe('Alice');
@@ -132,7 +131,7 @@ test('a manipulated player id behaves like an unknown id and never returns a 500
   await expectOnlyAlice();
 
   for (const bad of BAD_IDS) {
-    const res = await alice.request.post(`./api/delete_user.php?id=${encodeURIComponent(bad)}`);
+    const res = await alice.request.post('./api/delete_user.php', asUser(encodeURIComponent(bad)));
     expect(res.status(), `delete_user.php id=${bad}`).toBeLessThan(500);
   }
   await expectOnlyAlice();

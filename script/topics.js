@@ -727,7 +727,7 @@ function loadTopicLists(opening = false) {
     gTopicLoad = { seq };
     const query = new URLSearchParams({ t: t });
     if (done) query.set('done', '1');
-    fetch('./api/get_topics.php?' + query.toString(), { cache: 'no-store' })
+    apiFetch('./api/get_topics.php?' + query.toString(), { cache: 'no-store' })
         .then(response => response.ok ? response.json() : Promise.reject(new Error('HTTP ' + response.status)))
         .then(lists => {
             if (lists === null || typeof lists !== 'object' || !Array.isArray(lists.open)) throw new Error('lists');
@@ -1292,7 +1292,7 @@ async function loadAllDoneItems() {
     for (let offset = 0; offset < TOPIC_EXPORT_MAX;) {
         const query = new URLSearchParams({ t: t, done: '1', done_offset: String(offset),
             done_limit: String(TOPIC_EXPORT_PAGE) });
-        const response = await fetch('./api/get_topics.php?' + query.toString(), { cache: 'no-store' });
+        const response = await apiFetch('./api/get_topics.php?' + query.toString(), { cache: 'no-store' });
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const lists = await response.json();
         if (lists === null || typeof lists !== 'object' || !Array.isArray(lists.done)) throw new Error('lists');

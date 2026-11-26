@@ -247,7 +247,8 @@ test('the selection decides the variant: Short plus the Classic cards is Classic
   await alice.locator('#cset_btn').click();
   const variant = (name: string) => alice.locator('#deck_variant').getByRole('radio', { name });
   const deckId = () => alice.evaluate(async () => {
-    const answer = await fetch('./api/dao.php?id=' + localStorage.getItem('SID') + '&t=' + new URLSearchParams(location.search).get('t'));
+    const answer = await fetch('./api/dao.php?t=' + encodeURIComponent(new URLSearchParams(location.search).get('t') ?? ''),
+      { headers: { 'X-Poker-User': localStorage.getItem('SID') ?? '' } });
     return (await answer.json()).deck.id;
   });
 

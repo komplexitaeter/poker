@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, expectTableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, expectTableCard, getSid, asUser } from './helpers';
 
 /**
  * B-98 (rollout 3, S1): teams still only have the old bitmask cardset_flags. dao.php derives the new deck
@@ -39,9 +39,9 @@ function storedDeck(teamId: string): string {
 
 async function teamOf(page: Page, boardUrl: string) {
   const teamId = new URL(boardUrl).searchParams.get('t') as string;
-  const sid = (await page.evaluate(() => localStorage.getItem('SID'))) as string;
+  const sid = await getSid(page);
   const dao = async () => {
-    const res = await page.request.get(`./api/dao.php?id=${encodeURIComponent(sid)}&t=${encodeURIComponent(teamId)}`);
+    const res = await page.request.get(`./api/dao.php?t=${encodeURIComponent(teamId)}`, asUser(sid));
     expect(res.ok()).toBeTruthy();
     return res.json();
   };
@@ -133,7 +133,7 @@ test('sorting by card keeps players whose card key is unknown', async ({ browser
   expect(anna).toMatch(/^[A-Za-z0-9_-]+$/);
   sql(`update pok_players_tbl set card_key = 'c-zz1' where id = '${anna}' and team_id = '${teamId}'`);
   for (const [id, key] of [[ben, 'thrtn01'], [cleo, 'two0001']]) {
-    const res = await page.request.post(`./api/setc.php?id=${id}&cardkey=${key}&t=${encodeURIComponent(teamId)}`);
+    const res = await page.request.post(`./api/setc.php?cardkey=${key}&t=${encodeURIComponent(teamId)}`, asUser(id));
     expect(res.ok()).toBeTruthy();
   }
   const data = await dao();
