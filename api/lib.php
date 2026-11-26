@@ -716,9 +716,13 @@ function is_retryable_db_error(mysqli_sql_exception $e): bool
  * rolled back and run again (up to $attempts times in all, short random backoff), so $work must only touch the
  * database (no output, no notify_team()) and must be safe to repeat. Anything else, and the last retryable failure, is
  * rolled back and thrown. Nothing is retried after a successful commit. $work may roll back and exit itself (custom_fail()).
+ * Sets innodb_lock_wait_timeout = 5 s for the rest of the request (connection).
  */
 function db_transaction($link, callable $work, int $attempts = 3): mixed
 {
+    /* short lock waits: with the default 50 s, three attempts could hold a request (and its FPM worker) for minutes,
+       long after nginx gave up (504 after 60 s). Session scope: one connection per request. */
+    $link->query("set session innodb_lock_wait_timeout = 5");
     for ($attempt = 1; ; $attempt++) {
         $link->begin_transaction();
         try {
