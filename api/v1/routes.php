@@ -11,6 +11,8 @@
  *   summary, description   English
  *   auth           none | member (API key or UID + team) | browser (UID + team only)
  *   public         optional, default true; false = not in doc/spec
+ *   mcp            optional (B-151): ['tool' => MCP tool name, 'action' => value of its action enum (several routes,
+ *                  one tool)]; only routes with this field are MCP tools (docs/mcp-concept.md, section 7)
  *   params         name => [in: path|query|body, type: string|integer|boolean, required, nullable, max_length,
  *                  min_length, pattern, enum, minimum, maximum, default, text (free text: trim, then check the length),
  *                  description, example]
@@ -138,6 +140,27 @@ return [
         ],
         'errors' => [],
         'example' => ['params' => ['note' => 'Sprint 42 refinement']],
+    ],
+
+    'board_get' => [
+        'method' => 'GET',
+        'path' => '/board',
+        'tag' => 'Team',
+        'summary' => 'Get the board as you see it',
+        'description' => 'The board as the person sees it in the browser: team, note, round, players, observers, '
+            . 'active item, timer, card set and settings. Cards of others stay hidden until every player has played.',
+        'auth' => 'member',
+        'public' => false, // B-151: for MCP (get_board) for now, not in doc/spec
+        'mcp' => ['tool' => 'get_board'],
+        'params' => [
+            'include_items' => ['in' => 'query', 'type' => 'boolean', 'default' => false,
+                                'description' => 'Also list all open items (not only the active one).'],
+        ],
+        'handler' => 'v1_board_get',
+        'responses' => [
+            200 => ['description' => 'The board'],
+        ],
+        'errors' => [],
     ],
 
     'item_upsert' => [

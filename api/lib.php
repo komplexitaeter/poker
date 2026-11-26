@@ -1487,7 +1487,12 @@ function get_roadmap_items($link, string $user_id, ?int $item_id = null): array 
     return $items;
 }
 
-function add_team($link, $t, $topic=null, $preset_mapping=null): string
+/*
+ * A new team (B-156 id from the name). The deck comes from $preset_mapping (cards.json preset, index.php?tool=...) or,
+ * B-151, from $variant_id (a variant id of card_catalog.json, e.g. 'tshirt', checked by the caller; MCP create_team), else
+ * the default deck; the control cards are the catalog defaults in every case. Returns the team id ('' on failure).
+ */
+function add_team($link, $t, $topic=null, $preset_mapping=null, ?string $variant_id=null): string
 {
     $id_val = '';
     $preset_index = 0;
@@ -1534,7 +1539,9 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
     if ($catalog['default_deck'] !== null) {
         $default_controls = array_intersect(array_column($catalog['controls'], 'card_key'),
                                             (array)($catalog['default_controls'] ?? array()));
-        $deck = deck_from_cardset_flags($cardset_flags, $catalog);
+        $deck = $variant_id !== null && isset(catalog_variants($catalog)[$variant_id])
+            ? array('deck_id' => $variant_id, 'deck_cards' => null) // B-151: all cards of the chosen variant
+            : deck_from_cardset_flags($cardset_flags, $catalog);
         $deck = resolve_deck($deck['deck_id'], $deck['deck_cards'], implode(',', $default_controls), 0, $catalog);
         $deck_id = $deck['id'];
         $variant_cards = catalog_variants($catalog)[$deck_id]['variant']['cards'];
