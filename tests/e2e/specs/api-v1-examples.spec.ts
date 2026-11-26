@@ -6,7 +6,8 @@ import { newV1Member } from './helpers';
  * order with its example (x-example), placeholders {{as.path}} taken from earlier answers. The status must be the first
  * 2xx of the table and the answer must fit the schema exactly (required fields, types, no unknown fields). So the doc
  * page, openapi.json and the code cannot drift apart (docs/api-v1-concept.md, section 14).
- * Until API keys exist (B-150 PR 2) the examples run as a board member (X-Poker-User + X-Poker-Team).
+ * Operations with authentication use a real API key: the api_key of the remembered answer named in x-example.key, by
+ * default the first one (team_create). No board member, no UID: the examples work exactly as documented.
  */
 
 type Schema = Record<string, unknown>;
@@ -14,7 +15,7 @@ type Spec = { openapi: string; servers: { url: string }[]; paths: Record<string,
               components: { schemas: Record<string, Schema> } };
 type Operation = { operationId: string; security: unknown[]; parameters?: { name: string; in: string }[];
                    requestBody?: unknown; responses: Record<string, { content?: { 'application/json': { schema: Schema } } }>;
-                   'x-example': { order: number; params: Record<string, unknown>; status: number; as?: string } };
+                   'x-example': { order: number; params: Record<string, unknown>; status: number; as?: string; key?: string } };
 
 /** small schema checker (the subset of OpenAPI 3.0 lib_v1.php writes); returns the problems found */
 function check(spec: Spec, schema: Schema, value: unknown, at: string): string[] {
@@ -76,7 +77,9 @@ test('openapi.json: OpenAPI 3.0.3, relative server URL, every public operation h
   expect(spec.openapi).toBe('3.0.3');
   expect(spec.servers).toEqual([{ url: '/api/v1' }]);
   const ops = Object.values(spec.paths).flatMap(methods => Object.values(methods));
-  expect(ops.map(op => op.operationId)).toContain('team_get');
+  expect(ops.map(op => op.operationId)).toEqual(expect.arrayContaining(
+    ['team_create', 'team_join', 'team_get', 'team_note_set', 'key_list', 'key_delete', 'key_delete_current']));
+  expect(ops.map(op => op.operationId)).not.toContain('key_create'); // board only (public: false)
   for (const op of ops) {
     expect(op['x-example'], op.operationId).toBeDefined();
     expect(op.responses['4XX'], op.operationId).toBeDefined();
@@ -90,8 +93,9 @@ test('every example of the routing table runs and answers as described', async (
     .flatMap(([path, methods]) => Object.entries(methods).map(([method, op]) => ({ path, method, op })))
     .sort((a, b) => a.op['x-example'].order - b.op['x-example'].order);
 
-  const member = await newV1Member(request, 'V1 Examples', 'Jira', 'observer');
-  const memory: Record<string, unknown> = { team: { team: { id: member.t } } }; // later: the answer of team_create
+  const memory: Record<string, unknown> = {};
+  let firstKey: string | undefined; // the api_key of the first answer that has one (team_create)
+  const ran: string[] = [];
 
   for (const { path, method, op } of ops) {
     const example = op['x-example'];
@@ -106,9 +110,15 @@ test('every example of the routing table runs and answers as described', async (
       else body[name] = value;
     }
     if (query.size) url += `?${query}`;
+    let headers: Record<string, string> = {};
+    if (op.security.length) {
+      const key = example.key ? (memory[example.key] as { api_key?: string } | undefined)?.api_key : firstKey;
+      expect(key, `${op.operationId}: API key`).toMatch(/^pok_[A-Z2-7]{32}$/);
+      headers = { Authorization: `Bearer ${key}` };
+    }
     const res = await request.fetch(url, {
       method: method.toUpperCase(),
-      headers: op.security.length ? member.headers : {},
+      headers,
       ...(Object.keys(body).length ? { data: body } : {}),
     });
     expect(res.status(), `${op.operationId}: ${await res.text()}`).toBe(example.status);
@@ -117,7 +127,16 @@ test('every example of the routing table runs and answers as described', async (
       const answer = await res.json();
       expect(check(spec, schema, answer, op.operationId), op.operationId).toEqual([]);
       if (example.as) memory[example.as] = answer;
+      if (firstKey === undefined && typeof answer.api_key === 'string') firstKey = answer.api_key;
     }
+    ran.push(op.operationId);
+  }
+  expect(ran.slice(0, 2)).toEqual(['team_create', 'team_join']);
+
+  // both keys used by the examples are deleted now (key_delete_current, key_delete)
+  for (const answer of [memory.team, memory.join] as { api_key: string }[]) {
+    const res = await request.get('/api/v1/team', { headers: { Authorization: `Bearer ${answer.api_key}` } });
+    expect(res.status()).toBe(401);
   }
 });
 

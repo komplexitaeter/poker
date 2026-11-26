@@ -177,16 +177,22 @@ function new_uid(): string {
 
 /* 80 bits from random_bytes() as 16 characters Base32 (RFC 4648 alphabet, upper case); B-152 new_uid(), B-156 team ids */
 function random_base32_80(): string {
+    return random_base32(10);
+}
+
+/* $bytes from random_bytes() as Base32 (RFC 4648 alphabet, upper case, no padding); $bytes a multiple of 5, so every
+   character carries 5 bits: 10 bytes -> 16 characters (UID, team id), 20 bytes -> 32 characters (B-150 API key) */
+function random_base32(int $bytes): string {
     $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
     $bits = '';
-    foreach (str_split(random_bytes(10)) as $byte) {
+    foreach (str_split(random_bytes($bytes)) as $byte) {
         $bits .= str_pad(decbin(ord($byte)), 8, '0', STR_PAD_LEFT);
     }
     $out = '';
     foreach (str_split($bits, 5) as $chunk) {
         $out .= $alphabet[bindec($chunk)];
     }
-    return $out; // 80 bits / 5 = 16 characters
+    return $out;
 }
 
 /*
@@ -212,6 +218,73 @@ function require_member($link, string $t, string $uid, bool $to_play_card = fals
         exit;
     }
     return $type;
+}
+
+/*
+ * Registers the new person $uid in team $t (name.php for a new UID, B-150 team_create/team_join): a row in
+ * pok_players_tbl with $name and $player_type ('PLAYER' or 'OBSERVER'), then the user row (settings, first-seen date
+ * for stats.php; idempotent, dao.php never creates it). B-102: joining while every PLAYER of the team has a card down
+ * (cards revealed; a team without players counts as not ready) gives the system card LATE_CARD_KEY instead of break01,
+ * for players and observers alike (Andreas 2026-10-31). An observer keeps it when becoming a player later (name.php
+ * keeps a card already down). Cards of observers never count: getDao(), the round snapshot and stats only look at
+ * PLAYER rows. The caller checked the team and that $uid is not registered there yet (else: duplicate key, 1062).
+ */
+function insert_new_player($link, string $t, string $uid, string $name, string $player_type): void {
+    $sql = $link->prepare("SELECT if (count(1) = sum(if(p.card_key is not null,1,0)), 1, 0) all_players_ready
+                                  FROM pok_players_tbl p
+                                 WHERE p.team_id = ?
+                                   AND p.player_type = 'PLAYER'");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $all_players_ready = (int)$sql->get_result()->fetch_object()->all_players_ready;
+    $sql->close();
+
+    $card_key = $all_players_ready === 0 ? null : LATE_CARD_KEY;
+    $sql = $link->prepare("INSERT INTO pok_players_tbl (id, team_id, name, card_key, player_type) VALUES (?, ?, ?, ?, ?)");
+    $sql->bind_param('sssss', $uid, $t, $name, $card_key, $player_type);
+    $sql->execute();
+    $sql->close();
+
+    // B-150: keys left from an earlier row of this UID in this team (e.g. removed by the 2-month clean-up) must not
+    // come back to life with the new row (lock order players -> keys)
+    delete_api_keys_of($link, $uid, $t);
+    ensure_user_row($link, $uid);
+}
+
+/* B-150: the API keys of $uid in team $t. Before the B-150 DDL ran (table missing) there is nothing to delete. */
+function delete_api_keys_of($link, string $uid, string $t): void {
+    try {
+        $sql = $link->prepare("delete from pok_api_keys_tbl where user_id = ? and team_id = ?");
+        $sql->bind_param('ss', $uid, $t);
+        $sql->execute();
+        $sql->close();
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+    }
+}
+
+/* B-150: the API keys of team $t whose person row is gone (start_new_round() clean-up). Table missing: nothing to do. */
+function delete_orphan_api_keys($link, string $t): void {
+    try {
+        $sql = $link->prepare("delete k from pok_api_keys_tbl k
+                                where k.team_id = ?
+                                  and not exists (select 1 from pok_players_tbl p
+                                                   where p.id = k.user_id and p.team_id = k.team_id)");
+        $sql->bind_param('s', $t);
+        $sql->execute();
+        $sql->close();
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+    }
+}
+
+/* The user row of $uid (settings, first-seen date for stats.php), created on joining, not by dao.php (which only reads
+   it, so a request in flight after "Delete my data" cannot bring a deleted UID back). Idempotent like update_user.php. */
+function ensure_user_row($link, string $uid): void {
+    $sql = $link->prepare("INSERT INTO pok_user_tbl(id) values(?) ON DUPLICATE KEY UPDATE id=id");
+    $sql->bind_param('s', $uid);
+    $sql->execute();
+    $sql->close();
 }
 
 /*
@@ -801,6 +874,8 @@ function start_new_round($link, string $t): void
                                 ");
     $sql->bind_param('s', $t);
     $sql->execute();
+    // B-150: their API keys go with them (players -> keys); a later re-join of the UID does not revive them
+    delete_orphan_api_keys($link, $t);
 
     $sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, type_code, timer_start_time
                             , timer_pause_time ,timer_visibility, topic, cardset_flags, results_order, show_avg

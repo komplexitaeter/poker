@@ -10,14 +10,15 @@
  * other Throwable -> 500 internal (details only in the PHP log, never headers or the body of the request).
  */
 
+require_once __DIR__ . '/../lib_api_keys.php';
 require_once __DIR__ . '/../lib_core_team.php';
+require_once __DIR__ . '/../lib_core_keys.php';
 
 const V1_PREFIX = '/api/v1';
 /* info.version of openapi.json: 1.0.0 + date of the last change of routes.php (maintained by hand) */
 const V1_SPEC_VERSION = '1.0.0+2026-11-26';
 const V1_BODY_MAX = 65536;                                  // bytes of a request body (413 above)
 const V1_TEAM_ID_PATTERN = '/^[A-Za-z0-9_-]{1,80}$/D';      // pok_teams_tbl.id
-const V1_KEY_PATTERN = '/^pok_[A-Z2-7]{32}$/D';             // API key (from B-150 PR 2 on)
 const V1_DOC_CSP = "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'";
 
 /* error codes: HTTP status and meaning (doc page); the contract of section 6 of the concept */
@@ -183,6 +184,17 @@ function v1_dispatch(): void
     } catch (ApiError $e) {
         v1_rollback($link);
         v1_send_error($e);
+    } catch (mysqli_sql_exception $e) {
+        v1_rollback($link);
+        if ($e->getCode() === 1062) {
+            // duplicate key despite the locks (concept 8.1): a simultaneous write got in the way, trying again helps
+            v1_send_error(new ApiError(409, 'conflict'));
+            return;
+        }
+        $busy = is_retryable_db_error($e);
+        error_log('poker api v1 ' . $op_id . ': ' . get_class($e) . ' (' . $e->getCode() . '): ' . $e->getMessage()
+            . ' at ' . $e->getFile() . ':' . $e->getLine());
+        v1_send_error($busy ? new ApiError(503, 'busy') : new ApiError(500, 'internal'));
     } catch (Throwable $e) {
         v1_rollback($link);
         $busy = $e instanceof mysqli_sql_exception && is_retryable_db_error($e);
@@ -267,8 +279,10 @@ function v1_match_path(string $pattern, array $segments): ?array
 /*
  * The actor of the request: ['uid', 'team_id', 'role' (PLAYER|OBSERVER|REMOVED), 'via' (key|browser), 'key_id'],
  * null for auth 'none' (all auth headers ignored).
- * - Authorization: Bearer pok_... -> key mode only, no fallback to the user headers. API keys come with B-150 PR 2;
- *   until then every key is unknown (401 invalid_key). Never read from the query or the body.
+ * - Authorization: Bearer pok_... -> key mode only, no fallback to the user headers: wrong format, unknown or deleted
+ *   key, or its person no longer registered -> 401 invalid_key (one answer for all). The team comes ONLY from the key
+ *   row; X-Poker-Team, X-Poker-User and any team value in path or query are ignored. Never read from the query or
+ *   the body. The lookup runs in autocommit, before the transaction of the core function (api_key_lookup()).
  * - other Authorization values (e.g. Basic of a proxy, Bearer without pok_) are ignored -> browser mode: the UID only
  *   from the header X-Poker-User (never body or URL, unlike the transitional get_uid()) and the team from
  *   X-Poker-Team; the UID must be registered in the team (PLAYER, OBSERVER or REMOVED, B-152). An unknown team and a
@@ -282,8 +296,13 @@ function v1_authenticate(array $route, mysqli $link): ?array
     $key = v1_bearer_key();
     if ($key !== null) {
         if ($route['auth'] === 'browser') throw new ApiError(403, 'browser_only');
-        if (!preg_match(V1_KEY_PATTERN, $key)) throw new ApiError(401, 'invalid_key');
-        throw new ApiError(401, 'invalid_key'); // B-150 PR 2: lookup of the hash (no keys exist before)
+        $actor = api_key_lookup($link, $key);
+        if ($actor === null) throw new ApiError(401, 'invalid_key');
+        // concept 5.4: whoever is active through calls counts as present like a board (B-110), at most every 10 s.
+        // A used key thus keeps its person out of the 2-month clean-up of start_new_round(); a person removed there
+        // takes its keys along (delete_orphan_api_keys()). Autocommit, before the core call.
+        touch_api_person($link, $actor['uid'], $actor['team_id']);
+        return $actor;
     }
 
     $uid = $_SERVER['HTTP_X_POKER_USER'] ?? '';
@@ -433,6 +452,40 @@ function v1_check_value(string $name, array $def, mixed $value, bool $typed): mi
     return $value;
 }
 
+/* ---------- handlers: mini adapters from the validated parameters to the core functions ---------- */
+
+function v1_team_create(mysqli $link, ?array $actor, array $p): array
+{
+    return core_team_create($link, $p['name'], $p['member_name'], $p['member_role'], $p['key_name']);
+}
+
+function v1_team_join(mysqli $link, ?array $actor, array $p): array
+{
+    return core_team_join($link, $p['team_id'], $p['name'], $p['role'], $p['key_name']);
+}
+
+function v1_team_note_set(mysqli $link, array $actor, array $p): array
+{
+    return core_team_note_set($link, $actor, $p['note']);
+}
+
+function v1_key_create(mysqli $link, array $actor, array $p): array
+{
+    return core_key_create($link, $actor, $p['name']);
+}
+
+function v1_key_delete(mysqli $link, array $actor, array $p): ?array
+{
+    core_key_delete($link, $actor, $p['id']);
+    return null;
+}
+
+function v1_key_delete_current(mysqli $link, array $actor, array $p): ?array
+{
+    core_key_delete_current($link, $actor);
+    return null;
+}
+
 /* ---------- openapi.json (concept section 10) ---------- */
 
 /* a schema of '$schemas' as OpenAPI: string -> $ref ('Item[]' -> array of $ref), objects closed (additionalProperties false) */
@@ -466,8 +519,8 @@ function v1_param_schema(array $def): array
 /*
  * OpenAPI 3.0.3 of the public operations, built from the table on every request. servers is relative ('/api/v1'):
  * tools resolve it against the URL of the spec, so live and staging fit by themselves; never from the Host header.
- * x-example (per operation): the example call of the table (order = position in the table, params, as, status) -
- * the e2e test api-v1-examples.spec.ts runs them in this order.
+ * x-example (per operation): the example call of the table (order = position in the table, params, as, status, key =
+ * the remembered answer whose api_key the call uses) - the e2e test api-v1-examples.spec.ts runs them in this order.
  */
 function v1_openapi(array $routes): array
 {
@@ -522,6 +575,7 @@ function v1_openapi(array $routes): array
         $op['x-example'] = ['order' => $order++, 'params' => (object)($route['example']['params'] ?? []),
                             'status' => v1_success_status($route)];
         if (isset($route['example']['as'])) $op['x-example']['as'] = $route['example']['as'];
+        if (isset($route['example']['key'])) $op['x-example']['key'] = $route['example']['key'];
 
         $paths[$route['path']][strtolower($route['method'])] = $op;
     }
@@ -568,14 +622,15 @@ function v1_h(string $s): string
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-/* example value for the doc: placeholders {{as.path}} -> <NAME> ('{{team.team.id}}' -> <TEAM_ID>, '{{join.api_key}}' -> <API_KEY>) */
+/* example value for the doc: placeholders {{as.path}} -> <NAME> ('{{team.team.id}}' -> <TEAM_ID>, '{{join.api_key}}' ->
+   <API_KEY>, '{{keys.keys.0.id}}' -> <KEY_ID>: list positions are skipped, a plural before "id" becomes singular) */
 function v1_doc_value(mixed $value): mixed
 {
     if (!is_string($value)) return $value;
     return preg_replace_callback('/\{\{([a-z0-9_.]+)\}\}/', function (array $m): string {
-        $parts = explode('.', $m[1]);
+        $parts = array_values(array_filter(explode('.', $m[1]), fn($part) => !ctype_digit($part)));
         $last = array_pop($parts);
-        $name = ($last === 'id' && $parts !== []) ? end($parts) . '_id' : $last;
+        $name = ($last === 'id' && $parts !== []) ? preg_replace('/s$/', '', (string)end($parts)) . '_id' : $last;
         return '<' . strtoupper($name) . '>';
     }, $value);
 }
@@ -660,6 +715,9 @@ function v1_doc_page(array $routes): string
     $o[] = '<h2 id="auth">Authentication</h2>';
     $o[] = '<p>Send your API key in the header <code>Authorization: Bearer pok_&hellip;</code>, never in the URL. '
         . 'A key works only for its team and acts as the person who created it.</p>';
+    $o[] = '<p>Get a key by joining a team (<code>POST /api/v1/teams/&lt;TEAM_ID&gt;/members</code>) or by creating '
+        . 'one (<code>POST /api/v1/teams</code>). Manage your own keys with <code>GET /api/v1/keys</code> and '
+        . '<code>DELETE /api/v1/keys/current</code>.</p>';
     $o[] = '<p>Bodies are JSON (<code>Content-Type: application/json</code>, at most 64 KB). Unknown fields are refused.</p>';
 
     $o[] = '<h2 id="operations">Operations</h2>';
