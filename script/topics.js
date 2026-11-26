@@ -939,9 +939,19 @@ function renderTopicMenu(force = false) {
         showMenuTab(box, gTopicItems.open_count > 0 ? 'open' : 'note', hadFocus); // -> onTopicTab() renders
         return;
     }
-    if (!force && (gTopicEditor !== null || gTopicDrag !== null)) return;
+    // the item form or a drag lives in the items list: that list waits. The done list still follows while its tab
+    // shows (an item form left open on "Items" kept it at "Loading items …")
+    const holdList = !force && (gTopicEditor !== null || gTopicDrag !== null);
+    if (holdList && gTopicTab !== 'done') return;
     const key = JSON.stringify([gTopicItems, gTopicLists, gTopicLoad !== null, gTopicLoadError, gTopicEditor,
         gTopicConfirmDelete, [...gTopicDistOpen], gTopicTab]);
+    if (holdList) {
+        // an own key: the items list is still behind and renders in full once the form is closed
+        if ('done:' + key === gTopicMenuKey) return;
+        gTopicMenuKey = 'done:' + key;
+        doneBox.replaceChildren(...topicDoneParts());
+        return;
+    }
     if (!force && key === gTopicMenuKey) return;
     gTopicMenuKey = key;
 

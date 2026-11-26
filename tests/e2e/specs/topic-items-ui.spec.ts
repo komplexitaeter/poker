@@ -1165,3 +1165,27 @@ test('the item key: required, the suggestion in the form, invalid and used keys 
   await expect(rowKeys).toHaveText(['1', 'tix-004', 'TIX-005', 'TIX-006']);
   await expect(alice.locator('#ti_open .ti-it .ti-h').first()).toContainText('Alpha, renamed');
 });
+
+test('"Done" loads its list while the item form is open on "Items" (live bug after rollout 9)', async ({ browser }) => {
+  const { alice, url, t } = await setup(browser, 'Topic UI Done Form');
+  const add = async (heading: string) => {
+    const res = await alice.request.post(`/api/topic_item_add.php?t=${encodeURIComponent(t)}`, { form: { heading } });
+    expect(res.ok()).toBeTruthy();
+    return (await res.json()).item_id;
+  };
+  const id = await add('Closed one');
+  expect((await alice.request.post(`/api/topic_item_next.php?t=${encodeURIComponent(t)}&item=${id}&mode=close`)).ok()).toBeTruthy();
+  await alice.goto(url);
+  await expect(alice.locator('#topic_tab_done')).toHaveText('Done 1');
+  // no open items: the menu starts on "Note"; its "+ Add item" opens the form on "Items"
+  await openTopics(alice);
+  await alice.locator('#topic_note_add').click();
+  await expect(alice.locator('#ti_form')).toBeVisible();
+  await alice.locator('#ti_heading').fill('Draft');
+  // the form stays open on "Items"; "Done" shows its item once the list is loaded (was stuck at "Loading items …")
+  await showTab(alice, 'done');
+  await expect(alice.locator('#ti_done > li')).toHaveCount(1);
+  await expect(alice.locator('#ti_done .ti-h b')).toHaveText('Closed one');
+  await showTab(alice, 'open');
+  await expect(alice.locator('#ti_form')).toBeVisible();
+});
