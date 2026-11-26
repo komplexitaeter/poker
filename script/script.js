@@ -2325,6 +2325,13 @@ function updateInviteLabel() {
 document.addEventListener('DOMContentLoaded', updateInviteLabel);
 gTouchQuery.addEventListener('change', updateInviteLabel);
 
+/* B-151 (MCP PR G): the AI connector URL in the hints (.mcp-url) comes from the current origin (live, staging, local) */
+function showMcpUrl() {
+    const url = window.location.origin + '/mcp';
+    document.querySelectorAll('.mcp-url').forEach(el => { el.textContent = url; });
+}
+document.addEventListener('DOMContentLoaded', showMcpUrl);
+
 function inviteTeam() {
     let url = window.location.href;
     if (inviteShares()) {

@@ -174,3 +174,40 @@ test('average pointer: a plain switch, no lock, no red flash when it is switched
   const classes = await alice.evaluate(() => (window as unknown as { bodyClasses: string[] }).bodyClasses);
   expect(classes.join(' ')).not.toContain('flash');
 });
+
+/* B-151 (MCP PR G): invited people find the AI connector where the link lands (the join overlay): the connector URL
+ * comes from the current origin, "How it works" opens the help page GET /mcp. On a 390 px phone it fits without
+ * scrolling or overflowing sideways. */
+for (const [label, viewport] of [['desktop', DESKTOP], ['phone', PHONE]] as const) {
+  test(`${label}: the join overlay names the AI connector of this host and links its help page (B-151)`, async ({ browser, request }) => {
+    const alice = await newPlayer(browser, { viewport });
+    const url = await createTeam(alice, 'Invite MCP');
+    const origin = new URL(url).origin;
+
+    const hint = alice.locator('#join_mcp_hint');
+    await expect(hint).toBeVisible();
+    await expect(hint).toHaveText('Joining from an AI assistant? Add ' + origin + '/mcp as a connector, '
+      + "then give it this board's link. How it works");
+    await expect(hint.locator('.mcp-url')).toHaveText(origin + '/mcp');
+    const how = hint.getByRole('link', { name: 'How it works' });
+    await expect(how).toHaveAttribute('href', './mcp');
+    expect(new URL((await how.getAttribute('href'))!, url).href).toBe(origin + '/mcp');
+
+    // the whole overlay, privacy links included, inside the screen
+    const box = (await alice.locator('#overlay_privacy_link').boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    const hintBox = (await hint.boundingBox())!;
+    expect(hintBox.x).toBeGreaterThanOrEqual(0);
+    expect(hintBox.x + hintBox.width).toBeLessThanOrEqual(viewport.width);
+    expect(await alice.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+
+    // the help page behind the link
+    const help = await request.get(origin + '/mcp');
+    expect(help.status()).toBe(200);
+    expect(help.headers()['content-type']).toContain('text/html');
+
+    // joined: the overlay (and the hint) is gone
+    await joinAsPlayer(alice, url, 'Alice');
+    await expect(hint).toBeHidden();
+  });
+}

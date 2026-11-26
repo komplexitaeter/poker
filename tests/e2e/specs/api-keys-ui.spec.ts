@@ -6,6 +6,8 @@ import { newPlayer, createTeam, joinAsPlayer, getSid, bearer } from './helpers';
  * their own keys of this team. The new key is shown exactly once (dialog with copy button), never stored in the
  * browser and never sent to analytics. Below "Create key" and in the dialog: the key works only for this team and
  * acts as you; links to the API docs and the OpenAPI spec next to the heading and in the dialog.
+ * B-151 (MCP PR G): the scope line says that an AI assistant can take your seat with a key and links the help page
+ * GET /mcp ("AI connector"), the dialog links it too.
  */
 const LARGE = { width: 1280, height: 900 };
 const KEY = /^pok_[A-Z2-7]{32}$/;
@@ -36,7 +38,9 @@ test('create a key: shown once with copy, scope text and links, not stored, work
   await expect(box.getByRole('heading', { name: 'API keys' })).toBeVisible();
   // empty state, scope sentence with the team name and both links
   await expect(page.locator('#api_keys_empty')).toHaveText(/^No API keys yet\./);
-  await expect(page.locator('#api_keys_scope')).toHaveText('A key works only in team Keys UI Create and acts as you.');
+  await expect(page.locator('#api_keys_scope')).toHaveText('A key works only in team Keys UI Create and acts as you. '
+    + 'Give it to your AI assistant to take your seat (AI connector).');
+  await expect(box.getByRole('link', { name: 'AI connector' })).toHaveAttribute('href', './mcp');
   await expect(box.getByRole('link', { name: 'API docs' })).toHaveAttribute('href', './api/v1/');
   await expect(box.getByRole('link', { name: 'OpenAPI spec' })).toHaveAttribute('href', './api/v1/openapi.json');
 
@@ -54,6 +58,7 @@ test('create a key: shown once with copy, scope text and links, not stored, work
   await expect(page.locator('#api_key_new_text')).toContainText('only for team Keys UI Create and acts as you');
   await expect(dialog.getByRole('link', { name: 'API docs' })).toHaveAttribute('href', './api/v1/');
   await expect(dialog.getByRole('link', { name: 'OpenAPI spec' })).toHaveAttribute('href', './api/v1/openapi.json');
+  await expect(dialog.getByRole('link', { name: 'AI connector' })).toHaveAttribute('href', './mcp');
   const key = await page.locator('#api_key_value').inputValue();
   expect(key).toMatch(KEY);
   await expect(page.locator('#api_key_name')).toHaveValue('');
