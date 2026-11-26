@@ -160,3 +160,76 @@ function core_team_note_set(mysqli $link, array $actor, string $note): array
     notify_team($t);
     return ['note' => $note];
 }
+
+/*
+ * B-151 (MCP PR E) team_settings_patch: the team settings of the board's settings menu, shared by update_team.php,
+ * update_results_order.php, update_show_avg.php and MCP board_settings. $fields, only the given ones change:
+ * name (string, not empty), anonymous (bool), results_order ('NAME' | 'SEQUENCE'), show_avg (bool), show_tips (bool),
+ * show_card_changes (bool). The caller checks the values.
+ * anonymous and show_card_changes belong to a round: while no player has a card down they apply at once, otherwise
+ * from the next round (start_new_round() copies them). Switched off, show_card_changes also clears an original card
+ * left from an "on" phase of the same round (B-115). One transaction, the team row locked first (then players, B-155).
+ * Unknown team -> 403 not_a_member. Notifies the team after the commit if anything changed; returns whether it did.
+ */
+function core_team_settings_patch(mysqli $link, array $actor, array $fields): bool
+{
+    $t = (string)$actor['team_id'];
+    $changed = db_transaction($link, function () use ($link, $t, $fields): bool {
+        $sql = $link->prepare("select id from pok_teams_tbl where id = ? for update");
+        $sql->bind_param('s', $t);
+        $sql->execute();
+        $found = $sql->get_result()->fetch_row() !== null;
+        $sql->close();
+        if (!$found) throw new ApiError(403, 'not_a_member');
+
+        $changed = false;
+        $update = function (string $statement, string $types, mixed ...$params) use ($link, &$changed): void {
+            $sql = $link->prepare($statement);
+            $sql->bind_param($types, ...$params);
+            $sql->execute();
+            if ($sql->affected_rows > 0) $changed = true;
+            $sql->close();
+        };
+        // no card of a player down = the round has not started: round settings apply at once
+        $no_cards = "(select count(1) from pok_players_tbl p2
+                       where p2.team_id = t.id and p2.card_key is not null and p2.player_type = 'PLAYER') = 0";
+        if (isset($fields['name'])) {
+            $update("update pok_teams_tbl t set t.name = ? where t.id = ?", 'ss', (string)$fields['name'], $t);
+        }
+        if (isset($fields['anonymous'])) {
+            $anonymous = $fields['anonymous'] ? 1 : 0;
+            $update("update pok_teams_tbl t
+                        set t.anonymous_request_toggle = ?
+                           ,t.anonymous_mode = if($no_cards, t.anonymous_request_toggle, t.anonymous_mode)
+                      where t.id = ?", 'is', $anonymous, $t);
+        }
+        if (isset($fields['results_order'])) {
+            $update("update pok_teams_tbl t set t.results_order = ? where t.id = ?", 'ss', (string)$fields['results_order'], $t);
+        }
+        if (isset($fields['show_avg'])) {
+            $update("update pok_teams_tbl t set t.show_avg = ? where t.id = ?", 'is', $fields['show_avg'] ? 1 : 0, $t);
+        }
+        if (isset($fields['show_tips'])) {
+            $update("update pok_teams_tbl t set t.show_tips = ? where t.id = ?", 'is', $fields['show_tips'] ? 1 : 0, $t);
+        }
+        if (isset($fields['show_card_changes'])) {
+            $on = $fields['show_card_changes'] ? 1 : 0;
+            $update("update pok_teams_tbl t
+                        set t.show_card_changes = ?
+                           ,t.round_show_card_changes = if($no_cards, ?, t.round_show_card_changes)
+                      where t.id = ?", 'iis', $on, $on, $t);
+            $sql = $link->prepare("update pok_players_tbl p
+                                     join pok_teams_tbl t on t.id = p.team_id
+                                      set p.original_card_key = null
+                                    where p.team_id = ?
+                                      and t.round_show_card_changes = 0
+                                      and p.original_card_key is not null");
+            $sql->bind_param('s', $t);
+            $sql->execute();
+            $sql->close();
+        }
+        return $changed;
+    });
+    if ($changed) notify_team($t); // B-81: after the commit, never on error
+    return $changed;
+}
