@@ -724,8 +724,10 @@ verwalten“ (`GET /keys`, `DELETE /keys/current`), je Endpunkt Methode/Pfad, Be
 - Keine Daten aus der DB auf der Seite (kein Team, keine Person) – sie ist für alle gleich.
 - Alle Texte stammen aus der Tabelle bzw. statisch aus `lib_v1.php`, Ausgabe trotzdem durchgehend
   `htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')`.
-- Header: `Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none';
-  form-action 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`. Kein JS auf der Seite.
+- Header: `Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self';
+  base-uri 'none'; form-action 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`. Einziges
+  Skript: `script/api_doc.js` (Scroll-Spy des Inhaltsverzeichnisses, Wunsch Andreas 2026-11-26), kein Inline-JS; die
+  Seite funktioniert vollständig ohne JS.
 - `<link rel="stylesheet" href="/style/style.css?v=…">` plus wenige eigene Klassen; Gestaltung übernimmt Delia
   (Markup-Struktur aus PHP, Klassen abgesprochen; kein Inline-`style`, die CSP verbietet es).
 - Rezepte (Jira) sind statischer Text in `lib_v1.php` (keine Doku-Datei, die Tests lesen).
