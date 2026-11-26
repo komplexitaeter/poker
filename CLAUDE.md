@@ -132,7 +132,6 @@ Befehle vor; ausgeführt werden sie vom Betreiber. Vor solchen Änderungen immer
 
 - Keine Authentifizierung außer der geheimen Team-ID in der URL (schreibende Aktionen seit B-11 per POST).
 - Kein Linting außer `php -l` in der CI (B-138), keine Unit-Tests; die E2E-Tests decken die Abläufe breit ab.
-- Zeichensätze gemischt (`latin1`, `utf8mb3`, `utf8mb4`) zwischen und innerhalb von Tabellen.
 - `poker-msg`: Ratchet 0.4 (wenig gepflegt), läuft unter supervisor als `root`, keine Begrenzung von Verbindungen/Nachrichten.
 
 ## Tests

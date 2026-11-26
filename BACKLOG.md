@@ -31,7 +31,7 @@ Nutzer Sichtbares. Schrittweise, je Schritt eigene PRs und Sichtung auf Staging;
 2. ✓ live R5 – B-137 Prepared Statements (Rest) · B-97 Assets aufräumen
 3. ✓ live R6 – B-34 Startdaten asynchron laden (dazu B-140, B-141)
 4. ✓ live R7 – B-14 erster Schnitt: `reactions.js`, `timer.js`, `connection.js` aus `script.js`
-5. B-12 Zeichensätze `utf8mb4` (Schema am Abend im Rollout)
+5. ✓ B-12 Zeichensätze `utf8mb4`: Schema live 2026-11-26 (von Hand, ca. 1 Min.), Code mit dem nächsten Rollout
 Jederzeit: B-126 / B-23-Rest (nginx-Sperren, Upload-Grenzen – Befehle für Andreas). Nicht angetastet: B-10.
 
 ## Rollouts
@@ -388,8 +388,11 @@ Status: neu; Teile erledigt (Event-Loop B-19, Heartbeat B-24, Drosselung der Rea
 - Browser-`push` entfernen → B-93.
 
 ### B-12 Zeichensätze auf `utf8mb4` vereinheitlichen
-Status: neu. Topic und weitere Spalten sind seit B-85 `utf8mb4`; noch 15× `utf8mb3`, 2× `latin1` (Tabellen/Spalten).
-Umstellung inkl. Verbindung; größere DB-Änderung, braucht ein Wartungsfenster (abends/Wochenende).
+Status: Schema live (2026-11-26, Staging und Live von Hand, Block „B-12“ in `db_schema_pok_inc.sql`, #276). Alle
+Textspalten und Tabellen-Defaults sind `utf8mb4_0900_ai_ci`, außer bewusst `ascii_bin` (Kartenschlüssel, Deck, Status).
+Live: 14 Tabellen, längste Dauer Rundendetails 26 s, Analytics 18 s, Rest unter 10 s; vorher Backup. Code (`db_init()`
+ohne `$charset`) geht mit dem nächsten Rollout live. Neue Tabellen: `team_id` usw. als `utf8mb4_0900_ai_ci`.
+Mögliche Folgethemen: Survey-Tabellen und `pok_teams_deck_backup_r3` droppen; B-57-Block idempotent machen.
 
 ### B-14 `script/script.js` in Module aufteilen
 Status: erster Schnitt live R7 (2026-11-25): `reactions.js`, `timer.js`, `connection.js` als klassische `defer`-Skripte
