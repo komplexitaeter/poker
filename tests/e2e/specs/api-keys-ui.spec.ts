@@ -4,8 +4,8 @@ import { newPlayer, createTeam, joinAsPlayer, getSid, bearer } from './helpers';
 /**
  * B-150 PR 5 (docs/api-v1-concept.md, section 5.5): "API keys" in the You menu. A person creates, lists and deletes
  * their own keys of this team. The new key is shown exactly once (dialog with copy button), never stored in the
- * browser and never sent to analytics. Next to "Create key" and in the dialog: the key works only for this team and
- * acts as you, with links to the API docs and the OpenAPI spec.
+ * browser and never sent to analytics. Below "Create key" and in the dialog: the key works only for this team and
+ * acts as you; links to the API docs and the OpenAPI spec next to the heading and in the dialog.
  */
 const LARGE = { width: 1280, height: 900 };
 const KEY = /^pok_[A-Z2-7]{32}$/;
@@ -36,10 +36,9 @@ test('create a key: shown once with copy, scope text and links, not stored, work
   await expect(box.getByRole('heading', { name: 'API keys' })).toBeVisible();
   // empty state, scope sentence with the team name and both links
   await expect(page.locator('#api_keys_empty')).toHaveText(/^No API keys yet\./);
-  await expect(page.locator('#api_keys_scope')).toHaveText(
-    'This key works only for team Keys UI Create and acts as you. See the API docs · OpenAPI spec');
-  await expect(page.locator('#api_keys_scope a', { hasText: 'API docs' })).toHaveAttribute('href', './api/v1/');
-  await expect(page.locator('#api_keys_scope a', { hasText: 'OpenAPI spec' })).toHaveAttribute('href', './api/v1/openapi.json');
+  await expect(page.locator('#api_keys_scope')).toHaveText('A key works only in team Keys UI Create and acts as you.');
+  await expect(box.getByRole('link', { name: 'API docs' })).toHaveAttribute('href', './api/v1/');
+  await expect(box.getByRole('link', { name: 'OpenAPI spec' })).toHaveAttribute('href', './api/v1/openapi.json');
 
   // the button waits for a name
   const create = page.locator('#api_key_create');

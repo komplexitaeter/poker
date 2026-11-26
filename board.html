@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.70" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.73" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -557,33 +557,37 @@
                         <label><input type="radio" name="cet_color_mode" value="dark" onchange="setColorMode(this.value)"/><span>Dark</span></label>
                     </div>
                 </fieldset>
-                <!-- B-133: a short sound (and vibration) when someone nudges you; per device (initNudgeAudio() in script.js) -->
+                <!-- B-133: a short sound (and vibration) when someone nudges you; per device (initNudgeAudio() in script.js).
+                     The legend says it all, no hint below (You menu tightened after B-150). -->
                 <fieldset class="f" id="cet_nudge_sound">
-                    <legend class="lab">Sound on nudge</legend>
+                    <legend class="lab">Play a sound when someone nudges you</legend>
                     <div class="seg">
                         <label><input type="radio" name="cet_nudge_sound" value="on" onchange="setNudgeSound(this.value)"/><span>On</span></label>
                         <label><input type="radio" name="cet_nudge_sound" value="off" onchange="setNudgeSound(this.value)"/><span>Off</span></label>
                     </div>
-                    <p class="hint">A short sound when someone nudges you.</p>
                 </fieldset>
                 <!-- B-150: the own API keys in this team (script/api_keys.js; names and dates via textContent). The key
                      itself shows only once, in #api_key_new; the list knows its last 4 characters only. -->
                 <div class="f api-keys" id="api_keys" role="group" aria-labelledby="api_keys_title">
-                    <h3 class="lab" id="api_keys_title">API keys</h3>
+                    <div class="api-keys-head">
+                        <h3 class="lab" id="api_keys_title">API keys</h3>
+                        <span class="api-keys-docs"><a href="./api/v1/" target="_blank" rel="noopener">API docs</a> <span aria-hidden="true">·</span> <a href="./api/v1/openapi.json" target="_blank" rel="noopener">OpenAPI spec</a></span>
+                    </div>
                     <p id="api_keys_status" class="hint api-keys-status" role="status"></p>
                     <ul id="api_keys_list" class="api-keys-list" aria-labelledby="api_keys_title" hidden></ul>
-                    <p id="api_keys_empty" class="hint api-keys-empty" hidden>No API keys yet. Create one to set the note or add items from Jira, scripts or AI tools.</p>
+                    <p id="api_keys_empty" class="hint api-keys-empty" hidden>No API keys yet. Let Jira, scripts or AI tools set the note or add items.</p>
                     <label for="api_key_name" class="sr-only">Name of the new key</label>
                     <div class="row api-keys-new">
                         <input class="field" id="api_key_name" maxlength="40" type="text" placeholder="e.g. Jira" autocomplete="off" spellcheck="false" aria-describedby="api_keys_scope" />
                         <button type="button" id="api_key_create" class="btn-box" disabled>Create key</button>
                     </div>
-                    <p id="api_keys_scope" class="hint">This key works only for team <b class="api-key-team"></b> and acts as you. See the <a href="./api/v1/" target="_blank" rel="noopener">API docs</a> · <a href="./api/v1/openapi.json" target="_blank" rel="noopener">OpenAPI spec</a></p>
+                    <p id="api_keys_scope" class="hint">A key works only in team <b class="api-key-team"></b> and acts as you.</p>
                 </div>
+                <!-- the links in one wrapper: when space runs out they wrap inside it, the button keeps its place -->
                 <p id="user_settings_privacy_link" class="m-links">
-                    <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
+                    <span class="m-links-text"><a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
                     <span aria-hidden="true">·</span>
-                    <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a>
+                    <a href="https://komplexitaeter.de/impressum/#agile_poker" target="_blank">Imprint</a></span>
                     <button type="button" id="delete_user_btn" class="btn-box danger" onclick="showDeleteUserOverlay()">Delete my data</button>
                 </p>
             </section>
