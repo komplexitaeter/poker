@@ -16,7 +16,7 @@ function addTeam() {
     }
     else {
         showTeamError(false);
-        fetch('./api/addteam.php?t=' + encodeURIComponent(e.value), { method: 'POST' })
+        apiFetch('./api/addteam.php?t=' + encodeURIComponent(e.value), { method: 'POST' })
             .then((response) => {
                 return response.json();
             })

@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, gotoStats } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, gotoStats, getSid, asUser } from './helpers';
 
 /**
  * B-57 "Ideas & Bugs", backend part: typed feedback with technical context, the public list
@@ -12,11 +12,10 @@ const unique = (prefix: string) => `${prefix} ${Date.now().toString(36)}${Math.r
 /** Creates a board and joins it (only users in pok_players_tbl may react), returns the SID. */
 async function boardUser(page: Page): Promise<string> {
   await joinAsPlayer(page, await createTeam(page, 'IdeasTeam'), 'Ida');
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('SID'))).not.toBeNull();
-  const sid = (await page.evaluate(() => localStorage.getItem('SID'))) as string;
+  const sid = await getSid(page);
   const t = new URL(page.url()).searchParams.get('t') as string;
   // dao.php creates the user row (the board calls it on load as well)
-  const res = await page.request.get(`./api/dao.php?id=${encodeURIComponent(sid)}&t=${encodeURIComponent(t)}`);
+  const res = await page.request.get(`./api/dao.php?t=${encodeURIComponent(t)}`, asUser(sid));
   expect(res.ok()).toBeTruthy();
   return sid;
 }
@@ -37,7 +36,7 @@ async function createItem(page: Page, title: string, sid: string,
   await form.locator('button[type=submit]').click();
   await expect(page.locator(`form.rm input[name=title][value="${title}"]`)).toHaveCount(1);
 
-  const list = await (await page.request.get(`./api/get_roadmap.php?id=${encodeURIComponent(sid)}`)).json();
+  const list = await (await page.request.get('./api/get_roadmap.php', asUser(sid))).json();
   const item = list.items.find((i: { title: string }) => i.title === title);
   expect(item).toMatchObject({
     type: 'FEATURE', title, description: 'Described <i>here</i>', status,
@@ -59,11 +58,11 @@ async function setStatus(page: Page, title: string, status: string) {
 }
 
 const roadmap = async (page: Page, sid: string) =>
-  (await (await page.request.get(`./api/get_roadmap.php?id=${encodeURIComponent(sid)}`)).json()).items as
+  (await (await page.request.get('./api/get_roadmap.php', asUser(sid))).json()).items as
     { id: number; title: string; status: string; reactions: { UP: number; DOWN: number }; my_reaction: string | null }[];
 
 const vote = (page: Page, sid: string, item: number | string, reaction: string) =>
-  page.request.post(`./api/vote_roadmap.php?id=${encodeURIComponent(sid)}&item=${item}&reaction=${reaction}`);
+  page.request.post(`./api/vote_roadmap.php?item=${item}&reaction=${reaction}`, asUser(sid));
 
 test('feedback is stored with type, context only for bugs, shown escaped in stats.php and can be ticked off', async ({ browser }) => {
   const page = await newPlayer(browser);
@@ -73,11 +72,12 @@ test('feedback is stored with type, context only for bugs, shown escaped in stat
   const context = JSON.stringify({ browser: 'Chrome 130', viewport: '1280x900', touch: false, theme: 'dark' });
 
   const post = (text: string, type: string) => page.request.post(
-    `./api/feedback.php?id=E2EFEEDBACK01&stars=0&type=${type}&context=${encodeURIComponent(context)}&text=${encodeURIComponent(text)}`);
+    `./api/feedback.php?stars=0&type=${type}&context=${encodeURIComponent(context)}&text=${encodeURIComponent(text)}`,
+    asUser('E2EFEEDBACK01'));
   expect((await post(bug, 'BUG')).ok()).toBeTruthy();
   expect((await post(idea, 'FEATURE')).ok()).toBeTruthy();
   expect((await post(other, 'nonsense')).ok()).toBeTruthy();
-  expect((await page.request.get(`./api/feedback.php?id=E2EFEEDBACK01&type=BUG&text=get`)).status()).toBe(405);
+  expect((await page.request.get('./api/feedback.php?type=BUG&text=get', asUser('E2EFEEDBACK01'))).status()).toBe(405);
 
   await gotoStats(page, '/stats.php?tab=ideas');
   const bugRow = feedbackRow(page, bug);
@@ -120,7 +120,7 @@ test('public list: seed entry, one reaction per user (set, change, remove), hidd
   const other = await newPlayer(browser);
   const otherSid = await boardUser(other);
 
-  const seed = await (await page.request.get(`./api/get_roadmap.php?id=${encodeURIComponent(sid)}`)).json();
+  const seed = await (await page.request.get('./api/get_roadmap.php', asUser(sid))).json();
   expect(seed.items.find((i: { title: string }) => i.title === 'New look')).toMatchObject({ type: 'FEATURE', status: 'DONE' });
 
   const title = unique('Dark mode for cards');
@@ -151,7 +151,7 @@ test('public list: seed entry, one reaction per user (set, change, remove), hidd
   await row.getByRole('button', { name: 'Save' }).click();
   await expect(page.locator('form.rm').filter({ has: page.locator(`input[name=title][value="${title}"]`) })
     .locator('input[name=visible]')).not.toBeChecked();
-  const hidden = await (await page.request.get(`./api/get_roadmap.php?id=${encodeURIComponent(sid)}`)).json();
+  const hidden = await (await page.request.get('./api/get_roadmap.php', asUser(sid))).json();
   expect(hidden.items.some((i: { id: number }) => i.id === item)).toBe(false);
   expect((await vote(page, sid, item, 'UP')).status()).toBe(404);
 });
@@ -239,10 +239,10 @@ test('public list is sorted by status, then thumbs up minus down, then order', a
 test('vote_roadmap.php rejects GET, invalid values and unknown users', async ({ browser }) => {
   const page = await newPlayer(browser);
   const sid = await boardUser(page);
-  const list = await (await page.request.get(`./api/get_roadmap.php?id=${encodeURIComponent(sid)}`)).json();
+  const list = await (await page.request.get('./api/get_roadmap.php', asUser(sid))).json();
   const item = list.items.find((i: { title: string }) => i.title === 'New look').id;
 
-  expect((await page.request.get(`./api/vote_roadmap.php?id=${sid}&item=${item}&reaction=UP`)).status()).toBe(405);
+  expect((await page.request.get(`./api/vote_roadmap.php?item=${item}&reaction=UP`, asUser(sid))).status()).toBe(405);
   expect((await vote(page, sid, item, 'up')).status()).toBe(400);
   expect((await vote(page, sid, item, 'LOVE')).status()).toBe(400);   // the codes before thumbs up/down
   expect((await vote(page, sid, item, 'HATE')).status()).toBe(400);
@@ -253,9 +253,9 @@ test('vote_roadmap.php rejects GET, invalid values and unknown users', async ({ 
 
   // a user dao.php knows (pok_user_tbl), but who never joined a board, may not react either
   const lurker = 'E2ELURKER' + Date.now().toString(36).slice(-6).toUpperCase();
-  expect((await page.request.get(`./api/get_roadmap.php?id=${lurker}`)).ok()).toBeTruthy();
+  expect((await page.request.get('./api/get_roadmap.php', asUser(lurker))).ok()).toBeTruthy();
   const t = new URL(page.url()).searchParams.get('t') as string;
-  expect((await page.request.get(`./api/dao.php?id=${lurker}&t=${encodeURIComponent(t)}`)).ok()).toBeTruthy();
+  expect((await page.request.get(`./api/dao.php?t=${encodeURIComponent(t)}`, asUser(lurker))).ok()).toBeTruthy();
   expect((await vote(page, lurker, item, 'UP')).status()).toBe(403);
   expect((await vote(page, sid, 999999, 'UP')).status()).toBe(404);
 });
@@ -271,7 +271,7 @@ test('delete_user.php removes the reactions of the user in all phases', async ({
   await gotoStats(page, '/stats.php?tab=ideas');
   await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 0 · after done: 👍 0 👎 1');
 
-  expect((await page.request.post(`./api/delete_user.php?id=${encodeURIComponent(sid)}`)).ok()).toBeTruthy();
+  expect((await page.request.post('./api/delete_user.php', asUser(sid))).ok()).toBeTruthy();
   await gotoStats(page, '/stats.php?tab=ideas');
   await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 0 👎 0 · after done: 👍 0 👎 0');
 });

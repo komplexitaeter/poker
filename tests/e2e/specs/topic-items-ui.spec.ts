@@ -1,5 +1,5 @@
 import { test, expect, Page, Browser } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, setTeamDeck, removeExampleSet } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, pickCard, setTeamDeck, removeExampleSet, asUser } from './helpers';
 import * as fs from 'fs';
 
 /**
@@ -40,7 +40,7 @@ async function setup(browser: Browser, name: string) {
 /** Ann and Ben vote through the API, Alice in the deck: the round is revealed */
 async function reveal(page: Page, t: string, ids: string[], cards: [string, string, string]) {
   for (const [i, cardkey] of cards.slice(1).entries()) {
-    const res = await page.request.post(`/api/setc.php?t=${encodeURIComponent(t)}&id=${ids[i]}&cardkey=${cardkey}`);
+    const res = await page.request.post(`/api/setc.php?t=${encodeURIComponent(t)}&cardkey=${cardkey}`, asUser(ids[i]));
     expect(res.ok()).toBeTruthy();
   }
   await pickCard(page, cards[0]);
@@ -467,7 +467,7 @@ test('the result: a click on a bar, the dropdown, back to auto (B-52 S1)', async
   await expect(est).toHaveAttribute('data-card', 'five001');
 
   // the server has it as well
-  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${ids[0]}`)).json();
+  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}`, asUser(ids[0]))).json();
   expect(dao.topic_items.active).toMatchObject({ result_card_key: 'five001', result_auto: 1 });
 });
 
@@ -1001,7 +1001,7 @@ test('the open overlay follows a new estimate; after leaving the focus is not lo
   await expect(options.first()).toBeFocused();
 
   // someone else picks another estimate meanwhile: the suggestion follows, it keeps the focus
-  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${ids[0]}`)).json();
+  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}`, asUser(ids[0]))).json();
   const item = dao.topic_items.active.id;
   expect((await alice.request.post(`/api/topic_item_result.php?t=${encodeURIComponent(t)}&item=${item}&card=three01`)).ok()).toBeTruthy();
   await expect(options.first().locator('.leave-opt-t')).toHaveText('Close with 3');
@@ -1035,7 +1035,7 @@ test('the description folds again when another item is shown (review)', async ({
 
   // someone else leaves the item: the next one starts folded
   await reveal(alice, t, ids, ['three01', 'five001', 'five001']);
-  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}&id=${ids[0]}`)).json();
+  const dao = await (await alice.request.get(`/api/dao.php?t=${encodeURIComponent(t)}`, asUser(ids[0]))).json();
   expect((await alice.request.post(`/api/topic_item_next.php?t=${encodeURIComponent(t)}&item=${dao.topic_items.active.id}&mode=close_empty`)).ok()).toBeTruthy();
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Beta');
   await expect(alice.locator('#ti_desc_view')).toHaveClass(/clamp/);

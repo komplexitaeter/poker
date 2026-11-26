@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, asUser } from './helpers';
 
 /**
  * B-21: loading a board fires two parallel dao.php calls for the same fresh SID
@@ -16,11 +16,11 @@ test('parallel dao.php calls for a fresh SID never 500 (user insert race)', asyn
 
   // a brand-new SID, like a browser that has never contacted the app before
   const sid = ('r' + Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 16);
-  const dao = `/api/dao.php?t=${encodeURIComponent(teamId)}&id=${encodeURIComponent(sid)}`;
+  const dao = `/api/dao.php?t=${encodeURIComponent(teamId)}`;
 
   // fire many requests as simultaneously as possible to provoke the race
   const responses = await Promise.all(
-    Array.from({ length: 10 }, () => creator.request.get(dao)),
+    Array.from({ length: 10 }, () => creator.request.get(dao, asUser(sid))),
   );
 
   for (const res of responses) {

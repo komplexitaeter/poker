@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, setTeamDeck, CONTROLS_ALL } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, setTeamDeck, CONTROLS_ALL, getSid, asUser } from './helpers';
 
 /**
  * B-53: the median as a dashed line in the spread of the results panel (#spread_median), coupled to the team switch
@@ -11,8 +11,11 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, setTeamDeck, CON
 const DESKTOP = { width: 1280, height: 800 };
 const SHOTS = process.env.MEDIAN_SHOTS; // directory for manual look checks (screenshots), unset in CI
 
+/* B-152: the user id (params.id) goes into the header X-Poker-User, never into the URL */
 async function post(page: Page, script: string, params: Record<string, string>) {
-  const res = await page.request.post(`/api/${script}?${new URLSearchParams(params).toString()}`);
+  const { id, ...rest } = params;
+  const res = await page.request.post(`/api/${script}?${new URLSearchParams(rest).toString()}`,
+    id === undefined ? {} : asUser(id));
   expect(res.ok()).toBeTruthy();
 }
 
@@ -38,7 +41,7 @@ test('median line: on the middle column, between two columns by value, ignores c
   const url = await createTeam(alice, 'Median Line');
   const t = new URL(url).searchParams.get('t')!;
   await joinAsPlayer(alice, url, 'Alice');
-  const me = await alice.evaluate(() => localStorage.getItem('SID')!);
+  const me = await getSid(alice);
   await setTeamDeck(alice, url, 'fib-classic', null, CONTROLS_ALL);
   await post(alice, 'update_show_avg.php', { t, show_avg: '1' });
   const [bob, carol, dan] = await addPlayersViaApi(alice, url, ['Bob', 'Carol', 'Dan']);
@@ -127,7 +130,7 @@ test('median line by value: 1 and 5 through the empty column 3 (unbroken), 5 and
   const url = await createTeam(alice, 'Median Value');
   const t = new URL(url).searchParams.get('t')!;
   await joinAsPlayer(alice, url, 'Alice');
-  const me = await alice.evaluate(() => localStorage.getItem('SID')!);
+  const me = await getSid(alice);
   await setTeamDeck(alice, url, 'fib-classic', null, CONTROLS_ALL);
   await post(alice, 'update_show_avg.php', { t, show_avg: '1' });
   const [bob, carol] = await addPlayersViaApi(alice, url, ['Bob', 'Carol']);
@@ -197,7 +200,7 @@ test('median line rises above the columns, also above the frame of the current e
   const url = await createTeam(alice, 'Median Top');
   const t = new URL(url).searchParams.get('t')!;
   await joinAsPlayer(alice, url, 'Alice');
-  const me = await alice.evaluate(() => localStorage.getItem('SID')!);
+  const me = await getSid(alice);
   await setTeamDeck(alice, url, 'fib-classic', null, CONTROLS_ALL);
   await post(alice, 'update_show_avg.php', { t, show_avg: '1' });
   const [bob] = await addPlayersViaApi(alice, url, ['Bob']);
@@ -266,7 +269,7 @@ test('median line with ∞: ∞ counts as a very large value, between a value an
   const url = await createTeam(alice, 'Median Infinity');
   const t = new URL(url).searchParams.get('t')!;
   await joinAsPlayer(alice, url, 'Alice');
-  const me = await alice.evaluate(() => localStorage.getItem('SID')!);
+  const me = await getSid(alice);
   await setTeamDeck(alice, url, 'fib-classic', null, CONTROLS_ALL);
   await post(alice, 'update_show_avg.php', { t, show_avg: '1' });
   const [bob, carol, dan] = await addPlayersViaApi(alice, url, ['Bob', 'Carol', 'Dan']);

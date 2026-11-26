@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam } from './helpers';
+import { newPlayer, createTeam, getSid, asUser } from './helpers';
 
 /**
  * B-42: the sort option "Define the sort order in-game" (CHOOSE) is removed.
@@ -23,10 +23,10 @@ function setStoredResultsOrder(teamId: string, value: string): void {
 async function newTeam(page: Page, name: string) {
   const boardUrl = await createTeam(page, name);
   const teamId = new URL(boardUrl).searchParams.get('t') as string;
-  const sid = (await page.evaluate(() => localStorage.getItem('SID'))) as string;
+  const sid = await getSid(page);
   const dao = async () => {
     const res = await page.request.get(
-      `./api/dao.php?id=${encodeURIComponent(sid)}&t=${encodeURIComponent(teamId)}`);
+      `./api/dao.php?t=${encodeURIComponent(teamId)}`, asUser(sid));
     expect(res.ok()).toBeTruthy();
     return res.json();
   };

@@ -1,5 +1,5 @@
 import { test, expect, Page, Browser } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, setTeamDeck, deckCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, setTeamDeck, deckCard, asUser, getSid } from './helpers';
 
 /**
  * B-101: with the J.U.D.G.E. deck the tip after the reveal is about a decision, not an estimate. Accepted as long as
@@ -12,7 +12,7 @@ const BREAK = 'Maybe take a short break.';
 async function setCard(page: Page, boardUrl: string, id: string, cardKey: string): Promise<void> {
   const t = new URL(boardUrl).searchParams.get('t') ?? '';
   const res = await page.request.post(
-    `/api/setc.php?id=${encodeURIComponent(id)}&cardkey=${cardKey}&t=${encodeURIComponent(t)}`);
+    `/api/setc.php?cardkey=${cardKey}&t=${encodeURIComponent(t)}`, asUser(id));
   expect(res.ok()).toBeTruthy();
 }
 
@@ -23,7 +23,7 @@ async function judgeTeam(browser: Browser, team: string, others: string[]) {
   await joinAsPlayer(alice, url, 'Alice');
   await setTeamDeck(alice, url, 'judge', null, ['break01', 'qstmrk1', 'xclam01', 'shrug01']);
   const ids = await addPlayersViaApi(alice, url, others);
-  const aliceId = await alice.evaluate(() => localStorage.getItem('SID') ?? '');
+  const aliceId = await getSid(alice);
   await alice.reload();
   await expect(deckCard(alice, 'jdg6')).toBeVisible();
   const vote = async (cards: string[]) => {

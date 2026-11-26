@@ -182,8 +182,7 @@ function markFeedbackSeen() {
     if (gFeedbackDot !== true) return;
     gFeedbackDot = false;
     renderFeedbackDot();
-    fetch('./api/update_user.php?id=' + encodeURIComponent(localStorage.getItem('SID')) + '&hide_teaser=1',
-        {method: 'POST'}).then();
+    apiFetch('./api/update_user.php?hide_teaser=1', {method: 'POST'}).catch(() => {});
 }
 
 /* restoreFocus: false when something else takes the focus (overlay) or the opener is gone */
@@ -362,7 +361,7 @@ function updateJediBtn() {
 }
 
 function pushJediBtn(showAvg) {
-    let url = './api/update_show_avg.php?id=' + localStorage.getItem('SID') + '&show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + t;
+    let url = './api/update_show_avg.php?show_avg=' + (showAvg === '1' ? '1' : '0') + '&t=' + encodeURIComponent(t);
     settingWrite(url);
 }
 
@@ -408,8 +407,7 @@ function feedback_submit() {
     let type = feedbackType();
 
     // B-54: free text in URLs always encoded; stars are no longer asked for (0)
-    let url = './api/feedback.php?id=' + encodeURIComponent(localStorage.getItem('SID'))
-        + '&stars=0'
+    let url = './api/feedback.php?stars=0'
         + '&type=' + encodeURIComponent(type)
         + '&text=' + encodeURIComponent(fb_text);
     if (type === 'BUG') url += '&context=' + encodeURIComponent(bugContext());
@@ -420,7 +418,7 @@ function feedback_submit() {
     if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
         options.signal = AbortSignal.timeout(WRITE_TIMEOUT_MS);
     }
-    fetch(url, options).then(response => response.ok, () => false).then(ok => {
+    apiFetch(url, options).then(response => response.ok, () => false).then(ok => {
         sendBtn.disabled = false;
         if (ok) {
             closeMenu();
@@ -464,7 +462,7 @@ function loadFeedbackBacklog() {
     if (empty !== null && list.children.length === 0) empty.hidden = true;
     list.setAttribute('aria-busy', 'true');
 
-    fetch('./api/get_roadmap.php?id=' + encodeURIComponent(localStorage.getItem('SID')))
+    apiFetch('./api/get_roadmap.php')
         .then(response => response.ok ? response.json() : Promise.reject(response.status))
         .then(json => {
             if (request !== gFbBacklogRequest) return;
@@ -490,8 +488,7 @@ function reactOnBacklogItem(btn) {
     let buttons = li.querySelectorAll('.fb-react-btn');
     buttons.forEach(b => { b.disabled = true; });
 
-    fetch('./api/vote_roadmap.php?id=' + encodeURIComponent(localStorage.getItem('SID'))
-        + '&item=' + encodeURIComponent(li.dataset.item)
+    apiFetch('./api/vote_roadmap.php?item=' + encodeURIComponent(li.dataset.item)
         + '&reaction=' + encodeURIComponent(reaction), { method: 'POST' })
         .then(response => {
             if (response.ok) return response.json();
@@ -548,7 +545,7 @@ function save_topic(){
     let topic = document.getElementById('topic_txt').value;
     gTopic = topic; // shown at once when the menu opens again, the board reload brings the saved text
 
-    const url = './api/update_topic.php?t='+t;
+    const url = './api/update_topic.php?t=' + encodeURIComponent(t);
     // the topic goes in the POST body (form encoded), not in the URL
     apiWrite(url, { body: new URLSearchParams({ topic: topic }) });
 
@@ -560,13 +557,13 @@ function save_topic(){
 
 // B-51: called by the radio group with SEQUENCE or NAME
 function changeSortOrder(resultsOrder) {
-    const url = './api/update_results_order.php?t='+t+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
+    const url = './api/update_results_order.php?t=' + encodeURIComponent(t)+'&results_order='+(resultsOrder === 'NAME' ? 'NAME' : 'SEQUENCE');
     settingWrite(url);
 }
 
 // B-51: called by the radio group with 0 (show names) or 1 (anonymous)
 function changeAnonymity(anonymous) {
-    const url = './api/update_team.php?t='+t+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
+    const url = './api/update_team.php?t=' + encodeURIComponent(t)+'&anonymous_request_toggle='+(anonymous === '1' ? '1' : '0');
     settingWrite(url);
 }
 
@@ -574,26 +571,26 @@ function changeAnonymity(anonymous) {
 function changeShowTips(showTips) {
     const on = showTips === '1';
     measureEvent(on ? 'TIPS_ON' : 'TIPS_OFF');
-    settingWrite('./api/update_team.php?t='+t+'&show_tips='+(on ? '1' : '0'));
+    settingWrite('./api/update_team.php?t=' + encodeURIComponent(t)+'&show_tips='+(on ? '1' : '0'));
 }
 
 /* B-115: switch B-104 (the first card stays visible when someone changes theirs after the reveal) for the team */
 function changeShowCardChanges(show) {
     const on = show === '1';
     measureEvent(on ? 'CARD_CHANGES_ON' : 'CARD_CHANGES_OFF');
-    settingWrite('./api/update_team.php?t='+t+'&show_card_changes='+(on ? '1' : '0'));
+    settingWrite('./api/update_team.php?t=' + encodeURIComponent(t)+'&show_card_changes='+(on ? '1' : '0'));
 }
 
 function onChangeTeamNameInput() {
     document.getElementById('cet_change_name').disabled = document.getElementById('cet_team_name').value
         === document.getElementById('team_name').innerText
-        || document.getElementById('cet_team_name').value.length === 0;
+        || document.getElementById('cet_team_name').value.trim().length === 0;
 }
 
 function onChangeUserNameInput() {
     document.getElementById('cet_change_user').disabled = document.getElementById('cet_usr_name').value
         === gUserName
-        || document.getElementById('cet_usr_name').value.length === 0;
+        || document.getElementById('cet_usr_name').value.trim().length === 0; // B-152: spaces only is no name
 }
 
 function updateTeamName() {
@@ -601,7 +598,7 @@ function updateTeamName() {
     teamInput.value = teamInput.value.trim();
     document.getElementById('cet_change_name').disabled = true;
 
-    let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + t;
+    let url = './api/update_team.php?name=' + encodeURIComponent(teamInput.value) + '&t=' + encodeURIComponent(t);
     settingWrite(url);
 }
 
@@ -610,7 +607,7 @@ function updateUserName() {
     userInput.value = userInput.value.trim();
     document.getElementById('cet_change_user').disabled = true;
 
-    let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + t +'&id='+sid + '&type=' + gLastJson.player_type;
+    let url = './api/name.php?name=' + encodeURIComponent(userInput.value) + '&t=' + encodeURIComponent(t) + '&type=' + encodeURIComponent(gLastJson.player_type);
     settingWrite(url);
 }
 
@@ -618,6 +615,6 @@ function updateUserName() {
 function toggleUserType(playerType) {
     if (playerType !== 'OBSERVER') playerType = 'PLAYER';
 
-    let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + t +'&id='+sid + '&type=' + playerType;
+    let url = './api/name.php?name=' + encodeURIComponent(gUserName) + '&t=' + encodeURIComponent(t) + '&type=' + encodeURIComponent(playerType);
     settingWrite(url);
 }

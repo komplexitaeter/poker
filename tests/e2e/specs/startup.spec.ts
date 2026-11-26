@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, teamWithTwoPlayers, pickCard, deckCards, pageReady } from './helpers';
+import { newPlayer, createTeam, teamWithTwoPlayers, pickCard, deckCards, pageReady, getSid, asUser } from './helpers';
 
 /**
  * B-34: the start of the board and of the start page loads without synchronous requests. The page shows only when
@@ -231,6 +231,8 @@ test('start page: shows without get_user.php, in the system mode, and creating a
 
 test('start page: the form never submits natively while the color mode loads (B-34)', async ({ browser }) => {
   const page = await newPlayer(browser);
+  // a returning browser (B-152: without a SID there are no saved settings, get_user.php is not asked)
+  await page.addInitScript(() => localStorage.setItem('SID', 'E2ERETURNING0001'));
   await page.route('**/api/get_user.php*', async route => { await new Promise(r => setTimeout(r, 2000)); await route.continue(); });
   await page.goto('/');
   expect(await page.evaluate(() => document.body.style.opacity)).toBe('0');
@@ -248,8 +250,7 @@ test('start page: without a kept mode a saved light mode is there when the page 
   await createTeam(alice, 'Startup Light');
   // a user with a board (row in pok_user_tbl created by dao.php); update_user.php creates the row itself, too
   await pageReady(alice);
-  const sid = await alice.evaluate(() => localStorage.getItem('SID'));
-  const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=light`);
+  const res = await alice.request.post('/api/update_user.php?color_mode=light', asUser(await getSid(alice)));
   expect(res.ok()).toBeTruthy();
   // B-141: nothing kept on this device (else the page shows at once in the kept mode)
   await alice.evaluate(() => localStorage.removeItem('COLOR_MODE'));
@@ -266,8 +267,7 @@ test('start page: without a kept mode a slow get_user.php shows the page after 3
   await createTeam(alice, 'Startup Slow User');
   // a user with a board (row in pok_user_tbl created by dao.php); update_user.php creates the row itself, too
   await pageReady(alice);
-  const sid = await alice.evaluate(() => localStorage.getItem('SID'));
-  const res = await alice.request.post(`/api/update_user.php?id=${encodeURIComponent(sid ?? '')}&color_mode=light`);
+  const res = await alice.request.post('/api/update_user.php?color_mode=light', asUser(await getSid(alice)));
   expect(res.ok()).toBeTruthy();
   await alice.evaluate(() => localStorage.removeItem('COLOR_MODE')); // B-141: nothing kept on this device
 

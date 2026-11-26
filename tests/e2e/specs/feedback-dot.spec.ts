@@ -29,7 +29,7 @@ test('the red dot on the feedback button goes away for good once the panel was o
   await expect(btn).toHaveAttribute('aria-label', 'Feedback');
   expect((await sent).ok()).toBeTruthy();
   expect(updates).toHaveLength(1);
-  expect(updates[0]).toMatch(/^POST .*update_user\.php\?id=.+&hide_teaser=1$/);
+  expect(updates[0]).toMatch(/^POST .*update_user\.php\?hide_teaser=1$/); // B-152: no id= in the URL
 
   // opening it again sends nothing
   await alice.keyboard.press('Escape');

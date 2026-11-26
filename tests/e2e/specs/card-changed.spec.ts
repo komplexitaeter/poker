@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, tableCard, expectTableCard } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, tableCard, expectTableCard, getSid, asUser } from './helpers';
 
 /**
  * B-104: whoever changes his card after the reveal keeps the card of the reveal as original_card_key (only the first
@@ -23,14 +23,14 @@ function teamIdOf(url: string): string {
 }
 
 async function setCard(page: Page, t: string, id: string, cardkey: string) {
-  const res = await page.request.post(`/api/setc.php?${new URLSearchParams({ t, id, cardkey }).toString()}`);
+  const res = await page.request.post(`/api/setc.php?${new URLSearchParams({ t, cardkey }).toString()}`, asUser(id));
   expect(res.ok()).toBeTruthy();
 }
 
 type Player = { name: string; display_card_key: string; original_card_key: string | null };
 
 async function players(page: Page, t: string, id: string): Promise<Record<string, Player>> {
-  const res = await page.request.get(`/api/dao.php?${new URLSearchParams({ t, id }).toString()}`);
+  const res = await page.request.get(`/api/dao.php?${new URLSearchParams({ t }).toString()}`, asUser(id));
   expect(res.ok()).toBeTruthy();
   const state = await res.json();
   return Object.fromEntries(state.players.map((p: Player) => [p.name, p]));
@@ -74,7 +74,7 @@ test('a card changed after the reveal keeps the original until the next round', 
   expect((await players(page, t, carol)).Bob.original_card_key).toBeNull();
 
   // Carol takes her card back (cards covered again): her original is kept but not delivered while covered
-  const res = await page.request.post(`/api/setc.php?${new URLSearchParams({ t, id: carol }).toString()}`);
+  const res = await page.request.post(`/api/setc.php?${new URLSearchParams({ t }).toString()}`, asUser(carol));
   expect(res.ok()).toBeTruthy();
   expect(original(t, carol)).toBe('eight01');
   p = await players(page, t, bob);
@@ -88,14 +88,14 @@ test('a card changed after the reveal keeps the original until the next round', 
 
   // anonymous mode: the stack stays (names are hidden anyway)
   sql(`update pok_teams_tbl set anonymous_mode = 1 where id = '${t}'`);
-  const res2 = await page.request.get(`/api/dao.php?${new URLSearchParams({ t, id: bob }).toString()}`);
+  const res2 = await page.request.get(`/api/dao.php?${new URLSearchParams({ t }).toString()}`, asUser(bob));
   const anonymous: Player[] = (await res2.json()).players;
   expect(anonymous.every((x) => x.name === '******')).toBe(true);
   expect(anonymous.find((x) => x.display_card_key === 'two0001')?.original_card_key).toBe('eight01');
   sql(`update pok_teams_tbl set anonymous_mode = 0 where id = '${t}'`);
 
   // new round: the snapshot keeps the original, the player row is cleared
-  const nr = await page.request.post(`/api/newround.php?${new URLSearchParams({ t, id: bob }).toString()}`);
+  const nr = await page.request.post(`/api/newround.php?${new URLSearchParams({ t }).toString()}`, asUser(bob));
   expect(nr.ok()).toBeTruthy();
   expect(original(t, carol)).toBe('NULL');
   expect(sql(`select concat(d.card_key, ':', ifnull(d.original_card_key, 'NULL'))
@@ -192,7 +192,7 @@ test('the table shows a changed card as a stack of original and current card', a
   await expect(carolCard.locator('.pc:not(.pc-orig)')).toHaveAttribute('aria-label', '2, changed from 8 to 2');
 
   // new round: all stacks are gone
-  const nr = await page.request.post(`/api/newround.php?${new URLSearchParams({ t, id: bob }).toString()}`);
+  const nr = await page.request.post(`/api/newround.php?${new URLSearchParams({ t }).toString()}`, asUser(bob));
   expect(nr.ok()).toBeTruthy();
   await expect(page.locator('#cbox .c[data-card="two0001"]')).toHaveCount(0);
   await expect(page.locator('#cbox .pc-orig')).toHaveCount(0);
@@ -259,7 +259,7 @@ test('let them explain: an extreme of the reveal stays named, a new extreme join
   const url = await createTeam(page, 'Card Changed Tip');
   await joinAsPlayer(page, url, 'Alice');
   const t = teamIdOf(url);
-  const alice = await page.evaluate(() => localStorage.getItem('SID') ?? '');
+  const alice = await getSid(page);
   const [bob, carol, dan] = await addPlayersViaApi(page, url, ['Bob', 'Carol', 'Dan']);
   await page.reload();
   const tip = page.locator('#round_tip');

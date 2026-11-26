@@ -133,7 +133,7 @@ function reactDay() {
 }
 
 function reactUsedOwner() {
-    return String(t ?? '') + ':' + String(sid ?? '');
+    return String(t ?? '') + ':' + getUid();
 }
 
 /* the counts of today (all teams and users of this browser), a fresh object on another day or unreadable data */

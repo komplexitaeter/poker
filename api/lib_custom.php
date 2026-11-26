@@ -615,8 +615,8 @@ const EXAMPLE_SET_CARDS = array(
  * B-116: gives the team the example set once, lazily from getDao() (also new teams, on their first load). Runs in its
  * own transaction under the lock of the team row, so parallel loads create one set only; pok_teams_tbl.example_set_given
  * = 1 afterwards, also if the team has custom_sets_max() sets already (then no set) - a deleted example set never comes
- * back. The set is not activated, deck and round stay as they are. A team not migrated yet (deck_id null, e.g. a
- * parallel update_cardset.php) is migrated first under the same lock, so an old mixed deck still gets its set "Our
+ * back. The set is not activated, deck and round stay as they are. A team not migrated yet (deck_id null, not loaded
+ * since rollout 3) is migrated first under the same lock, so an old mixed deck still gets its set "Our
  * deck" before the example set counts against the limit; then the migrated deck is returned (deck_id, deck_cards,
  * deck_controls), else null. Does not notify (dao.php never notifies).
  */

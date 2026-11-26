@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, pickCard } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, joinAsPlayer, pickCard, asUser, userRequest } from './helpers';
 
 /**
  * B-115: team setting "See changed cards" (show_card_changes) switches B-104 off. It takes effect with the next round:
@@ -23,7 +23,8 @@ function teamIdOf(url: string): string {
 }
 
 async function post(page: Page, script: string, params: Record<string, string>) {
-  const res = await page.request.post(`/api/${script}?${new URLSearchParams(params).toString()}`);
+  const { query, options } = userRequest(params); // B-152: the id in the header
+  const res = await page.request.post(`/api/${script}?${query}`, options);
   expect(res.ok()).toBeTruthy();
 }
 
@@ -31,7 +32,7 @@ type Player = { name: string; display_card_key: string; original_card_key: strin
 type State = { show_card_changes: number; round_show_card_changes: number; players: Player[] };
 
 async function dao(page: Page, t: string, id: string): Promise<State> {
-  const res = await page.request.get(`/api/dao.php?${new URLSearchParams({ t, id }).toString()}`);
+  const res = await page.request.get(`/api/dao.php?${new URLSearchParams({ t }).toString()}`, asUser(id));
   expect(res.ok()).toBeTruthy();
   return res.json();
 }

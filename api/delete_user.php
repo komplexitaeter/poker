@@ -3,7 +3,7 @@ require '../config.php';
 require './lib.php';
 require_post();
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 // a missing or manipulated id must not delete the rows with an empty id of all teams (B-88)
 if ($id === '') exit;
 $link = db_init();

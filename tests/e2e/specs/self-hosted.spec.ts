@@ -52,7 +52,7 @@ test('board boots and renders markdown with all external hosts blocked', async (
   await context.close();
 });
 
-test('the promo close button is an inline SVG, not a font-awesome icon', async ({ browser }) => {
+test('the board has no promo tab and no font-awesome icons (B-152: promo removed)', async ({ browser }) => {
   const context = await browser.newContext();
   await context.route(/^https?:\/\//, route => {
     const host = new URL(route.request().url()).hostname;
@@ -61,8 +61,8 @@ test('the promo close button is an inline SVG, not a font-awesome icon', async (
   const page = await context.newPage();
   await createTeam(page, 'Promo Icon Team');
 
-  await expect(page.locator('.promo-close svg')).toHaveCount(1);
-  await expect(page.locator('.promo-close i.fas')).toHaveCount(0);
+  await expect(page.locator('#promo-tab, .promo-tab')).toHaveCount(0);
+  await expect(page.locator('i.fas')).toHaveCount(0);
 
   await context.close();
 });

@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, stopHbLoads, pickCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, tableCard, stopHbLoads, pickCard, asUser } from './helpers';
 
 /**
  * B-110 part 1 (board): the board calls home on every hb (B-127: api/seen.php, dao.php only when the away persons
@@ -30,7 +30,7 @@ function lastLoadAgo(t: string, id: string, seconds: number): void {
 
 async function addObserver(page: Page, t: string, name: string): Promise<string> {
   const id = `E2EOBS${Date.now().toString(36)}${name.length}`.slice(0, 16).toUpperCase();
-  const res = await page.request.post(`/api/name.php?${new URLSearchParams({ t, id, name, type: 'observer' })}`);
+  const res = await page.request.post(`/api/name.php?${new URLSearchParams({ t, name, type: 'observer' })}`, asUser(id));
   expect(res.ok()).toBeTruthy();
   return id;
 }
@@ -113,7 +113,7 @@ test('hb: another player goes away or comes back: dao.php after the next hb show
   expect(loads.dao).toBe(1);
 
   // Bob is back (his board calls seen.php): the next hb loads dao.php again
-  expect((await alice.request.get(`/api/seen.php?${new URLSearchParams({ t, id: bob })}`)).ok()).toBeTruthy();
+  expect((await alice.request.get(`/api/seen.php?${new URLSearchParams({ t })}`, asUser(bob))).ok()).toBeTruthy();
   await sendHb(alice);
   await expect(bobCard).not.toHaveClass(/is-away/, { timeout: 8000 });
   expect(loads).toEqual({ dao: 2, seen: 3 });
@@ -168,7 +168,7 @@ test('away: dimmed card, trash can without hover, named for screen readers (B-11
   await shot(alice, 'desktop-dark-away');
 
   // Bob is back (his board loads dao.php)
-  expect((await alice.request.get(`/api/dao.php?${new URLSearchParams({ t, id: bob })}`)).ok()).toBeTruthy();
+  expect((await alice.request.get(`/api/dao.php?${new URLSearchParams({ t })}`, asUser(bob))).ok()).toBeTruthy();
   await reload(alice);
   await expect(bobCard).not.toHaveClass(/is-away/);
   await expect(bobCard.locator('.pc .stl')).toHaveText('thinking');
