@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.73" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.75" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -70,7 +70,7 @@
     <script defer src="script/timer.js?v=1" type="text/javascript"></script>
     <script defer src="script/connection.js?v=2" type="text/javascript"></script>
     <script defer src="script/api_keys.js?v=1" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.42" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.43" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
          waiting for images or analytics (window load) -->
@@ -581,7 +581,8 @@
                         <input class="field" id="api_key_name" maxlength="40" type="text" placeholder="e.g. Jira" autocomplete="off" spellcheck="false" aria-describedby="api_keys_scope" />
                         <button type="button" id="api_key_create" class="btn-box" disabled>Create key</button>
                     </div>
-                    <p id="api_keys_scope" class="hint">A key works only in team <b class="api-key-team"></b> and acts as you.</p>
+                    <!-- B-151 (MCP PR G): a key also lets an AI assistant take your seat (help page GET /mcp) -->
+                    <p id="api_keys_scope" class="hint">A key works only in team <b class="api-key-team"></b> and acts as you. Give it to your AI assistant to take your seat (<a href="./mcp" target="_blank" rel="noopener">AI connector</a>).</p>
                 </div>
                 <!-- the links in one wrapper: when space runs out they wrap inside it, the button keeps its place -->
                 <p id="user_settings_privacy_link" class="m-links">
@@ -656,7 +657,7 @@
             <button type="button" id="api_key_copy" class="btn-box primary"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy</span></button>
         </div>
         <p id="api_key_copy_status" class="hint" role="status"></p>
-        <p class="api-key-links"><a href="./api/v1/" target="_blank" rel="noopener">API docs</a> <span aria-hidden="true">·</span> <a href="./api/v1/openapi.json" target="_blank" rel="noopener">OpenAPI spec</a></p>
+        <p class="api-key-links"><a href="./api/v1/" target="_blank" rel="noopener">API docs</a> <span aria-hidden="true">·</span> <a href="./api/v1/openapi.json" target="_blank" rel="noopener">OpenAPI spec</a> <span aria-hidden="true">·</span> <a href="./mcp" target="_blank" rel="noopener">AI connector</a></p>
         <div class="leave-item-foot">
             <button type="button" id="api_key_done" class="btn-box">Done</button>
         </div>
@@ -722,6 +723,9 @@
     <input id="become_player_btn" class="btn topnav" type="button" value="Join as player" tabindex="2" disabled />
     <input id="become_observer_btn" class="btn topnav" type="button" value="Join as observer" tabindex="3" aria-describedby="observer_note" disabled />
     <p id="observer_note" class="observer-note">Observers watch but don't vote (e.g. PO, guests).</p>
+    <!-- B-151 (MCP PR G): invited people can also join from an AI assistant (Claude, ChatGPT ...); the URL is set
+         from the current origin (showMcpUrl() in script.js, textContent), "/mcp" without JS -->
+    <p id="join_mcp_hint" class="mcp-hint">Joining from an AI assistant? Add <span class="mcp-url">/mcp</span> as a connector, then give it this board's link. <a href="./mcp" target="_blank" rel="noopener">How it works</a></p>
 
     <div id="overlay_privacy_link" class="privacy_link">
         <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
