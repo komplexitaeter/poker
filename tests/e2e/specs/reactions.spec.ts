@@ -118,7 +118,7 @@ async function setHidden(page: Page, hidden: boolean): Promise<void> {
   }, hidden);
   if (!hidden) {
     // visible again: the board builds a new connection (B-82); wait until it is open and subscribed
-    await expect.poll(() => page.evaluate(() => (0, eval)('gConn').readyState)).toBe(1);
+    await expect.poll(() => page.evaluate(() => (0, eval)('gConn')?.readyState)).toBe(1);
     await page.waitForTimeout(500);
   }
 }

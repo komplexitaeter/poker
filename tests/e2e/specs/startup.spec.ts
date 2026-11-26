@@ -231,6 +231,8 @@ test('start page: shows without get_user.php, in the system mode, and creating a
 
 test('start page: the form never submits natively while the color mode loads (B-34)', async ({ browser }) => {
   const page = await newPlayer(browser);
+  // a returning browser (B-152: without a SID there are no saved settings, get_user.php is not asked)
+  await page.addInitScript(() => localStorage.setItem('SID', 'E2ERETURNING0001'));
   await page.route('**/api/get_user.php*', async route => { await new Promise(r => setTimeout(r, 2000)); await route.continue(); });
   await page.goto('/');
   expect(await page.evaluate(() => document.body.style.opacity)).toBe('0');

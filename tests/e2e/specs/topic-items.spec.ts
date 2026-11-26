@@ -2,7 +2,7 @@ import { test, expect, Page, APIResponse } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { newPlayer, createTeam, addPlayersViaApi, setTeamDeck } from './helpers';
+import { newPlayer, createTeam, addPlayersViaApi, setTeamDeck, asUser } from './helpers';
 
 /**
  * B-52 S1/S1b: topics as a list of items (api/lib_topics.php, api/topic_item_*.php, api/get_topics.php).
@@ -44,11 +44,13 @@ function q(params: Record<string, string | number>): string {
 
 async function post(page: Page, endpoint: string, params: Record<string, string | number>,
                     form?: Record<string, string>): Promise<APIResponse> {
-  return page.request.post(`/api/${endpoint}?${q(params)}`, form ? { form } : {});
+  const { id, ...rest } = params; // B-152: the user id in the header X-Poker-User
+  const options = form ? { form } : {};
+  return page.request.post(`/api/${endpoint}?${q(rest)}`, id === undefined ? options : asUser(String(id), options));
 }
 
 async function dao(page: Page, t: string, id: string) {
-  const res = await page.request.get(`/api/dao.php?${q({ t, id })}`);
+  const res = await page.request.get(`/api/dao.php?${q({ t })}`, asUser(id));
   expect(res.ok()).toBeTruthy();
   return res.json();
 }

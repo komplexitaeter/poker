@@ -72,8 +72,8 @@ test('first visit: the UID comes from uid.php, travels only in the header, never
   expect((await newRound).status()).toBe(200);
   await expectTableCard(bob, 'Alice', 'prgrss1');
 
-  // menus: board settings, topic, menu index; the feedback panel (roadmap, seen mark); the colour switch
-  for (const button of ['#cset_btn', '#topic_btn', '#menu_btn']) {
+  // menus: board settings, topic; the feedback panel (roadmap, seen mark); the colour switch
+  for (const button of ['#cset_btn', '#topic_btn']) {
     await alice.locator(button).click();
     await expect(alice.locator('dialog#menu')).toHaveAttribute('open');
     await alice.locator('#menu_close').click();
@@ -98,6 +98,8 @@ test('first visit: the UID comes from uid.php, travels only in the header, never
     'update_user.php', 'measure_event.php']) {
     expect(alicePaths.has('/api/' + path), path).toBe(true);
   }
+  // the start page of a first visit asks for no saved settings (no SID yet)
+  expect(alicePaths.has('/api/get_user.php')).toBe(false);
   const uidCalls = (await Promise.all(aliceRequests)).filter(s => new URL(s.url).pathname === '/api/uid.php');
   expect(uidCalls).toHaveLength(1);
   const bobPaths = await expectClean(bobRequests, bobSid, 'Bob');
