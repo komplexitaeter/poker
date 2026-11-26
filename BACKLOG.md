@@ -478,6 +478,21 @@ Umsetzung PR 5 Teil 1 (Fred, 2026-11-26, Branch `feature/B-150-pr5-keys-ui`): Yo
 mit Name, `••••` + Hint, erstellt, zuletzt benutzt; „Create key“ mit Namen; Löschen mit Rückfrage in der Zeile; Texte
 aus Konzept 5.5. Der neue Schlüssel steht nur im Dialog `#api_key_new` (Copy, beim Schließen geleert), nie in
 `localStorage`/Analytics. `apiFetch()` schickt für `./api/v1/` zusätzlich `X-Poker-Team`. E2E: `api-keys-ui.spec.ts`.
+Umsetzung PR 3, Backend (Ben, 2026-11-26, Branch `feature/B-150-pr3-item-keys`): Item-Schlüssel Pflicht
+(`ITEM_KEY_PATTERN`, eindeutig je Team per SQL in der Kollation), Heuristik `next_item_key()`/`item_key_suggest()` in
+`api/lib_topics.php` mit Testtabelle `tests/e2e/fixtures/item-keys.json` (statt `tests/fixtures/item_keys.json`),
+Vorschlag als `next_key` in `get_topics.php`; Kernfunktionen `core_item_create/patch/delete` in
+`api/lib_core_items.php`, `topic_item_add/edit/delete.php` als Wrapper (fehlender Schlüssel beim Anlegen → Vorschlag,
+damit alte Boards weiterlaufen; neue Fehler 400 `ext_id`, 409 `key_taken`); Auffüllskript
+`tools/migration/b150_item_keys.php` (README dort), DDL-Block „B-150 item keys“ (nach dem Skript). Abweichungen vom
+Konzept: ungültige Schlüssel verlieren `-`/`_` an beiden Enden (nicht nur vorn); beim Bearbeiten bleibt ein
+unverändert gesendeter Schlüssel ungeprüft und ein leerer wird nur bei einem Item ohne Schlüssel durch den Vorschlag
+ersetzt (alte Items bleiben bis zur Migration bearbeitbar).
+Umsetzung PR 3, Board (Fred, 2026-11-26, gleicher Branch): Feld „Key“ (statt „ID (optional)“) Pflicht, vorbelegt mit
+`next_key` (ohne Items `1`; fehlt eine aktuelle Liste, lädt sie nach und füllt das Feld, solange es unberührt ist –
+auch wenn jemand anders inzwischen anlegt); Prüfung im Browser nach `ITEM_KEY_PATTERN`, 400 `ext_id` und
+409 `key_taken` („Key already used“) am Feld, Formular bleibt offen. Kein JS-`nextItemKey()` (Abweichung vom Konzept 7.3:
+der Vorschlag kommt nur vom Server). Export-Spalte „ID“ heißt jetzt „Key“. E2E in `topic-items-ui.spec.ts`.
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig

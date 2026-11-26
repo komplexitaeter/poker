@@ -74,7 +74,9 @@ async function closeMenu(page: Page) {
 async function fillItem(page: Page, heading: string, extId = '') {
   if (!await page.locator('#topic_panel_open').isVisible()) await showTab(page, 'open');
   if (await page.locator('#ti_form').count() === 0) await page.locator('#ti_add').click();
-  await page.locator('#ti_ext').fill(extId);
+  // B-150: without a key of its own the suggestion stays (it is there once the lists are loaded)
+  if (extId !== '') await page.locator('#ti_ext').fill(extId);
+  else await expect(page.locator('#ti_ext')).not.toHaveValue('');
   await page.locator('#ti_heading').fill(heading);
   await page.locator('#ti_save').click();
   await expect(page.locator('#ti_form')).toHaveCount(0);
@@ -324,7 +326,7 @@ test('history: agreed value, rounds, date of the last round, the spread unfolds 
   await openTopics(alice);
   await showTab(alice, 'done');
   const done = alice.locator('#ti_done > li').first();
-  await expect(done.locator('.ti-h')).toHaveText('Checkout redesign');
+  await expect(done.locator('.ti-h')).toHaveText('1 Checkout redesign'); // B-150: every item has a key (suggestion 1)
   await expect(done.locator('.ti-res-lab')).toHaveText('agreed');
   await expect(done.locator('.ti-res-val')).toHaveText('8');
   await expect(done.locator('.ti-rounds')).toHaveText('2 rounds');
@@ -637,7 +639,7 @@ test('leaving an item always asks: suggestion, Enter, Cancel, Escape, click besi
   await alice.locator('#nextitem_btn').click();
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('h2')).toHaveText('How do you want to leave this item?');
-  await expect(alice.locator('#leave_item_heading')).toHaveText('Alpha');
+  await expect(alice.locator('#leave_item_heading')).toHaveText('1 Alpha'); // B-150: every item has a key (suggestion 1)
   await expect(dialog.locator('.leave-opt-t')).toHaveText(['Close with 5', 'Close without a value', 'Bring it back later']);
   await expect(options.first()).toBeFocused();
   await expect(options.first()).toHaveClass(/primary/);
@@ -692,7 +694,7 @@ test('leaving an item always asks: suggestion, Enter, Cancel, Escape, click besi
   await expect(alice.locator('#topic .ti-heading')).toHaveText('Beta');
   await openTopics(alice);
   await showTab(alice, 'done');
-  await expect(alice.locator('#ti_done > li .ti-h')).toHaveText(['Gamma', 'Alpha']);
+  await expect(alice.locator('#ti_done > li .ti-h')).toHaveText(['3 Gamma', '1 Alpha']); // B-150: keys 1, 2, 3 (suggestion)
   await expect(alice.locator('#ti_done > li').first().locator('.ti-res-val')).toHaveCount(0);
   await expect(alice.locator('#ti_done > li').nth(1).locator('.ti-res-val')).toHaveText('5');
   await closeMenu(alice);
@@ -870,7 +872,7 @@ test('done items without pen; the red "Delete" cancels on a click beside it, Esc
   await expect(alice.locator('#topic_tab_done')).toHaveText('Done 1');
   await showTab(alice, 'done');
   const done = alice.locator('#ti_done > li').first();
-  await expect(done.locator('.ti-h')).toHaveText('First');
+  await expect(done.locator('.ti-h')).toHaveText('1 First'); // B-150: every item has a key (suggestion 1)
   await expect(done.locator('[data-ti-act="edit"]')).toHaveCount(0);
   await expect(done.locator('[data-ti-act="reopen"]')).toBeVisible();
   const doneTrash = done.locator('[data-ti-act="delete"]');
@@ -901,7 +903,7 @@ test('done items export: Copy as a tab separated table, Download CSV; all items,
   };
   await add({ ext_id: 'PROJ-1', heading: 'Login, "quick"', description: 'First line\n- second, with a comma' }, '&maturity=2');
   await add({ heading: '=SUM(A1:A2)', description: '-1 is a formula too' });
-  await add({ ext_id: '@me', heading: '+plus' });
+  await add({ ext_id: 'ME-7', heading: '+plus' }); // B-150: a key never starts with a formula character
   await add({ heading: 'Four' });
   await add({ heading: 'Five' });
   const activeId = async () => (await (await alice.request.get(`/api/get_topics.php?t=${tq}`)).json()).open[0].id;
@@ -926,13 +928,14 @@ test('done items export: Copy as a tab separated table, Download CSV; all items,
   }, first.last_round_date);
   const rows = [
     // no maturity column (Andreas, 2026-11-13), even though the first item has one
-    ['ID', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round'],
+    ['Key', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round'],
     // Votes: the last revealed round, in deck order, "<card> ×<n>"; empty without a round
     ['PROJ-1', 'Login, "quick"', 'First line\n- second, with a comma', '5', '3 ×1, 5 ×2', String(first.rounds_cnt), day],
-    ['', "'=SUM(A1:A2)", "'-1 is a formula too", '', '', '0', ''],
-    ["'@me", "'+plus", '', '8', '', '0', ''],
-    ['', 'Four', '', '', '', '0', ''],
-    ['', 'Five', '', '', '', '0', ''],
+    // B-150: items added without a key get the suggestion of the server (PROJ-1 -> PROJ-2, ME-7 -> ME-8 -> ME-9)
+    ['PROJ-2', "'=SUM(A1:A2)", "'-1 is a formula too", '', '', '0', ''],
+    ['ME-7', "'+plus", '', '8', '', '0', ''],
+    ['ME-8', 'Four', '', '', '', '0', ''],
+    ['ME-9', 'Five', '', '', '', '0', ''],
   ];
   const quote = (cell: string, sep: string) =>
     cell.includes(sep) || /["\r\n]/.test(cell) ? '"' + cell.replace(/"/g, '""') + '"' : cell;
@@ -1074,4 +1077,91 @@ test('the item limit: its own message, "+ Add item" off when all items count up 
   await expect(openHeadings(alice)).toHaveText(['Alpha', 'Beta', 'Gamma']);
   await expect(alice.locator('#ti_add')).toBeDisabled();
   await expect(alice.locator('#ti_add')).toHaveAttribute('title', 'Item limit reached – delete done items to add new ones.');
+});
+
+test('the item key: required, the suggestion in the form, invalid and used keys at the field, edit keeps it (B-150)', async ({ browser }) => {
+  const { alice, t } = await setup(browser, 'Topic UI Keys');
+  const tq = encodeURIComponent(t);
+  const ext = alice.locator('#ti_ext');
+  const error = alice.locator('#ti_error');
+  const rowKeys = alice.locator('#ti_open .ti-it .ti-ext');
+  await openTopics(alice);
+  await showTab(alice, 'open');
+
+  // no item yet: "1"; the field is called "Key" and required
+  await alice.locator('#ti_add').click();
+  await expect(alice.locator('label[for="ti_ext"]')).toHaveText('Key');
+  await expect(ext).toHaveAttribute('required', '');
+  await expect(ext).toHaveValue('1');
+  await alice.locator('#ti_heading').fill('Alpha');
+  await alice.locator('#ti_save').click();
+  await expect(alice.locator('#ti_form')).toHaveCount(0);
+  // the next form follows the server's next_key
+  await alice.locator('#ti_add').click();
+  await expect(ext).toHaveValue('2');
+  await ext.fill('DMZ-004');
+  await alice.locator('#ti_heading').fill('Login');
+  await alice.locator('#ti_save').click();
+  await expect(alice.locator('#ti_form')).toHaveCount(0);
+  await expect(rowKeys).toHaveText(['1', 'DMZ-004']);
+  await alice.locator('#ti_add').click();
+  await expect(ext).toHaveValue('DMZ-005');
+
+  // invalid or empty: a message at the field, nothing is sent, the form stays open
+  const adds: string[] = [];
+  alice.on('request', request => {
+    if (request.url().includes('/api/topic_item_add.php')) adds.push(request.url());
+  });
+  await alice.locator('#ti_heading').fill('Logout');
+  await ext.fill('DMZ 5');
+  await alice.locator('#ti_save').click();
+  await expect(error).toHaveText('Key: letters, digits, - and _ only, starting with a letter or digit.');
+  await expect(ext).toHaveAttribute('aria-invalid', 'true');
+  await expect(ext).toBeFocused();
+  await ext.fill('');
+  await alice.locator('#ti_save').click();
+  await expect(error).toHaveText('Please enter a key.');
+  expect(adds).toHaveLength(0);
+
+  // used already (without case): "Key already used" from the server, the form stays open, the field focused
+  await ext.fill('dmz-004');
+  await alice.locator('#ti_save').click();
+  await expect(error).toHaveText('Key already used');
+  await expect(ext).toHaveAttribute('aria-invalid', 'true');
+  await expect(ext).toBeFocused();
+  await expect(alice.locator('#ti_form')).toBeVisible();
+  expect(adds).toHaveLength(1);
+  await ext.fill('DMZ-005');
+  await alice.locator('#ti_save').click();
+  await expect(alice.locator('#ti_form')).toHaveCount(0);
+  await expect(rowKeys).toHaveText(['1', 'DMZ-004', 'DMZ-005']);
+
+  // an untouched suggestion follows an item someone else adds meanwhile
+  await alice.locator('#ti_add').click();
+  await expect(ext).toHaveValue('DMZ-006');
+  expect((await alice.request.post(`/api/topic_item_add.php?t=${tq}&at=end`,
+    { form: { ext_id: 'DMZ-006', heading: 'From elsewhere' } })).ok()).toBeTruthy();
+  await expect(ext).toHaveValue('DMZ-007');
+  await alice.locator('#ti_form [data-ti-act="cancel"]').click();
+
+  // edit: the key stays; its own key in another case is fine, the key of another item is not
+  const edit = (n: number) => alice.locator('#ti_open [data-ti-act="edit"]').nth(n).click();
+  await edit(0);
+  await expect(ext).toHaveValue('1');
+  await alice.locator('#ti_heading').fill('Alpha, renamed');
+  await alice.locator('#ti_save').click();
+  await expect(alice.locator('#ti_form')).toHaveCount(0);
+  await edit(1);
+  await expect(ext).toHaveValue('DMZ-004');
+  await ext.fill('DMZ-005');
+  await alice.locator('#ti_save').click();
+  await expect(error).toHaveText('Key already used');
+  await ext.fill('');
+  await alice.locator('#ti_save').click();
+  await expect(error).toHaveText('Please enter a key.');
+  await ext.fill('dmz-004');
+  await alice.locator('#ti_save').click();
+  await expect(alice.locator('#ti_form')).toHaveCount(0);
+  await expect(rowKeys).toHaveText(['1', 'dmz-004', 'DMZ-005', 'DMZ-006']);
+  await expect(alice.locator('#ti_open .ti-it .ti-h').first()).toContainText('Alpha, renamed');
 });

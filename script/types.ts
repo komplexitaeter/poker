@@ -155,6 +155,9 @@ export interface TopicListsJsonType {
     open: TopicItem[];           // all open items in their order, open[0] is the active one
     open_count: number;
     done_count: number;          // all done items of the team
+    // B-150: suggested key of the next new item (api/lib_topics.php item_key_suggest(): the key of the item created
+    // last, done ones included, + 1, taken keys skipped; '1' without items). The board prefills "Key" with it.
+    next_key: string;
     // max lengths and limits; "Add item" gets 409 limit at open_count >= open or total_count >= total
     limits: {
         open: number;        // max open items per team
@@ -170,7 +173,9 @@ export interface TopicListsJsonType {
 
 interface TopicItem {
     id: number;
-    ext_id: string | null;      // free text, output with textContent only
+    // B-150: the item key ("Key", v1 "key"): [A-Za-z0-9][A-Za-z0-9_-]{0,19}, unique per team without case;
+    // null only for old items until tools/migration/b150_item_keys.php ran. Output with textContent only.
+    ext_id: string | null;
     heading: string;            // free text
     description: string | null; // markdown like the note (remarkable without HTML)
     maturity: number | null;    // optional: 0 new, 1 rough, 2 shaping, 3 ready; null = not set (show nothing)

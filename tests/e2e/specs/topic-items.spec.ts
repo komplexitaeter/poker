@@ -512,11 +512,12 @@ test('S1d: an item switched while a round is running (not revealed): move, delet
 
 test('get_topics.php: open list, done only on request, paging, consistent rev; dao stays small', async ({ browser }) => {
   const { page, t, ids } = await setup(browser, 'TopicLists', ['Ann']);
-  const values = Array.from({ length: 100 }, (_, i) => `('${t}', ${i + 1}, 'Item ${i + 1}', repeat('x', 2000))`).join(',');
-  mysql(`insert into pok_topic_items_tbl(team_id, position, heading, description) values ${values}`);
+  // B-150: the key is required and unique per team
+  const values = Array.from({ length: 100 }, (_, i) => `('${t}', ${i + 1}, 'O-${i + 1}', 'Item ${i + 1}', repeat('x', 2000))`).join(',');
+  mysql(`insert into pok_topic_items_tbl(team_id, position, ext_id, heading, description) values ${values}`);
   const doneValues = Array.from({ length: 120 }, (_, i) =>
-    `('${t}', 0, 'Done ${i + 1}', 'done', timestampadd(minute, ${i}, '2026-11-01 10:00:00'))`).join(',');
-  mysql(`insert into pok_topic_items_tbl(team_id, position, heading, status, done_date) values ${doneValues}`);
+    `('${t}', 0, 'D-${i + 1}', 'Done ${i + 1}', 'done', timestampadd(minute, ${i}, '2026-11-01 10:00:00'))`).join(',');
+  mysql(`insert into pok_topic_items_tbl(team_id, position, ext_id, heading, status, done_date) values ${doneValues}`);
 
   // the add limit (100 open items)
   const res = await post(page, 'topic_item_add.php', { t }, { heading: 'one too many' });
