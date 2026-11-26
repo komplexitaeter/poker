@@ -20,7 +20,7 @@ if (strlen($id) < 10 || !is_int($item) || !in_array($reaction, array_merge(ROADM
     exit;
 }
 
-$link = db_init('utf8mb4');
+$link = db_init();
 
 // only users who joined a board (player or observer), so not every random id can vote
 // (dao.php creates a pok_user_tbl row for any id, so that table is no proof)

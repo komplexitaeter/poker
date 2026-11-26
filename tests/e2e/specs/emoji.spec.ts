@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, expectTableCard } from './helpers';
+import { newPlayer, createTeam, joinAsPlayer, pickCard, tableCard, expectTableCard, deckCard, gotoStats } from './helpers';
 
 // B-85: 4-byte UTF-8 characters (emojis) in free text. With utf8mb3 columns or an utf8mb3 connection
 // api/update_topic.php failed with HTTP 500 and the topic was lost. Names, topics and the round history
@@ -90,4 +90,27 @@ test('a new round with emojis in topic and player name is recorded', async ({ br
     await expectTableCard(page, PLAYER_NAME, 'prgrss1');
     await expectTableCard(page, 'Bob', 'prgrss1');
   }
+});
+
+// B-12: all text columns are utf8mb4 now, also the join columns (team_id, player/user id) that stats.php joins
+// (rounds -> teams -> players -> users). Emoji names go through the whole round and the statistics unchanged.
+test('emoji team and player name: new round recorded and listed in the stats live tab', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  failOnServerError(page);
+  const teamName = `Fish 🐟 ${Date.now().toString(36)}`;
+  const url = await createTeam(page, teamName);
+  await joinAsPlayer(page, url, 'Finn 🐟');
+  await expect(tableCard(page, 'Finn 🐟')).toBeVisible();
+
+  await pickCard(page, 'three01');
+  const newRound = page.waitForResponse(r => r.url().includes('/api/newround.php'));
+  await page.locator('#newroundbtn').click();
+  expect((await newRound).status()).toBe(200);
+  await expect(deckCard(page, 'three01')).not.toHaveClass(/selected/);
+
+  const admin = await page.context().newPage();
+  await gotoStats(admin, '/stats.php');
+  const row = admin.locator('tr.live-table').filter({ has: admin.locator('td.team-name', { hasText: teamName }) });
+  await expect(row).toHaveCount(1);
+  await expect(row.locator('td').nth(1)).toHaveText('1');   // one player: join rounds -> teams -> players
 });

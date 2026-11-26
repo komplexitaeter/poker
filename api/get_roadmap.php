@@ -6,7 +6,7 @@ set_header('json');
 
 $id = get_id_param("id");
 
-$link = db_init('utf8mb4');
+$link = db_init();
 $items = get_roadmap_items($link, $id);
 $link->close();
 
