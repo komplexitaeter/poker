@@ -25,11 +25,13 @@ test('files under /api/v1/ are never delivered or run on their own: 404 not_foun
 
 test('the Authorization header reaches the router (key mode); other schemes fall back to the board headers', async ({ request }) => {
   const member = await newV1Member(request, 'V1 Nginx Auth');
-  // Bearer pok_... is always the key mode: no fallback to valid board headers (keys come with B-150 PR 2)
-  const key = await request.get('/api/v1/team', {
-    headers: { ...member.headers, Authorization: 'Bearer pok_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' } });
-  expect(key.status()).toBe(401);
-  expect(await key.json()).toMatchObject({ error: 'invalid_key' });
+  // Bearer pok_... is always the key mode, decided by the prefix alone: no fallback to valid board headers, also not
+  // for a malformed key (keys come with B-150 PR 2)
+  for (const key of ['pok_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'pok_A B', 'pok_', 'pok_abc', 'pok_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA x']) {
+    const res = await request.get('/api/v1/team', { headers: { ...member.headers, Authorization: `Bearer ${key}` } });
+    expect(res.status(), key).toBe(401);
+    expect(await res.json(), key).toMatchObject({ error: 'invalid_key' });
+  }
   // Basic (e.g. a proxy in front of staging) and Bearer without pok_ are ignored
   for (const authorization of ['Basic dXNlcjpwYXNz', 'Bearer pk_test']) {
     const res = await request.get('/api/v1/team', { headers: { ...member.headers, Authorization: authorization } });

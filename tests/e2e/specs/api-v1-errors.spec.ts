@@ -28,13 +28,16 @@ test('authentication: 401 without user or team, 403 not_a_member for an unknown 
   await expectError(await request.get('/api/v1/team'), 401, 'unauthorized');
   await expectError(await request.get('/api/v1/team', { headers: { [UID_HEADER]: member.uid } }), 401, 'unauthorized');
   await expectError(await request.get('/api/v1/team', { headers: { 'X-Poker-Team': member.t } }), 401, 'unauthorized');
-  // the UID only from the header: the transitional sources of get_uid() (URL parameter id, body field uid) do not count
+  // the UID only from the header: the transitional sources of get_uid() (URL parameter id, body field uid) do not count.
+  // Deliberate negative test: the UID in the URL here only checks that the API refuses it (never do this in a client)
   await expectError(await request.get(`/api/v1/team?id=${member.uid}`, { headers: { 'X-Poker-Team': member.t } }),
     401, 'unauthorized');
   await expectError(await request.fetch('/api/v1/team', { method: 'GET', headers: { 'X-Poker-Team': member.t },
     form: { uid: member.uid } }), 401, 'unauthorized');
-  await expectError(await request.get(`/api/v1/team?id=${member.uid}`, { headers: member.headers }),
+  // deliberate negative test as above: id in the URL is an unknown parameter, the message does not repeat the name
+  const unknownId = await expectError(await request.get(`/api/v1/team?id=${member.uid}`, { headers: member.headers }),
     400, 'unknown_param', 'id');
+  expect(unknownId.message).toBe('not a parameter of this operation');
 
   // a person of another team, an unknown team and an impossible team id: one and the same answer
   const notMember = await expectError(await request.get('/api/v1/team',
@@ -78,7 +81,8 @@ test('routing and input: 404, 405, 415, 413, invalid_json, unknown_param, invali
 
   // query: unknown names (also the team id: it never goes into the URL), lists
   await expectError(await request.get('/api/v1/team?t=abc', { headers }), 400, 'unknown_param', 't');
-  await expectError(await request.get('/api/v1/team?a[]=1', { headers }), 400, 'invalid_param', 'a');
+  const list = await expectError(await request.get('/api/v1/team?a[]=1', { headers }), 400, 'invalid_param', 'a');
+  expect(list.message).not.toContain('a[');
 
   // the order: no route before authentication, authentication before the body
   await expectError(await request.get('/api/v1/nothing'), 404, 'not_found');

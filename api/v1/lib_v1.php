@@ -282,7 +282,8 @@ function v1_authenticate(array $route, mysqli $link): ?array
     $key = v1_bearer_key();
     if ($key !== null) {
         if ($route['auth'] === 'browser') throw new ApiError(403, 'browser_only');
-        throw new ApiError(401, 'invalid_key'); // B-150 PR 2: format check (V1_KEY_PATTERN) and lookup of the hash
+        if (!preg_match(V1_KEY_PATTERN, $key)) throw new ApiError(401, 'invalid_key');
+        throw new ApiError(401, 'invalid_key'); // B-150 PR 2: lookup of the hash (no keys exist before)
     }
 
     $uid = $_SERVER['HTTP_X_POKER_USER'] ?? '';
@@ -300,8 +301,10 @@ function v1_authenticate(array $route, mysqli $link): ?array
 function v1_bearer_key(): ?string
 {
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    if (!is_string($header) || !preg_match('/^Bearer[ \t]+(pok_\S*)[ \t]*$/Di', $header, $m)) return null;
-    return $m[1];
+    // key mode is decided by the prefix alone; the format is checked afterwards (401 invalid_key), so a malformed key
+    // ('pok_A B') can never fall back to the board headers
+    if (!is_string($header) || !preg_match('/^Bearer[ \t]+(pok_.*)$/Dis', $header, $m)) return null;
+    return trim($m[1]);
 }
 
 /* player_type of $uid in team $t, null if not registered (or the team does not exist) */
@@ -361,16 +364,16 @@ function v1_validate(array $route, array $path_values, array $query, array $body
     $defs = $route['params'] ?? [];
     $by_source = ['path' => $path_values, 'query' => $query, 'body' => $body];
 
-    // names of unknown fields come from the request: only a short, valid piece of them goes into the answer
+    // names of unknown fields come from the request: only a short, valid piece of them goes into param, never into
+    // the message
     $shown = fn(int|string $name): string => cut_text((string)$name, 40);
     foreach ($query as $name => $value) {
-        if (!is_string($value)) throw new ApiError(400, 'invalid_param', $shown($name), $shown($name) . ': a single value only');
+        if (!is_string($value)) throw new ApiError(400, 'invalid_param', $shown($name), 'a single value only, no list');
     }
     foreach (['query', 'body'] as $source) {
         foreach (array_keys($by_source[$source]) as $name) {
             if (($defs[$name]['in'] ?? null) !== $source) {
-                throw new ApiError(400, 'unknown_param', $shown($name), $shown($name) . ': not a parameter of this operation'
-                    . ($source === 'query' ? ' (query)' : ' (body)'));
+                throw new ApiError(400, 'unknown_param', $shown($name), 'not a parameter of this operation');
             }
         }
     }
