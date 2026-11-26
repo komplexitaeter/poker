@@ -45,6 +45,15 @@ Datenfluss bei einer Änderung am Board (seit B-81):
   `script/types.ts` beschreibt nur JSON-Typen, es gibt keinen TypeScript-Build.
 - `style/style.css` – ein Stylesheet, Light/Dark-Mode.
 - `api/*.php` – ein Skript pro Aktion; gemeinsame Funktionen in `api/lib.php` (`db_init()`, `validate_team()`, …).
+- `api/v1/` – öffentliche REST-API (B-150, Konzept `docs/api-v1-concept.md`). nginx schickt per `location ^~ /api/v1/`
+  **jede** Anfrage fest an den Front-Controller `api/v1/index.php` (gleicher Block in `tests/e2e/setup.sh`); die
+  übrigen Dateien dort sind per URL nicht erreichbar. `api/v1/routes.php` ist die **einzige Quelle** je Operation:
+  daraus entstehen Routing, Validierung, `/api/v1/openapi.json`, die Doku-Seite `/api/v1/` und später die MCP-Tools
+  (B-151); der E2E-Test führt ihre Beispiele aus. Router, Auth und Fehlerantworten in `api/v1/lib_v1.php`; die Logik
+  steckt in Kernfunktionen `api/lib_core_*.php` (erster Parameter `$link`, dann der Actor; kein `echo`/`exit`/
+  Superglobals), Fehler als `ApiError` (`api/lib.php`) → flacher Body `{error, message, param}`. Auth: entweder
+  `Authorization: Bearer pok_…` (API-Schlüssel, ab B-150 PR 2) oder wie das Board UID im Header `X-Poker-User` plus
+  Team in `X-Poker-Team` – nie UID, Team-ID oder Schlüssel in URL oder Body.
 - `cards.json` – Kartensets und Sortierung.
 - `stats.php` – interne Nutzungsstatistik mit eigener Anmeldeseite (B-63): prüft gegen die htpasswd-Datei
   `/etc/nginx/poker-stats.htpasswd` (nur bcrypt), angemeldet bleiben 30 Tage per signiertem Cookie

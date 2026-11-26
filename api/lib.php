@@ -3,6 +3,21 @@ require_once __DIR__ . '/lib_custom.php'; // B-98 S4: custom sets
 require_once __DIR__ . '/lib_topics.php'; // B-52 S1: topic items
 
 /*
+ * B-150: error of a core function (api/lib_core_*.php) or of the v1 router: HTTP status, stable error code (part of
+ * the API contract, docs/api-v1-concept.md section 6), the parameter concerned (validation errors only) and an English
+ * hint for people. The message never repeats the input. The router (api/v1/lib_v1.php) answers with it; old endpoints
+ * that wrap a core function translate it into their own format.
+ */
+class ApiError extends Exception
+{
+    public function __construct(public readonly int $status, public readonly string $error,
+                                public readonly ?string $param = null, string $message = '')
+    {
+        parent::__construct($message);
+    }
+}
+
+/*
  * Connects with utf8mb4 (B-85), the character set of all text columns (B-12), so emojis in names and topics are
  * stored unchanged.
  */

@@ -195,6 +195,15 @@ http {
         root $E2E_DIR/www;
         index index.php;
 
+        # B-150: every request under /api/v1/ goes to the front controller, fixed (same block as on the servers,
+        # docs/api-v1-concept.md section 13); ^~ keeps the .php location below out, so no file of api/v1/ is
+        # reachable on its own
+        location ^~ /api/v1/ {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root/api/v1/index.php;
+            fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
+        }
+
         location ~ \.php\$ {
             include /etc/nginx/fastcgi_params;
             fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
@@ -216,6 +225,8 @@ EOF
     wait_for "nginx" curl -sf -o /dev/null "http://127.0.0.1:$E2E_PORT/init.html"
     # start page is rendered by index.php, so this checks PHP and the DB connection as well
     wait_for "app (index.php)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/' | grep -q teaminput"
+    # B-150: the front controller of /api/v1 answers
+    wait_for "api v1 (api/v1/index.php)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/api/v1/openapi.json' | grep -q '\"openapi\"'"
     log "app running on http://127.0.0.1:$E2E_PORT/"
 }
 
