@@ -12,7 +12,9 @@
  *   auth           none | member (API key or UID + team) | browser (UID + team only)
  *   public         optional, default true; false = not in doc/spec
  *   mcp            optional (B-151): ['tool' => MCP tool name, 'action' => value of its action enum (several routes,
- *                  one tool)]; only routes with this field are MCP tools (docs/mcp-concept.md, section 7)
+ *                  one tool), optional 'handler' => function used for MCP instead of handler (a public route whose
+ *                  MCP answer carries a message and the board)]; only routes with this field are MCP tools
+ *                  (docs/mcp-concept.md, section 7)
  *   params         name => [in: path|query|body, type: string|integer|boolean, required, nullable, max_length,
  *                  min_length, pattern, enum, minimum, maximum, default, text (free text: trim, then check the length),
                   accept_integer (string parameter that also takes a JSON number, checked as its decimal text; the schema says string),
@@ -166,11 +168,12 @@ return [
         'errors' => [],
     ],
 
-    /* ---------- B-151 (MCP PR E): team settings, not public for now (docs/mcp-concept.md 5.3) ---------- */
+    /* ---------- B-151 (MCP PR E): team settings, not public for now (docs/mcp-concept.md 5.3); under /board/...,
+       so the public path /team keeps its methods ---------- */
 
     'team_rename' => [
         'method' => 'PUT',
-        'path' => '/team/name',
+        'path' => '/board/team-name',
         'tag' => 'Team',
         'summary' => 'Rename the team',
         'description' => 'Changes the name of the team shown on the board. Open boards update at once.',
@@ -188,7 +191,7 @@ return [
 
     'team_patch' => [
         'method' => 'PATCH',
-        'path' => '/team',
+        'path' => '/board/settings',
         'tag' => 'Team',
         'summary' => 'Change team settings',
         'description' => 'The settings of the board\'s settings menu; only the given ones change. Anonymous results '
@@ -440,11 +443,12 @@ return [
         'example' => ['params' => ['key' => 'TIX-004']],
     ],
 
-    /* ---------- B-151 (MCP PR E): items like on the board, not public for now (docs/mcp-concept.md 5.3) ---------- */
+    /* ---------- B-151 (MCP PR E): items like on the board, not public for now (docs/mcp-concept.md 5.3) ----------
+       Under /board/..., so the public paths (/items, /items/{key}, /team) keep their methods (Allow header). */
 
     'item_create' => [
         'method' => 'POST',
-        'path' => '/items',
+        'path' => '/board/items',
         'tag' => 'Items',
         'summary' => 'Add an item',
         'description' => 'Adds an open item. Without key the server suggests one (like TIX-005). Answers with the item '
@@ -471,7 +475,7 @@ return [
 
     'item_patch' => [
         'method' => 'PATCH',
-        'path' => '/items/{key}',
+        'path' => '/board/items/{key}',
         'tag' => 'Items',
         'summary' => 'Change an item',
         'description' => 'Changes heading, description, key or maturity of an item (open or done); only the given '
@@ -498,7 +502,7 @@ return [
 
     'item_move' => [
         'method' => 'PUT',
-        'path' => '/items/{key}/position',
+        'path' => '/board/items/{key}/position',
         'tag' => 'Items',
         'summary' => 'Move an open item',
         'description' => 'Puts an open item at a new place among the open items; position 1 makes it the active one.',
@@ -518,7 +522,7 @@ return [
 
     'item_leave' => [
         'method' => 'POST',
-        'path' => '/items/active/leave',
+        'path' => '/board/items/active/leave',
         'tag' => 'Items',
         'summary' => 'Leave the active item',
         'description' => 'The board\'s "Next item": close (done with the agreed value, optionally the given card), '
@@ -541,7 +545,7 @@ return [
 
     'item_result_set' => [
         'method' => 'PUT',
-        'path' => '/items/{key}/result',
+        'path' => '/board/items/{key}/result',
         'tag' => 'Items',
         'summary' => 'Choose the result of an item',
         'description' => 'The agreed value of an item: a played card or a card of the card set with a value; '

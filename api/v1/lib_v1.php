@@ -714,7 +714,7 @@ function v1_item_or_null(mysqli $link, array $actor, string $key): ?array
     }
 }
 
-/* POST /items */
+/* POST /board/items */
 function v1_item_create(mysqli $link, array $actor, array $p): array
 {
     $fields = ['heading' => $p['heading'], 'description' => $p['description'] ?? null, 'key' => $p['key'] ?? null];
@@ -727,7 +727,7 @@ function v1_item_create(mysqli $link, array $actor, array $p): array
             'board' => $board];
 }
 
-/* PATCH /items/{key}: only the given fields change */
+/* PATCH /board/items/{key}: only the given fields change */
 function v1_item_patch(mysqli $link, array $actor, array $p): array
 {
     $fields = array_intersect_key($p, ['heading' => 1, 'description' => 1]);
@@ -742,7 +742,7 @@ function v1_item_patch(mysqli $link, array $actor, array $p): array
         . ' changed.', $item);
 }
 
-/* PUT /items/{key}/position */
+/* PUT /board/items/{key}/position */
 function v1_item_move(mysqli $link, array $actor, array $p): array
 {
     $result = core_item_move($link, $actor, $p['key'], $p['position'] - 1);
@@ -752,7 +752,7 @@ function v1_item_move(mysqli $link, array $actor, array $p): array
             'board' => $board];
 }
 
-/* POST /items/active/leave: "Next item" with mode close | close_empty | later */
+/* POST /board/items/active/leave: "Next item" with mode close | close_empty | later */
 function v1_item_leave(mysqli $link, array $actor, array $p): array
 {
     $card = null;
@@ -773,7 +773,7 @@ function v1_item_leave(mysqli $link, array $actor, array $p): array
     return ['message' => $message . ' New round.' . v1_active_text($board), 'item' => $item, 'board' => $board];
 }
 
-/* PUT /items/{key}/result: card value or key, missing or "" = automatic */
+/* PUT /board/items/{key}/result: card value or key, missing or "" = automatic */
 function v1_item_result_set(mysqli $link, array $actor, array $p): array
 {
     $card = null;
@@ -807,7 +807,7 @@ function v1_mcp_item_delete(mysqli $link, array $actor, array $p): array
     return v1_board_answer($link, $actor, v1_item_name($item) . ' deleted.');
 }
 
-/* PUT /team/name */
+/* PUT /board/team-name */
 function v1_team_rename(mysqli $link, array $actor, array $p): array
 {
     core_team_settings_patch($link, $actor, ['name' => $p['name']]);
@@ -821,7 +821,7 @@ function v1_mcp_team_note_set(mysqli $link, array $actor, array $p): array
     return v1_board_answer($link, $actor, $p['note'] === '' ? 'The note is cleared.' : 'The note is set.');
 }
 
-/* PATCH /team: the given settings */
+/* PATCH /board/settings: the given settings */
 function v1_team_patch(mysqli $link, array $actor, array $p): array
 {
     $fields = [];
