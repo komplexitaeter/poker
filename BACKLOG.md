@@ -372,7 +372,36 @@ von B-91. Die UID (User-ID im Browser, `localStorage.SID`) wird das eigentliche 
    registriert, Schwebezustand zwischen Observer und Player; Andreas). Was eine Rolle darf, bleibt wie im Board.
    Ausnahmen festlegen: Board öffnen und beitreten ohne Registrierung (`dao.php` für Neue, `name.php`), Team anlegen,
    Einstellungen über alle Teams (`get_user`/`update_user`, an der UID statt am Team), eigenes Löschen (`delete_user`).
-Planning: Ben listet alle Endpunkte (Übergabe der UID heute, Prüfung heute, Ausnahmen), Sina prüft, dann Plan mit Andreas.
+Planning (Inventar Ben, Entscheidungen Andreas, 2026-11-26):
+- Heute prüft fast kein Endpunkt die Mitgliedschaft (`newround`, `timer`, `topic_item_*` nur Team-ID; `update_deck`
+  speichert eine beliebige ID als „changed by“; `setc` lässt auch Observer eine Karte legen).
+- **Transport:** UID für **alle** Aufrufe im Header `X-Poker-User` (eine zentrale Funktion `apiFetch`, schützt nebenbei
+  gegen CSRF); nirgends mehr `id=`/`player_id=` in URLs.
+- **Regeln:** Team-Endpunkte verlangen eine registrierte UID (Player, Observer oder `REMOVED`); **nur Karten legen**
+  (`setc`) ist für Observer und `REMOVED` gesperrt, sonst gilt „registriert = darf“. Ohne Registrierung: `dao.php`,
+  `seen.php` (Anwesenheit nur für Mitglieder), `get_topics.php`, `name.php` (Beitreten), Team anlegen (`addteam.php`
+  und weiterhin per GET-Link `index.php?tool=…` für die Tool-Seiten), `get_user`/`update_user` (teamübergreifend),
+  `delete_user` (eigenes Löschen), `measure_event` (jede gültige UID, bis B-153 entschieden ist). Feedback: Mitglied in
+  irgendeinem Team (wie `vote_roadmap`).
+- **Entfernen:** Promo-Endpunkte (`get_promo`, `update_promo`, toter Code, `update_promo` ohne jede Prüfung) samt JS;
+  `update_cardset.php` (altes Deck-Menü, ohne Aufrufer).
+- Reaktionen (Absender in poker-msg frei wählbar): erst mit B-151, wenn Reaktionen über die API laufen.
+- **Schritte:** BE-1 Server nimmt UID aus Header, Body oder URL an, neuer Endpunkt `api/uid.php` (16 Zeichen, 80 Bit,
+  schreibt nichts in die DB), noch ohne Prüfung → FE-1 Frontend: `ensureUid()`/`getUid()`, `apiFetch` mit Header,
+  E2E-Helfer und ca. 22 Specs anpassen (BE-1 + FE-1 in einen Rollout) → BE-2 etwa eine Woche später: Mitgliedschaft
+  prüfen, keine UID mehr aus der URL (vorher im Access-Log prüfen, dass keine alten `id=`-Aufrufe mehr kommen).
+- Neue Tests: `uid.php`; erster Besuch ohne SID ohne `id=` in URLs; Tabellentest „jeder Team-Endpunkt ohne/mit fremder
+  UID → 403, mit `REMOVED` nicht (außer Karte)“; zwei Tabs beim ersten Besuch → dieselbe SID.
+
+### B-153 Measure-Events: entfernen oder verschlanken
+Status: neu (Andreas überlegt, 2026-11-26). `api/measure_event.php` schreibt 15 Ereignisse (Seitenaufrufe
+`BOARD_ON_LOAD`/`INIT_ON_LOAD`, Menüaufrufe, Farbwechsel, Timer/Tipps/Kartenänderungen an/aus, Topic-Item-Aktionen) in
+`pok_analytics_events_tbl` (wächst unbegrenzt, Live 179 MB, 1,5 Mio. Zeilen). Gelesen nur vom Nutzungs-Tab in
+`stats.php` (Funktionsnutzung, Mobilanteil). Seitenaufrufe misst plausible ohnehin; `BOARD_ON_LOAD` enthält das
+Rauschen von Reload-Schleifen; Auswertungen der letzten Wochen liefen über die Fachtabellen.
+- Variante A – entfernen: Endpunkt, JS-Aufrufe (`measureEvent()`), Bereich in `stats.php`; Tabelle nach Export droppen.
+- Variante B – verschlanken: nur Funktions-Events, keine Seitenaufrufe; Löschjob für Einträge älter als 90 Tage.
+Offen: A oder B; was aus dem Nutzungs-Tab wirklich gebraucht wird.
 
 ### B-150 REST-API: Topic und Items von außen setzen (Schritt A)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Ersetzt B-80. Bedarf an den Extremen: einfach „Topic setzen“
