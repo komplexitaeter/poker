@@ -634,9 +634,10 @@ Status: refined (Andreas, 2026-11-26). Ziel: `getDao()`/`dao.php` ist bis auf `t
 Anwesenheit B-110/B-127) ein reiner Lesezugriff. Seit #282 legt `getDao()` keine `pok_user_tbl`-Zeilen mehr an (das
 machen `name.php` beim Beitreten und `update_user.php`). Übrig sind zwei einmalige Schreibvorgänge je Team, beide unter
 der Team-Sperre (dort lag der Deadlock aus #279):
-1. **Deck-Migration aus R3** (alte `cardset_flags` → `deck_id`, bei gemischten Decks ein Set „Our deck“): raus, sobald
-   bei B-128 (Mitte Dezember) praktisch alle aktiven Teams migriert sind; den Rest per einmaligem Skript
-   (`tools/migration/`), danach Migrationscode löschen.
+1. **Deck-Migration aus R3** (alte `cardset_flags` → `deck_id`, bei gemischten Decks ein Set „Our deck“): Teams, die
+   nicht wiederkommen, verschwinden mit der Team-Löschfrist (B-109: 1 Jahr ohne Aktivität). Für die übrigen, noch nicht
+   migrierten Teams beim Entfernen des Codes entscheiden: einmal per Skript migrieren (Logik existiert, Auswahl bleibt)
+   oder damit leben, dass sie das Standard-Set bekommen (Andreas, 2026-11-26: beides denkbar).
 2. **Beispielset (B-116)**: beim Anlegen des Teams vergeben (`add_team()`, passt zu B-144 Schritt 3) statt beim ersten
    Laden; bestehende Teams ohne Beispielset (wenige, 754 haben es) per einmaligem Skript oder gar nicht mehr.
 Danach in CLAUDE.md: „`dao.php` schreibt nur die Anwesenheit.“
@@ -713,7 +714,10 @@ integrieren (Daten liegen in den `_stats`-Tabellen). Dann könnte MySQL ganz auf
 entfiele. Erst die Charts sichten, dann entscheiden.
 
 ### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
-Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
+Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). **Teams (Andreas, 2026-11-26):** ein nächtlicher Job löscht Teams nach
+**1 Jahr ohne jede Aktivität vollständig** – inkl. Rundenhistorie, Spieler, eigene Sets, Items. Zu klären: was
+„Aktivität“ ist (letztes Laden/`last_callback_time`, letzte Runde), ob die Statistik-Tabellen (`_stats`, Grafana) als
+Aggregate erhalten bleiben (Vergangenheitswerte ändern sich sonst), Reihenfolge der Löschung (B-155-Sperrregeln). Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
 DB aber neben Name und Team → pseudonym, also personenbezogen. Gelöscht wird nur `pok_players_tbl` (2 Monate
 Inaktivität je Team). Dauerhaft: `pok_roundstat_details_tbl` (User-ID, Name, Karte je Runde),
 `pok_analytics_events_tbl` (User-ID je Event), `pok_promotions_tbl`; „Delete user“ löscht Events und Promos nicht.
