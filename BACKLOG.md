@@ -138,7 +138,7 @@ Linie nach Wert zwischen den beiden mittleren Karten, zwischen einem Wert und �
 Average-Zeiger gibt es nur mit „Average and median“ und nicht bei Sets mit dem Ziel „perspectives“.
 
 ### B-80 Öffentliche API: Topic-Items von außen anlegen
-Status: neu. Feedback (2026-10-29): „Add API to allow setting the topic.“ Faktisch gibt es `POST
+Status: aufgegangen in B-150/B-151 (Andreas, 2026-11-26). Bisher: neu. Feedback (2026-10-29): „Add API to allow setting the topic.“ Faktisch gibt es `POST
 /api/update_topic.php?t=<team-id>` (Feld `topic`, max. 2000 Zeichen) schon; Boards aktualisieren sich seit B-81 auch
 bei Aufrufen von außen.
 Entscheidungen/Skizze (Andreas, 2026-10-29): erst mit B-52 zusammen durchdenken – eine öffentliche API ist eine
@@ -358,6 +358,44 @@ ankommt (Login per OAuth, Prüfung serverseitig statt in poker-msg), Datenschutz
 Token-Konzept: `mockups/fish-tokens/concept.html` (Reaktionen über die API statt WebSocket, Sinas Review).
 
 ## Offen: Technik & Betrieb
+
+### B-150 REST-API: Topic und Items von außen setzen (Schritt A)
+Status: neu, Richtung entschieden (Andreas, 2026-11-26). Ersetzt B-80. Bedarf an den Extremen: einfach „Topic setzen“
+(Feedback 2026-10-29) und die komplette KI-Integration (B-151); die Mitte (Webhooks, Zapier-Bots, Event-Stream für
+eigene Skripte) erstmal nicht.
+- Eigener, versionierter Namensraum `/api/v1/…` mit JSON (die interne App-API bleibt frei änderbar), kurze Doku-Seite
+  mit `curl`- und Jira-Automation-Beispiel, möglichst OpenAPI-Beschreibung.
+- Endpunkte: Team-Notiz (Topic) setzen; Items anlegen/ändern über ihren Schlüssel (Upsert), auflisten, Ergebnis
+  abfragen, löschen.
+- **Item-Schlüssel als Pflichtfeld** (Andreas): vorbelegt mit `[CODE]-(n+1)`, zusammen mit dem Team eindeutig
+  (heute `ext_id`, optional; 10 von 19 Items hatten schon eine). Damit ist ein Import beliebig oft wiederholbar.
+- **API-Schlüssel je Team**, lang, im Header (nicht in der URL), getrennt von der Team-ID: erzeugen, anzeigen, sperren und
+  neu erzeugen im Board-Menü. Grundlage für B-151.
+- Nach jeder Änderung `notify_team()` wie bei der App (Boards aktualisieren sich sofort).
+- Die Logik hinter den Endpunkten so schneiden, dass B-151 sie mitnutzt (REST und MCP rufen dieselben Funktionen).
+Offen fürs Refinement: Format des Ergebnisses (Wert, Verteilung, Runden), Fehlercodes, ob die Team-ID als
+Alternative zum Schlüssel weiter geht (heute schon `update_topic.php`).
+
+### B-151 MCP: die komplette App für KI-Clients (Schritt B)
+Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
+mitmachen: Team anlegen/ändern, Board-Setup, Sets wählen und eigene Sets verwalten, Karten legen, Runden- und
+Item-Steuerung, Items samt Ergebnissen, Timer, Feedback, Reaktionen.
+Grundsätze (Andreas):
+- **Genau die Funktionen der Weboberfläche, nicht mehr und nicht weniger.** Alles, was die Oberfläche verhindert, muss
+  der Server verhindern (verdeckte Karten vor dem Aufdecken: `getDao()` schickt schon nur Platzhalter; Fisch-
+  Kontingent: heute in poker-msg, MCP-Würfe müssen durch dieselbe Prüfung). Sina prüft je Tool: Server oder nur UI?
+- **Keine Kennzeichnung** von Agenten (nicht unterscheidbar, Automatisierung über das Web geht heute schon).
+- **Keine Aufruf-Limits auf Verdacht** (Anwendungsfälle unbekannt); nur technischer Schutz (z. B. Obergrenze
+  gleichzeitig wartender Aufrufe).
+Technik (Vorschlag Kai): dünne MCP-Schicht über den Funktionen aus B-150, ca. 10–12 gröbere Tools statt einem pro
+Aktion; Authentifizierung mit dem API-Schlüssel aus B-150. Benachrichtigung **ohne Polling**: `wait_for_change`, das
+sofort zurückkehrt, sobald poker-msg eine Änderung des Teams meldet (spätestens nach ca. 25 s „nichts passiert“);
+dafür ein Event-Kanal in poker-msg mit kurzlebigem, per HMAC signiertem Abo-Ticket (poker-msg bleibt ohne DB, kein
+PHP-Worker pro Wartendem). Server-Benachrichtigungen von MCP zusätzlich für Clients, die sie können. Antworten zuerst
+als Text/Emoji (Tisch, Karten, Status); eine grafische Ansicht über MCP-UI-Erweiterungen später.
+Datenschutz: Namen und Texte der Mitspieler gehen an die KI eines Dritten → Hinweis in der Datenschutzerklärung;
+Texte anderer Spieler sind für den Agenten fremder Input (Prompt-Injection), Hinweis in den Tool-Beschreibungen.
+Schritte: Mitspielen (inkl. Event-Kanal) → Items und Runden → Rest. Verwandt: B-123 (eine von uns betriebene KI).
 
 ### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
 Status: refined. Reguläre Unterstützung für 22.04 endet im April 2027. Beide Server auf 24.04, zuerst Staging (vorher
