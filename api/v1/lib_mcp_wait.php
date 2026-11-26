@@ -220,7 +220,7 @@ function mcp_board_changes(?array $old, array $new, array $board): array
     $me = (string)$board['you']['mkey'];
     $out = [];
 
-    if ($old['tn'] !== $new['tn']) $out[] = 'Team renamed to ' . $q($board['team']['name']) . '.';
+    if (($old['tn'] ?? null) !== $new['tn']) $out[] = 'Team renamed to ' . $q($board['team']['name']) . '.';
 
     // people by mkey; after an anonymous reveal the players have no mkey (only the own one): no sentences for them
     $anonymous = ($old['r'] && !empty($old['s']['anonymous'])) || ($new['r'] && $new['s']['anonymous']);
