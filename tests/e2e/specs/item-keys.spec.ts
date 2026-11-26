@@ -154,7 +154,7 @@ test('keys are unique per team without case; another team may use the same key',
 
 test('migration script: dry run writes nothing, --apply fills empty, invalid and duplicate keys, a second run is 0', () => {
   const db = 'pok_e2e_mig'; // own database (tests/e2e/setup.sh): items from before the key rule, no unique index
-  sql(db, `drop table if exists pok_topic_items_tbl, pok_teams_tbl;
+  sql(db, `drop table if exists pok_topic_items_tbl, pok_teams_tbl, pok_topic_items_b150_bak;
     create table pok_teams_tbl like pok_e2e.pok_teams_tbl;
     create table pok_topic_items_tbl like pok_e2e.pok_topic_items_tbl;
     alter table pok_topic_items_tbl drop index ux_topic_items_team_key, modify ext_id varchar(20) null;
@@ -196,7 +196,11 @@ const _MYSQL_PORT = 3306;
     const applied = run('--apply');
     expect(applied).toContain('items changed: 13 (empty: 6, invalid: 5, duplicate: 2)');
     // the same changes as announced by the dry run
-    expect(applied.replace(/^.*\n/, '')).toBe(dry.replace(/^.*\n/, '').replace('run again with --apply to write\n', ''));
+    expect(applied).toContain('backup: 19 items added to pok_topic_items_b150_bak');
+    expect(applied.replace(/^.*\n.*\n/, '')).toBe(dry.replace(/^.*\n/, '').replace('run again with --apply to write\n', ''));
+    // the backup keeps the keys from before (also NULL), a second --apply adds nothing and overwrites nothing
+    expect(sql(db, `select group_concat(ifnull(b.ext_id, 'NULL') order by b.id separator '|') from pok_topic_items_b150_bak b
+      join pok_topic_items_tbl i on i.id = b.id and i.team_id = 'mig-c'`)).toBe('NULL|NULL|-x-');
     expect(keys('mig-a')).toEqual(['1', '2', 'DMZ-004', 'DMZ-006', 'dmz-005', 'DMZ-005-2', 'PRJ-1-2', 'PRJ-1', '1-2',
       'A-php', '11', 'ABCDEFGHIJKLMNOPQRST', 'abcdefghijklmnopqr-2']);
     expect(keys('mig-b')).toEqual(['OK-1', 'OK-2']);
@@ -210,11 +214,14 @@ const _MYSQL_PORT = 3306;
     expect(sql(db, `select count(1) from (select 1 from pok_topic_items_tbl group by team_id, ext_id having count(1) > 1) d`))
       .toBe('0');
 
-    expect(run('--apply')).toContain('items changed: 0 (empty: 0, invalid: 0, duplicate: 0)');
+    const again = run('--apply');
+    expect(again).toContain('backup: 0 items added');
+    expect(again).toContain('items changed: 0 (empty: 0, invalid: 0, duplicate: 0)');
+    expect(sql(db, `select count(1) from pok_topic_items_b150_bak where ext_id = 'DMZ-005' or ext_id is null`)).toBe('7');
     expect(run()).toContain('items changed: 0');
     expect(rev()).toBe('9,0,3');
   } finally {
     rmSync(dir, { recursive: true, force: true });
-    sql(db, 'drop table if exists pok_topic_items_tbl, pok_teams_tbl');
+    sql(db, 'drop table if exists pok_topic_items_tbl, pok_teams_tbl, pok_topic_items_b150_bak');
   }
 });

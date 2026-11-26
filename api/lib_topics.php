@@ -112,24 +112,37 @@ function item_key_taken($link, string $t, string $key, int $except_id = 0): bool
  * B-150: the suggested key for a new item of team $t (next_item_key() on the item created last and the item count).
  * $before_id > 0 (migration tools/migration/b150_item_keys.php): as if the items from $before_id on did not exist yet,
  * and the item $before_id itself is ignored in the taken check. Callers that write hold the team row lock.
+ * Cost (review Sina): the team's keys (at most TOPIC_ITEMS_TOTAL_MAX) are read once and the candidates are checked in
+ * PHP (ASCII case-insensitively, candidates are valid ASCII keys); only a candidate that is free there is confirmed by
+ * SQL in the collation (item_key_taken(); it differs only for old non-ASCII keys, e.g. 'Ä-1' = 'A-1'). So usually one
+ * read plus one check. The binding check of a written key is this SQL check under the team row lock.
  */
 function item_key_suggest($link, string $t, int $before_id = 0): string
 {
-    $limit = $before_id > 0 ? $before_id : PHP_INT_MAX;
-    $sql = $link->prepare("select ext_id from pok_topic_items_tbl where team_id = ? and id < ? order by id desc limit 1");
-    $sql->bind_param('si', $t, $limit);
+    $sql = $link->prepare("select id, ext_id from pok_topic_items_tbl where team_id = ? order by id");
+    $sql->bind_param('s', $t);
     $sql->execute();
-    $row = $sql->get_result()->fetch_row();
-    $sql->close();
-    $last = is_array($row) && $row[0] !== null ? (string)$row[0] : null;
-
-    $sql = $link->prepare("select count(1) from pok_topic_items_tbl where team_id = ? and id < ?");
-    $sql->bind_param('si', $t, $limit);
-    $sql->execute();
-    $count = (int)$sql->get_result()->fetch_row()[0];
+    $rows = $sql->get_result()->fetch_all(MYSQLI_NUM);
     $sql->close();
 
-    return next_item_key($last, $count, fn(string $key): bool => item_key_taken($link, $t, $key, $before_id));
+    $last = null;
+    $count = 0;
+    $taken = array();
+    foreach ($rows as [$id, $key]) {
+        if ($before_id > 0 && (int)$id === $before_id) continue;
+        if ($key !== null) $taken[strtolower((string)$key)] = true;
+        if ($before_id > 0 && (int)$id > $before_id) continue;
+        $last = $key === null ? null : (string)$key;
+        $count++;
+    }
+
+    return next_item_key($last, $count, function (string $key) use ($link, $t, $before_id, &$taken): bool {
+        $lower = strtolower($key);
+        if (isset($taken[$lower])) return true;
+        if (!item_key_taken($link, $t, $key, $before_id)) return false;
+        $taken[$lower] = true;
+        return true;
+    });
 }
 
 /* writes an error answer of the topic item endpoints and ends the request (rolls back an open transaction) */

@@ -18,6 +18,7 @@
  * team rolled back). Writes through set_topic_item_key() (topics_rev + 1, open boards reload the lists) and notifies
  * the changed teams after their commit. The dry run makes the same changes in a transaction and rolls it back (so it
  * shows exactly what --apply would do; it holds the team row lock for milliseconds, like a normal write).
+ * --apply first backs up all keys once into pok_topic_items_b150_bak (b150_backup()).
  * Output: counts and pairs old -> new only, no team ids or headings. Idempotent: a second run reports 0.
  * Exit codes: 0 ok, 1 error.
  */
@@ -113,10 +114,49 @@ function b150_fix_team(mysqli $link, string $t, bool &$orphan): array
     return $changes;
 }
 
+/*
+ * Backup before --apply (review Sina): table pok_topic_items_b150_bak keeps the key of every item as it was before the
+ * first --apply (id, team_id, ext_id). Created once (create table if not exists); rows already backed up stay as they
+ * are (insert ignore on the primary key id), so a second run never overwrites the original value. Read without locks
+ * (plain select, then inserts in batches; no insert ... select on the items table, B-155). Restore of a single team:
+ * see tools/migration/README.md. Drop the table once B-150 is live and checked.
+ */
+function b150_backup(mysqli $link): int
+{
+    $link->query("create table if not exists pok_topic_items_b150_bak (
+                    id int unsigned not null primary key comment 'pok_topic_items_tbl.id',
+                    team_id varchar(80) not null,
+                    ext_id varchar(20) null comment 'key before tools/migration/b150_item_keys.php --apply',
+                    backup_date timestamp not null default current_timestamp
+                  ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+                    comment 'B-150: item keys before the migration (drop after the rollout)'");
+    $rows = $link->query("select id, team_id, ext_id from pok_topic_items_tbl order by id")->fetch_all(MYSQLI_NUM);
+    $added = 0;
+    foreach (array_chunk($rows, 200) as $chunk) {
+        $sql = $link->prepare("insert ignore into pok_topic_items_b150_bak(id, team_id, ext_id) values "
+                              . implode(',', array_fill(0, count($chunk), '(?, ?, ?)')));
+        $params = array_merge(...array_map(fn($row) => array((int)$row[0], (string)$row[1], $row[2]), $chunk));
+        $sql->bind_param(str_repeat('iss', count($chunk)), ...$params);
+        $sql->execute();
+        $added += (int)$sql->affected_rows;
+        $sql->close();
+    }
+    return $added;
+}
+
 $teams = array_map(fn($row) => (string)$row[0],
                    $link->query("select distinct team_id from pok_topic_items_tbl order by team_id")->fetch_all());
 
 echo ($apply ? 'APPLY' : 'DRY RUN (nothing is written, --apply writes)') . ' on database ' . mig_database($link) . "\n";
+if ($apply) {
+    try {
+        $backed_up = b150_backup($link);
+    } catch (mysqli_sql_exception $e) {
+        mig_fail('backup failed, nothing changed (' . $e->getCode() . '): ' . $e->getMessage()
+                 . ' - create the table as admin, see tools/migration/README.md');
+    }
+    echo "backup: $backed_up items added to pok_topic_items_b150_bak (items backed up before keep their first value)\n";
+}
 $counts = array('empty' => 0, 'invalid' => 0, 'duplicate' => 0);
 $changed_teams = 0;
 $orphan_teams = 0;
