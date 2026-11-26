@@ -64,5 +64,7 @@ test('doc page /api/v1/: HTML from the table with CSP, no script, no inline styl
   await page.goto('/api/v1/');
   expect((await css).status()).toBe(200);
   await expect(page.locator('h1')).toHaveText('Agile Poker API v1');
+  // body starts with opacity 0 for the board (script.js fades it in); the doc page has no JS and must show itself
+  expect(await page.evaluate(() => getComputedStyle(document.body).opacity)).toBe('1');
   expect(blocked).toEqual([]);
 });

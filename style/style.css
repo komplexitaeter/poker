@@ -6453,3 +6453,12 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .rail-acts.split > button .i { width: 18px; height: 18px; }
 .rail-acts.split .rail-lbl { display: block; text-align: center; }
 .rail-acts.split .rail-lbl > span { display: block; }
+
+/* B-150: the API doc page (api/v1/, rendered by lib_v1.php, no JavaScript under its CSP): body starts with opacity 0
+ * for the board (script.js fades it in), so the doc page shows itself; plain readable layout until Delia designs it
+ * (B-150 PR 5) */
+body.api-doc { opacity: 1; text-align: left; user-select: text; -webkit-user-select: text; overflow-y: auto; }
+.api-doc-main { max-width: 60rem; margin: 0 auto; padding: 24px 16px 48px; }
+.api-doc pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.api-doc table { border-collapse: collapse; }
+.api-doc th, .api-doc td { text-align: left; padding: 2px 8px; border-bottom: 1px solid var(--line); }
