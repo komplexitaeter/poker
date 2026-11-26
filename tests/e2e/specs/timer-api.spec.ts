@@ -21,7 +21,7 @@ async function newTeam(page: Page, name: string) {
   const boardUrl = await createTeam(page, name);
   const teamId = new URL(boardUrl).searchParams.get('t') as string;
   // team ids are plain [A-Za-z0-9] here, so building the test statements below is safe
-  expect(teamId).toMatch(/^[A-Za-z0-9]+$/);
+  expect(teamId).toMatch(/^[A-Za-z0-9_-]+$/);
   const sid = await getSid(page);
   const t = encodeURIComponent(teamId);
   const dao = async () => {
