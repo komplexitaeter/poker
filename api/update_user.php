@@ -13,9 +13,9 @@ if ($id === '') exit;
 
 $link = db_init();
 
-// The user row is normally created by the first dao.php of a board. A user who changes a setting on the start page
-// before ever opening a board has no row yet, so a plain UPDATE would change 0 rows and lose the setting. Insert the
-// row with the setting instead; ON DUPLICATE KEY makes it idempotent and race-free like the insert in dao.php (B-21).
+// The user row is created on joining a board (name.php); dao.php only reads it. A user who changes a setting before
+// joining (start page, name overlay) has no row yet, so a plain UPDATE would change 0 rows and lose the setting. Insert
+// the row with the setting instead; ON DUPLICATE KEY makes it idempotent and race-free (B-21).
 if ($color_mode != null and in_array($color_mode, ['dark', 'light'])) {
     $sql = $link->prepare("insert into pok_user_tbl(id, color_mode) values(?, ?)
                                on duplicate key update color_mode=?");

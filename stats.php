@@ -519,8 +519,8 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
 
         // user ids per week from the rounds (pok_roundstat_details_tbl: everyone active in the team when a round
         // was started, removed players excluded). "returning" = user id first seen (pok_user_tbl.creation_date,
-        // written on the first board load) before that week: a primary key lookup per user and week instead of
-        // a scan over the whole round history.
+        // written on joining a board or storing a setting, until 2026-11 on the first board load) before that week:
+        // a primary key lookup per user and week instead of a scan over the whole round history.
         $data['weeks'] = rows($link, "select /*+ MAX_EXECUTION_TIME(30000) */
                    x.week_start
                   ,count(1) as users
@@ -614,6 +614,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="src/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
 <?php if ($tab === 'live' && $auth_user !== null) { ?>
     <meta http-equiv="refresh" content="<?= LIVE_RELOAD_SEC ?>" />
 <?php } ?>
@@ -1038,7 +1040,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     <section class="usage" aria-labelledby="weeks_h">
         <h2 id="weeks_h">New vs. returning user ids per week</h2>
         <p class="note">User ids (one per browser) that were at a table when a round was started (pok_roundstat_details_tbl).
-            Returning = the user id was first seen (pok_user_tbl, first board load) before that week; new = first seen in that week.
+            Returning = the user id was first seen (pok_user_tbl: joined a board or stored a setting) before that week; new = first seen in that week.
             Grafana already shows teams, rounds and active use per day.</p>
         <p class="legend note"><span><span class="ret"></span>returning</span> <span><span class="new"></span>new</span></p>
         <div class="table-wrap">

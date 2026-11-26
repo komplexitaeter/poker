@@ -14,7 +14,7 @@ async function boardUser(page: Page): Promise<string> {
   await joinAsPlayer(page, await createTeam(page, 'IdeasTeam'), 'Ida');
   const sid = await getSid(page);
   const t = new URL(page.url()).searchParams.get('t') as string;
-  // dao.php creates the user row (the board calls it on load as well)
+  // a board load as well (dao.php only reads the user row, the join has created it)
   const res = await page.request.get(`./api/dao.php?t=${encodeURIComponent(t)}`, asUser(sid));
   expect(res.ok()).toBeTruthy();
   return sid;
@@ -251,7 +251,7 @@ test('vote_roadmap.php rejects GET, invalid values and unknown users', async ({ 
   expect((await vote(page, '', item, 'UP')).status()).toBe(400);
   expect((await vote(page, 'E2EUNKNOWNUSER01', item, 'UP')).status()).toBe(403);
 
-  // a user dao.php knows (pok_user_tbl), but who never joined a board, may not react either
+  // a user who loaded a board (dao.php), but never joined one, may not react either
   const lurker = 'E2ELURKER' + Date.now().toString(36).slice(-6).toUpperCase();
   expect((await page.request.get('./api/get_roadmap.php', asUser(lurker))).ok()).toBeTruthy();
   const t = new URL(page.url()).searchParams.get('t') as string;

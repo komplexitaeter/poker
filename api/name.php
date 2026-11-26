@@ -97,6 +97,14 @@ else {
 }
 
 $sql->execute();
+
+/* The user row (settings, first-seen date for stats.php) is created on joining, not by dao.php (which only reads it,
+   so a request in flight after "Delete my data" cannot bring a deleted UID back). Idempotent like update_user.php. */
+if (strlen($name) > 0) {
+    $sql = $link->prepare("INSERT INTO pok_user_tbl(id) values(?) ON DUPLICATE KEY UPDATE id=id");
+    $sql->bind_param('s', $id);
+    $sql->execute();
+}
 $link->close();
 
 // B-81: all boards of the team reload (only reached after the team check and a successful write)

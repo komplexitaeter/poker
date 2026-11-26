@@ -1250,25 +1250,16 @@ function getDao($t, $id) {
         error_log('poker dao: topic items not loaded: ' . $e->getMessage());
     }
 
-    $sql = $link->prepare("SELECT count(1) as user_exists
-                                     ,max(u.color_mode) as color_mode
-                                     ,max(hide_teaser) as hide_teaser
-                                FROM pok_user_tbl u WHERE u.id=?");
+    /* Read-only: a missing user row gives the defaults above. getDao() must never create pok_user_tbl rows: a
+       dao.php still in flight with a UID that "Delete my data" has just removed would bring the row back. The row is
+       created where the user stores something: name.php (join) and update_user.php (settings). */
+    $sql = $link->prepare("SELECT u.color_mode, u.hide_teaser FROM pok_user_tbl u WHERE u.id=?");
     $sql->bind_param('s', $id);
     $sql->execute();
     $result = $sql->get_result();
     if ($obj = $result->fetch_object()) {
-        if ($obj->user_exists == 0) {
-            // Idempotent insert: two parallel DAO calls for a fresh SID (loadBoard + WebSocket onopen)
-            // both see user_exists == 0 and try to insert the same PRIMARY key. ON DUPLICATE KEY UPDATE id=id
-            // lets the first request win and keeps its row unchanged, instead of a duplicate-key fatal (B-21).
-            $sql_i = $link->prepare("INSERT INTO pok_user_tbl(id) values(?) ON DUPLICATE KEY UPDATE id=id");
-            $sql_i->bind_param('s', $id);
-            $sql_i->execute();
-        } else {
-            $color_mode = $obj->color_mode;
-            $hide_teaser = $obj->hide_teaser;
-        }
+        $color_mode = $obj->color_mode;
+        $hide_teaser = $obj->hide_teaser;
     }
 
     $link->close();
