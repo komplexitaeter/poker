@@ -1,6 +1,6 @@
 # B-151: MCP-Server – Grobkonzept
 
-Stand 2026-11-26 (überarbeitet: `/mcp` über poker-msg, Entscheidung 12), Ben (BE). Grundlage: BACKLOG.md B-151, B-150, B-152, `docs/api-v1-concept.md` (abgenommen,
+Stand 2026-11-26 (überarbeitet: Wartende über poker-msg per X-Accel-Redirect, Entscheidung 12), Ben (BE). Grundlage: BACKLOG.md B-151, B-150, B-152, `docs/api-v1-concept.md` (abgenommen,
 insbesondere Abschnitt 3 „Routing-Tabelle“ und 12 „MCP-Bereitschaft“), Code-Stand `origin/release` (189032c) und
 `poker-msg` `origin/release` (28d8676). Grobkonzept, noch kein Code. Namen, Beschreibungen und Parametertexte der
 Tools sind englisch (App-Text), alles andere deutsch.
@@ -47,10 +47,11 @@ MCP-Server ist eine dünne Schicht über denselben Kernfunktionen wie Web und RE
     über MCP.
 11. **Beitreten nur mit Schlüssel** geht ausdrücklich: „Hier ist mein API-Token pok_…, melde dich am Tisch an“ – ohne
     Team-ID und ohne Einladungslink; der Schlüssel bestimmt Team und Person.
-12. **`/mcp` läuft über poker-msg** (Andreas, 2026-11-26, ersetzt die erste Fassung mit eigenem FPM-Pool): nginx
-    leitet `/mcp` an einen neuen HTTP-Listener in poker-msg; poker-msg reicht jeden Tool-Aufruf sofort an PHP-FPM
-    weiter und hält nur `wait_for_change` selbst offen, ohne FPM-Worker (Abschnitt 8). Kein eigener Pool, keine
-    Swap- und RAM-Planung; Obergrenze 2000 gleichzeitig Wartende in poker-msg.
+12. **Kein FPM-Worker wartet; poker-msg hält `wait_for_change`** (Andreas, 2026-11-26, ersetzt die erste Fassung mit
+    eigenem FPM-Pool). Kein eigener Pool, keine Swap- und RAM-Planung; Obergrenze 2000 gleichzeitig Wartende in
+    poker-msg. Andreas hatte dafür die Durchreiche vorgegeben (nginx `/mcp` → poker-msg → PHP); **empfohlen ist
+    stattdessen X-Accel-Redirect** (Kai, Ben): `/mcp` geht wie gewohnt an PHP, nur Wartende gibt PHP per nginx an
+    poker-msg ab (Abschnitt 8.2, Abwägung 8.5). **Bestätigung durch Andreas offen** (Abschnitt 11).
 
 ## 2. Identität und Zugang
 
@@ -138,14 +139,13 @@ Wo wir darauf hinweisen (Vorschlag, Gestaltung Delia/Fred):
   Protokollfehler (unbekanntes Tool, kaputtes JSON) als JSON-RPC-Fehler.
 - Tool-Annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`) aus der Routing-Tabelle (`GET` → readOnly,
   `DELETE`/`delete_*` → destructive).
-- **Gleicher Front-Controller:** `api/v1/index.php` erkennt MCP am internen Weg (`POKER_MCP_INTERNAL`, Abschnitt 8.2);
-  öffentlich heißt der Pfad `/mcp` (Entscheidung 9; v1-Konzept 9.1 sah `/api/v1/mcp` vor). **Keine Versionierung:** kein `/v1` im Pfad, `serverInfo.version` ist nur informativ (Datum
+- **Gleicher Front-Controller:** `api/v1/index.php` erkennt `/mcp` (`DOCUMENT_URI`; nach einem internen Redirect
+  `/_mcp_result/…` bzw. `@mcp_wait_failed`, Abschnitt 8.3) (Entscheidung 9; v1-Konzept 9.1 sah `/api/v1/mcp` vor). **Keine Versionierung:** kein `/v1` im Pfad, `serverInfo.version` ist nur informativ (Datum
   der letzten Tool-Änderung); Tools ändern sich ohne Vorankündigung (Entscheidung 9). Neue Datei `api/v1/lib_mcp.php`: JSON-RPC-Hülle, `v1_mcp_tools()`,
   `v1_call()`.
-- **Weg der Anfrage** (Entscheidung 12, Abschnitt 8.2): nginx `location = /mcp` → poker-msg (HTTP-Listener
-  `127.0.0.1:8445`) → interner nginx-Server `127.0.0.1:8446/mcp-internal` → PHP-FPM (Pool `www`) →
-  `api/v1/index.php`. PHP beantwortet MCP nur auf dem internen Weg (FastCGI-Parameter `POKER_MCP_INTERNAL`).
-  nginx-Konfiguration: Abschnitt 8.4.
+- **Weg der Anfrage** (Entscheidung 12, Abschnitt 8.2): nginx `location = /mcp` → PHP-FPM (Pool `www`) →
+  `api/v1/index.php`, wie jeder API-Aufruf. Nur `wait_for_change` und `react` reicht PHP per `X-Accel-Redirect` über
+  nginx an poker-msg und zurück. nginx-Konfiguration: Abschnitt 8.4.
 
 ## 5. Tools
 
@@ -657,177 +657,179 @@ Kurz; „→“ = Tool-Aufruf des Agenten.
   „Timer started“). Ein manipulierter Token verfälscht nur den Diff, nie Daten (er enthält nichts, was der Agent
   nicht ohnehin sieht – keine verdeckten Karten).
 - Jedes Tool-Ergebnis enthält `version`; der Agent übergibt die letzte als `since`. Nur PHP liest und vergleicht den
-  Token; poker-msg reicht ihn unverändert durch.
+  Token; poker-msg sieht ihn nie.
 
-### 8.2 Architektur (Entscheidung 12)
+### 8.2 Architektur: X-Accel-Redirect (Empfehlung, Entscheidung 12)
+
+`/mcp` geht wie jeder API-Aufruf an PHP-FPM (Pool `www`). Nur `wait_for_change` (und `react`, 8.6) gibt die offene
+Anfrage per **`X-Accel-Redirect`** an nginx zurück; nginx hält sie gegen poker-msg offen, bis poker-msg seinerseits per
+`X-Accel-Redirect` an PHP zurückgibt. Ein FPM-Worker ist je Schritt nur Millisekunden belegt.
 
 ```text
-MCP-Client ──HTTPS──▶ nginx  location = /mcp
-                        │  proxy_pass 127.0.0.1:8445
-                        ▼
-                     poker-msg  (gleicher ReactPHP/ev-Prozess wie der WebSocket-Server, neuer HTTP-Listener)
-                        │  jede Anfrage sofort weiter, Antwort zurück
-                        ▼
-                     nginx  server 127.0.0.1:8446, location = /mcp-internal
-                        │  fastcgi_pass Pool www
-                        ▼
-                     PHP-FPM  api/v1/index.php (MCP-Hülle, lib_mcp.php)
+MCP-Client ──POST /mcp──▶ nginx ──FastCGI──▶ PHP: Identität, Sicht, since prüfen
+                                                │ unverändert → X-Accel-Redirect: /_mcp_wait/<team-hash>/<checked>/<deadline>/<hop>
+                            nginx ◀─────────────┘ (FPM-Worker frei)
+                              │ internal, proxy_pass
+                              ▼
+                           poker-msg (HTTP-Warte-Endpunkt 127.0.0.1:8445): hält die Verbindung bis Pull des Teams / Frist
+                              │ X-Accel-Redirect: /_mcp_result/<deadline>/<hop>?r=pull|timeout|busy
+                            nginx ◀┘
+                              │ internal, FastCGI (GET, Original-Body und -Header sind noch da)
+                              ▼
+                           PHP: Body erneut lesen, Identität erneut prüfen, Sicht rechnen → JSON-RPC-Antwort an den Client
 ```
 
-- **poker-msg nimmt jede `/mcp`-Anfrage an** (neuer HTTP-Listener, nur `127.0.0.1`, Port `POKER_MSG_HTTP_PORT`,
-  Default 8445) und reicht sie **sofort** an PHP weiter: Methode, Body unverändert, Header nach Positivliste
-  (`Host`, `Content-Type`, `Accept`, `Origin`, `Authorization`, `Mcp-Protocol-Version`, `X-Real-IP`,
-  `X-Forwarded-Proto`). Die Antwort (Status, `Content-Type`, `Allow`, Body) geht als Stream unverändert zurück.
-  Damit belegt ein normaler Tool-Aufruf einen FPM-Worker nur Millisekunden, wie ein Board-Aufruf.
-- **Weiterleitung an PHP über einen internen nginx-Server** statt FastCGI direkt aus poker-msg. Begründung: Für
-  ReactPHP gibt es keinen gepflegten asynchronen FastCGI-Client (selbst schreiben ≈ 150 Zeilen Protokoll); ein
-  HTTP-Client (`react/http` `Browser`) ist Standard, und nginx übernimmt FastCGI, Timeouts und Socket-Pfad genau wie
-  für das Board. Der interne Server lauscht nur auf `127.0.0.1:8446` (`POKER_MSG_MCP_UPSTREAM`, Default
-  `http://127.0.0.1:8446/mcp-internal`) und kennt nur diese eine Location.
-- **PHP erkennt den internen Weg** am FastCGI-Parameter `POKER_MCP_INTERNAL=1`, den nur der interne Server setzt (ein
-  Client kann FastCGI-Parameter nicht setzen). Ohne ihn antwortet der Front-Controller auf MCP mit `404`; die
-  Steuer-Header (8.3) wertet PHP nur mit ihm aus. Öffentlich ist `/mcp` damit nur über poker-msg erreichbar.
-- **Kein eigener FPM-Pool:** Pool `www` wie Board und REST, denn kein Worker wartet mehr.
-- **Abhängigkeit:** poker-msg bekommt `react/http` (Server und Client); Verträglichkeit mit Ratchet 0.4 (gemeinsame
-  `react/socket`, `react/event-loop`, `react/promise`) in PR A mit `composer why-not` prüfen. poker-msg bleibt ohne DB
-  und ohne Fachlogik: es parst kein JSON, kennt keine Tools und keine Daten.
-- **Folge:** poker-msg aus = MCP aus (nginx `502`), genau wie heute die Board-Aktualisierung. supervisor startet neu.
-  Ein Neustart (Deploy) bricht laufende `wait_for_change` ab; Satz in `instructions`: „If a call fails with a network
-  error, call it again.“ Kein Rückfall von nginx direkt auf FPM (wäre ein zweiter Weg, der getestet werden müsste).
+**Geprüft** (Ben, 2026-11-26, lokal nginx 1.24 + PHP-FPM, Versuchsaufbau mit denselben Locations wie 8.4):
 
-### 8.3 Internes Protokoll (poker-msg ↔ PHP)
+- `X-Accel-Redirect` wirkt von FastCGI- **und** von `proxy_pass`-Upstreams (gleiche Stelle im nginx-Upstream-Code,
+  seit langem unverändert; gilt damit auch für 1.18 – auf Staging einmal mit `curl` bestätigen, PR C).
+- Nach dem Redirect ist die Methode `GET`, aber **Original-Body und alle Original-Header bleiben erhalten** (auch ein
+  40-KB-Body aus der Temp-Datei). PHP liest im Ergebnisschritt `php://input` und `Authorization` wie beim ersten
+  Aufruf; `REQUEST_URI` bleibt `/mcp`, `DOCUMENT_URI`/`QUERY_STRING` sind die internen Werte. Damit muss die interne
+  URI **weder UID noch Schlüssel noch `since` noch die JSON-RPC-`id`** tragen.
+- Header der Endantwort (`Content-Type: application/json`, `Mcp-Protocol-Version` …) kommen nur aus dem letzten
+  PHP-Schritt; Header der Zwischenantworten (außer wenigen wie `Content-Type`, die die Endantwort überschreibt) gehen
+  nicht an den Client.
+- Ohne `proxy_pass_request_body off` / `proxy_pass_request_headers off` bekäme poker-msg Body und `Authorization`
+  mit – deshalb sind beide in `/_mcp_wait/` aus (geprüft: poker-msg sieht dann nur `GET /_mcp_wait/…`).
+- nginx erlaubt höchstens **10 interne Redirects** je Anfrage, danach `500` („internal redirection cycle“).
+  Deshalb `hop` in der URI (8.3).
+- poker-msg nicht erreichbar → `error_page 502 504 = @mcp_wait_failed` landet wieder in PHP (geprüft).
+- Das **error.log** nennt bei Upstream-Fehlern die interne URI (`upstream: http://127.0.0.1:8445/_mcp_wait/…`);
+  das **access.log** zeigt nur die Original-Zeile `POST /mcp`. Darum steht in der URI nichts Geheimes (8.3), und die
+  internen Locations behalten das normale Access-Log: `access_log off` dort würde die ganze `/mcp`-Anfrage aus dem
+  Log nehmen (nginx loggt mit der Konfiguration der letzten Location).
 
-Grundsatz: **PHP entscheidet, poker-msg führt aus.** poker-msg erkennt `wait_for_change` nicht am JSON-Body, sondern an
-der Antwort von PHP auf die (ohnehin nötige) erste Weiterleitung. So gibt es nur einen JSON-Parser (PHP), und das
-Prüfen von Sitz bzw. Schlüssel, Team und `since` passiert dort, wo es auch für alle anderen Tools passiert.
+### 8.3 Internes Protokoll
 
-**Steuer-Header** (`X-Poker-*`): poker-msg **entfernt** alle eingehenden `X-Poker-*`-Header des Clients, bevor es
-weiterleitet, und alle ausgehenden `X-Poker-*`-Header von PHP, bevor es antwortet.
+**Warte-URI** (PHP → nginx → poker-msg): `/_mcp_wait/<team-hash>/<checked>/<deadline>/<hop>`
 
-| Richtung | Header | Bedeutung |
-|---|---|---|
-| PHP → poker-msg | `X-Poker-Wait: <team_id>; timeout=<s>` (Status 202, leerer Body) | „Nicht antworten, auf das Team warten.“ `team_id` wie bei UDP (`parseTeamId()`), `timeout` 1–25 (Restzeit) |
-| poker-msg → PHP | `X-Poker-Phase: pull` / `timeout` / `busy` | Grund der erneuten Weiterleitung desselben Bodys |
+| Teil | Inhalt |
+|---|---|
+| `team-hash` | erste 32 Hex-Zeichen von `sha256(team_id)` – die Team-ID selbst steht nicht in der URI (error.log) |
+| `checked` | Zeitpunkt (ms), zu dem PHP die Sicht berechnet hat |
+| `deadline` | Ende des Wartens (Unix-Sekunden), aus `timeout` des Aufrufs, höchstens 25 s nach dem ersten Aufruf |
+| `hop` | 1, 2, 3 – Zahl der Warterunden in dieser Anfrage |
 
-Eine 202-Antwort **ohne** `X-Poker-Wait` (z. B. auf `notifications/initialized`) ist eine normale Antwort und geht
-unverändert an den Client.
+poker-msg prüft nur das Format (`^[0-9a-f]{32}/\d{13}/\d{10}/[1-3]$`), nichts sonst – kein Secret, kein JSON.
 
-**Ablauf `wait_for_change`:**
+**Ablauf:**
 
-1. poker-msg leitet wie jede Anfrage weiter (ohne `X-Poker-Phase`) und merkt sich die Startzeit der Weiterleitung
-   (das Team kennt es noch nicht).
-2. PHP prüft Identität (Abschnitt 2), berechnet die Sicht (`getDao()` + Projektion, setzt die Anwesenheit) und
-   vergleicht mit `since`. Fehler oder geändert → normale JSON-RPC-Antwort (200), poker-msg reicht sie durch. Sonst
-   `202` + `X-Poker-Wait: <team_id>; timeout=<timeout aus den Argumenten>`.
-3. poker-msg legt einen **Wartenden** an: (Team, offene Client-Anfrage, ursprünglicher Body und Header, Frist). Er
-   kostet einen Socket und wenige KB, keinen Prozess – wie ein Browser-WebSocket.
-   **Rennen:** poker-msg merkt sich je Team die Zeit des letzten verteilten Pulls (wie heute für das Zusammenfassen
-   in `onNotify()`). Liegt sie nach dem Start der Weiterleitung, geht es sofort wie bei einem Pull weiter (Schritt 4)
-   – sonst ginge eine Änderung verloren, die während der Prüfung in PHP geschrieben wurde.
-4. **Pull** für das Team (dieselbe Stelle wie `pullTeam()`, also nach dem 100-ms-Zusammenfassen, auch für Pulls aus
-   UDP): poker-msg leitet den ursprünglichen Body mit `X-Poker-Phase: pull` erneut weiter. PHP berechnet die Sicht neu:
-   geändert → Antwort (durchreichen, Wartender weg); unverändert (z. B. nur ein weiterer Tab desselben Spielers) →
-   wieder `202` + `X-Poker-Wait` mit der Restzeit, poker-msg wartet weiter. Während eine Weiterleitung läuft, merkt
-   sich der Wartende einen weiteren Pull und leitet danach genau einmal erneut weiter (nie zwei gleichzeitig).
-5. **Frist** (≤ 25 s): Weiterleitung mit `X-Poker-Phase: timeout`; PHP antwortet immer endgültig (`changed` true oder
-   false, deckt auch „jemand ist away“ ab, das keinen Pull auslöst) und setzt die Anwesenheit wieder.
-6. **Client bricht ab:** `react/http` storniert das Promise der Antwort, wenn die Verbindung schließt → Wartender weg,
-   keine weitere Weiterleitung.
-7. **Obergrenze:** höchstens `POKER_MSG_MCP_MAX_WAIT` Wartende (Default **2000**, technischer Schutz aus B-151, kein
-   Nutzungslimit). Ist sie erreicht, leitet poker-msg statt zu warten sofort mit `X-Poker-Phase: busy` weiter; PHP
-   antwortet `{busy: true, retry_after: 5}`. Kein Limit je IP: MCP-Aufrufe aus claude.ai, ChatGPT usw. kommen von
-   wenigen Anbieter-IPs, ein IP-Limit träfe viele Nutzer gleichzeitig.
+1. `POST /mcp` mit `tools/call wait_for_change` → PHP prüft Identität (Abschnitt 2), berechnet die Sicht (setzt die
+   Anwesenheit), vergleicht mit `since`. Fehler oder geändert → normale Antwort. Sonst nur
+   `X-Accel-Redirect: /_mcp_wait/…` mit `hop=1` (leerer Body).
+2. poker-msg legt einen **Wartenden** an (Team-Hash, Verbindung, Frist). Kosten: ein Socket in poker-msg, zwei
+   Verbindungen in nginx, kein Prozess – wie ein Browser-WebSocket.
+   **Rennen:** poker-msg merkt sich je Team-Hash die Zeit des letzten verteilten Pulls. Liegt sie nach `checked`,
+   antwortet es sofort mit `r=pull` – sonst ginge eine Änderung verloren, die während der Prüfung in PHP geschrieben
+   wurde.
+3. **Pull** für das Team (dieselbe Stelle wie `pullTeam()`, nach dem 100-ms-Zusammenfassen; poker-msg bildet dort
+   den Hash der Team-ID): alle Wartenden des Teams bekommen `200` mit
+   `X-Accel-Redirect: /_mcp_result/<deadline>/<hop>?r=pull` und leerem Body. **Frist** erreicht → `r=timeout`.
+   Obergrenze erreicht → sofort `r=busy`. Wichtig: Pulls für Teams ohne WebSocket-Abonnenten werden heute verworfen;
+   künftig zählen Wartende als Abonnenten.
+4. nginx ruft `/_mcp_result/…` (FastCGI, `internal`) auf. PHP liest den Original-Body, prüft die Identität **erneut**
+   (ein inzwischen gelöschter Sitz ergibt `not_a_member`) und rechnet die Sicht:
+   - geändert, `r=timeout` oder `hop=3` → endgültige Antwort (`changed` true/false);
+   - unverändert (z. B. Pull nur wegen eines anderen Tabs) und Zeit übrig → wieder `X-Accel-Redirect: /_mcp_wait/…`
+     mit `hop+1` und neuem `checked`;
+   - `r=busy` → `{busy: true, retry_after: 5}`.
+   Bei höchstens 3 Warterunden bleibt die Anfrage bei 7 internen Redirects, unter der nginx-Grenze von 10.
+5. **poker-msg nicht erreichbar** (`@mcp_wait_failed`, FastCGI-Parameter `POKER_MCP_PHASE=down`) → PHP antwortet
+   `{busy: true, retry_after: 5}`. Alle anderen Tools laufen ohne poker-msg weiter.
+6. **Client bricht ab:** nginx schließt die Verbindung zu poker-msg (`proxy_ignore_client_abort off`, Default) →
+   `onClose` entfernt den Wartenden.
 
-Jede erneute Weiterleitung ist eine vollständige, zustandslose MCP-Anfrage: PHP prüft Identität und Sitz jedes Mal neu
-(ein in der Zwischenzeit gelöschter Sitz ergibt `not_a_member`). Je Wartendem fallen also 2 + (Pulls des Teams) kurze
-PHP-Aufrufe an – so viele, wie ein Browser-Board für dieselben Pulls ohnehin macht.
+**Schutz:** `/_mcp_wait/` und `/_mcp_result/` sind `internal` (von außen `404`). Ein lokaler Prozess kann poker-msg
+auf 8445 direkt ansprechen, bekommt aber nur einen Header-Text zurück und erreicht `/_mcp_result/` nicht. Der
+Ergebnisschritt traut der URI nichts außer `r` und `hop`; Identität und Team kommen wie immer aus dem Body. Daher
+kein HMAC-Ticket und kein gemeinsames Secret nötig (Kais Vorschlag vereinfacht: alles Nötige steckt schon im
+erhaltenen Body).
 
-**Logs** in poker-msg: keine Bodies, keine Header, keine Team-IDs aus `/mcp`; nur Zähler (Anfragen, Wartende,
-`busy`, Fehler der Weiterleitung) im bestehenden Minutentakt.
-
-**Fehler der Weiterleitung** (interner nginx/FPM nicht erreichbar, Timeout 30 s): poker-msg antwortet `502` mit
-leerem Body; ein Wartender wird dabei entfernt.
-
-**Umgebungsvariablen** (poker-msg, neu):
+**poker-msg** bekommt einen kleinen HTTP-Endpunkt auf `127.0.0.1:8445` im selben Prozess. Ratchet bringt dafür alles
+mit (`Ratchet\Http\HttpServer` mit einer eigenen `HttpServerInterface`-Komponente auf einem zweiten Socket am
+selben Loop): **keine neue Composer-Abhängigkeit**, kein Body-Parser, keine Weiterleitung. Antwort immer
+`200`, `Content-Length: 0`, `Connection: close` plus `X-Accel-Redirect`. Logs: nur Zähler (Wartende, Pulls an
+Wartende, `busy`), keine URIs.
 
 | Variable | Default | Bedeutung |
 |---|---|---|
-| `POKER_MSG_HTTP_PORT` | `8445` | HTTP-Listener für `/mcp` (127.0.0.1), `0` = aus |
-| `POKER_MSG_MCP_UPSTREAM` | `http://127.0.0.1:8446/mcp-internal` | Ziel der Weiterleitung |
-| `POKER_MSG_MCP_MAX_WAIT` | `2000` | höchstens so viele gleichzeitig Wartende |
+| `POKER_MSG_HTTP_PORT` | `8445` | Warte-Endpunkt (127.0.0.1), `0` = aus |
+| `POKER_MSG_MCP_MAX_WAIT` | `2000` | höchstens so viele gleichzeitig Wartende (technischer Schutz aus B-151, kein Nutzungslimit) |
+
+Kein Limit je IP: MCP-Aufrufe aus claude.ai, ChatGPT usw. kommen von wenigen Anbieter-IPs, ein IP-Limit träfe viele
+Nutzer gleichzeitig.
 
 ### 8.4 nginx (Befehle bereitet Kai vor, Betreiber führt aus)
 
-Im bestehenden `server` (Live und Staging):
+Im bestehenden `server` (Live und Staging; gleicher Block in `tests/e2e/setup.sh`):
 
 ```nginx
 location = /mcp {
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/api/v1/index.php;
+    fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    client_max_body_size 64k;
+}
+
+# B-151: wait_for_change – PHP hands the open request to poker-msg via X-Accel-Redirect
+location ^~ /_mcp_wait/ {
+    internal;
     proxy_pass http://127.0.0.1:8445;
     proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header Connection "";
-    proxy_read_timeout 60s;
-    proxy_buffering off;
-    client_max_body_size 64k;
+    proxy_pass_request_body off;       # body and headers (Authorization!) stay away from poker-msg
+    proxy_pass_request_headers off;
+    proxy_set_header Content-Length "";
+    proxy_read_timeout 35s;
+    error_page 502 504 = @mcp_wait_failed;
+}
+
+location @mcp_wait_failed {
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/api/v1/index.php;
+    fastcgi_param POKER_MCP_PHASE down;
+    fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+}
+
+# B-151: poker-msg hands the request back to PHP for the result
+location ^~ /_mcp_result/ {
+    internal;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/api/v1/index.php;
+    fastcgi_pass unix:/run/php/php8.4-fpm.sock;
 }
 ```
 
-Neuer, nur lokaler `server` (Pfade je Server anpassen):
-
-```nginx
-server {
-    listen 127.0.0.1:8446;
-    root /home/ubuntu/poker/public_html;
-    client_max_body_size 64k;
-
-    location = /mcp-internal {
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root/api/v1/index.php;
-        fastcgi_param POKER_MCP_INTERNAL 1;
-        fastcgi_param POKER_CLIENT_IP $http_x_real_ip;
-        fastcgi_param POKER_PUBLIC_SCHEME $http_x_forwarded_proto;
-        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
-        fastcgi_read_timeout 30s;
-    }
-    location / { return 404; }
-}
-```
-
-`Host` reicht poker-msg unverändert durch, daher sieht PHP den öffentlichen Host (Einladungslinks, Origin-Prüfung).
-Vorher prüfen, dass 8445/8446 frei sind: `ss -ltnp | grep -E ':844[56]'`.
-
-**Verbindungen:** Ein Wartender belegt in nginx zwei Verbindungen (Client und zu poker-msg) und in poker-msg einen
-Socket; 2000 Wartende passen in `worker_connections 16384` × 2 und `ulimit -n 20000` neben den WebSockets.
+Port prüfen: `ss -ltnp | grep ':8445'`. **Verbindungen:** 2000 Wartende = 4000 nginx-Verbindungen, passt in
+`worker_connections 16384` × 2 neben den WebSockets; poker-msg `ulimit -n 20000`.
 
 **Messung zur Einordnung (Live, Andreas, 2026-11-26):** ein FPM-Worker im Schnitt 23 MB RSS. Für MCP nicht mehr
-maßgeblich, weil kein Worker mehr wartet.
+maßgeblich, weil kein Worker wartet.
 
 ### 8.5 Varianten
 
 | Variante | Bewertung |
 |---|---|
-| A: Long-Poll in PHP mit DB-Polling | Es fehlt eine Spalte, die **jede** Board-Änderung abdeckt; bis zu 25 Abfragen und ein FPM-Worker je Wartendem. Verworfen. |
-| B: FPM-Worker wartet per UDP-Watch auf poker-msg (frühere Empfehlung) | Keine DB-Last, aber ein schlafender FPM-Worker (~23 MB) je Wartendem, eigener Pool, harte Obergrenze ~50. Verworfen (Andreas, 2026-11-26). |
-| C: poker-msg hält die Anfrage, PHP rechnet – **Entscheidung 12** | Tausende Wartende zu Kosten eines WebSockets, FPM nur Millisekunden, nutzt das vorhandene Pull-Signal. Preis: `/mcp` hängt an poker-msg, zwei Repos im Gleichschritt. |
-| D: Abo-Ticket, Client verbindet sich direkt mit poker-msg | Geht nicht: ein MCP-Client öffnet keinen WebSocket. |
+| A: Long-Poll in PHP mit DB-Polling | Keine Spalte deckt **jede** Board-Änderung ab; bis zu 25 Abfragen und ein FPM-Worker je Wartendem. Verworfen. |
+| B: FPM-Worker wartet per UDP-Watch auf poker-msg (erste Fassung) | Keine DB-Last, aber ein schlafender FPM-Worker (~23 MB) je Wartendem, eigener Pool, Obergrenze ~50. Verworfen (Andreas, 2026-11-26). |
+| C: Durchreiche – nginx schickt **alle** `/mcp`-Anfragen an poker-msg, das jede an PHP weiterleitet und nur `wait_for_change` selbst hält | Funktioniert, aber: poker-msg braucht HTTP-Client und -Server (`react/http`, neue Abhängigkeit neben Ratchet 0.4), Header-Positivliste, Weitergabe von Host/IP/Schema, eigene Fehlerbehandlung und einen internen nginx-Server; **jeder** MCP-Aufruf hängt an poker-msg (aus = ganz MCP aus). Verworfen zugunsten von D. |
+| D: **X-Accel-Redirect** – PHP gibt nur Wartende an poker-msg ab – **Empfehlung** | Normale Tools laufen den gewohnten Weg nginx → FPM; poker-msg braucht nur einen kleinen Warte-Endpunkt ohne neue Abhängigkeit und ohne Daten; fällt poker-msg aus, antwortet nur `wait_for_change` mit `busy`. Preis: stützt sich auf nginx-Verhalten (Redirect von Upstreams, erhaltener Body, 10-Redirect-Grenze) – lokal geprüft, auf Staging (1.18) zu bestätigen. |
+| E: Abo-Ticket, Client verbindet sich direkt mit poker-msg | Geht nicht: ein MCP-Client öffnet keinen WebSocket. |
 
 ### 8.6 Reaktionen über denselben Weg
 
 Reaktionen laufen heute nur Browser → WebSocket → poker-msg; dort sitzen die Grenzen (1/s, 10/min je Verbindung;
-Tageskontingent 1 je Code, Werfer-mkey und UTC-Tag, B-139). Damit MCP-Würfe **dieselbe** Prüfung durchlaufen und
-`/mcp` ohnehin durch poker-msg läuft, nutzt `react` dasselbe Steuer-Muster statt eines UDP-Umwegs:
+Tageskontingent 1 je Code, Werfer-mkey und UTC-Tag, B-139). MCP-Würfe nutzen dasselbe Muster wie das Warten, ohne
+UDP-Umweg und ohne dass PHP auf poker-msg wartet:
 
-1. PHP prüft den Aufruf (Sitz, Empfänger per mkey oder Name, Code) und antwortet `202` +
-   `X-Poker-React: <team_id>:<from-mkey>:<to-mkey>:<code>`. `from-mkey` setzt PHP aus dem Actor (der Browser kann ihn
-   heute frei wählen – MCP ist hier strenger).
-2. poker-msg führt dieselben Prüfungen wie für WebSocket-Reaktionen aus (Format, Rate-Limit – hier je Team +
-   Werfer-mkey statt je Verbindung –, Tageskontingent unverändert je Werfer) und verteilt bei Erfolg an alle Boards
-   des Teams.
-3. poker-msg leitet den Body erneut mit `X-Poker-Phase: react-ok` / `react-rate` / `react-quota` und
-   `X-Poker-React-Used: <codes>` (heute schon geworfene Codes dieses Werfers) weiter; PHP baut daraus `{sent, reason,
-   left_today}`.
+1. PHP prüft den Aufruf (Sitz, Empfänger per mkey oder Name, Code) und antwortet nur
+   `X-Accel-Redirect: /_mcp_react/<team-hash>/<from-mkey>/<to-mkey>/<code>`. `from-mkey` setzt PHP aus dem Actor (der
+   Browser kann ihn heute frei wählen – MCP ist hier strenger).
+2. poker-msg (gleicher HTTP-Endpunkt, nginx-Location `^~ /_mcp_react/` wie `/_mcp_wait/`) prüft wie bei
+   WebSocket-Reaktionen (Format, Rate-Limit – hier je Team + Werfer-mkey –, Tageskontingent je Werfer), verteilt bei
+   Erfolg an alle Boards des Teams (Zuordnung Hash → abonnierte Team-ID) und antwortet
+   `X-Accel-Redirect: /_mcp_result/react?r=ok|rate|quota&used=<codes>` (heute schon geworfene Codes des Werfers).
+3. PHP baut daraus `{sent, reason, left_today}`.
 
 Mit Schlüssel teilen sich Browser und Agent das Kontingent (gleiche mkey), mit eigenem Sitz hat der Agent ein eigenes
 – wie ein zweiter Browser.
@@ -844,9 +846,10 @@ Mit Schlüssel teilen sich Browser und Agent das Kontingent (gleiche mkey), mit 
   Lücke heute: Reaktionen werden nur in poker-msg begrenzt (siehe 8.6), Observer-Karten seit B-152 im Server gesperrt.
 - **Missbrauch / Limits:** wie im Web, keine zusätzlichen. Nur: Obergrenze gleichzeitig Wartender in poker-msg (8.3),
   Body ≤ 64 KB (wie v1, in nginx).
-- **Interner Weg:** Der Server `127.0.0.1:8446` ist nur lokal erreichbar; PHP wertet `X-Poker-*`-Steuer-Header nur mit
-  `POKER_MCP_INTERNAL` aus, poker-msg entfernt sie aus jeder Client-Anfrage. Ein lokaler Prozess, der den internen
-  Weg direkt aufruft, kann nicht mehr als über `/mcp` (gleiche Prüfungen in PHP).
+- **Interner Weg:** `/_mcp_wait/`, `/_mcp_react/` und `/_mcp_result/` sind `internal`; die URIs enthalten weder UID
+  noch Schlüssel noch Team-ID (nur Team-Hash, Zeiten, mkeys), weil das error.log sie bei Upstream-Fehlern nennt.
+  Body und Header der Anfrage gehen nicht an poker-msg (`proxy_pass_request_body/headers off`). Der Ergebnisschritt
+  prüft die Identität aus dem Original-Body erneut (8.3).
 - **Origin/CORS:** keine CORS-Header, kein `OPTIONS`. Trägt die Anfrage einen `Origin`-Header (Browser), muss er
   unser eigener Host sein, sonst `403` (Schutz gegen Aufrufe aus fremden Webseiten und DNS-Rebinding, von der
   MCP-Spezifikation gefordert). `Content-Type: application/json` Pflicht (sonst 415, wie v1).
@@ -854,7 +857,7 @@ Mit Schlüssel teilen sich Browser und Agent das Kontingent (gleiche mkey), mit 
   bewusste Ausnahme von der v1-Regel „nie im Body“: MCP kennt nur Tool-Argumente, und ohne Schlüssel gibt es keinen
   festen Header je Sitz; nginx loggt keine Bodies. Im PHP-Log
   bei Fehlern nur Tool-Name, Aktion, Exception (wie v1 5.6), nie Argumente. `api_key`-Parameter mit
-  `#[\SensitiveParameter]`. poker-msg loggt für `/mcp` weder Bodies noch Header, nur Zähler.
+  `#[\SensitiveParameter]`. poker-msg loggt für Wartende und Würfe nur Zähler, keine URIs.
 - **Schlüssel im Chat:** akzeptiert (Entscheidung 3). Die Hilfeseite sagt ehrlich: „Your key is stored in the chat
   history of your AI provider. Delete it in the You menu when you no longer need it.“
 - **Datenschutz:** Namen und Texte der Mitspieler gehen an den KI-Anbieter der Person, die den Agenten nutzt →
@@ -862,28 +865,29 @@ Mit Schlüssel teilen sich Browser und Agent das Kontingent (gleiche mkey), mit 
 
 ## 10. Umsetzung in kleinen PRs
 
-Jeder PR einzeln deploybar; Reihenfolge wie B-151 „Mitspielen → Items und Runden → Rest“. **poker-msg und poker
-werden im Gleichschritt ausgerollt:** zuerst poker-msg (der neue Listener schadet nicht, solange nginx nichts an ihn
-schickt), danach poker und nginx.
+Jeder PR einzeln deploybar; Reihenfolge wie B-151 „Mitspielen → Items und Runden → Rest“. poker-msg-PRs gehen **vor**
+dem poker-PR live, der sie braucht.
 
 | PR | Repo | Inhalt | Server-Schritte | Nutzerwirkung |
 |---|---|---|---|---|
-| A | poker-msg | HTTP-Listener `127.0.0.1:8445`, Weiterleitung an `POKER_MSG_MCP_UPSTREAM` (Header-Positivliste, `X-Poker-*` entfernen), Steuer-Protokoll `X-Poker-Wait` mit Wartenden, Pull-Zeit je Team, Obergrenze `POKER_MSG_MCP_MAX_WAIT`, Zähler im Log. Abhängigkeit `react/http`. Tests in `tests/run-tests.php` mit einem kleinen Fake-Upstream (ReactPHP), README | `composer install`, supervisor-Env (nur falls Abweichung von den Defaults), poker-msg neu starten | keine |
-| B | poker | MCP-Hülle in PHP hinter poker-msg: `lib_mcp.php`, JSON-RPC, `initialize`/`tools/list`/`tools/call`, `instructions`, Origin-Prüfung, `POKER_MCP_INTERNAL`, Hilfeseite `GET /mcp`; Tools `create_team`, `join_team`, `get_board` (Kerne `core_member_join`, `board_get`). `tests/e2e/setup.sh`: poker-msg mit HTTP-Listener starten, nginx-Block `location = /mcp` → poker-msg und interner Server `/mcp-internal` wie in Produktion | nginx: `location = /mcp` und interner Server (8.4), `nginx -t`, reload | MCP nutzbar (lesen, beitreten) |
-| C | poker | `wait_for_change` in PHP (Version/Diff, 202 + `X-Poker-Wait`, Phasen `pull`/`timeout`/`busy`) | keine | Agent bleibt am Tisch |
+| A | poker | `lib_mcp.php`: JSON-RPC-Hülle, `initialize`/`tools/list`/`tools/call`, `instructions`, Origin-Prüfung, Hilfeseite `GET /mcp`; Tools `create_team`, `join_team`, `get_board` (Kerne `core_member_join`, `board_get`); `setup.sh`: `location = /mcp` | nginx `location = /mcp` | MCP nutzbar (lesen, beitreten) |
+| B | poker-msg | HTTP-Warte-Endpunkt `127.0.0.1:8445` (Ratchet `HttpServer`, keine neue Abhängigkeit), Wartende je Team-Hash, letzte Pull-Zeit je Team-Hash, Pulls auch an Teams nur mit Wartenden, Obergrenze, Zähler im Log; Tests in `tests/run-tests.php` (Wartender wacht bei UDP-`pull` auf, Frist, `busy`, Abbruch), README | poker-msg neu starten (`git pull`, kein `composer install` nötig) | keine |
+| C | poker | `wait_for_change` (Version/Diff, `X-Accel-Redirect`, `hop`, Phasen `pull`/`timeout`/`busy`/`down`); `setup.sh`: Locations `/_mcp_wait/`, `/_mcp_result/`, `@mcp_wait_failed` | nginx-Locations (8.4); vorher auf Staging per `curl` bestätigen, dass nginx 1.18 den Body nach dem Redirect erhält | Agent bleibt am Tisch |
 | D | poker | `play_card`, `round`, `me` (Kerne aus `setc.php`, `newround.php`, `delete.php`, `name.php`, `delete_user.php`; alte Dateien als Wrapper) | keine | Mitspielen komplett |
 | E | poker | `items` inkl. `next`, `move`, `set_result` (Kerne aus `topic_item_*.php`), `board_settings` | keine | Items und Einstellungen |
-| F1 | poker-msg | Steuer-Header `X-Poker-React`, Phasen `react-*` (8.6) | poker-msg neu starten | keine |
-| F2 | poker | `card_sets` inkl. eigene Sets (Array-Parameter), `timer`, `react`, `feedback` | keine | volle Parität |
+| F1 | poker-msg | `/_mcp_react/` (8.6) | poker-msg neu starten | keine |
+| F2 | poker | `card_sets` inkl. eigene Sets (Array-Parameter), `timer`, `react`, `feedback`; Location `/_mcp_react/` | nginx-Location | volle Parität |
 | G | poker | Hinweise im Einladen-Dialog und You-Menü (Fred/Delia), Datenschutzerklärung | keine | sichtbar für alle |
 
-- **E2E:** `tests/e2e/setup.sh` startet poker-msg aus `release` (CI wie lokal). Deshalb muss PR A in poker-msg auf
-  `release` gemergt sein, bevor PR B in poker getestet werden kann (ebenso F1 vor F2). Lokal mit einem
-  poker-msg-Branch: `POKER_MSG_DIR`/`POKER_MSG_REF`. Die Ports 8445/8446 teilen sich alle lokalen Instanzen wie
-  heute 8443/8444 (weiterhin nur eine E2E-Instanz gleichzeitig).
+- **E2E:** `tests/e2e/setup.sh` startet poker-msg aus `release` (CI wie lokal) und bekommt dieselben nginx-Locations
+  wie die Server. Deshalb muss B in poker-msg auf `release` gemergt sein, bevor C getestet werden kann (ebenso F1 vor
+  F2). Lokal mit einem poker-msg-Branch: `POKER_MSG_DIR`/`POKER_MSG_REF`. Port 8445 teilen sich alle lokalen
+  Instanzen wie heute 8443/8444 (weiterhin nur eine E2E-Instanz gleichzeitig).
 - PR A–F ohne Hinweis in der Oberfläche (nur wer die URL kennt), G macht es bekannt. E2E je PR: JSON-RPC-Aufrufe gegen
   `/mcp` mit Playwright `request` (kein KI-Client nötig), dazu ein Board im Browser, das die Wirkung zeigt; für C
-  zusätzlich: Wartender wacht auf, wenn im Browser eine Karte gelegt wird.
+  zusätzlich: Wartender wacht auf, wenn im Browser eine Karte gelegt wird; poker-msg gestoppt → `busy`.
+- **Folge:** poker-msg aus = `wait_for_change` und `react` antworten `busy` bzw. Fehler, alle anderen Tools laufen
+  weiter (wie heute: Board bedienbar, nur die Aktualisierung fehlt).
 
 ## 11. Offene Fragen an Andreas
 
@@ -892,7 +896,11 @@ Entschieden (Andreas, 2026-11-26) und oben eingearbeitet:
 1. ~~„Delete my data“ mit Schlüssel~~ – **nicht erlaubt**, nur Verlassen + Schlüssel löschen (Entscheidung 8, Tool `me`).
 2. ~~URL~~ – **`/mcp`**, MCP wird nicht versioniert (Entscheidung 9).
 3. ~~Aufdecken~~ – **kein Knopf, automatisches Aufdecken bleibt** (Entscheidung 10).
-4. ~~Ressourcen / FPM-Pool~~ – **`/mcp` über poker-msg**, kein eigener Pool, kein Swap nötig (Entscheidung 12).
+4. ~~Ressourcen / FPM-Pool~~ – **kein FPM-Worker wartet, poker-msg hält die Wartenden** (Entscheidung 12).
 
-Keine weiteren offenen Fragen. In PR A zu prüfen (technisch, keine Entscheidung): `react/http` neben Ratchet 0.4
-installierbar, Ports 8445/8446 auf beiden Servern frei.
+Offen:
+
+5. **X-Accel-Redirect statt Durchreiche** (Entscheidung 12, Abwägung 8.5): Kai und Ben empfehlen, `/mcp` wie gewohnt an
+   PHP zu schicken und nur Wartende per `X-Accel-Redirect` an poker-msg abzugeben, statt alle MCP-Aufrufe durch
+   poker-msg zu leiten. Ziel deiner Entscheidung (kein wartender FPM-Worker, tausende Wartende) bleibt gleich;
+   poker-msg wird kleiner, und MCP fällt bei einem poker-msg-Ausfall nicht ganz aus. Einverstanden?
