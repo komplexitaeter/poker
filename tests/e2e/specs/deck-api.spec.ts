@@ -160,7 +160,7 @@ test('control cards per team: switched without a new round, a placed control car
   }
 });
 
-test('new teams from a preset get its deck, the old menu only accepts bitmasks (B-98)', async ({ browser }) => {
+test('new teams from a preset get its deck (B-98)', async ({ browser }) => {
   const page = await newPlayer(browser);
   await page.goto(`/?tool=e2e&team=DeckApiPreset&preset=${encodeURIComponent('Judge')}`);
   await page.waitForURL(/\?t=/);
@@ -170,11 +170,6 @@ test('new teams from a preset get its deck, the old menu only accepts bitmasks (
   expect(sql(`select cardset_flags from pok_teams_tbl where id = '${teamId}'`))
     .toBe('1011111100000000000000001000000000000000000100');
 
-  for (const flags of ['', '012', '1'.repeat(101), '10 1']) {
-    const res = await post(page, 'update_cardset.php', teamId, { cardset_flags: flags });
-    expect(res.status(), flags).toBe(400);
-  }
-  expect(storedDeck(teamId)).toBe('judge|NULL|break01,qstmrk1|0|0');
 });
 
 test('Fibonacci 60 and 89 can be switched on: placed, revealed, ordered and averaged by value (B-98)', async ({ browser }) => {

@@ -3,13 +3,13 @@ require '../config.php';
 require './lib.php';
 require_post();
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 $color_mode = filter_input(INPUT_GET, "color_mode", FILTER_SANITIZE_FULL_SPECIAL_CHARS	);
 // B-57: hide_teaser = 1 means "the user has opened the feedback panel once" (red dot on the feedback menu gone)
 $hide_teaser = filter_input(INPUT_GET, "hide_teaser", FILTER_SANITIZE_NUMBER_INT );
 
-// B-88: no valid user id, nothing to store (same minimum length as dao.php)
-if (strlen($id) < 10) exit;
+// B-88: no valid user id, nothing to store (B-152: get_uid() is '' below 10 characters, as in dao.php)
+if ($id === '') exit;
 
 $link = db_init();
 

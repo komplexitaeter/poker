@@ -3,7 +3,7 @@ require '../config.php';
 require './lib.php';
 require_post();
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 // no feedback without a valid id (B-88); the client always sends its SID
 if ($id === '') exit;
 $stars = (int)filter_input(INPUT_GET, "stars", FILTER_SANITIZE_NUMBER_INT );

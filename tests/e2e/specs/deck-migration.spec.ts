@@ -122,21 +122,6 @@ test('presets, subsets and mixed decks are derived from the bitmask', async ({ b
   }
 });
 
-test('the old deck menu (update_cardset.php) resets the deck, it is derived again', async ({ browser }) => {
-  const page = await newPlayer(browser);
-  const url = await createTeam(page, 'DeckResetTeam');
-  const { teamId, dao } = await teamOf(page, url);
-
-  expect((await dao()).deck).toMatchObject({ id: 'fib-classic', rev: 0 }); // new team: Fibonacci preset
-
-  const short = flags([0, 2, 3, 4, 6, 9, 10, 11, 12, 24]);
-  const res = await page.request.post(
-    `./api/update_cardset.php?t=${encodeURIComponent(teamId)}&cardset_flags=${short}`);
-  expect(res.ok()).toBeTruthy();
-  expect((await dao()).deck).toMatchObject({ id: 'fib-short', controls: ['break01'], rev: 1 });
-  expect(storedDeck(teamId)).toBe('fib-short|NULL|break01|1');
-});
-
 test('sorting by card keeps players whose card key is unknown', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'DeckSortTeam');

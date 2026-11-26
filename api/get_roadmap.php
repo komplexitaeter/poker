@@ -4,7 +4,7 @@ require '../config.php';
 require './lib.php';
 set_header('json');
 
-$id = get_id_param("id");
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
 
 $link = db_init();
 $items = get_roadmap_items($link, $id);

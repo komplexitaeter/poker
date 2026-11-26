@@ -20,7 +20,7 @@ require './lib.php';
 require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL) ?? '', 0, 80);
-$player_id = get_id_param('id'); // B-98 V6: who changes the card set (activate), optional
+$player_id = get_uid(); // B-152 (UID); B-98 V6: who changes the card set (activate), optional
 
 $link = db_init();
 require_team($t, $link);

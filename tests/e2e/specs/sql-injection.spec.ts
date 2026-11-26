@@ -75,7 +75,7 @@ test('a player name with quotes round-trips through getDao unchanged', async ({ 
 
 // B-88: player/user ids (SID) are 16 characters A-Z0-9 at most. A manipulated id (emoji, cut multibyte sequence,
 // HTML special characters, too long) must behave like an unknown id: no 500, no PHP fatal or warning (CI checks
-// the PHP log), no data change for the real player. Same for the card key, event code and promo team id.
+// the PHP log), no data change for the real player. Same for the card key and event code.
 const BAD_IDS = [
   '😀😀😀😀',                 // 16 bytes of 4-byte characters
   'AB😀CDEFGHIJ😀',           // the old byte cut at 16 split the last emoji (invalid UTF-8)
@@ -111,8 +111,6 @@ test('a manipulated player id behaves like an unknown id and never returns a 500
       `./api/measure_event.php?id=${aliceSid}&event_code=${id}&display_type=${id}`,
       `./api/feedback.php?id=${id}&stars=5&type=OTHER&text=b88`,
       `./api/vote_roadmap.php?id=${id}&item=1&reaction=UP`,
-      `./api/get_promo.php?player_id=${id}&team_id=${t}&display_type=e2e`,
-      `./api/get_promo.php?player_id=${aliceSid}&team_id=${id}&display_type=e2e`,
     ];
     for (const w of writes) {
       const res = await alice.request.post(w);

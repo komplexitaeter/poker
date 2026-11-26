@@ -436,11 +436,6 @@ test('old mixed decks become a custom set "Our deck" (idempotent, parallel loads
   expect(sql(`select concat_ws('|', deck_id, deck_cards, deck_controls) from pok_teams_tbl where id = '${t}'`))
     .toBe(`${set.deck_id}|${dao.deck.cards.join(',')}|qstmrk1`);
 
-  // the old deck menu chooses the same cards again: the set is reused
-  expect((await page.request.post(`/api/update_cardset.php?t=${t}&cardset_flags=${flags([2, 3, 4, 18, 43])}`)).ok()).toBeTruthy();
-  expect((await a.dao(anna)).deck.id).toBe(set.deck_id);
-  expect(setCount()).toBe('1');
-
   // Fibonacci 1 2 3 5 8 13 + Numbers 4 6 7 + ☕: the cards in the old order (sort_order)
   reset(flags([2, 3, 4, 5, 6, 7, 8, 9, 10, 24]));
   const dao2 = await a.dao(anna);
@@ -542,10 +537,8 @@ test('B-98 V6: dao names who changed the set group last (deck.changed_by)', asyn
   expect((await page.request.post(`/api/custom_set_delete.php?${new URLSearchParams({ t, set: String(set.set_id), id: alice })}`)).ok())
     .toBeTruthy();
   expect(await changedBy()).toBe('Alice');
-  // the old deck menu: T-shirt by Bob; without id the writer is unknown
-  const tshirt = Array<string>(46).fill('0');
-  [25, 26, 27, 28, 29, 30, 31].forEach(i => tshirt[i] = '1');
-  expect((await page.request.post(`/api/update_cardset.php?t=${t}&id=${bob}&cardset_flags=${tshirt.join('')}`)).ok()).toBeTruthy();
+  // T-shirt by Bob; without id the writer is unknown
+  expect((await a.deck('tshirt', `&id=${bob}`)).ok()).toBeTruthy();
   expect(await changedBy()).toBe('Bob');
   expect((await a.deck('fib-classic')).ok()).toBeTruthy();
   expect(await changedBy()).toBeNull();

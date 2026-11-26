@@ -5,9 +5,9 @@ require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
 
-$id = get_id_param("id");
-// a missing or manipulated id must not create a player with an empty id (B-88), SIDs have 16 characters
-if (strlen($id) < 10) exit;
+$id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
+// a missing or manipulated id must not create a player with an empty id (B-88); get_uid() is '' below 10 characters
+if ($id === '') exit;
 $name = get_text_param("name", 15);
 $type = get_text_param("type", 10);
 
@@ -65,6 +65,12 @@ if ($is_in_db) {
     }
 }
 else {
+    // B-152: a new person needs a name (an empty name only removes an existing one from the board, see above)
+    if (strlen($name) == 0) {
+        $link->close();
+        http_response_code(400);
+        exit;
+    }
 
     $sql = $link->prepare("SELECT if (count(1) = sum(if(p.card_key is not null,1,0)), 1, 0) all_players_ready
                                   FROM pok_players_tbl p

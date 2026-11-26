@@ -24,7 +24,6 @@ let gJsonBefore = null;
 // a mouse or a trackpad keeps the deck row with the "<" / ">" bars (B-69)
 const gTouchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 let gUserName = null;
-let gPromoInitiated = false;
 
 if (sid === null) {
     let uid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).toUpperCase();
@@ -972,9 +971,6 @@ function updateDao(isOnLoad, isRetry = false) {
             gLastJson = myJson;
             updateDom(myJson, setup, timerStateFresh(timerWrite));
             gJsonBefore = myJson;
-
-            // Promo teaser ("THE AGILE GAME") switched off for Rollout 1 (Andreas, 2026-10-28).
-            // getPromo() and the markup stay, to switch it on again: call getPromo() here on load.
 
         })
         // not retried: the same state would fail again. B-34: a failed set-up leaves the page hidden; the next
@@ -3270,78 +3266,6 @@ function deleteUser() {
     });
 }
 
-
-function getBrowserLanguage() {
-    return (navigator.languages && navigator.languages[0]) || navigator.language || navigator.userLanguage;
-}
-
-
-function getPromo() {
-    if (getBrowserLanguage().startsWith('de') && !gPromoInitiated) {
-        fetch('api/get_promo.php?player_id=' + sid + '&team_id=' + t + '&display_type=' + getBrowserWidth(), { method: 'POST' })
-            .then(response => response.json())
-            .then(promoData => {
-                initPromo(
-                    promoData.promo_id,
-                    promoData.playout_delay_sec,
-                    promoData.promo_headline,
-                    promoData.promo_img_url,
-                    promoData.promo_link_url,
-                    promoData.promo_cta
-                );
-                gPromoInitiated = true;
-            });
-    }
-}
-
-
-function initPromo(promoId, playoutDelaySec, promoHeadline, promoImgUrl, promoLinkUrl, promoCTA) {
-    const url = "api/update_promo.php?id="+promoId+"&action=";
-
-    const promoTab = document.getElementById('promo-tab');
-    const promoQuestionSpan = document.getElementById('promo-question');
-    const promoClose = promoTab.querySelector('.promo-close');
-    const promoImage = promoTab.querySelector('.promo-image');
-    const promoLink = promoTab.querySelector('.promo-link');
-
-    promoQuestionSpan.textContent = promoHeadline;
-    promoImage.src = promoImgUrl;
-    promoLink.textContent = promoCTA;
-
-
-    setTimeout(function () {
-        promoTab.classList.remove('promo-hidden');
-        fetch(url+"played_out", { method: 'POST' }).then();
-    }, playoutDelaySec * 1000);
-
-    promoQuestionSpan.addEventListener('mouseover', function () {
-        promoTab.classList.add('promo-expanded');
-        fetch(url+"expanded", { method: 'POST' }).then();
-    });
-
-    promoTab.addEventListener('mouseleave', function () {
-        promoTab.classList.remove('promo-expanded');
-    });
-
-    promoClose.addEventListener('click', function (e) {
-        e.stopPropagation();
-        promoTab.style.display = 'none';
-        fetch(url+"hided", { method: 'POST' }).then();
-    });
-
-    promoImage.addEventListener('click', function (e) {
-        e.stopPropagation();
-        promoTab.style.display = 'none';
-        window.open(promoLinkUrl, '_blank');
-        fetch(url+"converted_img", { method: 'POST' }).then();
-    });
-    promoLink.addEventListener('click', function (e) {
-        e.stopPropagation();
-        promoTab.style.display = 'none';
-        window.open(promoLinkUrl, '_blank');
-        fetch(url+"converted_a", { method: 'POST' }).then();
-    });
-}
 
 /* B-34: started while the page is parsed (script.js is deferred), not on window load; board only (#cbox) */
 const gOnBoard = document.getElementById('cbox') !== null;
