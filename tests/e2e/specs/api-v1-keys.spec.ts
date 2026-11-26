@@ -139,3 +139,28 @@ test('a key stops working when its person is gone; delete_user.php deletes the k
   expect(mysql(`select count(1) from pok_api_keys_tbl where user_id = '${anna.uid}'`)).toBe('0');
   expect((await teamGet(request, jira.headers)).status()).toBe(200);
 });
+
+test('a key call counts as presence: last_callback_time of the API person moves (concept 5.4)', async ({ request }) => {
+  const anna = await newV1Member(request, 'V1 Keys Presence', 'Anna', 'player');
+  const jira = await v1Join(request, anna.t, 'Jira', 'observer');
+  const age = () => Number(mysql(`select timestampdiff(second, last_callback_time, current_timestamp)
+                                    from pok_players_tbl where team_id = '${anna.t}' and name = 'Jira'`));
+  // as if Jira had been quiet for three months (the clean-up of start_new_round() deletes after two)
+  mysql(`update pok_players_tbl set last_callback_time = current_timestamp - interval 90 day
+          where team_id = '${anna.t}' and name = 'Jira'`);
+  expect(age()).toBeGreaterThan(80 * 86400);
+  expect((await teamGet(request, jira.headers)).status()).toBe(200);
+  expect(age()).toBeLessThan(60);
+  // a refused request (unknown key) touches nothing
+  mysql(`update pok_players_tbl set last_callback_time = current_timestamp - interval 90 day
+          where team_id = '${anna.t}' and name = 'Jira'`);
+  await expectInvalidKey(request, `pok_${'A'.repeat(32)}`);
+  expect(age()).toBeGreaterThan(80 * 86400);
+
+  // quiet: not in the observer list of the board state; right after a call: present
+  const observers = async () => JSON.stringify((await (await request.get(`/api/dao.php?t=${encodeURIComponent(anna.t)}`,
+    { headers: anna.headers })).json()).observers);
+  expect(await observers()).not.toContain('Jira');
+  expect((await teamGet(request, jira.headers)).status()).toBe(200);
+  expect(await observers()).toContain('Jira');
+});
