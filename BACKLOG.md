@@ -468,6 +468,11 @@ Refinement (Andreas, 2026-11-26):
   die Doku-Beispiele aus.
 Bestehende Items ohne Schlüssel bekommen einmalig einen nach derselben Heuristik (Andreas; wenige Items).
 Offen: Fehlercodes; wie Doku/Spec aus dem Code entstehen (kein Auseinanderlaufen).
+Umsetzung PR 2 (Ben, 2026-11-26, Branch `feature/B-150-pr2-keys`): Tabelle `pok_api_keys_tbl` (Block „B-150 keys“ in
+`db_schema_pok_inc.sql`, vor dem Deploy), `api/lib_api_keys.php`, `api/lib_core_keys.php`, Bearer-Auth im Router,
+`team_create`, `team_join`, `team_note_set` (auch hinter `update_topic.php`), `key_create` (nur Board), `key_list`,
+`key_delete`, `key_delete_current`; `delete_user.php` löscht Schlüssel über alle Teams. Offen: API-Personen ohne Board
+werden nach 2 Monaten von der Aufräumregel in `start_new_round()` gelöscht (samt Wirkung ihrer Schlüssel).
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig

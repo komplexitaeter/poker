@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require './lib_api_keys.php';
 require_post();
 
 $id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
@@ -39,6 +40,9 @@ $sql = $link->prepare("DELETE FROM pok_roadmap_votes_tbl WHERE user_id=?");
 $sql->bind_param('s', $id);
 $sql->execute();
 $sql->close();
+
+// B-150: the API keys of the user over all teams (without the player rows they would not count anyway)
+api_keys_delete_user($link, $id);
 
 $sql = $link->prepare("DELETE FROM pok_players_tbl WHERE id=?");
 $sql->bind_param('s', $id);

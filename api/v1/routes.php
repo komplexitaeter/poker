@@ -18,7 +18,9 @@
  *                  (array = JSON body with the first 2xx status of responses, null = 204)
  *   responses      status => [description, schema (name in '$schemas', 'Name[]' = list), example]; first 2xx = normal case
  *   errors         error codes of the operation itself (the router adds the general ones, see v1_error_codes())
- *   example        [params => values, as => name for later placeholders {{as.path}}] - required for public routes
+ *   example        [params => values, as => name for later placeholders {{as.path}}, key => name of a remembered answer
+ *                  whose api_key the example call uses (default: the first answer with an api_key)] - required for
+ *                  public routes
  * Routes with a fixed segment come before routes with a placeholder at the same place: the first match wins.
  *
  * '$schemas': response schemas (OpenAPI 3.0 schema objects). A string as a property means a reference to another
@@ -26,6 +28,76 @@
  */
 
 return [
+    'team_create' => [
+        'method' => 'POST',
+        'path' => '/teams',
+        'tag' => 'Team',
+        'summary' => 'Create a team and get an API key',
+        'description' => 'Creates a new team (board) with the default card set. You join it as a new person with the '
+            . 'given name and role and get an API key that acts as this person in this team. The key is shown only in '
+            . 'this answer. Opening the board link in a browser makes you another person there (the browser has its '
+            . 'own identity).',
+        'auth' => 'none',
+        'params' => [
+            'name' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                       'max_length' => 80, 'description' => 'Name of the team.', 'example' => 'Dolphins'],
+            'member_name' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                              'max_length' => 15, 'description' => 'Your first name or nickname shown at the table.',
+                              'example' => 'Anna'],
+            'member_role' => ['in' => 'body', 'type' => 'string', 'required' => true, 'enum' => ['player', 'observer'],
+                              'description' => 'player = has a seat and a card, observer = watches.', 'example' => 'player'],
+            'key_name' => ['in' => 'body', 'type' => 'string', 'text' => true, 'min_length' => 1, 'max_length' => 40,
+                           'default' => 'API', 'description' => 'Name of the API key, shown in GET /keys.',
+                           'example' => 'Script'],
+        ],
+        'handler' => 'v1_team_create',
+        'responses' => [
+            201 => ['description' => 'Team created', 'schema' => 'JoinResult',
+                    'example' => ['api_key' => 'pok_7QW3KX2M5ZB4NN6TJRA7Q2LH4WEVXD3C',
+                                  'team' => ['id' => '<TEAM_ID>', 'name' => 'Dolphins', 'url' => '/?t=<TEAM_ID>', 'note' => ''],
+                                  'member' => ['name' => 'Anna', 'role' => 'player']]],
+        ],
+        'errors' => [],
+        'example' => ['params' => ['name' => 'Dolphins', 'member_name' => 'Anna', 'member_role' => 'player',
+                                   'key_name' => 'Script'], 'as' => 'team'],
+    ],
+
+    'team_join' => [
+        'method' => 'POST',
+        'path' => '/teams/{team_id}/members',
+        'tag' => 'Team',
+        'summary' => 'Join a team and get an API key',
+        'description' => 'Adds a new person to the team and returns an API key that acts as this person in this team. '
+            . 'Every call adds another person: join once and keep the key. The key is shown only in this answer. '
+            . 'A player without a card blocks revealing: integrations that do not vote should join as observer. '
+            . 'Do not call this from a tool that logs answers (e.g. Jira Automation): create the key on the board instead.',
+        'auth' => 'none',
+        'params' => [
+            'team_id' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 80,
+                          'pattern' => '^[A-Za-z0-9_-]+$', 'description' => 'Team id from the board link (?t=...).',
+                          'example' => '{{team.team.id}}'],
+            'name' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                       'max_length' => 15, 'description' => 'First name or nickname shown at the table.',
+                       'example' => 'Jira'],
+            'role' => ['in' => 'body', 'type' => 'string', 'required' => true, 'enum' => ['player', 'observer'],
+                       'description' => 'player = has a seat and a card, observer = watches.', 'example' => 'observer'],
+            'key_name' => ['in' => 'body', 'type' => 'string', 'text' => true, 'min_length' => 1, 'max_length' => 40,
+                           'default' => 'API', 'description' => 'Name of the API key, shown in GET /keys.',
+                           'example' => 'Jira'],
+        ],
+        'handler' => 'v1_team_join',
+        'responses' => [
+            201 => ['description' => 'Joined', 'schema' => 'JoinResult',
+                    'example' => ['api_key' => 'pok_7QW3KX2M5ZB4NN6TJRA7Q2LH4WEVXD3C',
+                                  'team' => ['id' => '<TEAM_ID>', 'name' => 'Dolphins', 'url' => '/?t=<TEAM_ID>',
+                                             'note' => ''],
+                                  'member' => ['name' => 'Jira', 'role' => 'observer']]],
+        ],
+        'errors' => ['team_not_found'],
+        'example' => ['params' => ['team_id' => '{{team.team.id}}', 'name' => 'Jira', 'role' => 'observer',
+                                   'key_name' => 'Jira'], 'as' => 'join'],
+    ],
+
     'team_get' => [
         'method' => 'GET',
         'path' => '/team',
@@ -45,6 +117,103 @@ return [
         ],
         'errors' => [],
         'example' => ['params' => [], 'as' => 'team_info'],
+    ],
+
+    'team_note_set' => [
+        'method' => 'PUT',
+        'path' => '/team/note',
+        'tag' => 'Team',
+        'summary' => 'Set the team note',
+        'description' => 'Sets the note of your team (markdown, shown on the board above the items). "" empties it. '
+            . 'Open boards update at once.',
+        'auth' => 'member',
+        'params' => [
+            'note' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'max_length' => 2000,
+                       'description' => 'The note, markdown; "" removes it.', 'example' => 'Sprint 42 refinement'],
+        ],
+        'handler' => 'v1_team_note_set',
+        'responses' => [
+            200 => ['description' => 'Note set', 'schema' => 'Note', 'example' => ['note' => 'Sprint 42 refinement']],
+        ],
+        'errors' => [],
+        'example' => ['params' => ['note' => 'Sprint 42 refinement']],
+    ],
+
+    'key_create' => [
+        'method' => 'POST',
+        'path' => '/keys',
+        'tag' => 'Keys',
+        'summary' => 'Create an API key (board only)',
+        'description' => 'Creates an API key that acts as you in this team. Only from the board (You menu), never with '
+            . 'an API key: a leaked key cannot make more keys. The key is shown only in this answer.',
+        'auth' => 'browser',
+        'public' => false,
+        'params' => [
+            'name' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                       'max_length' => 40, 'description' => 'Name of the key, e.g. Jira.', 'example' => 'Jira'],
+        ],
+        'handler' => 'v1_key_create',
+        'responses' => [
+            201 => ['description' => 'Key created', 'schema' => 'NewApiKey'],
+        ],
+        'errors' => ['limit_reached'],
+    ],
+
+    'key_list' => [
+        'method' => 'GET',
+        'path' => '/keys',
+        'tag' => 'Keys',
+        'summary' => 'List your API keys',
+        'description' => 'Your own API keys in this team (never those of other people), newest first. The key itself '
+            . 'is never shown again, only its last 4 characters (hint). current marks the key of this request.',
+        'auth' => 'member',
+        'params' => [],
+        'handler' => 'core_key_list',
+        'responses' => [
+            200 => ['description' => 'Your keys', 'schema' => 'ApiKeyList',
+                    'example' => ['keys' => [['id' => 17, 'name' => 'Jira', 'hint' => 'XD3C',
+                                              'created' => '2026-11-26T09:41:12Z', 'last_used' => '2026-11-26T09:41:12Z',
+                                              'current' => true]]]],
+        ],
+        'errors' => [],
+        'example' => ['params' => [], 'as' => 'join_keys', 'key' => 'join'],
+    ],
+
+    'key_delete_current' => [
+        'method' => 'DELETE',
+        'path' => '/keys/current',
+        'tag' => 'Keys',
+        'summary' => 'Delete the API key of this request',
+        'description' => 'Deletes the key you send this request with ("I stop"). It stops working at once. Only with '
+            . 'an API key.',
+        'auth' => 'member',
+        'params' => [],
+        'handler' => 'v1_key_delete_current',
+        'responses' => [
+            204 => ['description' => 'Key deleted'],
+        ],
+        'errors' => [],
+        'example' => ['params' => []],
+    ],
+
+    'key_delete' => [
+        'method' => 'DELETE',
+        'path' => '/keys/{id}',
+        'tag' => 'Keys',
+        'summary' => 'Delete one of your API keys',
+        'description' => 'Deletes one of your own keys in this team (id from GET /keys). Tools using it stop working at '
+            . 'once. A key of another person cannot be deleted (key_not_found).',
+        'auth' => 'member',
+        'params' => [
+            'id' => ['in' => 'path', 'type' => 'integer', 'required' => true, 'minimum' => 1,
+                     'description' => 'Id of the key (GET /keys).', 'example' => '{{join_keys.keys.0.id}}'],
+        ],
+        'handler' => 'v1_key_delete',
+        'responses' => [
+            204 => ['description' => 'Key deleted'],
+        ],
+        'errors' => ['key_not_found'],
+        'example' => ['params' => ['id' => '{{join_keys.keys.0.id}}'], 'key' => 'join'],
     ],
 
     '$schemas' => [
@@ -86,6 +255,56 @@ return [
                 ],
             ],
             'required' => ['team', 'member', 'items'],
+        ],
+        'JoinResult' => [
+            'type' => 'object',
+            'description' => 'Answer of team_create and team_join: the API key (shown only here), the team and the new person.',
+            'properties' => [
+                'api_key' => ['type' => 'string', 'description' => 'The API key: "pok_" and 32 characters A-Z, 2-7.'],
+                'team' => 'Team',
+                'member' => 'Member',
+            ],
+            'required' => ['api_key', 'team', 'member'],
+        ],
+        'Note' => [
+            'type' => 'object',
+            'properties' => [
+                'note' => ['type' => 'string', 'description' => 'The team note as stored.'],
+            ],
+            'required' => ['note'],
+        ],
+        'ApiKey' => [
+            'type' => 'object',
+            'description' => 'One of your API keys (the key itself is never shown again).',
+            'properties' => [
+                'id' => ['type' => 'integer'],
+                'name' => ['type' => 'string'],
+                'hint' => ['type' => 'string', 'description' => 'Last 4 characters of the key.'],
+                'created' => ['type' => 'string', 'description' => 'ISO 8601, UTC.'],
+                'last_used' => ['type' => 'string', 'nullable' => true,
+                                'description' => 'ISO 8601, UTC; updated at most once an hour, null if never used.'],
+                'current' => ['type' => 'boolean', 'description' => 'true for the key of this request.'],
+            ],
+            'required' => ['id', 'name', 'hint', 'created', 'last_used', 'current'],
+        ],
+        'ApiKeyList' => [
+            'type' => 'object',
+            'properties' => [
+                'keys' => 'ApiKey[]',
+            ],
+            'required' => ['keys'],
+        ],
+        'NewApiKey' => [
+            'type' => 'object',
+            'description' => 'A new API key, shown only in this answer.',
+            'properties' => [
+                'id' => ['type' => 'integer'],
+                'name' => ['type' => 'string'],
+                'key' => ['type' => 'string', 'description' => 'The API key: "pok_" and 32 characters A-Z, 2-7.'],
+                'hint' => ['type' => 'string'],
+                'created' => ['type' => 'string', 'description' => 'ISO 8601, UTC.'],
+            ],
+            'required' => ['id', 'name', 'key', 'hint', 'created'],
         ],
     ],
 ];

@@ -67,3 +67,84 @@ function core_team_get(mysqli $link, array $actor): array
                     'active_key' => $active_key],
     ];
 }
+
+
+/* role of the API (team_create/team_join) -> player_type */
+function api_player_type(string $role): string
+{
+    return $role === 'observer' ? 'OBSERVER' : 'PLAYER';
+}
+
+/*
+ * A new person in team $t, inside the caller's transaction (team row created or locked before: lock order teams ->
+ * players -> keys): server-made UID (new_uid(), never delivered - the person exists only through its key), the
+ * player row with the B-102 rule and the user row like name.php (insert_new_player()), then the key.
+ * Returns the JoinResult without the team (api_key, member).
+ */
+function team_member_with_key_locked(mysqli $link, string $t, string $name, string $role, string $key_name): array
+{
+    $uid = new_uid();
+    insert_new_player($link, $t, $uid, $name, api_player_type($role));
+    $key = api_key_insert_locked($link, $uid, $t, $key_name);
+    return ['api_key' => $key['key'], 'member' => ['name' => $name, 'role' => $role]];
+}
+
+/*
+ * team_create (auth none): a new team (id after B-156 via add_team()/new_team_id(), default deck like the web), the
+ * creator joins it with name and role, and gets an API key - all in one transaction. No notify: nobody has the new
+ * board open yet. Returns the JoinResult (api_key, team, member).
+ */
+function core_team_create(mysqli $link, string $name, string $member_name, string $member_role, string $key_name): array
+{
+    return db_transaction($link, function () use ($link, $name, $member_name, $member_role, $key_name): array {
+        $t = add_team($link, $name);
+        if ($t === '') throw new RuntimeException('B-150: team not created');
+        $joined = team_member_with_key_locked($link, $t, $member_name, $member_role, $key_name);
+        return ['api_key' => $joined['api_key'],
+                'team' => ['id' => $t, 'name' => $name, 'url' => public_board_url($t), 'note' => ''],
+                'member' => $joined['member']];
+    });
+}
+
+/*
+ * team_join (auth none): a NEW person in team $t (every call, the caller keeps the key), with name and role, and its
+ * API key. Unknown team -> 404 team_not_found (only here; a team id is the board link anyway, B-156 makes it hard to
+ * guess). The team row is locked first (B-155), so the B-102 check sees a stable round. Notifies the team after the
+ * commit (the new person appears on open boards). Returns the JoinResult.
+ */
+function core_team_join(mysqli $link, string $t, string $name, string $role, string $key_name): array
+{
+    $result = db_transaction($link, function () use ($link, $t, $name, $role, $key_name): array {
+        $sql = $link->prepare("select name, topic from pok_teams_tbl where id = ? for update");
+        $sql->bind_param('s', $t);
+        $sql->execute();
+        $team = $sql->get_result()->fetch_assoc();
+        $sql->close();
+        if (!is_array($team)) throw new ApiError(404, 'team_not_found');
+        $joined = team_member_with_key_locked($link, $t, $name, $role, $key_name);
+        return ['api_key' => $joined['api_key'],
+                'team' => ['id' => $t, 'name' => (string)$team['name'], 'url' => public_board_url($t),
+                           'note' => (string)($team['topic'] ?? '')],
+                'member' => $joined['member']];
+    });
+    notify_team($t); // B-81: after the commit, never on error
+    return $result;
+}
+
+/*
+ * team_note_set: the team note (formerly "topic", pok_teams_tbl.topic), '' empties it. $note is checked by the caller
+ * (v1: trimmed, at most 2000 characters, refused above; update_topic.php: cut like before). Notifies the team.
+ * Shared by PUT /api/v1/team/note and api/update_topic.php (needs only actor.team_id).
+ */
+function core_team_note_set(mysqli $link, array $actor, string $note): array
+{
+    $t = (string)$actor['team_id'];
+    db_transaction($link, function () use ($link, $t, $note): void {
+        $sql = $link->prepare("update pok_teams_tbl set topic = ? where id = ?");
+        $sql->bind_param('ss', $note, $t);
+        $sql->execute();
+        $sql->close();
+    });
+    notify_team($t);
+    return ['note' => $note];
+}

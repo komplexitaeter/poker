@@ -1085,3 +1085,31 @@ select table_name, column_name, column_type, character_set_name, collation_name
 select table_name, table_collation from information_schema.tables
  where table_schema = database() and table_type = 'BASE TABLE' and table_collation <> 'utf8mb4_0900_ai_ci';
 /* end B-12 */
+
+/* B-150: API keys (docs/api-v1-concept.md, section 5.3). One row per key; a key acts as one person (user_id) in one
+   team. Only the SHA-256 of the key is stored (binary, 32 bytes) plus its last 4 characters for display. user_id and
+   team_id have the collation of pok_players_tbl after B-12 (utf8mb4_0900_ai_ci), so the join of the key lookup uses
+   the index. No foreign key (the schema has none): api/delete_user.php deletes the keys of a user over all teams.
+   Additive, instant, idempotent (create if not exists, run it again any time), BEFORE deploying the B-150 PR 2 code
+   (the v1 router and delete_user.php use the table). The release code before PR 2 never touches it.
+   Run only this block: sed -n '/^\/\* B-150 keys:/,/^\/\* end B-150 keys/p' db_schema_pok_inc.sql */
+/* B-150 keys: */
+set session lock_wait_timeout = 5;
+create table if not exists pok_api_keys_tbl (
+  id int unsigned not null auto_increment primary key,
+  key_hash binary(32) not null comment 'sha256 of the full key (pok_...)',
+  key_hint char(4) character set ascii collate ascii_bin not null comment 'last 4 characters of the key',
+  user_id varchar(16) not null comment 'pok_players_tbl.id',
+  team_id varchar(80) not null comment 'pok_players_tbl.team_id',
+  name varchar(40) not null comment 'chosen by the person, e.g. Jira',
+  creation_date timestamp not null default current_timestamp,
+  last_used_date timestamp null comment 'updated at most once an hour',
+  unique key ux_api_keys_hash (key_hash),
+  key ix_api_keys_user_team (user_id, team_id)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-150: API keys per person and team';
+
+/* check (read only): the table and its columns */
+select column_name, column_type, collation_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_api_keys_tbl' order by ordinal_position;
+/* end B-150 keys */

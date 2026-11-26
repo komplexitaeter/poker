@@ -26,7 +26,7 @@ test('files under /api/v1/ are never delivered or run on their own: 404 not_foun
 test('the Authorization header reaches the router (key mode); other schemes fall back to the board headers', async ({ request }) => {
   const member = await newV1Member(request, 'V1 Nginx Auth');
   // Bearer pok_... is always the key mode, decided by the prefix alone: no fallback to valid board headers, also not
-  // for a malformed key (keys come with B-150 PR 2)
+  // for a malformed or unknown key
   for (const key of ['pok_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'pok_A B', 'pok_', 'pok_abc', 'pok_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA x']) {
     const res = await request.get('/api/v1/team', { headers: { ...member.headers, Authorization: `Bearer ${key}` } });
     expect(res.status(), key).toBe(401);
