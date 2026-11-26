@@ -11,6 +11,8 @@
  * Requires config.php, api/lib.php and lib_v1.php. Not reachable by URL except through index.php.
  */
 
+require __DIR__ . '/lib_mcp_wait.php'; // B-151 PR C: wait_for_change, version of the board
+
 /* informative only (MCP is not versioned): date of the last change of the tools */
 const MCP_SERVER_VERSION = '2026-11-26';
 /* protocol versions we answer with; the first one is offered when the client asks for an unknown one */
@@ -39,6 +41,9 @@ Getting a seat
 Playing
 - Cards are revealed automatically when every player has a card down. Before that you only see who has played, never
   which card – do not guess or claim to know other people's cards.
+- Stay at the table with wait_for_change: pass the version of your last result as since and call it again right
+  after it returns, as long as the user wants to take part. Tell the user what changed in one or two short lines (who
+  played, revealed result, new item, timer, note). If it says busy, wait retry_after seconds and call again.
 - Ask before actions that affect everybody and cannot be undone: deleting items or custom sets, removing people,
   "delete my data", changing the card set while cards are down (starts a new round).
 - If the user wants something none of your tools offers, say that it is not possible here yet and that they can do
@@ -100,7 +105,8 @@ function mcp_table(): array
  */
 function mcp_dispatch(): void
 {
-    $method = (string)($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    // after poker-msg (wait_for_change) nginx sends the original POST again as GET, body and headers kept
+    $method = mcp_wait_internal() ? 'POST' : (string)($_SERVER['REQUEST_METHOD'] ?? 'GET');
     if (!mcp_origin_allowed()) {
         mcp_send_http_error(403, 'Origin not allowed.');
         return;
@@ -166,12 +172,21 @@ function mcp_dispatch(): void
         mcp_send(200, mcp_error_message($id, MCP_INVALID_PARAMS, 'params must be an object.'));
         return;
     }
-    mcp_send(200, mcp_handle($id, $message['method'], $params));
+    try {
+        $answer = mcp_handle($id, $message['method'], $params);
+    } catch (McpWait $wait) { // wait_for_change: nothing changed yet, nginx holds the request against poker-msg
+        mcp_send_wait($wait);
+        return;
+    }
+    mcp_send(200, $answer);
 }
 
 /* the answer of one JSON-RPC request */
 function mcp_handle(string|int $id, string $method, array $params): array
 {
+    if (mcp_wait_internal() && ($method !== 'tools/call' || ($params['name'] ?? null) !== 'wait_for_change')) {
+        return mcp_error_message($id, MCP_INTERNAL_ERROR, 'Unexpected request after waiting.');
+    }
     switch ($method) {
         case 'initialize':
             $asked = $params['protocolVersion'] ?? null;
@@ -279,6 +294,9 @@ function mcp_tools_list(): array
         $annotations = $tool['annotations'] ?? [];
         if ($entry['kind'] === 'own') {
             if ($tool['identity'] === 'key') $properties['api_key'] = v1_param_schema(MCP_IDENTITY_PARAMS['api_key']);
+            if ($tool['identity'] === 'seat') {
+                foreach (MCP_IDENTITY_PARAMS as $param => $def) $properties[$param] = v1_param_schema($def);
+            }
             foreach ($tool['params'] as $param => $def) {
                 $properties[$param] = v1_param_schema($def);
                 if ($def['required'] ?? false) $required[] = $param;
@@ -324,6 +342,9 @@ function mcp_call_tool(string $name, array $args): array
             if ($entry['tool']['identity'] === 'key') { // join_team: the key decides, if there is one
                 $key = mcp_key($args);
                 unset($args['api_key']);
+            } elseif ($entry['tool']['identity'] === 'seat') { // like a route tool: the handler gets the actor
+                $key = mcp_actor($link, $args);
+                unset($args['team_id'], $args['uid'], $args['api_key']);
             }
             $out = $entry['tool']['handler']($link, mcp_validate_args($entry['tool']['params'], $args), $key);
         } else {
@@ -343,8 +364,12 @@ function mcp_call_tool(string $name, array $args): array
             $out = ['structured' => $structured,
                     'text' => is_string($text) ? $text($structured) : v1_json($structured)];
         }
+        $out = mcp_with_version($out); // a result with a board carries its version (wait_for_change since)
         $link->close();
         return ['content' => [['type' => 'text', 'text' => $out['text']]], 'structuredContent' => $out['structured']];
+    } catch (McpWait $wait) {
+        $link->close();
+        throw $wait;
     } catch (ApiError $e) {
         v1_rollback($link);
         return mcp_tool_error($e);
