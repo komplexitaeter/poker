@@ -48,5 +48,12 @@ try {
     $link->close();
     http_response_code($e->status === 403 ? 403 : 400);
     exit;
+} catch (mysqli_sql_exception $e) {
+    if (!is_retryable_db_error($e)) throw $e;
+    error_log('poker api: transaction given up after retries (' . $e->getCode() . '): ' . $e->getMessage());
+    $link->close();
+    http_response_code(503);
+    header('Retry-After: 1');
+    exit;
 }
 $link->close();
