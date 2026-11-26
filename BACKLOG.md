@@ -461,13 +461,38 @@ Refinement (Andreas, 2026-11-26):
   auflisten und löschen.
 - **Ergebnis eines Items:** wie im Export (Wert, Verteilung, Runden).
 - **Item-Schlüssel ist Pflicht**, auch im Board, mit lockerer Heuristik als Vorschlag: erstes Item „1“, danach
-  hochzählen; folgt der letzte Schlüssel einem Muster wie `DMZ-004`, wird `DMZ-005` vorgeschlagen (Präfix und
+  hochzählen; folgt der letzte Schlüssel einem Muster wie `TIX-004`, wird `TIX-005` vorgeschlagen (Präfix und
   Nullen behalten). Ziel: niemand stolpert darüber, wenn es keine echte (z. B. Jira-)ID gibt.
 - **Doku:** eine Seite `/api/v1/` (was geht, Schlüssel erzeugen, `curl`-Beispiel je Endpunkt, Rezept Jira
   Automation) plus eine von Hand gepflegte `openapi.json` (Power Automate, Zapier, Postman, KI); ein E2E-Test führt
   die Doku-Beispiele aus.
 Bestehende Items ohne Schlüssel bekommen einmalig einen nach derselben Heuristik (Andreas; wenige Items).
 Offen: Fehlercodes; wie Doku/Spec aus dem Code entstehen (kein Auseinanderlaufen).
+Umsetzung PR 2 (Ben, 2026-11-26, Branch `feature/B-150-pr2-keys`): Tabelle `pok_api_keys_tbl` (Block „B-150 keys“ in
+`db_schema_pok_inc.sql`, vor dem Deploy), `api/lib_api_keys.php`, `api/lib_core_keys.php`, Bearer-Auth im Router,
+`team_create`, `team_join`, `team_note_set` (auch hinter `update_topic.php`), `key_create` (nur Board), `key_list`,
+`key_delete`, `key_delete_current`; `delete_user.php` löscht Schlüssel über alle Teams. Jeder Aufruf mit Schlüssel
+zählt als Anwesenheit (`touch_player()`, Konzept 5.4), damit fallen API-Personen nicht unter die 2-Monats-Aufräumregel.
+Umsetzung PR 5 Teil 1 (Fred, 2026-11-26, Branch `feature/B-150-pr5-keys-ui`): You-Menü „API keys“ (`board.html`
+`#api_keys`, `script/api_keys.js`, kleiner CSS-Block „B-150: API keys“ hinter `.leave-item`): eigene Schlüssel des Teams
+mit Name, `••••` + Hint, erstellt, zuletzt benutzt; „Create key“ mit Namen; Löschen mit Rückfrage in der Zeile; Texte
+aus Konzept 5.5. Der neue Schlüssel steht nur im Dialog `#api_key_new` (Copy, beim Schließen geleert), nie in
+`localStorage`/Analytics. `apiFetch()` schickt für `./api/v1/` zusätzlich `X-Poker-Team`. E2E: `api-keys-ui.spec.ts`.
+Umsetzung PR 3, Backend (Ben, 2026-11-26, Branch `feature/B-150-pr3-item-keys`): Item-Schlüssel Pflicht
+(`ITEM_KEY_PATTERN`, eindeutig je Team per SQL in der Kollation), Heuristik `next_item_key()`/`item_key_suggest()` in
+`api/lib_topics.php` mit Testtabelle `tests/e2e/fixtures/item-keys.json` (statt `tests/fixtures/item_keys.json`),
+Vorschlag als `next_key` in `get_topics.php`; Kernfunktionen `core_item_create/patch/delete` in
+`api/lib_core_items.php`, `topic_item_add/edit/delete.php` als Wrapper (fehlender Schlüssel beim Anlegen → Vorschlag,
+damit alte Boards weiterlaufen; neue Fehler 400 `ext_id`, 409 `key_taken`); Auffüllskript
+`tools/migration/b150_item_keys.php` (README dort), DDL-Block „B-150 item keys“ (nach dem Skript). Abweichungen vom
+Konzept: ungültige Schlüssel verlieren `-`/`_` an beiden Enden (nicht nur vorn); beim Bearbeiten bleibt ein
+unverändert gesendeter Schlüssel ungeprüft und ein leerer wird nur bei einem Item ohne Schlüssel durch den Vorschlag
+ersetzt (alte Items bleiben bis zur Migration bearbeitbar).
+Umsetzung PR 3, Board (Fred, 2026-11-26, gleicher Branch): Feld „Key“ (statt „ID (optional)“) Pflicht, vorbelegt mit
+`next_key` (ohne Items `1`; fehlt eine aktuelle Liste, lädt sie nach und füllt das Feld, solange es unberührt ist –
+auch wenn jemand anders inzwischen anlegt); Prüfung im Browser nach `ITEM_KEY_PATTERN`, 400 `ext_id` und
+409 `key_taken` („Key already used“) am Feld, Formular bleibt offen. Kein JS-`nextItemKey()` (Abweichung vom Konzept 7.3:
+der Vorschlag kommt nur vom Server). Export-Spalte „ID“ heißt jetzt „Key“. E2E in `topic-items-ui.spec.ts`.
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
@@ -505,6 +530,7 @@ weiteren Seiten auf beiden Servern mittesten (nach Umstellung einen PHP-Endpunkt
 Offen: Zeitpunkt; ob das PPA langfristig bleibt oder auf `packages.sury.org` umzieht.
 
 ### B-128 R3-Deck-Backup prüfen und löschen (Mitte Dezember)
+Danach die Deck-Migration aus `getDao()` entfernen (B-157).
 Status: refined, Termin Mitte Dezember 2026 (Andreas, 2026-11-09). Die R3-Deck-Migration übernimmt das Deck eines
 Teams erst beim nächsten Laden (Stand 2026-11-09: 192 ok, 0 mismatch, 21 danach selbst geändert, rund 24.400 noch
 nicht wieder geladen). Dann `php8.4 tools/migration/check_deck_migration.php --verify` auf Live wiederholen; bei
@@ -628,6 +654,35 @@ beim Wiedererkennen des Links und verrät nichts, was das Board nicht ohnehin ze
 `pok_teams_tbl.id` case-insensitiv vergleicht. `name2id()`/`get_team_id()` (mit `rand()`) entfernt; alte IDs bleiben
 gültig. Passt zu `FILTER_SANITIZE_URL`, `validate_team()` und poker-msg (`[\x21-\x7E]{1,80}`). E2E: `team-ids.spec.ts`.
 
+### B-157 `dao.php` schreibt nur noch die Anwesenheit
+Status: refined (Andreas, 2026-11-26). Ziel: `getDao()`/`dao.php` ist bis auf `touch_player()` (`last_callback_time`,
+Anwesenheit B-110/B-127) ein reiner Lesezugriff. Seit #282 legt `getDao()` keine `pok_user_tbl`-Zeilen mehr an (das
+machen `name.php` beim Beitreten und `update_user.php`). Übrig sind zwei einmalige Schreibvorgänge je Team, beide unter
+der Team-Sperre (dort lag der Deadlock aus #279):
+1. **Deck-Migration aus R3** (alte `cardset_flags` → `deck_id`, bei gemischten Decks ein Set „Our deck“): Teams, die
+   nicht wiederkommen, verschwinden mit der Team-Löschfrist (B-109: 1 Jahr ohne Aktivität). Für die übrigen, noch nicht
+   migrierten Teams beim Entfernen des Codes entscheiden: einmal per Skript migrieren (Logik existiert, Auswahl bleibt)
+   oder damit leben, dass sie das Standard-Set bekommen (Andreas, 2026-11-26: beides denkbar).
+2. **Beispielset (B-116)**: beim Anlegen des Teams vergeben (`add_team()`, passt zu B-144 Schritt 3) statt beim ersten
+   Laden; bestehende Teams ohne Beispielset (wenige, 754 haben es) per einmaligem Skript oder gar nicht mehr.
+Danach in CLAUDE.md: „`dao.php` schreibt nur die Anwesenheit.“
+
+### B-158 Nutzertabelle abschaffen (`pok_user_tbl`)
+Status: neu (Andreas, 2026-11-26: Eintrag ja, ob die Tabelle wirklich wegfällt, ist noch offen). `pok_user_tbl` hält je
+UID nur noch: `color_mode` (seit B-141 ohnehin auch im Browser), `hide_teaser` (roter Punkt am Feedback-Menü, B-57;
+wird bei Neuem per Skript für alle zurückgesetzt), `creation_date` („zuerst gesehen“ für die Wochenstatistik in
+`stats.php`) und die toten Spalten `survey_*` (B-136). Da die UID selbst im Browser liegt, sind Einstellungen je UID
+ohnehin Einstellungen je Browser – im Browser speichern ändert für Nutzer nichts.
+Vorschlag:
+- `color_mode` nur noch im Browser (`localStorage`, wie B-141).
+- Feedback-Punkt über eine **Teaser-Version**: der Server liefert die aktuelle Version (ein Wert, z. B. per Admin-Knopf
+  in `stats.php` hochgezählt), der Browser merkt sich die zuletzt gesehene; „wieder anzeigen“ = Version erhöhen statt
+  Massen-Update.
+- „Zuerst gesehen“ aus der ersten Runde einer UID (`pok_roundstat_details_tbl`).
+- Danach `pok_user_tbl` entfernen (`get_user.php`, `update_user.php`, Lesen in `getDao()`, `delete_user.php` anpassen);
+  zumindest die `survey_*`-Spalten können auch ohne den Rest weg.
+Effekt: `dao.php` liest weniger, „Delete user“ wird einfacher, weniger personenbezogene Daten (passt zu B-109, B-157).
+
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
 „aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
@@ -700,7 +755,15 @@ integrieren (Daten liegen in den `_stats`-Tabellen). Dann könnte MySQL ganz auf
 entfiele. Erst die Charts sichten, dann entscheiden.
 
 ### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
-Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
+Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). **Teams (Andreas, 2026-11-26):** ein nächtlicher Job löscht Teams nach
+**1 Jahr ohne jede Aktivität vollständig** – inkl. Rundenhistorie, Spieler, eigene Sets, Items. Zu klären: was
+„Aktivität“ ist (letztes Laden/`last_callback_time`, letzte Runde), ob die Statistik-Tabellen (`_stats`, Grafana) als
+Aggregate erhalten bleiben (Vergangenheitswerte ändern sich sonst), Reihenfolge der Löschung (B-155-Sperrregeln). **Absicherung
+noch durchdenken (Andreas, 2026-11-26):** ein Löschjob darf bei falscher Server-Uhr (NTP-Angriff oder -Ausfall, Sprung
+in die Zukunft) oder einem Fehler in der Abfrage nicht massenhaft löschen. Ideen: Plausibilität von „jetzt“ gegen die
+neueste Aktivität in der DB (`max(last_callback_time)`), Obergrenze je Lauf (z. B. höchstens 5 % der Teams, sonst
+abbrechen und nur loggen), Trockenlauf/Protokoll; auf den Servern NTP mit mehreren Quellen bzw. NTS (`chrony`,
+große Sprünge ablehnen). Gilt sinngemäß auch für die 2-Monats-Bereinigung in `start_new_round()`. Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
 DB aber neben Name und Team → pseudonym, also personenbezogen. Gelöscht wird nur `pok_players_tbl` (2 Monate
 Inaktivität je Team). Dauerhaft: `pok_roundstat_details_tbl` (User-ID, Name, Karte je Runde),
 `pok_analytics_events_tbl` (User-ID je Event), `pok_promotions_tbl`; „Delete user“ löscht Events und Promos nicht.

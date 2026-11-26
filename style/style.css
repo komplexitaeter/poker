@@ -123,6 +123,8 @@ body {
     --tray-shadow: 0 12px 32px -2px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.8),
         0 0 0 1px rgba(255, 255, 255, 0.12);
     --scrim: rgba(0, 0, 0, 0.55);   /* backdrop behind the phone menu sheet */
+    /* backdrop behind modal boxes (.leave-item, the new API key): light, the page behind is blurred instead */
+    --scrim-modal: rgba(0, 0, 0, 0.3);
     /* B-99 D6/D9: tinted cards (badge style: traffic lights, emotions, stars). Dark: neutral paper with a
      * faint glow of the value colour from the top (--card-glow-end: how far it reaches) and a coloured inner
      * rim, so symbols and texts keep the contrast of the plain card. Light: the whole card tinted. */
@@ -152,6 +154,7 @@ body.light-theme {
     --shadow-color: rgba(0, 0, 0, 0.18);
     --tray-shadow: 0 6px 20px -6px var(--shadow-color), 0 1px 3px var(--shadow-color);
     --scrim: rgba(29, 32, 39, 0.4);
+    --scrim-modal: rgba(29, 32, 39, 0.16);
     --card-tint: 13%;   /* light: the whole card flat (no glow, no rim) */
 }
 
@@ -1571,9 +1574,9 @@ fieldset:disabled .seg input:checked + span {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px var(--space-3);
-    margin: 24px 0 0;
-    padding-top: var(--space-3);
+    gap: 6px 10px;
+    margin: var(--space-3) 0 0;
+    padding-top: 12px;
     border-top: 1px solid var(--line);
     font-size: var(--fs-s);
 }
@@ -1586,13 +1589,31 @@ fieldset:disabled .seg input:checked + span {
 .m-links a:hover { color: var(--text); }
 
 /* R3 review V10 (L8): "Privacy policy · Imprint" */
-.m-links > span { color: var(--muted); }
+.m-links span { color: var(--muted); }
+
+/* You menu: "Privacy policy · Imprint" and "Delete my data" always share one line, also in the panel at its
+ * minimum width with a classic scrollbar (Andreas). The links sit in .m-links-text: short of space, they wrap
+ * there (after the dot, only on the smallest phones), never the button. The button is as tall as the other buttons of the menu ("Create key"
+ * right above it, a full tap target on touch) and flush with their right edge. */
+#user_settings_privacy_link {
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.m-links-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.m-links-text a { white-space: nowrap; }
 
 .menu .m-links .btn-box {
+    flex: none;
     margin-left: auto;
-    min-height: 0;
-    padding: 4px 10px;
+    padding-left: 10px;
+    padding-right: 10px;
     font-size: var(--fs-s);
+    white-space: nowrap;
 }
 
 /* card set thumbnails */
@@ -6318,7 +6339,13 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
     box-sizing: border-box;
 }
 
-.leave-item::backdrop { background: var(--scrim); }
+/* the page behind is blurred and only lightly dimmed (Andreas: less dark than the player/observer dialog, more
+ * blur). Literal fallback: older browsers (Safari < 17.4) do not pass custom properties on to ::backdrop. */
+.leave-item::backdrop {
+    background: var(--scrim-modal, rgba(0, 0, 0, 0.3));
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+}
 
 .leave-item h2 {
     margin: 0 0 4px;
@@ -6384,6 +6411,67 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
         border-radius: var(--radius-l) var(--radius-l) 0 0;
         padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
     }
+}
+
+/* B-150: "API keys" in the You menu (#api_keys) and the dialog with the new key (#api_key_new, box of .leave-item).
+ * Tightened (You menu polish): the docs links sit right of the heading, rows are compact (name and last 4 on top,
+ * dates below), the delete question is a tinted box in the row. Existing tokens only. */
+.api-keys { margin-top: 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.api-keys-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--space-3); margin: 0 0 4px; }
+.api-keys-head .lab { margin: 0; font-weight: normal; }
+.api-keys-docs { font-size: var(--fs-xs); color: var(--muted); }
+/* links in the section and the dialog: text colour, underlined, the same visited or not (no browser purple) */
+:is(.api-keys, .api-key-links) a:is(:link, :visited) {
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 2px;
+}
+:is(.api-keys, .api-key-links) a:hover { color: var(--accent); text-decoration-color: currentColor; }
+:is(.api-keys, .api-key-links) a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-s); }
+.api-keys-status[hidden], .api-keys-list[hidden], .api-keys-empty[hidden] { display: none; }
+.api-keys-status { margin: 0 0 var(--space-2); }
+.api-keys-retry { min-height: 0; margin: 0 0 0 4px; padding: 2px 10px; font-size: var(--fs-xs); }
+.api-keys-empty { margin: 0 0 var(--space-2); }
+.api-keys-list { margin: 0 0 var(--space-2); padding: 0; list-style: none; }
+.api-key { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); padding: 2px 0; border-bottom: 1px solid var(--line); }
+.api-key-main { display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.3; }
+.api-key-head { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.api-key-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-s); }
+.api-key-hint { flex: none; font-size: var(--fs-xs); color: var(--muted); }
+.api-key-meta { font-size: var(--fs-xs); color: var(--muted); }
+.api-key-del { color: var(--muted); min-width: 32px; min-height: 32px; }
+.api-key-del:hover:enabled { color: var(--danger); }
+.api-key-del .i { width: 16px; height: 16px; }
+/* "Delete key …?": a box tinted in the danger colour below the name, Keep / Delete on the right */
+.api-key.is-confirm { padding-bottom: 6px; }
+.api-key-ask {
+    display: flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px var(--space-2);
+    margin-top: 4px;
+    padding: 6px 6px 6px 10px;
+    border-left: 3px solid var(--danger);
+    border-radius: var(--radius-m);
+    background: color-mix(in srgb, var(--danger) 10%, var(--bg-2));
+    color: var(--text);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+}
+.api-key-ask-text { flex: 1 1 12em; }
+.api-key-ask-btns { display: flex; gap: 6px; margin-left: auto; }
+.api-key-ask .btn-box { min-height: 28px; margin: 0; padding: 2px 10px; font-size: var(--fs-xs); }
+.api-key-new-text { margin: 0 0 var(--space-3); font-size: var(--fs-s); line-height: 1.45; }
+.api-key-out .field { flex: 1; min-width: 0; min-height: var(--tap); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--fs-s); }
+.api-key-out .btn-box { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); margin: 0; }
+.api-key-out .btn-box .i { width: 16px; height: 16px; }
+.api-key-links { margin: var(--space-2) 0 0; font-size: var(--fs-s); }
+.api-key-links > span { color: var(--muted); }
+@media (max-width: 799.98px) {
+    .api-key-del { min-width: 40px; min-height: 40px; }
+    .api-key-ask .btn-box { min-height: 36px; }
 }
 
 /* the rail: the item marker on top ("1/3", "item", in the topic colour; opens the column over the table) */
@@ -6453,3 +6541,394 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .rail-acts.split > button .i { width: 18px; height: 18px; }
 .rail-acts.split .rail-lbl { display: block; text-align: center; }
 .rail-acts.split .rail-lbl > span { display: block; }
+
+/* ---------- API doc page (B-150) ---------- */
+
+/* /api/v1/, rendered by api/v1/lib_v1.php (v1_doc_page()). Strict CSP: no JavaScript, no inline style, so
+ * - the theme follows the system (prefers-color-scheme) instead of body.light-theme set by script.js,
+ * - the body shows itself (the board's body starts with opacity 0 until script.js fades it in).
+ * Layout: the app header (logo, prompt with caret); large screens: the table of contents as a sticky sidebar on the
+ * left, phones: a collapsible "Contents" list at the top; a readable column with one card per operation. Tables and
+ * code scroll sideways inside their card on phones, the page itself never does. script/api_doc.js (the only script)
+ * marks the section in view in the table of contents: a[aria-current]. */
+body.api-doc {
+    opacity: 1;
+    overflow-y: auto;
+    text-align: left;
+    line-height: 1.6;
+    -webkit-user-select: text;
+    user-select: text;
+    touch-action: auto;
+    /* doc-only tokens: one colour per HTTP method (from the theme colours) */
+    --m-get: var(--ok);
+    --m-post: var(--accent);
+    --m-put: var(--warn);
+    --m-patch: var(--warn);
+    --m-delete: var(--danger);
+}
+
+/* light: the colours of body.light-theme (keep in step), chosen by the system setting */
+@media (prefers-color-scheme: light) {
+    body.api-doc {
+        --bg: #f7f6f1;
+        --bg-2: #eeede6;
+        --bg-3: #e4e3db;
+        --bg-4: #dad9d0;
+        --line: #d3d2c8;
+        --line-strong: #8e8d85;
+        --text: #1d2027;
+        --muted: #5b606b;
+        --disabled: #9a998f;
+        --accent: #0a62b3;
+        --on-accent: #ffffff;
+        --brand-pink: #b1009d;
+        --topic-color: #9a0089;
+        --ok: #1b7a37;
+        --danger: #c0262d;
+        --warn: #9a5800;
+        --focus-ring: rgba(10, 98, 179, 0.5);
+        --shadow-color: rgba(0, 0, 0, 0.18);
+    }
+}
+
+.api-doc img { -webkit-user-drag: auto; }
+.api-doc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-s); }
+
+/* header: logo | poker/api/v1 with the caret | openapi.json */
+.api-doc-logo { display: block; height: 24px; width: auto; }
+.api-doc-prompt { min-width: 0; }
+.api-doc-path { color: var(--muted); font-weight: normal; }
+.api-doc-headlink {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    color: var(--text);
+    font-size: var(--fs-s);
+    text-decoration: none;
+}
+.api-doc-headlink:hover { border-color: var(--accent); color: var(--accent); }
+
+/* sidebar | content; phones: one column, the sidebar hidden (the list at the top takes over) */
+.api-doc-layout {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+    max-width: 78rem;
+    margin: 0 auto;
+}
+
+.api-doc-main {
+    min-width: 0;
+    max-width: 56rem;
+    padding: var(--space-4) 32px 48px;
+    overflow-wrap: break-word;
+}
+
+.api-doc h1 { margin: 0 0 var(--space-2); font-size: 1.5rem; line-height: 1.3; }
+.api-doc h2 { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-l); }
+.api-doc h3 { margin: 0 0 var(--space-2); font-size: var(--fs-l); }
+.api-doc p { margin: 0 0 0.75em; max-width: 75ch; }
+.api-doc-lead { color: var(--muted); font-size: var(--fs-l); }
+
+/* inline code; code blocks reset it below */
+.api-doc code {
+    padding: 0 0.3em;
+    border-radius: var(--radius-s);
+    background: var(--bg-3);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.95em;
+}
+
+/* intro: "Get an API key" and "Send it" side by side, the Jira hint below */
+.api-doc-intro {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.api-doc-box,
+.api-doc-note,
+.api-op {
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 16px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg-2);
+}
+
+.api-doc-box h2,
+.api-doc-note h2 { margin-top: 0; }
+.api-doc-box p:last-child,
+.api-doc-note p:last-child { margin-bottom: 0; }
+
+.api-doc-note {
+    margin-top: var(--space-3);
+    border-left: 3px solid var(--topic-color);
+}
+
+.api-doc-note h2 { color: var(--topic-color); }
+
+/* table of contents (the same list twice: sidebar and phone list) */
+.api-toc-list,
+.api-toc-list ul { margin: 0; padding: 0; list-style: none; }
+.api-toc-group {
+    margin-top: var(--space-3);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.api-toc-group:first-child { margin-top: 0; }
+.api-toc-group ul { margin-top: var(--space-1); text-transform: none; letter-spacing: 0; }
+.api-toc-list a {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 8px;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius-m) var(--radius-m) 0;
+    color: var(--text);
+    font-size: var(--fs-s);
+    line-height: 1.4;
+    text-decoration: none;
+}
+.api-toc-list a:hover { background: var(--bg-3); }
+.api-toc-list a:hover .api-path { color: var(--accent); }
+/* the section in view (script/api_doc.js) */
+.api-toc-list a[aria-current] { border-left-color: var(--accent); background: var(--bg-3); color: var(--accent); }
+.api-toc-list a[aria-current] .api-path { color: var(--accent); }
+.api-toc-op { display: flex; flex-direction: column; min-width: 0; }
+.api-toc-list .api-path { font-size: var(--fs-s); }
+.api-toc-summary { color: var(--muted); font-size: var(--fs-xs); }
+.api-toc-list .api-method { min-width: 4.4em; font-size: 0.625rem; }
+
+.api-toc-side {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    max-height: 100dvh;
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding: var(--space-4) 12px var(--space-4) 16px;
+}
+
+/* phones: "Contents" folds open at the top of the page */
+.api-toc-top {
+    display: none;
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg-2);
+}
+.api-toc-top > summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+    font-weight: bold;
+    list-style: none;
+    cursor: pointer;
+}
+.api-toc-top > summary::-webkit-details-marker { display: none; }
+.api-toc-top > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: var(--fs-l); }
+.api-toc-top[open] > summary::after { content: "\2212"; }
+.api-toc-top > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-l); }
+.api-toc-top > .api-toc-list { padding: 4px 14px 14px; }
+
+/* method badge and path */
+.api-method {
+    --m: var(--muted);
+    flex: none;
+    display: inline-block;
+    min-width: 4.2em;
+    box-sizing: border-box;
+    padding: 0 6px;
+    border: 1px solid color-mix(in srgb, var(--m) 55%, transparent);
+    border-radius: var(--radius-s);
+    background: color-mix(in srgb, var(--m) 14%, transparent);
+    color: var(--m);
+    font: bold var(--fs-xs)/1.7 var(--font);
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+.api-method-get { --m: var(--m-get); }
+.api-method-post { --m: var(--m-post); }
+.api-method-put { --m: var(--m-put); }
+.api-method-patch { --m: var(--m-patch); }
+.api-method-delete { --m: var(--m-delete); }
+
+.api-doc code.api-path { padding: 0; background: none; font-weight: bold; overflow-wrap: anywhere; }
+
+/* one card per operation: a header strip with method, path and auth, a coloured edge in the method's colour,
+ * clear space between the cards */
+.api-tag {
+    margin-top: 3rem;
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--line-strong);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.api-doc .api-op {
+    margin: var(--space-3) 0 var(--space-4);
+    padding: 0;
+    overflow: hidden;
+    border-left: 3px solid var(--m, var(--line-strong));
+    scroll-margin-top: var(--space-3);
+}
+.api-op-get { --m: var(--m-get); }
+.api-op-post { --m: var(--m-post); }
+.api-op-put { --m: var(--m-put); }
+.api-op-patch { --m: var(--m-patch); }
+.api-op-delete { --m: var(--m-delete); }
+.api-op:target { border-color: var(--accent); border-left-color: var(--m); box-shadow: 0 0 0 1px var(--accent); }
+
+.api-op-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-3);
+}
+.api-op-head .api-path { font-size: var(--fs-l); }
+.api-op-body { padding: 16px 20px 18px; }
+
+.api-auth {
+    margin-left: auto;
+    padding: 0 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    line-height: 1.7;
+    white-space: nowrap;
+}
+.api-auth-none { border-style: dashed; }
+
+.api-op h4 {
+    margin: var(--space-3) 0 var(--space-1);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.api-status {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: var(--radius-s);
+    background: var(--bg-4);
+    color: var(--text);
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+}
+
+/* code blocks: scroll sideways inside the card, never wrap (curl lines and JSON stay copyable) */
+.api-doc pre.api-code {
+    margin: 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+    font-size: var(--fs-s);
+    line-height: 1.5;
+    white-space: pre;
+    tab-size: 2;
+}
+.api-doc pre.api-code code { padding: 0; background: none; font-size: inherit; }
+
+/* tables: full width, scroll sideways inside their wrapper on narrow screens */
+.api-table { max-width: 100%; overflow-x: auto; }
+.api-doc table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    color: var(--text);
+    font-size: var(--fs-s);
+    line-height: 1.5;
+}
+.api-doc table tr:first-child { border-bottom: 0; } /* the stats.php rule */
+.api-doc th,
+.api-doc td {
+    padding: 6px 10px 6px 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+}
+.api-doc th {
+    border-bottom-color: var(--line-strong);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+.api-doc tbody tr:last-child td { border-bottom: 0; }
+.api-doc td:first-child { white-space: nowrap; }
+.api-params td:nth-child(4) { min-width: 10em; color: var(--muted); }
+.api-params td:last-child,
+.api-errors td:last-child { min-width: 16em; }
+
+.api-req { color: var(--topic-color); font-size: var(--fs-xs); }
+
+/* the error codes of an operation, each a link into the error table */
+.api-op-errors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 6px;
+    margin: var(--space-3) 0 0;
+    font-size: var(--fs-s);
+}
+.api-op-errors > span { margin-right: 4px; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em; }
+.api-op-errors a { text-decoration: none; }
+.api-op-errors a code { display: inline-block; border: 1px solid var(--line); color: var(--muted); }
+.api-op-errors a:hover code { border-color: var(--accent); color: var(--accent); }
+
+.api-doc-errors { margin-top: var(--space-4); }
+.api-doc-errors pre.api-code { margin-bottom: var(--space-3); }
+.api-errors tr { scroll-margin-top: var(--space-3); }
+.api-errors tr:target td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.api-doc-foot {
+    padding: var(--space-3) 20px var(--space-4);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-align: center;
+}
+
+/* phones: narrower paddings, the logo a little smaller (like the app header) */
+@media (max-width: 799.98px) {
+    .api-doc-logo { height: 20px; }
+    .api-doc-main { padding: var(--space-3) 12px 32px; }
+    .api-doc h1 { font-size: 1.25rem; }
+    .api-doc-lead { font-size: var(--fs-m); }
+    .api-doc-box,
+    .api-doc-note { padding: 12px 14px; }
+    .api-op-head { padding: 8px 14px; }
+    .api-op-head .api-path { font-size: var(--fs-m); }
+    .api-op-body { padding: 12px 14px 14px; }
+    .api-doc-layout { display: block; }
+    .api-toc-side { display: none; }
+    .api-toc-top { display: block; }
+}
+
+/* very narrow: the path of the prompt goes, logo, "poker" and the spec link stay */
+@media (max-width: 359.98px) {
+    .api-doc-path { display: none; }
+}

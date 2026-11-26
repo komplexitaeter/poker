@@ -72,31 +72,23 @@ else {
         exit;
     }
 
-    $sql = $link->prepare("SELECT if (count(1) = sum(if(p.card_key is not null,1,0)), 1, 0) all_players_ready
-                                  FROM pok_players_tbl p
-                                 WHERE p.team_id = ?
-                                   AND p.player_type = 'PLAYER';");
-    $sql->bind_param('s',$t);
-    $sql->execute();
-
-    $result = $sql->get_result();
-    $obj = $result->fetch_object();
-
-    /* B-102: same condition for a new user (player or observer, decision Andreas 2026-10-31): joining while every
-       PLAYER has a card down (cards revealed) gives the system card LATE_CARD_KEY instead of break01. An observer
-       keeps it when becoming a player later (the branch above keeps a card already down). Cards of observers never
-       count: getDao(), the round snapshot type and stats only look at PLAYER rows. */
-    if ($obj->all_players_ready == 0) {
-        $sql = $link->prepare( "INSERT INTO pok_players_tbl (id, team_id, name, player_type) VALUES (?, ?, ?, ?)");
-        $sql->bind_param('ssss', $id, $t, $name, $type);
-    } else {
-        $late_card = LATE_CARD_KEY;
-        $sql = $link->prepare( "INSERT INTO pok_players_tbl (id, team_id, name, card_key, player_type) VALUES (?, ?, ?, ?, ?)");
-        $sql->bind_param('sssss', $id, $t, $name, $late_card, $type);
+    // B-102 rule ("joined in" card while the cards are revealed) and the user row: insert_new_player() in lib.php,
+    // shared with the API (B-150 team_create/team_join)
+    try {
+        insert_new_player($link, $t, $id, $name, $type);
+    } catch (mysqli_sql_exception $e) {
+        // a double submit of the same join: the other request registered the UID a moment ago, so this join is done
+        // too. Quiet on purpose: the message of 1062 contains the UID, which must never reach a log.
+        if ($e->getCode() !== 1062) throw $e;
     }
+    $sql = null;
 }
 
-$sql->execute();
+if ($sql !== null) $sql->execute();
+
+/* The user row (ensure_user_row() in lib.php) is created on joining, not by dao.php. A new person got it from
+   insert_new_player() already; an existing one gets it here (rows from before #282). */
+if ($is_in_db && strlen($name) > 0) ensure_user_row($link, $id);
 $link->close();
 
 // B-81: all boards of the team reload (only reached after the team check and a successful write)

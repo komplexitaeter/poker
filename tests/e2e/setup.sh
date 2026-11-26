@@ -114,6 +114,11 @@ CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PWD';
 CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PWD';
 GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'localhost';
 GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'127.0.0.1';
+-- B-150: scratch database of item-keys.spec.ts (migration script on items from before the key rule)
+DROP DATABASE IF EXISTS ${DB_NAME}_mig;
+CREATE DATABASE ${DB_NAME}_mig;
+GRANT ALL ON ${DB_NAME}_mig.* TO '$DB_USER'@'localhost';
+GRANT ALL ON ${DB_NAME}_mig.* TO '$DB_USER'@'127.0.0.1';
 EOF
     $MYSQL_ADMIN "$DB_NAME" < "$REPO_DIR/db_schema_pok.sql"
     # pending schema changes, as on the servers before the next merge into db_schema_pok.sql (check queries -> /dev/null)
@@ -195,6 +200,15 @@ http {
         root $E2E_DIR/www;
         index index.php;
 
+        # B-150: every request under /api/v1/ goes to the front controller, fixed (same block as on the servers,
+        # docs/api-v1-concept.md section 13); ^~ keeps the .php location below out, so no file of api/v1/ is
+        # reachable on its own
+        location ^~ /api/v1/ {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_param SCRIPT_FILENAME \$document_root/api/v1/index.php;
+            fastcgi_pass unix:$E2E_DIR/php-fpm.sock;
+        }
+
         location ~ \.php\$ {
             include /etc/nginx/fastcgi_params;
             fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
@@ -216,6 +230,8 @@ EOF
     wait_for "nginx" curl -sf -o /dev/null "http://127.0.0.1:$E2E_PORT/init.html"
     # start page is rendered by index.php, so this checks PHP and the DB connection as well
     wait_for "app (index.php)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/' | grep -q teaminput"
+    # B-150: the front controller of /api/v1 answers
+    wait_for "api v1 (api/v1/index.php)" bash -c "curl -sf 'http://127.0.0.1:$E2E_PORT/api/v1/openapi.json' | grep -q '\"openapi\"'"
     log "app running on http://127.0.0.1:$E2E_PORT/"
 }
 

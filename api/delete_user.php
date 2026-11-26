@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require './lib_api_keys.php';
 require_post();
 
 $id = get_uid(); // B-152: header X-Poker-User, transitionally body uid or URL id
@@ -44,6 +45,10 @@ $sql = $link->prepare("DELETE FROM pok_players_tbl WHERE id=?");
 $sql->bind_param('s', $id);
 $sql->execute();
 $sql->close();
+
+// B-150: the API keys of the user over all teams, AFTER the player rows: a key_create running at the same time either
+// finished before (its key is deleted here) or finds no player row any more (403), so no key is left behind
+api_keys_delete_user($link, $id);
 
 $sql = $link->prepare("DELETE FROM pok_user_tbl WHERE id=?");
 $sql->bind_param('s', $id);

@@ -80,7 +80,7 @@ test('board: with a kept light mode the board is light from the first frame (B-1
   const alice = await newPlayer(browser, { colorScheme: 'dark' });
   const url = await createTeam(alice, 'Color Local Board');
   await joinAsPlayer(alice, url, 'Alice');
-  // light saved on the server (the user row exists since the first dao.php) and kept on the device
+  // light saved on the server (the user row exists since the join) and kept on the device
   const res = await alice.request.post('/api/update_user.php?color_mode=light', asUser(await getSid(alice)));
   expect(res.ok()).toBeTruthy();
   await alice.evaluate(() => localStorage.setItem('COLOR_MODE', 'light'));

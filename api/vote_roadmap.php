@@ -23,7 +23,7 @@ if ($id === '' || !is_int($item) || !in_array($reaction, array_merge(ROADMAP_REA
 $link = db_init();
 
 // only users who joined a board (player or observer), so not every random id can vote
-// (dao.php creates a pok_user_tbl row for any id, so that table is no proof)
+// (update_user.php creates a pok_user_tbl row for any id, so that table is no proof)
 $sql = $link->prepare("select count(1) cnt from pok_players_tbl where id = ?");
 $sql->bind_param('s', $id);
 $sql->execute();

@@ -21,3 +21,7 @@ const _MYSQL_PORT = 3306;
 // B-98: limits of custom card sets: sets per team (default 5) and cards per set (default 20)
 // const _CUSTOM_SETS_MAX = 5;
 // const _CUSTOM_CARDS_MAX = 20;
+
+// B-150: optional public base URL for absolute links in /api/v1 answers and the curl examples of the doc page /api/v1/
+// (never taken from the Host header); without it the links are relative ('/?t=...').
+// const _PUBLIC_BASE_URL = 'https://poker.komplexitaeter.de';

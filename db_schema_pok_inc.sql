@@ -1085,3 +1085,74 @@ select table_name, column_name, column_type, character_set_name, collation_name
 select table_name, table_collation from information_schema.tables
  where table_schema = database() and table_type = 'BASE TABLE' and table_collation <> 'utf8mb4_0900_ai_ci';
 /* end B-12 */
+
+/* B-150: API keys (docs/api-v1-concept.md, section 5.3). One row per key; a key acts as one person (user_id) in one
+   team. Only the SHA-256 of the key is stored (binary, 32 bytes) plus its last 4 characters for display. user_id and
+   team_id have the collation of pok_players_tbl after B-12 (utf8mb4_0900_ai_ci), so the join of the key lookup uses
+   the index. No foreign key (the schema has none): api/delete_user.php deletes the keys of a user over all teams.
+   Additive, instant, idempotent (create if not exists, run it again any time), BEFORE deploying the B-150 PR 2 code
+   (the v1 router and delete_user.php use the table). The release code before PR 2 never touches it.
+   Run only this block: sed -n '/^\/\* B-150 keys:/,/^\/\* end B-150 keys/p' db_schema_pok_inc.sql */
+/* B-150 keys: */
+set session lock_wait_timeout = 5;
+create table if not exists pok_api_keys_tbl (
+  id int unsigned not null auto_increment primary key,
+  key_hash binary(32) not null comment 'sha256 of the full key (pok_...)',
+  key_hint char(4) character set ascii collate ascii_bin not null comment 'last 4 characters of the key',
+  user_id varchar(16) not null comment 'pok_players_tbl.id',
+  team_id varchar(80) not null comment 'pok_players_tbl.team_id',
+  name varchar(40) not null comment 'chosen by the person, e.g. Jira',
+  creation_date timestamp not null default current_timestamp,
+  last_used_date timestamp null comment 'updated at most once an hour',
+  unique key ux_api_keys_hash (key_hash),
+  key ix_api_keys_user_team (user_id, team_id)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-150: API keys per person and team';
+
+/* check (read only): the table and its columns */
+select column_name, column_type, collation_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_api_keys_tbl' order by ordinal_position;
+/* end B-150 keys */
+
+/* B-150 item keys: (docs/api-v1-concept.md, 7.2 step 3) the item key pok_topic_items_tbl.ext_id becomes required and
+   unique per team (case-insensitive, collation utf8mb4_0900_ai_ci: 'tix-4' = 'TIX-4'). Order on a server:
+   1. deploy the code of B-150 PR 3 (board and API always set a valid key from then on),
+   2. php tools/migration/b150_item_keys.php (dry run), then with --apply (fills empty, invalid and duplicate keys),
+   3. this block. The checks below must both give 0 before; if not, the alter is skipped (message 'skipped') - run the
+      script with --apply again, then this block again. Idempotent (only if the unique index is missing). The table is
+      small (seconds, algorithm = inplace, lock = none: reads and writes go on). The lock wait timeout makes the ALTER
+      give up after 5 s instead of queueing the board's writes: just run it again.
+   Run only this block: sed -n '/^\/\* B-150 item keys:/,/^\/\* end B-150 item keys/p' db_schema_pok_inc.sql */
+set session lock_wait_timeout = 5;
+set @b150_key_re = '^[A-Za-z0-9][A-Za-z0-9_-]{0,19}\\z';
+/* check: must be 0 before the alter (empty or invalid keys; \z: no line break at the end either) */
+select count(1) as b150_invalid_keys from pok_topic_items_tbl
+ where ext_id is null or not regexp_like(ext_id, @b150_key_re, 'c');
+/* check: must be 0 before the alter (keys used twice in a team, in the collation of the column) */
+select count(1) as b150_duplicate_keys from (select team_id, ext_id from pok_topic_items_tbl
+                                              where ext_id is not null group by team_id, ext_id having count(1) > 1) d;
+
+set @b150_sql = if((select count(1) from information_schema.statistics
+                     where table_schema = database() and table_name = 'pok_topic_items_tbl'
+                       and index_name = 'ux_topic_items_team_key') > 0,
+  'select ''already done'' as b150_item_keys',
+  if((select count(1) from pok_topic_items_tbl where ext_id is null or not regexp_like(ext_id, @b150_key_re, 'c')) > 0
+     or (select count(1) from (select team_id, ext_id from pok_topic_items_tbl where ext_id is not null
+                                group by team_id, ext_id having count(1) > 1) d) > 0,
+    'select ''skipped: run tools/migration/b150_item_keys.php --apply first'' as b150_item_keys',
+    'alter table pok_topic_items_tbl
+       modify ext_id varchar(20) character set utf8mb4 collate utf8mb4_0900_ai_ci not null
+         comment ''B-150: item key, unique per team (API: key)'',
+       add unique key ux_topic_items_team_key (team_id, ext_id),
+       algorithm = inplace, lock = none'));
+prepare b150_stmt from @b150_sql;
+execute b150_stmt;
+deallocate prepare b150_stmt;
+
+/* check (read only): NO for is_nullable, the unique index with 2 columns */
+select column_name, is_nullable, column_type, collation_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_topic_items_tbl' and column_name = 'ext_id';
+select index_name, non_unique, column_name, seq_in_index from information_schema.statistics
+ where table_schema = database() and table_name = 'pok_topic_items_tbl' and index_name = 'ux_topic_items_team_key'
+ order by seq_in_index;
+/* end B-150 item keys */

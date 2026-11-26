@@ -1,4 +1,4 @@
-import { test, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
+import { test, APIRequestContext, Browser, BrowserContext, BrowserContextOptions, Page, Locator, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 
 /**
@@ -260,4 +260,38 @@ export async function removeExampleSet(boardUrl: string, ...pages: Page[]): Prom
           where s.team_id = '${t}' and s.name = 'Animals (Example)';
          delete from pok_custom_sets_tbl where team_id = '${t}' and name = 'Animals (Example)'`);
   for (const page of pages) await page.reload();
+}
+
+/** B-150: a person in a new team for the API /api/v1, joined through the internal API (no browser): team id, UID and
+ * the board's authentication headers (X-Poker-User + X-Poker-Team, the browser mode of the API). */
+export async function newV1Member(request: APIRequestContext, teamName: string, name = 'Anna',
+                                  type: 'player' | 'observer' = 'player') {
+  const created = await request.post(`/api/addteam.php?t=${encodeURIComponent(teamName)}`);
+  expect(created.ok()).toBeTruthy();
+  const t = (await created.json()).id as string;
+  const uid = (await (await request.post('/api/uid.php')).json()).id as string;
+  const joined = await request.post(`/api/name.php?${new URLSearchParams({ t, name, type })}`, asUser(uid));
+  expect(joined.ok()).toBeTruthy();
+  return { t, uid, headers: { [UID_HEADER]: uid, 'X-Poker-Team': t } as Record<string, string> };
+}
+
+/** B-150: the Authorization header of an API key */
+export function bearer(key: string): Record<string, string> {
+  return { Authorization: `Bearer ${key}` };
+}
+
+/** B-150: joins team t through the API (POST /api/v1/teams/{t}/members) as a new person: its key and headers */
+export async function v1Join(request: APIRequestContext, t: string, name = 'Jira',
+                             role: 'player' | 'observer' = 'observer', keyName = 'API') {
+  const res = await request.post(`/api/v1/teams/${encodeURIComponent(t)}/members`, { data: { name, role, key_name: keyName } });
+  expect(res.status(), await res.text()).toBe(201);
+  const key = (await res.json()).api_key as string;
+  return { t, key, headers: bearer(key) };
+}
+
+/** B-150: a person in team t of a board member: a key created from the board (POST /api/v1/keys, browser mode) */
+export async function v1CreateKey(request: APIRequestContext, member: { headers: Record<string, string> }, name = 'Jira') {
+  const res = await request.post('/api/v1/keys', { headers: member.headers, data: { name } });
+  expect(res.status(), await res.text()).toBe(201);
+  return (await res.json()) as { id: number; name: string; key: string; hint: string; created: string };
 }

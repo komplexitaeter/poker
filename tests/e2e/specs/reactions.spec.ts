@@ -728,7 +728,7 @@ test('nudge: sound for the nudged one (switch per device), title flashes in a hi
 
   // the switch in the "You" menu: on by default, off is kept after a reload
   await bob.locator('#user_settings_btn').click();
-  await expect(bob.locator('#cet_nudge_sound legend')).toHaveText('Sound on nudge');
+  await expect(bob.locator('#cet_nudge_sound legend')).toHaveText('Play a sound when someone nudges you');
   await expect(soundOn).toBeChecked();
   await bob.locator('#cet_nudge_sound label', { hasText: 'Off' }).click();
   await expect(soundOff).toBeChecked();
