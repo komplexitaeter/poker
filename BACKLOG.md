@@ -472,6 +472,11 @@ PHP-Worker pro Wartendem). Server-Benachrichtigungen von MCP zusätzlich für Cl
 als Text/Emoji (Tisch, Karten, Status); eine grafische Ansicht über MCP-UI-Erweiterungen später.
 Datenschutz: Namen und Texte der Mitspieler gehen an die KI eines Dritten → Hinweis in der Datenschutzerklärung;
 Texte anderer Spieler sind für den Agenten fremder Input (Prompt-Injection), Hinweis in den Tool-Beschreibungen.
+**Anwesenheit** (Andreas, 2026-11-26): `wait_for_change` ist das Lebenszeichen. Solange ein Agent dort eine Verbindung
+offen hat, ist er „da“ (wie ein offener Tab); kein eigener Heartbeat-Kanal. Der Aufruf kehrt nach spätestens ca. 25 s
+zurück und wird sofort neu gestellt, das liegt sicher unter der Away-Frist (`AWAY_AFTER_SEC` = 70 s). Technisch:
+`last_callback_time` beim Start und bei jeder Rückkehr setzen. Ruft der Agent nichts mehr auf, wird er nach derselben
+Frist wie im Web „away“; keine Sonderfrist. Dazu ein Tool zum sauberen Gehen (wie ein geschlossener Tab).
 Schritte: Mitspielen (inkl. Event-Kanal) → Items und Runden → Rest. Verwandt: B-123 (eine von uns betriebene KI).
 
 ### B-30 Server auf Ubuntu 24.04 heben (vor April 2027)
