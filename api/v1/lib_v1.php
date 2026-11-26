@@ -661,7 +661,7 @@ function v1_item_by_id(mysqli $link, array $actor, int $id): ?array
 function v1_item_name(?array $item): string
 {
     if ($item === null) return 'The item';
-    return ($item['key'] !== '' ? 'Item ' . $item['key'] : 'Item') . ' "' . $item['heading'] . '"';
+    return ($item['key'] !== '' ? 'Item ' . $item['key'] : 'Item') . ' "' . v1_one_line($item['heading']) . '"';
 }
 
 /* where an open item is now, and which item is active */
@@ -676,7 +676,13 @@ function v1_active_text(array $board): string
     $active = $board['active_item'];
     if ($active === null) return ' No open item left.';
     return ' Active now: ' . ($active['key'] !== null && $active['key'] !== '' ? $active['key'] . ' ' : '')
-        . '"' . $active['heading'] . '".';
+        . '"' . v1_one_line($active['heading']) . '".';
+}
+
+/* a text written by somebody else on one line in a message (a line break must not start a line of its own) */
+function v1_one_line(string $text): string
+{
+    return str_replace(["\r\n", "\r", "\n"], ' ', $text);
 }
 
 /*
