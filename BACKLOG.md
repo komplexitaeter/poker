@@ -619,6 +619,13 @@ Namen (`name2id()`/`get_team_id()` in `api/lib.php`, mit `rand()`), bei kurzen N
 (`random_bytes()`), für Board, Tool-Links (`index.php?tool=…`) und API gleich. Bestehende Team-IDs bleiben gültig
 (Links der Teams). Offen fürs Planning: Format/Länge (passt in `varchar(80)`, URL-tauglich), ob ein lesbarer
 Namensteil davor bleibt.
+Umsetzung (Ben, 2026-11-26, Branch `feature/B-156-team-ids`): `new_team_id()` in `api/lib.php` für alle Wege
+(`add_team()` → `addteam.php`, `index.php?tool=…`, später `team_create`). Format: lesbarer Präfix aus dem Teamnamen
+(a-z/0-9, sonst `-`, Umlaute ausgeschrieben, höchstens 12 Zeichen, leer → `team`) + `-` + 16 Zeichen Base32 klein
+(`a-z2-7`, 80 Bit aus `random_bytes()`), höchstens 29 Zeichen. Schutz kommt nur aus dem Zufallsteil; der Präfix hilft
+beim Wiedererkennen des Links und verrät nichts, was das Board nicht ohnehin zeigt. Nur Kleinbuchstaben, weil
+`pok_teams_tbl.id` case-insensitiv vergleicht. `name2id()`/`get_team_id()` (mit `rand()`) entfernt; alte IDs bleiben
+gültig. Passt zu `FILTER_SANITIZE_URL`, `validate_team()` und poker-msg (`[\x21-\x7E]{1,80}`). E2E: `team-ids.spec.ts`.
 
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich

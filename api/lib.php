@@ -157,16 +157,21 @@ function get_uid(string $url_param = 'id'): string {
  * fits varchar(16) and UID_PATTERN. Not stored anywhere (api/uid.php hands it out, the board registers it on joining).
  */
 function new_uid(): string {
+    return random_base32_80();
+}
+
+/* 80 bits from random_bytes() as 16 characters Base32 (RFC 4648 alphabet, upper case); B-152 new_uid(), B-156 team ids */
+function random_base32_80(): string {
     $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
     $bits = '';
     foreach (str_split(random_bytes(10)) as $byte) {
         $bits .= str_pad(decbin(ord($byte)), 8, '0', STR_PAD_LEFT);
     }
-    $uid = '';
+    $out = '';
     foreach (str_split($bits, 5) as $chunk) {
-        $uid .= $alphabet[bindec($chunk)];
+        $out .= $alphabet[bindec($chunk)];
     }
-    return $uid; // 80 bits / 5 = 16 characters
+    return $out; // 80 bits / 5 = 16 characters
 }
 
 /*
@@ -871,85 +876,44 @@ function start_new_round($link, string $t): void
     $sql->execute();
 }
 
-function name2id($name) {
-    $id='';
-    $mix=array(
-        "0" => array('0','O','o'),
-        "1" => array('1','I','T'),
-        "2" => array('2','Z','z'),
-        "3" => array('3','E'),
-        "4" => array('4','A'),
-        "5" => array('5','F'),
-        "6" => array('6','S','G'),
-        "7" => array('7','T'),
-        "8" => array('8','H'),
-        "9" => array('9','g'),
-        "a" => array('a','A','4'),
-        "b" => array('b','B','3'),
-        "c" => array('c','C'),
-        "d" => array('d','D','0','O'),
-        "e" => array('e','E','3'),
-        "f" => array('f','F','1'),
-        "g" => array('g','G','6'),
-        "h" => array('h','H','8'),
-        "i" => array('i','I','J','1'),
-        "j" => array('j','J','I'),
-        "k" => array('k','K','5'),
-        "l" => array('l','L','7'),
-        "m" => array('m','M'),
-        "n" => array('n','N'),
-        "o" => array('o','O','0'),
-        "p" => array('p','P'),
-        "q" => array('q','Q'),
-        "r" => array('r','R'),
-        "s" => array('s','S','6','9'),
-        "t" => array('t','T','1','7'),
-        "u" => array('u','U'),
-        "v" => array('v','V','U'),
-        "w" => array('w','W'),
-        "x" => array('x','X'),
-        "y" => array('y','Y'),
-        "z" => array('z','Z','2'),
-        "." => array('-','_'),
-        "-" => array('-','_'),
-        "_" => array('-','_'),
-        "?" => array('S'),
-        " " => array('_'),
-        "*" => array('0','1','2','3','4','5','6','7','8','9')
-    );
-    $null_signs = array('x','X','0','o','O');
+/*
+ * B-156: id of a new team = readable prefix from the team name + '-' + 16 characters Base32 (80 bits from
+ * random_bytes()), e.g. "sprint-team-k3x7q2mzab4cd5ef". Only the random part protects the board; the prefix just helps
+ * people recognise their link (history, bookmarks) and shows nothing that the board would not show anyway.
+ * Lower case only: the column has a case-insensitive collation, so ids must not differ only in case.
+ * Format ^[a-z0-9]+(-[a-z0-9]+)*-[a-z2-7]{16}$, at most 12 + 1 + 16 = 29 characters (varchar(80), passes
+ * FILTER_SANITIZE_URL and the team id check of poker-msg). Ids of existing teams (made by the former name2id()) stay valid.
+ * Used by every way to create a team: addteam.php, index.php?tool=..., later team_create (B-150).
+ */
+const TEAM_ID_PREFIX_MAX = 12;
 
-    for ($i=0;$i<strlen($name);$i++) {
-        if (!isset($mix[strtolower($name[$i])]) or !$signs = $mix[strtolower($name[$i])]) {
-            $signs = $null_signs;
-        }
-        $id.=$signs[rand(0,count($signs)-1)];
-    }
-
-    return $id;
+/* B-156: readable part of a new team id: lower case a-z/0-9 of the name, everything else becomes one '-',
+   at most TEAM_ID_PREFIX_MAX characters, 'team' when nothing is left (e.g. a name of emojis only). German umlauts
+   are spelled out, other non-ASCII letters are dropped. */
+function team_id_prefix(string $name): string {
+    $name = strtr($name, array('ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue', 'ß' => 'ss'));
+    $slug = trim((string)preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
+    $slug = rtrim(substr($slug, 0, TEAM_ID_PREFIX_MAX), '-');
+    return $slug === '' ? 'team' : $slug;
 }
 
-function get_team_id($name, $link) {
-
-    $sql = $link->prepare("select count(1) cnt from pok_teams_tbl where id=?");
-    $id = name2id($name);
-
-    for ($i=0;$i<80;$i++) {
-        $sql->bind_param("s", $id);
+/* B-156: a fresh team id (format above) that is not used yet. With 80 random bits a clash is practically
+   impossible; the check only makes sure we never hand out an existing board. */
+function new_team_id(mysqli $link, string $name): string {
+    $prefix = team_id_prefix($name);
+    $sql = $link->prepare("select count(1) cnt from pok_teams_tbl where id = ?");
+    for ($i = 0; $i < 3; $i++) {
+        $id = $prefix . '-' . strtolower(random_base32_80());
+        $sql->bind_param('s', $id);
         $sql->execute();
-        $result = $sql->get_result();
-        $obj = $result->fetch_object();
-
-        if ($obj->cnt == 0){
-            break;
-        } else {
-            if ($i>(strlen($name)/2)) {
-                $id = name2id($id.'*');
-            }
+        $taken = (int)$sql->get_result()->fetch_object()->cnt > 0;
+        if (!$taken) {
+            $sql->close();
+            return $id;
         }
     }
-
-    return $id;
+    $sql->close();
+    throw new RuntimeException('B-156: no free team id');
 }
 
 
@@ -1452,7 +1416,7 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
         $t = 'Team';
     }
 
-    $id = get_team_id($t, $link);
+    $id = new_team_id($link, $t);
 
     /* determine preset from cards.json config file */
     $cards_conf = json_decode(file_get_contents(dirname(__DIR__).'/cards.json'), true);
