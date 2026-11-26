@@ -1,4 +1,5 @@
 import { test, expect, Page, Request } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { newPlayer, createTeam, joinAsPlayer, pickCard, expectTableCard, pageReady, getSid, UID_HEADER } from './helpers';
 
 /**
@@ -159,4 +160,38 @@ test('without an answer of uid.php the board waits and retries, never makes up a
   expect(sid).toMatch(/^[A-Z2-7]{16}$/);
   expect(daoCalls.length).toBeGreaterThan(0);
   await expect(bob.locator('#overlay_name_input')).toHaveClass(/visible/);
+});
+
+test('"Delete my data" in one tab: the other tab of the browser never uses the deleted UID again (B-152)', async ({ browser }) => {
+  const alice = await newPlayer(browser, { viewport: { width: 1280, height: 900 } });
+  const url = await createTeam(alice, 'Uid Delete');
+  await joinAsPlayer(alice, url, 'Alice');
+  const old = await getSid(alice);
+  const other = await alice.context().newPage();
+  await other.goto(url);
+  await pageReady(other);
+  await expectTableCard(other, 'Alice', 'prgrss1');
+
+  // from now on: what the other tab sends to the API
+  const sent = recordRequests(other);
+  const deleted = alice.waitForResponse(r => r.url().includes('/api/delete_user.php'));
+  await alice.evaluate(() => (window as unknown as { showDeleteUserOverlay: () => void }).showDeleteUserOverlay());
+  await alice.locator('#delete_user_ok').click();
+  expect((await deleted).ok()).toBeTruthy();
+
+  // the pull of delete_user.php reloads the other tab: Alice is gone, it asks with a new UID
+  await expect(other.locator('#cbox .c')).toHaveCount(0);
+  await expect(other.locator('#overlay_name_input')).toHaveClass(/visible/);
+  const fresh = await getSid(other);
+  expect(fresh).toMatch(/^[A-Z2-7]{16}$/);
+  expect(fresh).not.toBe(old);
+  const seen = (await Promise.all(sent)).filter(s => new URL(s.url).pathname.startsWith('/api/'));
+  expect(seen.some(s => new URL(s.url).pathname === '/api/dao.php')).toBe(true);
+  for (const s of seen) expect(s.uid, s.url).not.toBe(old);
+  // the server does not know the deleted UID again (dao.php would have created its user row)
+  expect(old).toMatch(/^[A-Z2-7]{16}$/); // safe to put into the SQL below
+  const rows = execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e', '-N', '-B', '-e',
+    `select (select count(*) from pok_user_tbl where id = '${old}') + (select count(*) from pok_players_tbl where id = '${old}')`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  expect(rows).toBe('0');
 });

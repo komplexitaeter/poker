@@ -81,6 +81,13 @@ function ensureUid() {
     return gUidPromise;
 }
 
+/* B-152: another tab of this browser deleted the user ("Delete user": SID removed, storage cleared) or stored
+ * another UID: this page forgets its UID, getUid() reads the storage again and ensureUid() gets a new one if none is
+ * there. Never keeps a deleted UID (dao.php would create it again). Not fired in the tab that made the change. */
+window.addEventListener('storage', (event) => {
+    if (event.key === null || event.key === UID_STORE_KEY) gUid = null;
+});
+
 /* B-152: every call of the own API (relative ./api/ URL) goes through here: it waits for the UID and sends it in the
  * header X-Poker-User. Other URLs (other hosts, static files) are fetched as they are, never with the UID. */
 function apiFetch(url, init = {}) {
@@ -3324,11 +3331,23 @@ function showDeleteUserOverlay(openIt=true) {
 }
 
 function deleteUser() {
-    // B-81: the API tells the boards of all the user's teams; this page is left, so no reload here
-    apiFetch('./api/delete_user.php', { method: 'POST' }).then(()=>{
-        localStorage.clear();
-        gUid = null; // B-152: whatever needs a UID afterwards gets a new one (ensureUid)
-        document.location = 'about:blank';
+    // B-152: the UID leaves the storage before the request: delete_user.php tells the boards of all the user's teams
+    // (B-81) maybe before its answer is here, and other tabs of this browser must not load them with the deleted UID
+    // (dao.php would create it again). They drop it on the storage event and get a new one when they need one.
+    const uid = getUid();
+    try { localStorage.removeItem(UID_STORE_KEY); } catch (e) { /* no storage */ }
+    apiFetch('./api/delete_user.php', { method: 'POST' }).then(() => {
+        let fresh = null; // a new UID another tab got meanwhile stays
+        try {
+            fresh = readStoredUid();
+            localStorage.clear();
+            if (fresh !== null && fresh !== uid) localStorage.setItem(UID_STORE_KEY, fresh);
+        } catch (e) { /* no storage */ }
+        gUid = null; // whatever needs a UID afterwards gets a new one (ensureUid)
+        document.location = 'about:blank'; // this page is left, so no reload here
+    }, () => {
+        // not deleted: the UID goes back, unless another tab has a new one already
+        try { if (readStoredUid() === null && uid !== '') localStorage.setItem(UID_STORE_KEY, uid); } catch (e) { /* none */ }
     });
 }
 
