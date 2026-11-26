@@ -642,6 +642,22 @@ der Team-Sperre (dort lag der Deadlock aus #279):
    Laden; bestehende Teams ohne Beispielset (wenige, 754 haben es) per einmaligem Skript oder gar nicht mehr.
 Danach in CLAUDE.md: „`dao.php` schreibt nur die Anwesenheit.“
 
+### B-158 Nutzertabelle abschaffen (`pok_user_tbl`)
+Status: neu (Andreas, 2026-11-26: Eintrag ja, ob die Tabelle wirklich wegfällt, ist noch offen). `pok_user_tbl` hält je
+UID nur noch: `color_mode` (seit B-141 ohnehin auch im Browser), `hide_teaser` (roter Punkt am Feedback-Menü, B-57;
+wird bei Neuem per Skript für alle zurückgesetzt), `creation_date` („zuerst gesehen“ für die Wochenstatistik in
+`stats.php`) und die toten Spalten `survey_*` (B-136). Da die UID selbst im Browser liegt, sind Einstellungen je UID
+ohnehin Einstellungen je Browser – im Browser speichern ändert für Nutzer nichts.
+Vorschlag:
+- `color_mode` nur noch im Browser (`localStorage`, wie B-141).
+- Feedback-Punkt über eine **Teaser-Version**: der Server liefert die aktuelle Version (ein Wert, z. B. per Admin-Knopf
+  in `stats.php` hochgezählt), der Browser merkt sich die zuletzt gesehene; „wieder anzeigen“ = Version erhöhen statt
+  Massen-Update.
+- „Zuerst gesehen“ aus der ersten Runde einer UID (`pok_roundstat_details_tbl`).
+- Danach `pok_user_tbl` entfernen (`get_user.php`, `update_user.php`, Lesen in `getDao()`, `delete_user.php` anpassen);
+  zumindest die `survey_*`-Spalten können auch ohne den Rest weg.
+Effekt: `dao.php` liest weniger, „Delete user“ wird einfacher, weniger personenbezogene Daten (passt zu B-109, B-157).
+
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
 „aktiv“ in `stats.php` als „hat in den letzten X Minuten eine Karte gewählt“ definieren. Schemaänderung online, Ben +
