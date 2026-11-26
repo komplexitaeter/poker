@@ -714,7 +714,8 @@ function loadTopicLists(opening = false) {
     if (gTopicItems === null || !topicHasItems()) return;
     if (!opening && openMenuSection() !== 'topic') return;
     if (gTopicTab === 'note') return;
-    if (gTopicTab === 'open' && gTopicItems.open_count === 0) return;
+    // B-150: no open items, but the form of a new item needs the key suggestion (next_key)
+    if (gTopicTab === 'open' && gTopicItems.open_count === 0 && !topicNewEditorOpen()) return;
     if (gTopicTab === 'done' && gTopicItems.done_count === 0) return;
     const rev = gTopicItems.topics_rev;
     const done = gTopicTab === 'done';
@@ -747,6 +748,7 @@ function loadTopicLists(opening = false) {
         .finally(() => {
             gTopicLoad = null;
             renderTopicMenu();
+            syncTopicKeySuggestion();
             if (gTopicLoadAgain || seq !== gTopicLoadSeq) {
                 gTopicLoadAgain = false;
                 loadTopicLists();
@@ -1263,7 +1265,7 @@ function topicDoneRow(item) {
  * first because there the latest result matters. */
 const TOPIC_EXPORT_PAGE = 100;   // TOPIC_DONE_PAGE_MAX in api/lib_topics.php
 const TOPIC_EXPORT_MAX = 1000;   // TOPIC_ITEMS_TOTAL_MAX: no team has more
-const TOPIC_EXPORT_HEAD = ['ID', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round'];
+const TOPIC_EXPORT_HEAD = ['Key', 'Heading', 'Description', 'Agreed value', 'Votes', 'Rounds', 'Last round'];
 let gTopicExportBusy = false; // false, or 'copy' | 'csv' while that export loads
 
 function topicExportRow() {
@@ -1438,9 +1440,18 @@ function topicEditorRow(item) {
     ext.id = 'ti_ext';
     ext.className = 'field';
     ext.maxLength = limits.ext_id;
+    ext.required = true;
     ext.placeholder = 'e.g. PAY-150';
     ext.autocomplete = 'off';
+    ext.spellcheck = false;
+    ext.setAttribute('aria-describedby', 'ti_error');
     ext.value = item && item.ext_id ? item.ext_id : '';
+    // B-150: a new item (or an old one without a key) gets the suggestion; it follows the lists while untouched
+    if (ext.value === '') {
+        ext.dataset.suggested = '';
+        const suggestion = topicKeySuggestion();
+        if (suggestion !== null) ext.value = ext.dataset.suggested = suggestion;
+    }
     const heading = document.createElement('input');
     heading.id = 'ti_heading';
     heading.className = 'field';
@@ -1450,7 +1461,7 @@ function topicEditorRow(item) {
     heading.value = item ? item.heading : '';
     const grid = document.createElement('div');
     grid.className = 'ti-grid';
-    grid.append(labelled('ID (optional)', ext), labelled('Heading', heading));
+    grid.append(labelled('Key', ext), labelled('Heading', heading));
 
     const desc = document.createElement('textarea');
     desc.id = 'ti_desc';
@@ -1517,13 +1528,68 @@ function maturityFieldset(item) {
     return fieldset;
 }
 
+/* B-150: the suggested key for a new item: '1' without any item, else next_key of lists that are up to date;
+ * null = not known yet (the lists load, syncTopicKeySuggestion() fills it in) */
+function topicKeySuggestion() {
+    if (gTopicItems === null) return null;
+    if (!topicHasItems()) return '1';
+    if (gTopicLists === null || gTopicListsFor !== gTopicItems.topics_rev || gTopicLoadError) return null;
+    return typeof gTopicLists.next_key === 'string' && gTopicLists.next_key !== '' ? gTopicLists.next_key : null;
+}
+
+function topicNewEditorOpen() {
+    return gTopicEditor !== null && gTopicEditor.id === 'new';
+}
+
+/* B-150: an untouched suggested key in the open form follows the newest suggestion (lists loaded, an item added
+ * by someone else meanwhile) */
+function syncTopicKeySuggestion() {
+    const ext = document.getElementById('ti_ext');
+    if (ext === null || ext.dataset.suggested === undefined || ext.value !== ext.dataset.suggested) return;
+    const suggestion = topicKeySuggestion();
+    if (suggestion === null || suggestion === ext.value) return;
+    ext.value = ext.dataset.suggested = suggestion;
+    if (ext.getAttribute('aria-invalid') === 'true') {
+        // a new suggestion replaces the refused key: its message goes too
+        ext.removeAttribute('aria-invalid');
+        const error = document.getElementById('ti_error');
+        if (error !== null) error.textContent = '';
+    }
+}
+
+/* B-150: the same rule as ITEM_KEY_PATTERN in api/lib_topics.php; null = fine, else the message */
+function itemKeyProblem(key) {
+    if (key === '') return 'Please enter a key.';
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(key)) {
+        return 'Key: letters, digits, - and _ only, starting with a letter or digit.';
+    }
+    return null;
+}
+
+function showTopicFieldError(field, text) {
+    const error = document.getElementById('ti_error');
+    if (field === null || error === null) return;
+    field.setAttribute('aria-invalid', 'true');
+    error.textContent = text;
+    field.focus();
+}
+
 function saveTopicEditor(item) {
     const heading = document.getElementById('ti_heading');
+    const ext = document.getElementById('ti_ext');
     const error = document.getElementById('ti_error');
+    heading.removeAttribute('aria-invalid');
+    ext.removeAttribute('aria-invalid');
+    error.textContent = '';
+    const key = ext.value.trim();
+    // an old item without a key may stay empty: the server gives it the suggestion
+    const keyProblem = key === '' && item !== null && !item.ext_id ? null : itemKeyProblem(key);
+    if (keyProblem !== null) {
+        showTopicFieldError(ext, keyProblem);
+        return;
+    }
     if (heading.value.trim() === '') {
-        heading.setAttribute('aria-invalid', 'true');
-        error.textContent = 'Please enter a heading.';
-        heading.focus();
+        showTopicFieldError(heading, 'Please enter a heading.');
         return;
     }
     // without the input no maturity is sent: add = not set, edit = unchanged
@@ -1532,22 +1598,33 @@ function saveTopicEditor(item) {
     const form = {
         heading: heading.value,
         description: document.getElementById('ti_desc').value,
-        ext_id: document.getElementById('ti_ext').value,
+        ext_id: key,
     };
     const save = document.getElementById('ti_save');
     save.disabled = true;
     const request = item === null
-        ? topicWrite('topic_item_add.php', Object.assign({ at: 'end' }, maturity), form, [409])
-        : topicWrite('topic_item_edit.php', Object.assign({ item: item.id }, maturity), form);
+        ? topicWrite('topic_item_add.php', Object.assign({ at: 'end' }, maturity), form, [400, 409])
+        : topicWrite('topic_item_edit.php', Object.assign({ item: item.id }, maturity), form, [400, 409]);
     request.then(response => {
-        if (response !== null && response.status === 409) {
-            // the limit of items (open or all): its own message, not "try again"
+        if (response !== null && (response.status === 400 || response.status === 409)) {
             response.json().catch(() => null).then(answer => {
-                showToast(answer && answer.error === 'limit' ? TOPIC_LIMIT_TEXT : 'Not saved \u2013 please try again',
-                    DECK_TOAST_MS, 'error');
+                const code = answer && typeof answer === 'object' ? answer.error : null;
+                const field = document.getElementById('ti_ext');
+                if (code === 'key_taken' && field !== null) {
+                    // B-150: the form stays open, the key marked
+                    showTopicFieldError(field, 'Key already used');
+                } else if (code === 'ext_id' && field !== null) {
+                    showTopicFieldError(field, itemKeyProblem(field.value.trim()) || 'This key is not valid.');
+                } else {
+                    // the limit of items (open or all): its own message, not "try again"
+                    showToast(code === 'limit' ? TOPIC_LIMIT_TEXT : 'Not saved \u2013 please try again',
+                        DECK_TOAST_MS, 'error');
+                }
             });
         }
         if (response !== null && response.ok) {
+            // B-150: the suggestion is used up; the next form waits for the reloaded lists (next_key)
+            if (item === null && gTopicLists !== null) gTopicLists.next_key = null;
             gTopicEditor = null;
             renderTopicMenu(true);
             const target = item === null ? document.getElementById('ti_add')
@@ -1564,6 +1641,7 @@ function openTopicEditor(id) {
     gTopicEditor = { id };
     gTopicConfirmDelete = null;
     renderTopicMenu(true);
+    if (id === 'new') loadTopicLists(); // B-150: the key suggestion, if the lists are not up to date
     const heading = document.getElementById('ti_heading');
     if (heading !== null) {
         heading.focus();

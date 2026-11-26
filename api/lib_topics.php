@@ -37,6 +37,114 @@ const TOPIC_DISTRIBUTION_MAX_BYTES = 1000; // pok_topic_items_tbl.distribution v
 const TOPIC_MATURITY_MAX = 3;        // 0 new, 1 rough, 2 shaping, 3 ready; optional (null = not set, Andreas 2026-11-11)
 const DECK_AIMS = array('agree', 'perspectives');
 
+/*
+ * B-150: the item key (column ext_id, externally "key"), required and unique per team (docs/api-v1-concept.md, 7):
+ * ASCII letters, digits, '_' and '-', starting with a letter or digit, 1-20 characters. No '.', '#', '/', ':' or
+ * spaces: keys stand in URL paths (/api/v1/items/{key}). Unique WITHOUT case: always checked by SQL in the collation
+ * of the column (utf8mb4_0900_ai_ci) under the team row lock, never by a PHP string comparison.
+ */
+const ITEM_KEY_PATTERN = '/^[A-Za-z0-9][A-Za-z0-9_-]{0,19}$/D';
+const ITEM_KEY_SUGGEST_TRIES = 1000;
+
+/* a valid item key (pattern and length, see ITEM_KEY_PATTERN) */
+function valid_item_key(string $key): bool
+{
+    return preg_match(ITEM_KEY_PATTERN, $key) === 1;
+}
+
+/* a decimal digit string + 1, keeping its width as a minimum ('004' -> '005', '099' -> '100', '9' -> '10') */
+function increment_digits(string $digits): string
+{
+    $out = '';
+    $carry = 1;
+    for ($i = strlen($digits) - 1; $i >= 0; $i--) {
+        $sum = (int)$digits[$i] + $carry;
+        $out = ($sum % 10) . $out;
+        $carry = intdiv($sum, 10);
+    }
+    return $carry > 0 ? '1' . $out : $out;
+}
+
+/*
+ * B-150: the suggested key of a new item (docs/api-v1-concept.md, 7.3), a pure function shared with the board
+ * (script/item_key.js) through the fixture tests/e2e/fixtures/item-keys.json:
+ *   $last_key: key of the item created last in the team (highest id, done ones too), null/'' if none or without key;
+ *   $count: number of items of the team; $is_taken(string $key): bool - is the key taken (SQL in the collation; the
+ *   fixture compares ASCII case-insensitively).
+ * 1. no item -> '1'; 2. the last key ends in digits -> same prefix, number + 1 with the zeros kept ('DMZ-004' ->
+ * 'DMZ-005', 'A-09' -> 'A-10', 'X-99' -> 'X-100'); 3. otherwise count + 1. Taken: count on (at most
+ * ITEM_KEY_SUGGEST_TRIES times); a candidate that is no valid key (too long, a prefix with other characters) or no
+ * free one in time falls back to rule 3, counting on from count + 1 until free. Always returns a valid key.
+ */
+function next_item_key(?string $last_key, int $count, callable $is_taken): string
+{
+    if ($count <= 0 && ($last_key === null || $last_key === '')) {
+        if (!$is_taken('1')) return '1';
+    } elseif ($last_key !== null && preg_match('/^(.*?)(\d+)$/sD', $last_key, $m)) {
+        $digits = $m[2];
+        for ($try = 0; $try < ITEM_KEY_SUGGEST_TRIES; $try++) {
+            $digits = increment_digits($digits);
+            $candidate = $m[1] . $digits;
+            if (!valid_item_key($candidate)) break;
+            if (!$is_taken($candidate)) return $candidate;
+        }
+    }
+    // rule 3: count + 1 (a plain number is always a valid key), on until free; a team has at most
+    // TOPIC_ITEMS_TOTAL_MAX items, so this ends long before the numbers get too long
+    for ($n = max(0, $count) + 1; ; $n++) {
+        $candidate = (string)$n;
+        if (!$is_taken($candidate)) return $candidate;
+    }
+}
+
+/* B-150: is $key taken in team $t (SQL, collation of ext_id: 'dmz-4' = 'DMZ-4'), the item $except_id left out */
+function item_key_taken($link, string $t, string $key, int $except_id = 0): bool
+{
+    $sql = $link->prepare("select 1 from pok_topic_items_tbl where team_id = ? and ext_id = ? and id <> ? limit 1");
+    $sql->bind_param('ssi', $t, $key, $except_id);
+    $sql->execute();
+    $taken = is_array($sql->get_result()->fetch_row());
+    $sql->close();
+    return $taken;
+}
+
+/*
+ * B-150: the suggested key for a new item of team $t (next_item_key() on the item created last and the item count).
+ * $before_id > 0 (migration tools/migration/b150_item_keys.php): as if the items from $before_id on did not exist yet,
+ * and the item $before_id itself is ignored in the taken check. Callers that write hold the team row lock.
+ * Cost (review Sina): the team's keys (at most TOPIC_ITEMS_TOTAL_MAX) are read once and the candidates are checked in
+ * PHP (ASCII case-insensitively, candidates are valid ASCII keys); only a candidate that is free there is confirmed by
+ * SQL in the collation (item_key_taken(); it differs only for old non-ASCII keys, e.g. 'Ä-1' = 'A-1'). So usually one
+ * read plus one check. The binding check of a written key is this SQL check under the team row lock.
+ */
+function item_key_suggest($link, string $t, int $before_id = 0): string
+{
+    $sql = $link->prepare("select id, ext_id from pok_topic_items_tbl where team_id = ? order by id");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $rows = $sql->get_result()->fetch_all(MYSQLI_NUM);
+    $sql->close();
+
+    $last = null;
+    $count = 0;
+    $taken = array();
+    foreach ($rows as [$id, $key]) {
+        if ($before_id > 0 && (int)$id === $before_id) continue;
+        if ($key !== null) $taken[strtolower((string)$key)] = true;
+        if ($before_id > 0 && (int)$id > $before_id) continue;
+        $last = $key === null ? null : (string)$key;
+        $count++;
+    }
+
+    return next_item_key($last, $count, function (string $key) use ($link, $t, $before_id, &$taken): bool {
+        $lower = strtolower($key);
+        if (isset($taken[$lower])) return true;
+        if (!item_key_taken($link, $t, $key, $before_id)) return false;
+        $taken[$lower] = true;
+        return true;
+    });
+}
+
 /* writes an error answer of the topic item endpoints and ends the request (rolls back an open transaction) */
 function topic_fail($link, int $status, string $error, array $extra = array()): never
 {
@@ -90,6 +198,51 @@ function lock_team_topics($link, string $t): void
     if (!is_array($sql->get_result()->fetch_assoc())) {
         $link->rollback();
         http_response_code(403);
+        exit;
+    }
+}
+
+/*
+ * B-150/B-155: locks the team row inside the caller's transaction (db_transaction()), as its FIRST statement.
+ * Unknown team: ApiError 403 not_a_member (like require_team() / require_member()).
+ */
+function lock_team_topics_or_throw($link, string $t): void
+{
+    $sql = $link->prepare("select id from pok_teams_tbl where id = ? for update");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $found = is_array($sql->get_result()->fetch_row());
+    $sql->close();
+    if (!$found) throw new ApiError(403, 'not_a_member');
+}
+
+/*
+ * B-150: runs a core function (api/lib_core_items.php) for an old topic item endpoint and translates its errors into
+ * the old answers (topic_fail()): 400 {error: heading|ext_id|item}, 404 {error: item}, 409 {error: limit|key_taken},
+ * unknown team 403 with an empty body (as lock_team_topics()), deadlock/lock wait after the retries 503 (as
+ * api_transaction()). Returns the result of $core.
+ */
+function topic_core_call(callable $core): array
+{
+    try {
+        return $core();
+    } catch (ApiError $e) {
+        if ($e->status === 403) {
+            http_response_code(403);
+            exit;
+        }
+        $error = match ($e->error) {
+            'limit_reached' => 'limit',
+            'key_taken' => 'key_taken',
+            'item_not_found' => 'item',
+            default => match ($e->param) { 'key' => 'ext_id', null => 'invalid', default => (string)$e->param },
+        };
+        topic_fail(null, $e->status, $error);
+    } catch (mysqli_sql_exception $e) {
+        if (!is_retryable_db_error($e)) throw $e;
+        error_log('poker api: transaction given up after retries (' . $e->getCode() . '): ' . $e->getMessage());
+        http_response_code(503);
+        header('Retry-After: 1');
         exit;
     }
 }
@@ -210,6 +363,13 @@ function update_topic_item($link, string $t, int $id, string $heading, ?string $
     topic_items_write($link, $t, "update pok_topic_items_tbl set heading = ?, description = ?, ext_id = ?, maturity = ?
                                    where id = ? and team_id = ?",
                       'sssiis', $heading, $description, $ext_id, $maturity, $id, $t);
+}
+
+/* B-150: sets the key of an item (tools/migration/b150_item_keys.php; the caller checked it under the team lock) */
+function set_topic_item_key($link, string $t, int $id, string $key): void
+{
+    topic_items_write($link, $t, "update pok_topic_items_tbl set ext_id = ? where id = ? and team_id = ?",
+                      'sis', $key, $id, $t);
 }
 
 /* sets the optional maturity of an item */
@@ -590,7 +750,7 @@ function topic_items_for_dao($link, string $t, ?array $live_distribution, array 
 }
 
 /*
- * get_topics.php: {topics_rev, open: [all open items in order], open_count, done_count, limits, and with $with_done
+ * get_topics.php: {topics_rev, open: [all open items in order], open_count, done_count, next_key (B-150), limits, and with $with_done
  * done: [done items, newest first (done_date), $done_limit from $done_offset]}. One consistent snapshot (read only
  * transaction), so topics_rev matches the lists. Open items as in open_items_out() (the active one with the cards of
  * the running round while revealed).
@@ -630,6 +790,7 @@ function topic_lists($link, string $t, array $catalog, bool $with_done, int $don
     $live = (count($open_rows) > 0 && $state['round_item_id'] === (int)$open_rows[0]['id'])
         ? revealed_distribution($link, $t) : null;
     $open = open_items_out($link, $t, $open_rows, $live, $catalog, fn() => team_deck_aim($link, $t, $catalog));
+    $next_key = item_key_suggest($link, $t); // B-150: same snapshot as the lists
     $link->commit();
 
     $out = array(
@@ -637,6 +798,8 @@ function topic_lists($link, string $t, array $catalog, bool $with_done, int $don
         'open' => $open,
         'open_count' => count($open),
         'done_count' => $done_count,
+        // B-150: suggested key of the next new item (item_key_suggest(), the form fills it in)
+        'next_key' => $next_key,
         // total/total_count: all items incl. done ones, topic_item_add.php refuses at total_count >= total (409 limit)
         'limits' => array('open' => TOPIC_ITEMS_OPEN_MAX, 'total' => TOPIC_ITEMS_TOTAL_MAX,
                           'total_count' => count($open) + $done_count, 'ext_id' => TOPIC_EXT_ID_MAX,
