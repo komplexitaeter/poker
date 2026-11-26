@@ -705,6 +705,56 @@ function team_has_active_item($link, string $t): bool
     }
 }
 
+/* a transaction failed only because of a deadlock (1213) or a lock wait timeout (1205): it may simply be run again */
+function is_retryable_db_error(mysqli_sql_exception $e): bool
+{
+    return in_array($e->getCode(), array(1205, 1213), true);
+}
+
+/*
+ * Runs $work() in a transaction and commits; returns its result. On a deadlock or lock wait timeout the transaction is
+ * rolled back and run again (up to $attempts times in all, short random backoff), so $work must only touch the
+ * database (no output, no notify_team()) and must be safe to repeat. Anything else, and the last retryable failure, is
+ * rolled back and thrown. Nothing is retried after a successful commit. $work may roll back and exit itself (custom_fail()).
+ */
+function db_transaction($link, callable $work, int $attempts = 3): mixed
+{
+    for ($attempt = 1; ; $attempt++) {
+        $link->begin_transaction();
+        try {
+            $result = $work();
+            $link->commit();
+            return $result;
+        } catch (Throwable $e) {
+            try {
+                $link->rollback();
+            } catch (mysqli_sql_exception $ignored) {
+                // the connection is gone: the server rolled back already
+            }
+            if (!($e instanceof mysqli_sql_exception) || !is_retryable_db_error($e) || $attempt >= $attempts) throw $e;
+            usleep(random_int(20000, 80000) * $attempt);
+        }
+    }
+}
+
+/*
+ * db_transaction() for an API script: if the transaction still fails with a deadlock or lock wait timeout after all
+ * attempts, the request ends with 503 (temporary, the client may try again) instead of an uncaught exception (HTTP
+ * 500 and a "PHP Fatal error" in the log).
+ */
+function api_transaction($link, callable $work): mixed
+{
+    try {
+        return db_transaction($link, $work);
+    } catch (mysqli_sql_exception $e) {
+        if (!is_retryable_db_error($e)) throw $e;
+        error_log('poker api: transaction given up after retries (' . $e->getCode() . '): ' . $e->getMessage());
+        http_response_code(503);
+        header('Retry-After: 1');
+        exit;
+    }
+}
+
 /* B-52 S1b: a statement failed only because a table (1146) or column (1054) is missing (code deployed before the schema) */
 function is_missing_schema_error(mysqli_sql_exception $e): bool
 {
@@ -1062,20 +1112,18 @@ function getDao($t, $id) {
                     /* A lock wait timeout or deadlock must not break the board: roll back, deliver the derived deck,
                        the next load migrates (B-116 review, Sina). */
                     try {
-                        $link->begin_transaction();
-                        $sql_m = $link->prepare("select cardset_flags, deck_id, deck_cards, deck_controls
-                                                   from pok_teams_tbl where id = ? for update");
-                        $sql_m->bind_param('s', $t);
-                        $sql_m->execute();
-                        $locked = $sql_m->get_result()->fetch_assoc();
-                        if (is_array($locked) && $locked['deck_id'] === null) {
-                            $migrated = migrate_team_deck_locked($link, $t, $locked['cardset_flags'], $catalog, true);
-                        } else if (is_array($locked)) {
-                            $migrated = $locked;
-                        }
-                        $link->commit();
+                        // a deadlock or lock wait timeout is retried first (db_transaction())
+                        $migrated = db_transaction($link, function () use ($link, $t, $catalog, $migrated): array {
+                            $sql_m = $link->prepare("select cardset_flags, deck_id, deck_cards, deck_controls
+                                                       from pok_teams_tbl where id = ? for update");
+                            $sql_m->bind_param('s', $t);
+                            $sql_m->execute();
+                            $locked = $sql_m->get_result()->fetch_assoc();
+                            if (is_array($locked) && $locked['deck_id'] === null)
+                                return migrate_team_deck_locked($link, $t, $locked['cardset_flags'], $catalog, true);
+                            return is_array($locked) ? $locked : $migrated;
+                        });
                     } catch (mysqli_sql_exception $e) {
-                        $link->rollback();
                         error_log('poker dao: deck migration of a team skipped, retried on the next load: ' . $e->getMessage());
                     }
                     $deck_id = $migrated['deck_id'];
@@ -1104,7 +1152,6 @@ function getDao($t, $id) {
                         $deck_controls = $given['deck_controls'];
                     }
                 } catch (mysqli_sql_exception $e) {
-                    $link->rollback();
                     error_log('poker dao: example set of a team skipped, retried on the next load: ' . $e->getMessage());
                 }
             }
