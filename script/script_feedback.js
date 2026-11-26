@@ -62,6 +62,7 @@ function prepareMenuSection(sec) {
     if (sec === 'user_settings') {
         document.getElementById('cet_usr_name').value = gUserName;
         document.getElementById('cet_change_user').disabled = true;
+        prepareApiKeys(); // B-150: the own API keys in this team (api_keys.js)
     }
     if (sec === 'topic') {
         document.getElementById('topic_reset').disabled = !gTopicChangePending;

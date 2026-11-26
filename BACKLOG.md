@@ -473,6 +473,11 @@ Umsetzung PR 2 (Ben, 2026-11-26, Branch `feature/B-150-pr2-keys`): Tabelle `pok_
 `team_create`, `team_join`, `team_note_set` (auch hinter `update_topic.php`), `key_create` (nur Board), `key_list`,
 `key_delete`, `key_delete_current`; `delete_user.php` löscht Schlüssel über alle Teams. Jeder Aufruf mit Schlüssel
 zählt als Anwesenheit (`touch_player()`, Konzept 5.4), damit fallen API-Personen nicht unter die 2-Monats-Aufräumregel.
+Umsetzung PR 5 Teil 1 (Fred, 2026-11-26, Branch `feature/B-150-pr5-keys-ui`): You-Menü „API keys“ (`board.html`
+`#api_keys`, `script/api_keys.js`, kleiner CSS-Block „B-150: API keys“ hinter `.leave-item`): eigene Schlüssel des Teams
+mit Name, `••••` + Hint, erstellt, zuletzt benutzt; „Create key“ mit Namen; Löschen mit Rückfrage in der Zeile; Texte
+aus Konzept 5.5. Der neue Schlüssel steht nur im Dialog `#api_key_new` (Copy, beim Schließen geleert), nie in
+`localStorage`/Analytics. `apiFetch()` schickt für `./api/v1/` zusätzlich `X-Poker-Team`. E2E: `api-keys-ui.spec.ts`.
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
