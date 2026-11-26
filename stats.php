@@ -35,6 +35,7 @@ const MILESTONES = array(
     '2026-11-18' => 'Async start, colour mode kept locally',
     '2026-11-25' => 'script.js split, topic panel fix',
     '2026-11-26' => 'UID from the server, only in a header; removed players as observers; public API v1 (keys, items)',
+    '2026-11-27' => 'AI connector (MCP)',
 );
 /* login (B-63): htpasswd file of nginx, the only place of the credentials (maintained with htpasswd -B -C 12);
    STATS_COOKIE_SECRET (config.php) is part of the cookie signature key */

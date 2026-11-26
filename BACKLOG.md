@@ -495,7 +495,9 @@ auch wenn jemand anders inzwischen anlegt); Prüfung im Browser nach `ITEM_KEY_P
 der Vorschlag kommt nur vom Server). Export-Spalte „ID“ heißt jetzt „Key“. E2E in `topic-items-ui.spec.ts`.
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
-Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
+Status: umgesetzt auf `release` (2026-11-26/27, PRs A–G: #293, #295–#299, poker-msg#14, #15), Konzept
+`docs/mcp-concept.md` (gilt vor dem Text unten: kein Schlüssel nötig, Invite-Link = Zugang, Warten über poker-msg per
+`X-Accel-Redirect`). Live erst nach Rollout von poker-msg und den nginx-Blöcken. Nacharbeiten: B-159. Bisher: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
 mitmachen: Team anlegen/ändern, Board-Setup, Sets wählen und eigene Sets verwalten, Karten legen, Runden- und
 Item-Steuerung, Items samt Ergebnissen, Timer, Feedback, Reaktionen.
 Grundsätze (Andreas):
@@ -621,6 +623,20 @@ Texte mit Markdown außerhalb der Teilmenge sehen danach etwas anders aus (kaum 
 Status: refined (Andreas, 2026-11-24). Die Vendor-Datei (65 KB) lädt heute bei jedem Board-Start, gebraucht wird sie
 nur für den QR-Code im Invite. Erst beim Öffnen von Invite nachladen (Skript-Tag dynamisch einfügen, einmalig;
 währenddessen ruhiger Platzhalter, bei Fehler Hinweis statt QR-Code). Kein Nachbau der QR-Kodierung.
+
+### B-159 MCP: Hinweise aus den Reviews (nicht priorisiert)
+Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blockierend; zur Entscheidung durch Andreas
+(„keine Limits auf Verdacht“ beachten):
+- Nudge-Ratenlimit: alle anonymen MCP-Nudges eines Teams teilen sich ein Limit (poker-msg, Schlüssel `<hash>:0`);
+  Alternative: Limit je echter mkey, ausgeliefert weiter mit `from = 0`.
+- Obergrenze gleichzeitig wartender `wait_for_change` je Team (heute nur global 2000 in poker-msg).
+- Feedback (`feedback.php`, MCP `feedback send`): kein Ratenlimit; Roadmap-Stimmen: neue UID = neue Stimme.
+- Reaktionen im anonymen Modus: Agent kann nach dem Aufdecken keine Karte anvisieren (strenger als das Web);
+  ggf. Positions-Handle je Runde statt mkey.
+- poker-msg loggt die Team-ID im Klartext (`New notification: pull for team …`); besser Hash oder Präfix.
+- `delete.php?mkey=` im anonymen Modus nach dem Aufdecken (gemerkte mkey verrät beim Entfernen die Karte); im MCP
+  bereits ausgeschlossen.
+- Kontingent per WebSocket: ein Browser kann mit beliebigem `from` das Kontingent anderer verbrauchen (bekannt, B-139).
 
 ### B-155 Transaktionen und Sperren systematisch
 Status: refined (Andreas, 2026-11-26). Anlass: Deadlock in der CI (Rollout 8, #279): `insert … select max(sort_order)`

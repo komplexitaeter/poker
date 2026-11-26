@@ -58,6 +58,10 @@ Datenfluss bei einer Änderung am Board (seit B-81):
   zustandslos, **nicht versioniert**): nginx `location = /mcp` → derselbe Front-Controller `api/v1/index.php`
   (erkennt `DOCUMENT_URI`), Logik in `api/v1/lib_mcp.php`. Tools entstehen aus Routen mit `mcp`-Feld in `routes.php`
   plus `api/v1/mcp_tools.php` (was keine REST-Operation ist); Identität je Aufruf `team_id` + `uid` oder `api_key`.
+  Warten (`wait_for_change`, `api/v1/lib_mcp_wait.php`) und Reaktionen (`lib_mcp_react.php`) gibt PHP per
+  `X-Accel-Redirect` an poker-msg ab (interne nginx-Locations `/_mcp_wait/`, `/_mcp_react/`, `/_mcp_result/`, HTTP-Eingang
+  von poker-msg auf `127.0.0.1:8445`) – kein PHP-Worker wartet. MCP-only-Routen liegen unter `/board/...` mit
+  `public: false`, die öffentliche REST-API bleibt unverändert.
 - `cards.json` – Kartensets und Sortierung.
 - `stats.php` – interne Nutzungsstatistik mit eigener Anmeldeseite (B-63): prüft gegen die htpasswd-Datei
   `/etc/nginx/poker-stats.htpasswd` (nur bcrypt), angemeldet bleiben 30 Tage per signiertem Cookie
