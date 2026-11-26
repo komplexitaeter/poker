@@ -796,7 +796,26 @@ location @mcp_wait_failed {
     fastcgi_pass unix:/run/php/php8.4-fpm.sock;
 }
 
-# B-151: poker-msg hands the request back to PHP for the result
+# B-151 (PR F2): react – PHP hands the throw to poker-msg via X-Accel-Redirect (answer at once)
+location ^~ /_mcp_react/ {
+    internal;
+    proxy_pass http://127.0.0.1:8445;
+    proxy_http_version 1.1;
+    proxy_pass_request_body off;
+    proxy_pass_request_headers off;
+    proxy_set_header Content-Length "";
+    proxy_read_timeout 5s;
+    error_page 502 504 = @mcp_react_failed;
+}
+
+location @mcp_react_failed {
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/api/v1/index.php;
+    fastcgi_param POKER_MCP_PHASE react_down;
+    fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+}
+
+# B-151: poker-msg hands the request back to PHP for the result (wait_for_change and react)
 location ^~ /_mcp_result/ {
     internal;
     include fastcgi_params;
@@ -835,6 +854,11 @@ UDP-Umweg und ohne dass PHP auf poker-msg wartet:
    Erfolg an alle Boards des Teams (Zuordnung Hash → abonnierte Team-ID) und antwortet
    `X-Accel-Redirect: /_mcp_result/react?r=ok|rate|quota&used=<codes>` (heute schon geworfene Codes des Werfers).
 3. PHP baut daraus `{sent, reason, left_today}`.
+
+Umsetzung (PR F2): `react` ist ein eigenes Tool in `mcp_tools.php` (wie `wait_for_change`), keine Route
+`reaction_throw` – der Weg über `X-Accel-Redirect` gehört zu `/mcp` und hätte als REST-Route keinen Rückweg. Ein
+anonymer Nudge geht wie im Browser mit `from = 0`. poker-msg nicht erreichbar → `@mcp_react_failed`
+(`POKER_MCP_PHASE react_down`) → Fehler `busy`.
 
 Mit Schlüssel teilen sich Browser und Agent das Kontingent (gleiche mkey), mit eigenem Sitz hat der Agent ein eigenes
 – wie ein zweiter Browser.

@@ -38,12 +38,16 @@ final class McpWait extends Exception
 
 /*
  * The phase of this request: 'call' (POST /mcp), after poker-msg 'pull', 'timeout' or 'busy' (/_mcp_result/<deadline>/
- * <hop>?r=...), or 'down' (@mcp_wait_failed). deadline and hop only after poker-msg. nginx sets DOCUMENT_URI and the
+ * <hop>?r=...), or 'down' (@mcp_wait_failed); B-151 PR F2: 'react' or 'react_down' for the tool react
+ * (lib_mcp_react.php). deadline and hop only after poker-msg. nginx sets DOCUMENT_URI and the
  * FastCGI parameters, a client cannot (its headers arrive as HTTP_*).
  */
 function mcp_wait_phase(): array
 {
     if (($_SERVER['POKER_MCP_PHASE'] ?? '') === 'down') return ['phase' => 'down', 'deadline' => 0, 'hop' => MCP_WAIT_HOPS];
+    // B-151 PR F2: react (lib_mcp_react.php) after poker-msg (/_mcp_result/react?r=...) or its failure (@mcp_react_failed)
+    if (($_SERVER['POKER_MCP_PHASE'] ?? '') === 'react_down') return ['phase' => 'react_down', 'deadline' => 0, 'hop' => 0];
+    if ((string)($_SERVER['DOCUMENT_URI'] ?? '') === '/_mcp_result/react') return ['phase' => 'react', 'deadline' => 0, 'hop' => 0];
     if (preg_match('~^/_mcp_result/(\d{10})/([1-3])$~D', (string)($_SERVER['DOCUMENT_URI'] ?? ''), $m)) {
         $r = $_GET['r'] ?? '';
         return ['phase' => in_array($r, ['pull', 'timeout', 'busy'], true) ? $r : 'busy', 'deadline' => (int)$m[1],

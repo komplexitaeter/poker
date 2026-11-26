@@ -18,6 +18,7 @@
  */
 require '../config.php';
 require './lib.php';
+require './lib_core_deck.php';
 require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL) ?? '', 0, 80);
@@ -28,75 +29,20 @@ $cards_param = filter_input(INPUT_GET, 'cards');
 $link = db_init();
 require_team($t, $link);
 
-$catalog = card_catalog();
-$set_id = custom_set_id_of($deck_id);
-$entry = catalog_variants($catalog)[$deck_id] ?? null;
-if ($entry === null && $set_id === null || $catalog['default_deck'] === null
-    || (isset($cards_param) && !is_string($cards_param))) {
+if (isset($cards_param) && !is_string($cards_param)) {
+    http_response_code(400);
+    exit;
+}
+$keys = is_string($cards_param) ? parse_card_keys($cards_param) : null;
+if (is_string($cards_param) && $keys === null) {
     http_response_code(400);
     exit;
 }
 
-$deck_cards = null; // all cards of the variant (custom set: all its active cards)
-if (is_string($cards_param) && $set_id !== null) {
-    $keys = parse_card_keys($cards_param);
-    if ($keys === null || count($keys) < CUSTOM_DECK_MIN_CARDS) {
-        http_response_code(400);
-        exit;
-    }
-    $deck_cards = implode(',', $keys); // checked against the set below (team row lock)
-} elseif (is_string($cards_param)) {
-    $keys = parse_card_keys($cards_param);
-    $group_keys = array_column($entry['group']['cards'], 'card_key');
-    if ($keys === null || count($keys) === 0 || count(array_diff($keys, $group_keys)) > 0) {
-        http_response_code(400);
-        exit;
-    }
-    $deck_cards = implode(',', $keys);
-}
-
-$link->begin_transaction();
-$team = lock_team_deck($link, $t, $catalog);
-if ($team === null) { // team deleted in between
-    $link->rollback();
-    http_response_code(403);
-    exit;
-}
-$old = $team['deck'];
-if ($set_id !== null && !isset($team['custom_sets'][$set_id]['cards'][0])) { // not a set of this team, deleted or empty
-    $link->rollback();
-    http_response_code(400);
-    exit;
-}
-if ($set_id !== null && $deck_cards !== null) { // B-98: only active cards of this set, and the list must fit
-    $set_keys = array_column($team['custom_sets'][$set_id]['cards'], 'card_key');
-    $keys = explode(',', $deck_cards);
-    if (count(array_diff($keys, $set_keys)) > 0
-        || count($keys) < count($set_keys) && custom_deck_cards($keys) === null) {
-        $link->rollback();
-        http_response_code(400);
-        exit;
-    }
-}
-$new = resolve_deck($deck_id, $deck_cards, implode(',', $old['controls']), (int)$team['deck_rev'], $catalog,
-                    $team['custom_sets']);
-$changed = $new['id'] !== $old['id'] || $new['cards'] !== $old['cards'];
-
-$new_round = false;
-if ($changed || (int)$team['needs_setup'] === 1 || $team['deck_id'] !== $old['id']) {
-    if ($changed && team_has_cards_down($link, $t)) {
-        start_new_round($link, $t); // snapshot with the old deck
-        $new_round = true;
-    }
-    store_team_deck($link, $t, $new, $catalog, true);
-    if (deck_group_key($new) !== deck_group_key($old)) set_deck_changed_by($link, $t, $player_id); // B-98 V6
-    $new['rev']++;
-    $changed = true;
-}
-$link->commit();
+// B-151: the logic is core_deck_set() (lib_core_deck.php), shared with MCP card_sets choose; it notifies the team
+$actor = ['uid' => $player_id, 'team_id' => $t, 'role' => null, 'via' => 'browser', 'key_id' => null];
+$result = deck_core_call(fn() => core_deck_set($link, $actor, $deck_id, $keys));
 $link->close();
 
-if ($changed) notify_team($t); // B-81
-
 set_header('json');
-echo json_encode(array('deck' => $new, 'changed' => $changed, 'new_round' => $new_round));
+echo json_encode(array('deck' => $result['deck'], 'changed' => $result['changed'], 'new_round' => $result['new_round']));

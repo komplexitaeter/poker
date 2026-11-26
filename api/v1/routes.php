@@ -33,6 +33,35 @@
  * schema ('Team', 'Item[]'). Every object lists all its properties (additionalProperties false in the spec).
  */
 
+// B-151 (MCP PR F2): parameters shared by the custom set routes (set_create, set_save)
+$set_params = [
+    'set_id' => ['in' => 'path', 'type' => 'integer', 'required' => true, 'minimum' => 1,
+                 'description' => 'edit, delete: set_id of the custom set (from list).'],
+    'name' => ['in' => 'body', 'type' => 'string', 'text' => true, 'min_length' => 1, 'max_length' => CUSTOM_SET_NAME_MAX,
+               'description' => 'create, edit: name of the custom set.'],
+    'style' => ['in' => 'body', 'type' => 'string', 'enum' => custom_styles(card_catalog()),
+                'description' => 'create, edit: look of the cards (plain, badge, banner, inverted).'],
+    'aim' => ['in' => 'body', 'type' => 'string', 'enum' => DECK_AIMS,
+              'description' => 'create, edit: agree = the team agrees on one value per item (default); perspectives = '
+                  . 'only the distribution counts (e.g. mood, opinions).'],
+    'set_cards' => ['in' => 'body', 'type' => 'array', 'max_items' => 60,
+                    'items' => ['type' => 'object', 'additionalProperties' => false, 'required' => ['color'],
+                                'properties' => [
+                                    'text' => ['type' => 'string', 'description' => '1-6 characters, emoji allowed'],
+                                    'symbol' => ['type' => 'string', 'description' => 'a symbol from list (custom.symbols)'],
+                                    'heading' => ['type' => 'string', 'maxLength' => CUSTOM_HEADING_MAX],
+                                    'description' => ['type' => 'string', 'maxLength' => CUSTOM_DESCRIPTION_MAX],
+                                    'numeric_value' => ['type' => 'number',
+                                                        'description' => 'for range and average; leave out if none'],
+                                    'color' => ['type' => 'string', 'enum' => custom_colors(card_catalog())],
+                                    'key' => ['type' => 'string', 'description' => 'edit: key of an existing card to '
+                                        . 'keep it; or the key of a card of another set to copy it'],
+                                ]],
+                    'description' => 'create, edit: the cards in order (edit: replaces all cards; missing = unchanged). '
+                        . 'Each: text or symbol, color, optional heading, description, numeric_value, key. At most '
+                        . 'custom.max_cards cards.'],
+];
+
 return [
     'team_create' => [
         'method' => 'POST',
@@ -721,6 +750,214 @@ return [
         'handler' => 'v1_me_delete',
         'responses' => [200 => ['description' => 'All data deleted']],
         'errors' => ['browser_only'],
+    ],
+
+    /* ---------- B-151 (MCP PR F2): card sets, timer, feedback, not public for now (docs/mcp-concept.md 5.3) ---------- */
+
+    'deck_get' => [
+        'method' => 'GET',
+        'path' => '/deck',
+        'tag' => 'Team',
+        'summary' => 'Card sets: list',
+        'description' => 'All predefined sets with their cards and a short explanation, the team\'s custom sets (with '
+            . 'rev), the control cards (on/off), the current set, whether cards are down and what a custom card may be.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'card_sets', 'action' => 'list'],
+        'params' => [],
+        'handler' => 'v1_deck_get',
+        'responses' => [200 => ['description' => 'Card sets']],
+        'errors' => [],
+    ],
+
+    'deck_set' => [
+        'method' => 'PUT',
+        'path' => '/deck',
+        'tag' => 'Team',
+        'summary' => 'Card sets: choose',
+        'description' => 'Switches the team to a set, optionally only some of its cards. A new round starts if cards '
+            . 'are down and the cards change.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'card_sets', 'action' => 'choose'],
+        'params' => [
+            'deck' => ['in' => 'body', 'type' => 'string', 'required' => true, 'min_length' => 1, 'max_length' => 24,
+                       'pattern' => '^[A-Za-z0-9_-]+$',
+                       'description' => 'choose: set id from list ("fib-short", "tshirt", "c-12" for a custom set).'],
+            'cards' => ['in' => 'body', 'type' => 'string', 'max_length' => 600,
+                        'description' => 'choose: comma list of card keys to use (missing = all cards of the set). '
+                            . 'controls: comma list of control card keys that are on ("" = none).'],
+        ],
+        'handler' => 'v1_deck_set',
+        'responses' => [200 => ['description' => 'Card set chosen']],
+        'errors' => [],
+    ],
+
+    'controls_set' => [
+        'method' => 'PUT',
+        'path' => '/deck/controls',
+        'tag' => 'Team',
+        'summary' => 'Card sets: control cards',
+        'description' => 'Switches the control cards (break, question, ...) on or off. Never starts a new round.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'card_sets', 'action' => 'controls'],
+        'params' => [
+            'cards' => ['in' => 'body', 'type' => 'string', 'required' => true, 'max_length' => 600,
+                        'description' => 'choose: comma list of card keys to use (missing = all cards of the set). '
+                            . 'controls: comma list of control card keys that are on ("" = none).'],
+        ],
+        'handler' => 'v1_controls_set',
+        'responses' => [200 => ['description' => 'Control cards set']],
+        'errors' => [],
+    ],
+
+    'set_create' => [
+        'method' => 'POST',
+        'path' => '/sets',
+        'tag' => 'Team',
+        'summary' => 'Card sets: create a custom set',
+        'description' => 'A new custom set of the team, like the set editor of the board.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'card_sets', 'action' => 'create'],
+        'params' => [
+            'name' => $set_params['name'] + ['required' => true],
+            'style' => $set_params['style'] + ['default' => 'plain'],
+            'aim' => $set_params['aim'],
+            'set_cards' => $set_params['set_cards'] + ['required' => true],
+            'activate' => ['in' => 'body', 'type' => 'boolean', 'default' => false,
+                           'description' => 'create: use the new set right away (a new round if cards are down).'],
+        ],
+        'handler' => 'v1_set_create',
+        'responses' => [201 => ['description' => 'Set created']],
+        'errors' => ['limit_reached'],
+    ],
+
+    'set_save' => [
+        'method' => 'PUT',
+        'path' => '/sets/{set_id}',
+        'tag' => 'Team',
+        'summary' => 'Card sets: edit a custom set',
+        'description' => 'Changes a custom set; what is not passed stays. set_cards replaces all cards (keep a card with '
+            . 'its key).',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'card_sets', 'action' => 'edit'],
+        'params' => [
+            'set_id' => $set_params['set_id'],
+            'rev' => ['in' => 'body', 'type' => 'integer', 'required' => true, 'minimum' => 0,
+                      'description' => 'edit: rev of the set from list (someone else may have changed it meanwhile).'],
+            'name' => $set_params['name'],
+            'style' => $set_params['style'],
+            'aim' => $set_params['aim'],
+            'set_cards' => $set_params['set_cards'],
+        ],
+        'handler' => 'v1_set_save',
+        'responses' => [200 => ['description' => 'Set saved']],
+        'errors' => ['set_not_found', 'conflict'],
+    ],
+
+    'set_delete' => [
+        'method' => 'DELETE',
+        'path' => '/sets/{set_id}',
+        'tag' => 'Team',
+        'summary' => 'Card sets: delete a custom set',
+        'description' => 'Deletes a custom set. Was it the card set, the team gets the default set (a new round if '
+            . 'cards are down).',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'card_sets', 'action' => 'delete'],
+        'params' => [
+            'set_id' => $set_params['set_id'],
+        ],
+        'handler' => 'v1_set_delete',
+        'responses' => [200 => ['description' => 'Set deleted']],
+        'errors' => ['set_not_found'],
+    ],
+
+    'timer_set' => [
+        'method' => 'POST',
+        'path' => '/timer',
+        'tag' => 'Team',
+        'summary' => 'Timer',
+        'description' => 'The team\'s timer, shared by everybody: start, pause, reset, show, hide, mode, timebox, auto '
+            . 'start.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'timer'],
+        'params' => [
+            'action' => ['in' => 'body', 'type' => 'string', 'required' => true,
+                         'enum' => ['start', 'pause', 'reset', 'show', 'hide', 'set_mode', 'set_timebox', 'set_auto_start'],
+                         'description' => 'start (continues from the paused time), pause, reset (back to 0, paused), '
+                             . 'show / hide (on the board), set_mode, set_timebox, set_auto_start.'],
+            'mode' => ['in' => 'body', 'type' => 'string', 'enum' => ['stopwatch', 'timer'],
+                       'description' => 'set_mode: stopwatch counts up, timer counts down from the timebox (resets '
+                           . 'the timer).'],
+            'minutes' => ['in' => 'body', 'type' => 'integer', 'minimum' => 1, 'maximum' => 240,
+                          'description' => 'set_timebox: the timebox in minutes (resets the timer).'],
+            'auto_start' => ['in' => 'body', 'type' => 'string', 'enum' => ['off', 'new_round', 'next_item'],
+                             'description' => 'set_auto_start: restart the timer with every new round or every next '
+                                 . 'item, or off.'],
+        ],
+        'handler' => 'v1_timer_set',
+        'responses' => [200 => ['description' => 'Timer changed']],
+        'errors' => [],
+    ],
+
+    'feedback_send' => [
+        'method' => 'POST',
+        'path' => '/feedback',
+        'tag' => 'Team',
+        'summary' => 'Feedback: send',
+        'description' => 'Feedback to the makers of Agile Poker (not to the team), like the feedback box of the board.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'feedback', 'action' => 'send'],
+        'params' => [
+            'type' => ['in' => 'body', 'type' => 'string', 'required' => true, 'enum' => ['bug', 'feature', 'other'],
+                       'description' => 'send: bug (something does not work), feature (a wish) or other.'],
+            'text' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                       'max_length' => 1800, 'description' => 'send: the feedback as the user wrote or confirmed it.'],
+        ],
+        'handler' => 'v1_feedback_send',
+        'responses' => [201 => ['description' => 'Feedback sent']],
+        'errors' => [],
+    ],
+
+    'roadmap_list' => [
+        'method' => 'GET',
+        'path' => '/roadmap',
+        'tag' => 'Team',
+        'summary' => 'Feedback: roadmap',
+        'description' => 'The public list of ideas and bugs (Ideas & Bugs on the board) with votes and your own vote.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'feedback', 'action' => 'roadmap'],
+        'params' => [],
+        'handler' => 'v1_roadmap_list',
+        'responses' => [200 => ['description' => 'Roadmap']],
+        'errors' => [],
+    ],
+
+    'roadmap_vote' => [
+        'method' => 'PUT',
+        'path' => '/roadmap/{entry}/vote',
+        'tag' => 'Team',
+        'summary' => 'Feedback: vote',
+        'description' => 'Your vote on a roadmap entry: up, down or none.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'feedback', 'action' => 'vote'],
+        'params' => [
+            'entry' => ['in' => 'path', 'type' => 'integer', 'required' => true, 'minimum' => 1,
+                        'description' => 'vote: id of the roadmap entry (entry from roadmap).'],
+            'reaction' => ['in' => 'body', 'type' => 'string', 'required' => true, 'enum' => ['up', 'down', 'none'],
+                           'description' => 'vote: up, down or none (removes your vote).'],
+        ],
+        'handler' => 'v1_roadmap_vote',
+        'responses' => [200 => ['description' => 'Vote set']],
+        'errors' => ['entry_not_found'],
     ],
 
     '$schemas' => [

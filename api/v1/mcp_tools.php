@@ -98,6 +98,27 @@ return [
             'annotations' => ['title' => 'Wait for a change at the table', 'readOnlyHint' => true,
                               'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
         ],
+        // B-151 PR F2 (concept 5.3, 8.6): thrown through poker-msg, see lib_mcp_react.php
+        'react' => [
+            'description' => 'Throw a reaction emoji at someone at the table (or nudge them), like the smiley next to '
+                . 'their card on the web. Same limits as the web: each emoji at most once per day (UTC) and person in '
+                . 'this team (the fish too), and not more than 3 per second / 10 per minute. The result says sent or '
+                . 'why not (used_today, too_fast) and left_today per emoji; if an emoji is used up, tell the user it is '
+                . 'back tomorrow - do not retry it. A nudge is anonymous, has no daily limit and makes the other '
+                . 'person\'s board ring; use it sparingly, only when the user asks.',
+            'identity' => 'seat',
+            'params' => [
+                'to' => ['type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1, 'max_length' => 20,
+                         'description' => 'mkey (preferred) or exact name of a person at the table from get_board '
+                             . '(not yourself).'],
+                'emoji' => ['type' => 'string', 'required' => true, 'enum' => array_merge(array_keys(MCP_REACT_EMOJI), ['nudge']),
+                            'description' => 'cake 🎂, heart ❤️, clap 👏, party 🎉, think 🤔, thumbs 👍, fish 🐟, or '
+                                . 'nudge.'],
+            ],
+            'handler' => 'mcp_react',
+            'annotations' => ['title' => 'Throw a reaction', 'readOnlyHint' => false, 'destructiveHint' => false,
+                              'idempotentHint' => false, 'openWorldHint' => false],
+        ],
     ],
     'routes' => [
         'get_board' => [
@@ -204,6 +225,45 @@ return [
             ],
             'text' => 'mcp_seat_text',
             'annotations' => ['title' => 'Team settings'],
+        ],
+        // B-151 PR F2 (concept 5.3)
+        'card_sets' => [
+            'description' => 'See and change the team\'s card set (deck). list: all predefined sets with their cards and '
+                . 'a short explanation (Fibonacci Classic/Short/Pure, Numbers 0-10, T-shirt sizes, Traffic lights, '
+                . 'Emotions, Stars, Consent decision, Delegation Poker), the team\'s own custom sets, the control cards '
+                . '(☕ break, ? question, ! important, ✋ veto, ¯\_(ツ)_/¯) with on/off, the current set, cards_down, and '
+                . 'the symbols, colors and styles for custom cards. Explain the options in a few words when the user is '
+                . 'unsure. choose: switch the team to a set, optionally only some of its cards. controls: switch '
+                . 'control cards on or off (never starts a new round). create / edit / delete: the team\'s own sets '
+                . '(at most custom.max_sets per team and custom.max_cards cards each). A card is a short text (1-6 '
+                . 'characters, emoji allowed) or a symbol, with a color and optional heading, description and '
+                . 'numeric_value (for range and average). Changing the set while cards are down (cards_down in list) '
+                . 'starts a new round - tell the user and confirm first. When the user wants a custom set, propose the '
+                . 'cards in a short list and create it only after they agree. Ask before deleting a set. Everybody at '
+                . 'the table sees changes at once.',
+            'params' => [
+                'cards' => 'choose: comma list of card keys from list to use (missing = all cards of the set). '
+                    . 'controls (required): comma list of the control card keys that are on, e.g. "break01,qstmrk1" '
+                    . '("" = none).',
+            ],
+            'text' => 'mcp_card_sets_text',
+            'annotations' => ['title' => 'Card sets', 'destructiveHint' => true],
+        ],
+        'timer' => [
+            'description' => 'The team\'s timer, shared by everybody: start, pause, reset; show or hide it on the board; '
+                . 'set_mode stopwatch (counts up) or timer (counts down from the timebox); set_timebox in minutes '
+                . '(1-240); set_auto_start (off, with every new round, or with every next item). Mode and timebox reset '
+                . 'the timer. Tell the user the resulting state in one line (e.g. "Timer running, 5:00 countdown").',
+            'text' => 'mcp_seat_text',
+            'annotations' => ['title' => 'Timer'],
+        ],
+        'feedback' => [
+            'description' => 'Feedback to the makers of Agile Poker (not to the team): send (a bug, a feature wish or '
+                . 'other), roadmap (the public list "Ideas & Bugs" with votes and the user\'s own vote), vote (up, down '
+                . 'or none on a roadmap entry). Only send what the user wrote or explicitly agreed to; show the text '
+                . 'before sending.',
+            'text' => 'mcp_feedback_text',
+            'annotations' => ['title' => 'Feedback to the makers', 'openWorldHint' => true],
         ],
     ],
 ];

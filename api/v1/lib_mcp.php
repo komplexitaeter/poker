@@ -12,6 +12,7 @@
  */
 
 require __DIR__ . '/lib_mcp_wait.php'; // B-151 PR C: wait_for_change, version of the board
+require __DIR__ . '/lib_mcp_react.php'; // B-151 PR F2: react through poker-msg
 
 /* informative only (MCP is not versioned): date of the last change of the tools */
 const MCP_SERVER_VERSION = '2026-11-26';
@@ -53,6 +54,10 @@ Playing
   played, revealed result, new item, timer, note). If it says busy, wait retry_after seconds and call again.
 - items: the first open item is the active one. Before items next with mode close, tell the user which value will
   be stored and let them confirm or pick another. board_settings changes are seen by everybody at once.
+- Card sets: explain the options from card_sets list in a few words when the user is unsure (Fibonacci for effort,
+  T-shirt sizes for rough sizing, Consent decision and Delegation Poker for team decisions, ...).
+- react throws an emoji like the smiley on the web, with its limits: if one is used up today, say it is back
+  tomorrow, do not retry. feedback goes to the makers of Agile Poker, not to the team: send only what the user agreed to.
 - Ask before actions that affect everybody and cannot be undone: deleting items or custom sets, removing people,
   "delete my data", changing the card set while cards are down (starts a new round).
 - If the user wants something none of your tools offers, say that it is not possible here yet and that they can do
@@ -193,7 +198,9 @@ function mcp_dispatch(): void
 /* the answer of one JSON-RPC request */
 function mcp_handle(string|int $id, string $method, array $params): array
 {
-    if (mcp_wait_internal() && ($method !== 'tools/call' || ($params['name'] ?? null) !== 'wait_for_change')) {
+    // after poker-msg only the tool that went there may arrive: react (phases react, react_down), else wait_for_change
+    $internal_tool = in_array(mcp_wait_phase()['phase'], ['react', 'react_down'], true) ? 'react' : 'wait_for_change';
+    if (mcp_wait_internal() && ($method !== 'tools/call' || ($params['name'] ?? null) !== $internal_tool)) {
         return mcp_error_message($id, MCP_INTERNAL_ERROR, 'Unexpected request after waiting.');
     }
     switch ($method) {
@@ -662,6 +669,54 @@ function mcp_items_text(array $s): string
     $lines = isset($s['message']) ? [(string)$s['message']] : [];
     if (isset($s['item'])) $lines[] = $line($s['item']);
     if (isset($s['board'])) array_push($lines, '', mcp_board_text($s['board']));
+    return implode("\n", $lines);
+}
+
+/*
+ * Text of card_sets (B-151 PR F2): list -> current set, cards_down, the predefined sets with explanation and cards, the
+ * custom sets (set_id, rev, cards), the control cards and what custom cards may be; a write -> mcp_seat_text().
+ * Texts of other people (custom set names and card texts) stand in quotes.
+ */
+function mcp_card_sets_text(array $s): string
+{
+    if (!isset($s['sets'])) return mcp_seat_text($s);
+    $q = fn(?string $t): string => '"' . str_replace(["\r", "\n"], ' ', (string)$t) . '"';
+    $cards = fn(array $list): string => implode(' ', array_map(fn(array $c): string => (string)$c['value']
+        . (isset($c['heading']) && $c['heading'] !== null && $c['heading'] !== '' ? ' (' . $c['heading'] . ')' : ''), $list));
+    $current = $s['current'];
+    $lines = ['Current set: ' . ($current === null ? 'none' : $current['id'] . ' ' . $q($current['name']))
+        . ($s['cards_down'] ? ' · cards are down: choosing another set starts a new round (ask the user first)' : '')];
+    $lines[] = 'Predefined sets (deck id: name - explanation - cards):';
+    foreach ($s['sets'] as $set) {
+        $lines[] = '- ' . $set['id'] . ': ' . $set['name'] . ' - ' . $set['explanation'] . ' - ' . $cards($set['cards'])
+            . (isset($set['more_cards']) ? ' (more cards of the group: ' . $cards($set['more_cards']) . ')' : '');
+    }
+    $lines[] = 'Custom sets of the team (' . count($s['custom_sets']) . ' of max ' . $s['custom']['max_sets'] . '):'
+        . ($s['custom_sets'] === [] ? ' none' : '');
+    foreach ($s['custom_sets'] as $set) {
+        $lines[] = '- ' . $set['id'] . ' (set_id ' . $set['set_id'] . ', rev ' . $set['rev'] . ', ' . $set['style'] . ', '
+            . $set['aim'] . '): ' . $q($set['name']) . ' - ' . implode(' ', array_map(fn(array $c): string => $q($c['value'])
+                . ($c['heading'] !== null && $c['heading'] !== '' ? ' (' . $q($c['heading']) . ')' : ''), $set['cards']));
+    }
+    $lines[] = 'Control cards: ' . implode(' · ', array_map(fn(array $c): string => $c['key'] . ' ' . $c['value']
+        . ' (' . ($c['heading'] ?? '') . ') ' . ($c['on'] ? 'on' : 'off'), $s['controls']));
+    $lines[] = 'Custom cards: text (1-6 characters) or symbol, color required; max ' . $s['custom']['max_cards']
+        . ' cards per set. Colors: ' . implode(', ', $s['custom']['colors']) . '. Styles: '
+        . implode(', ', $s['custom']['styles']) . '. Symbols: ' . implode(', ', array_map(fn(array $x): string =>
+            $x['symbol'] . ($x['value'] !== '' ? ' (' . $x['value'] . ')' : ''), $s['custom']['symbols'])) . '.';
+    return implode("\n", $lines);
+}
+
+/* Text of feedback (B-151 PR F2): roadmap -> one line per entry with votes; send, vote -> the message */
+function mcp_feedback_text(array $s): string
+{
+    if (!isset($s['entries'])) return (string)($s['message'] ?? '');
+    $q = fn(?string $t): string => '"' . str_replace(["\r", "\n"], ' ', (string)$t) . '"';
+    $lines = ['Roadmap (Ideas & Bugs): ' . count($s['entries']) . ' entries'];
+    foreach ($s['entries'] as $e) {
+        $lines[] = '- entry ' . $e['entry'] . ' · ' . $e['type'] . ' · ' . $e['status'] . ' · ' . $q($e['title'])
+            . ' · up ' . $e['up'] . ', down ' . $e['down'] . ($e['your_vote'] !== 'none' ? ' · your vote ' . $e['your_vote'] : '');
+    }
     return implode("\n", $lines);
 }
 
