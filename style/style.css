@@ -375,6 +375,9 @@ textarea.field {
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
+    /* B-151: taller than a short phone (join + AI hint at 375x667) it scrolls itself; also hidden (visibility)
+     * its content must not stretch the page (fluid-cards: the page itself never scrolls) */
+    overflow-y: auto;
     /* B-99 D12: only the backdrop is see-through (the board shines through faintly); buttons and
      * the name field on it stay opaque. Was `opacity: 96%` on the whole panel, which made them
      * see-through as well. */
