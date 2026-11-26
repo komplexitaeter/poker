@@ -851,7 +851,7 @@ select timer_auto_restart, count(1) from pok_teams_tbl group by timer_auto_resta
    Lossless: utf8mb4 is a superset of utf8mb3 and latin1, lengths are in characters and stay the same.
 
    How: one ALTER per table, built from information_schema by the procedure b12_convert() (dropped at the end): MODIFY
-   of every column that is not ascii and not utf8mb4_0900_ai_ci yet, restating type/length, NULL, default, INVISIBLE
+   of every column that is not ascii, not _bin and not utf8mb4_0900_ai_ci yet, restating type/length, NULL, default, INVISIBLE
    and comment exactly as they are, plus the table default. Not "convert to character set": that would also turn the
    deliberate ascii_bin columns into utf8mb4 and needs a second rebuild to restore them. Generated instead of written
    by hand, so live columns that differ from db_schema_pok.sql keep their definition. Idempotent: a table without
@@ -882,17 +882,39 @@ select timer_auto_restart, count(1) from pok_teams_tbl group by timer_auto_resta
 
    Collation utf8mb3_general_ci -> utf8mb4_0900_ai_ci: still case- and accent-insensitive, but NO PAD (trailing
    spaces count) and some characters compare differently (e.g. 'ss' = German sharp s). A primary/unique key on a converted
-   column could collide: step 2 must return no rows before step 4. Ids are [A-Za-z0-9_-] (B-88), so no collision is
+   column could collide: step 2 must return no rows (and 0 trailing spaces in the join keys) before step 4. Ids are [A-Za-z0-9_-] (B-88), so no collision is
    expected. ORDER BY/GROUP BY of ascii values stay the same apart from punctuation ('_' and '-' sort before digits).
 
    Survey tables (pok_survey*_tbl): the survey is gone (B-136), only api/delete_user.php still deletes from
    pok_survey_votes_tbl. Converted (a few rows, milliseconds), dropping them is a separate topic.
    pok_teams_deck_backup_r3 (B-98 backup, only read by tools/migration/check_deck_migration.php): converted as well.
    New tables from now on: team_id etc. as utf8mb4_0900_ai_ci (not utf8mb3 "for the join" any more).
+   Columns with a _bin collation (ascii_bin, but also e.g. utf8mb3_bin) are deliberate and never converted; step 1
+   lists them.
+
+   Backup first (live): mysqldump --single-transaction --no-tablespaces --default-character-set=utf8mb4 of the tables
+   converted here (consistent, without locks; routines/events not needed, the block drops its procedure again),
+   pok_analytics_events_tbl optionally as a separate dump right before its conversion. Not at the same time as step 4.
+   Rollback: the code does not depend on the schema (utf8mb4 connection since B-85, works with both states), so a
+   problem is fixed forward. The schema can only be restored from the dump (loses the writes since the backup); no
+   reverse ALTER to utf8mb3 once 4-byte characters may be stored in the converted columns.
+
+   Full run (E2E setup, staging): the whole block converts everything in the order of step 4, e.g.
+     sed -n '/^\/\* B-12:/,/^\/\* end B-12/p' db_schema_pok_inc.sql \
+       | sudo mysql --defaults-file=/etc/mysql/debian.cnf --default-character-set=utf8mb4 pok_staging
+   LIVE: not like this. Interactive session (sudo mysql --defaults-file=/etc/mysql/debian.cnf
+   --default-character-set=utf8mb4 --tee=<log> pok_db), then
+     a) steps 1-3 (read only) and check them: step 2 (duplicates, trailing spaces) MUST be empty/0, otherwise stop;
+     b) backup (see above);
+     c) step 4 table by table: paste the procedure (from "drop procedure if exists b12_convert" to "delimiter ;"),
+        "set session lock_wait_timeout = 5;", then one call at a time in the listed order, watching the duration;
+        pok_analytics_events_tbl possibly separately on a weekend (new session: procedure + lock_wait_timeout again);
+     d) step 5 (must be empty) and "drop procedure if exists b12_convert;".
    Run only this block: sed -n '/^\/\* B-12:/,/^\/\* end B-12/p' db_schema_pok_inc.sql */
 
-/* 1. check (read only): sizes, row format, table default; the columns still to convert (only ascii and
-   utf8mb4_0900_ai_ci after the change); unique keys over such columns (checked in step 2) */
+/* 1. check (read only): sizes, row format, table default; the columns still to convert (only ascii, _bin and
+   utf8mb4_0900_ai_ci after the change); the _bin columns (kept as they are); unique keys over columns to convert
+   (checked in step 2) */
 select table_name, engine, row_format, table_rows, round((data_length + index_length) / 1048576) as mb, table_collation
   from information_schema.tables
  where table_schema = database() and table_type = 'BASE TABLE'
@@ -900,7 +922,12 @@ select table_name, engine, row_format, table_rows, round((data_length + index_le
 select table_name, column_name, column_type, character_set_name, collation_name, is_nullable, column_default
   from information_schema.columns
  where table_schema = database() and character_set_name is not null
-   and character_set_name <> 'ascii' and collation_name <> 'utf8mb4_0900_ai_ci'
+   and character_set_name <> 'ascii' and collation_name not like '%\_bin'
+   and collation_name <> 'utf8mb4_0900_ai_ci'
+ order by table_name, ordinal_position;
+select table_name, column_name, column_type, character_set_name, collation_name
+  from information_schema.columns
+ where table_schema = database() and collation_name like '%\_bin'
  order by table_name, ordinal_position;
 select s.table_name, s.index_name, group_concat(s.column_name order by s.seq_in_index) as cols
   from information_schema.statistics s
@@ -909,7 +936,7 @@ select s.table_name, s.index_name, group_concat(s.column_name order by s.seq_in_
  where s.table_schema = database() and s.non_unique = 0
  group by s.table_name, s.index_name
 having sum(c.character_set_name is not null and c.character_set_name <> 'ascii'
-           and c.collation_name <> 'utf8mb4_0900_ai_ci') > 0;
+           and c.collation_name not like '%\_bin' and c.collation_name <> 'utf8mb4_0900_ai_ci') > 0;
 
 /* 2. pre-check (read only, MUST return no rows): duplicates under the new collation in every primary/unique key over a
    column that gets converted. One query per key, generated from information_schema (same list as in step 1). If a
@@ -917,11 +944,14 @@ having sum(c.character_set_name is not null and c.character_set_name <> 'ascii'
 set session group_concat_max_len = 1048576;
 set @b12_sql = (select ifnull(group_concat(q separator ' union all '), 'select 1 from dual where false')
   from (select concat('select ', quote(s.table_name), ' as tbl, ', quote(s.index_name), ' as idx, count(1) as cnt, ',
-                      'min(concat_ws(''|'', ', group_concat(concat('`', s.column_name, '`') order by s.seq_in_index),
-                      ')) as example from `', s.table_name, '` group by ',
-                      group_concat(if(c.character_set_name is not null and c.character_set_name <> 'ascii',
-                                      concat('convert(`', s.column_name, '` using utf8mb4) collate utf8mb4_0900_ai_ci'),
-                                      concat('`', s.column_name, '`')) order by s.seq_in_index),
+                      'min(concat_ws(''|'', ',
+                      group_concat(concat('`', replace(s.column_name, '`', '``'), '`') order by s.seq_in_index),
+                      ')) as example from `', replace(s.table_name, '`', '``'), '` group by ',
+                      group_concat(if(c.character_set_name is not null and c.character_set_name <> 'ascii'
+                                        and c.collation_name not like '%\_bin',
+                                      concat('convert(`', replace(s.column_name, '`', '``'),
+                                             '` using utf8mb4) collate utf8mb4_0900_ai_ci'),
+                                      concat('`', replace(s.column_name, '`', '``'), '`')) order by s.seq_in_index),
                       ' having count(1) > 1') as q
           from information_schema.statistics s
           join information_schema.columns c
@@ -929,10 +959,22 @@ set @b12_sql = (select ifnull(group_concat(q separator ' union all '), 'select 1
          where s.table_schema = database() and s.non_unique = 0
          group by s.table_name, s.index_name
         having sum(c.character_set_name is not null and c.character_set_name <> 'ascii'
-                   and c.collation_name <> 'utf8mb4_0900_ai_ci') > 0) as x);
+                   and c.collation_name not like '%\_bin' and c.collation_name <> 'utf8mb4_0900_ai_ci') > 0) as x);
 prepare b12_stmt from @b12_sql;
 execute b12_stmt;
 deallocate prepare b12_stmt;
+
+/* 2b. pre-check (read only, every cnt MUST be 0): trailing spaces in the join keys. utf8mb3_general_ci pads (a value
+   with a trailing space equals the one without), utf8mb4_0900_ai_ci does not: such a row would silently stop matching
+   its team/user. LIKE compares without padding. Full scans, pok_roundstat_details_tbl takes a while (read only). */
+select 'pok_teams_tbl.id' as col, count(1) as cnt from pok_teams_tbl where id like '% '
+union all select 'pok_players_tbl.team_id/id', count(1) from pok_players_tbl where team_id like '% ' or id like '% '
+union all select 'pok_user_tbl.id', count(1) from pok_user_tbl where id like '% '
+union all select 'pok_roundstats_tbl.team_id', count(1) from pok_roundstats_tbl where team_id like '% '
+union all select 'pok_roundstat_details_tbl.team_id/player_id', count(1) from pok_roundstat_details_tbl
+           where team_id like '% ' or player_id like '% '
+union all select 'pok_custom_sets_tbl.team_id', count(1) from pok_custom_sets_tbl where team_id like '% '
+union all select 'pok_topic_items_tbl.team_id', count(1) from pok_topic_items_tbl where team_id like '% ';
 
 /* 3. check (read only, expected: no rows): columns that are really latin1. The two latin1 tables only have latin1 as
    table default. Should a latin1 column show up: the app wrote it through a utf8/utf8mb4 connection, so MySQL
@@ -946,6 +988,7 @@ select table_name, column_name, column_type from information_schema.columns
 drop procedure if exists b12_convert;
 delimiter ;;
 create procedure b12_convert(in p_table varchar(64))
+sql security invoker
 begin
   declare v_exists int default 0;
   declare v_default_ok int default 0;
@@ -965,13 +1008,13 @@ begin
     if (select count(1) from information_schema.columns
          where table_schema = database() and table_name = p_table
            and character_set_name is not null and character_set_name <> 'ascii'
-           and collation_name <> 'utf8mb4_0900_ai_ci'
+           and collation_name not like '%\_bin' and collation_name <> 'utf8mb4_0900_ai_ci'
            and (extra like '%GENERATED%' or generation_expression <> '')) > 0 then
       signal sqlstate '45000' set message_text = 'B-12: generated column or expression default, convert by hand';
     end if;
 
     set session group_concat_max_len = 1048576;
-    select group_concat(concat('modify `', column_name, '` ', column_type,
+    select group_concat(concat('modify `', replace(column_name, '`', '``'), '` ', column_type,
                                ' character set utf8mb4 collate utf8mb4_0900_ai_ci',
                                if(is_nullable = 'YES', ' null', ' not null'),
                                if(column_default is null, '', concat(' default ', quote(column_default))),
@@ -982,20 +1025,22 @@ begin
       from information_schema.columns
      where table_schema = database() and table_name = p_table
        and character_set_name is not null and character_set_name <> 'ascii'
-       and collation_name <> 'utf8mb4_0900_ai_ci';
+       and collation_name not like '%\_bin' and collation_name <> 'utf8mb4_0900_ai_ci';
 
     if v_mods is null and v_default_ok = 1 then
       select p_table as tbl, 'nothing to do' as result;
     else
       /* a default '0000-00-00 ...' (pok_daily_teams_stats, as on live) is rejected by the strict sql_mode when the
-         table is rebuilt ("Invalid default value", as in B-85): without strict/zero-date checks for this table only.
-         The procedure's sql_mode is restored by MySQL when it returns. */
+         table is rebuilt ("Invalid default value", as in B-85): without NO_ZERO_IN_DATE/NO_ZERO_DATE for this table
+         only, everything else (strict mode) stays. The procedure's sql_mode is restored by MySQL when it returns. */
       if (select count(1) from information_schema.columns
            where table_schema = database() and table_name = p_table and column_default like '0000-00-00%') > 0 then
-        set session sql_mode = 'NO_ENGINE_SUBSTITUTION';
+        set session sql_mode = trim(both ',' from
+              replace(replace(replace(replace(@@session.sql_mode, 'NO_ZERO_IN_DATE', ''), 'NO_ZERO_DATE', ''),
+                              ',,', ','), ',,', ','));
       end if;
       /* COMPACT/REDUNDANT allow only 767 bytes per index column: varchar(300) utf8mb4 needs 1200 (analytics) */
-      set @b12_sql = concat('alter table `', p_table, '` ', ifnull(concat(v_mods, ', '), ''),
+      set @b12_sql = concat('alter table `', replace(p_table, '`', '``'), '` ', ifnull(concat(v_mods, ', '), ''),
                             'default character set utf8mb4 collate utf8mb4_0900_ai_ci',
                             if(v_row_format in ('Compact', 'Redundant'), ', row_format = dynamic', ''));
       prepare b12_stmt from @b12_sql;
@@ -1031,11 +1076,12 @@ call b12_convert('pok_analytics_events_tbl');
 drop procedure if exists b12_convert;
 
 /* 5. check (read only, expected: no rows in both): no text column and no table default left outside utf8mb4 (except
-   the ascii columns) */
+   the ascii and _bin columns) */
 select table_name, column_name, column_type, character_set_name, collation_name
   from information_schema.columns
  where table_schema = database() and character_set_name is not null
-   and character_set_name <> 'ascii' and collation_name <> 'utf8mb4_0900_ai_ci';
+   and character_set_name <> 'ascii' and collation_name not like '%\_bin'
+   and collation_name <> 'utf8mb4_0900_ai_ci';
 select table_name, table_collation from information_schema.tables
  where table_schema = database() and table_type = 'BASE TABLE' and table_collation <> 'utf8mb4_0900_ai_ci';
 /* end B-12 */
