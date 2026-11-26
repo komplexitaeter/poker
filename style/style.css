@@ -1590,10 +1590,11 @@ fieldset:disabled .seg input:checked + span {
 /* R3 review V10 (L8): "Privacy policy · Imprint" */
 .m-links > span { color: var(--muted); }
 
+/* "Delete my data" at the end of the You menu: as tall as the other buttons of the menu ("Create key" right above
+ * it, a full tap target on touch), flush with their right edge, the links centred on its line. The small text keeps
+ * links and button on one line down to phone width (only below ~340px it moves to a line of its own, on the right). */
 .menu .m-links .btn-box {
     margin-left: auto;
-    min-height: 0;
-    padding: 4px 10px;
     font-size: var(--fs-s);
 }
 
