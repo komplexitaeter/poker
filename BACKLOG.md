@@ -410,6 +410,14 @@ Planning (Inventar Ben, Entscheidungen Andreas, 2026-11-26):
   - CLAUDE.md-Regeln: UID nur per Header über `apiFetch`, nie in URLs/Logs; Team-Endpunkte `require_team()` +
     `require_member()`; Antworten enthalten nur die eigene UID, andere Personen nur über den `mkey` (aus B-91).
 
+### B-154 Entfernte Spieler als Observer anzeigen
+Status: refined (Andreas, 2026-11-26), kann mit B-152 in denselben Rollout. Ein entfernter Spieler (`REMOVED`) ist im
+Grunde von Player auf Observer gesetzt: Für alle anderen steht er in der Observer-Liste, solange sein Board verbunden
+ist (gleiche Regel wie für Observer, B-110), ohne eigene Kennzeichnung. Einziger Unterschied: Er selbst sieht wie
+heute den Hinweis, dass ihn jemand entfernt hat, mit der Wahl, wieder Player zu werden oder als Observer
+weiterzumachen. Technik: `getDao()` nimmt verbundene `REMOVED`-Zeilen in die Observer-Liste (`mkey`, Name, nie die
+UID). Damit ist niemand mehr unsichtbar am Tisch (Folge von „Team-Link = Zugang“ aus B-152).
+
 ### B-153 Measure-Events: entfernen oder verschlanken
 Status: neu (Andreas überlegt, 2026-11-26). `api/measure_event.php` schreibt 15 Ereignisse (Seitenaufrufe
 `BOARD_ON_LOAD`/`INIT_ON_LOAD`, Menüaufrufe, Farbwechsel, Timer/Tipps/Kartenänderungen an/aus, Topic-Item-Aktionen) in
