@@ -375,14 +375,18 @@ von B-91. Die UID (User-ID im Browser, `localStorage.SID`) wird das eigentliche 
 Planning (Inventar Ben, Entscheidungen Andreas, 2026-11-26):
 - Heute prüft fast kein Endpunkt die Mitgliedschaft (`newround`, `timer`, `topic_item_*` nur Team-ID; `update_deck`
   speichert eine beliebige ID als „changed by“; `setc` lässt auch Observer eine Karte legen).
-- **Transport:** UID für **alle** Aufrufe im Header `X-Poker-User` (eine zentrale Funktion `apiFetch`, schützt nebenbei
-  gegen CSRF); nirgends mehr `id=`/`player_id=` in URLs.
+- **Transport:** UID für **alle** Aufrufe im Header `X-Poker-User` (eine zentrale Funktion `apiFetch`, nur für relative
+  `./api/`-URLs); nirgends mehr `id=`/`player_id=` in URLs. Gewinn: UID raus aus URLs und Logs – **kein** CSRF-Schutz
+  (die UID steckt in keinem Cookie, CSRF gibt es hier nicht; nicht darauf verlassen, falls je Cookies kommen).
 - **Regeln:** Team-Endpunkte verlangen eine registrierte UID (Player, Observer oder `REMOVED`); **nur Karten legen**
   (`setc`) ist für Observer und `REMOVED` gesperrt, sonst gilt „registriert = darf“. Ohne Registrierung: `dao.php`,
   `seen.php` (Anwesenheit nur für Mitglieder), `get_topics.php`, `name.php` (Beitreten), Team anlegen (`addteam.php`
   und weiterhin per GET-Link `index.php?tool=…` für die Tool-Seiten), `get_user`/`update_user` (teamübergreifend),
-  `delete_user` (eigenes Löschen), `measure_event` (jede gültige UID, bis B-153 entschieden ist). Feedback: Mitglied in
-  irgendeinem Team (wie `vote_roadmap`).
+  `delete_user` (eigenes Löschen), `get_roadmap` (teamübergreifend, eigene Votes), `measure_event` (gültige UID
+  verlangen, sonst nichts speichern; bis B-153 entschieden ist). Feedback: Mitglied in irgendeinem Team (wie
+  `vote_roadmap`). `REMOVED` darf auch andere entfernen (`delete.php`, Andreas: nur Karten legen entfällt) – damit
+  überholt B-152 die B-91-Formulierung „nicht entferntes Mitglied“. Bewusste Folge von „Team-Link = Zugang“: wer den
+  Link hat, kann beitreten und sich auf `REMOVED` setzen und ist dann unsichtbar, darf aber alles außer Karten legen.
 - **Entfernen:** Promo-Endpunkte (`get_promo`, `update_promo`, toter Code, `update_promo` ohne jede Prüfung) samt JS;
   `update_cardset.php` (altes Deck-Menü, ohne Aufrufer).
 - Reaktionen (Absender in poker-msg frei wählbar): erst mit B-151, wenn Reaktionen über die API laufen.
@@ -391,7 +395,20 @@ Planning (Inventar Ben, Entscheidungen Andreas, 2026-11-26):
   E2E-Helfer und ca. 22 Specs anpassen (BE-1 + FE-1 in einen Rollout) → BE-2 etwa eine Woche später: Mitgliedschaft
   prüfen, keine UID mehr aus der URL (vorher im Access-Log prüfen, dass keine alten `id=`-Aufrufe mehr kommen).
 - Neue Tests: `uid.php`; erster Besuch ohne SID ohne `id=` in URLs; Tabellentest „jeder Team-Endpunkt ohne/mit fremder
-  UID → 403, mit `REMOVED` nicht (außer Karte)“; zwei Tabs beim ersten Besuch → dieselbe SID.
+  UID → 403, mit `REMOVED` nicht (außer Karte)“; zwei Tabs beim ersten Besuch → dieselbe SID; eine Spec über die
+  Kernabläufe: kein Request mit `id=`, `player_id=` oder der SID in der URL; ab BE-2: UID nur in Body/URL → 403.
+- Ergänzungen aus Sinas Review (2026-11-26):
+  - zentral in `api/lib.php`: `get_uid()` (Header, `[A-Za-z0-9_-]{10,16}`, sonst `''`) und `require_member($link, $t,
+    $uid)` direkt nach `require_team()`, 403 vor jedem Schreiben und vor `notify_team()`; Header gewinnt vor Body/URL.
+  - BE-2 akzeptiert die UID **nur** aus dem Header (nicht aus dem Body).
+  - `uid.php`: POST, `Cache-Control: no-store, private`, Base32 aus `random_bytes(10)` (16 Zeichen, 80 Bit). Kein
+    Rückfall auf `Math.random`, wenn `uid.php` fehlschlägt; zwei Tabs: nach der Antwort `localStorage` erneut lesen,
+    eine vorhandene SID gewinnt. Nach „Delete user“ eine neue UID holen (heute `sid = '-1'`).
+  - `name.php` legt keinen neuen Nutzer mit leerem Namen an (400); tote `id=` bei `update_show_avg` entfernen.
+  - Nach BE-2: Anfragen mit `id=` in der URL eine Zeit lang zählen (alte offene Tabs → Reload nötig); Betreiber löscht
+    danach rotierte Access-Logs mit `id=` und prüft nginx-`log_format` bzw. FPM-`access.format` auf Header/Body.
+  - CLAUDE.md-Regeln: UID nur per Header über `apiFetch`, nie in URLs/Logs; Team-Endpunkte `require_team()` +
+    `require_member()`; Antworten enthalten nur die eigene UID, andere Personen nur über den `mkey` (aus B-91).
 
 ### B-153 Measure-Events: entfernen oder verschlanken
 Status: neu (Andreas überlegt, 2026-11-26). `api/measure_event.php` schreibt 15 Ereignisse (Seitenaufrufe
