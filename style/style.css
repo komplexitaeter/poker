@@ -6454,11 +6454,393 @@ button.ti-hist:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .rail-acts.split .rail-lbl { display: block; text-align: center; }
 .rail-acts.split .rail-lbl > span { display: block; }
 
-/* B-150: the API doc page (api/v1/, rendered by lib_v1.php, no JavaScript under its CSP): body starts with opacity 0
- * for the board (script.js fades it in), so the doc page shows itself; plain readable layout until Delia designs it
- * (B-150 PR 5) */
-body.api-doc { opacity: 1; text-align: left; user-select: text; -webkit-user-select: text; overflow-y: auto; }
-.api-doc-main { max-width: 60rem; margin: 0 auto; padding: 24px 16px 48px; }
-.api-doc pre { white-space: pre-wrap; overflow-wrap: anywhere; }
-.api-doc table { border-collapse: collapse; }
-.api-doc th, .api-doc td { text-align: left; padding: 2px 8px; border-bottom: 1px solid var(--line); }
+/* ---------- API doc page (B-150) ---------- */
+
+/* /api/v1/, rendered by api/v1/lib_v1.php (v1_doc_page()). Strict CSP: no JavaScript, no inline style, so
+ * - the theme follows the system (prefers-color-scheme) instead of body.light-theme set by script.js,
+ * - the body shows itself (the board's body starts with opacity 0 until script.js fades it in).
+ * Layout: the app header (logo, prompt with caret); large screens: the table of contents as a sticky sidebar on the
+ * left, phones: a collapsible "Contents" list at the top; a readable column with one card per operation. Tables and
+ * code scroll sideways inside their card on phones, the page itself never does. script/api_doc.js (the only script)
+ * marks the section in view in the table of contents: a[aria-current]. */
+body.api-doc {
+    opacity: 1;
+    overflow-y: auto;
+    text-align: left;
+    line-height: 1.6;
+    -webkit-user-select: text;
+    user-select: text;
+    touch-action: auto;
+    /* doc-only tokens: one colour per HTTP method (from the theme colours) */
+    --m-get: var(--ok);
+    --m-post: var(--accent);
+    --m-put: var(--warn);
+    --m-patch: var(--warn);
+    --m-delete: var(--danger);
+}
+
+/* light: the colours of body.light-theme (keep in step), chosen by the system setting */
+@media (prefers-color-scheme: light) {
+    body.api-doc {
+        --bg: #f7f6f1;
+        --bg-2: #eeede6;
+        --bg-3: #e4e3db;
+        --bg-4: #dad9d0;
+        --line: #d3d2c8;
+        --line-strong: #8e8d85;
+        --text: #1d2027;
+        --muted: #5b606b;
+        --disabled: #9a998f;
+        --accent: #0a62b3;
+        --on-accent: #ffffff;
+        --brand-pink: #b1009d;
+        --topic-color: #9a0089;
+        --ok: #1b7a37;
+        --danger: #c0262d;
+        --warn: #9a5800;
+        --focus-ring: rgba(10, 98, 179, 0.5);
+        --shadow-color: rgba(0, 0, 0, 0.18);
+    }
+}
+
+.api-doc img { -webkit-user-drag: auto; }
+.api-doc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-s); }
+
+/* header: logo | poker/api/v1 with the caret | openapi.json */
+.api-doc-logo { display: block; height: 24px; width: auto; }
+.api-doc-prompt { min-width: 0; }
+.api-doc-path { color: var(--muted); font-weight: normal; }
+.api-doc-headlink {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    color: var(--text);
+    font-size: var(--fs-s);
+    text-decoration: none;
+}
+.api-doc-headlink:hover { border-color: var(--accent); color: var(--accent); }
+
+/* sidebar | content; phones: one column, the sidebar hidden (the list at the top takes over) */
+.api-doc-layout {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+    max-width: 78rem;
+    margin: 0 auto;
+}
+
+.api-doc-main {
+    min-width: 0;
+    max-width: 56rem;
+    padding: var(--space-4) 32px 48px;
+    overflow-wrap: break-word;
+}
+
+.api-doc h1 { margin: 0 0 var(--space-2); font-size: 1.5rem; line-height: 1.3; }
+.api-doc h2 { margin: var(--space-4) 0 var(--space-2); font-size: var(--fs-l); }
+.api-doc h3 { margin: 0 0 var(--space-2); font-size: var(--fs-l); }
+.api-doc p { margin: 0 0 0.75em; max-width: 75ch; }
+.api-doc-lead { color: var(--muted); font-size: var(--fs-l); }
+
+/* inline code; code blocks reset it below */
+.api-doc code {
+    padding: 0 0.3em;
+    border-radius: var(--radius-s);
+    background: var(--bg-3);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.95em;
+}
+
+/* intro: "Get an API key" and "Send it" side by side, the Jira hint below */
+.api-doc-intro {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.api-doc-box,
+.api-doc-note,
+.api-op {
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 16px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg-2);
+}
+
+.api-doc-box h2,
+.api-doc-note h2 { margin-top: 0; }
+.api-doc-box p:last-child,
+.api-doc-note p:last-child { margin-bottom: 0; }
+
+.api-doc-note {
+    margin-top: var(--space-3);
+    border-left: 3px solid var(--topic-color);
+}
+
+.api-doc-note h2 { color: var(--topic-color); }
+
+/* table of contents (the same list twice: sidebar and phone list) */
+.api-toc-list,
+.api-toc-list ul { margin: 0; padding: 0; list-style: none; }
+.api-toc-group {
+    margin-top: var(--space-3);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.api-toc-group:first-child { margin-top: 0; }
+.api-toc-group ul { margin-top: var(--space-1); text-transform: none; letter-spacing: 0; }
+.api-toc-list a {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 8px;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius-m) var(--radius-m) 0;
+    color: var(--text);
+    font-size: var(--fs-s);
+    line-height: 1.4;
+    text-decoration: none;
+}
+.api-toc-list a:hover { background: var(--bg-3); }
+.api-toc-list a:hover .api-path { color: var(--accent); }
+/* the section in view (script/api_doc.js) */
+.api-toc-list a[aria-current] { border-left-color: var(--accent); background: var(--bg-3); color: var(--accent); }
+.api-toc-list a[aria-current] .api-path { color: var(--accent); }
+.api-toc-op { display: flex; flex-direction: column; min-width: 0; }
+.api-toc-list .api-path { font-size: var(--fs-s); }
+.api-toc-summary { color: var(--muted); font-size: var(--fs-xs); }
+.api-toc-list .api-method { min-width: 4.4em; font-size: 0.625rem; }
+
+.api-toc-side {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    max-height: 100dvh;
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding: var(--space-4) 12px var(--space-4) 16px;
+}
+
+/* phones: "Contents" folds open at the top of the page */
+.api-toc-top {
+    display: none;
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg-2);
+}
+.api-toc-top > summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 14px;
+    font-weight: bold;
+    list-style: none;
+    cursor: pointer;
+}
+.api-toc-top > summary::-webkit-details-marker { display: none; }
+.api-toc-top > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: var(--fs-l); }
+.api-toc-top[open] > summary::after { content: "\2212"; }
+.api-toc-top > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-l); }
+.api-toc-top > .api-toc-list { padding: 4px 14px 14px; }
+
+/* method badge and path */
+.api-method {
+    --m: var(--muted);
+    flex: none;
+    display: inline-block;
+    min-width: 4.2em;
+    box-sizing: border-box;
+    padding: 0 6px;
+    border: 1px solid color-mix(in srgb, var(--m) 55%, transparent);
+    border-radius: var(--radius-s);
+    background: color-mix(in srgb, var(--m) 14%, transparent);
+    color: var(--m);
+    font: bold var(--fs-xs)/1.7 var(--font);
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+.api-method-get { --m: var(--m-get); }
+.api-method-post { --m: var(--m-post); }
+.api-method-put { --m: var(--m-put); }
+.api-method-patch { --m: var(--m-patch); }
+.api-method-delete { --m: var(--m-delete); }
+
+.api-doc code.api-path { padding: 0; background: none; font-weight: bold; overflow-wrap: anywhere; }
+
+/* one card per operation: a header strip with method, path and auth, a coloured edge in the method's colour,
+ * clear space between the cards */
+.api-tag {
+    margin-top: 3rem;
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--line-strong);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.api-doc .api-op {
+    margin: var(--space-3) 0 var(--space-4);
+    padding: 0;
+    overflow: hidden;
+    border-left: 3px solid var(--m, var(--line-strong));
+    scroll-margin-top: var(--space-3);
+}
+.api-op-get { --m: var(--m-get); }
+.api-op-post { --m: var(--m-post); }
+.api-op-put { --m: var(--m-put); }
+.api-op-patch { --m: var(--m-patch); }
+.api-op-delete { --m: var(--m-delete); }
+.api-op:target { border-color: var(--accent); border-left-color: var(--m); box-shadow: 0 0 0 1px var(--accent); }
+
+.api-op-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-3);
+}
+.api-op-head .api-path { font-size: var(--fs-l); }
+.api-op-body { padding: 16px 20px 18px; }
+
+.api-auth {
+    margin-left: auto;
+    padding: 0 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    line-height: 1.7;
+    white-space: nowrap;
+}
+.api-auth-none { border-style: dashed; }
+
+.api-op h4 {
+    margin: var(--space-3) 0 var(--space-1);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.api-status {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: var(--radius-s);
+    background: var(--bg-4);
+    color: var(--text);
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+}
+
+/* code blocks: scroll sideways inside the card, never wrap (curl lines and JSON stay copyable) */
+.api-doc pre.api-code {
+    margin: 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+    font-size: var(--fs-s);
+    line-height: 1.5;
+    white-space: pre;
+    tab-size: 2;
+}
+.api-doc pre.api-code code { padding: 0; background: none; font-size: inherit; }
+
+/* tables: full width, scroll sideways inside their wrapper on narrow screens */
+.api-table { max-width: 100%; overflow-x: auto; }
+.api-doc table {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    color: var(--text);
+    font-size: var(--fs-s);
+    line-height: 1.5;
+}
+.api-doc table tr:first-child { border-bottom: 0; } /* the stats.php rule */
+.api-doc th,
+.api-doc td {
+    padding: 6px 10px 6px 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+}
+.api-doc th {
+    border-bottom-color: var(--line-strong);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+.api-doc tbody tr:last-child td { border-bottom: 0; }
+.api-doc td:first-child { white-space: nowrap; }
+.api-params td:nth-child(4) { min-width: 10em; color: var(--muted); }
+.api-params td:last-child,
+.api-errors td:last-child { min-width: 16em; }
+
+.api-req { color: var(--topic-color); font-size: var(--fs-xs); }
+
+/* the error codes of an operation, each a link into the error table */
+.api-op-errors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 6px;
+    margin: var(--space-3) 0 0;
+    font-size: var(--fs-s);
+}
+.api-op-errors > span { margin-right: 4px; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em; }
+.api-op-errors a { text-decoration: none; }
+.api-op-errors a code { display: inline-block; border: 1px solid var(--line); color: var(--muted); }
+.api-op-errors a:hover code { border-color: var(--accent); color: var(--accent); }
+
+.api-doc-errors { margin-top: var(--space-4); }
+.api-doc-errors pre.api-code { margin-bottom: var(--space-3); }
+.api-errors tr { scroll-margin-top: var(--space-3); }
+.api-errors tr:target td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.api-doc-foot {
+    padding: var(--space-3) 20px var(--space-4);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: var(--fs-s);
+    text-align: center;
+}
+
+/* phones: narrower paddings, the logo a little smaller (like the app header) */
+@media (max-width: 799.98px) {
+    .api-doc-logo { height: 20px; }
+    .api-doc-main { padding: var(--space-3) 12px 32px; }
+    .api-doc h1 { font-size: 1.25rem; }
+    .api-doc-lead { font-size: var(--fs-m); }
+    .api-doc-box,
+    .api-doc-note { padding: 12px 14px; }
+    .api-op-head { padding: 8px 14px; }
+    .api-op-head .api-path { font-size: var(--fs-m); }
+    .api-op-body { padding: 12px 14px 14px; }
+    .api-doc-layout { display: block; }
+    .api-toc-side { display: none; }
+    .api-toc-top { display: block; }
+}
+
+/* very narrow: the path of the prompt goes, logo, "poker" and the spec link stay */
+@media (max-width: 359.98px) {
+    .api-doc-path { display: none; }
+}
