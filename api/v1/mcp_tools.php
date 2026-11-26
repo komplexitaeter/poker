@@ -13,8 +13,10 @@
  *   handler        mcp_<tool>(mysqli $link, array $params, ?string $key): array ['structured' => ..., 'text' => ...];
  *                  with identity seat the third parameter is the actor (array)
  *   annotations    MCP tool annotations
- * 'routes': tool name => description and text view of a tool built from the routes with this 'mcp.tool'
+ * 'routes': tool name => description and text view of a tool built from the routes with this 'mcp.tool' (tools/list
+ *                  in this order)
  *   description    English, for the agent
+ *   params         optional: parameter name => description for the agent (replaces those of the routes)
  *   text           function(array $structured): string, the compact text content of the result
  *
  * MCP is not versioned (decision 9): names, parameters and results may change at any time.
@@ -143,6 +145,65 @@ return [
                 . 'the You menu of the board in the browser.',
             'text' => 'mcp_seat_text',
             'annotations' => ['title' => 'Your own seat', 'destructiveHint' => true],
+        ],
+        // B-151 PR E (concept 5.3)
+        'items' => [
+            'description' => 'Work with the team\'s items (topics to estimate, e.g. Jira issues). The first open item is the '
+                . 'active one - the team estimates it now. Actions: '
+                . 'list (open items in order; status=done the finished ones with their results, status=all both), '
+                . 'get (one item with its result), '
+                . 'add (new item; key is optional, the server suggests one like TIX-005; position 1 makes it active), '
+                . 'edit (heading, description, new_key, maturity - only what you pass changes), '
+                . 'move (change the order of open items; position 1 makes it the active one), '
+                . 'next (leave the active item and start a new round - mode close = done with the agreed value: the '
+                . 'value the team chose, else the automatic one (highest card), or pass card to store another one; '
+                . 'close_empty = done without a value; later = keep it open and bring it back later at the end of the '
+                . 'list; pass the key of the active item so nothing happens if someone else moved on meanwhile), '
+                . 'set_result (choose the agreed value of an item from its played cards or a card of the set with a '
+                . 'value; empty card = automatic again), '
+                . 'reopen (put a done item back at the end of the open list; rounds and votes stay), '
+                . 'delete (remove an item for good - ask the user first, it cannot be undone). '
+                . 'Results are what the web export shows: agreed value, votes ("5 ×2, 8 ×3"), rounds, dates. Before '
+                . 'next with close, tell the user which value will be stored and let them confirm or pick another. '
+                . 'Everybody at the table sees changes at once.',
+            'params' => [
+                'key' => 'Item key, e.g. "TIX-004". Required for get, edit, move, set_result, reopen, delete; add: '
+                    . 'optional (suggested if missing); next: the key of the active item as you see it (recommended).',
+                'heading' => 'Short title. Required for add; edit: new title.',
+                'description' => 'add, edit: Markdown text; null or "" removes it.',
+                'new_key' => 'edit only: rename the key.',
+                'maturity' => 'add, edit: how well the item is understood (new, rough, shaping, ready; none = not set).',
+                'position' => 'move: new place among the open items, 1 = active (required). add: where to insert '
+                    . '(default: end).',
+                'mode' => 'next only: close (default) = done with the agreed value; close_empty = done without value; '
+                    . 'later = back to the end of the open list.',
+                'card' => 'next (mode close) and set_result: card value as shown (e.g. "8") or card key of the agreed '
+                    . 'result; missing = automatic.',
+                'status' => 'list only: open (default), done or all.',
+                'limit' => 'list only: done items per answer (max 100).',
+                'offset' => 'list only: done items to skip.',
+            ],
+            'text' => 'mcp_items_text',
+            'annotations' => ['title' => 'Work with items', 'destructiveHint' => true],
+        ],
+        'board_settings' => [
+            'description' => 'Team-wide settings, the same as the board\'s settings menu: rename (the team), set_note (the '
+                . 'text shown above the table, e.g. the sprint goal; Markdown, max 2000 characters, "" clears it), set '
+                . '(one or more of: anonymous results - names hidden after the reveal, applies from the next round if '
+                . 'cards are down; results_order - by name or by card; show_average; show_tips; show_card_changes - '
+                . '"See changed cards" keeps the first card visible when someone changes after the reveal). Everybody '
+                . 'at the table sees the change immediately - mention that to the user.',
+            'params' => [
+                'name' => 'rename: new team name (max 30 characters).',
+                'note' => 'set_note: the note (Markdown); "" clears it.',
+                'anonymous' => 'set: hide names in the revealed result.',
+                'results_order' => 'set: order of the revealed cards, by name or by card.',
+                'show_average' => 'set: show the average of the revealed cards.',
+                'show_tips' => 'set: show tips under the table.',
+                'show_card_changes' => 'set: "See changed cards".',
+            ],
+            'text' => 'mcp_seat_text',
+            'annotations' => ['title' => 'Team settings'],
         ],
     ],
 ];

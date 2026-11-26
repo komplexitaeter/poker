@@ -12,7 +12,9 @@
  *   auth           none | member (API key or UID + team) | browser (UID + team only)
  *   public         optional, default true; false = not in doc/spec
  *   mcp            optional (B-151): ['tool' => MCP tool name, 'action' => value of its action enum (several routes,
- *                  one tool)]; only routes with this field are MCP tools (docs/mcp-concept.md, section 7)
+ *                  one tool), optional 'handler' => function used for MCP instead of handler (a public route whose
+ *                  MCP answer carries a message and the board)]; only routes with this field are MCP tools
+ *                  (docs/mcp-concept.md, section 7)
  *   params         name => [in: path|query|body, type: string|integer|boolean, required, nullable, max_length,
  *                  min_length, pattern, enum, minimum, maximum, default, text (free text: trim, then check the length),
                   accept_integer (string parameter that also takes a JSON number, checked as its decimal text; the schema says string),
@@ -135,6 +137,8 @@ return [
             'note' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'max_length' => 2000,
                        'description' => 'The note, markdown; "" removes it.', 'example' => 'Sprint 42 refinement'],
         ],
+        // B-151: MCP answers with a message and the board (v1_mcp_team_note_set); REST as before
+        'mcp' => ['tool' => 'board_settings', 'action' => 'set_note', 'handler' => 'v1_mcp_team_note_set'],
         'handler' => 'v1_team_note_set',
         'responses' => [
             200 => ['description' => 'Note set', 'schema' => 'Note', 'example' => ['note' => 'Sprint 42 refinement']],
@@ -161,6 +165,53 @@ return [
         'responses' => [
             200 => ['description' => 'The board'],
         ],
+        'errors' => [],
+    ],
+
+    /* ---------- B-151 (MCP PR E): team settings, not public for now (docs/mcp-concept.md 5.3); under /board/...,
+       so the public path /team keeps its methods ---------- */
+
+    'team_rename' => [
+        'method' => 'PUT',
+        'path' => '/board/team-name',
+        'tag' => 'Team',
+        'summary' => 'Rename the team',
+        'description' => 'Changes the name of the team shown on the board. Open boards update at once.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'board_settings', 'action' => 'rename'],
+        'params' => [
+            'name' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                       'max_length' => 30, 'description' => 'New name of the team.'],
+        ],
+        'handler' => 'v1_team_rename',
+        'responses' => [200 => ['description' => 'Team renamed']],
+        'errors' => [],
+    ],
+
+    'team_patch' => [
+        'method' => 'PATCH',
+        'path' => '/board/settings',
+        'tag' => 'Team',
+        'summary' => 'Change team settings',
+        'description' => 'The settings of the board\'s settings menu; only the given ones change. Anonymous results '
+            . 'and "See changed cards" apply from the next round while cards are down. Open boards update at once.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'board_settings', 'action' => 'set'],
+        'params' => [
+            'anonymous' => ['in' => 'body', 'type' => 'boolean',
+                            'description' => 'Hide the names in the revealed result.'],
+            'results_order' => ['in' => 'body', 'type' => 'string', 'enum' => ['name', 'card'],
+                                'description' => 'Order of the revealed cards: by name or by card.'],
+            'show_average' => ['in' => 'body', 'type' => 'boolean', 'description' => 'Show the average of the result.'],
+            'show_tips' => ['in' => 'body', 'type' => 'boolean', 'description' => 'Show the tips under the table.'],
+            'show_card_changes' => ['in' => 'body', 'type' => 'boolean',
+                                    'description' => '"See changed cards": keep the first card visible when someone '
+                                        . 'changes after the reveal.'],
+        ],
+        'handler' => 'v1_team_patch',
+        'responses' => [200 => ['description' => 'Settings changed']],
         'errors' => [],
     ],
 
@@ -347,6 +398,7 @@ return [
             'offset' => ['in' => 'query', 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000, 'default' => 0,
                          'description' => 'Done items to skip.', 'example' => 0],
         ],
+        'mcp' => ['tool' => 'items', 'action' => 'list'], // B-151
         'handler' => 'v1_item_list',
         'responses' => [
             200 => ['description' => 'The items', 'schema' => 'ItemList',
@@ -372,6 +424,7 @@ return [
             'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
                       'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'TIX-004'],
         ],
+        'mcp' => ['tool' => 'items', 'action' => 'get'], // B-151
         'handler' => 'v1_item_get',
         'responses' => [
             200 => ['description' => 'The item', 'schema' => 'Item',
@@ -390,6 +443,127 @@ return [
         'example' => ['params' => ['key' => 'TIX-004']],
     ],
 
+    /* ---------- B-151 (MCP PR E): items like on the board, not public for now (docs/mcp-concept.md 5.3) ----------
+       Under /board/..., so the public paths (/items, /items/{key}, /team) keep their methods (Allow header). */
+
+    'item_create' => [
+        'method' => 'POST',
+        'path' => '/board/items',
+        'tag' => 'Items',
+        'summary' => 'Add an item',
+        'description' => 'Adds an open item. Without key the server suggests one (like TIX-005). Answers with the item '
+            . 'and the board.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'items', 'action' => 'add'],
+        'params' => [
+            'key' => ['in' => 'body', 'type' => 'string', 'max_length' => 20, 'pattern' => ITEM_KEY_REGEX,
+                      'description' => 'Item key; missing = suggested by the server.'],
+            'heading' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                          'max_length' => 200, 'description' => 'Short title shown on the board.'],
+            'description' => ['in' => 'body', 'type' => 'string', 'nullable' => true, 'text' => true, 'max_length' => 2000,
+                              'description' => 'Markdown; null or "" = none.'],
+            'maturity' => ['in' => 'body', 'type' => 'string', 'enum' => ['new', 'rough', 'shaping', 'ready', 'none'],
+                           'description' => 'How well the item is understood; none = not set.'],
+            'position' => ['in' => 'body', 'type' => 'integer', 'minimum' => 1, 'maximum' => 1000,
+                           'description' => 'Place among the open items, 1 = active; missing = at the end.'],
+        ],
+        'handler' => 'v1_item_create',
+        'responses' => [201 => ['description' => 'Item added']],
+        'errors' => ['key_taken', 'limit_reached'],
+    ],
+
+    'item_patch' => [
+        'method' => 'PATCH',
+        'path' => '/board/items/{key}',
+        'tag' => 'Items',
+        'summary' => 'Change an item',
+        'description' => 'Changes heading, description, key or maturity of an item (open or done); only the given '
+            . 'fields change.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'items', 'action' => 'edit'],
+        'params' => [
+            'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
+                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.'],
+            'heading' => ['in' => 'body', 'type' => 'string', 'text' => true, 'min_length' => 1, 'max_length' => 200,
+                          'description' => 'Short title.'],
+            'description' => ['in' => 'body', 'type' => 'string', 'nullable' => true, 'text' => true, 'max_length' => 2000,
+                              'description' => 'Markdown; null or "" removes it.'],
+            'new_key' => ['in' => 'body', 'type' => 'string', 'max_length' => 20, 'pattern' => ITEM_KEY_REGEX,
+                          'description' => 'New key of the item.'],
+            'maturity' => ['in' => 'body', 'type' => 'string', 'enum' => ['new', 'rough', 'shaping', 'ready', 'none'],
+                           'description' => 'How well the item is understood; none = not set.'],
+        ],
+        'handler' => 'v1_item_patch',
+        'responses' => [200 => ['description' => 'Item changed']],
+        'errors' => ['item_not_found', 'key_taken'],
+    ],
+
+    'item_move' => [
+        'method' => 'PUT',
+        'path' => '/board/items/{key}/position',
+        'tag' => 'Items',
+        'summary' => 'Move an open item',
+        'description' => 'Puts an open item at a new place among the open items; position 1 makes it the active one.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'items', 'action' => 'move'],
+        'params' => [
+            'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
+                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.'],
+            'position' => ['in' => 'body', 'type' => 'integer', 'required' => true, 'minimum' => 1, 'maximum' => 1000,
+                           'description' => 'New place among the open items, 1 = active; larger than the list = end.'],
+        ],
+        'handler' => 'v1_item_move',
+        'responses' => [200 => ['description' => 'Item moved']],
+        'errors' => ['item_not_found', 'item_not_open'],
+    ],
+
+    'item_leave' => [
+        'method' => 'POST',
+        'path' => '/board/items/active/leave',
+        'tag' => 'Items',
+        'summary' => 'Leave the active item',
+        'description' => 'The board\'s "Next item": close (done with the agreed value, optionally the given card), '
+            . 'close_empty (done without value) or later (back to the end of the open list). Starts a new round.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'items', 'action' => 'next'],
+        'params' => [
+            'key' => ['in' => 'body', 'type' => 'string', 'max_length' => 20, 'pattern' => ITEM_KEY_REGEX,
+                      'description' => 'Key of the item you see as active; another active item -> item_not_active.'],
+            'mode' => ['in' => 'body', 'type' => 'string', 'enum' => ['close', 'close_empty', 'later'],
+                       'default' => 'close', 'description' => 'How to leave the item.'],
+            'card' => ['in' => 'body', 'type' => 'string', 'text' => true, 'max_length' => 20,
+                       'description' => 'close only: card value or key of the result; missing = the current estimate.'],
+        ],
+        'handler' => 'v1_item_leave',
+        'responses' => [200 => ['description' => 'Item left']],
+        'errors' => ['item_not_found', 'item_not_active', 'no_active_item', 'invalid_card', 'no_single_result'],
+    ],
+
+    'item_result_set' => [
+        'method' => 'PUT',
+        'path' => '/board/items/{key}/result',
+        'tag' => 'Items',
+        'summary' => 'Choose the result of an item',
+        'description' => 'The agreed value of an item: a played card or a card of the card set with a value; '
+            . 'missing or "" = automatic (highest value).',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'items', 'action' => 'set_result'],
+        'params' => [
+            'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
+                      'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.'],
+            'card' => ['in' => 'body', 'type' => 'string', 'text' => true, 'max_length' => 20,
+                       'description' => 'Card value or key; "" = automatic.'],
+        ],
+        'handler' => 'v1_item_result_set',
+        'responses' => [200 => ['description' => 'Result set']],
+        'errors' => ['item_not_found', 'invalid_card', 'no_single_result'],
+    ],
+
     'item_reopen' => [
         'method' => 'POST',
         'path' => '/items/{key}/reopen',
@@ -402,6 +576,8 @@ return [
             'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
                       'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'TIX-004'],
         ],
+        // B-151: MCP answers with a message, the item and the board (v1_mcp_item_reopen); REST as before
+        'mcp' => ['tool' => 'items', 'action' => 'reopen', 'handler' => 'v1_mcp_item_reopen'],
         'handler' => 'v1_item_reopen',
         'responses' => [
             200 => ['description' => 'The item, open', 'schema' => 'Item'],
@@ -422,6 +598,8 @@ return [
             'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
                       'pattern' => ITEM_KEY_REGEX, 'description' => 'Item key.', 'example' => 'TIX-004'],
         ],
+        // B-151: MCP answers with a message and the board (v1_mcp_item_delete); REST as before (204)
+        'mcp' => ['tool' => 'items', 'action' => 'delete', 'handler' => 'v1_mcp_item_delete'],
         'handler' => 'v1_item_delete',
         'responses' => [
             204 => ['description' => 'Item deleted'],

@@ -219,7 +219,8 @@ function lock_team_topics_or_throw($link, string $t): void
 
 /*
  * B-150: runs a core function (api/lib_core_items.php) for an old topic item endpoint and translates its errors into
- * the old answers (topic_fail()): 400 {error: heading|ext_id|item}, 404 {error: item}, 409 {error: limit|key_taken},
+ * the old answers (topic_fail()): 400 {error: heading|ext_id|item|card|mode}, 404 {error: item},
+ * 409 {error: limit|key_taken|not_open|perspectives},
  * unknown team 403 with an empty body (as lock_team_topics()), deadlock/lock wait after the retries 503 (as
  * api_transaction()). Returns the result of $core.
  */
@@ -236,6 +237,9 @@ function topic_core_call(callable $core): array
             'limit_reached' => 'limit',
             'key_taken' => 'key_taken',
             'item_not_found' => 'item',
+            'item_not_open' => 'not_open',          // B-151: core_item_move()
+            'no_single_result' => 'perspectives',   // B-151: core_item_result_set(), core_item_next()
+            'invalid_card' => 'card',
             default => match ($e->param) { 'key' => 'ext_id', null => 'invalid', default => (string)$e->param },
         };
         topic_fail(null, $e->status, $error);

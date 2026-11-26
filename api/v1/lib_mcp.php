@@ -51,6 +51,8 @@ Playing
 - Stay at the table with wait_for_change: pass the version of your last result as since and call it again right
   after it returns, as long as the user wants to take part. Tell the user what changed in one or two short lines (who
   played, revealed result, new item, timer, note). If it says busy, wait retry_after seconds and call again.
+- items: the first open item is the active one. Before items next with mode close, tell the user which value will
+  be stored and let them confirm or pick another. board_settings changes are seen by everybody at once.
 - Ask before actions that affect everybody and cannot be undone: deleting items or custom sets, removing people,
   "delete my data", changing the card set while cards are down (starts a new round).
 - If the user wants something none of your tools offers, say that it is not possible here yet and that they can do
@@ -270,7 +272,8 @@ function mcp_origin_allowed(): bool
 
 /* ---------- tools ---------- */
 
-/* tool name => ['kind' => 'own'|'route', ...]: own tools of mcp_tools.php first, then the route tools in table order */
+/* tool name => ['kind' => 'own'|'route', ...]: own tools of mcp_tools.php first, then the route tools in the order of
+   its 'routes' (B-151 PR E), tools not named there in table order */
 function mcp_tool_index(): array
 {
     static $index = null;
@@ -278,6 +281,7 @@ function mcp_tool_index(): array
     $table = mcp_table();
     $index = [];
     foreach ($table['tools'] as $name => $tool) $index[$name] = ['kind' => 'own', 'tool' => $tool];
+    foreach ($table['routes'] as $name => $tool) $index[$name] = ['kind' => 'route', 'tool' => $tool, 'routes' => []];
     foreach (v1_operations(v1_routes()) as $op_id => $route) {
         $name = $route['mcp']['tool'] ?? null;
         if (!is_string($name)) continue;
@@ -286,7 +290,7 @@ function mcp_tool_index(): array
         }
         $index[$name]['routes'][(string)($route['mcp']['action'] ?? '')] = $op_id;
     }
-    return $index;
+    return array_filter($index, fn(array $entry): bool => $entry['kind'] === 'own' || $entry['routes'] !== []);
 }
 
 /* tools/list: name, description, inputSchema, annotations of every tool */
@@ -325,6 +329,10 @@ function mcp_tools_list(): array
                 if ($route['method'] !== 'GET') $read_only = false;
             }
             $annotations += ['readOnlyHint' => $read_only, 'destructiveHint' => false, 'openWorldHint' => false];
+            // B-151 PR E: one text per parameter for the whole tool (the routes describe their single action)
+            foreach (($tool['params'] ?? []) as $param => $text) {
+                if (isset($properties[$param])) $properties[$param]['description'] = $text;
+            }
         }
         $schema = ['type' => 'object', 'properties' => (object)$properties, 'additionalProperties' => false];
         if ($required !== []) $schema['required'] = $required;
@@ -450,7 +458,9 @@ function v1_call(mysqli $link, string $op_id, array $args, array $actor): mixed
     // purpose (concept decision 1, "the agent is the user's browser"), so browser routes with an 'mcp' field are open
     // to seats - exactly like the board itself
     if ($route['auth'] === 'browser' && $actor['via'] === 'key') throw new ApiError(403, 'browser_only');
-    $result = $route['handler']($link, $actor, mcp_validate_args($route['params'] ?? [], $args));
+    // B-151 PR E: a public route may answer MCP differently (mcp.handler: message and board), REST stays as it is
+    $handler = $route['mcp']['handler'] ?? $route['handler'];
+    $result = $handler($link, $actor, mcp_validate_args($route['params'] ?? [], $args));
     return $result instanceof V1Answer ? $result->body : $result;
 }
 
@@ -620,6 +630,37 @@ function mcp_seat_text(array $s): string
                 . $key['hint'] . ', created ' . $key['created'] . ($key['current'] ? ' (the key you are using)' : '');
         }
     }
+    if (isset($s['board'])) array_push($lines, '', mcp_board_text($s['board']));
+    return implode("\n", $lines);
+}
+
+/*
+ * Text of the items tool (B-151 PR E): list -> one line per item with its result; get -> the item; a write -> what
+ * was done, the item and the board afterwards. Texts of other people stand in quotes.
+ */
+function mcp_items_text(array $s): string
+{
+    $q = fn(?string $t): string => '"' . str_replace(["\r", "\n"], ' ', (string)$t) . '"';
+    $line = function (array $item) use ($q): string {
+        $result = $item['result'];
+        $out = '- ' . ($item['key'] !== '' ? $item['key'] . ' ' : '') . $q($item['heading'])
+            . ($item['status'] === 'done' ? ' (done)' : ($item['active'] ? ' (active)' : ' (#' . $item['position'] . ')'));
+        if ($result !== null) {
+            $out .= ' · result ' . ($result['value'] === null ? 'none' : $q($result['value']) . ($result['chosen'] ? ' chosen' : ''))
+                . ($result['votes_text'] !== '' ? ' · votes ' . $result['votes_text'] : '') . ' · rounds ' . $result['rounds'];
+        }
+        return $out;
+    };
+    if (isset($s['items'])) {
+        $lines = ['Items: ' . $s['open_count'] . ' open, ' . $s['done_count'] . ' done'];
+        foreach ($s['items'] as $item) $lines[] = $line($item);
+        return implode("\n", $lines);
+    }
+    if (isset($s['heading'], $s['status'])) { // get: the item itself
+        return $line($s) . ($s['description'] !== null && $s['description'] !== '' ? "\nDescription: " . $q($s['description']) : '');
+    }
+    $lines = isset($s['message']) ? [(string)$s['message']] : [];
+    if (isset($s['item'])) $lines[] = $line($s['item']);
     if (isset($s['board'])) array_push($lines, '', mcp_board_text($s['board']));
     return implode("\n", $lines);
 }

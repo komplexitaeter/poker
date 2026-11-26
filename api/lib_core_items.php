@@ -64,8 +64,10 @@ function item_create_locked(mysqli $link, string $t, array $fields): array
         throw new ApiError(409, 'limit_reached', null, 'At most 100 open and 1000 items per team');
     $key = item_key_checked_locked($link, $t, $fields['key'] ?? null, 0,
                                    fn(): string => item_key_suggest($link, $t));
+    // B-151: index (0 = active) places the item exactly (MCP items add position), else at (end | next)
+    $index = isset($fields['index']) ? (int)$fields['index'] : open_index_for($fields['at'] ?? 'end', $counts['open']);
     $id = insert_topic_item($link, $t, $key, (string)$fields['heading'], null_if_empty($fields['description'] ?? null),
-                            $fields['maturity'] ?? null, open_index_for($fields['at'] ?? 'end', $counts['open']));
+                            $fields['maturity'] ?? null, $index);
     return [$id, $key];
 }
 
@@ -94,7 +96,7 @@ function item_patch_locked(mysqli $link, string $t, array $item, array $fields):
 /*
  * item_create: a new open item of the actor's team. $fields: heading (required), description (?string, '' = none),
  * key (?string; missing, null or '' -> the server's suggestion item_key_suggest(), e.g. an old cached board or a
- * script), maturity (?int), at ('end' | 'next'). Errors: 400 invalid_param key, 409 key_taken, 409 limit_reached,
+ * script), maturity (?int), at ('end' | 'next') or index (int, 0 = active, larger = end). Errors: 400 invalid_param key, 409 key_taken, 409 limit_reached,
  * 403 not_a_member (unknown team). Returns ['item_id', 'key', 'active_id']. Notifies the team after the commit.
  */
 function core_item_create(mysqli $link, array $actor, array $fields): array
@@ -241,6 +243,189 @@ function core_item_list(mysqli $link, array $actor, string $status, int $limit, 
     if ($status !== 'open') foreach ($lists['done'] as $item) $entries[] = [$item, null];
     return ['items' => items_api_out($link, $t, $entries, $catalog), 'open_count' => $lists['open_count'],
             'done_count' => $lists['done_count']];
+}
+
+/* ---------- B-151 (MCP PR E): move, result, next - shared by topic_item_move/result/next.php and MCP items ---------- */
+
+/* the item named by the caller is not the active one (any more): "Next item" pressed twice, or someone moved on.
+   active_id: the active item now (null if none), for the old answer of topic_item_next.php */
+final class ItemNotActiveError extends ApiError
+{
+    public function __construct(public readonly ?int $active_id)
+    {
+        parent::__construct(409, 'item_not_active', null,
+                            'The item is not the active one (any more): someone may have moved on. Read the board again.');
+    }
+}
+
+/*
+ * item_move: puts the open item $ref (id or key) of the actor's team at index $index of the open order (0 = active,
+ * larger values = the end), the others keep their order. Errors: 404 item_not_found, 409 item_not_open (a done item),
+ * 403 not_a_member. Returns ['item_id', 'active_id']. Notifies the team after the commit.
+ */
+function core_item_move(mysqli $link, array $actor, int|string $ref, int $index): array
+{
+    $t = (string)$actor['team_id'];
+    $result = item_transaction($link, function () use ($link, $t, $ref, $index): array {
+        lock_team_topics_or_throw($link, $t);
+        $item = item_locked_or_throw($link, $t, $ref);
+        if ($item['status'] !== 'open') {
+            throw new ApiError(409, 'item_not_open', null, 'Only open items can be moved: reopen the item first.');
+        }
+        place_open_item($link, $t, (int)$item['id'], $index);
+        return ['item_id' => (int)$item['id'], 'active_id' => active_item_id($link, $t)];
+    });
+    notify_team($t);
+    return $result;
+}
+
+/*
+ * item_result_set: the team chooses the result of the item $ref (id or key; open or done). $card = card key, or null
+ * = back to the automatic result (open items: the proposal of the board, done items: the highest value is stored).
+ * Only for an 'agree' deck (deck_aim()), else 409 no_single_result. The card is a played one of the item's
+ * distribution (for the active item also the running revealed round; also a card without a value, never a control
+ * card) or a card of the team's current deck with a numeric_value (result_card_allowed()), else 400 invalid_card.
+ * Stored with result_auto = 0; a new revealed round of the active item resets the choice. Team row locked first
+ * (lock_team_deck(), like a card or a deck change). Errors also 404 item_not_found, 403 not_a_member.
+ * Returns ['item_id', 'active_id', 'result_card_key', 'result_auto']. Notifies the team after the commit.
+ */
+function core_item_result_set(mysqli $link, array $actor, int|string $ref, ?string $card): array
+{
+    $t = (string)$actor['team_id'];
+    $result = item_transaction($link, function () use ($link, $t, $ref, $card): array {
+        $catalog = card_catalog();
+        $team = lock_team_deck($link, $t, $catalog);
+        if ($team === null) throw new ApiError(403, 'not_a_member');
+        $item = item_locked_or_throw($link, $t, $ref);
+        $id = (int)$item['id'];
+        $active = active_item_id($link, $t);
+        $aim = deck_aim($team['deck'], $catalog, $team['custom_sets']);
+        if ($card === null) {
+            // automatic: open items compute the proposal in getDao(), done items store it
+            $distribution = decode_distribution($item['distribution']);
+            $infos = card_result_infos($link, $t, array_map('strval', array_keys((array)$distribution)), $catalog);
+            $key = $item['status'] === 'done' ? auto_result_key($distribution, $infos, $aim) : null;
+            $auto = 1;
+        } else {
+            if ($aim !== 'agree') throw item_no_single_result();
+            if (!result_card_allowed($link, $t, $team, $item, $active === $id, $card, $catalog)) throw item_invalid_result_card();
+            $key = $card;
+            $auto = 0;
+        }
+        set_topic_item_result($link, $t, $id, $key, $auto);
+        return ['item_id' => $id, 'active_id' => $active, 'result_card_key' => $key, 'result_auto' => $auto];
+    });
+    notify_team($t);
+    return $result;
+}
+
+/*
+ * item_next ("How do you want to leave this item?" of the board): leaves the active item and starts a new round, in
+ * one transaction under the team row lock (lock_team_deck(), like "New round", a card or a deck change). $ref names
+ * the item the caller sees as active (id or key): another active item -> ItemNotActiveError (409 item_not_active, so
+ * two people pressing "Next item" act once); null = whatever item is active now (409 no_active_item if none).
+ * $mode:
+ * - close: the item is done. $card = the result to store (same check as core_item_result_set(), only for an 'agree'
+ *   deck: 409 no_single_result otherwise); null = the current estimate: the card chosen by the team (result_auto 0)
+ *   or the automatic one (highest value). 'perspectives' deck: no result.
+ * - close_empty: the item is done without a value (result_card_key null, result_auto 0 = deliberately empty).
+ * - later: "Bring it back later" - the item stays open (rounds, distribution stay, a chosen result is reset) and goes
+ *   to the end of the open order; the next open item is active (the item itself if it is the only open one).
+ * $card with another mode than close -> 400 invalid_param card. In every mode: cards down -> start_new_round() first
+ * (the revealed round goes to the item). B-130: with timer auto-start "New round" or "Next item" a visible timer
+ * restarts in every mode; only "Next item" and no open item left: the timer is reset and paused instead.
+ * Returns ['item_id', 'active_id' (new active or null), 'result_card_key', 'result_auto'] (later: null/1).
+ * Notifies the team after the commit.
+ */
+function core_item_next(mysqli $link, array $actor, int|string|null $ref, string $mode, ?string $card): array
+{
+    $t = (string)$actor['team_id'];
+    if (!in_array($mode, ['close', 'close_empty', 'later'], true)) {
+        throw new ApiError(400, 'invalid_param', 'mode', 'mode: one of close, close_empty, later');
+    }
+    if ($card !== null && $mode !== 'close') {
+        throw new ApiError(400, 'invalid_param', 'card', 'card: only with mode close');
+    }
+    $result = item_transaction($link, function () use ($link, $t, $ref, $mode, $card): array {
+        $catalog = card_catalog();
+        $team = lock_team_deck($link, $t, $catalog); // team row lock, the deck of the round for the result rule
+        if ($team === null) throw new ApiError(403, 'not_a_member');
+
+        $active = active_item_id($link, $t);
+        if ($ref === null) {
+            if ($active === null) throw new ApiError(409, 'no_active_item', null, 'There is no open item.');
+            $id = $active;
+        } elseif (is_int($ref)) {
+            $id = $ref;
+        } else {
+            $id = (int)item_locked_or_throw($link, $t, $ref)['id'];
+        }
+        if ($active !== $id) throw new ItemNotActiveError($active);
+
+        $aim = deck_aim($team['deck'], $catalog, $team['custom_sets']);
+        $item = load_topic_item($link, $t, $id);
+        if ($card !== null) {
+            if ($aim !== 'agree') throw item_no_single_result();
+            if (!result_card_allowed($link, $t, $team, $item, true, $card, $catalog)) throw item_invalid_result_card();
+        }
+        $chosen = ((int)$item['result_auto'] === 0) ? $item['result_card_key'] : null; // start_new_round() resets it
+
+        if (team_has_cards_down($link, $t)) start_new_round($link, $t);
+
+        if ($mode === 'later') {
+            postpone_topic_item($link, $t, $id);
+            $key = null;
+            $auto = 1;
+        } else {
+            if ($mode === 'close_empty') {
+                $key = null;
+                $auto = 0;
+            } elseif ($aim !== 'agree') {
+                $key = null; // perspectives: only the distribution
+                $auto = 1;
+            } elseif ($card !== null) {
+                $key = $card;
+                $auto = 0;
+            } elseif ($chosen !== null) {
+                $key = $chosen;
+                $auto = 0;
+            } else {
+                $item = load_topic_item($link, $t, $id);
+                $distribution = decode_distribution($item['distribution']);
+                $infos = card_result_infos($link, $t, array_map('strval', array_keys((array)$distribution)), $catalog);
+                $key = auto_result_key($distribution, $infos, $aim);
+                $auto = 1;
+            }
+            finish_topic_item($link, $t, $id, $key, $auto);
+        }
+
+        $next = active_item_id($link, $t);
+        /* B-130: leaving an item always starts a new round for the team (Andreas, 2026-11-12): auto-start "New round"
+           and "Next item" restart the timer in every mode (also "later" as the only open item), with or without cards
+           down. Exception: "Next item" and the last open item was finished (no active item left): the timer is reset
+           and paused like a manual reset; it runs again when someone presses play. */
+        if ($next === null) {
+            restart_timer_for_auto_modes($link, $t, [TIMER_AUTO_NEW_ROUND]);
+            reset_timer_for_auto_modes($link, $t, [TIMER_AUTO_NEXT_ITEM]);
+        } else {
+            restart_timer_for_auto_modes($link, $t, [TIMER_AUTO_NEW_ROUND, TIMER_AUTO_NEXT_ITEM]);
+        }
+        return ['item_id' => $id, 'active_id' => $next, 'result_card_key' => $key, 'result_auto' => $auto];
+    });
+    notify_team($t);
+    return $result;
+}
+
+function item_no_single_result(): ApiError
+{
+    return new ApiError(409, 'no_single_result', null,
+                        'The card set of the team has no single result per item (perspectives): only the distribution counts.');
+}
+
+function item_invalid_result_card(): ApiError
+{
+    return new ApiError(400, 'invalid_card', 'card',
+                        'card: neither a card played for this item nor a card of the card set with a value');
 }
 
 /* ---------- API representation (schema Item of api/v1/routes.php) ---------- */
