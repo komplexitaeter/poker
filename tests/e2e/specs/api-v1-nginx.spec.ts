@@ -101,7 +101,7 @@ test('doc page /api/v1/ designed (B-150 PR 5): logo, intro, table of contents, o
   await expect(page.locator('#jira')).toContainText('audit log');
   // the recipe: an issue becomes an item by its key (PUT /items/{key}, B-150 PR 4)
   await expect(page.locator('#jira')).toContainText('/api/v1/items/{{issue.key}}');
-  await expect(page.locator('#jira')).toContainText('{"heading": "{{issue.summary}}"}');
+  await expect(page.locator('#jira')).toContainText('{"heading": "{{issue.summary.jsonEncode}}"}');
   await expect(page.locator('.api-doc-main a[href="/api/v1/openapi.json"]').first()).toBeVisible();
 
   // every operation card is in the table of contents (sidebar), the links lead to it
