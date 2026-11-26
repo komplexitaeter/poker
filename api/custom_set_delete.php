@@ -9,6 +9,7 @@
  */
 require '../config.php';
 require './lib.php';
+require './lib_core_deck.php';
 require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL) ?? '', 0, 80);
@@ -18,35 +19,14 @@ $player_id = get_uid(); // B-152 (UID); B-98 V6: who changes the card set (delet
 $link = db_init();
 require_team($t, $link);
 
-$catalog = card_catalog();
-if ($catalog['default_deck'] === null) custom_fail(400, 'catalog');
+if (card_catalog()['default_deck'] === null) custom_fail(400, 'catalog');
 if ($set_id === 0) custom_fail(404, 'not_found');
 
-// deadlocks and lock wait timeouts are retried, after the last attempt 503 (api_transaction())
-$done = api_transaction($link, function () use ($link, $t, $catalog, $set_id, $player_id): array {
-    $team = lock_team_deck($link, $t, $catalog); // the team row lock serializes all changes of the team's sets
-    if ($team === null) {
-        $link->rollback();
-        http_response_code(403);
-        exit;
-    }
-    if (!isset($team['custom_sets'][$set_id])) {
-        $link->rollback();
-        custom_fail(404, 'not_found');
-    }
-    $sql = $link->prepare("update pok_custom_sets_tbl set deleted = 1, rev = rev + 1 where id = ? and team_id = ?");
-    $sql->bind_param('is', $set_id, $t);
-    $sql->execute();
-
-    $result = array('deck' => $team['deck'], 'new_round' => false);
-    if ($team['deck']['id'] === custom_deck_id($set_id))
-        $result = custom_update_team_deck($link, $t, $team, $catalog, (string)$catalog['default_deck'], true, $player_id);
-    return array('result' => $result);
-});
-$result = $done['result'];
+// B-151: the logic is core_custom_set_delete() (lib_core_deck.php), shared with MCP card_sets delete; deadlocks and
+// lock wait timeouts are retried, after the last attempt 503; it notifies the team
+$actor = ['uid' => $player_id, 'team_id' => $t, 'role' => null, 'via' => 'browser', 'key_id' => null];
+$result = deck_core_call(fn() => core_custom_set_delete($link, $actor, $set_id));
 $link->close();
-
-notify_team($t); // B-81: the deck menus of the team drop the set
 
 set_header('json');
 echo json_encode(array('deck' => $result['deck'], 'new_round' => $result['new_round']), JSON_UNESCAPED_UNICODE);

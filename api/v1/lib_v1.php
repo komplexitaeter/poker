@@ -16,6 +16,7 @@ require_once __DIR__ . '/../lib_core_keys.php';
 require_once __DIR__ . '/../lib_core_items.php';
 require_once __DIR__ . '/../lib_core_board.php';
 require_once __DIR__ . '/../lib_core_member.php';
+require_once __DIR__ . '/lib_v1_tools.php'; // B-151 PR F2: card sets, timer, feedback
 
 const V1_PREFIX = '/api/v1';
 /* info.version of openapi.json: 1.0.0 + date of the last change of routes.php (maintained by hand) */
@@ -40,6 +41,8 @@ const V1_ERRORS = [
     'team_not_found' => [404, 'There is no team with this id.'],
     'item_not_found' => [404, 'The team has no item with this key.'],
     'key_not_found' => [404, 'You have no API key with this id.'],
+    'set_not_found' => [404, 'The team has no custom set with this id.'],
+    'entry_not_found' => [404, 'There is no roadmap entry with this id.'],
     'player_not_found' => [404, 'There is no player with this mkey or name at the table.'],
     'method_not_allowed' => [405, 'The path exists, the method does not (see the Allow header).'],
     'item_closed' => [409, 'The item is done: reopen it first.'],
@@ -474,6 +477,15 @@ function v1_check_value(string $name, array $def, mixed $value, bool $typed): mi
         if (isset($def['maximum']) && $value > $def['maximum']) throw $fail('at most ' . $def['maximum']);
     } elseif ($type === 'boolean') {
         if (!is_bool($value)) throw $fail('must be true or false');
+    } elseif ($type === 'array') {
+        // B-151: a list of objects (card_sets set_cards) only in a JSON body or as MCP argument; the objects are
+        // checked by the core function
+        if (!$typed || !is_array($value) || !array_is_list($value)) throw $fail('must be a list');
+        if (isset($def['max_items']) && count($value) > $def['max_items']) throw $fail('at most ' . $def['max_items'] . ' entries');
+        foreach ($value as $i => $entry) {
+            if (!is_array($entry) || ($entry !== [] && array_is_list($entry))) throw $fail('entry ' . $i . ' must be an object');
+        }
+        return $value;
     }
     if (isset($def['enum']) && !in_array($value, $def['enum'], true)) throw $fail('one of ' . implode(', ', $def['enum']));
     return $value;
@@ -878,7 +890,8 @@ function v1_param_schema(array $def): array
 {
     $schema = ['type' => $def['type']]; // accept_integer stays "string" here: type arrays trouble some clients
     $map = ['max_length' => 'maxLength', 'min_length' => 'minLength', 'pattern' => 'pattern', 'enum' => 'enum',
-            'minimum' => 'minimum', 'maximum' => 'maximum', 'default' => 'default', 'nullable' => 'nullable'];
+            'minimum' => 'minimum', 'maximum' => 'maximum', 'default' => 'default', 'nullable' => 'nullable',
+            'max_items' => 'maxItems', 'items' => 'items']; // items: a JSON Schema of the entries (type array, B-151)
     foreach ($map as $from => $to) {
         if (array_key_exists($from, $def)) $schema[$to] = $def[$from];
     }
