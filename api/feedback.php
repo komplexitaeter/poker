@@ -17,7 +17,7 @@ if (!in_array($type, FEEDBACK_TYPES, true)) $type = 'OTHER';
 $context = $type === 'BUG' ? get_text_param("context", 500) : '';
 if ($context === '') $context = null;
 
-$link = db_init('utf8mb4');
+$link = db_init();
 
 $sql = $link->prepare("INSERT INTO pok_feedback_tbl (id, fb_stars, fb_text, fb_type, fb_context) VALUES (?, ?, ?, ?, ?)");
 $sql->bind_param('sisss', $id, $stars, $text, $type, $context);

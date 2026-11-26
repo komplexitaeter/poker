@@ -3,10 +3,10 @@ require_once __DIR__ . '/lib_custom.php'; // B-98 S4: custom sets
 require_once __DIR__ . '/lib_topics.php'; // B-52 S1: topic items
 
 /*
- * Connects with utf8mb4 (B-85), so emojis in names and topics reach the utf8mb4 columns unchanged. Reading the
- * remaining utf8mb3 columns works the same. $charset only for special cases.
+ * Connects with utf8mb4 (B-85), the character set of all text columns (B-12), so emojis in names and topics are
+ * stored unchanged.
  */
-function db_init(string $charset = 'utf8mb4') {
+function db_init() {
     $link = mysqli_init();
     mysqli_real_connect(
         $link,
@@ -16,7 +16,7 @@ function db_init(string $charset = 'utf8mb4') {
         _MYSQL_DB,
         _MYSQL_PORT
     );
-    $link->set_charset($charset);
+    $link->set_charset('utf8mb4');
     return $link;
 }
 
@@ -33,7 +33,7 @@ function get_text_param(string $name, int $max_length): string {
  * Reads an id-like GET parameter (B-88): the value only if it consists of 1 to $max_length characters
  * A-Z, a-z, 0-9, '_' or '-', otherwise ''. Player/user ids (SID) are 16 characters A-Z0-9 at most
  * (script.js), '-1' marks a deleted user. A manipulated id (emoji, HTML characters, too long) thus behaves
- * like an unknown id and never reaches MySQL as a string the utf8mb3 columns cannot hold (HTTP 500).
+ * like an unknown id (before B-12 such a string made the utf8mb3 id columns fail with HTTP 500).
  */
 function get_id_param(string $name, int $max_length = 16): string {
     $value = filter_input(INPUT_GET, $name);
