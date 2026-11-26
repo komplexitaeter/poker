@@ -163,6 +163,133 @@ return [
         'errors' => [],
     ],
 
+    /* ---------- B-151 (MCP PR D): own seat and round, not public for now (docs/mcp-concept.md 5.3) ---------- */
+
+    'card_play' => [
+        'method' => 'PUT',
+        'path' => '/me/card',
+        'tag' => 'Team',
+        'summary' => 'Play a card',
+        'description' => 'Puts your card down in the current round (players only). The card as shown on the board or '
+            . 'its key. A change after the reveal is shown as changed if the team uses "See changed cards".',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'play_card', 'action' => 'play'],
+        'params' => [
+            'card' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                       'max_length' => 20,
+                       'description' => 'For play: the card value as shown ("5", "XL", "?") or the card key from '
+                           . 'get_board.'],
+        ],
+        'handler' => 'v1_card_play',
+        'responses' => [200 => ['description' => 'Card played']],
+        'errors' => ['invalid_card', 'role_not_allowed'],
+    ],
+
+    'card_withdraw' => [
+        'method' => 'DELETE',
+        'path' => '/me/card',
+        'tag' => 'Team',
+        'summary' => 'Take your card back',
+        'description' => 'Takes your card back in the current round (players only).',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'play_card', 'action' => 'withdraw'],
+        'params' => [],
+        'handler' => 'v1_card_withdraw',
+        'responses' => [200 => ['description' => 'Card taken back']],
+        'errors' => ['role_not_allowed'],
+    ],
+
+    'round_new' => [
+        'method' => 'POST',
+        'path' => '/round',
+        'tag' => 'Team',
+        'summary' => 'Start a new round',
+        'description' => 'Takes all cards back and starts over (the board button "New round"). A revealed result is '
+            . 'kept for the active item.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'round', 'action' => 'new_round'],
+        'params' => [],
+        'handler' => 'v1_round_new',
+        'responses' => [200 => ['description' => 'New round started']],
+        'errors' => [],
+    ],
+
+    'member_remove' => [
+        'method' => 'POST',
+        'path' => '/members/{player}/remove',
+        'tag' => 'Team',
+        'summary' => 'Take a player off the table',
+        'description' => 'Takes a player off the table (the trash can on the board), e.g. someone who left and holds up '
+            . 'the reveal. Only players; the person can come back.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'round', 'action' => 'remove_player'],
+        'params' => [
+            'player' => ['in' => 'path', 'type' => 'string', 'required' => true, 'min_length' => 1, 'max_length' => 20,
+                         'description' => 'For remove_player: mkey (preferred) or exact name of the player from '
+                             . 'get_board.'],
+        ],
+        'handler' => 'v1_member_remove',
+        'responses' => [200 => ['description' => 'Player removed']],
+        'errors' => ['player_not_found'],
+    ],
+
+    'me_rename' => [
+        'method' => 'PUT',
+        'path' => '/me/name',
+        'tag' => 'Team',
+        'summary' => 'Change your name',
+        'description' => 'Changes the name shown for you at the table.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'me', 'action' => 'rename'],
+        'params' => [
+            'name' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
+                       'max_length' => 15, 'description' => 'For rename: the new name shown at the table.'],
+        ],
+        'handler' => 'v1_me_rename',
+        'responses' => [200 => ['description' => 'Name changed']],
+        'errors' => [],
+    ],
+
+    'me_role_set' => [
+        'method' => 'PUT',
+        'path' => '/me/role',
+        'tag' => 'Team',
+        'summary' => 'Change your role',
+        'description' => 'Player (has a card and votes) or observer (watches). Coming back after being removed works '
+            . 'the same way.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'me', 'action' => 'set_role'],
+        'params' => [
+            'role' => ['in' => 'body', 'type' => 'string', 'required' => true, 'enum' => ['player', 'observer'],
+                       'description' => 'For set_role: player = has a card and votes; observer = watches.'],
+        ],
+        'handler' => 'v1_me_role_set',
+        'responses' => [200 => ['description' => 'Role changed']],
+        'errors' => [],
+    ],
+
+    'me_leave' => [
+        'method' => 'POST',
+        'path' => '/me/leave',
+        'tag' => 'Team',
+        'summary' => 'Leave the table',
+        'description' => 'Gets you up from this table: you disappear from the board, your seat stays and can come back '
+            . 'as player or observer.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'me', 'action' => 'leave'],
+        'params' => [],
+        'handler' => 'v1_me_leave',
+        'responses' => [200 => ['description' => 'Left the table']],
+        'errors' => [],
+    ],
+
     'item_upsert' => [
         'method' => 'PUT',
         'path' => '/items/{key}',
@@ -330,6 +457,7 @@ return [
         'description' => 'Your own API keys in this team (never those of other people), newest first. The key itself '
             . 'is never shown again, only its last 4 characters (hint). current marks the key of this request.',
         'auth' => 'member',
+        'mcp' => ['tool' => 'me', 'action' => 'api_keys'], // B-151
         'params' => [],
         'handler' => 'core_key_list',
         'responses' => [
@@ -377,6 +505,43 @@ return [
         ],
         'errors' => ['key_not_found'],
         'example' => ['params' => ['id' => '{{join_keys.keys.0.id}}'], 'key' => 'join'],
+    ],
+
+    'me_key_delete' => [
+        'method' => 'DELETE',
+        'path' => '/me/keys/{key_id}',
+        'tag' => 'Keys',
+        'summary' => 'Delete one of your API keys or the current one',
+        'description' => 'Like DELETE /keys/{id} and DELETE /keys/current in one: the id of one of your keys, or '
+            . '"current" for the key of this call.',
+        'auth' => 'member',
+        'public' => false, // B-151: MCP me delete_key (key_id is a number or "current")
+        'mcp' => ['tool' => 'me', 'action' => 'delete_key'],
+        'params' => [
+            'key_id' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 10,
+                         'pattern' => '^(current|[1-9][0-9]{0,8})$',
+                         'description' => 'For delete_key: the id from api_keys as text (e.g. "17"), or "current" for '
+                             . 'the key you are using.'],
+        ],
+        'handler' => 'v1_me_key_delete',
+        'responses' => [200 => ['description' => 'Key deleted']],
+        'errors' => ['key_not_found'],
+    ],
+
+    'me_delete' => [
+        'method' => 'DELETE',
+        'path' => '/me',
+        'tag' => 'Team',
+        'summary' => 'Delete my data',
+        'description' => 'Deletes you and everything you wrote in ALL teams, irreversible. Not with an API key '
+            . '(browser_only): the key stands for a browser seat.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'me', 'action' => 'delete_my_data'],
+        'params' => [],
+        'handler' => 'v1_me_delete',
+        'responses' => [200 => ['description' => 'All data deleted']],
+        'errors' => ['browser_only'],
     ],
 
     '$schemas' => [
