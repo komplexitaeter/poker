@@ -245,7 +245,37 @@ function insert_new_player($link, string $t, string $uid, string $name, string $
     $sql->execute();
     $sql->close();
 
+    // B-150: keys left from an earlier row of this UID in this team (e.g. removed by the 2-month clean-up) must not
+    // come back to life with the new row (lock order players -> keys)
+    delete_api_keys_of($link, $uid, $t);
     ensure_user_row($link, $uid);
+}
+
+/* B-150: the API keys of $uid in team $t. Before the B-150 DDL ran (table missing) there is nothing to delete. */
+function delete_api_keys_of($link, string $uid, string $t): void {
+    try {
+        $sql = $link->prepare("delete from pok_api_keys_tbl where user_id = ? and team_id = ?");
+        $sql->bind_param('ss', $uid, $t);
+        $sql->execute();
+        $sql->close();
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+    }
+}
+
+/* B-150: the API keys of team $t whose person row is gone (start_new_round() clean-up). Table missing: nothing to do. */
+function delete_orphan_api_keys($link, string $t): void {
+    try {
+        $sql = $link->prepare("delete k from pok_api_keys_tbl k
+                                where k.team_id = ?
+                                  and not exists (select 1 from pok_players_tbl p
+                                                   where p.id = k.user_id and p.team_id = k.team_id)");
+        $sql->bind_param('s', $t);
+        $sql->execute();
+        $sql->close();
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+    }
 }
 
 /* The user row of $uid (settings, first-seen date for stats.php), created on joining, not by dao.php (which only reads
@@ -844,6 +874,8 @@ function start_new_round($link, string $t): void
                                 ");
     $sql->bind_param('s', $t);
     $sql->execute();
+    // B-150: their API keys go with them (players -> keys); a later re-join of the UID does not revive them
+    delete_orphan_api_keys($link, $t);
 
     $sql = $link->prepare("insert into pok_roundstats_tbl(team_id, players_count, type_code, timer_start_time
                             , timer_pause_time ,timer_visibility, topic, cardset_flags, results_order, show_avg

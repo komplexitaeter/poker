@@ -92,6 +92,19 @@ function api_key_insert_locked(mysqli $link, string $uid, string $t, string $nam
     return ['id' => $id, 'name' => $name, 'key' => $key, 'hint' => $hint, 'created' => iso_utc($created)];
 }
 
+/*
+ * Presence of a key call (concept 5.4: active through calls = present, B-110): like touch_player(), but at most every
+ * 10 s, so a script calling in a loop writes little (far below AWAY_AFTER_SEC = 70). Autocommit.
+ */
+function touch_api_person(mysqli $link, string $uid, string $t): void
+{
+    $sql = $link->prepare("update pok_players_tbl set last_callback_time = current_timestamp
+                            where id = ? and team_id = ? and last_callback_time < current_timestamp - interval 10 second");
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
 /* api/delete_user.php: every key of $uid over ALL teams (they would not count anyway without the player row) */
 function api_keys_delete_user(mysqli $link, string $uid): void
 {

@@ -298,9 +298,10 @@ function v1_authenticate(array $route, mysqli $link): ?array
         if ($route['auth'] === 'browser') throw new ApiError(403, 'browser_only');
         $actor = api_key_lookup($link, $key);
         if ($actor === null) throw new ApiError(401, 'invalid_key');
-        // concept 5.4: whoever is active through calls counts as present like a board (B-110). Also keeps the person
-        // out of the 2-month clean-up of start_new_round(), which would end its keys. Autocommit, before the core call.
-        touch_player($link, $actor['uid'], $actor['team_id']);
+        // concept 5.4: whoever is active through calls counts as present like a board (B-110), at most every 10 s.
+        // A used key thus keeps its person out of the 2-month clean-up of start_new_round(); a person removed there
+        // takes its keys along (delete_orphan_api_keys()). Autocommit, before the core call.
+        touch_api_person($link, $actor['uid'], $actor['team_id']);
         return $actor;
     }
 

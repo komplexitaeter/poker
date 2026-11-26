@@ -371,7 +371,12 @@ Löschen des Schlüssels sperrt also diesen Weg, nicht aber jemanden, der die Te
   team_id = ? for update`), dann zählen und einfügen.
 - **Sperrreihenfolge überall** (B-155): `pok_teams_tbl` → `pok_players_tbl` → `pok_api_keys_tbl`. `team_create`/
   `team_join` sperren bzw. legen erst Team und Person an, dann den Schlüssel.
-- `delete_user.php` löscht alle Schlüssel der UID über **alle** Teams (`delete from pok_api_keys_tbl where user_id = ?`),
+- Lebensdauer an der Person (Review Sina, S-1): Jeder Aufruf mit Schlüssel zählt als Anwesenheit (`touch_api_person()`,
+  höchstens alle 10 s), ein benutzter Schlüssel hält seine Person also aus der 2-Monats-Aufräumregel von
+  `start_new_round()` heraus. Löscht diese Regel eine Person, gehen ihre Schlüssel mit (`delete_orphan_api_keys()`);
+  tritt dieselbe UID demselben Team neu bei, löscht `insert_new_player()` alte Schlüssel – sie leben nie wieder auf.
+- `delete_user.php` löscht alle Schlüssel der UID über **alle** Teams (nach den Spielerzeilen, damit ein gleichzeitiges
+  `key_create` keinen Schlüssel übrig lässt) (`delete from pok_api_keys_tbl where user_id = ?`),
   sonst lägen sie herum (gelten würden sie wegen des Joins ohnehin nicht mehr). B-109 (Löschfrist) erfasst die Tabelle
   mit.
 

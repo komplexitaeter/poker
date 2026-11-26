@@ -74,7 +74,13 @@ else {
 
     // B-102 rule ("joined in" card while the cards are revealed) and the user row: insert_new_player() in lib.php,
     // shared with the API (B-150 team_create/team_join)
-    insert_new_player($link, $t, $id, $name, $type);
+    try {
+        insert_new_player($link, $t, $id, $name, $type);
+    } catch (mysqli_sql_exception $e) {
+        // a double submit of the same join: the other request registered the UID a moment ago, so this join is done
+        // too. Quiet on purpose: the message of 1062 contains the UID, which must never reach a log.
+        if ($e->getCode() !== 1062) throw $e;
+    }
     $sql = null;
 }
 

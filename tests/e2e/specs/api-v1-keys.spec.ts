@@ -164,3 +164,36 @@ test('a key call counts as presence: last_callback_time of the API person moves 
   expect((await teamGet(request, jira.headers)).status()).toBe(200);
   expect(await observers()).toContain('Jira');
 });
+
+test('keys do not come back: re-joining with the same UID after the row was gone, 2-month clean-up', async ({ request }) => {
+  const anna = await newV1Member(request, 'V1 Keys Rejoin', 'Anna', 'player');
+  const key = await v1CreateKey(request, anna, 'Old');
+  // the player row disappears (as by the clean-up of start_new_round()), then the same UID joins again
+  mysql(`delete from pok_players_tbl where team_id = '${anna.t}' and id = '${anna.uid}'`);
+  await expectInvalidKey(request, key.key);
+  expect((await request.post(`/api/name.php?${new URLSearchParams({ t: anna.t, name: 'Anna', type: 'player' })}`,
+    asUser(anna.uid))).ok()).toBeTruthy();
+  await expectInvalidKey(request, key.key);
+  expect(mysql(`select count(1) from pok_api_keys_tbl where team_id = '${anna.t}'`)).toBe('0');
+
+  // the clean-up of a new round takes the keys of the persons it deletes along, others stay
+  const jira = await v1Join(request, anna.t, 'Jira', 'observer');
+  const bot = await v1Join(request, anna.t, 'Bot', 'observer');
+  mysql(`update pok_players_tbl set last_callback_time = current_timestamp - interval 90 day
+          where team_id = '${anna.t}' and name = 'Jira'`);
+  expect((await request.post(`/api/newround.php?${new URLSearchParams({ t: anna.t })}`, asUser(anna.uid))).ok()).toBeTruthy();
+  expect(mysql(`select name from pok_api_keys_tbl where team_id = '${anna.t}'`)).toBe('API');
+  await expectInvalidKey(request, jira.key);
+  expect((await teamGet(request, bot.headers)).status()).toBe(200);
+});
+
+test('a double submit of the same join is quiet: both answers ok, one row', async ({ request }) => {
+  const anna = await newV1Member(request, 'V1 Double Join');
+  const uid = (await (await request.post('/api/uid.php')).json()).id as string;
+  const url = `/api/name.php?${new URLSearchParams({ t: anna.t, name: 'Bob', type: 'player' })}`;
+  for (let round = 0; round < 3; round++) {
+    const answers = await Promise.all([1, 2, 3].map(() => request.post(url, asUser(uid))));
+    for (const res of answers) expect(res.status()).toBe(200);
+  }
+  expect(mysql(`select count(1) from pok_players_tbl where team_id = '${anna.t}' and id = '${uid}'`)).toBe('1');
+});

@@ -41,13 +41,14 @@ $sql->bind_param('s', $id);
 $sql->execute();
 $sql->close();
 
-// B-150: the API keys of the user over all teams (without the player rows they would not count anyway)
-api_keys_delete_user($link, $id);
-
 $sql = $link->prepare("DELETE FROM pok_players_tbl WHERE id=?");
 $sql->bind_param('s', $id);
 $sql->execute();
 $sql->close();
+
+// B-150: the API keys of the user over all teams, AFTER the player rows: a key_create running at the same time either
+// finished before (its key is deleted here) or finds no player row any more (403), so no key is left behind
+api_keys_delete_user($link, $id);
 
 $sql = $link->prepare("DELETE FROM pok_user_tbl WHERE id=?");
 $sql->bind_param('s', $id);
