@@ -848,10 +848,7 @@ Groß-/Kleinschreibung, Eindeutigkeit per SQL, Migration je Team (7); CORS und S
 keine Limits (9); Sammel-Upsert später, falls überhaupt; Schlüssel laufen nie ab (5.2); neue Team-IDs zufällig nach
 B-156 (4.1); Schlüssel gehören einer Person, Selbstverwaltung per API (5.5).
 
-Noch offen:
+Ebenfalls entschieden (Andreas, 2026-11-26): `item_reopen` gehört in Schritt 1 (PR 4); optionaler Eintrag
+`_PUBLIC_BASE_URL` in `config.php` für absolute Links (Live/Staging je von Hand), ohne Eintrag relativ.
 
-1. **`item_reopen` schon in Schritt 1?** Vorschlag ja (PR 4), weil `item_closed` sonst eine Sackgasse für Jira-Regeln
-   ist; die Logik gibt es in `topic_item_reopen.php` schon.
-2. **Basis-URL für absolute Links:** relative `url`-Felder genügen für Menschen und Werkzeuge mit Kenntnis des Hosts;
-   für Jira-Kommentare („Link zum Board“) wären absolute URLs bequemer. Vorschlag: optionaler Eintrag
-   `_PUBLIC_BASE_URL` in `config.php` (Live/Staging je von Hand), ohne Eintrag relativ.
+Offen: keine.

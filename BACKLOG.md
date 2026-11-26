@@ -432,6 +432,7 @@ Rauschen von Reload-Schleifen; Auswertungen der letzten Wochen liefen über die 
 Offen: A oder B; was aus dem Nutzungs-Tab wirklich gebraucht wird.
 
 ### B-150 REST-API: Topic und Items von außen setzen (Schritt A)
+Konzept: `docs/api-v1-concept.md` (Ben, Review Sina, von Andreas abgenommen 2026-11-26).
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Ersetzt B-80. Bedarf an den Extremen: einfach „Topic setzen“
 (Feedback 2026-10-29) und die komplette KI-Integration (B-151); die Mitte (Webhooks, Zapier-Bots, Event-Stream für
 eigene Skripte) erstmal nicht.
