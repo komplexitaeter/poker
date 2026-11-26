@@ -733,7 +733,12 @@ entfiele. Erst die Charts sichten, dann entscheiden.
 Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). **Teams (Andreas, 2026-11-26):** ein nächtlicher Job löscht Teams nach
 **1 Jahr ohne jede Aktivität vollständig** – inkl. Rundenhistorie, Spieler, eigene Sets, Items. Zu klären: was
 „Aktivität“ ist (letztes Laden/`last_callback_time`, letzte Runde), ob die Statistik-Tabellen (`_stats`, Grafana) als
-Aggregate erhalten bleiben (Vergangenheitswerte ändern sich sonst), Reihenfolge der Löschung (B-155-Sperrregeln). Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
+Aggregate erhalten bleiben (Vergangenheitswerte ändern sich sonst), Reihenfolge der Löschung (B-155-Sperrregeln). **Absicherung
+noch durchdenken (Andreas, 2026-11-26):** ein Löschjob darf bei falscher Server-Uhr (NTP-Angriff oder -Ausfall, Sprung
+in die Zukunft) oder einem Fehler in der Abfrage nicht massenhaft löschen. Ideen: Plausibilität von „jetzt“ gegen die
+neueste Aktivität in der DB (`max(last_callback_time)`), Obergrenze je Lauf (z. B. höchstens 5 % der Teams, sonst
+abbrechen und nur loggen), Trockenlauf/Protokoll; auf den Servern NTP mit mehreren Quellen bzw. NTS (`chrony`,
+große Sprünge ablehnen). Gilt sinngemäß auch für die 2-Monats-Bereinigung in `start_new_round()`. Die User-ID (`localStorage` `SID`) ist zufällig, steht in der
 DB aber neben Name und Team → pseudonym, also personenbezogen. Gelöscht wird nur `pok_players_tbl` (2 Monate
 Inaktivität je Team). Dauerhaft: `pok_roundstat_details_tbl` (User-ID, Name, Karte je Runde),
 `pok_analytics_events_tbl` (User-ID je Event), `pok_promotions_tbl`; „Delete user“ löscht Events und Promos nicht.
