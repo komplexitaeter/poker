@@ -78,7 +78,8 @@ test('openapi.json: OpenAPI 3.0.3, relative server URL, every public operation h
   expect(spec.servers).toEqual([{ url: '/api/v1' }]);
   const ops = Object.values(spec.paths).flatMap(methods => Object.values(methods));
   expect(ops.map(op => op.operationId)).toEqual(expect.arrayContaining(
-    ['team_create', 'team_join', 'team_get', 'team_note_set', 'key_list', 'key_delete', 'key_delete_current']));
+    ['team_create', 'team_join', 'team_get', 'team_note_set', 'item_upsert', 'item_list', 'item_get', 'item_reopen',
+     'item_delete', 'key_list', 'key_delete', 'key_delete_current']));
   expect(ops.map(op => op.operationId)).not.toContain('key_create'); // board only (public: false)
   for (const op of ops) {
     expect(op['x-example'], op.operationId).toBeDefined();
