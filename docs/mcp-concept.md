@@ -682,7 +682,7 @@ MCP-Client ──POST /mcp──▶ nginx ──FastCGI──▶ PHP: Identität
 **Geprüft** (Ben, 2026-11-26, lokal nginx 1.24 + PHP-FPM, Versuchsaufbau mit denselben Locations wie 8.4):
 
 - `X-Accel-Redirect` wirkt von FastCGI- **und** von `proxy_pass`-Upstreams (gleiche Stelle im nginx-Upstream-Code,
-  seit langem unverändert; gilt damit auch für 1.18 – auf Staging einmal mit `curl` bestätigen, PR C).
+  seit langem unverändert; gilt damit auch für 1.18 – auf Live (nginx 1.18.0) am 2026-11-26 mit einer eigenen Testinstanz bestätigt: Body und Authorization bleiben erhalten, poker-msg sieht beides nicht).
 - Nach dem Redirect ist die Methode `GET`, aber **Original-Body und alle Original-Header bleiben erhalten** (auch ein
   40-KB-Body aus der Temp-Datei). PHP liest im Ergebnisschritt `php://input` und `Authorization` wie beim ersten
   Aufruf; `REQUEST_URI` bleibt `/mcp`, `DOCUMENT_URI`/`QUERY_STRING` sind die internen Werte. Damit muss die interne
@@ -813,7 +813,7 @@ maßgeblich, weil kein Worker wartet.
 | A: Long-Poll in PHP mit DB-Polling | Keine Spalte deckt **jede** Board-Änderung ab; bis zu 25 Abfragen und ein FPM-Worker je Wartendem. Verworfen. |
 | B: FPM-Worker wartet per UDP-Watch auf poker-msg (erste Fassung) | Keine DB-Last, aber ein schlafender FPM-Worker (~23 MB) je Wartendem, eigener Pool, Obergrenze ~50. Verworfen (Andreas, 2026-11-26). |
 | C: Durchreiche – nginx schickt **alle** `/mcp`-Anfragen an poker-msg, das jede an PHP weiterleitet und nur `wait_for_change` selbst hält | Funktioniert, aber: poker-msg braucht HTTP-Client und -Server (`react/http`, neue Abhängigkeit neben Ratchet 0.4), Header-Positivliste, Weitergabe von Host/IP/Schema, eigene Fehlerbehandlung und einen internen nginx-Server; **jeder** MCP-Aufruf hängt an poker-msg (aus = ganz MCP aus). Verworfen zugunsten von D. |
-| D: **X-Accel-Redirect** – PHP gibt nur Wartende an poker-msg ab – **Empfehlung** | Normale Tools laufen den gewohnten Weg nginx → FPM; poker-msg braucht nur einen kleinen Warte-Endpunkt ohne neue Abhängigkeit und ohne Daten; fällt poker-msg aus, antwortet nur `wait_for_change` mit `busy`. Preis: stützt sich auf nginx-Verhalten (Redirect von Upstreams, erhaltener Body, 10-Redirect-Grenze) – lokal geprüft, auf Staging (1.18) zu bestätigen. |
+| D: **X-Accel-Redirect** – PHP gibt nur Wartende an poker-msg ab – **Empfehlung** | Normale Tools laufen den gewohnten Weg nginx → FPM; poker-msg braucht nur einen kleinen Warte-Endpunkt ohne neue Abhängigkeit und ohne Daten; fällt poker-msg aus, antwortet nur `wait_for_change` mit `busy`. Preis: stützt sich auf nginx-Verhalten (Redirect von Upstreams, erhaltener Body, 10-Redirect-Grenze) – lokal (1.24) und auf Live (1.18) bestätigt. |
 | E: Abo-Ticket, Client verbindet sich direkt mit poker-msg | Geht nicht: ein MCP-Client öffnet keinen WebSocket. |
 
 ### 8.6 Reaktionen über denselben Weg
@@ -872,7 +872,7 @@ dem poker-PR live, der sie braucht.
 |---|---|---|---|---|
 | A | poker | `lib_mcp.php`: JSON-RPC-Hülle, `initialize`/`tools/list`/`tools/call`, `instructions`, Origin-Prüfung, Hilfeseite `GET /mcp`; Tools `create_team`, `join_team`, `get_board` (Kerne `core_member_join`, `board_get`); `setup.sh`: `location = /mcp` | nginx `location = /mcp` | MCP nutzbar (lesen, beitreten) |
 | B | poker-msg | HTTP-Warte-Endpunkt `127.0.0.1:8445` (Ratchet `HttpServer`, keine neue Abhängigkeit), Wartende je Team-Hash, letzte Pull-Zeit je Team-Hash, Pulls auch an Teams nur mit Wartenden, Obergrenze, Zähler im Log; Tests in `tests/run-tests.php` (Wartender wacht bei UDP-`pull` auf, Frist, `busy`, Abbruch), README | poker-msg neu starten (`git pull`, kein `composer install` nötig) | keine |
-| C | poker | `wait_for_change` (Version/Diff, `X-Accel-Redirect`, `hop`, Phasen `pull`/`timeout`/`busy`/`down`); `setup.sh`: Locations `/_mcp_wait/`, `/_mcp_result/`, `@mcp_wait_failed` | nginx-Locations (8.4); vorher auf Staging per `curl` bestätigen, dass nginx 1.18 den Body nach dem Redirect erhält | Agent bleibt am Tisch |
+| C | poker | `wait_for_change` (Version/Diff, `X-Accel-Redirect`, `hop`, Phasen `pull`/`timeout`/`busy`/`down`); `setup.sh`: Locations `/_mcp_wait/`, `/_mcp_result/`, `@mcp_wait_failed` | nginx-Locations (8.4); nginx 1.18 bestätigt (2026-11-26) | Agent bleibt am Tisch |
 | D | poker | `play_card`, `round`, `me` (Kerne aus `setc.php`, `newround.php`, `delete.php`, `name.php`, `delete_user.php`; alte Dateien als Wrapper) | keine | Mitspielen komplett |
 | E | poker | `items` inkl. `next`, `move`, `set_result` (Kerne aus `topic_item_*.php`), `board_settings` | keine | Items und Einstellungen |
 | F1 | poker-msg | `/_mcp_react/` (8.6) | poker-msg neu starten | keine |
