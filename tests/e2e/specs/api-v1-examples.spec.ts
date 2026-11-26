@@ -159,11 +159,11 @@ test('team_get: the team, the own person and the item counts of the board member
   const write = (endpoint: string, form: Record<string, string>) =>
     request.post(`/api/${endpoint}?t=${encodeURIComponent(member.t)}`, { headers: member.headers, form });
   expect((await write('update_topic.php', { topic: 'Sprint 42 – "refinement" 🚀' })).ok()).toBeTruthy();
-  expect((await write('topic_item_add.php', { heading: 'Login', ext_id: 'DMZ-004' })).ok()).toBeTruthy();
+  expect((await write('topic_item_add.php', { heading: 'Login', ext_id: 'TIX-004' })).ok()).toBeTruthy();
   expect((await write('topic_item_add.php', { heading: 'Logout' })).ok()).toBeTruthy();
   const data = await get();
   expect(data.team.note).toBe('Sprint 42 – "refinement" 🚀');
-  expect(data.items).toEqual({ open_count: 2, done_count: 0, active_key: 'DMZ-004' });
+  expect(data.items).toEqual({ open_count: 2, done_count: 0, active_key: 'TIX-004' });
   expect(JSON.stringify(data)).not.toContain(member.uid); // the UID is never part of an answer
 
   // removed from the board (name.php with an empty name): still registered, may use the API (B-152)

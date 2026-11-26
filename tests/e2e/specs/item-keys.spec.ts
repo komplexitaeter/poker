@@ -73,13 +73,13 @@ test('every item gets a key: the suggestion for a missing one (old board), next_
   expect((await add(page, t, { heading: 'Two' })).ext_id).toBe('2');
   expect((await topics(page, t)).next_key).toBe('3');
   // a key with a number at the end: prefix and zeros are kept
-  expect((await add(page, t, { heading: 'Login', ext_id: 'DMZ-004' })).ext_id).toBe('DMZ-004');
-  expect((await topics(page, t)).next_key).toBe('DMZ-005');
+  expect((await add(page, t, { heading: 'Login', ext_id: 'TIX-004' })).ext_id).toBe('TIX-004');
+  expect((await topics(page, t)).next_key).toBe('TIX-005');
   // taken ones are skipped, also in another case
-  expect((await add(page, t, { heading: 'Later', ext_id: 'dmz-006' })).ext_id).toBe('dmz-006');
-  expect((await add(page, t, { heading: 'Logout', ext_id: 'DMZ-005' })).ext_id).toBe('DMZ-005');
-  expect((await topics(page, t)).next_key).toBe('DMZ-007'); // last DMZ-005 -> 006 is taken (dmz-006)
-  expect((await add(page, t, { heading: 'Profile' })).ext_id).toBe('DMZ-007');
+  expect((await add(page, t, { heading: 'Later', ext_id: 'tix-006' })).ext_id).toBe('tix-006');
+  expect((await add(page, t, { heading: 'Logout', ext_id: 'TIX-005' })).ext_id).toBe('TIX-005');
+  expect((await topics(page, t)).next_key).toBe('TIX-007'); // last TIX-005 -> 006 is taken (tix-006)
+  expect((await add(page, t, { heading: 'Profile' })).ext_id).toBe('TIX-007');
   // the key of a done item counts too: finish all, the suggestion goes on
   for (let i = 0; i < 6; i++) {
     const active = (await topics(page, t)).open[0].id;
@@ -87,15 +87,15 @@ test('every item gets a key: the suggestion for a missing one (old board), next_
   }
   const lists = await topics(page, t);
   expect(lists.open).toHaveLength(0);
-  expect(lists.next_key).toBe('DMZ-008');
-  expect(keysOf(t)).toEqual(['1', '2', 'DMZ-004', 'dmz-006', 'DMZ-005', 'DMZ-007']);
+  expect(lists.next_key).toBe('TIX-008');
+  expect(keysOf(t)).toEqual(['1', '2', 'TIX-004', 'tix-006', 'TIX-005', 'TIX-007']);
 });
 
 test('invalid keys are refused, nothing is written; lengths are cut like before', async ({ browser }) => {
   const page = await newPlayer(browser);
   const t = await team(page, 'Item Keys Invalid');
   const item = (await add(page, t, { heading: 'Valid', ext_id: 'OK-1' })).item_id;
-  for (const key of ['A.php', 'A#1', 'A 1', 'Ä-1', 'a/b', 'x:1', '-x', '_x', 'DMZ-4.php', '<b>']) {
+  for (const key of ['A.php', 'A#1', 'A 1', 'Ä-1', 'a/b', 'x:1', '-x', '_x', 'TIX-4.php', '<b>']) {
     const res = await write(page, 'topic_item_add.php', { t }, { heading: 'Bad', ext_id: key });
     expect(res.status(), key).toBe(400);
     expect(await res.json()).toEqual({ error: 'ext_id' });
@@ -115,29 +115,29 @@ test('invalid keys are refused, nothing is written; lengths are cut like before'
 test('keys are unique per team without case; another team may use the same key', async ({ browser }) => {
   const page = await newPlayer(browser);
   const t = await team(page, 'Item Keys Unique');
-  const a = (await add(page, t, { heading: 'A', ext_id: 'DMZ-4' })).item_id;
-  const b = (await add(page, t, { heading: 'B', ext_id: 'DMZ-5' })).item_id;
+  const a = (await add(page, t, { heading: 'A', ext_id: 'TIX-4' })).item_id;
+  const b = (await add(page, t, { heading: 'B', ext_id: 'TIX-5' })).item_id;
 
-  const dup = await write(page, 'topic_item_add.php', { t }, { heading: 'Dup', ext_id: 'dmz-4' });
+  const dup = await write(page, 'topic_item_add.php', { t }, { heading: 'Dup', ext_id: 'tix-4' });
   expect(dup.status()).toBe(409);
   expect(await dup.json()).toEqual({ error: 'key_taken' });
-  const rename = await write(page, 'topic_item_edit.php', { t, item: b }, { ext_id: 'Dmz-4' });
+  const rename = await write(page, 'topic_item_edit.php', { t, item: b }, { ext_id: 'Tix-4' });
   expect(rename.status()).toBe(409);
   expect(await rename.json()).toEqual({ error: 'key_taken' });
   // the own key in another case, and the own key sent unchanged
-  const own = await write(page, 'topic_item_edit.php', { t, item: a }, { ext_id: 'dmz-4', heading: 'A2' });
+  const own = await write(page, 'topic_item_edit.php', { t, item: a }, { ext_id: 'tix-4', heading: 'A2' });
   expect(own.status()).toBe(200);
-  expect((await own.json()).ext_id).toBe('dmz-4');
-  expect((await write(page, 'topic_item_edit.php', { t, item: b }, { ext_id: 'DMZ-5', heading: 'B2' })).ok()).toBeTruthy();
-  expect(keysOf(t)).toEqual(['dmz-4', 'DMZ-5']);
+  expect((await own.json()).ext_id).toBe('tix-4');
+  expect((await write(page, 'topic_item_edit.php', { t, item: b }, { ext_id: 'TIX-5', heading: 'B2' })).ok()).toBeTruthy();
+  expect(keysOf(t)).toEqual(['tix-4', 'TIX-5']);
 
   // a deleted item frees its key
   expect((await write(page, 'topic_item_delete.php', { t, item: a })).ok()).toBeTruthy();
-  expect((await add(page, t, { heading: 'Again', ext_id: 'DMZ-4' })).ext_id).toBe('DMZ-4');
+  expect((await add(page, t, { heading: 'Again', ext_id: 'TIX-4' })).ext_id).toBe('TIX-4');
 
   // another team: same key is fine
   const other = await team(page, 'Item Keys Other');
-  expect((await add(page, other, { heading: 'Same key', ext_id: 'DMZ-4' })).ext_id).toBe('DMZ-4');
+  expect((await add(page, other, { heading: 'Same key', ext_id: 'TIX-4' })).ext_id).toBe('TIX-4');
 
   // parallel: the same key twice -> exactly one item; no key twice -> two different keys
   const parallel = await Promise.all([1, 2, 3].map(i =>
@@ -160,8 +160,8 @@ test('migration script: dry run writes nothing, --apply fills empty, invalid and
     alter table pok_topic_items_tbl drop index ux_topic_items_team_key, modify ext_id varchar(20) null;
     insert into pok_teams_tbl(id, name) values ('mig-a', 'A'), ('mig-b', 'B'), ('mig-c', 'C');
     insert into pok_topic_items_tbl(team_id, ext_id, heading) values
-      ('mig-a', null, 'Secret heading'), ('mig-a', '', 'h'), ('mig-a', 'DMZ-004', 'h'), ('mig-a', null, 'h'),
-      ('mig-a', 'dmz-005', 'h'), ('mig-a', 'DMZ-005', 'h'), ('mig-a', 'PRJ 1', 'h'), ('mig-a', 'PRJ-1', 'h'),
+      ('mig-a', null, 'Secret heading'), ('mig-a', '', 'h'), ('mig-a', 'TIX-004', 'h'), ('mig-a', null, 'h'),
+      ('mig-a', 'tix-005', 'h'), ('mig-a', 'TIX-005', 'h'), ('mig-a', 'PRJ 1', 'h'), ('mig-a', 'PRJ-1', 'h'),
       ('mig-a', 'Ä-1', 'h'), ('mig-a', 'A.php', 'h'), ('mig-a', '#', 'h'), ('mig-a', 'ABCDEFGHIJKLMNOPQRST', 'h'),
       ('mig-a', 'abcdefghijklmnopqrst', 'h'),
       ('mig-b', 'OK-1', 'h'), ('mig-b', 'OK-2', 'h'),
@@ -201,7 +201,7 @@ const _MYSQL_PORT = 3306;
     // the backup keeps the keys from before (also NULL), a second --apply adds nothing and overwrites nothing
     expect(sql(db, `select group_concat(ifnull(b.ext_id, 'NULL') order by b.id separator '|') from pok_topic_items_b150_bak b
       join pok_topic_items_tbl i on i.id = b.id and i.team_id = 'mig-c'`)).toBe('NULL|NULL|-x-');
-    expect(keys('mig-a')).toEqual(['1', '2', 'DMZ-004', 'DMZ-006', 'dmz-005', 'DMZ-005-2', 'PRJ-1-2', 'PRJ-1', '1-2',
+    expect(keys('mig-a')).toEqual(['1', '2', 'TIX-004', 'TIX-006', 'tix-005', 'TIX-005-2', 'PRJ-1-2', 'PRJ-1', '1-2',
       'A-php', '11', 'ABCDEFGHIJKLMNOPQRST', 'abcdefghijklmnopqr-2']);
     expect(keys('mig-b')).toEqual(['OK-1', 'OK-2']);
     expect(keys('mig-c')).toEqual(['1', '2', 'x']);
@@ -217,7 +217,7 @@ const _MYSQL_PORT = 3306;
     const again = run('--apply');
     expect(again).toContain('backup: 0 items added');
     expect(again).toContain('items changed: 0 (empty: 0, invalid: 0, duplicate: 0)');
-    expect(sql(db, `select count(1) from pok_topic_items_b150_bak where ext_id = 'DMZ-005' or ext_id is null`)).toBe('7');
+    expect(sql(db, `select count(1) from pok_topic_items_b150_bak where ext_id = 'TIX-005' or ext_id is null`)).toBe('7');
     expect(run()).toContain('items changed: 0');
     expect(rev()).toBe('9,0,3');
   } finally {

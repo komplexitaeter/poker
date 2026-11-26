@@ -182,9 +182,9 @@ nur `[A-Za-z0-9][A-Za-z0-9_-]{0,19}`, je Team eindeutig ohne Groß-/Kleinschreib
 Abschnitt 7). Das Skript gibt alten Items einmalig einen gültigen Schlüssel, danach zieht der Block
 „B-150 item keys“ in `db_schema_pok_inc.sql` das Schema fest (`not null` + eindeutiger Index `(team_id, ext_id)`).
 
-- leer → Vorschlag wie im Board (`item_key_suggest()`: `DMZ-004` → `DMZ-005`, sonst Anzahl + 1);
+- leer → Vorschlag wie im Board (`item_key_suggest()`: `TIX-004` → `TIX-005`, sonst Anzahl + 1);
 - ungültige Zeichen → durch `-` ersetzt, `-`/`_` an den Enden entfernt, auf 20 Zeichen gekürzt (nichts übrig → Vorschlag);
-- doppelt (auch `dmz-4`/`DMZ-4`) → das spätere bekommt `-2`, `-3` …;
+- doppelt (auch `tix-4`/`TIX-4`) → das spätere bekommt `-2`, `-3` …;
 - jeder Endwert wird gegen das Muster und per SQL (Kollation der Spalte) auf Eindeutigkeit geprüft.
 
 Je Team eine Transaktion unter der Team-Sperre; Ausgabe nur Zählwerte und `alt -> neu`, ohne Team-IDs und Überschriften.

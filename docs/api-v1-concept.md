@@ -102,7 +102,7 @@ nimmt den ersten Treffer.
     'params' => [
         'key' => ['in' => 'path', 'type' => 'string', 'required' => true, 'max_length' => 20,
                   'pattern' => ITEM_KEY_PATTERN, 'description' => 'Item key, unique in the team, e.g. a Jira issue key.',
-                  'example' => 'DMZ-004'],
+                  'example' => 'TIX-004'],
         'heading' => ['in' => 'body', 'type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1,
                       'max_length' => 200, 'description' => 'Short title shown on the board.',
                       'example' => 'Login with SSO'],
@@ -117,13 +117,13 @@ nimmt den ersten Treffer.
     'responses' => [
         201 => ['description' => 'Item created', 'schema' => 'Item'],
         200 => ['description' => 'Item updated', 'schema' => 'Item',
-                'example' => ['key' => 'DMZ-004', 'heading' => 'Login with SSO',
+                'example' => ['key' => 'TIX-004', 'heading' => 'Login with SSO',
                               'description' => 'As a user I want to sign in with my company account.',
                               'status' => 'open', 'active' => false, 'position' => 3,
                               'result' => null, 'url' => '/?t=<TEAM_ID>']],
     ],
     'errors' => ['invalid_param', 'unknown_param', 'item_closed', 'limit_reached', 'unauthorized', 'invalid_key'],
-    'example' => ['params' => ['key' => 'DMZ-004', 'heading' => 'Login with SSO',
+    'example' => ['params' => ['key' => 'TIX-004', 'heading' => 'Login with SSO',
                                'description' => 'As a user I want to sign in with my company account.']],
     'mcp' => ['tool' => 'items', 'action' => 'upsert'],
 ],
@@ -252,7 +252,7 @@ Authorization: Bearer pok_…
 200
 {"team": {"id": "<TEAM_ID>", "name": "Dolphins", "url": "/?t=<TEAM_ID>", "note": "Sprint 42 refinement"},
  "member": {"name": "Jira", "role": "observer"},
- "items": {"open_count": 4, "done_count": 12, "active_key": "DMZ-004"}}
+ "items": {"open_count": 4, "done_count": 12, "active_key": "TIX-004"}}
 ```
 ```http
 PUT /api/v1/team/note
@@ -265,7 +265,7 @@ PUT /api/v1/team/note
 Item-Darstellung (Schema `Item`):
 
 ```json
-{"key": "DMZ-004",
+{"key": "TIX-004",
  "heading": "Login with SSO",
  "description": "As a user …",
  "status": "done",
@@ -519,9 +519,9 @@ und `types.ts`/`topics.js`/`dao.php` nutzen den Namen). Nach außen (v1, Oberfl�
 - Pflicht: `not null`, 1–20 Zeichen.
 - Nur ASCII (Entscheidung Andreas, Vorschlag Sina): `ITEM_KEY_PATTERN = '^[A-Za-z0-9][A-Za-z0-9_-]{0,19}$'` –
   Buchstaben, Ziffern, `_` und `-`, beginnt mit Buchstabe oder Ziffer. Kein `.`, `#`, `/`, `:` oder Leerzeichen:
-  Schlüssel stehen im URL-Pfad (`DMZ-4.php`, `A#1` u. Ä. sind damit ausgeschlossen), und Jira-Schlüssel passen.
+  Schlüssel stehen im URL-Pfad (`TIX-4.php`, `A#1` u. Ä. sind damit ausgeschlossen), und Jira-Schlüssel passen.
 - Eindeutig je Team, **ohne** Unterscheidung von Groß-/Kleinschreibung (Entscheidung Andreas): Kollation
-  `utf8mb4_0900_ai_ci` der Spalte, `dmz-4` = `DMZ-4`; `GET /items/dmz-4` findet `DMZ-4`. Die Eindeutigkeit prüft
+  `utf8mb4_0900_ai_ci` der Spalte, `tix-4` = `TIX-4`; `GET /items/tix-4` findet `TIX-4`. Die Eindeutigkeit prüft
   **immer SQL** (`select … where team_id = ? and ext_id = ?` unter der Team-Sperre, danach der Unique-Index), nie
   PHP-Stringvergleich – sonst wichen PHP und Kollation voneinander ab.
 
@@ -565,7 +565,7 @@ Maximum – so folgt der Vorschlag dem, was das Team gerade benutzt.
 
 1. Kein Item → `1`.
 2. Letzter Schlüssel endet auf Ziffern (`^(.*?)(\d+)$`) → Präfix + (Zahl + 1), mit Nullen auf die alte Breite
-   aufgefüllt: `DMZ-004` → `DMZ-005`, `7` → `8`, `A-09` → `A-10`, `X-99` → `X-100`.
+   aufgefüllt: `TIX-004` → `TIX-005`, `7` → `8`, `A-09` → `A-10`, `X-99` → `X-100`.
 3. Sonst → Anzahl Items + 1 (als Zahl).
 4. Ist der Vorschlag schon vergeben (SQL, Kollation) oder länger als 20 Zeichen: weiter hochzählen (höchstens 1000
    Versuche, dann Regel 3 auf Basis der höchsten freien Zahl).

@@ -1115,7 +1115,7 @@ select column_name, column_type, collation_name from information_schema.columns
 /* end B-150 keys */
 
 /* B-150 item keys: (docs/api-v1-concept.md, 7.2 step 3) the item key pok_topic_items_tbl.ext_id becomes required and
-   unique per team (case-insensitive, collation utf8mb4_0900_ai_ci: 'dmz-4' = 'DMZ-4'). Order on a server:
+   unique per team (case-insensitive, collation utf8mb4_0900_ai_ci: 'tix-4' = 'TIX-4'). Order on a server:
    1. deploy the code of B-150 PR 3 (board and API always set a valid key from then on),
    2. php tools/migration/b150_item_keys.php (dry run), then with --apply (fills empty, invalid and duplicate keys),
    3. this block. The checks below must both give 0 before; if not, the alter is skipped (message 'skipped') - run the

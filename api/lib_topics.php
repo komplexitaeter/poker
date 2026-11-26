@@ -72,8 +72,8 @@ function increment_digits(string $digits): string
  *   $last_key: key of the item created last in the team (highest id, done ones too), null/'' if none or without key;
  *   $count: number of items of the team; $is_taken(string $key): bool - is the key taken (SQL in the collation; the
  *   fixture compares ASCII case-insensitively).
- * 1. no item -> '1'; 2. the last key ends in digits -> same prefix, number + 1 with the zeros kept ('DMZ-004' ->
- * 'DMZ-005', 'A-09' -> 'A-10', 'X-99' -> 'X-100'); 3. otherwise count + 1. Taken: count on (at most
+ * 1. no item -> '1'; 2. the last key ends in digits -> same prefix, number + 1 with the zeros kept ('TIX-004' ->
+ * 'TIX-005', 'A-09' -> 'A-10', 'X-99' -> 'X-100'); 3. otherwise count + 1. Taken: count on (at most
  * ITEM_KEY_SUGGEST_TRIES times); a candidate that is no valid key (too long, a prefix with other characters) or no
  * free one in time falls back to rule 3, counting on from count + 1 until free. Always returns a valid key.
  */
@@ -98,7 +98,7 @@ function next_item_key(?string $last_key, int $count, callable $is_taken): strin
     }
 }
 
-/* B-150: is $key taken in team $t (SQL, collation of ext_id: 'dmz-4' = 'DMZ-4'), the item $except_id left out */
+/* B-150: is $key taken in team $t (SQL, collation of ext_id: 'tix-4' = 'TIX-4'), the item $except_id left out */
 function item_key_taken($link, string $t, string $key, int $except_id = 0): bool
 {
     $sql = $link->prepare("select 1 from pok_topic_items_tbl where team_id = ? and ext_id = ? and id <> ? limit 1");
@@ -347,7 +347,7 @@ function load_topic_item($link, string $t, int $id): ?array
 
 /*
  * B-150: the item of the team with key $key (assoc row) or null. Compared by SQL in the collation of ext_id
- * ('dmz-4' finds 'DMZ-4'), never in PHP; unique per team (ux_topic_items_team_key).
+ * ('tix-4' finds 'TIX-4'), never in PHP; unique per team (ux_topic_items_team_key).
  */
 function load_topic_item_by_key($link, string $t, string $key): ?array
 {

@@ -48,31 +48,31 @@ test('item_upsert: 201 then 200 for the same key (any case), description rules, 
   const m = await member(request, 'V1 Items Upsert');
   const before = rev(m.t);
 
-  const created = await put(request, m, 'DMZ-004', { heading: '  Login with SSO ', description: 'As a user …' });
+  const created = await put(request, m, 'TIX-004', { heading: '  Login with SSO ', description: 'As a user …' });
   expect(created.status(), await created.text()).toBe(201);
   expect(await created.json()).toEqual({
-    key: 'DMZ-004', heading: 'Login with SSO', description: 'As a user …', status: 'open', active: true, position: 1,
+    key: 'TIX-004', heading: 'Login with SSO', description: 'As a user …', status: 'open', active: true, position: 1,
     result: null, url: `/?t=${m.t}`,
   });
   expect(rev(m.t)).toBeGreaterThan(before); // the board reloads its lists
 
   // same key in another case: the same item, the stored key stays; description missing = unchanged
-  const updated = await put(request, m, 'dmz-004', { heading: 'Login with SAML' });
+  const updated = await put(request, m, 'tix-004', { heading: 'Login with SAML' });
   expect(updated.status()).toBe(200);
-  expect(await updated.json()).toMatchObject({ key: 'DMZ-004', heading: 'Login with SAML', description: 'As a user …' });
+  expect(await updated.json()).toMatchObject({ key: 'TIX-004', heading: 'Login with SAML', description: 'As a user …' });
   // null removes the description; "" as well
-  expect(await (await put(request, m, 'DMZ-004', { heading: 'Login', description: null })).json())
+  expect(await (await put(request, m, 'TIX-004', { heading: 'Login', description: null })).json())
     .toMatchObject({ description: null });
-  expect((await list(request, m)).items.map((i: { key: string }) => i.key)).toEqual(['DMZ-004']);
+  expect((await list(request, m)).items.map((i: { key: string }) => i.key)).toEqual(['TIX-004']);
 
   // a second item: at the end, or 'next' right after the active one
-  expect((await put(request, m, 'DMZ-005', { heading: 'Logout' })).status()).toBe(201);
-  const next = await put(request, m, 'DMZ-006', { heading: 'Profile', at: 'next' });
-  expect(await next.json()).toMatchObject({ key: 'DMZ-006', active: false, position: 2 });
+  expect((await put(request, m, 'TIX-005', { heading: 'Logout' })).status()).toBe(201);
+  const next = await put(request, m, 'TIX-006', { heading: 'Profile', at: 'next' });
+  expect(await next.json()).toMatchObject({ key: 'TIX-006', active: false, position: 2 });
   const all = await list(request, m);
-  expect(all.items.map((i: { key: string }) => i.key)).toEqual(['DMZ-004', 'DMZ-006', 'DMZ-005']);
+  expect(all.items.map((i: { key: string }) => i.key)).toEqual(['TIX-004', 'TIX-006', 'TIX-005']);
   expect(all).toMatchObject({ open_count: 3, done_count: 0 });
-  expect(await (await getItem(request, m, 'dmz-005')).json()).toMatchObject({ key: 'DMZ-005', position: 3 });
+  expect(await (await getItem(request, m, 'tix-005')).json()).toMatchObject({ key: 'TIX-005', position: 3 });
 
   // keys are ASCII letters, digits, _ and - (they stand in the URL path)
   for (const key of ['A.php', 'A#1', 'Ä-1', '-A1', 'A'.repeat(21)]) {

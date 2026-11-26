@@ -11,7 +11,7 @@
  *   - empty (null or '')         -> the suggestion of the board (item_key_suggest(), as if the later items did not exist)
  *   - invalid (other characters) -> those characters replaced by '-', '-'/'_' at both ends removed, cut to 20 characters;
  *                                   nothing usable left -> the suggestion
- *   - duplicate (same key as an earlier item of the team, in the collation of the column, e.g. 'dmz-4' = 'DMZ-4')
+ *   - duplicate (same key as an earlier item of the team, in the collation of the column, e.g. 'tix-4' = 'TIX-4')
  *                                -> '-2', '-3', ... appended (shortened in front of it if needed)
  * Every final value is checked against ITEM_KEY_PATTERN and must be free in the team (SQL, collation), else the next
  * number is tried (at most 1000 times, then the suggestion); a value that still fails stops the script (exit 1, that

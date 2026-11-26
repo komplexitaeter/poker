@@ -1099,13 +1099,13 @@ test('the item key: required, the suggestion in the form, invalid and used keys 
   // the next form follows the server's next_key
   await alice.locator('#ti_add').click();
   await expect(ext).toHaveValue('2');
-  await ext.fill('DMZ-004');
+  await ext.fill('TIX-004');
   await alice.locator('#ti_heading').fill('Login');
   await alice.locator('#ti_save').click();
   await expect(alice.locator('#ti_form')).toHaveCount(0);
-  await expect(rowKeys).toHaveText(['1', 'DMZ-004']);
+  await expect(rowKeys).toHaveText(['1', 'TIX-004']);
   await alice.locator('#ti_add').click();
-  await expect(ext).toHaveValue('DMZ-005');
+  await expect(ext).toHaveValue('TIX-005');
 
   // invalid or empty: a message at the field, nothing is sent, the form stays open
   const adds: string[] = [];
@@ -1113,7 +1113,7 @@ test('the item key: required, the suggestion in the form, invalid and used keys 
     if (request.url().includes('/api/topic_item_add.php')) adds.push(request.url());
   });
   await alice.locator('#ti_heading').fill('Logout');
-  await ext.fill('DMZ 5');
+  await ext.fill('TIX 5');
   await alice.locator('#ti_save').click();
   await expect(error).toHaveText('Key: letters, digits, - and _ only, starting with a letter or digit.');
   await expect(ext).toHaveAttribute('aria-invalid', 'true');
@@ -1124,24 +1124,24 @@ test('the item key: required, the suggestion in the form, invalid and used keys 
   expect(adds).toHaveLength(0);
 
   // used already (without case): "Key already used" from the server, the form stays open, the field focused
-  await ext.fill('dmz-004');
+  await ext.fill('tix-004');
   await alice.locator('#ti_save').click();
   await expect(error).toHaveText('Key already used');
   await expect(ext).toHaveAttribute('aria-invalid', 'true');
   await expect(ext).toBeFocused();
   await expect(alice.locator('#ti_form')).toBeVisible();
   expect(adds).toHaveLength(1);
-  await ext.fill('DMZ-005');
+  await ext.fill('TIX-005');
   await alice.locator('#ti_save').click();
   await expect(alice.locator('#ti_form')).toHaveCount(0);
-  await expect(rowKeys).toHaveText(['1', 'DMZ-004', 'DMZ-005']);
+  await expect(rowKeys).toHaveText(['1', 'TIX-004', 'TIX-005']);
 
   // an untouched suggestion follows an item someone else adds meanwhile
   await alice.locator('#ti_add').click();
-  await expect(ext).toHaveValue('DMZ-006');
+  await expect(ext).toHaveValue('TIX-006');
   expect((await alice.request.post(`/api/topic_item_add.php?t=${tq}&at=end`,
-    { form: { ext_id: 'DMZ-006', heading: 'From elsewhere' } })).ok()).toBeTruthy();
-  await expect(ext).toHaveValue('DMZ-007');
+    { form: { ext_id: 'TIX-006', heading: 'From elsewhere' } })).ok()).toBeTruthy();
+  await expect(ext).toHaveValue('TIX-007');
   await alice.locator('#ti_form [data-ti-act="cancel"]').click();
 
   // edit: the key stays; its own key in another case is fine, the key of another item is not
@@ -1152,16 +1152,16 @@ test('the item key: required, the suggestion in the form, invalid and used keys 
   await alice.locator('#ti_save').click();
   await expect(alice.locator('#ti_form')).toHaveCount(0);
   await edit(1);
-  await expect(ext).toHaveValue('DMZ-004');
-  await ext.fill('DMZ-005');
+  await expect(ext).toHaveValue('TIX-004');
+  await ext.fill('TIX-005');
   await alice.locator('#ti_save').click();
   await expect(error).toHaveText('Key already used');
   await ext.fill('');
   await alice.locator('#ti_save').click();
   await expect(error).toHaveText('Please enter a key.');
-  await ext.fill('dmz-004');
+  await ext.fill('tix-004');
   await alice.locator('#ti_save').click();
   await expect(alice.locator('#ti_form')).toHaveCount(0);
-  await expect(rowKeys).toHaveText(['1', 'dmz-004', 'DMZ-005', 'DMZ-006']);
+  await expect(rowKeys).toHaveText(['1', 'tix-004', 'TIX-005', 'TIX-006']);
   await expect(alice.locator('#ti_open .ti-it .ti-h').first()).toContainText('Alpha, renamed');
 });
