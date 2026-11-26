@@ -341,7 +341,9 @@ Kern: `core_card_set()` (aus `setc.php`: B-102/B-103/B-104/B-115-Regeln) – Zuo
 | `player` | string | `For remove_player: mkey (preferred) or exact name from get_board.` |
 
 Kern: `start_new_round()` (✓, aus `newround.php` als `core_round_new()`), `core_member_remove()` (aus `delete.php`).
-Quelle: Routen `round_new` (`POST /round`), `member_remove` (`POST /members/{mkey}/remove`), `public: false`.
+Quelle: Routen `round_new` (`POST /round`), `member_remove` (`POST /members/{player}/remove`, `player` = mkey oder
+Name, aufgelöst im Handler über `board_player()`), `public: false`. Kerne `core_round_new()`, `core_member_remove()`
+(`api/lib_core_member.php`, PR D).
 
 ---
 
@@ -501,8 +503,11 @@ false`).
 Kern: neu `core_member_update()` (aus `name.php`: Name, Rolle, leer = `REMOVED`, B-102), `core_key_list/delete/
 delete_current` (✓), neu `core_user_delete()` (aus `delete_user.php`). `delete_my_data` mit Actor `via = key` →
 `403 browser_only` mit dem Hinweis aus der Beschreibung (Entscheidung 8; geprüft in der Kernfunktion, nicht nur im
-Tool-Text). Quelle: Routen `me_patch` (`PATCH /me`), `me_leave` (`POST
-/me/leave`), `me_delete` (`DELETE /me`), `key_list`, `key_delete` (✓, `mcp` ergänzen), `public: false` für die neuen.
+Tool-Text). Quelle (umgesetzt in PR D, alle neuen `public: false`): `me_rename` (`PUT /me/name`), `me_role_set`
+(`PUT /me/role`) – zwei Routen statt `me_patch`, weil eine Route genau eine Aktion trägt –, `me_leave` (`POST
+/me/leave`), `key_list` (✓, `mcp` ergänzt), `me_key_delete` (`DELETE /me/keys/{key_id}`, `key_id` als Text: Zahl oder
+`current`; statt `mcp` an `key_delete`, das nur Zahlen kennt), `me_delete` (`DELETE /me`). Kerne
+`core_member_update()`, `core_member_leave()`, `core_user_delete()` in `api/lib_core_member.php`.
 
 ---
 
@@ -628,10 +633,10 @@ Kurz; „→“ = Tool-Aufruf des Agenten.
   irgendwann `public` werden, ist eine spätere, eigene Entscheidung.
 - Neue Routen (alle `public: false`): `board_get`, `card_play`, `card_withdraw`, `round_new`, `member_remove`,
   `item_create`, `item_patch`, `item_leave`, `item_result_set`, `deck_get`, `deck_set`, `controls_set`, `set_create`,
-  `set_save`, `set_delete`, `team_patch`, `timer_patch`, `reaction_throw`, `me_patch`, `me_leave`, `me_delete`,
-  `feedback_send`, `roadmap_list`, `roadmap_vote`. Bestehende bekommen das `mcp`-Feld (`team_note_set`, `item_*`,
-  `key_list`, `key_delete`); `team_create`, `team_join`, `team_get`, `item_upsert`, `key_create`,
-  `key_delete_current` bleiben `mcp: false`.
+  `set_save`, `set_delete`, `team_patch`, `timer_patch`, `reaction_throw`, `me_rename`, `me_role_set`, `me_leave`,
+  `me_key_delete`, `me_delete`, `feedback_send`, `roadmap_list`, `roadmap_vote`. Bestehende bekommen das `mcp`-Feld
+  (`team_note_set`, `item_*`, `key_list`); `team_create`, `team_join`, `team_get`, `item_upsert`, `key_create`,
+  `key_delete`, `key_delete_current` bleiben `mcp: false`.
 - **Nachbartabelle** `api/v1/mcp_tools.php` (gleiches Format für `params`, `description`, `handler`, ohne
   `method`/`path`) nur für das, was es als REST-Operation nicht gibt: `create_team` und `join_team` mit Sitz statt
   Schlüssel sowie `wait_for_change`. Zusätzlich dort je grobem Tool die Tool-Beschreibung aus Abschnitt 5 (die

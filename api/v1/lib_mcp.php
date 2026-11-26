@@ -39,8 +39,15 @@ Getting a seat
   join again while you have a working seat: every join_team creates a new person at the table.
 
 Playing
-- Cards are revealed automatically when every player has a card down. Before that you only see who has played, never
-  which card – do not guess or claim to know other people's cards.
+- Play a card with play_card only after the user named it; never pick a card for them. They can change it until
+  everybody has played (and afterwards, then it shows as changed if the team uses "See changed cards").
+- Cards are revealed automatically when every player has a card down – there is no reveal button. Before that you only
+  see who has played, never which card – do not guess or claim to know other people's cards.
+- round new_round takes all cards back and starts over; round remove_player takes a player off the table who holds up
+  the reveal (they can come back).
+- The user's seat: me (rename, set_role, leave). When the user is done, offer me leave instead of just stopping: a
+  player without a card holds up the reveal. With an api_key, delete_my_data is not possible: offer leave and
+  delete_key with key_id "current" instead; deleting all data works in the browser (You menu, "Delete my data").
 - Stay at the table with wait_for_change: pass the version of your last result as since and call it again right
   after it returns, as long as the user wants to take part. Tell the user what changed in one or two short lines (who
   played, revealed result, new item, timer, note). If it says busy, wait retry_after seconds and call again.
@@ -596,6 +603,24 @@ function mcp_board_text(array $board): string
     foreach ($board['items'] ?? [] as $entry) {
         $lines[] = '- ' . $entry['key'] . ' ' . $q($entry['heading']) . ($entry['active'] ? ' (active)' : '');
     }
+    return implode("\n", $lines);
+}
+
+/*
+ * Text of the seat tools (play_card, round, me): what was done, the keys of api_keys, the board afterwards (if the
+ * seat still sees one).
+ */
+function mcp_seat_text(array $s): string
+{
+    $lines = isset($s['message']) ? [(string)$s['message']] : [];
+    if (isset($s['keys'])) {
+        if ($s['keys'] === []) $lines[] = 'No API keys in this team.';
+        foreach ($s['keys'] as $key) {
+            $lines[] = '- key_id ' . $key['id'] . ': "' . str_replace(["\r", "\n"], ' ', $key['name']) . '" …'
+                . $key['hint'] . ', created ' . $key['created'] . ($key['current'] ? ' (the key you are using)' : '');
+        }
+    }
+    if (isset($s['board'])) array_push($lines, '', mcp_board_text($s['board']));
     return implode("\n", $lines);
 }
 
