@@ -45,6 +45,9 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
 - **R3 (2026-11-06) – Karten neu:** B-76, B-98, B-99, B-101, B-102, B-103, B-104, B-106, B-107, B-110, B-112 (Teil),
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
+- **R8 (2026-11-26, abends):** B-152 Schritte BE-1/FE-1 (UID vom Server, nur noch im Header), B-154 (Entfernte als
+  Observer), Promo-Reste und `update_cardset.php` entfernt, B-12-Code (`db_init()`). BE-2 folgt, sobald das Access-Log
+  keine `id=`-Aufrufe mehr zeigt.
 - **R7 (2026-11-25):** B-14 erster Schnitt (Reaktionen, Timer, Verbindung als eigene Skripte), Topic-Panel: „reopen“
   beim Löschen nicht mehr abgeschnitten; Mockup `mockups/fish-tokens/` (B-145/B-146).
 - **R6 (2026-11-18):** B-34 (asynchroner Start), B-140, B-141 (Farbmodus lokal), Farbmodus ohne Board speichern, Notiz im Menü aktuell.
@@ -461,7 +464,8 @@ Refinement (Andreas, 2026-11-26):
 - **Doku:** eine Seite `/api/v1/` (was geht, Schlüssel erzeugen, `curl`-Beispiel je Endpunkt, Rezept Jira
   Automation) plus eine von Hand gepflegte `openapi.json` (Power Automate, Zapier, Postman, KI); ein E2E-Test führt
   die Doku-Beispiele aus.
-Offen: Fehlercodes; Verhalten bestehender Items ohne Schlüssel (Schlüssel nachvergeben?).
+Bestehende Items ohne Schlüssel bekommen einmalig einen nach derselben Heuristik (Andreas; wenige Items).
+Offen: Fehlercodes; wie Doku/Spec aus dem Code entstehen (kein Auseinanderlaufen).
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
 Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
