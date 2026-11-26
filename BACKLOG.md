@@ -46,7 +46,8 @@ Vor R1 gingen die Sprints 1–7 (2026-10-16 bis 2026-10-23) einzeln live, siehe 
   B-115, B-116.
 - **Release 2026-11-09 (#225):** B-113 (Sidebar ein-/ausklappbar), B-127 (leichter Heartbeat).
 - **R8 (2026-11-26, abends):** B-152 Schritte BE-1/FE-1 (UID vom Server, nur noch im Header), B-154 (Entfernte als
-  Observer), Promo-Reste und `update_cardset.php` entfernt, B-12-Code (`db_init()`). BE-2 folgt, sobald das Access-Log
+  Observer), Promo-Reste und `update_cardset.php` entfernt, B-12-Code (`db_init()`). Dazu B-156 (kryptische Team-IDs für neue Teams)
+  und der Deadlock-Fix beim gleichzeitigen Anlegen von Sets (#279, B-155). BE-2 folgt, sobald das Access-Log
   keine `id=`-Aufrufe mehr zeigt.
 - **R7 (2026-11-25):** B-14 erster Schnitt (Reaktionen, Timer, Verbindung als eigene Skripte), Topic-Panel: „reopen“
   beim Löschen nicht mehr abgeschnitten; Mockup `mockups/fish-tokens/` (B-145/B-146).
