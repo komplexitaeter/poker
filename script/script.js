@@ -89,12 +89,15 @@ window.addEventListener('storage', (event) => {
 });
 
 /* B-152: every call of the own API (relative ./api/ URL) goes through here: it waits for the UID and sends it in the
- * header X-Poker-User. Other URLs (other hosts, static files) are fetched as they are, never with the UID. */
+ * header X-Poker-User. Other URLs (other hosts, static files) are fetched as they are, never with the UID.
+ * B-150: calls of the public API (./api/v1/) carry the board's team in the header X-Poker-Team as well (browser mode
+ * of the API: UID + team, never in the URL). */
 function apiFetch(url, init = {}) {
     if (typeof url !== 'string' || !url.startsWith('./api/')) return fetch(url, init);
     return ensureUid().then(uid => {
         const headers = new Headers(init.headers || undefined);
         headers.set(UID_HEADER, uid);
+        if (url.startsWith('./api/v1/') && typeof t === 'string' && t !== '') headers.set('X-Poker-Team', t);
         return fetch(url, Object.assign({}, init, { headers: headers }));
     });
 }
