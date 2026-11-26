@@ -561,8 +561,8 @@ select table_name, column_name, column_type, character_set_name, collation_name,
 /* end B-106 */
 
 /* B-98 V6: who changed the card set of a team last (the board shows "Alice changed the card set to J.U.D.G.E.").
-   pok_teams_tbl.deck_changed_by = player id (pok_players_tbl.id, as get_id_param() reads it) of the writer, set by
-   update_deck.php, update_cardset.php and custom_set_delete.php only when the set group changes; dao.php joins the
+   pok_teams_tbl.deck_changed_by = player id (pok_players_tbl.id, the UID as get_uid() reads it, B-152) of the writer,
+   set by update_deck.php, custom_set_create.php and custom_set_delete.php only when the set group changes; dao.php joins the
    name (deck.changed_by). Additive, instant, idempotent (run it again any time), BEFORE deploying the code.
    Run only this block: sed -n '/^\/\* B-98 V6:/,/^\/\* end B-98 V6/p' db_schema_pok_inc.sql */
 select table_name, column_name, column_type from information_schema.columns

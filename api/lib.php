@@ -48,19 +48,33 @@ function cut_text(string $value, int $max_length): string {
     return preg_match('/^.{0,' . $max_length . '}/us', $value, $match) ? $match[0] : '';
 }
 
+/*
+ * B-152: JSON and event-stream answers are never stored by any cache (no-store, private) and vary by X-Poker-User:
+ * once the UID travels only in the header, dao.php?t=... has the same URL for everybody in a team but contains the
+ * own UID-bound state, so a shared cache (e.g. a corporate TLS proxy) must never keep or reuse it. Nothing relies on
+ * caching these answers (every board load and pull fetches them anew).
+ */
 function set_header($content_type) {
+    $private = false;
     if ($content_type=='json') {
         header('Content-Type: application/json; charset=utf-8');
+        $private = true;
     }
     else if ($content_type=='event-stream') {
         header("Content-Type: text/event-stream; charset=utf-8");
+        $private = true;
     }
     else if ($content_type=='svg') {
         header('Content-type: image/svg+xml');
     }
     header('Pragma-directive: no-cache');
     header('Cache-directive: no-cache');
-    header('Cache-control: no-cache');
+    if ($private) {
+        header('Cache-Control: no-store, private');
+        header('Vary: X-Poker-User');
+    } else {
+        header('Cache-control: no-cache');
+    }
     header('Pragma: no-cache');
     header('Expires: 0');
 }
@@ -121,6 +135,8 @@ const UID_PATTERN = '/^[A-Za-z0-9_-]{10,16}$/D';
  *   1. header X-Poker-User (the transport from FE-1 on, for GET and POST),
  *   2. form body field 'uid' (POST, application/x-www-form-urlencoded or multipart; BE-1 only, transitional),
  *   3. URL parameter $url_param (today's clients: 'id'; BE-1 only, transitional - BE-2 drops 2. and 3.).
+ * A source with an empty value counts as absent: an empty header ("X-Poker-User:") falls through to the body and the
+ * URL in BE-1 (in BE-2, with the header as the only source, it simply gives '').
  * Returns the UID or '' (missing or invalid). Never echo it for another person; responses only contain the own UID.
  */
 function get_uid(string $url_param = 'id'): string {
