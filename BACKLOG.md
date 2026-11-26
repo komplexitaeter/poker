@@ -369,10 +369,16 @@ eigene Skripte) erstmal nicht.
   abfragen, löschen.
 - **Item-Schlüssel als Pflichtfeld** (Andreas): vorbelegt mit `[CODE]-(n+1)`, zusammen mit dem Team eindeutig
   (heute `ext_id`, optional; 10 von 19 Items hatten schon eine). Damit ist ein Import beliebig oft wiederholbar.
-- **Zugang über die Team-ID**, wie in der App (Andreas, 2026-11-26): kein eigener API-Schlüssel – er würde nichts
-  absichern, was die Team-ID nicht ohnehin öffnet. Möglichst im Header statt in der URL (Access-Logs). Sollte ein Team
-  seinen Link sperren müssen (z. B. in einer Jira-Regel geleakt), wäre „Team-Link erneuern“ das Gegenstück für Web,
-  API und MCP – nur bei Bedarf, eigener Eintrag.
+- **API-Schlüssel je Person und Team** (Andreas, 2026-11-26): Pendant zur UID, die der Browser hält. Alles ist
+  team-öffentlich, aber nutzer-authentifiziert; der Schlüssel steht für genau eine Person in genau einem Team, die
+  Team-ID muss nicht mitgegeben werden. Im Header, gespeichert nur als Hash, mehrere je Person (z. B. Jira, KI),
+  einzeln sperren und neu erzeugen; Verwaltung im You-Menü. Die API darf die Team-ID bzw. den Team-Link ausliefern
+  (wer den Schlüssel hat, kannte die Team-ID schon).
+- **Ohne Schlüssel** geht nur: Team anlegen und einem Team (per Team-ID) neu beitreten – jeweils mit Name und Rolle
+  (Player/Observer). Der Server erzeugt dafür im Hintergrund eine UID und gibt den API-Schlüssel dieser neuen Person
+  zurück (die UID braucht der Aufrufer nicht).
+- **Schritt 1 zieht auch die interne API glatt** (Andreas): jeder interne Endpunkt prüft, dass die mitgeschickte UID im
+  Team registriert ist (nicht entfernt), wo er heute nur die Team-ID nimmt oder die UID nicht prüft (Kern von B-91).
 - Nach jeder Änderung `notify_team()` wie bei der App (Boards aktualisieren sich sofort).
 - Die Logik hinter den Endpunkten so schneiden, dass B-151 sie mitnutzt (REST und MCP rufen dieselben Funktionen).
 Offen fürs Refinement: Format des Ergebnisses (Wert, Verteilung, Runden), Fehlercodes.
@@ -389,7 +395,9 @@ Grundsätze (Andreas):
 - **Keine Aufruf-Limits auf Verdacht** (Anwendungsfälle unbekannt); nur technischer Schutz (z. B. Obergrenze
   gleichzeitig wartender Aufrufe).
 Technik (Vorschlag Kai): dünne MCP-Schicht über den Funktionen aus B-150, ca. 10–12 gröbere Tools statt einem pro
-Aktion; Zugang über die Team-ID wie in App und B-150 (kein eigener Schlüssel). Benachrichtigung **ohne Polling**: `wait_for_change`, das
+Aktion; Zugang mit dem API-Schlüssel aus B-150. **Am Tisch anmelden** ist Teil der Sitzungsinitialisierung (Andreas):
+entweder mit einem vorhandenen Schlüssel als jemand, der schon da ist (dann wählen: Player oder Observer), oder neu
+mit Team-ID, Name und Rolle – dann erzeugt der Server UID und Schlüssel (wie Beitreten in B-150). Benachrichtigung **ohne Polling**: `wait_for_change`, das
 sofort zurückkehrt, sobald poker-msg eine Änderung des Teams meldet (spätestens nach ca. 25 s „nichts passiert“);
 dafür ein Event-Kanal in poker-msg mit kurzlebigem, per HMAC signiertem Abo-Ticket (poker-msg bleibt ohne DB, kein
 PHP-Worker pro Wartendem). Server-Benachrichtigungen von MCP zusätzlich für Clients, die sie können. Antworten zuerst
@@ -544,7 +552,8 @@ prüfen, bevor die E2E-Shards starten; schlägt früh und billig fehl.
 ## Offen: Sicherheit & Datenschutz
 
 ### B-91 Entfernen und Löschen nur mit Berechtigung
-Status: refined. Fund Sina, Gedanke Andreas (2026-10-30):
+Status: refined; der Kern (UID-Prüfung in allen internen Endpunkten) kommt mit Schritt 1 von B-150 (Andreas,
+2026-11-26). Fund Sina, Gedanke Andreas (2026-10-30):
 - **Anderen Spieler entfernen** (`api/delete.php`, heute nur `t` + `mkey`): Aufrufer schickt zusätzlich seine User-ID
   und darf nur entfernen, wenn er selbst (nicht entfernter) Mitglied des Teams ist. Ziel bleibt der `mkey`.
 - **Eigenen User löschen** (`api/delete_user.php`, nur `id`): bleibt auf die eigene ID beschränkt (sie ist das
