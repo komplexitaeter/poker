@@ -505,6 +505,7 @@ weiteren Seiten auf beiden Servern mittesten (nach Umstellung einen PHP-Endpunkt
 Offen: Zeitpunkt; ob das PPA langfristig bleibt oder auf `packages.sury.org` umzieht.
 
 ### B-128 R3-Deck-Backup prüfen und löschen (Mitte Dezember)
+Danach die Deck-Migration aus `getDao()` entfernen (B-157).
 Status: refined, Termin Mitte Dezember 2026 (Andreas, 2026-11-09). Die R3-Deck-Migration übernimmt das Deck eines
 Teams erst beim nächsten Laden (Stand 2026-11-09: 192 ok, 0 mismatch, 21 danach selbst geändert, rund 24.400 noch
 nicht wieder geladen). Dann `php8.4 tools/migration/check_deck_migration.php --verify` auf Live wiederholen; bei
@@ -627,6 +628,18 @@ Umsetzung (Ben, 2026-11-26, Branch `feature/B-156-team-ids`): `new_team_id()` in
 beim Wiedererkennen des Links und verrät nichts, was das Board nicht ohnehin zeigt. Nur Kleinbuchstaben, weil
 `pok_teams_tbl.id` case-insensitiv vergleicht. `name2id()`/`get_team_id()` (mit `rand()`) entfernt; alte IDs bleiben
 gültig. Passt zu `FILTER_SANITIZE_URL`, `validate_team()` und poker-msg (`[\x21-\x7E]{1,80}`). E2E: `team-ids.spec.ts`.
+
+### B-157 `dao.php` schreibt nur noch die Anwesenheit
+Status: refined (Andreas, 2026-11-26). Ziel: `getDao()`/`dao.php` ist bis auf `touch_player()` (`last_callback_time`,
+Anwesenheit B-110/B-127) ein reiner Lesezugriff. Seit #282 legt `getDao()` keine `pok_user_tbl`-Zeilen mehr an (das
+machen `name.php` beim Beitreten und `update_user.php`). Übrig sind zwei einmalige Schreibvorgänge je Team, beide unter
+der Team-Sperre (dort lag der Deadlock aus #279):
+1. **Deck-Migration aus R3** (alte `cardset_flags` → `deck_id`, bei gemischten Decks ein Set „Our deck“): raus, sobald
+   bei B-128 (Mitte Dezember) praktisch alle aktiven Teams migriert sind; den Rest per einmaligem Skript
+   (`tools/migration/`), danach Migrationscode löschen.
+2. **Beispielset (B-116)**: beim Anlegen des Teams vergeben (`add_team()`, passt zu B-144 Schritt 3) statt beim ersten
+   Laden; bestehende Teams ohne Beispielset (wenige, 754 haben es) per einmaligem Skript oder gar nicht mehr.
+Danach in CLAUDE.md: „`dao.php` schreibt nur die Anwesenheit.“
 
 ### B-65 Zeitpunkt der gewählten Karte speichern (`card_time`)
 Status: neu (Andreas, 2026-10-28). Neue Spalte `pok_players_tbl.card_time`, gesetzt in `api/setc.php`. Damit ließe sich
