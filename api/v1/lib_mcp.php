@@ -586,14 +586,21 @@ function mcp_seat_result(mysqli $link, array $actor, ?string $uid, string $what)
 function mcp_board_text(array $board): string
 {
     $one = function (?string $s, int $max = 80): string {
-        $s = trim(str_replace('```', "'''", v1_one_line((string)$s)));
+        // invalid UTF-8 scrubbed first (no warning, no null); control, line and bidi characters become spaces
+        $s = (string)preg_replace('/[\p{Cc}\p{Zl}\p{Zp}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', ' ',
+                                  mb_scrub((string)$s, 'UTF-8'));
+        $s = trim(str_replace('```', "'''", $s));
         $cut = cut_text($s, $max);
         return $cut === $s ? $s : rtrim($cut) . '…';
     };
-    $name = function (?string $s) use ($one): string {
+    // in quotes where a text could pass for part of the block (state, card, "(away)", separators)
+    $quote = fn(string $s): string => '"' . str_replace('"', "'", $s) . '"';
+    $name = function (?string $s) use ($one, $quote): string {
         $s = $one($s, 20);
-        return ($s === '' || strtolower($s) === 'you' || preg_match('/[,·"→]|\s{2}/u', $s)) ? '"' . str_replace('"', "'", $s) . '"' : $s;
+        return ($s === '' || strtolower($s) === 'you' || preg_match('/[,·"→(×–]|\s{2}/u', $s)) ? $quote($s) : $s;
     };
+    $team = $one($board['team']['name'], 40);
+    if ($team === '' || preg_match('/[·"→]|\s{2}/u', $team)) $team = $quote($team);
     $me = $board['you']['mkey'];
     $round = $board['round'];
     $revealed = $round['state'] === 'revealed';
@@ -613,11 +620,11 @@ function mcp_board_text(array $board): string
         $state = 'voting' . ($waiting === [] ? '' : ' · waiting for '
             . (count($waiting) > 3 ? count($waiting) . ' players' : implode(', ', $waiting)));
     }
-    $lines = [$one($board['team']['name'], 40) . ' · ' . $state];
+    $lines = [$team . ' · ' . $state];
 
     if ($board['note'] !== '') {
         $first = '';
-        foreach (preg_split('/\R/u', $board['note']) as $line) {
+        foreach (preg_split('/\R/u', mb_scrub($board['note'], 'UTF-8')) ?: [] as $line) {
             if (trim($line) !== '') { $first = $line; break; }
         }
         if ($first !== '') $lines[] = 'Note: ' . $one($first);
