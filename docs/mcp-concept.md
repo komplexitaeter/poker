@@ -91,6 +91,18 @@ Jeder Tool-Aufruf (außer `create_team` und `join_team` ohne Schlüssel) trägt 
 Team unbekannt und „nicht Mitglied“ geben dieselbe Antwort (kein Orakel, wie v1). Nur `join_team` meldet
 `team_not_found` (wie `team_join` in v1).
 
+**Team erlaubt keine KI-Assistenten** (`ai_not_allowed`, Andreas, Datenschutz: das Team kann widersprechen):
+Teameinstellung „Allow AI assistants“ (`pok_teams_tbl.allow_ai`, Standard an; Board settings → Team). Aus → **jeder**
+`/mcp`-Aufruf für das Team wird abgelehnt: „This team does not allow AI assistants. Ask the team to switch on 'Allow AI
+assistants' in the board settings.“ Geprüft in `mcp_actor()` (Sitz und `api_key`) nach der Identität und vor jedem
+Lesen/`touch` (kein KI-Symbol, kein Board) sowie in `join_team` mit Einladung nach `team_not_found`, bevor ein Sitz
+entsteht. Laufende `wait_for_change` wachen durch das `notify_team()` des Umschaltens auf, prüfen die Identität erneut
+und bekommen den Fehler; das Live-Board im Chat zeigt ruhig „AI assistants are switched off for this board.“ und
+fragt nicht weiter. Die REST-API (`/api/v1`, API-Schlüssel für Jira u. Ä.) bleibt erlaubt. **Ändern nur im Browser**
+(`api/update_team.php?allow_ai=0|1`): `board_settings` hat kein Feld dafür, ein KI-Sitz kann es weder an- noch
+ausschalten (einfachste Lösung; aus wäre ohnehin der letzte Aufruf). Ist es aus, blendet das Board den KI-Knopf
+(`#ai_btn`) und den MCP-Hinweis im Beitrittsdialog (`#join_mcp_hint`) aus.
+
 ### 2.3 Neu beitreten, Wiederkommen
 
 - `join_team` ohne Schlüssel legt **immer** einen neuen Sitz an (wie ein neuer Browser). Kennt der Agent im selben Chat
@@ -470,6 +482,8 @@ ist eine Liste von Objekten – ein eigener Parametertyp `type: array` mit `item
 | `show_average` | boolean | `set` |
 | `show_tips` | boolean | `set` |
 | `show_card_changes` | boolean | `set` |
+
+„Allow AI assistants“ (`allow_ai`) gibt es hier bewusst nicht: nur der Browser schaltet es (Abschnitt 2.2).
 
 Kern: `core_team_note_set()` (✓), neu `core_team_settings_patch()` (aus `update_team.php`, `update_results_order.php`,
 `update_show_avg.php`). Quelle: Routen `team_note_set` (✓, `mcp` ergänzen), `team_patch` (`PATCH /team`, `public:

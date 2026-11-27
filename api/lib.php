@@ -1159,6 +1159,7 @@ function getDao($t, $id) {
     $show_tips = 1;
     $show_card_changes = 1; // B-115: team setting
     $round_show_card_changes = 1; // B-115: setting of the running round (original cards stored and shown)
+    $allow_ai = 1; // B-151: team setting "Allow AI assistants", 0 = /mcp refused for the team
     $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
@@ -1192,6 +1193,7 @@ function getDao($t, $id) {
                   ,t.show_tips
                   ,t.show_card_changes
                   ,t.round_show_card_changes
+                  ,t.allow_ai
                   ,t.needs_setup
                   ,t.deck_id
                   ,t.deck_cards
@@ -1221,6 +1223,7 @@ function getDao($t, $id) {
         $show_tips = (int)$obj->show_tips;
         $show_card_changes = (int)$obj->show_card_changes;
         $round_show_card_changes = (int)$obj->round_show_card_changes;
+        $allow_ai = (int)$obj->allow_ai;
         $needs_setup = (bool)$obj->needs_setup;
         $deck_changed_by = $obj->deck_changed_by; // B-98 V6: player id, the name comes from the players below
 
@@ -1505,6 +1508,7 @@ function getDao($t, $id) {
         "show_tips"=>$show_tips, // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
         "show_card_changes"=>$show_card_changes, // B-115: team setting "See changed cards", 1 = on (default)
         "round_show_card_changes"=>$round_show_card_changes, // B-115: the setting of the running round, 0 = no stacks
+        "allow_ai"=>$allow_ai, // B-151: team setting "Allow AI assistants", 1 = on (default), 0 = /mcp refused
         "needs_setup"=>$needs_setup,
         "selected_card_key"=>$card_key,
         "player_type"=>$player_type,

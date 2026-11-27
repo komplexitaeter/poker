@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.77" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.78" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -59,7 +59,7 @@
     <script async data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.49" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.50" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.29" type="text/javascript"></script>
@@ -71,7 +71,7 @@
     <script defer src="script/connection.js?v=2" type="text/javascript"></script>
     <script defer src="script/api_keys.js?v=1" type="text/javascript"></script>
     <script defer src="script/ai_dialog.js?v=3" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.44" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.45" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
          waiting for images or analytics (window load) -->
@@ -489,6 +489,16 @@
                         </div>
                         <p class="hint">Short hints for everyone on what to do next (large screens).</p>
                     </fieldset>
+                    <!-- B-151: "Allow AI assistants" for the whole team (allow_ai, changeAllowAi() in script_feedback.js; Andreas,
+                         data protection). Off: /mcp refuses every call of the team, #ai_btn and #join_mcp_hint are hidden -->
+                    <fieldset class="f" id="cet_allow_ai">
+                        <legend class="lab">Allow AI assistants</legend>
+                        <div class="seg">
+                            <label><input type="radio" name="cet_allow_ai" value="0" onchange="changeAllowAi(this.value)"/><span>Off</span></label>
+                            <label><input type="radio" name="cet_allow_ai" value="1" onchange="changeAllowAi(this.value)"/><span>On</span></label>
+                        </div>
+                        <p class="hint">Members can join or follow this board with an AI assistant (Claude, ChatGPT &hellip;). Their board content goes to that AI provider.</p>
+                    </fieldset>
                 </div>
             </section>
 
@@ -687,7 +697,7 @@
             <li>Paste the URL &ndash; no sign-in needed</li>
             <li>Give your assistant this board&rsquo;s link <button type="button" id="ai_board_copy" class="ti-link">copy link</button></li>
         </ol>
-        <p class="ai-dialog-note"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg>Everybody at the table sees this mark next to your name.</p>
+        <p class="ai-dialog-note"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Everybody at the table sees this mark next to your name. The team can switch AI assistants off in the board settings.</span></p>
         <!-- B-151: early beta; "Feedback" closes the dialog and opens the feedback panel like :feedback (ai_dialog.js) -->
         <p class="ai-beta">This is an early beta. If something doesn&rsquo;t work as expected, please tell us via <button type="button" id="ai_feedback" class="ti-link">Feedback</button>.</p>
         <p id="ai_copy_status" class="sr-only" role="status" aria-live="polite"></p>
