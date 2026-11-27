@@ -834,7 +834,7 @@ body {
         channel.onmessage = function (event) {
             var m = event.data;
             if (!m || m.type !== 'hello' || m.instance === instance || !seatKey() || m.seat !== seatKey()) return;
-            if (typeof m.shownAt !== 'number' || typeof m.instance !== 'string') return;
+            if (!Number.isFinite(m.shownAt) || typeof m.instance !== 'string') return;
             newerRank = Math.max(newerRank, m.shownAt);
             var newer = m.shownAt > shownAt || (m.shownAt === shownAt && m.instance > instance);
             if (newer) {
@@ -896,7 +896,7 @@ body {
         if (node.nodeType !== 1 || !SVG_TAGS[node.localName]) return null;
         var out = svgEl(node.localName);
         Array.prototype.forEach.call(node.attributes, function (a) {
-            if (SVG_ATTRS.test(a.name) && !/url\s*\(|expression|@import/i.test(a.value)) out.setAttribute(a.name, a.value);
+            if (SVG_ATTRS.test(a.name) && !/url\s*\(|expression|@import|\\/i.test(a.value)) out.setAttribute(a.name, a.value);
         });
         Array.prototype.forEach.call(node.childNodes, function (child) {
             var c = copySvg(child);
