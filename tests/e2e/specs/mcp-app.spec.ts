@@ -134,14 +134,17 @@ test('rich cards: card faces like the web, card keys on the table, the symbols o
   // a custom set: text and symbol cards in the set's style
   await tool(request, 'card_sets', { ...seat, action: 'create', name: 'Risk', style: 'badge', activate: true,
     set_cards: [{ text: 'low', color: 'green', numeric_value: 1, heading: 'low risk', description: 'small' },
-                { text: 'mid', color: 'amber' }, { symbol: 's-light-red', color: 'red', numeric_value: 3 }] });
+                { text: 'mid', color: 'amber' }, { symbol: 's-light-red', color: 'red', numeric_value: 3 },
+                { symbol: 's-stars-2', color: 'amber', numeric_value: 1.5 }] });
   const custom = (await tool(request, 'show_board', seat)) as any;
   const set = custom.structuredContent.deck;
   expect(set).toMatchObject({ name: 'Risk', style: 'badge' });
   expect(set.cards[0]).toMatchObject({ text: 'low', heading: 'low risk', description: 'small', symbol: null,
     color: 'green', numeric_value: 1, has_value: true, range: true, style: 'badge', control: false });
   expect(set.cards[1]).toMatchObject({ text: 'mid', symbol: null, numeric_value: null, has_value: false, range: false });
-  expect(set.cards[2]).toMatchObject({ text: '🔴', symbol: 's-light-red', color: 'red', numeric_value: 3 });
+  expect(set.cards[2]).toMatchObject({ text: '🔴', symbol: 's-light-red', color: 'red', numeric_value: 3, has_value: true,
+    range: true });
+  expect(set.cards[3]).toMatchObject({ symbol: 's-stars-2', numeric_value: 1.5, has_value: true, range: true });
   expect(custom._meta.symbol_ids).toContain('s-light-red');
   expect(custom._meta.symbol_ids).not.toContain('s-frame-inv');
 });
@@ -222,4 +225,24 @@ test('an answer without a board is a failure: back off instead of a flood of cal
   await expect(view.locator('#conn')).toHaveText('Offline – trying again in 5 s');
   await host.waitForTimeout(3_000);
   expect(await host.evaluate(() => (window as any).toolCalls.length)).toBe(1);
+});
+
+test('show_board sends at most 60 KB of symbols inline, else the symbol resource', async ({ request }) => {
+  const created = await tool(request, 'create_team', { name: 'Sprite', member_name: 'Anna', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  const fib = (await tool(request, 'show_board', seat) as any)._meta; // Fibonacci Classic, two control cards
+  expect(fib.symbols.length).toBeLessThanOrEqual(61440);
+  expect(fib.symbols_resource).toBeUndefined();
+  expect(fib.symbol_ids).toContain('s-13');
+
+  // an own set of large symbols and every control card on: too large, the view reads the whole sprite
+  const faces = ['satisfied', 'annoyed', 'sad', 'uninterested', 'angry', 'enthusiastic', 'curious', 'confused',
+                 'worried', 'surprised', 'tired', 'relieved'].map(face => ({ symbol: `s-face-${face}`, color: 'amber' }));
+  const stars = [0, 1, 2, 3, 4, 5].map(n => ({ symbol: `s-stars-${n}`, color: 'amber', numeric_value: n }));
+  await tool(request, 'card_sets', { ...seat, action: 'create', name: 'Big', activate: true, set_cards: [...stars, ...faces] });
+  await tool(request, 'card_sets', { ...seat, action: 'controls', cards: 'break01,qstmrk1,xclam01,veto,shrug01' });
+  const all = (await tool(request, 'show_board', seat) as any)._meta;
+  expect(all.symbols).toBeUndefined();
+  expect(all.symbols_resource).toBe(SYMBOLS);
+  expect(all.symbol_ids).toEqual(expect.arrayContaining(['s-shrug', 's-hand', 's-stars-5', 's-face-tired']));
 });

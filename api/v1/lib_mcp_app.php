@@ -17,6 +17,9 @@ const MCP_SYMBOLS_MIME = 'image/svg+xml';
 const MCP_SYMBOLS_FILE = __DIR__ . '/../../src/cards.svg';
 /* drawn on the table without a card of the deck (cards.js STATUS_CARDS) */
 const MCP_STATUS_SYMBOLS = ['s-check', 's-thought', 's-mask', 's-late'];
+/* largest sprite sent inline with show_board (bytes); above it the view reads MCP_SYMBOLS_URI (Fibonacci Classic with
+   the two default control cards is about 57 KB, with every control card about 67 KB) */
+const MCP_SYMBOLS_INLINE_MAX = 61440;
 /* JSON-RPC error of resources/read for an unknown URI (MCP specification: resource not found) */
 const MCP_RESOURCE_NOT_FOUND = -32002;
 
@@ -56,7 +59,8 @@ function mcp_symbols_all(): array
     return $symbols;
 }
 
-/* a hidden sprite with only the symbols the board needs: its deck, other cards on the table, the status cards */
+/* a hidden sprite with only the symbols the board needs: its deck, other cards on the table, the status cards; too
+   large (MCP_SYMBOLS_INLINE_MAX): symbols_resource instead, the view reads the whole sprite with resources/read */
 function mcp_symbols_for(array $board): array
 {
     $deck = $board['deck'] ?? null;
@@ -71,6 +75,7 @@ function mcp_symbols_for(array $board): array
     $ids = array_values(array_filter(array_unique($ids), fn(string $id): bool => isset($all[$id])));
     $svg = '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">'
         . implode('', array_map(fn(string $id): string => $all[$id], $ids)) . '</svg>';
+    if (strlen($svg) > MCP_SYMBOLS_INLINE_MAX) return ['symbols_resource' => MCP_SYMBOLS_URI, 'symbol_ids' => $ids];
     return ['symbols' => $svg, 'symbol_ids' => $ids];
 }
 

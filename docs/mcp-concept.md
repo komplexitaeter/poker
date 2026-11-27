@@ -1188,4 +1188,4 @@ Daten für Karten wie im Web (nur ergänzt, `core_board_get()`): jede Karte in `
 `card_before_change_key`, `you.card_key`. Skala des Ergebnis-Diagramms = `deck.cards` + `deck.controls` (wie
 `gDeck.cards` im Web). Symbole: `_meta.symbols` (verstecktes `<svg>` nur mit den Symbolen des Decks und der
 Status-Karten) und `_meta.symbol_ids` im Ergebnis von `show_board` (nicht im `structuredContent`, also nicht beim
-Modell); bei späterem Deck-Wechsel `resources/read` auf `ui://agile-poker/symbols` (ganzes `src/cards.svg`).
+Modell); über 60 KB (nur große eigene Sets mit allen Steuerkarten) statt `symbols` nur `_meta.symbols_resource` = `ui://agile-poker/symbols`; dort und bei späterem Deck-Wechsel `resources/read` (ganzes `src/cards.svg`).

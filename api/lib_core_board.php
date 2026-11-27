@@ -235,8 +235,10 @@ function board_face(array $entry, ?array $group, string $style, bool $control, b
 {
     $str = fn($v): ?string => is_string($v) && $v !== '' ? $v : null;
     $text = $str($entry['value'] ?? null) ?? (string)$entry['card_key'];
-    $value = is_int($entry['numeric_value'] ?? null) || is_float($entry['numeric_value'] ?? null)
-        ? $entry['numeric_value'] : null;
+    // a number, or a numeric string as custom_symbol_value() gives it ('1.50' -> 1.5, '2.00' -> 2)
+    $raw = $entry['numeric_value'] ?? null;
+    $value = is_int($raw) || is_float($raw) ? $raw : (is_string($raw) && is_numeric($raw) ? $raw + 0 : null);
+    if (is_float($value) && $value == floor($value) && abs($value) < PHP_INT_MAX) $value = (int)$value;
     $infinite = ($entry['infinite'] ?? false) === true || (!$custom && $text === '∞');
     if ($custom) $range = $value !== null || $infinite;
     else $range = ($value !== null || $infinite) && (is_bool($entry['range'] ?? null) ? $entry['range']
