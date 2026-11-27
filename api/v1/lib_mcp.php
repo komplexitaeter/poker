@@ -858,11 +858,14 @@ function mcp_help_page(): string
     $o[] = '<a class="api-doc-headlink" href="/api/v1/">REST API</a>';
     $o[] = '</header>';
     $o[] = '<main class="api-doc-main">';
-    $o[] = '<h1>Agile Poker for AI assistants</h1>';
+    $o[] = '<h1>Agile Poker for AI assistants <span class="beta-badge">Beta</span></h1>';
     $o[] = '<p class="api-doc-lead">Join a planning poker board from a chat with your AI assistant (Claude, ChatGPT, '
         . '&hellip;). The assistant acts as your own browser: it sits at the table under your name (the team sees a '
         . 'small AI symbol at your seat), and it can do only what you could do on the board.</p>';
 
+    $o[] = '<p class="api-doc-beta" id="beta">This is an early beta. If something doesn&rsquo;t work as expected, please '
+        . 'tell us: with the <b>Feedback</b> button on the board, or ask your assistant to send it with the tool '
+        . $code('feedback') . '.</p>';
     $o[] = '<div class="api-doc-intro">';
     $o[] = '<section class="api-doc-box" id="setup"><h2>Add the connector</h2>';
     $o[] = '<p>Add a custom connector (MCP server) once, with this URL and without authentication:</p>';

@@ -7080,3 +7080,33 @@ body.api-doc {
 /* both: a dot between them */
 .table-summary .ts-ai:not([hidden]):has(+ .ts-away:not([hidden]))::after { content: "\00b7"; margin: 0 8px; color: var(--line-strong); }
 .table-summary :is(.ts-ai-n, .ts-away-n) { color: var(--text); }
+
+/* B-151: early beta of the AI connector: a small badge at the title (#ai_dialog, help page GET /mcp) and one quiet
+ * line with the way to give feedback */
+.beta-badge {
+    display: inline-block;
+    flex: none;
+    margin-left: 8px;
+    padding: 1px 7px;
+    border: 1px solid var(--topic-color);
+    border-radius: 999px;
+    color: var(--topic-color);
+    font-size: var(--fs-xs);
+    font-weight: normal;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+}
+.ai-beta,
+.api-doc-beta {
+    margin: var(--space-3) 0 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--topic-color);
+    border-radius: 0 var(--radius-m) var(--radius-m) 0;
+    font-size: var(--fs-xs);
+    line-height: 1.45;
+    color: var(--muted);
+}
+.api-doc .api-doc-beta { margin: var(--space-3) 0 0; font-size: var(--fs-s); }
+.ai-beta .ti-link { padding: 0 1px; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.ai-dialog h2 .beta-badge { margin-left: 0; }
