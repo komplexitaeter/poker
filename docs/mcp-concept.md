@@ -21,8 +21,11 @@ MCP-Server ist eine dünne Schicht über denselben Kernfunktionen wie Web und RE
    Einladungslink (Team-ID) ist der Zugang, genau wie im Web.
 2. **Ohne Schlüssel:** Der Agent tritt per Einladungslink mit Name und Rolle (Player/Observer) bei; der Server erzeugt
    die UID (wie `api/uid.php`), das Tool gibt sie zurück, der Agent behält sie im Gespräch und gibt sie bei jedem
-   weiteren Aufruf mit (wie `localStorage`). Neuer Chat = neuer Browser (neuer Sitz). Agenten werden für andere
-   **nicht** gekennzeichnet (kein 🤖), sie sind normale Teilnehmende.
+   weiteren Aufruf mit (wie `localStorage`). Neuer Chat = neuer Browser (neuer Sitz). Sitze, die per MCP genutzt
+   werden, bekommen im Board ein kleines 🤖 (Andreas, 2026-11-27, ändert die frühere Entscheidung „keine
+   Kennzeichnung“; Grund Datenschutz: die anderen sollen wissen, dass ihre Namen und Texte an eine KI gehen).
+   Backend: `pok_players_tbl.mcp_seen_time`, `via_ai`/`ai_count` in `dao.php`, im anonymen Modus nach dem Aufdecken
+   nur als Team-Zähler (ebenso `away`/`away_count`).
 3. **Optional mit Schlüssel:** Die Person erzeugt im You-Menü einen API-Schlüssel und gibt ihn dem Agenten → der Agent
    handelt als dieser Browser-Sitz („übernimm meinen Platz“). Tools akzeptieren entweder UID (+ Team) oder Schlüssel.
    Löschen des Schlüssels beendet das. Der Schlüssel landet im Chatverlauf beim KI-Anbieter – akzeptiert
@@ -153,8 +156,8 @@ Wo wir darauf hinweisen (Vorschlag, Gestaltung Delia/Fred):
 
 ```text
 You are connected to Agile Poker (planning poker for distributed teams). You act as the user's own browser: you sit
-at a team's table as the user, nobody sees that an AI is involved, and you can do exactly what the user could do on
-the web board – nothing more.
+at a team's table as the user (the board shows the team a small AI symbol at the user's seat), and you can do exactly
+what the user could do on the web board – nothing more.
 
 Getting a seat
 - If the user gives you an invite link (https://poker.komplexitaeter.de/?t=...) or team id, ask for the name to show
