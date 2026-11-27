@@ -85,7 +85,7 @@ test('play_card and round new_round: play, change, reveal with two players, with
   expect(played.data.message).toBe('You played "5".');
   expect(played.data.you.card).toBe('5');
   expect(played.data.board.round).toEqual({ state: 'voting', waiting_for: ['Alice'], result: null });
-  expect(played.text).toContain('"5" (hidden from others)');
+  expect(played.text).toMatch(/^  You +5   \(hidden from others\)$/m);
   await expectTableCard(alice, 'Anna', 'done001');
 
   // change it, by its key
@@ -119,8 +119,8 @@ test('play_card and round new_round: play, change, reveal with two players, with
   const voting = await ok(request, 'get_board', seat);
   expect(voting.data.players.find((p: any) => p.name === 'Alice')).toMatchObject({ played: true, card: null });
   expect(voting.data.players.map((p: any) => p.card)).toEqual([null, null]);
-  expect(voting.text).not.toContain('"20"');
-  expect(voting.text).toContain('"Alice" played');
+  expect(voting.text).toMatch(/^  Alice +played$/m);
+  expect(voting.text.split('\n').filter((l: string) => !l.includes('pick:')).join('\n')).not.toContain('20');
 });
 
 test('round remove_player and the role rules of play_card; me rename, set_role, leave', async ({ request, browser }) => {
@@ -157,7 +157,7 @@ test('round remove_player and the role rules of play_card; me rename, set_role, 
   await fails(request, 'me', { ...seat, action: 'set_role' }, 'missing_param', 'role');
   const observer = await ok(request, 'me', { ...seat, action: 'set_role', role: 'observer' });
   expect(observer.data.you.role).toBe('observer');
-  expect(observer.text).toContain('You watch as observer.');
+  expect(observer.text).toMatch(/^Observers: .*\bYou\b/m);
   await expect(tableCard(alice, 'Anna')).toHaveCount(0);
   const noCard = await fails(request, 'play_card', { ...seat, action: 'play', card: '5' }, 'role_not_allowed');
   expect(noCard.message).toContain('Observers cannot play cards');

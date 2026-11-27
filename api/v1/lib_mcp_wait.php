@@ -126,8 +126,15 @@ function mcp_wait_result(array $board, string $version, string $since, string $h
     }
     $changes = mcp_board_changes(mcp_version_state($since), mcp_board_state($board), $board);
     return ['structured' => ['changed' => true, 'version' => $version, 'changes' => $changes, 'board' => $board],
-            'text' => "Changes:\n- " . implode("\n- ", $changes) . "\n\n" . mcp_board_text($board) . "\n"
-                . mcp_version_line($version)];
+            'text' => mcp_changes_line($changes) . "\n\n" . mcp_board_text($board) . "\n\n" . mcp_version_line($version)];
+}
+
+/* B-151 Stufe 1: the changes as one short line above the board block (the full list stays in structuredContent) */
+function mcp_changes_line(array $changes): string
+{
+    $line = implode(' ', $changes);
+    $cut = cut_text($line, 120);
+    return $cut === $line ? $line : rtrim($cut) . '…';
 }
 
 /* ---------- version ---------- */
@@ -142,7 +149,7 @@ function mcp_with_version(array $out): array
     if ($board === null) return $out;
     $version = mcp_board_version($board);
     $out['structured'] = $structured + ['version' => $version];
-    $out['text'] .= "\n" . mcp_version_line($version);
+    $out['text'] .= "\n\n" . mcp_version_line($version);
     return $out;
 }
 

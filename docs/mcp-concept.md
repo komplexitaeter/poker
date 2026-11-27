@@ -174,7 +174,13 @@ Playing
 - Cards are revealed automatically when every player has a card down. Before that you only see who has played, never
   which card – do not guess or claim to know other people's cards.
 - Stay at the table with wait_for_change: call it again right after it returns, as long as the user wants to take
-  part. Tell the user what changed in one or two short lines (who played, revealed result, new item, timer, note).
+  part.
+
+Showing the table
+- Every result with a board has a compact table block in its text: the line with team and round state, then note,
+  item, timer, one row per player, observers. After each change (wait_for_change, or your own action) show the user
+  exactly this block as a code block instead of writing sentences about it, with at most one extra line of your own
+  (e.g. what changed or a question). Do not add cards or names that are not in the block.
 - Ask before actions that affect everybody and cannot be undone: deleting items or custom sets, removing people,
   "delete my data", changing the card set while cards are down (starts a new round).
 
@@ -274,13 +280,32 @@ Ergebnis (`structuredContent`, Auszug):
 waiting_for: [names], result: {distribution: [{card, count}], range, suggestion, average|null}}, players: [{name,
 mkey, played: bool, card|null, away}], observers: [{name, mkey}], active_item: {key, heading, description, rounds}|null,
 open_count, done_count, timer: {status, mode, seconds, visible, timebox}, deck: {id, name, cards: [{key, value,
-heading}], controls: [...]}, settings: {...}}`. Text-Inhalt: eine kompakte Tischansicht, z. B.
+heading}], controls: [...]}, settings: {...}}`. Text-Inhalt (Stufe 1, 2026-11-27): ein fester, kompakter
+Tisch-Block für Menschen, in **jedem** Ergebnis mit Board (`get_board`, `wait_for_change`, `join_team`,
+`create_team`, alle schreibenden Tools); der Agent zeigt ihn als Codeblock statt eigener Sätze. `structuredContent`
+bleibt unverändert (Agenten lesen das JSON). Vor und nach dem Aufdecken:
 
 ```text
-Team XYZ · Item TIX-004 "Login with SSO" (round 2) · ⏱ 03:12
-Players: Anna ✔ · Ben … · You (Andreas) 5 · Cleo ✔ (away)
-Waiting for: Ben
+MCP Test · voting · waiting for Carl, you
+Note: Mach das so
+Item: TIX-334 – Wie bauen wir das ein?
+  Bea      played
+  Carl     –   (away)
+  You      –   pick: 0 ½ 1 2 3 5 8 13 20 40 100 ∞ ☕ ?
+Observers: Kai
+
+MCP Test · revealed · 2 ×1, 3 ×1, 5 ×1 → suggestion 3
+Item: TIX-334 – Wie bauen wir das ein?
+  Bea      2
+  You      3
+  Carl     5   (was 8)
 ```
+
+Regeln (`mcp_board_text()`): verdeckte Karten nur als `played`/`–`; Anonym-Modus nach dem Aufdecken wie
+`core_board_get()` (`******`), eigener Sitz als `You`; Notiz nur erste Zeile, Texte anderer einzeilig und gekürzt (ca.
+80 Zeichen), Anführungszeichen nur bei Namen mit Trennzeichen; Timer-Zeile nur, wenn sichtbar und gelaufen; die eigene
+Karte vor dem Aufdecken mit `(hidden from others)`, die Kartenauswahl (`pick:`) nur, solange man noch keine gelegt hat;
+mit `include_items` zusätzlich die offenen Items. Danach (Leerzeile) die `version`-Zeile.
 
 Kern: `getDao($t, $uid)` – **genau** die Sicht des Boards (verdeckte Karten sind dort schon Platzhalter, Anonym-Modus
 schon `******`) – plus Projektion `mcp_board_view()`; nie eigene SQL auf `pok_players_tbl.card_key`. Quelle: neue
@@ -302,7 +327,9 @@ Route `board_get` (`GET /board`, `public: false`).
 | `timeout` | integer 1–25, Default 25 | `Maximum seconds to wait.` |
 
 Ergebnis: `{changed: bool, version, changes: ["Ben played a card", "Cards revealed", "New item: TIX-005 …", …],
-board}` bzw. `{busy: true, retry_after: 5}`. Das Warten selbst übernimmt poker-msg, PHP prüft und rechnet (Abschnitt 8).
+board}` bzw. `{busy: true, retry_after: 5}`. Text-Inhalt: höchstens eine kurze Zeile „was sich geändert hat“
+(die Liste `changes` zusammengefasst, gekürzt), darunter der Tisch-Block wie bei `get_board`; die vollständige Liste
+steht nur im JSON. Das Warten selbst übernimmt poker-msg, PHP prüft und rechnet (Abschnitt 8).
 Quelle: `mcp_tools.php`.
 
 ---
