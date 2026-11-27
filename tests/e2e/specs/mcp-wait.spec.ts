@@ -142,6 +142,37 @@ test('timeout: unchanged board -> changed=false after the timeout, the own write
   expect(took).toBeLessThan(5_000);
 });
 
+test('own seat off the table: "You left the table." after me leave, "You are no longer at the table." when taken off', async ({ request }) => {
+  const { seat } = await mcpTeam(request, 'MCP Self Leave');
+  const bob = (await ok(request, 'join_team', { invite: seat.team_id, name: 'Bob', role: 'player' })).data.you;
+  const bobSeat = { team_id: seat.team_id, uid: bob.uid as string };
+  const mkey = (await ok(request, 'get_board', seat)).data.you.mkey as string;
+
+  // the seat leaves by itself (me leave): the change list and the flag say so
+  let since = (await ok(request, 'get_board', seat)).data.version as string;
+  const left = await ok(request, 'me', { ...seat, action: 'leave' });
+  expect(left.data.you).toMatchObject({ role: 'removed', left_by_self: true });
+  expect(left.text).toContain('You (left the table - others see you as observer');
+  let waited = await ok(request, 'wait_for_change', { ...seat, since, timeout: 5 });
+  expect(waited.data.changes).toContain('You left the table.');
+  expect(waited.data.changes).not.toContain('You are no longer at the table.');
+
+  // back (set_role clears the mark), then taken off by someone else
+  const back = await ok(request, 'me', { ...seat, action: 'set_role', role: 'player' });
+  expect(back.data.you).toMatchObject({ role: 'player', left_by_self: false });
+  since = back.data.version as string;
+  await ok(request, 'round', { ...bobSeat, action: 'remove_player', player: mkey });
+  waited = await ok(request, 'wait_for_change', { ...seat, since, timeout: 5 });
+  expect(waited.data.board.you).toMatchObject({ role: 'removed', left_by_self: false });
+  expect(waited.data.changes).toContain('You are no longer at the table.');
+  expect(waited.text).toContain('You (not at the table - others see you as observer');
+
+  // removing the own mkey (like the trash can on the own card) counts as leaving by oneself
+  await ok(request, 'me', { ...seat, action: 'set_role', role: 'player' });
+  await ok(request, 'round', { ...seat, action: 'remove_player', player: mkey });
+  expect((await ok(request, 'get_board', seat)).data.you).toMatchObject({ role: 'removed', left_by_self: true });
+});
+
 test('since of no version of ours: the whole board at once', async ({ request }) => {
   const { seat } = await mcpTeam(request, 'MCP Wait Since');
   const [result, took] = await timed(ok(request, 'wait_for_change', { ...seat, since: 'abc' }));

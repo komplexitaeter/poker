@@ -418,6 +418,13 @@ body {
 }
 .removed-t { margin: 0 0 8px; font-weight: 700; }
 .removed-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* B-151 self leave: left by oneself - a calm line, no alarm */
+.left-self { margin: 0; color: var(--muted); font-size: var(--fs-s); }
+.linkbtn {
+    font: inherit; color: var(--accent); background: none; border: 0; padding: 0; margin-left: 4px;
+    text-decoration: underline; cursor: pointer;
+}
+.linkbtn:disabled { cursor: progress; opacity: 0.6; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
 .btn.primary:hover { border-color: var(--text); }
 .btn:disabled { cursor: progress; opacity: 0.6; }
@@ -485,6 +492,7 @@ body {
             <button type="button" class="btn" id="rejoin-observer">Join as observer</button>
         </div>
     </div>
+    <p class="left-self" id="left-self" hidden>You left the table.<button type="button" class="linkbtn" id="rejoin-self">Join again</button></p>
     <div class="head">
         <span class="team" id="team">Agile Poker</span>
         <span class="badge changed" id="changed" hidden>changed</span>
@@ -562,6 +570,9 @@ body {
     var rendered = false;     // the first board of this view was shown (no chat message for that one)
     var seenRole = null;      // the own role at the last board
     var removedSent = false;  // "taken off the table" told the chat (again after coming back)
+    var removedTimer = null;  // B-151 self leave: the message waits REMOVED_ALERT_MS (an end_session may follow)
+    var REMOVED_ALERT_MS = 1500;
+    var seatRole = null;      // the last role at the table ("Join again" after leaving by oneself)
     var waitSent = false;     // "waiting for my card" told the chat in this round
     var waitTimer = null;
     var messageOff = false;   // the host does not know ui/message
@@ -1287,9 +1298,11 @@ body {
         } else setStatus('voting · everybody has played');
         if (b.you.role === 'observer') setStatus($('status').textContent + ' · you watch as observer');
         var removed = b.you.role === 'removed';
-        if (removed) setStatus($('status').textContent + ' · you are not at the table');
-        $('removed').hidden = !removed;
-        $('rejoin-player').disabled = $('rejoin-observer').disabled = rejoining;
+        var leftSelf = removed && b.you.left_by_self === true; // B-151 self leave: left by oneself, not taken off
+        if (removed) setStatus($('status').textContent + (leftSelf ? ' · you left the table' : ' · you are not at the table'));
+        $('removed').hidden = !removed || leftSelf;
+        $('left-self').hidden = !leftSelf;
+        $('rejoin-player').disabled = $('rejoin-observer').disabled = $('rejoin-self').disabled = rejoining;
 
         var note = firstLine(b.note, 140);
         $('note').textContent = note;
@@ -1750,6 +1763,7 @@ body {
 
     $('rejoin-player').addEventListener('click', function () { rejoin('player'); });
     $('rejoin-observer').addEventListener('click', function () { rejoin('observer'); });
+    $('rejoin-self').addEventListener('click', function () { rejoin(seatRole || 'player'); }); // the role before leaving
 
     /* --- a few events go into the chat as a message (ui/message), so the agent reacts: once per event, only from the
      * live view, never for the first board of a view, never with the uid or other people's texts --- */
@@ -1768,13 +1782,28 @@ body {
         return others.length > 0 && others.length < b.players.length && others.every(function (p) { return p.played; });
     }
 
+    /* B-151 self leave: only "taken off by someone else" goes into the chat - never a leave of the seat itself (me
+     * leave, the agent did it on the user's request) and never after end_session; a short delay lets an end_session
+     * right after the removal stop the view first */
     function checkAlerts(first) {
         var b = board;
         var seated = b.you.role === 'player' || b.you.role === 'observer';
-        if (seated) removedSent = false;
-        else if (!first && !removedSent && (seenRole === 'player' || seenRole === 'observer')) {
-            removedSent = true;
-            sendMessage('I am no longer at the table.');
+        if (seated) {
+            removedSent = false;
+            seatRole = b.you.role;
+            clearTimeout(removedTimer);
+            removedTimer = null;
+        } else if (b.you.left_by_self === true) {
+            removedSent = true; // left by itself: nothing to tell
+            clearTimeout(removedTimer);
+            removedTimer = null;
+        } else if (!first && !removedSent && !removedTimer && (seenRole === 'player' || seenRole === 'observer')) {
+            removedTimer = setTimeout(function () {
+                removedTimer = null;
+                if (!board || pausedBy || removedSent || board.you.role !== 'removed' || board.you.left_by_self === true) return;
+                removedSent = true;
+                sendMessage('I am no longer at the table.');
+            }, REMOVED_ALERT_MS);
         }
         seenRole = b.you.role;
 

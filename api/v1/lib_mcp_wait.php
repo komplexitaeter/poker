@@ -225,23 +225,11 @@ function mcp_board_version(array $board): string
     return substr(hash('sha256', mcp_state_json(mcp_board_state($board))), 0, MCP_VERSION_LENGTH);
 }
 
-/* the kept states of a seat: [[version, state], ...] newest first; [] without any or without the column */
+/* the kept states of a seat: [[version, state], ...] newest first; [] without any or without the column
+   (seat_states_read() in api/lib.php, which also keeps the mark of a self leave) */
 function mcp_load_states(mysqli $link, array $actor): array
 {
-    try {
-        $sql = $link->prepare('select mcp_states from pok_players_tbl where id = ? and team_id = ?');
-    } catch (mysqli_sql_exception $e) {
-        if (!is_missing_schema_error($e)) throw $e;
-        return []; // code deployed before the schema: no list of changes, the whole board
-    }
-    $uid = (string)$actor['uid'];
-    $t = (string)$actor['team_id'];
-    $sql->bind_param('ss', $uid, $t);
-    $sql->execute();
-    $row = $sql->get_result()->fetch_assoc();
-    $sql->close();
-    $states = is_string($row['mcp_states'] ?? null) ? json_decode($row['mcp_states'], true, 16) : null;
-    return is_array($states) && array_is_list($states) ? $states : [];
+    return seat_states_read($link, (string)$actor['uid'], (string)$actor['team_id'])['s'];
 }
 
 /* keeps the state of this board for the seat (newest first, at most MCP_STATES_KEEP, each version once) */
@@ -249,22 +237,15 @@ function mcp_store_state(mysqli $link, array $actor, array $board): void
 {
     $state = mcp_board_state($board);
     $version = substr(hash('sha256', mcp_state_json($state)), 0, MCP_VERSION_LENGTH);
-    $states = mcp_load_states($link, $actor);
+    $uid = (string)$actor['uid'];
+    $t = (string)$actor['team_id'];
+    $data = seat_states_read($link, $uid, $t);
+    $states = $data['s'];
     if (($states[0][0] ?? null) === $version) return; // nothing new: no write
     $states = array_values(array_filter($states, fn($entry): bool => is_array($entry) && ($entry[0] ?? null) !== $version));
     array_unshift($states, [$version, $state]);
-    $json = mcp_state_json(array_slice($states, 0, MCP_STATES_KEEP));
-    $uid = (string)$actor['uid'];
-    $t = (string)$actor['team_id'];
-    try {
-        $sql = $link->prepare('update pok_players_tbl set mcp_states = ? where id = ? and team_id = ?');
-    } catch (mysqli_sql_exception $e) {
-        if (!is_missing_schema_error($e)) throw $e;
-        return;
-    }
-    $sql->bind_param('sss', $json, $uid, $t);
-    $sql->execute();
-    $sql->close();
+    $data['s'] = array_slice($states, 0, MCP_STATES_KEEP);
+    seat_states_write($link, $uid, $t, $data);
 }
 
 /* the state behind since: a kept version of the seat, or (transition) a long token of the former format; else null */
@@ -340,6 +321,10 @@ function mcp_board_changes(?array $old, array $new, array $board): array
         $new_round = $taken_back >= 2; // several cards gone at once: a new round, not people changing their mind
     }
 
+    // B-151 self leave: the own seat went off the table (a removed seat stays in the observers for the others, B-154) -
+    // by its own leave or taken off by someone else
+    $me_off = ($old['y'][1] ?? null) !== 'removed' && $new['y'][1] === 'removed';
+    $me_off_text = !empty($board['you']['left_by_self']) ? 'You left the table.' : 'You are no longer at the table.';
     $played = [];
     foreach ($after as $mkey => $p) {
         $was = $before[$mkey] ?? null;
@@ -348,7 +333,7 @@ function mcp_board_changes(?array $old, array $new, array $board): array
             continue;
         }
         if ($was['name'] !== $p['name']) $out[] = $q($was['name']) . ' is now called ' . $q($p['name']) . '.';
-        if ($was['role'] !== $p['role']) {
+        if ($was['role'] !== $p['role'] && !($me_off && (string)$mkey === $me)) {
             $out[] = $who($mkey, $p) . ($p['role'] === 'player' ? ' now play' . ((string)$mkey === $me ? '' : 's') . ' (player).'
                                                                 : ' now watch' . ((string)$mkey === $me ? '' : 'es') . ' (observer).');
         }
@@ -361,10 +346,12 @@ function mcp_board_changes(?array $old, array $new, array $board): array
         }
         if ($was['away'] !== $p['away']) $out[] = $who($mkey, $p) . ($p['away'] ? ' is away.' : ' is back.');
     }
+    if ($me_off) $out[] = $me_off_text;
     if ($played !== []) $out[] = implode(', ', $played) . (count($played) === 1 ? ' played a card.' : ' played their cards.');
     foreach ($before as $mkey => $p) {
         if (!isset($after[$mkey])) {
-            $out[] = (string)$mkey === $me ? 'You are no longer at the table.' : $q($p['name']) . ' left the table.';
+            if ((string)$mkey !== $me) $out[] = $q($p['name']) . ' left the table.';
+            elseif (!$me_off) $out[] = 'You are no longer at the table.';
         }
     }
     if ($anonymous && count($old['p']) !== count($new['p'])) $out[] = count($new['p']) . ' players at the table.';

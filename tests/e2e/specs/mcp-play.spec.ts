@@ -172,13 +172,14 @@ test('round remove_player and the role rules of play_card; me rename, set_role, 
   // rename (role stays), back as player, leave
   await fails(request, 'me', { ...seat, action: 'rename', name: 'A'.repeat(16) }, 'invalid_param', 'name');
   const renamed = await ok(request, 'me', { ...seat, action: 'rename', name: 'Annie' });
-  expect(renamed.data.you).toEqual({ name: 'Annie', role: 'observer', mkey, card: null, card_key: null });
+  expect(renamed.data.you).toEqual({ name: 'Annie', role: 'observer', mkey, card: null, card_key: null, left_by_self: false });
   await ok(request, 'me', { ...seat, action: 'set_role', role: 'player' });
   await expectTableCard(alice, 'Annie', 'prgrss1');
   const left = await ok(request, 'me', { ...seat, action: 'leave' });
   expect(left.data.you.role).toBe('removed');
   expect(left.text).toContain('You left the table: you no longer play, the others see you as observer.');
-  expect(left.text).toContain('You (not at the table - others see you as observer; me set_role to come back)');
+  expect(left.text).toContain('You (left the table - others see you as observer; me set_role to come back)');
+  expect(left.data.you.left_by_self).toBe(true); // B-151 self leave: the live board stays calm
   expect(left.text).not.toMatch(/^Observers: .*You/m);
   expect(left.text).not.toContain('browser seat'); // only with an API key
   await expect(tableCard(alice, 'Annie')).toHaveCount(0);

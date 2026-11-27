@@ -1112,6 +1112,67 @@ function end_mcp_session(mysqli $link, string $uid, string $t): void
     $sql->close();
 }
 
+/*
+ * B-151 self leave: pok_players_tbl.mcp_states (no DDL) also remembers whether the seat's last removal from the table
+ * was its own leave (me leave via MCP/REST, the empty name of name.php, the trash can on the own card) or done by
+ * someone else, so the live board and the list of changes can tell "You left the table." from "You are no longer at
+ * the table.". Format: the plain list of kept states [[version, state], ...] (api/v1/lib_mcp_wait.php) or, while the
+ * mark is set, {"s": [...], "self_left_at": <unix time>}. A missing column, row or garbage reads as no states, no mark.
+ */
+function seat_states_read(mysqli $link, string $uid, string $t): array
+{
+    $empty = ['s' => [], 'self_left_at' => null];
+    try {
+        $sql = $link->prepare('select mcp_states from pok_players_tbl where id = ? and team_id = ?');
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return $empty; // code deployed before the schema
+    }
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    $sql->close();
+    $data = is_string($row['mcp_states'] ?? null) ? json_decode($row['mcp_states'], true, 16) : null;
+    if (!is_array($data)) return $empty;
+    if (array_is_list($data)) return ['s' => $data, 'self_left_at' => null];
+    $states = $data['s'] ?? null;
+    $left = $data['self_left_at'] ?? null;
+    return ['s' => is_array($states) && array_is_list($states) ? $states : [],
+            'self_left_at' => is_int($left) ? $left : null];
+}
+
+/* writes states and mark (ASCII JSON: names with emoji stay \u escapes, the column is ascii) */
+function seat_states_write(mysqli $link, string $uid, string $t, array $data): void
+{
+    $value = $data['self_left_at'] === null ? $data['s'] : ['s' => $data['s'], 'self_left_at' => $data['self_left_at']];
+    $json = (string)json_encode($value, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    try {
+        $sql = $link->prepare('update pok_players_tbl set mcp_states = ? where id = ? and team_id = ?');
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return;
+    }
+    $sql->bind_param('sss', $json, $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
+/* sets ($self) or clears the mark "left the table by itself"; writes only on a change */
+function seat_mark_self_left(mysqli $link, string $uid, string $t, bool $self): void
+{
+    if ($uid === '') return;
+    $data = seat_states_read($link, $uid, $t);
+    if (($data['self_left_at'] !== null) === $self) return;
+    $data['self_left_at'] = $self ? time() : null;
+    seat_states_write($link, $uid, $t, $data);
+}
+
+/* true if the seat's last removal from the table was its own leave (only meaningful while it is REMOVED) */
+function seat_left_by_self(mysqli $link, string $uid, string $t): bool
+{
+    return $uid !== '' && seat_states_read($link, $uid, $t)['self_left_at'] !== null;
+}
+
 /* B-151 end session: true while the seat's session is ended (end_mcp_session(), no MCP call since) */
 function mcp_session_ended(mysqli $link, string $uid, string $t): bool
 {
