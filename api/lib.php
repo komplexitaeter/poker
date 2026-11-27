@@ -1417,7 +1417,7 @@ function getDao($t, $id) {
         ,"original_card_key"=>$original_card_key // B-104: null = no stack
         ,"away"=>$obj->away // B-110: no dao.php load for AWAY_AFTER_SEC seconds (never the own card)
         ,"via_ai"=>$obj->via_ai // B-151 mcp seen: uses the board through an AI assistant (MCP)
-        ,"own"=>($obj->id == $id) // internal, removed below
+        ,"own"=>($obj->id === $id) // internal, removed below
         ,"i"=>(int)null);
         $players[] = $player;
 
