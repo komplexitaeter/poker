@@ -933,3 +933,211 @@ Offen:
    PHP zu schicken und nur Wartende per `X-Accel-Redirect` an poker-msg abzugeben, statt alle MCP-Aufrufe durch
    poker-msg zu leiten. Ziel deiner Entscheidung (kein wartender FPM-Worker, tausende Wartende) bleibt gleich;
    poker-msg wird kleiner, und MCP fällt bei einem poker-msg-Ausfall nicht ganz aus. Einverstanden?
+
+## 13. Live-Board im Chat (MCP Apps)
+
+Stand 2026-11-27, Ben (BE), Recherche. Noch kein Code. Ziel: Im Chat erscheint ein kleines, sich selbst
+aktualisierendes Board (Karten, Mitspielende, Aufdecken), möglichst nah am Web-Board; Karte legen per Klick.
+
+**Quellenlage:** Gelesen wurden die Spezifikation im offiziellen Repo `modelcontextprotocol/ext-apps` (Stand
+`main` 2026-11-25, Paket 2.1.0; stabile Fassung `specification/2026-01-26/apps.mdx`, Entwurf
+`specification/draft/apps.mdx`) und die Entwickler-Doku von Anthropic (claude.com/docs, Stand heute). Nicht
+erreichbar aus der Arbeitsumgebung waren modelcontextprotocol.io, developers.openai.com und help.openai.com; Aussagen
+zu ChatGPT stammen deshalb nur aus Suchergebnis-Auszügen und sind **nicht selbst geprüft** (markiert mit „ungeprüft“).
+
+### 13.1 Stand der Erweiterung (Server-Seite)
+
+- MCP Apps ist eine offizielle, optionale MCP-Erweiterung (SEP-1865, Kennung `io.modelcontextprotocol/ui`), stabile
+  Fassung **2026-01-26**, daneben ein Entwurf mit Erweiterungen (u. a. Tools, die die Ansicht selbst anbietet).
+- **UI-Ressource:** normale MCP-Ressource mit URI `ui://…`, `mimeType` **`text/html;profile=mcp-app`**, Inhalt als
+  vollständiges HTML5-Dokument in `text` (oder base64 in `blob`). Geliefert per **`resources/read`**; `resources/list`
+  darf UI-Ressourcen weglassen (Hosts finden sie über das Tool). Metadaten in `_meta.ui` am Inhalt von
+  `resources/read` (bevorzugt) oder am Listeneintrag: `csp` (`connectDomains`, `resourceDomains`, `frameDomains`,
+  `baseUriDomains`), `permissions` (Kamera usw.), `domain` (feste Sandbox-Herkunft), `prefersBorder`.
+- **Verknüpfung:** am Tool in `tools/list` `_meta.ui.resourceUri = "ui://…"`; optional `_meta.ui.visibility`
+  (`["model","app"]` Standard; `["app"]` = nur von der Ansicht aufrufbar, für das Modell unsichtbar). Der alte flache
+  Schlüssel `_meta["ui/resourceUri"]` ist veraltet, das SDK schreibt ihn aber noch zusätzlich.
+- **Aushandlung:** Nur der **Client** meldet die Erweiterung in `initialize`
+  (`capabilities.extensions["io.modelcontextprotocol/ui"].mimeTypes`). Server „SHOULD“ danach entscheiden, ob sie
+  `_meta.ui` ausliefern. Für uns (zustandslos, `tools/list` kommt ohne Client-Fähigkeiten): `_meta.ui` **immer**
+  mitschicken – laut Spezifikation verhält sich das Tool bei Hosts ohne Apps einfach wie ein normales Tool. Eine
+  eigene Server-Fähigkeit für die Erweiterung sieht die Spezifikation nicht vor; wir müssen aber `resources/read`
+  beantworten und sollten `capabilities.resources` melden (heute „keine Resources“, Abschnitt 4).
+- **Fallback ist Pflicht:** Tools mit UI „MUST“ weiter ein sinnvolles `content` liefern – bei uns die kompakte
+  Textansicht, die es schon gibt.
+
+Quellen: [Spezifikation 2026-01-26](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx),
+[Entwurf](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx),
+[SEP-1865](https://modelcontextprotocol.io/seps/1865-mcp-apps-interactive-user-interfaces-for-mcp),
+[Claude: Quickstart MCP App](https://claude.com/docs/connectors/building/mcp-apps/quickstart.md).
+
+### 13.2 Was die eingebettete Seite kann
+
+- **Brücke:** JSON-RPC 2.0 über `postMessage` mit dem Host; die Ansicht ist ein MCP-Client, der Host leitet weiter.
+  Handshake `ui/initialize` → `ui/notifications/initialized`. Ein SDK ist **nicht nötig** (die Spezifikation zeigt
+  eine Brücke in ~30 Zeilen); das offizielle `App` aus `@modelcontextprotocol/ext-apps` beantwortet zusätzlich `ping`
+  und `ui/resource-teardown` (Claude Web schickt beides nicht, iOS Teardown nur beim Verlassen des Gesprächs).
+- **Daten vom Host:** `ui/notifications/tool-input` (die **Argumente** des Tool-Aufrufs, der die Ansicht geöffnet hat)
+  und `ui/notifications/tool-result` (`content`, `structuredContent`, `_meta` des Ergebnisses).
+- **Server-Tools aufrufen:** `tools/call` an den Host (SDK: `app.callServerTool`), nur am eigenen Server; Tools mit
+  `visibility` ohne `"app"` lehnt der Host ab. „This pattern enables interactive, self-updating views“ – also genau
+  unser Fall (Schleife über `wait_for_change`, Klick → `play_card`). Auch `resources/read` geht über den Host.
+- **Zum Modell:** `ui/message` (Nachricht in den Chat, löst eine Antwort aus, Host darf nachfragen) und
+  `ui/update-model-context` (stiller Kontext für die nächste Runde; jede Meldung ersetzt die vorige).
+- **Darstellung:** `hostContext` liefert `theme` (`light`/`dark`), `styles.variables` (Farb-, Schrift-, Radius-Tokens
+  des Hosts), `containerDimensions`, `displayMode` (`inline`/`fullscreen`/`pip`), `locale`, `platform`,
+  `safeAreaInsets`; Änderungen per `ui/notifications/host-context-changed`. Höhe meldet die Ansicht per
+  `ui/notifications/size-changed`. `ui/request-display-mode` für Vollbild/Seitenleiste, `ui/open-link` für Links.
+- **Sandbox/CSP:** iframe mit `allow-scripts allow-same-origin`, eigene Herkunft (bei Claude
+  `{hash}.claudemcpcontent.com`). Ohne `csp`-Angabe gilt: `default-src 'none'; script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; connect-src 'none'` → **Inline-Skript
+  und -CSS gehen, externe Skripte/Fonts/Bilder und `fetch`/WebSocket nur für deklarierte Domains**, keine verschachtelten
+  iframes, `object-src 'none'`. Hosts dürfen strenger sein, nie lockerer.
+- **Laufzeit:** Kein festes Zeitlimit für eine Ansicht dokumentiert. Claude lässt jede Ansicht **im Gespräch
+  weiterlaufen** („No host API unmounts earlier instances“) – mehrere Aufrufe = mehrere lebende Kopien; beim Wieder-
+  öffnen eines Gesprächs werden Ansichten erst beim Hineinscrollen geladen und starten **neu aus dem HTML** (Zustand
+  muss vom Server kommen). Ein Tool-Aufruf aus der Ansicht hat im SDK ein Request-Timeout (MCP-SDK-Standard 60 s, nicht
+  in der Claude-Doku genannt – **ungeprüft**, ob Claudes Backend eine kürzere Grenze hat); unser `wait_for_change`
+  endet nach höchstens 25 s und liegt damit darunter. Hintergrund-Tabs/gesperrte Handys drosseln oder pausieren die
+  Schleife (Browser-Verhalten, nicht spezifisch dokumentiert).
+- **Größen:** Für Tool-Ergebnisse nennt Claude ~150.000 Zeichen (darüber kommt die Ansicht nicht an die Daten); für die
+  HTML-Ressource fand ich **keine** dokumentierte Grenze. Inline-Karten: Höhe passt sich dem Inhalt an, kein inneres
+  Scrollen, mobil gekappt; Design-Richtlinie „höchstens 2 Aktionen, 4–5 Datenpunkte“ für Inline-Karten – ein Board ist
+  eher ein Fall für Seitenleiste/Vollbild („boards … that the user and Claude work on together“).
+
+Quellen: [Spezifikation, Abschnitte Transport, Data Passing, Host Context, CSP](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx),
+[Claude: Supersede older widget instances](https://claude.com/docs/connectors/building/mcp-apps/instance-supersession.md),
+[Claude: Troubleshoot](https://claude.com/docs/connectors/building/mcp-apps/troubleshooting.md),
+[Claude: Design guidelines](https://claude.com/docs/connectors/building/mcp-apps/design-guidelines.md).
+
+### 13.3 Welche Clients es heute können
+
+| Client | MCP Apps | Auth | Bestätigung von UI-Tool-Aufrufen |
+|---|---|---|---|
+| claude.ai (Web), Claude Desktop | ja; Seitenleiste/Vollbild je nach Organisation | Custom Connector per URL; ohne Auth möglich (unser Staging-Connector läuft so; die Doku warnt nur, dass dann jeder die Tools aufrufen kann) | Vor dem ersten Anzeigen ggf. „Allow once / Always allow“. **`app.callServerTool` auf den eigenen Server: kein Bestätigungsdialog** (Claude-Doku). |
+| Claude iOS/Android | ja, im WKWebView/WebView; Seitenleiste u. Ä. „not on mobile yet“ | Custom Connectors am Handy: **ungeprüft** (Support-Artikel nennt nur Verzeichnis-Connectoren) | wie oben |
+| Claude Code (Terminal) | **nein**, nur Text; Modell bekommt bei vorhandenem `structuredContent` dieses JSON statt des Texts | — | — |
+| ChatGPT | ja, setzt den MCP-Apps-Standard um (seit Feb. 2026), `window.openai` nur als Zusatz | Developer Mode: OAuth, „No Authentication“ oder gemischt; Plus/Pro/Business/Enterprise, nur Web (**ungeprüft**, nur Suchauszüge) | Schreibaktionen „may“ eine Bestätigung auslösen (**ungeprüft**, ob auch für Aufrufe aus der Ansicht) |
+| VS Code (Copilot), Goose, weitere (Cursor, Postman, MCPJam …) | laut MCP-Blog bzw. Drittquellen ja, teils experimentell | je Client | **ungeprüft** |
+
+Spezifikation: Der Host „MAY … subject them to further user approval“ – jeder Client darf UI-Aufrufe bestätigen lassen.
+
+Quellen: [Claude: Get started with MCP Apps](https://claude.com/docs/connectors/building/mcp-apps/getting-started.md),
+[Claude: App tools (Approval)](https://claude.com/docs/connectors/building/mcp-apps/app-tools.md),
+[Claude Support: Interactive connectors](https://support.claude.com/en/articles/13454812-use-interactive-connectors-in-claude),
+[MCP-Blog 2026-01-26](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/),
+[OpenAI: MCP Apps in ChatGPT](https://developers.openai.com/apps-sdk/mcp-apps-in-chatgpt) und
+[OpenAI: Developer mode](https://developers.openai.com/api/docs/guides/developer-mode) (beide nicht abrufbar, nur Suchauszug).
+
+### 13.4 Sicherheit: Wie kommt der Sitz in die Ansicht?
+
+- **Ohne zusätzlichen Kanal:** Öffnet das Modell die Ansicht mit einem Tool, das `team_id` + `uid` (bzw. `api_key`)
+  als Argumente trägt, bekommt die Ansicht genau diese Argumente per `ui/notifications/tool-input`. Bei
+  `join_team`/`create_team` steht die neue UID ohnehin im Ergebnis. Die Ansicht sieht also **nichts, was nicht schon im
+  Chatverlauf steht** (Argumente und Ergebnisse liegen dort; die Spezifikation empfiehlt `_meta` des Ergebnisses für
+  „nicht für das Modell“ – das hilft uns nicht, weil das Modell die UID für seine eigenen Aufrufe ohnehin kennt).
+- **Wer sieht was:** Die Tool-Aufrufe der Ansicht gehen über das Backend des Anbieters zu uns (bei Claude aus
+  Anthropic-IP-Bereichen, nicht vom Gerät). Ob sie im Verlauf oder für das Modell sichtbar werden, ist nicht
+  dokumentiert (**offen**); was das Modell erfahren soll, schicken wir bewusst per `ui/update-model-context`
+  (ohne UID).
+- **Risiken:**
+  1. **XSS in der Ansicht:** Namen, Notiz, Item-Texte sind fremde Eingaben. Wie im Web nur `textContent`, kein
+     `innerHTML`; dazu CSP ohne `connectDomains` → selbst ein Fehler könnte nichts nach außen schicken außer über die
+     Host-Brücke (und dort nur an unsere Tools).
+  2. **Mehrere lebende Kopien** (jede `show_board`-Antwort ist ein eigenes iframe): jede würde eine eigene
+     Warteschleife fahren. Gegenmittel: das von Anthropic beschriebene „Supersession“-Muster (Server gibt `seq`/Zeit
+     mit, `BroadcastChannel` innerhalb derselben Sandbox-Herkunft, ältere Kopie schaltet sich grau und stoppt).
+  3. **Kein `localStorage` für die UID:** Die Herkunft ist ohne `ui.domain` pro Gespräch+Connector; mit festem
+     `ui.domain` teilen sich alle Gespräche einen Speicher. Wir brauchen weder `ui.domain` noch Speicher.
+  4. **Sitz bleibt „anwesend“,** solange irgendeine Kopie offen ist und wartet (wie ein offener Browser-Tab) – gewollt.
+  5. **Origin-Prüfung `/mcp`** (Abschnitt 9) bleibt gültig: Aufrufe kommen vom Backend des Hosts, nicht aus dem
+     iframe. Sollte ein Host sie doch aus dem Browser mit `Origin: …claudemcpcontent.com` schicken, würden sie mit 403
+     scheitern (**prüfen**).
+  6. **`api_key`** würde genauso in die Ansicht gelangen; akzeptiert wie im Chat (Entscheidung 3).
+
+### 13.5 Vorschlag für uns (Minimal-Design)
+
+**Server (Ben, PR „Apps-1“):**
+
+- Neue Ressource **`ui://agile-poker/board`** (eine einzige), `text/html;profile=mcp-app`, statisches HTML aus einer
+  Datei (z. B. `api/v1/mcp_app/board.html`, beim Ausliefern unverändert), `_meta.ui`: `prefersBorder: true`, **kein**
+  `csp` (Standard reicht: alles inline, keine Netzwerkzugriffe), kein `domain`. `initialize` meldet
+  `capabilities.resources: {}`; `resources/list` liefert die eine Ressource, `resources/read` sie selbst,
+  `resources/templates/list` leer.
+- **`_meta.ui.resourceUri` nur an einem neuen Tool `show_board`** (Sitz-Identität, nur lesend, Ergebnis = Board wie
+  `get_board` plus `seq`/`created_at` für die Supersession). Begründung: Hätten `get_board` oder gar `wait_for_change`
+  das `_meta`, entstünde bei jedem Aufruf des Modells ein neues iframe. `join_team`/`create_team` bekommen es
+  **nicht** (sonst Board auch dort, wo der Nutzer es nicht will; Modell soll nach dem Beitritt einmal `show_board`
+  aufrufen, Hinweis in `instructions`). Für Clients ohne Apps liefert `show_board` dieselbe kompakte Textansicht wie
+  `get_board`.
+- Die Ansicht ruft vorhandene Tools: `get_board` (Start/Neuladen), `wait_for_change` (Schleife), `play_card` (Klick).
+  Keine neuen App-only-Tools nötig. Keine Änderung an poker-msg: Die Wartenden der Ansichten sind ganz normale
+  `wait_for_change`-Aufrufe über X-Accel-Redirect (Abschnitt 8).
+
+**Ansicht (Fred, Gestaltung Delia, PR „Apps-2“):**
+
+- Eine HTML-Datei, **alles inline**: eigene schlanke Brücke (~60 Zeilen, ohne SDK und ohne CDN; das SDK-Bundle wäre
+  zusätzlicher Code von außen) oder – falls Fred lieber will – `app-with-deps.js` der festen Version eingebettet.
+- Ablauf: `ui/initialize` → Theme/Variablen übernehmen → Sitz aus `tool-input`, Board aus `tool-result` zeichnen →
+  Schleife `wait_for_change(since=version)`; bei `busy` `retry_after` warten; bei Fehler/Netz kurze Pause, dann
+  `get_board`. Klick auf eigene Karte → `play_card`, danach Ergebnis zeichnen (Version übernehmen). Nach Änderungen
+  `ui/update-model-context` mit einer Zeile Text („You played 5. Waiting for Ben, Cleo.“ / „Revealed: …“), damit das
+  Modell auf Nachfrage Bescheid weiß, ohne selbst zu warten.
+- Inhalt: Teamname, aktives Item, Spielerliste mit „hat gelegt“ bzw. Karte nach dem Aufdecken, Verteilung, eigene
+  Hand (Karten des Sets, große Tap-Flächen ≥ 44 px). Kein Timer-Ticken, keine Einstellungen, keine Reaktionen in
+  Schritt 1 (geht alles im Chat). Inline kompakt; Knopf „Vollbild“ (`ui/request-display-mode`), wo der Host es
+  anbietet – dort die größere Board-Ansicht.
+- **Theme:** `hostContext.theme` setzt `light`/`dark`; Farben aus unseren Tokens, Hintergründe/Text wo sinnvoll aus den
+  Host-Variablen (`--color-background-primary` usw.), damit es im Chat nicht wie ein Fremdkörper wirkt. Schrift: unser
+  `--font` ist ohnehin ein System-Monospace-Stapel, also keine Webfonts nötig.
+- **Wiederverwendung CSS/Symbole:** `style/style.css` (242 KB) ist zu groß und zu board-spezifisch → eigenes kleines
+  Stylesheet (Ziel < 15 KB) mit denselben Tokens plus `style/cards.css` (11 KB). Die Kartensymbole: `src/cards.svg`
+  (161 KB, 60 Symbole, gzip 29 KB) **inline** in die Ressource (externes `<use href>` geht cross-origin nicht, und
+  `resourceDomains` würde nur Bilder, nicht Symbole liefern). Gesamt etwa 200 KB unkomprimiert – keine dokumentierte
+  Grenze, aber zu prüfen; Alternative: Sprite als zweite Ressource `ui://agile-poker/cards.svg` per `resources/read`
+  aus der Ansicht nachladen. Beim Ausliefern Versionsnummer in der Ressource, damit Host-Caches sauber wechseln
+  (Hosts „MAY prefetch and cache“).
+- **Supersession:** wie 13.4 Punkt 2; ältere Kopien zeigen „Superseded – see the newest board below“ und stoppen
+  die Schleife.
+
+**Ohne Apps (Fallback):** unverändert – `show_board` antwortet wie `get_board` mit Text + `structuredContent`; das
+Modell bleibt wie bisher mit `wait_for_change` am Tisch.
+
+**Tests (Tessa):** Server-Teil wie bisher per Playwright `request` (`resources/read`, `_meta` im `tools/list`). Die
+Ansicht in einer kleinen Test-Hostseite (iframe + `postMessage`-Stub, der `tools/call` an `/mcp` weiterreicht) –
+deckt Zeichnen, Warte-Schleife und Karte legen ab, ohne echten KI-Client. Zusätzlich einmal manuell in claude.ai
+(Staging-Connector) und, wenn möglich, ChatGPT.
+
+**Aufwand (grob):** Apps-1 Server 0,5–1 Tag; Apps-2 Ansicht 2–3 Tage (Fred + Delia); Tests 1 Tag; manueller Test in
+Clients 0,5 Tag. Zusammen etwa **4–5 Personentage**, in zwei einzeln deploybaren PRs (Apps-1 ist ohne Apps-2 harmlos,
+wenn `show_board` erst mit Apps-2 das `_meta` bekommt).
+
+### 13.6 Risiken und Unbekanntes
+
+- **Halten die Hosts Dauer-Schleifen aus?** Nicht dokumentiert, ob Claude/ChatGPT Tool-Aufrufe aus Ansichten drosseln,
+  Laufzeiten begrenzen oder lange Aufrufe (25 s) abbrechen. Erstes Ziel des Prototyps. Plan B: kürzeres `timeout`
+  (z. B. 10 s); Plan C: WebSocket der Ansicht direkt an poker-msg (`connectDomains: ["wss://poker.komplexitaeter.de"]`,
+  `subscribe:<team>` wie das Web-Board, bei `pull` dann `get_board`) – braucht Herkunftsprüfung in poker-msg und gilt
+  nicht bei Hosts, die `connectDomains` nicht erlauben.
+- **Sichtbarkeit der UI-Aufrufe** im Verlauf/für das Modell und ob Nutzer pro Tool „Needs approval“ einstellen können,
+  das dann auch Klicks in der Ansicht bestätigen lässt (Claude-Doku sagt nur: kein Dialog für `callServerTool`).
+- **Modell und Ansicht warten doppelt:** Das Modell weiß nicht, ob die Ansicht angezeigt wird, und ruft womöglich
+  weiter `wait_for_change`. Doppelte Anwesenheit ist harmlos, kostet aber Aufrufe; Text in `show_board`:
+  „If the user sees the live board, you do not need to call wait_for_change.“ (Wirksamkeit offen.)
+- **Mobile:** Custom Connectors auf dem Handy und Höhen-Kappung inline – ungeprüft.
+- **ChatGPT-Details** (Plan, Auth ohne OAuth, Bestätigungen, CSP-Abweichungen) nur aus Suchauszügen.
+- **Größe der Ressource** (~200 KB mit Sprite) – keine Grenze gefunden, muss im Test passen.
+- **Spezifikation bewegt sich:** stabile Fassung 2026-01-26, Entwurf mit Änderungen; das veraltete flache `_meta`
+  verschwindet „before GA“. Wir liefern nur `_meta.ui.resourceUri` (plus ggf. den alten Schlüssel, solange Hosts ihn
+  brauchen – prüfen).
+
+### 13.7 Offene Fragen an Andreas
+
+1. **Umfang Schritt 1:** nur Board ansehen + eigene Karte legen (Vorschlag), oder auch Neue Runde/Nächstes Item als
+   Knöpfe? (Design-Richtlinie: inline höchstens 2 Aktionen.)
+2. **Neues Tool `show_board`** statt `_meta` an `get_board`/`join_team` – einverstanden?
+3. **Wer probiert zuerst?** Vorschlag: kleiner Prototyp (Apps-1 + nackte Ansicht ohne Gestaltung) auf Staging, um 13.6
+   Punkt 1 (Dauer-Schleife im Host) in claude.ai und ChatGPT zu prüfen, bevor Delia gestaltet.
+4. **ChatGPT-Test:** Hat jemand im Team einen Plan mit Developer Mode, um den Staging-Connector dort einzurichten?
+5. **Netzwerkzugriff für Recherche:** modelcontextprotocol.io, developers.openai.com und help.openai.com waren aus
+   der Agenten-Umgebung gesperrt; für eine Nachprüfung der ChatGPT-Angaben bitte freischalten oder selbst prüfen.
