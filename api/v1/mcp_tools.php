@@ -93,9 +93,9 @@ return [
                 . 'Returns at the latest after about 25 seconds with changed=false. While you keep calling it, you '
                 . 'count as present at the table (like an open browser tab); stop calling it when the user is done. '
                 . 'Pass the version from your last result (any tool) as since. Typical loop: call, show the user the '
-                . 'table block of the text as a code block (at most one extra line, e.g. what changed), call again '
-                . 'with the new version. The full list of changes is in changes. If the result says busy, wait '
-                . 'retry_after seconds and call again.',
+                . 'table block of the text as a code block with at most one short line of your own (no narration), '
+                . 'call again with the new version. Not needed while a live board (show_board) is shown. The full '
+                . 'list of changes is in changes. If the result says busy, wait retry_after seconds and call again.',
             'identity' => 'seat',
             'params' => [
                 'since' => ['type' => 'string', 'required' => true, 'min_length' => 1, 'max_length' => MCP_VERSION_MAX,
@@ -111,12 +111,18 @@ return [
         // B-151 MCP Apps (concept 13): opens the live board view (ui://agile-poker/board), see lib_mcp_app.php
         'show_board' => [
             'description' => 'Show a live board the user can watch and play on in the chat (if the client supports '
-                . 'apps); otherwise like get_board. Call it once after the user wants to be kept posted: the live board '
-                . 'keeps itself up to date (who played, the reveal) and the user can click a card to play it, so you do '
-                . 'not need to call wait_for_change yourself. If you only get text back and no board appears, follow '
-                . 'the table with wait_for_change instead. Do not call it again for every change.',
+                . 'apps); otherwise like get_board. The live board keeps itself up to date and the user can click a '
+                . 'card, so you need no wait_for_change loop. Keep it at the BOTTOM of the conversation: call it again '
+                . 'at the end of a reply whenever something changed at the table or the user did something (older '
+                . 'boards stop by themselves) - never more than once per reply. Next to a live board write at most one '
+                . 'short line, or nothing: the board shows the change. open=next_item opens the board\'s dialog to '
+                . 'leave the active item (close with a value, without value, or later) - use it instead of asking in '
+                . 'text. If you only get text back and no board appears, follow the table with wait_for_change instead.',
             'identity' => 'seat',
-            'params' => [],
+            'params' => [
+                'open' => ['type' => 'string', 'enum' => ['next_item'],
+                           'description' => 'next_item: open the dialog to leave the active item in the live board.'],
+            ],
             'handler' => 'mcp_show_board',
             'annotations' => ['title' => 'Show the live board', 'readOnlyHint' => true, 'destructiveHint' => false,
                               'idempotentHint' => true, 'openWorldHint' => false],
@@ -151,7 +157,8 @@ return [
                 . 'round state (waiting for N players or revealed with distribution, range and suggested value), '
                 . 'timer, card set and settings. Cards of others stay hidden until every player has a card down - '
                 . 'exactly like on the web. Use it when the user asks "what\'s going on?"; to follow the table over time use '
-                . 'wait_for_change instead of calling this repeatedly.',
+                . 'wait_for_change (or the live board, show_board) instead of calling this repeatedly. Show the table '
+                . 'block as a code block with at most one short line of your own.',
             'text' => 'mcp_board_text',
             'annotations' => ['title' => 'Read the board', 'readOnlyHint' => true, 'destructiveHint' => false,
                               'idempotentHint' => true, 'openWorldHint' => false],
@@ -213,8 +220,10 @@ return [
                 . 'reopen (put a done item back at the end of the open list; rounds and votes stay), '
                 . 'delete (remove an item for good - ask the user first, it cannot be undone). '
                 . 'Results are what the web export shows: agreed value, votes ("5 ×2, 8 ×3"), rounds, dates. Before '
-                . 'next with close, tell the user which value will be stored and let them confirm or pick another. '
-                . 'Everybody at the table sees changes at once.',
+                . 'next: if a live board is shown, call show_board with open=next_item (its dialog asks) instead of '
+                . 'asking in text; otherwise ask in ONE short line, e.g. "Close TIX-7 with 5? (or another card / no '
+                . 'value)". Only suggest values that were played or exist in the card set; mention consequences only '
+                . 'if the user asks. Everybody at the table sees changes at once.',
             'params' => [
                 'key' => 'Item key, e.g. "TIX-004". Required for get, edit, move, set_result, reopen, delete; add: '
                     . 'optional (suggested if missing); next: the key of the active item as you see it (recommended).',

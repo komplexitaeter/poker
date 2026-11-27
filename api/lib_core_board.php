@@ -54,8 +54,11 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         // through it; the own one stays (the agent finds its own row by it)
         $mkey = ($anonymous_revealed && $player->mkey !== (string)$dao['mkey']) ? null : $player->mkey;
         $entry = ['name' => $player->name, 'mkey' => $mkey, 'played' => $played, 'card' => $text($card),
-                  'away' => (bool)$player->away];
-        if ($player->original_card_key !== null) $entry['card_before_change'] = $text($player->original_card_key);
+                  'away' => (bool)$player->away, 'card_key' => $card];
+        if ($player->original_card_key !== null) {
+            $entry['card_before_change'] = $text($player->original_card_key);
+            $entry['card_before_change_key'] = (string)$player->original_card_key;
+        }
         $out_players[] = $entry;
     }
 
@@ -66,14 +69,27 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
                                                          ($topics['round_counts'] ?? false) ? $active : null,
                                                          (int)$dao['show_avg'] === 1) : null];
 
-    $card_out = function (string $key) use ($text, $catalog, $dao): array {
-        return ['key' => $key, 'value' => $text($key), 'heading' => board_card_heading($key, $catalog, $dao)];
+    // B-151 rich view: the face of a card as the web draws it (script/deck.js, cards.js), keyed by card_key
+    $faces = board_card_faces($catalog, $dao);
+    $card_out = function (string $key) use ($text, $catalog, $dao, $faces): array {
+        return ['key' => $key, 'value' => $text($key), 'heading' => board_card_heading($key, $catalog, $dao)]
+            + ($faces[$key] ?? board_unknown_face($key, $text($key)));
     };
+    // cards visible on the table that are in no deck list (other set, deleted custom card, "joined in")
+    $in_deck = array_flip(array_merge($deck['cards'] ?? [], $deck['controls'] ?? []));
+    $visible = array_merge(array_column($out_players, 'card_key'), array_column($out_players, 'card_before_change_key'),
+                           [$dao['selected_card_key']], array_column($round['result']['distribution'] ?? [], 'card_key'));
+    $other = [];
+    foreach ($visible as $key) {
+        if (is_string($key) && $key !== '' && !isset($in_deck[$key]) && !isset($other[$key])) $other[$key] = $card_out($key);
+    }
 
     $board = [
         'team' => ['id' => $t, 'name' => (string)$dao['team_name'], 'invite_link' => public_board_url($t)],
         'you' => ['name' => (string)$dao['name'], 'role' => api_member_role((string)$dao['player_type']),
-                  'mkey' => (string)$dao['mkey'], 'card' => $text($dao['selected_card_key'])],
+                  'mkey' => (string)$dao['mkey'], 'card' => $text($dao['selected_card_key']),
+                  'card_key' => is_string($dao['selected_card_key']) && $dao['selected_card_key'] !== ''
+                      ? $dao['selected_card_key'] : null],
         'note' => (string)$dao['topic'],
         'round' => $round,
         'players' => $out_players,
@@ -98,6 +114,8 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
             'aim' => $deck['aim'] ?? 'agree',
             'cards' => array_map($card_out, $deck['cards']),
             'controls' => array_map($card_out, $deck['controls']),
+            'style' => board_deck_style($deck, $catalog, $dao['custom_sets']),
+            'other_cards' => array_values($other),
         ],
         'settings' => [
             'anonymous' => (int)$dao['anonymous_mode'] === 1,
@@ -177,4 +195,117 @@ function board_card_heading(string $key, array $catalog, array $dao): ?string
         if ($card['card_key'] === $key) return is_string($card['heading'] ?? null) && $card['heading'] !== '' ? $card['heading'] : null;
     }
     return null;
+}
+
+/* ---------- B-151 rich view: card faces like the web (script/deck.js cardFromCatalog/cardFromCustom, cards.js) ---------- */
+
+const BOARD_CARD_STYLES = ['plain', 'badge', 'banner', 'inverted'];
+/* cards.js CARD_VALUE_LOOK: symbol and colour of a value text that is not a plain number */
+const BOARD_VALUE_LOOK = [
+    '½' => ['s-half', 'vh'], '∞' => ['s-inf', 'vinf'],
+    '☕' => ['s-coffee', 'vbrk'], '?' => ['s-question', 'vq'], '!' => ['s-exclam', 'vx'], '✋' => ['s-hand', 'vveto'],
+    '🟢' => ['s-light-green', 'agreen'], '🟡' => ['s-light-yellow', 'ayellow'], '🔴' => ['s-light-red', 'ared'],
+    '🙂' => ['s-face-satisfied', 'esatis'], '😒' => ['s-face-annoyed', 'eannoy'], '😢' => ['s-face-sad', 'esad'],
+    '😐' => ['s-face-uninterested', 'eunint'], '😡' => ['s-face-angry', 'eangry'], '🤩' => ['s-face-enthusiastic', 'eenthu'],
+];
+/* status card of a player who joined after the reveal (cards.js STATUS_CARDS late001) */
+const BOARD_LATE_FACE = ['text' => BOARD_LATE_CARD_TEXT, 'description' => null, 'symbol' => 's-late', 'color' => 'grey',
+                         'numeric_value' => null, 'has_value' => false, 'infinite' => false, 'range' => false,
+                         'style' => 'plain', 'control' => false];
+
+/* the ids of the symbols in src/cards.svg (a symbol the sprite does not have is drawn as text, like cardLook()) */
+function board_symbol_ids(): array
+{
+    static $ids = null;
+    if ($ids === null) {
+        $svg = @file_get_contents(__DIR__ . '/../src/cards.svg');
+        preg_match_all('/<symbol id="([a-z0-9-]+)"/', is_string($svg) ? $svg : '', $m);
+        $ids = array_flip($m[1]);
+    }
+    return $ids;
+}
+
+/* one face: the fields the web uses to draw a card */
+function board_face(array $entry, ?array $group, string $style, bool $control, bool $custom): array
+{
+    $str = fn($v): ?string => is_string($v) && $v !== '' ? $v : null;
+    $text = $str($entry['value'] ?? null) ?? (string)$entry['card_key'];
+    $value = is_int($entry['numeric_value'] ?? null) || is_float($entry['numeric_value'] ?? null)
+        ? $entry['numeric_value'] : null;
+    $infinite = ($entry['infinite'] ?? false) === true || (!$custom && $text === '∞');
+    if ($custom) $range = $value !== null || $infinite;
+    else $range = ($value !== null || $infinite) && (is_bool($entry['range'] ?? null) ? $entry['range']
+        : !($group !== null && ($group['range'] ?? true) === false));
+
+    // cardLook(): catalog values win, else derived from the text; a custom text card has no symbol
+    $guess = BOARD_VALUE_LOOK[$text] ?? null;
+    if ($guess === null) {
+        if (preg_match('/^\d{1,3}$/', $text)) $guess = ['s-' . $text, 'v' . $text];
+        elseif (preg_match('/^([0-5])★$/u', $text, $m)) $guess = ['s-stars-' . $m[1], 'star'];
+        elseif (preg_match('/^(XXS|XS|S|M|L|XL|XXL)$/', $text)) $guess = ['s-' . strtolower($text), 't' . $text];
+        else $guess = [null, null];
+    }
+    $symbol = $custom ? $str($entry['symbol'] ?? null) : ($str($entry['symbol'] ?? null) ?? $guess[0]);
+    $color = $str($entry['color'] ?? null);
+    if ($color === null) {
+        $gid = $group['id'] ?? '';
+        if ($gid === 'judge' && preg_match('/^[0-6]$/', $text)) $color = 'j' . $text;
+        elseif ($gid === 'delegation' && preg_match('/^[1-7]$/', $text)) $color = 'g' . $text;
+        else $color = $guess[1];
+    }
+    return [
+        'text' => $text,
+        'description' => $str($entry['description'] ?? null),
+        'symbol' => $symbol !== null && isset(board_symbol_ids()[$symbol]) ? $symbol : null,
+        'color' => $color !== null && preg_match('/^[A-Za-z0-9]{1,16}$/', $color) ? $color : null,
+        'numeric_value' => $value,
+        'has_value' => $value !== null && !$control,
+        'infinite' => $infinite,
+        'range' => $range,
+        'style' => $control || !in_array($style, BOARD_CARD_STYLES, true) ? 'plain' : $style,
+        'control' => $control,
+    ];
+}
+
+/* faces of every card the board may show: control cards, catalog cards, the team's custom cards (also played ones) */
+function board_card_faces(array $catalog, array $dao): array
+{
+    $faces = [LATE_CARD_KEY => BOARD_LATE_FACE];
+    foreach ($catalog['controls'] as $entry) $faces[$entry['card_key']] = board_face($entry, null, 'plain', true, false);
+    foreach ($catalog['groups'] as $group) {
+        foreach ($group['cards'] as $entry) {
+            if (!isset($faces[$entry['card_key']])) {
+                $faces[$entry['card_key']] = board_face($entry, $group, (string)($group['style'] ?? 'plain'), false, false);
+            }
+        }
+    }
+    $styles = [];
+    foreach ($dao['custom_sets'] as $set) {
+        $styles[(int)$set['set_id']] = (string)$set['style'];
+        foreach ($set['cards'] as $entry) $faces[$entry['card_key']] = board_face($entry, null, (string)$set['style'], false, true);
+    }
+    foreach ($dao['custom_cards_played'] ?? [] as $entry) {
+        if (!isset($faces[$entry['card_key']])) {
+            $faces[$entry['card_key']] = board_face($entry, null, $styles[(int)$entry['set_id']] ?? 'plain', false, true);
+        }
+    }
+    return $faces;
+}
+
+/* a key no list knows (e.g. after a catalog change): its text, no symbol */
+function board_unknown_face(string $key, ?string $text): array
+{
+    return board_face(['card_key' => $key, 'value' => $text], null, 'plain', false, true);
+}
+
+/* the style of the deck: catalog group style or the custom set's style */
+function board_deck_style(array $deck, array $catalog, array $custom_sets): string
+{
+    $style = 'plain';
+    if (isset($deck['set_id'])) {
+        foreach ($custom_sets as $set) if ((int)$set['set_id'] === (int)$deck['set_id']) $style = (string)$set['style'];
+    } else {
+        foreach ($catalog['groups'] as $group) if ($group['id'] === ($deck['group'] ?? null)) $style = (string)($group['style'] ?? 'plain');
+    }
+    return in_array($style, BOARD_CARD_STYLES, true) ? $style : 'plain';
 }
