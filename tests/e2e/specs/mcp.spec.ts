@@ -127,7 +127,7 @@ test('create_team: a new board with the user\'s seat, card set, the browser sees
 
   // the seat works with team_id + uid; the board in the browser shows Anna
   const read = await ok(request, 'get_board', { team_id: data.team.id, uid: data.you.uid });
-  expect(read.data.you).toEqual({ name: 'Anna', role: 'player', mkey: data.you.mkey, card: null });
+  expect(read.data.you).toEqual({ name: 'Anna', role: 'player', mkey: data.you.mkey, card: null, card_key: null });
   const page = await newPlayer(browser);
   await joinAsPlayer(page, data.team.invite_link, 'Cleo');
   await expectTableCard(page, 'Anna', 'prgrss1');

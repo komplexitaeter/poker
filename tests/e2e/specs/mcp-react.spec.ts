@@ -78,7 +78,10 @@ test('react: thrown at a person, the browser receives it; used up today; errors'
 
   // the nudge is anonymous (from 0, like the board) and has no daily limit
   await alice.waitForTimeout(1100); // clear of the rate limit of the second
-  expect((await ok(request, 'react', { ...seat, to: 'Alice', emoji: 'nudge' })).data.sent).toBe(true);
+  const nudged = await ok(request, 'react', { ...seat, to: 'Alice', emoji: 'nudge' });
+  expect(nudged.data.sent).toBe(true);
+  expect(nudged.data.left_today).toBeUndefined(); // thrown as 0: poker-msg's used is not the user's
+  expect(nudged.text).not.toContain('Left today');
   await expect.poll(received).toContain(`react:0:${aliceMkey}:nudge`);
 
   await fails(request, 'react', { ...seat, to: 'Nobody', emoji: 'cake' }, 'player_not_found', 'to');

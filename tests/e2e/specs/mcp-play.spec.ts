@@ -165,7 +165,7 @@ test('round remove_player and the role rules of play_card; me rename, set_role, 
   // rename (role stays), back as player, leave
   await fails(request, 'me', { ...seat, action: 'rename', name: 'A'.repeat(16) }, 'invalid_param', 'name');
   const renamed = await ok(request, 'me', { ...seat, action: 'rename', name: 'Annie' });
-  expect(renamed.data.you).toEqual({ name: 'Annie', role: 'observer', mkey, card: null });
+  expect(renamed.data.you).toEqual({ name: 'Annie', role: 'observer', mkey, card: null, card_key: null });
   await ok(request, 'me', { ...seat, action: 'set_role', role: 'player' });
   await expectTableCard(alice, 'Annie', 'prgrss1');
   const left = await ok(request, 'me', { ...seat, action: 'leave' });
