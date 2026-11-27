@@ -11,7 +11,8 @@ import { addPlayersViaApi, asUser, expectTableCard, joinAsPlayer, newPlayer, pic
  */
 
 const MCP = '/mcp';
-const URI = 'ui://agile-poker/board';
+const URI = 'ui://agile-poker/board'; // base; hosts get it with a content version
+const URI_RE = /^ui:\/\/agile-poker\/board-[0-9a-f]{8}$/;
 const SYMBOLS = 'ui://agile-poker/symbols';
 const HOST = '/_e2e/mcp-host';
 const SHOTS = process.env.MCP_APP_SHOTS;
@@ -48,12 +49,17 @@ test('resources/list and resources/read deliver the view; show_board carries _me
   expect(init.result.instructions).toContain('call show_board once');
 
   const list = await rpc(request, 'resources/list');
-  expect(list.result.resources).toEqual([expect.objectContaining({ uri: URI, mimeType: 'text/html;profile=mcp-app' }),
+  expect(list.result.resources).toEqual([expect.objectContaining({ uri: expect.stringMatching(URI_RE), mimeType: 'text/html;profile=mcp-app' }),
     expect.objectContaining({ uri: SYMBOLS, mimeType: 'image/svg+xml' })]);
   expect((await rpc(request, 'resources/templates/list')).result.resourceTemplates).toEqual([]);
-  const read = await rpc(request, 'resources/read', { uri: URI });
+  const versioned = list.result.resources[0].uri as string;
+  const read = await rpc(request, 'resources/read', { uri: versioned });
   const content = read.result.contents[0];
-  expect(content).toMatchObject({ uri: URI, mimeType: 'text/html;profile=mcp-app', _meta: { ui: { prefersBorder: true } } });
+  // the bare URI and an older version (an old chat) get the current view too
+  for (const old of [URI, URI + '-00000000']) {
+    expect((await rpc(request, 'resources/read', { uri: old })).result.contents[0].text).toBe(content.text);
+  }
+  expect(content).toMatchObject({ uri: versioned, mimeType: 'text/html;profile=mcp-app', _meta: { ui: { prefersBorder: true } } });
   expect(content.text).toMatch(/^<!DOCTYPE html>/);
   expect(content.text).toContain('ui/initialize');
   expect(content.text).not.toMatch(/<script[^>]+src=|<link[^>]+href=|https?:\/\/(?!www\.w3\.org)/); // all inline
@@ -62,7 +68,7 @@ test('resources/list and resources/read deliver the view; show_board carries _me
 
   const tools = (await rpc(request, 'tools/list')).result.tools as any[];
   const show = tools.find(t => t.name === 'show_board');
-  expect(show._meta).toEqual({ ui: { resourceUri: URI }, 'ui/resourceUri': URI });
+  expect(show._meta).toEqual({ ui: { resourceUri: versioned }, 'ui/resourceUri': versioned });
   expect(show.annotations.readOnlyHint).toBe(true);
   expect(show.description).toContain('Show a live board the user can watch and play on in the chat');
   expect(Object.keys(show.inputSchema.properties)).toEqual(['team_id', 'uid', 'api_key', 'open']);

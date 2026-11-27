@@ -8,7 +8,7 @@
  * Requires lib_mcp.php. Defines functions only, a direct call does nothing.
  */
 
-const MCP_APP_URI = 'ui://agile-poker/board';
+const MCP_APP_URI = 'ui://agile-poker/board'; // base; hosts get it with a content version (mcp_app_uri())
 const MCP_APP_MIME = 'text/html;profile=mcp-app';
 const MCP_APP_FILE = __DIR__ . '/mcp_app/board.html';
 /* the whole card symbol sprite as a resource (the view reads it when a later deck needs symbols show_board did not send) */
@@ -23,16 +23,28 @@ const MCP_SYMBOLS_INLINE_MAX = 61440;
 /* JSON-RPC error of resources/read for an unknown URI (MCP specification: resource not found) */
 const MCP_RESOURCE_NOT_FOUND = -32002;
 
+/* the URI of the view with a short hash of its file: hosts may cache a UI resource by its URI, so a new view after a
+   deploy needs a new URI (ui://agile-poker/board-<8 hex>) */
+function mcp_app_uri(): string
+{
+    static $uri = null;
+    if ($uri === null) {
+        $hash = @sha1_file(MCP_APP_FILE);
+        $uri = MCP_APP_URI . '-' . substr(is_string($hash) ? $hash : '0', 0, 8);
+    }
+    return $uri;
+}
+
 /* the _meta of a tool that opens the view: current key and (deprecated, still read by some hosts) the flat one */
 function mcp_app_tool_meta(): array
 {
-    return ['ui' => ['resourceUri' => MCP_APP_URI], 'ui/resourceUri' => MCP_APP_URI];
+    return ['ui' => ['resourceUri' => mcp_app_uri()], 'ui/resourceUri' => mcp_app_uri()];
 }
 
 /* entry of resources/list */
 function mcp_app_resource(): array
 {
-    return ['uri' => MCP_APP_URI, 'name' => 'board', 'title' => 'Agile Poker live board',
+    return ['uri' => mcp_app_uri(), 'name' => 'board', 'title' => 'Agile Poker live board',
             'description' => 'Live board in the chat: who has played, the revealed result and your own cards to play.',
             'mimeType' => MCP_APP_MIME];
 }
@@ -87,10 +99,11 @@ function mcp_app_read(string $uri): ?array
         if (!is_string($svg)) throw new RuntimeException('src/cards.svg not readable');
         return ['contents' => [['uri' => MCP_SYMBOLS_URI, 'mimeType' => MCP_SYMBOLS_MIME, 'text' => $svg]]];
     }
-    if ($uri !== MCP_APP_URI) return null;
+    // the current versioned URI, the bare one and any older version (an old chat) all get the current view
+    if ($uri !== MCP_APP_URI && preg_match('~^' . preg_quote(MCP_APP_URI, '~') . '-[0-9a-f]{8}$~D', $uri) !== 1) return null;
     $html = file_get_contents(MCP_APP_FILE);
     if (!is_string($html)) throw new RuntimeException('mcp_app/board.html not readable');
-    return ['contents' => [['uri' => MCP_APP_URI, 'mimeType' => MCP_APP_MIME, 'text' => $html,
+    return ['contents' => [['uri' => $uri, 'mimeType' => MCP_APP_MIME, 'text' => $html,
                             '_meta' => ['ui' => ['prefersBorder' => true]]]]];
 }
 
