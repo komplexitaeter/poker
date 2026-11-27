@@ -133,8 +133,9 @@ return [
             'description' => 'Throw a reaction emoji at someone at the table (or nudge them), like the smiley next to '
                 . 'their card on the web. Same limits as the web: each emoji at most once per day (UTC) and person in '
                 . 'this team (the fish too), and not more than 3 per second / 10 per minute. The result says sent or '
-                . 'why not (used_today, too_fast) and left_today per emoji; if an emoji is used up, tell the user it is '
-                . 'back tomorrow - do not retry it. A nudge is anonymous, has no daily limit and makes the other '
+                . 'why not (used_today, too_fast) and left_today per emoji (not for a nudge). Answer in ONE line, e.g. '
+                . '"🐟 landed at Bea." or "Fish used today - back tomorrow."; do not list the other emojis or retry. '
+                . 'With a live board, call show_board at the end of the reply. A nudge is anonymous, has no daily limit and makes the other '
                 . 'person\'s board ring; use it sparingly, only when the user asks.',
             'identity' => 'seat',
             'params' => [

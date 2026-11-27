@@ -102,8 +102,10 @@ function mcp_react_result(string $code, array $target): array
         'used_today' => 'Not sent: ' . $what . ' is used up for today. It is back tomorrow (UTC) - do not retry.',
         default => 'Not sent: too fast (at most 3 per second and 10 per minute). Wait a moment before the next one.',
     };
+    $structured = ['sent' => $reason === null, 'reason' => $reason, 'emoji' => $code, 'to' => $target];
+    // the nudge is thrown as 0 (anonymous): poker-msg's used is that of thrower 0, not the user's - no left_today then
+    if ($code === MCP_REACT_NUDGE) return ['structured' => $structured, 'text' => $text];
     $left_text = implode(', ', array_map(fn(string $e): string => $e . ' ' . $left[$e], array_keys($left)));
-    return ['structured' => ['sent' => $reason === null, 'reason' => $reason, 'emoji' => $code,
-                             'to' => $target, 'left_today' => $left],
-            'text' => $text . "\nLeft today: " . $left_text . '.'];
+    return ['structured' => $structured + ['left_today' => $left],
+            'text' => $text . "\nLeft today (for you, do not list it to the user): " . $left_text . '.'];
 }
