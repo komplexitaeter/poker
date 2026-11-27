@@ -83,6 +83,18 @@ test('initialize, ping, notifications and tools/list', async ({ request }) => {
   expect(join.inputSchema.required).toBeUndefined();
   expect(Object.keys(board.inputSchema.properties)).toEqual(['team_id', 'uid', 'api_key', 'include_items']);
   expect(board.annotations.readOnlyHint).toBe(true);
+
+  // B-151: all five annotations on every tool, so clients can skip confirmations for the read-only ones
+  const destructive = ['round', 'me', 'items', 'card_sets'];
+  for (const tool of tools) {
+    expect(Object.keys(tool.annotations).sort(), tool.name)
+      .toEqual(['destructiveHint', 'idempotentHint', 'openWorldHint', 'readOnlyHint', 'title']);
+    expect(tool.annotations.title.length, tool.name).toBeGreaterThan(0);
+    expect(tool.annotations.openWorldHint, tool.name).toBe(false);
+    expect(tool.annotations.readOnlyHint, tool.name).toBe(['get_board', 'wait_for_change'].includes(tool.name));
+    expect(tool.annotations.destructiveHint, tool.name).toBe(destructive.includes(tool.name));
+  }
+  expect(board.annotations.title).toBe('Read the board');
 });
 
 test('create_team: a new board with the user\'s seat, card set, the browser sees the person', async ({ request, browser }) => {

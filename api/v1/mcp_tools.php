@@ -12,12 +12,14 @@
  *                  pattern, enum, default, description); 'required' is shown in the schema
  *   handler        mcp_<tool>(mysqli $link, array $params, ?string $key): array ['structured' => ..., 'text' => ...];
  *                  with identity seat the third parameter is the actor (array)
- *   annotations    MCP tool annotations
+ *   annotations    MCP tool annotations, all five (B-151): title, readOnlyHint, destructiveHint (true where the tool
+ *                  can delete or remove), idempotentHint, openWorldHint (always false: only this board)
  * 'routes': tool name => description and text view of a tool built from the routes with this 'mcp.tool' (tools/list
  *                  in this order)
  *   description    English, for the agent
  *   params         optional: parameter name => description for the agent (replaces those of the routes)
  *   text           function(array $structured): string, the compact text content of the result
+ *   annotations    as for 'tools'; readOnlyHint is only true if every route of the tool is a GET
  *
  * MCP is not versioned (decision 9): names, parameters and results may change at any time.
  */
@@ -129,7 +131,8 @@ return [
                 . 'exactly like on the web. Use it when the user asks "what\'s going on?"; to follow the table over time use '
                 . 'wait_for_change instead of calling this repeatedly.',
             'text' => 'mcp_board_text',
-            'annotations' => ['title' => 'Read the board'],
+            'annotations' => ['title' => 'Read the board', 'readOnlyHint' => true, 'destructiveHint' => false,
+                              'idempotentHint' => true, 'openWorldHint' => false],
         ],
         'play_card' => [
             'description' => 'Play or take back your card in the current round (players only). Ask the user which card '
@@ -139,7 +142,8 @@ return [
                 . 'cards (☕ break, ? question, ! ...) are part of the deck if the team switched them on. Cards of '
                 . 'others stay hidden until every player has played. The result shows the board afterwards.',
             'text' => 'mcp_seat_text',
-            'annotations' => ['title' => 'Play a card', 'idempotentHint' => true],
+            'annotations' => ['title' => 'Play a card', 'readOnlyHint' => false, 'destructiveHint' => false,
+                              'idempotentHint' => true, 'openWorldHint' => false],
         ],
         'round' => [
             'description' => 'Control the round for the whole team. new_round: take all cards back and start over (the '
@@ -149,7 +153,8 @@ return [
                 . '"reveal" - cards turn over by themselves when every player has played. Confirm with the user before '
                 . 'removing someone. The result shows the board afterwards.',
             'text' => 'mcp_seat_text',
-            'annotations' => ['title' => 'Control the round'],
+            'annotations' => ['title' => 'Control the round', 'readOnlyHint' => false, 'destructiveHint' => true,
+                              'idempotentHint' => false, 'openWorldHint' => false],
         ],
         'me' => [
             'description' => 'The user\'s own seat: rename (max 15 characters), set_role (player or observer; coming back '
@@ -165,7 +170,8 @@ return [
                 . 'key_id "current" (ends your access). To delete all their data, the user uses "Delete my data" in '
                 . 'the You menu of the board in the browser.',
             'text' => 'mcp_seat_text',
-            'annotations' => ['title' => 'Your own seat', 'destructiveHint' => true],
+            'annotations' => ['title' => 'Your own seat', 'readOnlyHint' => false, 'destructiveHint' => true,
+                              'idempotentHint' => false, 'openWorldHint' => false],
         ],
         // B-151 PR E (concept 5.3)
         'items' => [
@@ -205,7 +211,8 @@ return [
                 'offset' => 'list only: done items to skip.',
             ],
             'text' => 'mcp_items_text',
-            'annotations' => ['title' => 'Work with items', 'destructiveHint' => true],
+            'annotations' => ['title' => 'Work with items', 'readOnlyHint' => false, 'destructiveHint' => true,
+                              'idempotentHint' => false, 'openWorldHint' => false],
         ],
         'board_settings' => [
             'description' => 'Team-wide settings, the same as the board\'s settings menu: rename (the team), set_note (the '
@@ -224,7 +231,8 @@ return [
                 'show_card_changes' => 'set: "See changed cards".',
             ],
             'text' => 'mcp_seat_text',
-            'annotations' => ['title' => 'Team settings'],
+            'annotations' => ['title' => 'Team settings', 'readOnlyHint' => false, 'destructiveHint' => false,
+                              'idempotentHint' => false, 'openWorldHint' => false],
         ],
         // B-151 PR F2 (concept 5.3)
         'card_sets' => [
@@ -247,7 +255,8 @@ return [
                     . '("" = none).',
             ],
             'text' => 'mcp_card_sets_text',
-            'annotations' => ['title' => 'Card sets', 'destructiveHint' => true],
+            'annotations' => ['title' => 'Card sets', 'readOnlyHint' => false, 'destructiveHint' => true,
+                              'idempotentHint' => false, 'openWorldHint' => false],
         ],
         'timer' => [
             'description' => 'The team\'s timer, shared by everybody: start, pause, reset; show or hide it on the board; '
@@ -255,7 +264,8 @@ return [
                 . '(1-240); set_auto_start (off, with every new round, or with every next item). Mode and timebox reset '
                 . 'the timer. Tell the user the resulting state in one line (e.g. "Timer running, 5:00 countdown").',
             'text' => 'mcp_seat_text',
-            'annotations' => ['title' => 'Timer'],
+            'annotations' => ['title' => 'Timer', 'readOnlyHint' => false, 'destructiveHint' => false,
+                              'idempotentHint' => false, 'openWorldHint' => false],
         ],
         'feedback' => [
             'description' => 'Feedback to the makers of Agile Poker (not to the team): send (a bug, a feature wish or '
@@ -263,7 +273,8 @@ return [
                 . 'or none on a roadmap entry). Only send what the user wrote or explicitly agreed to; show the text '
                 . 'before sending.',
             'text' => 'mcp_feedback_text',
-            'annotations' => ['title' => 'Feedback to the makers', 'openWorldHint' => true],
+            'annotations' => ['title' => 'Feedback to the makers', 'readOnlyHint' => false, 'destructiveHint' => false,
+                              'idempotentHint' => false, 'openWorldHint' => false],
         ],
     ],
 ];

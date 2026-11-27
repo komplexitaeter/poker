@@ -300,6 +300,10 @@ function mcp_tool_index(): array
     return array_filter($index, fn(array $entry): bool => $entry['kind'] === 'own' || $entry['routes'] !== []);
 }
 
+/* annotations a tool leaves out (the spec defaults would be destructive and open-world: be explicit) */
+const MCP_DEFAULT_ANNOTATIONS = ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false,
+                                 'openWorldHint' => false];
+
 /* tools/list: name, description, inputSchema, annotations of every tool */
 function mcp_tools_list(): array
 {
@@ -335,7 +339,8 @@ function mcp_tools_list(): array
                 }
                 if ($route['method'] !== 'GET') $read_only = false;
             }
-            $annotations += ['readOnlyHint' => $read_only, 'destructiveHint' => false, 'openWorldHint' => false];
+            // never claim read-only for a tool that writes, whatever mcp_tools.php says
+            $annotations['readOnlyHint'] = ($annotations['readOnlyHint'] ?? $read_only) && $read_only;
             // B-151 PR E: one text per parameter for the whole tool (the routes describe their single action)
             foreach (($tool['params'] ?? []) as $param => $text) {
                 if (isset($properties[$param])) $properties[$param]['description'] = $text;
@@ -344,7 +349,7 @@ function mcp_tools_list(): array
         $schema = ['type' => 'object', 'properties' => (object)$properties, 'additionalProperties' => false];
         if ($required !== []) $schema['required'] = $required;
         $list[] = ['name' => $name, 'description' => trim(($tool['description'] ?? '') . ' ' . MCP_DATA_HINT),
-                   'inputSchema' => $schema, 'annotations' => $annotations];
+                   'inputSchema' => $schema, 'annotations' => $annotations + MCP_DEFAULT_ANNOTATIONS];
     }
     return $list;
 }
