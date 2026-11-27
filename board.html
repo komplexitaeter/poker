@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.76" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.77" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -70,7 +70,7 @@
     <script defer src="script/timer.js?v=1" type="text/javascript"></script>
     <script defer src="script/connection.js?v=2" type="text/javascript"></script>
     <script defer src="script/api_keys.js?v=1" type="text/javascript"></script>
-    <script defer src="script/ai_dialog.js?v=2" type="text/javascript"></script>
+    <script defer src="script/ai_dialog.js?v=3" type="text/javascript"></script>
     <script defer src="script/script.js?v=3.44" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
@@ -676,7 +676,7 @@
          #ai_btn (ai_dialog.js), Escape / Done / a click beside it close it, the focus goes back to #ai_btn.
          The connector URL comes from the current origin (showMcpUrl() in script.js) -->
     <dialog id="ai_dialog" class="leave-item ai-dialog" aria-modal="true" aria-labelledby="ai_dialog_title" aria-describedby="ai_dialog_text">
-        <h2 id="ai_dialog_title"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg>Play via your AI assistant</h2>
+        <h2 id="ai_dialog_title"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg>Play via your AI assistant<span class="beta-badge">Beta</span></h2>
         <p id="ai_dialog_text" class="ai-dialog-text">Your assistant (Claude, ChatGPT &hellip;) can take a seat at this table for you. Add Agile Poker once as a connector:</p>
         <div class="row api-key-out">
             <input class="field api-key-value mcp-url-field" id="ai_url" type="text" value="/mcp" readonly aria-label="Connector URL" autocomplete="off" spellcheck="false" />
@@ -688,6 +688,8 @@
             <li>Give your assistant this board&rsquo;s link <button type="button" id="ai_board_copy" class="ti-link">copy link</button></li>
         </ol>
         <p class="ai-dialog-note"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg>Everybody at the table sees this mark next to your name.</p>
+        <!-- B-151: early beta; "Feedback" closes the dialog and opens the feedback panel like :feedback (ai_dialog.js) -->
+        <p class="ai-beta">This is an early beta. If something doesn&rsquo;t work as expected, please tell us via <button type="button" id="ai_feedback" class="ti-link">Feedback</button>.</p>
         <p id="ai_copy_status" class="sr-only" role="status" aria-live="polite"></p>
         <div class="leave-item-foot ai-dialog-foot">
             <a class="ai-howto" href="./mcp" target="_blank" rel="noopener">How it works</a>
