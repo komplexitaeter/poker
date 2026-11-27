@@ -361,11 +361,11 @@ test('the view: own seat taken off the table shows a banner with the way back an
   // taken off the table (like the trash can in the browser): banner, no hand, one message into the chat
   await removePeter();
   await expect(view.locator('#removed')).toBeVisible({ timeout: 3_000 });
-  await expect(view.locator('#removed')).toContainText('You were taken off the table.');
+  await expect(view.locator('#removed')).toContainText('You are no longer at the table.');
   await expect(view.locator('#status')).toContainText('you are not at the table');
   await expect(view.locator('#hand-wrap')).toBeHidden();
   await expect(view.locator('#observers')).toContainText('Peter (you, off the table)'); // B-154: an observer for the others
-  await expect.poll(messages).toEqual([{ view: 0, role: 'user', text: 'I was taken off the table.' }]);
+  await expect.poll(messages).toEqual([{ view: 0, role: 'user', text: 'I am no longer at the table.' }]);
   await shot(host, 0, 'removed-light-420.png');
 
   // "Join again as player": back at the table, the banner goes, no further message
@@ -399,7 +399,7 @@ test('the view: own seat taken off the table shows a banner with the way back an
   await host.waitForTimeout(1_000);
   const all = await messages();
   expect(all.length).toBe(3);
-  expect(all[2]).toEqual({ view: 1, role: 'user', text: 'I was taken off the table.' });
+  expect(all[2]).toEqual({ view: 1, role: 'user', text: 'I am no longer at the table.' });
   expect(JSON.stringify(all)).not.toContain(seat.uid);
 });
 

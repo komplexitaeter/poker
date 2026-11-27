@@ -141,7 +141,7 @@ test('round remove_player and the role rules of play_card; me rename, set_role, 
   expect(removed.data.board.players.map((p: any) => p.name).sort()).toEqual(['Alice', 'Anna']);
   await expect(tableCard(alice, 'Bob')).toHaveCount(0);
   const refused = await fails(request, 'play_card', { ...bobSeat, action: 'play', card: '5' }, 'role_not_allowed');
-  expect(refused.message).toContain('taken off the table');
+  expect(refused.message).toContain('no longer at the table');
   await fails(request, 'play_card', { ...bobSeat, action: 'withdraw' }, 'role_not_allowed');
 
   // a removed person may still do everything else, and comes back with set_role

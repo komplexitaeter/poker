@@ -479,7 +479,7 @@ body {
     <div id="superseded" hidden>Live updates continue in a newer board.
         <button type="button" class="btn" id="takeover">Resume live updates</button></div>
     <div class="removed" id="removed" hidden>
-        <p class="removed-t">You were taken off the table.</p>
+        <p class="removed-t">You are no longer at the table.</p>
         <div class="removed-acts">
             <button type="button" class="btn primary" id="rejoin-player">Join again as player</button>
             <button type="button" class="btn" id="rejoin-observer">Join as observer</button>
@@ -1728,7 +1728,7 @@ body {
         if (seated) removedSent = false;
         else if (!first && !removedSent && (seenRole === 'player' || seenRole === 'observer')) {
             removedSent = true;
-            sendMessage('I was taken off the table.');
+            sendMessage('I am no longer at the table.');
         }
         seenRole = b.you.role;
 
