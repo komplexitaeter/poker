@@ -95,6 +95,14 @@ test('initialize, ping, notifications and tools/list', async ({ request }) => {
     expect(tool.annotations.destructiveHint, tool.name).toBe(destructive.includes(tool.name));
   }
   expect(board.annotations.title).toBe('Read the board');
+  // after a seat: ask whether to follow the table, no wait loop without a yes
+  for (const tool of [create, join]) {
+    expect(tool.description).toContain('ASK the user whether they want to be told about changes at the table');
+    expect(tool.description).toContain('Without a yes, do not start a wait_for_change loop');
+  }
+  const instr = (await rpc(request, 'initialize')).result.instructions as string;
+  expect(instr).toContain('Right after create_team or join_team, ASK the user');
+  expect(instr).toContain('Stay at the table with wait_for_change only if the user said yes');
 });
 
 test('create_team: a new board with the user\'s seat, card set, the browser sees the person', async ({ request, browser }) => {

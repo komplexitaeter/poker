@@ -24,6 +24,11 @@
  * MCP is not versioned (decision 9): names, parameters and results may change at any time.
  */
 
+// B-151: after a seat, ask once whether to follow the table; no wait_for_change loop without a yes
+const MCP_ASK_UPDATES = ' Then ASK the user whether they want to be told about changes at the table (you stay with '
+    . 'wait_for_change and report changes briefly) or whether you should only act when they ask. Without a yes, do not '
+    . 'start a wait_for_change loop.';
+
 const MCP_ROLE_PARAM = ['type' => 'string', 'enum' => ['player', 'observer']];
 
 return [
@@ -34,7 +39,7 @@ return [
                 . 'observer (watches, moderates). Do not choose these yourself. Optionally pass a card set; without it '
                 . 'the board starts with Fibonacci (Classic). Show the invite link from the result to the user: '
                 . 'everyone with this link can join the board in the browser or with their own AI assistant. Keep '
-                . 'team_id and uid for all further calls.',
+                . 'team_id and uid for all further calls.' . MCP_ASK_UPDATES,
             'identity' => 'none',
             'params' => [
                 'name' => ['type' => 'string', 'required' => true, 'text' => true, 'min_length' => 1, 'max_length' => 80,
@@ -65,7 +70,7 @@ return [
                 . 'NEW person at the table, so call it only once per conversation and team. Keep team_id and uid from '
                 . 'the result and pass them on every further call. '
                 . 'Either way the result contains the current board: tell the user in one line where they sit and what '
-                . 'is going on (note, active item, who is there).',
+                . 'is going on (note, active item, who is there).' . MCP_ASK_UPDATES,
             'identity' => 'key',
             'params' => [
                 'invite' => ['type' => 'string', 'text' => true, 'min_length' => 1, 'max_length' => 300,

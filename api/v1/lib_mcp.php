@@ -38,6 +38,9 @@ Getting a seat
   invite link from the result so the user can share it with the team.
 - Keep team_id and uid (or api_key) from the result for the whole conversation and pass them on every call. Do not
   join again while you have a working seat: every join_team creates a new person at the table.
+- Right after create_team or join_team, ASK the user: should you keep them posted about changes at the table (you
+  stay with wait_for_change and report changes briefly), or only act when they ask? Without a yes, no
+  wait_for_change loop.
 
 Playing
 - Play a card with play_card only after the user named it; never pick a card for them. They can change it until
@@ -49,8 +52,8 @@ Playing
 - The user's seat: me (rename, set_role, leave). When the user is done, offer me leave instead of just stopping: a
   player without a card holds up the reveal. With an api_key, delete_my_data is not possible: offer leave and
   delete_key with key_id "current" instead; deleting all data works in the browser (You menu, "Delete my data").
-- Stay at the table with wait_for_change: pass the version of your last result as since and call it again right
-  after it returns, as long as the user wants to take part. Tell the user what changed in one or two short lines (who
+- Stay at the table with wait_for_change only if the user said yes: pass the version of your last result as since
+  and call it again right after it returns, as long as the user wants to take part. Tell the user what changed in one or two short lines (who
   played, revealed result, new item, timer, note). If it says busy, wait retry_after seconds and call again.
 - items: the first open item is the active one. Before items next with mode close, tell the user which value will
   be stored and let them confirm or pick another. board_settings changes are seen by everybody at once.
