@@ -3,7 +3,7 @@
   B-151 (MCP Apps): a minimal MCP Apps host for mcp-app.spec.ts, served by the test under the app's origin (page.route).
   window.openView(args, theme, { width }) does what a chat does: reads ui://agile-poker/board, calls show_board, puts the view in
   a sandboxed iframe and answers its bridge (ui/initialize, tools/call forwarded to /mcp, update-model-context,
-  size-changed). Not part of the app.
+  size-changed, ui/message). Not part of the app.
 -->
 <html lang="en">
 <head>
@@ -20,6 +20,7 @@
   window.views = [];
   window.modelContext = [];
   window.toolCalls = [];
+  window.messages = []; // ui/message: { view, text }
 
   async function mcp(method, params) {
     const res = await fetch('/mcp', {
@@ -71,6 +72,10 @@
           reply(answer.error ? { error: answer.error } : { result: answer.result });
           break;
         }
+        case 'ui/message':
+          window.messages.push({ view: index, role: msg.params.role, text: msg.params.content[0].text });
+          reply({ result: {} });
+          break;
         case 'ui/update-model-context':
           window.modelContext.push(msg.params.content[0].text);
           reply({ result: {} });
