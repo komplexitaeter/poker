@@ -210,13 +210,10 @@ test('get_board shows who played but hides the cards of others until every playe
   // without mkey: a sequential number, it may be 13 by chance
   const noMkey = voting.data.players.map(({ mkey: _, ...p }: any) => p);
   expect(JSON.stringify({ players: noMkey, round: voting.data.round })).not.toMatch(/13|thrtn01/);
-  expect(voting.text).toContain('MCP Hidden · voting · waiting for you
-');
+  expect(voting.text).toContain('MCP Hidden · voting · waiting for you\n');
   expect(voting.text).toMatch(/^  Alice +played$/m);
   // the hidden card nowhere in the text (only Bob's own pick list shows the deck; the version token may contain digits)
-  expect(voting.text.split('
-').filter((l: string) => !l.includes('pick:') && !/version/i.test(l)).join('
-')).not.toMatch(/13|thrtn01/);
+  expect(voting.text.split('\n').filter((l: string) => !l.includes('pick:') && !/version/i.test(l)).join('\n')).not.toMatch(/13|thrtn01/);
 
   // Bob plays (old endpoint with his seat, play_card comes later): every player has a card -> revealed
   const played = await request.post(`/api/setc.php?${new URLSearchParams({ t, cardkey: 'five001' })}`, asUser(bob.uid));
