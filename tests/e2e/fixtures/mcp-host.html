@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   B-151 (MCP Apps): a minimal MCP Apps host for mcp-app.spec.ts, served by the test under the app's origin (page.route).
-  window.openView(args, theme) does what a chat does: reads ui://agile-poker/board, calls show_board, puts the view in
+  window.openView(args, theme, { width }) does what a chat does: reads ui://agile-poker/board, calls show_board, puts the view in
   a sandboxed iframe and answers its bridge (ui/initialize, tools/call forwarded to /mcp, update-model-context,
   size-changed). Not part of the app.
 -->
@@ -30,7 +30,7 @@
     return res.json();
   }
 
-  window.openView = async function (args, theme = 'light', { emptyToolCalls = false } = {}) {
+  window.openView = async function (args, theme = 'light', { emptyToolCalls = false, width = 0 } = {}) {
     const read = await mcp('resources/read', { uri: 'ui://agile-poker/board' });
     const html = read.result.contents[0].text;
     const result = (await mcp('tools/call', { name: 'show_board', arguments: args })).result;
@@ -38,6 +38,7 @@
     frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
     frame.srcdoc = html;
     frame.style.height = '200px';
+    if (width) frame.style.width = width + 'px'; // a wider chat column (screenshots)
     const index = window.views.length;
     frame.dataset.view = String(index);
     window.views.push({ frame, result });
@@ -61,6 +62,12 @@
           window.toolCalls.push(msg.params.name);
           if (emptyToolCalls) { reply({ result: {} }); break; } // a broken host or server: no board in the answer
           const answer = await mcp('tools/call', msg.params);
+          reply(answer.error ? { error: answer.error } : { result: answer.result });
+          break;
+        }
+        case 'resources/read': { // e.g. the whole symbol sprite for a later deck
+          window.resourceReads = (window.resourceReads || []).concat(msg.params.uri);
+          const answer = await mcp('resources/read', msg.params);
           reply(answer.error ? { error: answer.error } : { result: answer.result });
           break;
         }
