@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<!--
+  B-151 (MCP Apps, docs/mcp-concept.md section 13): the live board in the chat, served as the resource
+  ui://agile-poker/board by api/v1/lib_mcp_app.php. Self-contained on purpose: inline style and script, no external
+  resources, no network access of its own - everything goes through the host (postMessage JSON-RPC, spec 2026-01-26).
+  Texts of other people only via textContent; the seat (team_id, uid or api_key) comes from the tool input and is
+  never shown.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agile Poker</title>
+<style>
+:root {
+    --font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --fs-xs: 0.6875rem;
+    --fs-s: 0.8125rem;
+    --fs-m: 0.875rem;
+    --fs-l: 1rem;
+    --radius-s: 3px;
+    --radius-m: 4px;
+    --radius-l: 6px;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 1rem;
+    /* our tokens (style/style.css), dark */
+    --bg: #0c0e12;
+    --bg-2: #13161c;
+    --bg-3: #1b1f27;
+    --bg-4: #262b35;
+    --line: #2a303b;
+    --line-strong: #586174;
+    --text: #d9dee8;
+    --muted: #8b94a5;
+    --disabled: #646c7d;
+    --accent: #84cbff;
+    --on-accent: #0c0e12;
+    --topic-color: #fc91f5;
+    --ok: #5af78e;
+    --danger: #ff6b66;
+    --warn: #ffb547;
+    --focus-ring: rgba(132, 203, 255, 0.6);
+    color-scheme: dark;
+}
+:root[data-theme="light"] {
+    --bg: #f7f6f1;
+    --bg-2: #eeede6;
+    --bg-3: #e4e3db;
+    --bg-4: #dad9d0;
+    --line: #d3d2c8;
+    --line-strong: #8e8d85;
+    --text: #1d2027;
+    --muted: #5b606b;
+    --disabled: #9a998f;
+    --accent: #0a62b3;
+    --on-accent: #ffffff;
+    --topic-color: #9a0089;
+    --ok: #1b7a37;
+    --danger: #c0262d;
+    --warn: #9a5800;
+    --focus-ring: rgba(10, 98, 179, 0.5);
+    color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+    background: var(--color-background-primary, var(--bg));
+    color: var(--color-text-primary, var(--text));
+    font: var(--fs-m)/1.45 var(--font);
+}
+#app { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+#app.superseded > :not(#superseded) { opacity: 0.45; pointer-events: none; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2); }
+.team { font-size: var(--fs-l); font-weight: 700; overflow-wrap: anywhere; }
+.badge {
+    font-size: var(--fs-xs); padding: 1px 6px; border-radius: var(--radius-s);
+    border: 1px solid var(--line-strong); color: var(--muted); white-space: nowrap;
+}
+.badge.revealed { border-color: var(--ok); color: var(--ok); }
+.badge.changed { border-color: var(--accent); color: var(--accent); transition: opacity 0.6s; }
+.badge.changed.fade { opacity: 0; }
+.status { color: var(--muted); font-size: var(--fs-s); overflow-wrap: anywhere; }
+.changes { color: var(--accent); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.note { color: var(--topic-color); overflow-wrap: anywhere; }
+.item { font-size: var(--fs-s); overflow-wrap: anywhere; }
+.item .key { color: var(--muted); margin-right: var(--space-1); }
+.players { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.players li {
+    display: flex; justify-content: space-between; gap: var(--space-2); padding: 3px 0;
+    border-bottom: 1px solid var(--line);
+}
+.players .name { overflow-wrap: anywhere; }
+.players .me .name { font-weight: 700; }
+.players .away { color: var(--muted); font-size: var(--fs-xs); margin-left: var(--space-1); }
+.players .state { white-space: nowrap; color: var(--muted); }
+.players .state.played { color: var(--ok); }
+.players .state.card { color: var(--text); font-weight: 700; }
+.players .state .was { color: var(--warn); font-weight: 400; font-size: var(--fs-xs); margin-left: var(--space-1); }
+.observers { color: var(--muted); font-size: var(--fs-s); overflow-wrap: anywhere; }
+.result { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-l); padding: var(--space-2); }
+.dist { display: grid; grid-template-columns: max-content 1fr max-content; gap: 3px var(--space-2); align-items: center; }
+.dist .track { display: block; }
+.dist .bar { display: block; height: 10px; background: var(--accent); border-radius: var(--radius-s); min-width: 4px; }
+.dist .val { font-weight: 700; }
+.dist .cnt { color: var(--muted); font-size: var(--fs-s); }
+.summary { margin-top: var(--space-2); font-size: var(--fs-s); color: var(--muted); }
+.summary b { color: var(--text); }
+.hand { display: flex; flex-wrap: wrap; gap: 6px; }
+.hand-label { font-size: var(--fs-xs); color: var(--muted); }
+.hand button {
+    min-width: 44px; min-height: 56px; padding: 4px 6px; border-radius: var(--radius-l);
+    border: 1px solid var(--line-strong); background: var(--bg-2); color: var(--text);
+    font: 700 var(--fs-l) var(--font); cursor: pointer; overflow-wrap: anywhere; max-width: 7.5rem;
+}
+.hand button.control { font-weight: 400; color: var(--muted); }
+.hand button:hover { border-color: var(--accent); }
+.hand button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.hand button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.hand button:disabled { cursor: progress; opacity: 0.6; }
+.foot { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-xs); color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--disabled); flex: none; }
+.foot.live .dot { background: var(--ok); }
+.foot.offline .dot { background: var(--warn); }
+.foot.offline { color: var(--warn); }
+.foot.stopped .dot { background: var(--danger); }
+.foot button {
+    font: inherit; color: var(--accent); background: none; border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m); padding: 2px 8px; cursor: pointer;
+}
+.error { color: var(--danger); font-size: var(--fs-s); overflow-wrap: anywhere; }
+#superseded {
+    border: 1px dashed var(--line-strong); border-radius: var(--radius-l); padding: var(--space-2);
+    color: var(--muted); font-size: var(--fs-s); text-align: center;
+}
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite">
+    <div id="superseded" hidden>Continued below – this board is no longer updated.</div>
+    <div class="head">
+        <span class="team" id="team">Agile Poker</span>
+        <span class="badge" id="state" hidden></span>
+        <span class="badge changed" id="changed" hidden>changed</span>
+    </div>
+    <div class="status" id="status">Connecting…</div>
+    <div class="changes" id="changes" hidden></div>
+    <div class="note" id="note" hidden></div>
+    <div class="item" id="item" hidden></div>
+    <ul class="players" id="players" hidden></ul>
+    <div class="observers" id="observers" hidden></div>
+    <div class="result" id="result" hidden>
+        <div class="dist" id="dist"></div>
+        <div class="summary" id="summary"></div>
+    </div>
+    <div id="hand-wrap" hidden>
+        <div class="hand-label" id="hand-label">Your card</div>
+        <div class="hand" id="hand" role="group" aria-labelledby="hand-label"></div>
+    </div>
+    <div class="error" id="error" hidden></div>
+    <div class="foot" id="foot"><span class="dot"></span><span id="conn">Waiting for the chat…</span>
+        <button type="button" id="resume" hidden>Resume</button></div>
+</div>
+<script>
+(function () {
+    'use strict';
+
+    var PROTOCOL = '2026-01-26';
+    var BACKOFF = [5, 15, 60];             // seconds after failed waits
+    var WAIT_TIMEOUT = 25;                 // seconds, the maximum of wait_for_change
+    var HIDDEN_STOP_MS = 10 * 60 * 1000;   // stop waiting after the view was hidden this long
+    var IDLE_STOP_MS = 2 * 60 * 60 * 1000; // stop waiting after 2 h without a change or a click
+    var FATAL = ['not_a_member', 'invalid_key', 'unauthorized'];
+
+    var $ = function (id) { return document.getElementById(id); };
+    var nextId = 1;
+    var pending = {};
+    var hostCaps = {};
+    var seat = null;          // identity arguments of the tool call: team_id + uid, or api_key (never shown)
+    var board = null;
+    var version = null;
+    var shownAt = 0;          // shown_at of the show_board result: the newest view of a seat wins
+    var loopGen = 0;          // a new number stops the running loop
+    var looping = false;
+    var lastActivity = Date.now();
+    var hiddenSince = document.hidden ? Date.now() : null;
+    var pausedBy = null;      // 'hidden' | 'idle' | 'gone' | 'superseded' | 'teardown'
+    var instance = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    var channel = null;
+    var lastContext = '';
+    var changedTimer = null;
+
+    /* ---------- bridge (JSON-RPC 2.0 over postMessage) ---------- */
+
+    function post(message) { window.parent.postMessage(message, '*'); }
+
+    function request(method, params, timeoutMs) {
+        var id = nextId++;
+        post({ jsonrpc: '2.0', id: id, method: method, params: params || {} });
+        return new Promise(function (resolve, reject) {
+            var timer = setTimeout(function () {
+                delete pending[id];
+                reject(new Error('timeout'));
+            }, timeoutMs || 10000);
+            pending[id] = { resolve: resolve, reject: reject, timer: timer };
+        });
+    }
+
+    function notify(method, params) { post({ jsonrpc: '2.0', method: method, params: params || {} }); }
+
+    function callTool(name, args) {
+        return request('tools/call', { name: name, arguments: args }, (WAIT_TIMEOUT + 35) * 1000);
+    }
+
+    window.addEventListener('message', function (event) {
+        if (event.source !== window.parent) return;
+        var msg = event.data;
+        if (!msg || msg.jsonrpc !== '2.0') return;
+        if (msg.id !== undefined && msg.method === undefined) { // a response
+            var p = pending[msg.id];
+            if (!p) return;
+            delete pending[msg.id];
+            clearTimeout(p.timer);
+            if (msg.error) p.reject(new Error(msg.error.message || 'error'));
+            else p.resolve(msg.result);
+            return;
+        }
+        var params = msg.params || {};
+        switch (msg.method) {
+            case 'ui/notifications/tool-input':
+                onToolInput(params.arguments || {});
+                break;
+            case 'ui/notifications/tool-result':
+                onToolResult(params);
+                break;
+            case 'ui/notifications/host-context-changed':
+                applyHostContext(params);
+                break;
+            case 'ui/notifications/tool-cancelled':
+                if (!board) setStatus('The board was not opened.');
+                break;
+            case 'ui/resource-teardown':
+                stop('teardown');
+                if (msg.id !== undefined) post({ jsonrpc: '2.0', id: msg.id, result: {} });
+                break;
+            case 'ping':
+                if (msg.id !== undefined) post({ jsonrpc: '2.0', id: msg.id, result: {} });
+                break;
+            default:
+                if (msg.id !== undefined) {
+                    post({ jsonrpc: '2.0', id: msg.id, error: { code: -32601, message: 'Method not found' } });
+                }
+        }
+    });
+
+    function applyHostContext(ctx) {
+        if (!ctx) return;
+        if (ctx.theme === 'light' || ctx.theme === 'dark') document.documentElement.setAttribute('data-theme', ctx.theme);
+        var vars = ctx.styles && ctx.styles.variables;
+        if (vars && typeof vars === 'object') {
+            Object.keys(vars).forEach(function (key) {
+                if (/^--[a-z0-9-]+$/.test(key) && typeof vars[key] === 'string') {
+                    document.documentElement.style.setProperty(key, vars[key]);
+                }
+            });
+        }
+    }
+
+    function reportSize() {
+        var el = document.documentElement;
+        notify('ui/notifications/size-changed', { width: Math.ceil(el.scrollWidth), height: Math.ceil(el.scrollHeight) });
+    }
+
+    /* ---------- data from the host ---------- */
+
+    function onToolInput(args) {
+        if (seat) return; // the seat of this view stays
+        var s = {};
+        ['team_id', 'uid', 'api_key'].forEach(function (k) { if (typeof args[k] === 'string') s[k] = args[k]; });
+        if (!s.api_key && !(s.team_id && s.uid)) { setStatus('No seat: join a board in the chat first.'); return; }
+        seat = s;
+        // no result with a board after a while (host sent none): read it ourselves
+        setTimeout(function () { if (!board && seat && !pausedBy) refresh(); }, 4000);
+    }
+
+    function boardOf(sc) {
+        if (!sc || typeof sc !== 'object') return null;
+        if (sc.board && sc.board.players) return sc.board;
+        if (sc.players && sc.round && sc.you) return sc;
+        return null;
+    }
+
+    function onToolResult(result) {
+        var sc = result && result.structuredContent;
+        if (result && result.isError) {
+            showError(textOf(result) || 'The board could not be opened.');
+            if (sc && FATAL.indexOf(sc.error) >= 0) stop('gone');
+            return;
+        }
+        if (sc && typeof sc.shown_at === 'number' && !shownAt) shownAt = sc.shown_at;
+        var b = boardOf(sc);
+        if (b) apply(b, sc.version || null, null);
+        announce();
+        startLoop();
+    }
+
+    function textOf(result) {
+        var c = result && result.content;
+        return c && c[0] && typeof c[0].text === 'string' ? c[0].text : '';
+    }
+
+    /* ---------- live loop ---------- */
+
+    function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+    function startLoop() {
+        if (!seat || looping || pausedBy) return;
+        looping = true;
+        setConn('live', 'Live');
+        var gen = ++loopGen;
+        loop(gen).then(function () { if (gen === loopGen) looping = false; });
+    }
+
+    function stop(reason) {
+        pausedBy = reason;
+        loopGen++;
+        looping = false;
+        var texts = {
+            hidden: 'Paused while not visible.',
+            idle: 'Paused: no changes for 2 hours.',
+            gone: 'This seat no longer exists.',
+            superseded: 'Continued below.',
+            teardown: 'Closed.'
+        };
+        setConn('stopped', texts[reason] || 'Stopped.');
+        $('resume').hidden = !(reason === 'idle' || reason === 'hidden');
+        if (reason === 'superseded') {
+            $('app').classList.add('superseded');
+            $('superseded').hidden = false;
+        }
+    }
+
+    function resume() {
+        if (pausedBy !== 'idle' && pausedBy !== 'hidden') return;
+        pausedBy = null;
+        lastActivity = Date.now();
+        $('resume').hidden = true;
+        announce();
+        startLoop();
+    }
+
+    async function refresh() {
+        try {
+            var r = await callTool('get_board', seat);
+            var sc = r && r.structuredContent;
+            if (r && r.isError) {
+                if (sc && FATAL.indexOf(sc.error) >= 0) stop('gone');
+                showError(textOf(r));
+                return false;
+            }
+            var b = boardOf(sc);
+            if (b) apply(b, sc.version || null, null);
+            startLoop();
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function loop(gen) {
+        var failures = 0;
+        while (gen === loopGen) {
+            if (hiddenSince !== null && Date.now() - hiddenSince > HIDDEN_STOP_MS) { stop('hidden'); return; }
+            if (Date.now() - lastActivity > IDLE_STOP_MS) { stop('idle'); return; }
+            var wait = 0;
+            try {
+                var r;
+                if (!version) {
+                    r = await callTool('get_board', seat);
+                } else {
+                    var args = Object.assign({}, seat, { since: version, timeout: WAIT_TIMEOUT });
+                    r = await callTool('wait_for_change', args);
+                }
+                if (gen !== loopGen) return;
+                var sc = (r && r.structuredContent) || {};
+                if (r && r.isError) {
+                    if (FATAL.indexOf(sc.error) >= 0) { showError(textOf(r)); stop('gone'); return; }
+                    throw new Error(sc.error || 'error');
+                }
+                failures = 0;
+                setConn('live', 'Live');
+                if (sc.busy) {
+                    wait = (sc.retry_after || 5) * 1000;
+                } else {
+                    var b = boardOf(sc);
+                    if (b) {
+                        if (sc.changed) lastActivity = Date.now();
+                        apply(b, sc.version || null, sc.changed ? sc.changes || [] : null);
+                    }
+                }
+            } catch (e) {
+                if (gen !== loopGen) return;
+                var s = BACKOFF[Math.min(failures, BACKOFF.length - 1)];
+                failures++;
+                setConn('offline', 'Offline – trying again in ' + s + ' s');
+                wait = s * 1000;
+            }
+            if (wait) await sleep(wait);
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            hiddenSince = Date.now();
+        } else {
+            hiddenSince = null;
+            if (pausedBy === 'hidden') resume();
+        }
+    });
+    $('resume').addEventListener('click', resume);
+
+    /* ---------- supersession: the newest view of the same seat wins ---------- */
+
+    function seatKey() { return board ? board.team.id + ':' + board.you.mkey : null; }
+
+    function announce() {
+        if (!channel || !seatKey()) return;
+        channel.postMessage({ type: 'hello', seat: seatKey(), shownAt: shownAt, instance: instance });
+    }
+
+    try {
+        channel = new BroadcastChannel('agile-poker-board');
+        channel.onmessage = function (event) {
+            var m = event.data;
+            if (!m || m.type !== 'hello' || m.instance === instance || m.seat !== seatKey()) return;
+            if (pausedBy === 'superseded') return;
+            var newer = m.shownAt > shownAt || (m.shownAt === shownAt && m.instance > instance);
+            if (newer) stop('superseded');
+            else announce(); // an older view (re)started: tell it that this one is newer
+        };
+    } catch (e) {
+        channel = null;
+    }
+
+    /* ---------- rendering ---------- */
+
+    function el(tag, cls, text) {
+        var node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined && text !== null) node.textContent = String(text);
+        return node;
+    }
+
+    function setStatus(text) { $('status').textContent = text; }
+
+    function setConn(state, text) {
+        $('foot').className = 'foot ' + state;
+        $('conn').textContent = text;
+    }
+
+    function showError(text) {
+        $('error').textContent = text || '';
+        $('error').hidden = !text;
+    }
+
+    function firstLine(text, max) {
+        var line = String(text || '').split(/\r?\n/)[0].trim();
+        return line.length > max ? line.slice(0, max - 1) + '…' : line;
+    }
+
+    function apply(b, v, changes) {
+        var before = version;
+        board = b;
+        if (v) version = v;
+        render();
+        if (changes && changes.length && before && v !== before) markChanged(changes);
+        if (v !== before) modelContext();
+        announce();
+    }
+
+    function markChanged(changes) {
+        $('changed').hidden = false;
+        $('changed').classList.remove('fade');
+        $('changes').textContent = changes.slice(0, 3).join(' ');
+        $('changes').hidden = false;
+        clearTimeout(changedTimer);
+        changedTimer = setTimeout(function () { $('changed').classList.add('fade'); }, 4000);
+    }
+
+    function render() {
+        var b = board;
+        var revealed = b.round.state === 'revealed';
+        $('team').textContent = b.team.name;
+        var state = $('state');
+        state.hidden = false;
+        state.textContent = revealed ? 'revealed' : 'voting';
+        state.className = 'badge' + (revealed ? ' revealed' : '');
+
+        if (revealed) setStatus('Cards are revealed.');
+        else if (!b.players.length) setStatus('No players at the table yet.');
+        else if (b.round.waiting_for.length) setStatus('Waiting for: ' + b.round.waiting_for.join(', '));
+        else setStatus('Everybody has played.');
+
+        var note = firstLine(b.note, 140);
+        $('note').textContent = note;
+        $('note').hidden = !note;
+
+        var item = $('item');
+        item.textContent = '';
+        if (b.active_item) {
+            if (b.active_item.key) item.appendChild(el('span', 'key', b.active_item.key));
+            item.appendChild(el('span', '', firstLine(b.active_item.heading, 140)));
+            if (b.active_item.rounds > 0) item.appendChild(el('span', 'key', ' · round ' + (b.active_item.rounds + 1)));
+        }
+        item.hidden = !b.active_item;
+
+        var list = $('players');
+        list.textContent = '';
+        b.players.forEach(function (p) {
+            var me = p.mkey !== null && p.mkey === b.you.mkey;
+            var li = el('li', me ? 'me' : '');
+            var name = el('span', 'name', p.name + (me ? ' (you)' : ''));
+            if (p.away) name.appendChild(el('span', 'away', 'away'));
+            li.appendChild(name);
+            var st;
+            if (p.card !== null && p.card !== undefined) st = el('span', 'state card', p.card);
+            else if (me && b.you.card !== null) st = el('span', 'state played', b.you.card + ' (hidden)');
+            else if (p.played) st = el('span', 'state played', '✓ played');
+            else st = el('span', 'state', '–');
+            if (p.card_before_change !== undefined && p.card_before_change !== null) {
+                st.appendChild(el('span', 'was', 'was ' + p.card_before_change));
+            }
+            li.appendChild(st);
+            list.appendChild(li);
+        });
+        list.hidden = !b.players.length;
+
+        var obs = b.observers.map(function (o) { return o.name + (o.mkey === b.you.mkey ? ' (you)' : ''); });
+        $('observers').textContent = obs.length ? 'Observers: ' + obs.join(', ') : '';
+        $('observers').hidden = !obs.length;
+
+        renderResult(revealed ? b.round.result : null);
+        renderHand();
+        reportSize();
+    }
+
+    function renderResult(result) {
+        $('result').hidden = !result;
+        if (!result) return;
+        var dist = $('dist');
+        dist.textContent = '';
+        var max = 1;
+        result.distribution.forEach(function (d) { max = Math.max(max, d.count); });
+        result.distribution.forEach(function (d) {
+            dist.appendChild(el('span', 'val', d.card));
+            var bar = el('span', 'bar');
+            bar.style.width = Math.round(100 * d.count / max) + '%';
+            var track = el('span', 'track');
+            track.appendChild(bar);
+            dist.appendChild(track);
+            dist.appendChild(el('span', 'cnt', '×' + d.count));
+        });
+        if (!result.distribution.length) dist.appendChild(el('span', 'cnt', 'No votes'));
+        var summary = $('summary');
+        summary.textContent = '';
+        var add = function (label, value) {
+            if (value === null || value === undefined || value === '') return;
+            if (summary.childNodes.length) summary.appendChild(document.createTextNode(' · '));
+            summary.appendChild(document.createTextNode(label + ' '));
+            summary.appendChild(el('b', '', value));
+        };
+        add('Suggestion', result.suggestion);
+        add('Range', result.range);
+        add('Average', result.average);
+        summary.hidden = !summary.childNodes.length;
+    }
+
+    var playing = false;
+
+    function renderHand() {
+        var b = board;
+        var wrap = $('hand-wrap');
+        var hand = $('hand');
+        hand.textContent = '';
+        if (b.you.role !== 'player' || !b.deck) {
+            wrap.hidden = true;
+            if (b.you.role === 'observer') setStatus($('status').textContent + ' (You watch as observer.)');
+            return;
+        }
+        wrap.hidden = false;
+        var cards = b.deck.cards.map(function (c) { return [c, false]; })
+            .concat(b.deck.controls.map(function (c) { return [c, true]; }));
+        cards.forEach(function (entry) {
+            var c = entry[0];
+            var btn = el('button', entry[1] ? 'control' : '', c.value);
+            btn.type = 'button';
+            btn.dataset.key = c.key;
+            if (c.heading) btn.title = c.heading;
+            btn.setAttribute('aria-pressed', b.you.card !== null && c.value === b.you.card ? 'true' : 'false');
+            btn.disabled = playing;
+            btn.addEventListener('click', function () { play(c, btn.getAttribute('aria-pressed') === 'true'); });
+            hand.appendChild(btn);
+        });
+    }
+
+    async function play(card, selected) {
+        if (!seat || playing || pausedBy === 'gone' || pausedBy === 'superseded') return;
+        lastActivity = Date.now();
+        if (pausedBy) resume();
+        playing = true;
+        renderHand();
+        showError('');
+        try {
+            var args = Object.assign({}, seat, selected ? { action: 'withdraw' } : { action: 'play', card: card.key });
+            var r = await callTool('play_card', args);
+            var sc = r && r.structuredContent;
+            if (r && r.isError) {
+                showError(textOf(r) || 'The card could not be played.');
+            } else {
+                var b = boardOf(sc);
+                if (b) apply(b, sc.version || null, null);
+            }
+        } catch (e) {
+            showError('The card could not be played (no connection). Please try again.');
+        }
+        playing = false;
+        if (board) renderHand();
+    }
+
+    /* one short line for the model (no uid, no key) */
+    function modelContext() {
+        if (!board) return;
+        var b = board;
+        var parts = ['Live board of team "' + b.team.name + '" (shown to the user, updates itself)'];
+        if (b.round.state === 'revealed') {
+            var r = b.round.result;
+            parts.push('revealed: ' + (r.text || 'no votes') + (r.suggestion ? ', suggestion ' + r.suggestion : ''));
+        } else if (b.round.waiting_for.length) {
+            parts.push('voting, waiting for ' + b.round.waiting_for.join(', '));
+        } else {
+            parts.push('voting');
+        }
+        if (b.you.card !== null) parts.push('the user\'s card: ' + b.you.card);
+        var text = parts.join('; ') + '.';
+        if (text === lastContext) return;
+        lastContext = text;
+        request('ui/update-model-context', { content: [{ type: 'text', text: text }] }).catch(function () {});
+    }
+
+    /* ---------- start ---------- */
+
+    if (typeof ResizeObserver === 'function') new ResizeObserver(reportSize).observe(document.body);
+
+    if (window.parent === window) {
+        setStatus('This view runs inside an AI chat (MCP Apps).');
+        setConn('stopped', 'Not connected.');
+        return;
+    }
+    request('ui/initialize', {
+        appInfo: { name: 'agile-poker-board', version: '1' },
+        appCapabilities: { availableDisplayModes: ['inline'] },
+        protocolVersion: PROTOCOL
+    }, 15000).then(function (result) {
+        hostCaps = (result && result.hostCapabilities) || {};
+        applyHostContext(result && result.hostContext);
+        notify('ui/notifications/initialized', {});
+        setConn('', 'Connected');
+        reportSize();
+    }).catch(function () {
+        setConn('stopped', 'The chat did not answer.');
+    });
+})();
+</script>
+</body>
+</html>

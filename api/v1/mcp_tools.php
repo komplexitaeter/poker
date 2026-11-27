@@ -14,6 +14,7 @@
  *                  with identity seat the third parameter is the actor (array)
  *   annotations    MCP tool annotations, all five (B-151): title, readOnlyHint, destructiveHint (true where the tool
  *                  can delete or remove), idempotentHint, openWorldHint (always false: only this board)
+ *   _meta          optional, passed on in tools/list as is (MCP Apps: the view of show_board, lib_mcp_app.php)
  * 'routes': tool name => description and text view of a tool built from the routes with this 'mcp.tool' (tools/list
  *                  in this order)
  *   description    English, for the agent
@@ -27,7 +28,8 @@
 // B-151: after a seat, ask once whether to follow the table; no wait_for_change loop without a yes
 const MCP_ASK_UPDATES = ' Then ASK the user whether they want to be told about changes at the table (you stay with '
     . 'wait_for_change and report changes briefly) or whether you should only act when they ask. Without a yes, do not '
-    . 'start a wait_for_change loop.';
+    . 'start a wait_for_change loop. On a yes, call show_board once first: if the chat shows the live board, it keeps '
+    . 'itself up to date and you need no wait_for_change loop.';
 
 const MCP_ROLE_PARAM = ['type' => 'string', 'enum' => ['player', 'observer']];
 
@@ -104,6 +106,20 @@ return [
             'handler' => 'mcp_wait_for_change',
             'annotations' => ['title' => 'Wait for a change at the table', 'readOnlyHint' => true,
                               'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
+        ],
+        // B-151 MCP Apps (concept 13): opens the live board view (ui://agile-poker/board), see lib_mcp_app.php
+        'show_board' => [
+            'description' => 'Show a live board the user can watch and play on in the chat (if the client supports '
+                . 'apps); otherwise like get_board. Call it once after the user wants to be kept posted: the live board '
+                . 'keeps itself up to date (who played, the reveal) and the user can click a card to play it, so you do '
+                . 'not need to call wait_for_change yourself. If you only get text back and no board appears, follow '
+                . 'the table with wait_for_change instead. Do not call it again for every change.',
+            'identity' => 'seat',
+            'params' => [],
+            'handler' => 'mcp_show_board',
+            'annotations' => ['title' => 'Show the live board', 'readOnlyHint' => true, 'destructiveHint' => false,
+                              'idempotentHint' => true, 'openWorldHint' => false],
+            '_meta' => mcp_app_tool_meta(),
         ],
         // B-151 PR F2 (concept 5.3, 8.6): thrown through poker-msg, see lib_mcp_react.php
         'react' => [

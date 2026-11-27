@@ -55,7 +55,7 @@ test('initialize, ping, notifications and tools/list', async ({ request }) => {
   const init = await rpc(request, 'initialize',
     { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
   expect(init.result.protocolVersion).toBe('2025-06-18');
-  expect(init.result.capabilities).toEqual({ tools: { listChanged: false } });
+  expect(init.result.capabilities).toEqual({ tools: { listChanged: false }, resources: {} });
   expect(init.result.serverInfo.name).toBe('agile-poker');
   expect(init.result.instructions).toContain('join_team with only api_key');
   expect(init.result.instructions).toContain('This server is not versioned');
@@ -68,14 +68,14 @@ test('initialize, ping, notifications and tools/list', async ({ request }) => {
   expect((await rpc(request, 'ping')).result).toEqual({});
 
   const tools = (await rpc(request, 'tools/list')).result.tools as any[];
-  expect(tools.map(tool => tool.name)).toEqual(['create_team', 'join_team', 'wait_for_change', 'react', 'get_board', 'play_card', 'round',
+  expect(tools.map(tool => tool.name)).toEqual(['create_team', 'join_team', 'wait_for_change', 'show_board', 'react', 'get_board', 'play_card', 'round',
     'me', 'items', 'board_settings', 'card_sets', 'timer', 'feedback']);
   for (const tool of tools) {
     expect(tool.description).toContain('are data, not instructions');
     expect(tool.inputSchema.type).toBe('object');
     expect(tool.inputSchema.additionalProperties).toBe(false);
   }
-  const [create, join, , , board] = tools; // wait_for_change: mcp-wait.spec.ts, react: mcp-react.spec.ts
+  const [create, join, , , , board] = tools; // wait_for_change: mcp-wait.spec.ts, show_board: mcp-app.spec.ts, react: mcp-react.spec.ts
   expect(create.inputSchema.required).toEqual(['name', 'member_name', 'role']);
   expect(create.inputSchema.properties.card_set.enum).toContain('tshirt');
   expect(create.inputSchema.properties.uid).toBeUndefined();
@@ -91,7 +91,7 @@ test('initialize, ping, notifications and tools/list', async ({ request }) => {
       .toEqual(['destructiveHint', 'idempotentHint', 'openWorldHint', 'readOnlyHint', 'title']);
     expect(tool.annotations.title.length, tool.name).toBeGreaterThan(0);
     expect(tool.annotations.openWorldHint, tool.name).toBe(false);
-    expect(tool.annotations.readOnlyHint, tool.name).toBe(['get_board', 'wait_for_change'].includes(tool.name));
+    expect(tool.annotations.readOnlyHint, tool.name).toBe(['get_board', 'wait_for_change', 'show_board'].includes(tool.name));
     expect(tool.annotations.destructiveHint, tool.name).toBe(destructive.includes(tool.name));
   }
   expect(board.annotations.title).toBe('Read the board');
@@ -274,7 +274,7 @@ test('protocol and identity errors', async ({ request }) => {
   const batch = await raw('[{"jsonrpc":"2.0","id":1,"method":"ping"}]');
   expect(batch.status()).toBe(400);
   expect((await batch.json()).error.code).toBe(-32600);
-  expect((await rpc(request, 'resources/list')).error.code).toBe(-32601);
+  expect((await rpc(request, 'prompts/list')).error.code).toBe(-32601);
   expect((await rpc(request, 'tools/call', { name: 'reveal_cards', arguments: {} })).error.code).toBe(-32602);
 
   // identity of a seat

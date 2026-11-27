@@ -13,6 +13,7 @@
 
 require __DIR__ . '/lib_mcp_wait.php'; // B-151 PR C: wait_for_change, version of the board
 require __DIR__ . '/lib_mcp_react.php'; // B-151 PR F2: react through poker-msg
+require __DIR__ . '/lib_mcp_app.php'; // B-151 MCP Apps: the live board in the chat (show_board, ui:// resource)
 
 /* informative only (MCP is not versioned): date of the last change of the tools */
 const MCP_SERVER_VERSION = '2026-11-26';
@@ -38,9 +39,11 @@ Getting a seat
   invite link from the result so the user can share it with the team.
 - Keep team_id and uid (or api_key) from the result for the whole conversation and pass them on every call. Do not
   join again while you have a working seat: every join_team creates a new person at the table.
-- Right after create_team or join_team, ASK the user: should you keep them posted about changes at the table (you
-  stay with wait_for_change and report changes briefly), or only act when they ask? Without a yes, no
-  wait_for_change loop.
+- Right after create_team or join_team, ASK the user: should you keep them posted about changes at the table, or
+  only act when they ask? Without a yes, no wait_for_change loop. On a yes, call show_board once: where the chat can
+  show apps, it shows a live board that keeps itself up to date and lets the user play cards by clicking - then do
+  not loop wait_for_change yourself. Only if no live board appears (you just get the text), stay with
+  wait_for_change and report changes briefly.
 
 Playing
 - Play a card with play_card only after the user named it; never pick a card for them. They can change it until
@@ -211,7 +214,7 @@ function mcp_handle(string|int $id, string $method, array $params): array
             $asked = $params['protocolVersion'] ?? null;
             return mcp_result_message($id, [
                 'protocolVersion' => in_array($asked, MCP_PROTOCOL_VERSIONS, true) ? $asked : MCP_PROTOCOL_VERSIONS[0],
-                'capabilities' => ['tools' => ['listChanged' => false]],
+                'capabilities' => ['tools' => ['listChanged' => false], 'resources' => new stdClass()],
                 'serverInfo' => ['name' => 'agile-poker', 'title' => 'Agile Poker', 'version' => MCP_SERVER_VERSION],
                 'instructions' => MCP_INSTRUCTIONS,
             ]);
@@ -229,6 +232,10 @@ function mcp_handle(string|int $id, string $method, array $params): array
                 return mcp_error_message($id, MCP_INVALID_PARAMS, 'arguments must be an object.');
             }
             return mcp_result_message($id, mcp_call_tool($name, $args));
+        case 'resources/list':
+        case 'resources/templates/list':
+        case 'resources/read':
+            return mcp_app_resources($id, $method, $params);
         default:
             return mcp_error_message($id, MCP_METHOD_NOT_FOUND, 'Method not found.');
     }
@@ -351,8 +358,10 @@ function mcp_tools_list(): array
         }
         $schema = ['type' => 'object', 'properties' => (object)$properties, 'additionalProperties' => false];
         if ($required !== []) $schema['required'] = $required;
-        $list[] = ['name' => $name, 'description' => trim(($tool['description'] ?? '') . ' ' . MCP_DATA_HINT),
-                   'inputSchema' => $schema, 'annotations' => $annotations + MCP_DEFAULT_ANNOTATIONS];
+        $entry = ['name' => $name, 'description' => trim(($tool['description'] ?? '') . ' ' . MCP_DATA_HINT),
+                  'inputSchema' => $schema, 'annotations' => $annotations + MCP_DEFAULT_ANNOTATIONS];
+        if (isset($tool['_meta'])) $entry['_meta'] = $tool['_meta']; // MCP Apps: the view of the tool
+        $list[] = $entry;
     }
     return $list;
 }
