@@ -24,8 +24,8 @@ const MCP_HELP_CSP = "default-src 'none'; style-src 'self'; img-src 'self'; base
 
 const MCP_INSTRUCTIONS = <<<'TXT'
 You are connected to Agile Poker (planning poker for distributed teams). You act as the user's own browser: you sit
-at a team's table as the user, nobody sees that an AI is involved, and you can do exactly what the user could do on
-the web board – nothing more.
+at a team's table as the user (the board shows the team a small AI symbol at the user's seat), and you can do exactly
+what the user could do on the web board – nothing more.
 
 Getting a seat
 - If the user gives you an invite link (https://poker.komplexitaeter.de/?t=...) or team id, ask for the name to show
@@ -447,6 +447,7 @@ function mcp_actor(mysqli $link, array $args): array
         $actor = api_key_lookup($link, $key);
         if ($actor === null) throw new ApiError(401, 'invalid_key');
         touch_api_person($link, $actor['uid'], $actor['team_id']);
+        if (touch_mcp_person($link, $actor['uid'], $actor['team_id'])) notify_team($actor['team_id']); // B-151 AI symbol
         return $actor;
     }
     $uid = $args['uid'] ?? null;
@@ -458,6 +459,7 @@ function mcp_actor(mysqli $link, array $args): array
     $role = v1_member_type($link, $t, $uid);
     if ($role === null) throw new ApiError(403, 'not_a_member');
     touch_api_person($link, $uid, $t);
+    if (touch_mcp_person($link, $uid, $t)) notify_team($t); // B-151: the boards show the AI symbol at once
     return ['uid' => $uid, 'team_id' => $t, 'role' => $role, 'via' => 'mcp_seat', 'key_id' => null];
 }
 
@@ -548,6 +550,8 @@ function mcp_invite_team_id(string $invite): string
 /* result of create_team and join_team: team, you (with the uid of a new seat), board */
 function mcp_seat_result(mysqli $link, array $actor, ?string $uid, string $what): array
 {
+    // B-151: a new seat is used through MCP from the start (a key seat was marked by mcp_actor() already)
+    if ($uid !== null && touch_mcp_person($link, $uid, $actor['team_id'])) notify_team($actor['team_id']);
     $board = core_board_get($link, $actor, false);
     $you = ['uid' => $uid] + $board['you'];
     $structured = ['team' => $board['team'], 'you' => $you, 'board' => $board];
@@ -768,8 +772,8 @@ function mcp_help_page(): string
     $o[] = '<main class="api-doc-main">';
     $o[] = '<h1>Agile Poker for AI assistants</h1>';
     $o[] = '<p class="api-doc-lead">Join a planning poker board from a chat with your AI assistant (Claude, ChatGPT, '
-        . '&hellip;). The assistant acts as your own browser: it sits at the table under your name, nobody sees that an '
-        . 'AI is involved, and it can do only what you could do on the board.</p>';
+        . '&hellip;). The assistant acts as your own browser: it sits at the table under your name (the team sees a '
+        . 'small AI symbol at your seat), and it can do only what you could do on the board.</p>';
 
     $o[] = '<div class="api-doc-intro">';
     $o[] = '<section class="api-doc-box" id="setup"><h2>Add the connector</h2>';
