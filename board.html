@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.75" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.76" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -70,7 +70,8 @@
     <script defer src="script/timer.js?v=1" type="text/javascript"></script>
     <script defer src="script/connection.js?v=2" type="text/javascript"></script>
     <script defer src="script/api_keys.js?v=1" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.43" type="text/javascript"></script>
+    <script defer src="script/ai_dialog.js?v=2" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.44" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
          waiting for images or analytics (window load) -->
@@ -118,6 +119,8 @@
     <!-- B-52 S1c: "next item" (a chevron against a bar) and "finish item" (a flag) on the rail -->
     <symbol id="i-skip" viewBox="0 0 24 24"><path d="M6 6l7 6-7 6M17 6v12"/></symbol>
     <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2.5 4.5L17 13H6"/></symbol>
+    <!-- B-151 (MCP PR G): the AI assistant – a small robot head (same shape as --icon-bot in style.css) -->
+    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4.5" y="8" width="15" height="11.5" rx="3.5"/><path d="M12 8V5M9.5 13v1.5M14.5 13v1.5M2.5 12.5v3M21.5 12.5v3"/><circle cx="12" cy="3.6" r="1.3"/></symbol>
 </svg>
 
 <!-- B-78: phones held sideways (style.css, "Rotate hint"); "Continue anyway" hides it for the session -->
@@ -148,6 +151,9 @@
                  share menu opens, else the link is copied and the button itself confirms it (V1, inviteTeam()) -->
             <button type="button" id="invite_btn" class="icon-btn invite-btn" onclick="inviteTeam()" aria-label="Invite – copy board link"><svg class="i i-share" aria-hidden="true"><use href="#i-share"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg><span class="lbl">Invite</span></button>
             <span id="invite_status" class="sr-only" role="status" aria-live="polite"></span>
+            <!-- B-151 (MCP PR G, Andreas: variant a): an icon button right of "Invite" opens #ai_dialog (ai_dialog.js);
+                 Invite stays one click -->
+            <button type="button" id="ai_btn" class="icon-btn ai-btn" aria-label="AI assistant" title="AI assistant" aria-haspopup="dialog" aria-controls="ai_dialog"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg></button>
             <button type="button" id="show_qr_code" class="icon-btn" onclick="showQRCode(true)" aria-label="Show QR code"><svg class="i" aria-hidden="true"><use href="#i-qr"/></svg></button>
         </div>
 
@@ -308,6 +314,9 @@
             </div>
         </section>
         <div id="cbox"></div>
+        <!-- B-151: anonymous mode after the reveal shows no marks on the cards; one calm line below them carries what
+             the cards no longer show: ai_count and away_count from dao.php (updateTableSummary() in script.js) -->
+        <p id="table_summary" class="table-summary" hidden><span class="ts-ai" title="Joined via an AI assistant"><span class="ts-ai-n"></span> via AI assistant</span><span class="ts-away" title="Away at the moment"><span class="ts-away-n"></span> away</span></p>
         <!-- B-110: the observers below the cards, filled by script.js (markup: style.css "Table interaction") -->
         <div id="observers" class="observers" hidden>
             <h2 class="obs-label">observers</h2>
@@ -660,6 +669,29 @@
         <p class="api-key-links"><a href="./api/v1/" target="_blank" rel="noopener">API docs</a> <span aria-hidden="true">·</span> <a href="./api/v1/openapi.json" target="_blank" rel="noopener">OpenAPI spec</a> <span aria-hidden="true">·</span> <a href="./mcp" target="_blank" rel="noopener">AI connector</a></p>
         <div class="leave-item-foot">
             <button type="button" id="api_key_done" class="btn-box">Done</button>
+        </div>
+    </dialog>
+
+    <!-- B-151 (MCP PR G): how to bring an AI assistant to this table. Modal (showModal) like #api_key_new; opened by
+         #ai_btn (ai_dialog.js), Escape / Done / a click beside it close it, the focus goes back to #ai_btn.
+         The connector URL comes from the current origin (showMcpUrl() in script.js) -->
+    <dialog id="ai_dialog" class="leave-item ai-dialog" aria-modal="true" aria-labelledby="ai_dialog_title" aria-describedby="ai_dialog_text">
+        <h2 id="ai_dialog_title"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg>Play via your AI assistant</h2>
+        <p id="ai_dialog_text" class="ai-dialog-text">Your assistant (Claude, ChatGPT &hellip;) can take a seat at this table for you. Add Agile Poker once as a connector:</p>
+        <div class="row api-key-out">
+            <input class="field api-key-value mcp-url-field" id="ai_url" type="text" value="/mcp" readonly aria-label="Connector URL" autocomplete="off" spellcheck="false" />
+            <button type="button" id="ai_url_copy" class="btn-box primary"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span class="lbl">Copy</span></button>
+        </div>
+        <ol class="ai-steps">
+            <li>In claude.ai: <b>Settings &rarr; Connectors &rarr; Add custom connector</b></li>
+            <li>Paste the URL &ndash; no sign-in needed</li>
+            <li>Give your assistant this board&rsquo;s link <button type="button" id="ai_board_copy" class="ti-link">copy link</button></li>
+        </ol>
+        <p class="ai-dialog-note"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg>Everybody at the table sees this mark next to your name.</p>
+        <p id="ai_copy_status" class="sr-only" role="status" aria-live="polite"></p>
+        <div class="leave-item-foot ai-dialog-foot">
+            <a class="ai-howto" href="./mcp" target="_blank" rel="noopener">How it works</a>
+            <button type="button" id="ai_dialog_done" class="btn-box">Done</button>
         </div>
     </dialog>
 
