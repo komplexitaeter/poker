@@ -86,7 +86,8 @@ test('wakes within about a second when someone plays in the browser; the reveal 
   expect(Date.now() - played).toBeLessThan(2_500);
   expect(woke.data).toMatchObject({ changed: true, changes: ['"Bob" played a card.', 'Waiting for: "Anna".'] });
   expect(woke.data.board.players.find((p: any) => p.name === 'Bob')).toMatchObject({ played: true, card: null });
-  expect(woke.text).toContain('- "Bob" played a card.');
+  // one short line of what changed on top, then the table block
+  expect(woke.text).toMatch(/^"Bob" played a card\. Waiting for: "Anna"\.\n\nMCP Wait Wake · voting · waiting for you\n/);
   expect(woke.text).toContain(`version (pass it as since to wait_for_change): ${woke.data.version}`);
   expect(woke.data.version).not.toBe(before.data.version);
 

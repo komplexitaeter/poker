@@ -69,8 +69,8 @@ return [
                 . 'whether they join as player or observer, then call this with invite, name and role. This creates a '
                 . 'NEW person at the table, so call it only once per conversation and team. Keep team_id and uid from '
                 . 'the result and pass them on every further call. '
-                . 'Either way the result contains the current board: tell the user in one line where they sit and what '
-                . 'is going on (note, active item, who is there).' . MCP_ASK_UPDATES,
+                . 'Either way the result contains the current board: show the user its table block as a code block.'
+                . MCP_ASK_UPDATES,
             'identity' => 'key',
             'params' => [
                 'invite' => ['type' => 'string', 'text' => true, 'min_length' => 1, 'max_length' => 300,
@@ -90,9 +90,10 @@ return [
             'description' => 'Wait until something changes at the table, then return what changed and the new board. '
                 . 'Returns at the latest after about 25 seconds with changed=false. While you keep calling it, you '
                 . 'count as present at the table (like an open browser tab); stop calling it when the user is done. '
-                . 'Pass the version from your last result (any tool) as since. Typical loop: call, tell the user '
-                . 'briefly what happened (e.g. "Ben played - waiting for Cleo", "Revealed: 5 x3, 8 x1"), call again '
-                . 'with the new version. If the result says busy, wait retry_after seconds and call again.',
+                . 'Pass the version from your last result (any tool) as since. Typical loop: call, show the user the '
+                . 'table block of the text as a code block (at most one extra line, e.g. what changed), call again '
+                . 'with the new version. The full list of changes is in changes. If the result says busy, wait '
+                . 'retry_after seconds and call again.',
             'identity' => 'seat',
             'params' => [
                 'since' => ['type' => 'string', 'required' => true, 'min_length' => 1, 'max_length' => MCP_VERSION_MAX,

@@ -158,7 +158,7 @@ test('join_team via invite link: a new seat, the browser sees it; errors', async
   const cleo = await ok(request, 'join_team', { invite: t, name: 'Cleo', role: 'observer' });
   expect(cleo.data.you.role).toBe('observer');
   expect(cleo.data.you.uid).not.toBe(bob.data.you.uid);
-  expect(cleo.text).toContain('You watch as observer.');
+  expect(cleo.text).toMatch(/^Observers: .*\bYou\b/m);
 });
 
 test('join_team with only an API key takes over the browser seat; key in the header; invalid keys', async ({ request, browser }) => {
@@ -208,9 +208,10 @@ test('get_board shows who played but hides the cards of others until every playe
   const aliceRow = voting.data.players.find((p: any) => p.name === 'Alice');
   expect(aliceRow).toMatchObject({ played: true, card: null, away: false });
   expect(JSON.stringify({ players: voting.data.players, round: voting.data.round })).not.toMatch(/13|thrtn01/);
-  expect(voting.text).toContain('"Alice" played');
-  expect(voting.text).toContain('Waiting for: "Bob"');
-  expect(voting.text).not.toMatch(/"13"/);
+  expect(voting.text).toContain('MCP Hidden · voting · waiting for you\n');
+  expect(voting.text).toMatch(/^  Alice +played$/m);
+  // the hidden card nowhere in the text (only Bob's own pick list shows the deck)
+  expect(voting.text.split('\n').filter((l: string) => !l.includes('pick:')).join('\n')).not.toMatch(/13|thrtn01/);
 
   // Bob plays (old endpoint with his seat, play_card comes later): every player has a card -> revealed
   const played = await request.post(`/api/setc.php?${new URLSearchParams({ t, cardkey: 'five001' })}`, asUser(bob.uid));
@@ -221,7 +222,8 @@ test('get_board shows who played but hides the cards of others until every playe
   expect(revealed.data.players.find((p: any) => p.name === 'Alice').card).toBe('13');
   expect(revealed.data.you.card).toBe('5');
   expect(revealed.data.items).toEqual([]);
-  expect(revealed.text).toContain('Revealed: 5 ×1, 13 ×1 · range 5–13 · suggestion "13"');
+  expect(revealed.text).toContain('MCP Hidden · revealed · 5 ×1, 13 ×1 → suggestion 13\n');
+  expect(revealed.text).toContain('Items: 0 open, 0 done');
 });
 
 test('get_board in anonymous mode: after the reveal no mkey of others (no match of name and card), the own one stays', async ({ request }) => {
@@ -245,6 +247,55 @@ test('get_board in anonymous mode: after the reveal no mkey of others (no match 
   expect(after.players.filter((p: any) => p.mkey !== null).map((p: any) => p.mkey)).toEqual([anna.you.mkey]);
   expect(JSON.stringify(after.players)).not.toContain(`"mkey":"${bob.mkey}"`);
   expect(after.players.map((p: any) => p.card).sort()).toEqual(['3', '8']);
+
+  // the text block keeps the names hidden as well: the own row as You, the other one anonymous
+  const text = (await ok(request, 'get_board', { team_id: t, uid: anna.you.uid })).text;
+  expect(text).toMatch(/^MCP Anon · revealed · 3 ×1, 8 ×1/);
+  expect(text).toMatch(/^  You +3$/m);
+  expect(text).toMatch(/^  \*{6} +8$/m);
+  expect(text).not.toContain('Bob');
+});
+
+// B-151 Stufe 1: the text content is a fixed, compact table block for humans (structuredContent stays the JSON)
+test('the text is a compact table block: hidden cards as "played", after the reveal cards and changes', async ({ request }) => {
+  const ann = (await ok(request, 'create_team', { name: 'MCP Block', member_name: 'Ann', role: 'player' })).data;
+  const t = ann.team.id as string;
+  const seat = { team_id: t, uid: ann.you.uid as string };
+  const bea = (await ok(request, 'join_team', { invite: t, name: 'Bea', role: 'player' })).data.you;
+  const beaSeat = { team_id: t, uid: bea.uid as string };
+  const kai = (await ok(request, 'join_team', { invite: t, name: 'Kai', role: 'observer' })).data.you;
+  await ok(request, 'board_settings', { ...seat, action: 'set_note', note: 'Mach das so\nsecond line' });
+  await ok(request, 'board_settings', { ...seat, action: 'set', show_card_changes: true });
+  await ok(request, 'items', { ...seat, action: 'add', key: 'TIX-334', heading: 'How do we build it?' });
+  await ok(request, 'play_card', { ...beaSeat, action: 'play', card: '2' });
+
+  const voting = await ok(request, 'get_board', seat);
+  const lines = voting.text.split('\n');
+  expect(lines.slice(0, 3)).toEqual(['MCP Block · voting · waiting for you', 'Note: Mach das so',
+                                     'Item: TIX-334 – How do we build it?']);
+  expect(voting.text).toMatch(/^  Bea +played$/m);
+  expect(voting.text).toMatch(/^  You +–   pick: 0 .* 13 .*\?/m);
+  expect(voting.text).toMatch(/^Observers: Kai$/m);
+  expect(voting.text).not.toContain('second line');
+  for (const secret of [ann.you.uid, bea.uid, kai.uid]) expect(voting.text).not.toContain(secret);
+  // Bea's card is hidden: the 2 is only in Ann's pick list
+  expect(lines.filter((l: string) => !l.includes('pick:')).join('\n')).not.toMatch(/\b2\b|two0/);
+
+  // the own card before the reveal: only the agent sees it
+  const mine = await ok(request, 'play_card', { ...seat, action: 'play', card: '3' });
+  expect(mine.data.board.round.state).toBe('revealed'); // both played -> revealed
+  // Bea changes after the reveal: shown with the first card
+  const changed = await ok(request, 'play_card', { ...beaSeat, action: 'play', card: '5' });
+  expect(changed.data.board.players.find((p: any) => p.name === 'Bea').card_before_change).toBe('2');
+  const revealed = await ok(request, 'get_board', seat);
+  const block = revealed.text.split('\n\n')[0];
+  expect(block.split('\n')[0]).toMatch(/^MCP Block · revealed · 3 ×1, 5 ×1 → suggestion \S+$/);
+  expect(block).toMatch(/^  Bea +5   \(was 2\)$/m);
+  expect(block).toMatch(/^  You +3$/m);
+  expect(block).not.toContain('pick:');
+  // structuredContent unchanged: the full board
+  expect(revealed.data.round.result).toMatchObject({ text: '3 ×1, 5 ×1' });
+  expect(revealed.text).toContain(`version (pass it as since to wait_for_change): ${revealed.data.version}`);
 });
 
 test('protocol and identity errors', async ({ request }) => {
