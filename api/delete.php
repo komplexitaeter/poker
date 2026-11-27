@@ -17,7 +17,8 @@ if (strlen($mkey)>0) {
        The own "Delete user" goes through delete_user.php and is not affected. B-151: core_member_remove()
        (lib_core_member.php), shared with MCP round remove_player; notifies the team (B-81). */
     try {
-        core_member_remove($link, ['uid' => '', 'team_id' => $t, 'role' => null, 'via' => 'browser', 'key_id' => null],
+        // B-151 self leave: the uid (header) tells a removal of the own card (a leave) from one by someone else
+        core_member_remove($link, ['uid' => get_uid(), 'team_id' => $t, 'role' => null, 'via' => 'browser', 'key_id' => null],
                            (int)$mkey);
     } catch (ApiError $e) {
         // no player with this mkey (an observer, removed already, e.g. by a second click at the same time): no notify

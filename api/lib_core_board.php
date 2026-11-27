@@ -91,7 +91,10 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         'you' => ['name' => (string)$dao['name'], 'role' => api_member_role((string)$dao['player_type']),
                   'mkey' => (string)$dao['mkey'], 'card' => $text($dao['selected_card_key']),
                   'card_key' => is_string($dao['selected_card_key']) && $dao['selected_card_key'] !== ''
-                      ? $dao['selected_card_key'] : null],
+                      ? $dao['selected_card_key'] : null,
+                  // B-151 self leave: removed by its own leave (me leave, own trash can), not by someone else
+                  'left_by_self' => $dao['player_type'] === 'REMOVED'
+                      && seat_left_by_self($link, (string)$actor['uid'], $t)],
         'note' => (string)$dao['topic'],
         'round' => $round,
         'players' => $out_players,

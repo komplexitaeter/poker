@@ -113,7 +113,8 @@ function core_round_new(mysqli $link, array $actor): void
 /*
  * member_remove (delete.php, MCP round remove_player): takes the player with $mkey off the table (REMOVED, card up).
  * B-110: only players; an observer, a removed person or an unknown mkey -> 404 player_not_found, nothing notified.
- * B-152: every registered person may remove others (also a removed one).
+ * B-152: every registered person may remove others (also a removed one). B-151 self leave: the own mkey counts as
+ * leaving by oneself (mark set), anybody else's clears the mark of that seat.
  */
 function core_member_remove(mysqli $link, array $actor, int $mkey): void
 {
@@ -125,6 +126,14 @@ function core_member_remove(mysqli $link, array $actor, int $mkey): void
     $removed = $sql->affected_rows > 0;
     $sql->close();
     if (!$removed) throw new ApiError(404, 'player_not_found');
+    // B-151 self leave: removing the own seat (trash can on the own card, remove_player with the own mkey) is a leave
+    $sql = $link->prepare("select id from pok_players_tbl where team_id = ? and mkey = ?");
+    $sql->bind_param('si', $t, $mkey);
+    $sql->execute();
+    $id = (string)($sql->get_result()->fetch_row()[0] ?? '');
+    $sql->close();
+    $uid = (string)$actor['uid'];
+    seat_mark_self_left($link, $id, $t, $uid !== '' && $id === $uid);
     notify_team($t);
 }
 
@@ -170,6 +179,8 @@ function core_member_update(mysqli $link, array $actor, ?string $name, ?string $
         }
         $sql->execute();
         $sql->close();
+        // B-151 self leave: back at the table (set_role) - the mark of an own leave goes
+        if ($player_type !== null || $me['player_type'] !== 'REMOVED') seat_mark_self_left($link, $id, $t, false);
         // the user row (settings, first-seen date) for rows from before #282, like name.php
         ensure_user_row($link, $id);
     });
@@ -178,7 +189,8 @@ function core_member_update(mysqli $link, array $actor, ?string $name, ?string $
 
 /*
  * member_leave (name.php with an empty name, MCP me leave): the actor gets up from this table - REMOVED, card up, name
- * kept; coming back works with member_update (player or observer). Seat gone -> 403 not_a_member.
+ * kept, marked as left by itself (seat_mark_self_left(), board you.left_by_self); coming back works with member_update
+ * (player or observer). Seat gone -> 403 not_a_member.
  */
 function core_member_leave(mysqli $link, array $actor): void
 {
@@ -191,6 +203,7 @@ function core_member_leave(mysqli $link, array $actor): void
         $sql->bind_param('ss', $id, $t);
         $sql->execute();
         $sql->close();
+        seat_mark_self_left($link, $id, $t, true); // B-151 self leave: "You left the table.", no alarm in the live board
     });
     notify_team($t);
 }

@@ -423,6 +423,43 @@ test('the view: own seat taken off the table shows a banner with the way back an
   expect((await messages()).length).toBe(4);
 });
 
+test('the view: leaving by oneself (me leave) or end_session tells the chat nothing; a calm line with "Join again"', async ({ request, browser }) => {
+  test.setTimeout(60_000);
+  const created = await tool(request, 'create_team', { name: 'Self Leave', member_name: 'Peter', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  await tool(request, 'join_team', { invite: seat.team_id, name: 'Bob', role: 'player' });
+  const messages = () => host.evaluate(() => (window as any).messages);
+
+  const host = await newPlayer(browser);
+  await openHost(host);
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  const view = host.frameLocator('iframe[data-view="0"]');
+  await expect(view.locator('#conn')).toHaveText('Live');
+  await expect.poll(() => host.evaluate(() => (window as any).toolCalls.includes('wait_for_change'))).toBe(true);
+
+  // the agent leaves on the user's request: no alarm banner, no message, a calm line with the way back
+  await tool(request, 'me', { ...seat, action: 'leave' });
+  await expect(view.locator('#left-self')).toBeVisible({ timeout: 3_000 });
+  await expect(view.locator('#left-self')).toContainText('You left the table.');
+  await expect(view.locator('#removed')).toBeHidden();
+  await expect(view.locator('#status')).toContainText('you left the table');
+  await host.waitForTimeout(2_500); // longer than the delay of the removal message
+  expect(await messages()).toEqual([]);
+  await shot(host, 0, 'left-self-light-420.png');
+
+  // "Join again": back with the role from before
+  await view.locator('#rejoin-self').click();
+  await expect(view.locator('#left-self')).toBeHidden();
+  await expect(view.locator('#players li', { hasText: 'Peter (you)' })).toBeVisible();
+
+  // leave + end_session right after each other (the bug): only "Session ended", never the removal message
+  await tool(request, 'me', { ...seat, action: 'leave' });
+  await tool(request, 'me', { ...seat, action: 'end_session' });
+  await expect(view.locator('#conn')).toHaveText('Session ended – the board is no longer live.', { timeout: 3_000 });
+  await host.waitForTimeout(2_500);
+  expect(await messages()).toEqual([]);
+});
+
 test('the view: "End session" is like closing the tab - away at once, the view stops, "Resume" reconnects', async ({ request, browser }) => {
   test.setTimeout(60_000);
   const created = await tool(request, 'create_team', { name: 'End View', member_name: 'Anna', role: 'player' });

@@ -751,7 +751,8 @@ function mcp_board_text(array $board): string
     }
     if ($board['you']['role'] === 'observer' && !in_array('You', $observers, true)) array_unshift($observers, 'You');
     if ($observers !== []) $lines[] = 'Observers: ' . implode(', ', $observers);
-    if ($removed) $lines[] = 'You (not at the table - others see you as observer; me set_role to come back)';
+    if ($removed) $lines[] = 'You (' . (!empty($board['you']['left_by_self']) ? 'left the table' : 'not at the table')
+        . ' - others see you as observer; me set_role to come back)';
     if (isset($board['items'])) {
         $lines[] = 'Items: ' . $board['open_count'] . ' open, ' . $board['done_count'] . ' done';
         foreach ($board['items'] as $entry) {
