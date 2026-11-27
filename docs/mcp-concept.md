@@ -180,10 +180,13 @@ Playing
   part.
 
 Showing the table
-- Every result with a board has a compact table block in its text: the line with team and round state, then note,
-  item, timer, one row per player, observers. After each change (wait_for_change, or your own action) show the user
-  exactly this block as a code block instead of writing sentences about it, with at most one extra line of your own
-  (e.g. what changed or a question). Do not add cards or names that are not in the block.
+- Live board: once the user wants to be kept posted and show_board shows a live board, keep it at the BOTTOM of the
+  conversation: at the end of every reply in which something changed at the table or the user acted, call
+  show_board again (older boards stop by themselves). Never more than one show_board per reply. Next to it write at
+  most one short line, or nothing – the board shows the change.
+- Without a live board: every result with a board has a compact table block in its text (team and round state, note,
+  item, timer, one row per player, observers). After each change show exactly this block as a code block, with at
+  most one short line of your own and no narration. Do not add cards or names that are not in the block.
 - Ask before actions that affect everybody and cannot be undone: deleting items or custom sets, removing people,
   "delete my data", changing the card set while cards are down (starts a new round).
 
@@ -1171,3 +1174,18 @@ wenn `show_board` erst mit Apps-2 das `_meta` bekommt).
 4. **ChatGPT-Test:** Hat jemand im Team einen Plan mit Developer Mode, um den Staging-Connector dort einzurichten?
 5. **Netzwerkzugriff für Recherche:** modelcontextprotocol.io, developers.openai.com und help.openai.com waren aus
    der Agenten-Umgebung gesperrt; für eine Nachprüfung der ChatGPT-Angaben bitte freischalten oder selbst prüfen.
+
+### 13.8 Reiche Ansicht (Stand 2026-11-27, Ben)
+
+Feedback Andreas nach dem Test in claude.ai: Live-Board bleibt unten im Gespräch (`show_board` am Ende jeder Antwort
+mit Änderung, höchstens einmal pro Antwort, ältere Kopien stoppen per Supersession), daneben höchstens eine kurze
+Zeile; Rückfragen (z. B. vor `items next`) in einer Zeile, nur Werte aus dem Set bzw. gespielte. Mit Live-Board öffnet
+`show_board(open="next_item")` den Dialog „How do you want to leave this item?“ der Ansicht (`open` im Ergebnis).
+
+Daten für Karten wie im Web (nur ergänzt, `core_board_get()`): jede Karte in `deck.cards`/`deck.controls`/
+`deck.other_cards` hat zusätzlich `text`, `description`, `symbol`, `color`, `numeric_value`, `has_value`, `infinite`,
+`range`, `style`, `control` (aufgelöst wie `cardLook()` in `script/cards.js`); `deck.style`; `players[].card_key`,
+`card_before_change_key`, `you.card_key`. Skala des Ergebnis-Diagramms = `deck.cards` + `deck.controls` (wie
+`gDeck.cards` im Web). Symbole: `_meta.symbols` (verstecktes `<svg>` nur mit den Symbolen des Decks und der
+Status-Karten) und `_meta.symbol_ids` im Ergebnis von `show_board` (nicht im `structuredContent`, also nicht beim
+Modell); über 60 KB (nur große eigene Sets mit allen Steuerkarten) statt `symbols` nur `_meta.symbols_resource` = `ui://agile-poker/symbols`; dort und bei späterem Deck-Wechsel `resources/read` (ganzes `src/cards.svg`).

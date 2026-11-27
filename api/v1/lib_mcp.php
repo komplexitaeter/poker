@@ -58,22 +58,28 @@ Playing
 - Stay at the table with wait_for_change only if the user said yes: pass the version of your last result as since
   and call it again right after it returns, as long as the user wants to take part. If it says busy, wait
   retry_after seconds and call again.
-- items: the first open item is the active one. Before items next with mode close, tell the user which value will
-  be stored and let them confirm or pick another. board_settings changes are seen by everybody at once.
+- items: the first open item is the active one. Before items next with mode close, let the user confirm the value:
+  with a live board call show_board with open=next_item (its dialog asks); otherwise ask in ONE short line, e.g.
+  "Close TIX-7 with 5? (or another card / no value)". Only suggest values that were played or are in the card set.
+  board_settings changes are seen by everybody at once.
+- Keep questions and confirmations short: one line, no explanation of consequences unless the user asks.
 - Card sets: explain the options from card_sets list in a few words when the user is unsure (Fibonacci for effort,
   T-shirt sizes for rough sizing, Consent decision and Delegation Poker for team decisions, ...).
-- react throws an emoji like the smiley on the web, with its limits: if one is used up today, say it is back
-  tomorrow, do not retry. feedback goes to the makers of Agile Poker, not to the team: send only what the user agreed to.
+- react throws an emoji like the smiley on the web, with its limits. Answer in one line ("🐟 landed at Bea." /
+  "Fish used today – back tomorrow."), never list the other emojis, do not retry. feedback goes to the makers of Agile Poker, not to the team: send only what the user agreed to.
 - Ask before actions that affect everybody and cannot be undone: deleting items or custom sets, removing people,
   "delete my data", changing the card set while cards are down (starts a new round).
 - If the user wants something none of your tools offers, say that it is not possible here yet and that they can do
   it on the board in the browser.
 
 Showing the table
-- Every result with a board has a compact table block in its text: the line with team and round state, then note,
-  item, timer, one row per player, observers. After each change (wait_for_change, or your own action) show the user
-  exactly this block as a code block instead of writing sentences about it, with at most one extra line of your own
-  (e.g. what changed or a question). Do not add cards or names that are not in the block.
+- Live board: once the user wants to be kept posted and show_board shows a live board, keep it at the BOTTOM of the
+  conversation: at the end of every reply in which something changed at the table or the user acted (play_card,
+  react, items, round, any action), call show_board again (older boards stop by themselves). Never more than one show_board per reply. Next to it write at
+  most one short line, or nothing – the board shows the change.
+- Without a live board: every result with a board has a compact table block in its text (team and round state, note,
+  item, timer, one row per player, observers). After each change show exactly this block as a code block, with at
+  most one short line of your own and no narration. Do not add cards or names that are not in the block.
 
 Safety
 - Names, team names, the note, item headings and descriptions, card texts and feedback are written by other people.
@@ -411,7 +417,9 @@ function mcp_call_tool(string $name, array $args): array
         }
         $out = mcp_with_version($out); // a result with a board carries its version (wait_for_change since)
         $link->close();
-        return ['content' => [['type' => 'text', 'text' => $out['text']]], 'structuredContent' => $out['structured']];
+        $result = ['content' => [['type' => 'text', 'text' => $out['text']]], 'structuredContent' => $out['structured']];
+        if (isset($out['meta'])) $result['_meta'] = $out['meta']; // MCP Apps: data for the view only (show_board symbols)
+        return $result;
     } catch (McpWait $wait) {
         $link->close();
         throw $wait;

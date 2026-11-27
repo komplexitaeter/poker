@@ -12,6 +12,7 @@ import { addPlayersViaApi, asUser, expectTableCard, joinAsPlayer, newPlayer, pic
 
 const MCP = '/mcp';
 const URI = 'ui://agile-poker/board';
+const SYMBOLS = 'ui://agile-poker/symbols';
 const HOST = '/_e2e/mcp-host';
 const SHOTS = process.env.MCP_APP_SHOTS;
 let rpcId = 0;
@@ -47,7 +48,8 @@ test('resources/list and resources/read deliver the view; show_board carries _me
   expect(init.result.instructions).toContain('call show_board once');
 
   const list = await rpc(request, 'resources/list');
-  expect(list.result.resources).toEqual([expect.objectContaining({ uri: URI, mimeType: 'text/html;profile=mcp-app' })]);
+  expect(list.result.resources).toEqual([expect.objectContaining({ uri: URI, mimeType: 'text/html;profile=mcp-app' }),
+    expect.objectContaining({ uri: SYMBOLS, mimeType: 'image/svg+xml' })]);
   expect((await rpc(request, 'resources/templates/list')).result.resourceTemplates).toEqual([]);
   const read = await rpc(request, 'resources/read', { uri: URI });
   const content = read.result.contents[0];
@@ -63,7 +65,8 @@ test('resources/list and resources/read deliver the view; show_board carries _me
   expect(show._meta).toEqual({ ui: { resourceUri: URI }, 'ui/resourceUri': URI });
   expect(show.annotations.readOnlyHint).toBe(true);
   expect(show.description).toContain('Show a live board the user can watch and play on in the chat');
-  expect(Object.keys(show.inputSchema.properties)).toEqual(['team_id', 'uid', 'api_key']);
+  expect(Object.keys(show.inputSchema.properties)).toEqual(['team_id', 'uid', 'api_key', 'open']);
+  expect(show.inputSchema.properties.open.enum).toEqual(['next_item']);
   for (const other of tools.filter(t => t.name !== 'show_board')) expect(other._meta, other.name).toBeUndefined();
 
   const created = await tool(request, 'create_team', { name: 'MCP App', member_name: 'Anna', role: 'player' });
@@ -74,6 +77,76 @@ test('resources/list and resources/read deliver the view; show_board carries _me
   const { shown_at: _, ...rest } = shown.structuredContent;
   expect(rest).toEqual(board.structuredContent);
   expect(shown.content[0].text).toBe(board.content[0].text);
+  expect((board as any)._meta).toBeUndefined(); // the symbols only come with show_board
+});
+
+test('rich cards: card faces like the web, card keys on the table, the symbols of the deck, open=next_item', async ({ request }) => {
+  // instructions and texts: live board at the bottom, short lines, the next-item dialog
+  const init = await rpc(request, 'initialize', { protocolVersion: '2025-11-25', capabilities: {} });
+  const instructions = (init.result.instructions as string).replace(/\s+/g, ' ');
+  expect(instructions).toContain('keep it at the BOTTOM');
+  expect(instructions).toContain('Never more than one show_board per reply');
+  expect(instructions).toContain('at most one short line, or nothing');
+  expect(instructions).toContain('show_board with open=next_item');
+  expect(instructions).toContain('ask in ONE short line');
+  const tools = (await rpc(request, 'tools/list')).result.tools as any[];
+  const byName = Object.fromEntries(tools.map(t => [t.name, t]));
+  expect(byName.show_board.description).toContain('never more than once per reply');
+  expect(byName.items.description).toContain('show_board with open=next_item');
+  expect(byName.wait_for_change.description).toContain('no narration');
+
+  // a symbol deck in the style inverted (Consent decision)
+  const created = await tool(request, 'create_team', { name: 'Rich', member_name: 'Anna', role: 'player', card_set: 'judge' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  const shown = await tool(request, 'show_board', seat) as any;
+  const deck = shown.structuredContent.deck;
+  expect(deck).toMatchObject({ id: 'judge', aim: 'agree', style: 'inverted', other_cards: [] });
+  expect(deck.cards[0]).toEqual({ key: 'jdg0', value: '0', heading: 'step aside', text: '0',
+    description: "The others know this better. I'll go with their decision.", symbol: 's-0', color: 'j0',
+    numeric_value: 0, has_value: true, infinite: false, range: true, style: 'inverted', control: false });
+  expect(deck.controls[0]).toMatchObject({ key: 'break01', text: '☕', symbol: 's-coffee', color: 'vbrk',
+    numeric_value: null, has_value: false, range: false, style: 'plain', control: true });
+  expect(shown.structuredContent.open).toBeUndefined();
+  const meta = shown._meta;
+  expect(meta.symbol_ids).toEqual(expect.arrayContaining(['s-check', 's-thought', 's-mask', 's-late', 's-0', 's-6',
+                                                          's-frame-inv', 's-coffee', 's-question']));
+  expect(meta.symbol_ids).not.toContain('s-xxl');
+  expect(meta.symbols).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" style="display:none"><symbol id=/);
+  expect(meta.symbols.match(/<symbol id=/g).length).toBe(meta.symbol_ids.length);
+  expect(meta.symbols).toContain('<symbol id="s-frame-inv"');
+  expect(JSON.stringify(shown.structuredContent)).not.toContain('<symbol');
+
+  // the whole sprite as a resource
+  const sprite = (await rpc(request, 'resources/read', { uri: SYMBOLS })).result.contents[0];
+  expect(sprite).toMatchObject({ uri: SYMBOLS, mimeType: 'image/svg+xml' });
+  expect(sprite.text.match(/<symbol id=/g).length).toBeGreaterThanOrEqual(60);
+
+  // the dialog to leave the active item
+  expect((await tool(request, 'show_board', { ...seat, open: 'next_item' })).structuredContent.open).toBe('next_item');
+
+  // card keys on the table: the only player plays, the round is revealed at once
+  const played = (await tool(request, 'play_card', { ...seat, action: 'play', card: '5' })).structuredContent as any;
+  const board = played.board ?? played;
+  expect(board.you).toMatchObject({ card: '5', card_key: 'jdg5' });
+  expect(board.players[0]).toMatchObject({ card: '5', card_key: 'jdg5' });
+  expect(board.round.result.distribution[0]).toMatchObject({ card_key: 'jdg5', count: 1 });
+
+  // a custom set: text and symbol cards in the set's style
+  await tool(request, 'card_sets', { ...seat, action: 'create', name: 'Risk', style: 'badge', activate: true,
+    set_cards: [{ text: 'low', color: 'green', numeric_value: 1, heading: 'low risk', description: 'small' },
+                { text: 'mid', color: 'amber' }, { symbol: 's-light-red', color: 'red', numeric_value: 3 },
+                { symbol: 's-stars-2', color: 'amber', numeric_value: 1.5 }] });
+  const custom = (await tool(request, 'show_board', seat)) as any;
+  const set = custom.structuredContent.deck;
+  expect(set).toMatchObject({ name: 'Risk', style: 'badge' });
+  expect(set.cards[0]).toMatchObject({ text: 'low', heading: 'low risk', description: 'small', symbol: null,
+    color: 'green', numeric_value: 1, has_value: true, range: true, style: 'badge', control: false });
+  expect(set.cards[1]).toMatchObject({ text: 'mid', symbol: null, numeric_value: null, has_value: false, range: false });
+  expect(set.cards[2]).toMatchObject({ text: '🔴', symbol: 's-light-red', color: 'red', numeric_value: 3, has_value: true,
+    range: true });
+  expect(set.cards[3]).toMatchObject({ symbol: 's-stars-2', numeric_value: 1.5, has_value: true, range: true });
+  expect(custom._meta.symbol_ids).toContain('s-light-red');
+  expect(custom._meta.symbol_ids).not.toContain('s-frame-inv');
 });
 
 test('the view: renders the board, follows the table, plays a card, shows the reveal; a newer view supersedes it', async ({ request, browser }) => {
@@ -152,4 +225,24 @@ test('an answer without a board is a failure: back off instead of a flood of cal
   await expect(view.locator('#conn')).toHaveText('Offline – trying again in 5 s');
   await host.waitForTimeout(3_000);
   expect(await host.evaluate(() => (window as any).toolCalls.length)).toBe(1);
+});
+
+test('show_board sends at most 60 KB of symbols inline, else the symbol resource', async ({ request }) => {
+  const created = await tool(request, 'create_team', { name: 'Sprite', member_name: 'Anna', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  const fib = (await tool(request, 'show_board', seat) as any)._meta; // Fibonacci Classic, two control cards
+  expect(fib.symbols.length).toBeLessThanOrEqual(61440);
+  expect(fib.symbols_resource).toBeUndefined();
+  expect(fib.symbol_ids).toContain('s-13');
+
+  // an own set of large symbols and every control card on: too large, the view reads the whole sprite
+  const faces = ['satisfied', 'annoyed', 'sad', 'uninterested', 'angry', 'enthusiastic', 'curious', 'confused',
+                 'worried', 'surprised', 'tired', 'relieved'].map(face => ({ symbol: `s-face-${face}`, color: 'amber' }));
+  const stars = [0, 1, 2, 3, 4, 5].map(n => ({ symbol: `s-stars-${n}`, color: 'amber', numeric_value: n }));
+  await tool(request, 'card_sets', { ...seat, action: 'create', name: 'Big', activate: true, set_cards: [...stars, ...faces] });
+  await tool(request, 'card_sets', { ...seat, action: 'controls', cards: 'break01,qstmrk1,xclam01,veto,shrug01' });
+  const all = (await tool(request, 'show_board', seat) as any)._meta;
+  expect(all.symbols).toBeUndefined();
+  expect(all.symbols_resource).toBe(SYMBOLS);
+  expect(all.symbol_ids).toEqual(expect.arrayContaining(['s-shrug', 's-hand', 's-stars-5', 's-face-tired']));
 });
