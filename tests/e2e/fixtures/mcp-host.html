@@ -31,9 +31,10 @@
     return res.json();
   }
 
-  window.openView = async function (args, theme = 'light', { emptyToolCalls = false, width = 0 } = {}) {
-    const read = await mcp('resources/read', { uri: 'ui://agile-poker/board' });
-    const html = read.result.contents[0].text;
+  window.openView = async function (args, theme = 'light', { emptyToolCalls = false, width = 0, html: cached = null } = {}) {
+    // html: a view the host cached under an older URI (hosts cache UI resources by URI)
+    const read = cached === null ? await mcp('resources/read', { uri: 'ui://agile-poker/board' }) : null;
+    const html = cached ?? read.result.contents[0].text;
     const result = (await mcp('tools/call', { name: 'show_board', arguments: args })).result;
     const frame = document.createElement('iframe');
     frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');

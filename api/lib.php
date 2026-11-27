@@ -1119,11 +1119,12 @@ function end_mcp_session(mysqli $link, string $uid, string $t): void
  * the table.". Format: the plain list of kept states [[version, state], ...] (api/v1/lib_mcp_wait.php) or, while the
  * mark is set, {"s": [...], "self_left_at": <unix time>}. A missing column, row or garbage reads as no states, no mark.
  */
-function seat_states_read(mysqli $link, string $uid, string $t): array
+function seat_states_read(mysqli $link, string $uid, string $t, bool $lock = false): array
 {
     $empty = ['s' => [], 'self_left_at' => null];
     try {
-        $sql = $link->prepare('select mcp_states from pok_players_tbl where id = ? and team_id = ?');
+        $sql = $link->prepare('select mcp_states from pok_players_tbl where id = ? and team_id = ?'
+                              . ($lock ? ' for update' : ''));
     } catch (mysqli_sql_exception $e) {
         if (!is_missing_schema_error($e)) throw $e;
         return $empty; // code deployed before the schema
@@ -1157,11 +1158,38 @@ function seat_states_write(mysqli $link, string $uid, string $t, array $data): v
     $sql->close();
 }
 
-/* sets ($self) or clears the mark "left the table by itself"; writes only on a change */
+/*
+ * writes only the kept states and leaves the mark as it is in the row right now: the mark is read by the update itself
+ * (under the row lock), never from an earlier read - a store of states that read the row before a leave committed
+ * cannot wipe the mark of that leave (B-151 self leave, review Sina). Plain string assembly, no JSON functions on the
+ * states: MySQL would write \u escapes back as UTF-8, the column is ascii.
+ */
+function seat_states_store(mysqli $link, string $uid, string $t, array $states): void
+{
+    $json = (string)json_encode($states, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    try {
+        $sql = $link->prepare("update pok_players_tbl
+                                  set mcp_states = case
+                                        when json_valid(mcp_states)
+                                         and json_type(json_extract(mcp_states, '$.self_left_at')) in ('INTEGER', 'UNSIGNED INTEGER')
+                                        then concat('{\"s\":', ?, ',\"self_left_at\":', json_extract(mcp_states, '$.self_left_at'), '}')
+                                        else ? end
+                                where id = ? and team_id = ?");
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return;
+    }
+    $sql->bind_param('ssss', $json, $json, $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
+/* sets ($self) or clears the mark "left the table by itself"; writes only on a change. Reads the row with a lock
+   (core_member_leave(): inside its transaction, the row is locked already), so states stored meanwhile stay */
 function seat_mark_self_left(mysqli $link, string $uid, string $t, bool $self): void
 {
     if ($uid === '') return;
-    $data = seat_states_read($link, $uid, $t);
+    $data = seat_states_read($link, $uid, $t, true);
     if (($data['self_left_at'] !== null) === $self) return;
     $data['self_left_at'] = $self ? time() : null;
     seat_states_write($link, $uid, $t, $data);

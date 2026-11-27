@@ -239,13 +239,12 @@ function mcp_store_state(mysqli $link, array $actor, array $board): void
     $version = substr(hash('sha256', mcp_state_json($state)), 0, MCP_VERSION_LENGTH);
     $uid = (string)$actor['uid'];
     $t = (string)$actor['team_id'];
-    $data = seat_states_read($link, $uid, $t);
-    $states = $data['s'];
+    $states = seat_states_read($link, $uid, $t)['s'];
     if (($states[0][0] ?? null) === $version) return; // nothing new: no write
     $states = array_values(array_filter($states, fn($entry): bool => is_array($entry) && ($entry[0] ?? null) !== $version));
     array_unshift($states, [$version, $state]);
-    $data['s'] = array_slice($states, 0, MCP_STATES_KEEP);
-    seat_states_write($link, $uid, $t, $data);
+    // only the states: the mark of a self leave stays as it is in the row now (seat_states_store())
+    seat_states_store($link, $uid, $t, array_slice($states, 0, MCP_STATES_KEEP));
 }
 
 /* the state behind since: a kept version of the seat, or (transition) a long token of the former format; else null */

@@ -27,12 +27,22 @@ const MCP_RESOURCE_NOT_FOUND = -32002;
    deploy needs a new URI (ui://agile-poker/board-<8 hex>) */
 function mcp_app_uri(): string
 {
-    static $uri = null;
-    if ($uri === null) {
-        $hash = @sha1_file(MCP_APP_FILE);
-        $uri = MCP_APP_URI . '-' . substr(is_string($hash) ? $hash : '0', 0, 8);
+    return MCP_APP_URI . '-' . mcp_app_view_hash();
+}
+
+/* B-151: the version of the view's code (8 hex of the file's sha1). Filled into the view it hands out (VIEW_HASH) and
+   sent with every tool result (_meta.view_hash): a copy a host cached under an older URI sees the mismatch and stops
+   ("outdated") instead of acting on data its code does not know (e.g. you.left_by_self) */
+const MCP_APP_HASH_TOKEN = '__POKER_VIEW_HASH__';
+
+function mcp_app_view_hash(): string
+{
+    static $hash = null;
+    if ($hash === null) {
+        $sha = @sha1_file(MCP_APP_FILE);
+        $hash = substr(is_string($sha) ? $sha : '0', 0, 8);
     }
-    return $uri;
+    return $hash;
 }
 
 /* the _meta of a tool that opens the view: current key and (deprecated, still read by some hosts) the flat one */
@@ -103,6 +113,7 @@ function mcp_app_read(string $uri): ?array
     if ($uri !== MCP_APP_URI && preg_match('~^' . preg_quote(MCP_APP_URI, '~') . '-[0-9a-f]{8}$~D', $uri) !== 1) return null;
     $html = file_get_contents(MCP_APP_FILE);
     if (!is_string($html)) throw new RuntimeException('mcp_app/board.html not readable');
+    $html = str_replace("'" . MCP_APP_HASH_TOKEN . "'", "'" . mcp_app_view_hash() . "'", $html);
     return ['contents' => [['uri' => $uri, 'mimeType' => MCP_APP_MIME, 'text' => $html,
                             '_meta' => ['ui' => ['prefersBorder' => true]]]]];
 }
