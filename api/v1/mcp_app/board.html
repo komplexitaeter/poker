@@ -525,7 +525,8 @@ body {
     </section>
     <div class="error" id="error" hidden></div>
     <div class="foot" id="foot"><span class="dot"></span><span id="conn">Waiting for the chat…</span>
-        <button type="button" id="resume" hidden>Resume</button><span class="deck" id="deck"></span></div>
+        <button type="button" id="resume" hidden>Resume</button>
+        <button type="button" id="end-session" hidden title="Like closing the browser tab: you are no longer connected, your seat stays">End session</button><span class="deck" id="deck"></span></div>
 </div>
 <script>
 (function () {
@@ -552,7 +553,7 @@ body {
     var looping = false;
     var lastActivity = Date.now();
     var hiddenSince = document.hidden ? Date.now() : null;
-    var pausedBy = null;      // 'hidden' | 'idle' | 'gone' | 'superseded' | 'teardown'
+    var pausedBy = null;      // 'hidden' | 'idle' | 'gone' | 'superseded' | 'teardown' | 'ended'
     var instance = Math.random().toString(36).slice(2) + Date.now().toString(36);
     var channel = null;
     var lastContext = '';
@@ -705,6 +706,7 @@ body {
         if (!seat || looping || pausedBy) return;
         looping = true;
         setConn('live', 'Live');
+        $('end-session').hidden = false;
         var gen = ++loopGen;
         loop(gen).then(function () { if (gen === loopGen) looping = false; });
     }
@@ -718,10 +720,12 @@ body {
             idle: 'Paused: no changes for 2 hours.',
             gone: 'This seat no longer exists.',
             superseded: 'Paused: a newer board is live.',
-            teardown: 'Closed.'
+            teardown: 'Closed.',
+            ended: 'Session ended – the board is no longer live.'
         };
         setConn('stopped', texts[reason] || 'Stopped.');
-        $('resume').hidden = !(reason === 'idle' || reason === 'hidden');
+        $('resume').hidden = !(reason === 'idle' || reason === 'hidden' || reason === 'ended');
+        $('end-session').hidden = true;
         if (reason === 'superseded') {
             $('app').classList.add('superseded');
             $('superseded').hidden = false;
@@ -729,12 +733,37 @@ body {
     }
 
     function resume() {
-        if (pausedBy !== 'idle' && pausedBy !== 'hidden') return;
+        if (pausedBy !== 'idle' && pausedBy !== 'hidden' && pausedBy !== 'ended') return;
+        var ended = pausedBy === 'ended';
         pausedBy = null;
         lastActivity = Date.now();
         $('resume').hidden = true;
         announce();
-        startLoop();
+        if (ended) {
+            // B-151 end session: a real call reconnects the seat (wait_for_change alone would answer "ended" again)
+            setConn('', 'Connecting…');
+            refresh().then(function (ok) { if (!ok && !pausedBy) stop('ended'); });
+        } else {
+            startLoop();
+        }
+    }
+
+    /* B-151 end session: like closing the browser tab - the seat is no longer connected, all live views of it stop */
+    var ending = false;
+    async function endSession() {
+        if (!seat || ending || pausedBy) return;
+        ending = true;
+        $('end-session').disabled = true;
+        showError('');
+        try {
+            var r = await callTool('me', Object.assign({}, seat, { action: 'end_session' }));
+            if (r && r.isError) showError(textOf(r) || 'The session could not be ended.');
+            else stop('ended');
+        } catch (e) {
+            showError('The session could not be ended (no connection). Please try again.');
+        }
+        $('end-session').disabled = false;
+        ending = false;
     }
 
     async function refresh() {
@@ -775,6 +804,7 @@ body {
                     if (FATAL.indexOf(sc.error) >= 0) { showError(textOf(r)); stop('gone'); return; }
                     throw new Error(sc.error || 'error');
                 }
+                if (sc.ended) { stop('ended'); return; } // B-151: the seat's session was ended (here or by the agent)
                 if (sc.busy) {
                     wait = (sc.retry_after || 5) * 1000;
                 } else {
@@ -807,6 +837,7 @@ body {
         }
     });
     $('resume').addEventListener('click', resume);
+    $('end-session').addEventListener('click', endSession);
 
     /* ---------- supersession: the newest view of the same seat wins ---------- */
 
@@ -838,7 +869,8 @@ body {
     var newerRank = 0;        // the highest rank (shownAt) seen from another view
 
     function announce() {
-        if (!channel || !seatKey() || pausedBy === 'superseded' || pausedBy === 'gone' || pausedBy === 'teardown') return;
+        if (!channel || !seatKey() || pausedBy === 'superseded' || pausedBy === 'gone' || pausedBy === 'teardown'
+            || pausedBy === 'ended') return;
         channel.postMessage({ type: 'hello', seat: seatKey(), shownAt: shownAt, instance: instance });
     }
 
@@ -846,6 +878,7 @@ body {
         if (pausedBy !== 'superseded') return;
         shownAt = Math.max(shownAt, newerRank) + 1;
         pausedBy = null;
+        seenRole = null; // the newer view told the chat already (e.g. "no longer at the table"): not a second time
         lastActivity = Date.now();
         $('app').classList.remove('superseded');
         $('superseded').hidden = true;
@@ -863,7 +896,9 @@ body {
             var newer = m.shownAt > shownAt || (m.shownAt === shownAt && m.instance > instance);
             if (newer) {
                 newerSeen = Date.now();
-                if (pausedBy !== 'superseded' && pausedBy !== 'gone' && pausedBy !== 'teardown') stop('superseded');
+                if (pausedBy !== 'superseded' && pausedBy !== 'gone' && pausedBy !== 'teardown' && pausedBy !== 'ended') {
+                    stop('superseded');
+                }
             } else if (pausedBy !== 'superseded') {
                 announce(); // an older view (re)started: tell it that this one is newer
             }

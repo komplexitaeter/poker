@@ -92,7 +92,9 @@ return [
         'wait_for_change' => [
             'description' => 'Wait until something changes at the table, then return what changed and the new board. '
                 . 'Returns at the latest after about 25 seconds with changed=false. While you keep calling it, you '
-                . 'count as present at the table (like an open browser tab); stop calling it when the user is done. '
+                . 'count as present at the table (like an open browser tab); when the user is done, call me '
+                . 'end_session (like closing the tab) and stop. If the result says ended, the session was ended: stop '
+                . 'the loop. '
                 . 'Pass the version from your last result (any tool) as since. Typical loop: call, show the user the '
                 . 'table block of the text as a code block with at most one short line of your own (no narration), '
                 . 'call again with the new version. Not needed while a live board (show_board) is shown. The full '
@@ -118,7 +120,9 @@ return [
                 . 'boards stop by themselves) - never more than once per reply. Next to a live board write at most one '
                 . 'short line, or nothing: the board shows the change. open=next_item opens the board\'s dialog to '
                 . 'leave the active item (close with a value, without value, or later) - use it instead of asking in '
-                . 'text. If you only get text back and no board appears, follow the table with wait_for_change instead.',
+                . 'text. If you only get text back and no board appears, follow the table with wait_for_change instead. '
+                . 'When the user says stop, bye or stop watching, call me end_session (the board stops, like closing '
+                . 'the tab) and do NOT call show_board afterwards.',
             'identity' => 'seat',
             'params' => [
                 'open' => ['type' => 'string', 'enum' => ['next_item'],
@@ -189,17 +193,22 @@ return [
         ],
         'me' => [
             'description' => 'The user\'s own seat: rename (max 15 characters), set_role (player or observer; coming back '
-                . 'after being removed works the same way), leave (get up from this table: you disappear from the '
-                . 'board, your seat stays and can come back with set_role), api_keys (list the user\'s API keys for '
-                . 'this team; delete_key removes one, key_id "current" removes the key you are using right now and ends '
-                . 'your access - creating keys is only possible in the browser), delete_my_data (deletes this person '
-                . 'and everything they wrote in ALL teams, irreversible - only on the user\'s explicit request, confirm '
-                . 'first). '
+                . 'after being removed works the same way), '
+                . 'end_session (End session, like closing the tab: use it when the user says stop, bye, end, stop '
+                . 'watching or close - you are no longer connected, a player shows as away, an observer drops out of '
+                . 'the list, live boards stop; nothing is deleted and the next call of this seat reconnects; call no '
+                . 'further tool afterwards and answer in one line), '
+                . 'leave (stop playing but stay as observer: no card any more, the others see you watching; the seat '
+                . 'can come back with set_role), '
+                . 'api_keys (list the user\'s API keys for this team; delete_key removes one, key_id "current" removes '
+                . 'the key you are using right now and ends your access - creating keys is only possible in the '
+                . 'browser), '
+                . 'delete_my_data (erase everything: this person and everything they wrote in ALL teams, irreversible '
+                . '- ONLY when the user explicitly asks to delete their data, never for "stop"; confirm first). '
                 . 'delete_my_data is NOT possible when you act with an api_key: the key stands for the user\'s browser '
                 . 'seat, and deleting it would wipe the user\'s identity in all their teams, including their browser. '
-                . 'Explain that to the user and offer instead: leave (get up from this table) and delete_key with '
-                . 'key_id "current" (ends your access). To delete all their data, the user uses "Delete my data" in '
-                . 'the You menu of the board in the browser.',
+                . 'Explain that to the user and offer instead delete_key with key_id "current" (ends your access). To '
+                . 'delete all their data, the user uses "Delete my data" in the You menu of the board in the browser.',
             'text' => 'mcp_seat_text',
             'annotations' => ['title' => 'Your own seat', 'readOnlyHint' => false, 'destructiveHint' => true,
                               'idempotentHint' => false, 'openWorldHint' => false],

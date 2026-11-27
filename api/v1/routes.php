@@ -360,7 +360,7 @@ return [
         'path' => '/me/leave',
         'tag' => 'Team',
         'summary' => 'Leave the table',
-        'description' => 'Gets you up from this table: you disappear from the board, your seat stays and can come back '
+        'description' => 'Stop playing but stay at the table as observer (no card any more); your seat can come back '
             . 'as player or observer.',
         'auth' => 'member',
         'public' => false,
@@ -368,6 +368,23 @@ return [
         'params' => [],
         'handler' => 'v1_me_leave',
         'responses' => [200 => ['description' => 'Left the table']],
+        'errors' => [],
+    ],
+
+    // B-151: the MCP equivalent of closing the browser tab (core_member_end_session())
+    'me_end_session' => [
+        'method' => 'POST',
+        'path' => '/me/end-session',
+        'tag' => 'Team',
+        'summary' => 'End session (like closing the tab)',
+        'description' => 'You are no longer connected at once: as a player you show as away, as an observer you drop '
+            . 'out of the list, live views of your seat stop. Your seat stays; the next call connects it again.',
+        'auth' => 'member',
+        'public' => false,
+        'mcp' => ['tool' => 'me', 'action' => 'end_session'],
+        'params' => [],
+        'handler' => 'v1_me_end_session',
+        'responses' => [200 => ['description' => 'Session ended']],
         'errors' => [],
     ],
 

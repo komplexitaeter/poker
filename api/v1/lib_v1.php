@@ -596,6 +596,20 @@ function v1_me_leave(mysqli $link, array $actor, array $p): array
             ? ' The API key stands for the user\'s browser seat: that seat left the table too.' : ''));
 }
 
+/* POST /me/end-session (B-151): like closing the browser tab; the board of the answer is read before (getDao() would
+   mark the seat as connected again) */
+function v1_me_end_session(mysqli $link, array $actor, array $p): array
+{
+    $answer = v1_seat_answer($link, $actor, '');
+    $answer['message'] = 'Session ended, like closing the browser tab: you are no longer connected ('
+        . ($answer['you']['role'] === 'player' ? 'the others see you as away' : 'you drop out of the observers') . ') and '
+        . 'the live board stops. Your seat, role and card stay; nothing was deleted. Do NOT call any tool now (no '
+        . 'show_board, no wait_for_change): any further call of this seat reconnects it. Tell the user in one line.';
+    core_member_end_session($link, $actor);
+    $answer['ended'] = true;
+    return $answer;
+}
+
 /* DELETE /me/keys/{key_id}: one of the own keys by id, or "current" = the key of this call */
 function v1_me_key_delete(mysqli $link, array $actor, array $p): array
 {

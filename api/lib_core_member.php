@@ -195,6 +195,17 @@ function core_member_leave(mysqli $link, array $actor): void
     notify_team($t);
 }
 
+/*
+ * B-151 end session (MCP me end_session, POST /me/end-session): like closing the browser tab - the seat counts as not
+ * connected at once and the live views of the seat stop (end_mcp_session()). The seat, its role, card and keys stay;
+ * the next call of the seat connects it again.
+ */
+function core_member_end_session(mysqli $link, array $actor): void
+{
+    end_mcp_session($link, (string)$actor['uid'], (string)$actor['team_id']);
+    notify_team((string)$actor['team_id']);
+}
+
 /* team row, then the actor's player row locked (lock order teams -> players); either gone -> 403 not_a_member */
 function member_lock(mysqli $link, string $t, string $id): array
 {
@@ -224,7 +235,8 @@ function core_user_delete(mysqli $link, array $actor): int
     if (($actor['via'] ?? '') === 'key') {
         throw new ApiError(403, 'browser_only', null, 'Not possible with an API key: the key stands for the user\'s '
             . 'browser seat, and deleting would wipe the user\'s identity in all their teams, including their browser. '
-            . 'Offer instead: leave (get up from this table) and delete_key with key_id "current" (ends your access). '
+            . 'Offer instead: end_session (gone like a closed tab), leave (stop playing, stay as observer) or '
+            . 'delete_key with key_id "current" (ends your access). '
             . 'To delete all their data, the user uses "Delete my data" in the You menu of the board in the browser.');
     }
     $id = (string)$actor['uid'];

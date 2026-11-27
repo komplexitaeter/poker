@@ -401,6 +401,66 @@ test('the view: own seat taken off the table shows a banner with the way back an
   expect(all.length).toBe(3);
   expect(all[2]).toEqual({ view: 1, role: 'user', text: 'I am no longer at the table.' });
   expect(JSON.stringify(all)).not.toContain(seat.uid);
+
+  // an older view that takes over does not tell the chat a second time (it remembered the role from before it paused)
+  await tool(request, 'me', { ...seat, action: 'set_role', role: 'player' });
+  await expect(newer.locator('#players li', { hasText: 'Peter (you)' })).toBeVisible({ timeout: 3_000 });
+  await view.locator('#takeover').click(); // the older view goes on with "player", the newer one pauses
+  await expect(view.locator('#players li', { hasText: 'Peter (you)' })).toBeVisible();
+  await expect(newer.locator('#superseded')).toBeVisible();
+  await removePeter();
+  await expect(view.locator('#removed')).toBeVisible({ timeout: 3_000 });
+  await expect.poll(() => messages().then(m => m.length)).toBe(4);
+  await newer.locator('#takeover').click(); // it last saw "player": no message for the removal the other view told
+  await expect(newer.locator('#removed')).toBeVisible({ timeout: 3_000 });
+  await host.waitForTimeout(1_000);
+  expect((await messages()).length).toBe(4);
+});
+
+test('the view: "End session" is like closing the tab - away at once, the view stops, "Resume" reconnects', async ({ request, browser }) => {
+  test.setTimeout(60_000);
+  const created = await tool(request, 'create_team', { name: 'End View', member_name: 'Anna', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  const bobYou = (await tool(request, 'join_team', { invite: seat.team_id, name: 'Bob', role: 'player' })).structuredContent.you;
+  const bob = { team_id: seat.team_id, uid: bobYou.uid as string };
+  const annaAway = async () => ((await tool(request, 'get_board', bob)).structuredContent.players as any[])
+    .find(p => p.name === 'Anna').away as boolean;
+
+  const host = await newPlayer(browser);
+  await openHost(host);
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  const view = host.frameLocator('iframe[data-view="0"]');
+  await expect(view.locator('#conn')).toHaveText('Live');
+  await expect(view.locator('#end-session')).toBeVisible();
+  await expect.poll(() => host.evaluate(() => (window as any).toolCalls.includes('wait_for_change'))).toBe(true);
+
+  // the button in the footer: the seat is away at once, the view stops and offers "Resume"
+  await view.locator('#end-session').click();
+  await expect(view.locator('#conn')).toHaveText('Session ended – the board is no longer live.');
+  await expect(view.locator('#resume')).toBeVisible();
+  await expect(view.locator('#end-session')).toBeHidden();
+  expect(await host.evaluate(() => (window as any).toolCalls)).toContain('me');
+  expect(await annaAway()).toBe(true);
+  const calls = await host.evaluate(() => (window as any).toolCalls.length);
+  await host.waitForTimeout(1_500);
+  expect(await host.evaluate(() => (window as any).toolCalls.length)).toBe(calls); // no loop any more
+  expect(await annaAway()).toBe(true);
+
+  // "Resume": a real call reconnects, the view is live again and follows the table
+  await view.locator('#resume').click();
+  await expect(view.locator('#conn')).toHaveText('Live');
+  expect(await annaAway()).toBe(false);
+  await tool(request, 'play_card', { ...bob, action: 'play', card: '5' });
+  await expect(view.locator('#players li', { hasText: 'Bob' })).toHaveAttribute('data-state', 'played', { timeout: 3_000 });
+
+  // the agent ends the session ("stop"): the live view stops by itself (wait_for_change answers ended)
+  await tool(request, 'me', { ...seat, action: 'end_session' });
+  await expect(view.locator('#conn')).toHaveText('Session ended – the board is no longer live.', { timeout: 3_000 });
+  expect(await annaAway()).toBe(true);
+  // nothing deleted: the next call of the seat is the same person with the same card state
+  const back = await tool(request, 'get_board', seat);
+  expect(back.structuredContent.you).toMatchObject({ name: 'Anna', role: 'player' });
+  expect(await annaAway()).toBe(false);
 });
 
 test('the view: tells the chat once per round when everybody but the user has played for 20 s', async ({ request, browser }) => {

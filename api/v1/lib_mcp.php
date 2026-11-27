@@ -54,9 +54,14 @@ Playing
   see who has played, never which card – do not guess or claim to know other people's cards.
 - round new_round takes all cards back and starts over; round remove_player takes a player off the table who holds up
   the reveal (they can come back).
-- The user's seat: me (rename, set_role, leave). When the user is done, offer me leave instead of just stopping: a
-  player without a card holds up the reveal. With an api_key, delete_my_data is not possible: offer leave and
-  delete_key with key_id "current" instead; deleting all data works in the browser (You menu, "Delete my data").
+- The user's seat: me (rename, set_role, leave, end_session). When the user says stop, bye, end, stop watching,
+  close or similar, call me end_session and confirm in one line - nothing else, no further call afterwards (any call
+  reconnects). Three ways out, never mix them up:
+  end_session = gone like a closed browser tab (players show as away), comes back with the next call;
+  leave = stop playing but stay at the table as observer;
+  delete_my_data = erase the person everywhere - ONLY when the user explicitly asks to delete their data, never as
+  a suggestion for "stop". With an api_key, delete_my_data is not possible: offer delete_key with key_id "current"
+  instead; deleting all data works in the browser (You menu, "Delete my data").
 - Stay at the table with wait_for_change only if the user said yes: pass the version of your last result as since
   and call it again right after it returns, as long as the user wants to take part. If it says busy, wait
   retry_after seconds and call again.
@@ -396,7 +401,7 @@ function mcp_call_tool(string $name, array $args): array
                 $key = mcp_key($args);
                 unset($args['api_key']);
             } elseif ($entry['tool']['identity'] === 'seat') { // like a route tool: the handler gets the actor
-                $key = mcp_actor($link, $args);
+                $key = mcp_actor($link, $args, $name === 'wait_for_change');
                 unset($args['team_id'], $args['uid'], $args['api_key']);
             }
             $out = $entry['tool']['handler']($link, mcp_validate_args($entry['tool']['params'], $args), $key);
@@ -467,16 +472,16 @@ function mcp_key(array $args): ?string
  * fallback) -> invalid_key if it is unknown; else team_id + uid of a registered seat (PLAYER, OBSERVER or REMOVED) ->
  * not_a_member for an unknown team, an unknown seat or a malformed value (one answer, no oracle). Neither ->
  * unauthorized. Marks the person as present (at most every 10 s, like a key call of v1).
+ * B-151 end session: $wait (wait_for_change) does not reconnect an ended session - the actor then has 'ended' => true
+ * and nothing is touched; every other tool call reconnects (touch_mcp_person()), like opening the link again.
  */
-function mcp_actor(mysqli $link, array $args): array
+function mcp_actor(mysqli $link, array $args, bool $wait = false): array
 {
     $key = mcp_key($args);
     if ($key !== null) {
         $actor = api_key_lookup($link, $key);
         if ($actor === null) throw new ApiError(401, 'invalid_key');
-        touch_api_person($link, $actor['uid'], $actor['team_id']);
-        if (touch_mcp_person($link, $actor['uid'], $actor['team_id'])) notify_team($actor['team_id']); // B-151 AI symbol
-        return $actor;
+        return mcp_touch_actor($link, $actor, $wait);
     }
     $uid = $args['uid'] ?? null;
     $t = $args['team_id'] ?? null;
@@ -486,9 +491,18 @@ function mcp_actor(mysqli $link, array $args): array
     }
     $role = v1_member_type($link, $t, $uid);
     if ($role === null) throw new ApiError(403, 'not_a_member');
-    touch_api_person($link, $uid, $t);
-    if (touch_mcp_person($link, $uid, $t)) notify_team($t); // B-151: the boards show the AI symbol at once
-    return ['uid' => $uid, 'team_id' => $t, 'role' => $role, 'via' => 'mcp_seat', 'key_id' => null];
+    return mcp_touch_actor($link, ['uid' => $uid, 'team_id' => $t, 'role' => $role, 'via' => 'mcp_seat', 'key_id' => null],
+                           $wait);
+}
+
+/* the person of a tool call is present (B-110) and uses the board through MCP (B-151: the boards show the AI symbol at
+   once); a wait_for_change of an ended session touches nothing (mcp_actor()) */
+function mcp_touch_actor(mysqli $link, array $actor, bool $wait): array
+{
+    if ($wait && mcp_session_ended($link, $actor['uid'], $actor['team_id'])) return $actor + ['ended' => true];
+    touch_api_person($link, $actor['uid'], $actor['team_id']);
+    if (touch_mcp_person($link, $actor['uid'], $actor['team_id'])) notify_team($actor['team_id']);
+    return $actor;
 }
 
 /*
