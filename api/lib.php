@@ -1089,6 +1089,41 @@ function touch_mcp_person(mysqli $link, string $uid, string $t): bool
     return false;
 }
 
+/*
+ * B-151 end session: the MCP equivalent of closing the browser tab. The seat counts as not connected at once (a
+ * player shows as away, an observer or removed person drops out of the observer list, the AI symbol goes) and its
+ * live views stop: mcp_seen_time gets MCP_ENDED_TIME, a value no real call can have, which wait_for_change reads as
+ * "ended" (mcp_session_ended()). Nothing is deleted. The next MCP call of the seat other than wait_for_change
+ * (touch_mcp_person(), "not via AI" -> now) clears it again, like opening the link again. No DDL: existing columns.
+ * Call it after the last board read of the request (getDao() marks the own seat as connected). Autocommit.
+ */
+const MCP_ENDED_TIME = '1971-01-02 00:00:00';
+
+function end_mcp_session(mysqli $link, string $uid, string $t): void
+{
+    $gone = AWAY_AFTER_SEC + 1;
+    $ended = MCP_ENDED_TIME;
+    $sql = $link->prepare("update pok_players_tbl
+                              set last_callback_time = least(last_callback_time, current_timestamp - interval ? second)
+                                 ,mcp_seen_time = ?
+                            where id = ? and team_id = ?");
+    $sql->bind_param('isss', $gone, $ended, $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
+/* B-151 end session: true while the seat's session is ended (end_mcp_session(), no MCP call since) */
+function mcp_session_ended(mysqli $link, string $uid, string $t): bool
+{
+    $sql = $link->prepare("select 1 from pok_players_tbl
+                            where id = ? and team_id = ? and mcp_seen_time is not null and mcp_seen_time < '1980-01-01'");
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $ended = $sql->get_result()->fetch_row() !== null;
+    $sql->close();
+    return $ended;
+}
+
 function getDao($t, $id) {
     $all_players_ready = true;
     $one_ore_more_player_ready = false;

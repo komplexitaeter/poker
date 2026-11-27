@@ -516,19 +516,15 @@ false`).
 #### `me`
 
 > The user's own seat: rename (max 15 characters), set_role (player or observer; coming back after being removed works
-> the same way), leave (get up from this table: you disappear from the board, your seat stays and can come back with
-> set_role), api_keys (list the user's API keys for this team; delete_key removes one, key_id "current" removes the key
-> you are using right now and ends your access – creating keys is only possible in the browser), delete_my_data
-> (deletes this person and everything they wrote in ALL teams, irreversible – only on the user's explicit request,
-> confirm first).
-> delete_my_data is NOT possible when you act with an api_key: the key stands for the user's browser seat, and
-> deleting it would wipe the user's identity in all their teams, including their browser. Explain that to the user and
-> offer instead: leave (get up from this table) and delete_key with key_id "current" (ends your access). To delete all
-> their data, the user uses "Delete my data" in the You menu of the board in the browser.
+> the same way), end_session (End session, like closing the tab: use it when the user says stop, bye, end, stop
+> watching or close – you are no longer connected, a player shows as away, an observer drops out of the list, live
+> boards stop; nothing is deleted and the next call of this seat reconnects; call no further tool afterwards and answer
+> in one line), leave (stop playing but stay as observer …), api_keys (…), delete_my_data (erase everything … – ONLY
+> when the user explicitly asks to delete their data, never for "stop"; confirm first). (Wortlaut: `api/v1/mcp_tools.php`.)
 
 | Parameter | Typ | Beschreibung |
 |---|---|---|
-| `action` | enum `rename`/`set_role`/`leave`/`api_keys`/`delete_key`/`delete_my_data`, Pflicht | |
+| `action` | enum `rename`/`set_role`/`leave`/`end_session`/`api_keys`/`delete_key`/`delete_my_data`, Pflicht | |
 | `name` | string 1–15 | `rename` |
 | `role` | enum `player`/`observer` | `set_role` |
 | `key_id` | integer or `current` | `delete_key: id from api_keys, or "current" for the key you are using.` |
@@ -541,6 +537,16 @@ Tool-Text). Quelle (umgesetzt in PR D, alle neuen `public: false`): `me_rename` 
 /me/leave`), `key_list` (✓, `mcp` ergänzt), `me_key_delete` (`DELETE /me/keys/{key_id}`, `key_id` als Text: Zahl oder
 `current`; statt `mcp` an `key_delete`, das nur Zahlen kennt), `me_delete` (`DELETE /me`). Kerne
 `core_member_update()`, `core_member_leave()`, `core_user_delete()` in `api/lib_core_member.php`.
+
+**`end_session`** (Andreas' Test, 2026-11-27: es gab im Dialog kein natürliches „einfach aufhören“): das MCP-Gegenstück
+zum Schließen des Browser-Tabs. Route `me_end_session` (`POST /me/end-session`, `public: false`), Kern
+`core_member_end_session()` → `end_mcp_session()` (`api/lib.php`): `last_callback_time` sofort älter als
+`AWAY_AFTER_SEC` (Spieler „away“, Beobachter/`REMOVED` fallen aus der Beobachterliste, B-154) und `mcp_seen_time =
+MCP_ENDED_TIME` (1971-01-02, kein echter Aufruf hat diesen Wert; KI-Symbol weg) – kein DDL. Solange die Marke steht,
+antwortet `wait_for_change` sofort `{ended: true}` und fasst die Präsenz nicht an (`mcp_actor(..., wait: true)`); jeder
+andere Tool-Aufruf des Platzes setzt `mcp_seen_time` wieder (`touch_mcp_person()`) = Tab wieder geöffnet. Nichts wird
+gelöscht; Platz, Rolle, Karte und Schlüssel bleiben. Die Live-Ansicht hat dafür „End session“ im Fuß und nach dem Ende
+„Resume“ (`get_board`).
 
 ---
 

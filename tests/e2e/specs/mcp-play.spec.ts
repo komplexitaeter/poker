@@ -1,6 +1,6 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
 import {
-  UID_HEADER, createTeam, expectTableCard, getSid, joinAsPlayer, newPlayer, pickCard, tableCard, v1CreateKey,
+  UID_HEADER, createTeam, expectTableCard, getSid, joinAsPlayer, newPlayer, pickCard, tableCard, userRequest, v1CreateKey,
 } from './helpers';
 
 /**
@@ -53,7 +53,7 @@ test('tools/list: play_card, round and me with their actions', async ({ request 
   expect(byName.play_card.inputSchema.properties.action.enum).toEqual(['play', 'withdraw']);
   expect(byName.round.inputSchema.properties.action.enum).toEqual(['new_round', 'remove_player']);
   expect(byName.me.inputSchema.properties.action.enum)
-    .toEqual(['rename', 'set_role', 'leave', 'api_keys', 'delete_key', 'delete_my_data']);
+    .toEqual(['rename', 'set_role', 'leave', 'end_session', 'api_keys', 'delete_key', 'delete_my_data']);
   for (const name of ['play_card', 'round', 'me']) {
     expect(byName[name].inputSchema.required).toEqual(['action']);
     expect(byName[name].annotations.readOnlyHint).toBe(false);
@@ -67,7 +67,14 @@ test('tools/list: play_card, round and me with their actions', async ({ request 
   const init = await request.post(MCP, { data: { jsonrpc: '2.0', id: 2, method: 'initialize', params: {} } });
   const instructions = (await init.json()).result.instructions as string;
   expect(instructions).toContain('play_card only after the user named it');
-  expect(instructions).toContain('offer me leave');
+  // B-151 end session: "stop" = end_session (like closing the tab), never delete_my_data unless asked
+  const flat = instructions.replace(/\s+/g, ' ');
+  expect(flat).toContain('When the user says stop, bye, end, stop watching, close or similar, call me end_session');
+  expect(flat).toContain('leave = stop playing but stay at the table as observer');
+  expect(flat).toContain('ONLY when the user explicitly asks to delete their data');
+  expect(byName.me.description).toContain('end_session (End session, like closing the tab');
+  expect(byName.wait_for_change.description).toContain('call me end_session');
+  expect(byName.show_board.description).toContain('do NOT call show_board afterwards');
 });
 
 test('play_card and round new_round: play, change, reveal with two players, withdraw, hidden cards', async ({ request, browser }) => {
@@ -235,4 +242,66 @@ test('me delete_my_data with the own seat deletes the person; the seat is gone',
   await expect(tableCard(alice, 'Anna')).toHaveCount(0);
   await fails(request, 'get_board', seat, 'not_a_member');
   await fails(request, 'me', { ...seat, action: 'delete_my_data' }, 'not_a_member');
+});
+
+/** dao.php as the browser of Alice sees it (players with away, connected observers) */
+async function daoOf(request: APIRequestContext, t: string, id: string) {
+  const { query, options } = userRequest({ t, id });
+  const res = await request.get(`/api/dao.php?${query}`, options);
+  expect(res.ok()).toBeTruthy();
+  return res.json();
+}
+
+test('me end_session: like closing the tab - player away, observer and removed seat gone at once, the next call reconnects', async ({ request, browser }) => {
+  const { alice, url, t, seat } = await tableWithAgent(browser, request, 'MCP End');
+  const aliceId = await getSid(alice);
+  const olli = (await ok(request, 'join_team', { invite: url, name: 'Olli', role: 'observer' })).data.you;
+  const olliSeat = { team_id: t, uid: olli.uid as string };
+  await ok(request, 'play_card', { ...seat, action: 'play', card: '5' });
+  const before = await daoOf(request, t, aliceId);
+  expect(before.players.find((p: any) => p.name === 'Anna')).toMatchObject({ away: false, via_ai: true });
+  expect(before.observers.map((o: any) => o.name)).toEqual(['Olli']);
+
+  // the player: away at once, the card stays, no AI symbol; the result says so and tells the agent to stop
+  const ended = await ok(request, 'me', { ...seat, action: 'end_session' });
+  expect(ended.data.ended).toBe(true);
+  expect(ended.text).toContain('Session ended, like closing the browser tab');
+  expect(ended.text).toContain('the others see you as away');
+  expect(ended.text).toContain('nothing was deleted');
+  let dao = await daoOf(request, t, aliceId);
+  expect(dao.players.find((p: any) => p.name === 'Anna')).toMatchObject({ away: true, via_ai: false });
+  await expectTableCard(alice, 'Anna', 'done001'); // card still down
+
+  // a live loop of this seat stops: wait_for_change answers ended at once and does not reconnect
+  const t0 = Date.now();
+  const stopped = await ok(request, 'wait_for_change', { ...seat, since: ended.data.version, timeout: 10 });
+  expect(Date.now() - t0).toBeLessThan(3_000);
+  expect(stopped.data).toMatchObject({ ended: true, changed: false });
+  expect(stopped.data.board).toBeUndefined();
+  expect(stopped.text).toContain('Stop calling wait_for_change');
+  expect((await daoOf(request, t, aliceId)).players.find((p: any) => p.name === 'Anna').away).toBe(true);
+
+  // the next real call reconnects (like opening the link again): present, same seat, same card
+  const back = await ok(request, 'get_board', seat);
+  expect(back.data.you).toMatchObject({ name: 'Anna', role: 'player', card: '5' });
+  dao = await daoOf(request, t, aliceId);
+  expect(dao.players.find((p: any) => p.name === 'Anna')).toMatchObject({ away: false, via_ai: true });
+  const waiting = await call(request, 'wait_for_change', { ...seat, since: back.data.version, timeout: 1 });
+  expect(waiting.structuredContent.ended).toBeUndefined();
+
+  // an observer drops out of the observer list at once
+  await ok(request, 'me', { ...olliSeat, action: 'end_session' });
+  expect((await daoOf(request, t, aliceId)).observers).toEqual([]);
+  await ok(request, 'get_board', olliSeat);
+  expect((await daoOf(request, t, aliceId)).observers.map((o: any) => o.name)).toEqual(['Olli']);
+
+  // a removed seat (left the table, B-154 observer for the others) too
+  await ok(request, 'me', { ...seat, action: 'leave' });
+  expect((await daoOf(request, t, aliceId)).observers.map((o: any) => o.name)).toEqual(['Anna', 'Olli']);
+  const endRemoved = await ok(request, 'me', { ...seat, action: 'end_session' });
+  expect(endRemoved.text).toContain('you drop out of the observers');
+  expect((await daoOf(request, t, aliceId)).observers.map((o: any) => o.name)).toEqual(['Olli']);
+  // nothing deleted: the seat comes back as it was
+  expect((await ok(request, 'get_board', seat)).data.you).toMatchObject({ name: 'Anna', role: 'removed' });
+  expect((await daoOf(request, t, aliceId)).observers.map((o: any) => o.name)).toEqual(['Anna', 'Olli']);
 });
