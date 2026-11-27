@@ -20,6 +20,17 @@ function openAiDialog() {
     aiDialogEl('ai_url_copy').focus();
 }
 
+/* B-151 beta: "Feedback" in the dialog: closes it and opens the feedback panel the way the header's :feedback does
+ * (openMenu, script_feedback.js); the panel gives the focus back to the header button on close */
+let gAiToFeedback = false;
+function aiFeedback() {
+    gAiToFeedback = true; // no focus back to #ai_btn: it goes into the panel
+    closeAiDialog();
+    const btn = aiDialogEl('feedback_btn');
+    const visible = btn !== null && btn.offsetParent !== null;
+    openMenu('feedback', visible ? btn : aiDialogEl('menu_btn'));
+}
+
 function closeAiDialog() {
     const dialog = aiDialogEl('ai_dialog');
     if (dialog !== null && dialog.open) dialog.close();
@@ -75,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     aiDialogEl('ai_dialog_done').addEventListener('click', closeAiDialog);
     aiDialogEl('ai_url_copy').addEventListener('click', copyMcpUrl);
     aiDialogEl('ai_board_copy').addEventListener('click', copyAiBoardLink);
+    aiDialogEl('ai_feedback').addEventListener('click', aiFeedback);
     // a click beside the box (on the backdrop: the dialog itself, outside its rectangle) closes it; a click into its
     // padding or a drag out of the URL field (also the dialog as target) does not (as #leave_item, topics.js)
     dialog.addEventListener('click', e => {
@@ -83,5 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeAiDialog();
     });
     // Escape closes natively (cancel); every way out returns the focus to the button
-    dialog.addEventListener('close', () => { button.focus(); });
+    dialog.addEventListener('close', () => {
+        if (!gAiToFeedback) button.focus();
+        gAiToFeedback = false;
+    });
 });

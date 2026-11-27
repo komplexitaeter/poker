@@ -109,6 +109,40 @@ test('the AI button opens the dialog: connector URL, copy, Escape returns the fo
   await expect(page.locator('#invite_btn')).not.toHaveAttribute('aria-haspopup', /.*/);
 });
 
+for (const vp of [{ n: 'desktop', width: 1280, height: 800, mobile: false }, { n: 'phone', width: 390, height: 844, mobile: true }]) {
+  test(`beta note in the dialog: "Feedback" opens the feedback panel (${vp.n})`, async ({ browser }) => {
+    const page = await newPlayer(browser, { viewport: { width: vp.width, height: vp.height }, isMobile: vp.mobile, hasTouch: vp.mobile });
+    const url = await createTeam(page, 'AI Beta');
+    await joinAsPlayer(page, url, 'Alice');
+    await pageReady(page);
+
+    await page.locator('#ai_btn').click();
+    const dialog = page.locator('#ai_dialog');
+    await expect(dialog.locator('#ai_dialog_title .beta-badge')).toHaveText('Beta');
+    await expect(dialog.locator('.ai-beta')).toBeVisible();
+    await expect(dialog.locator('.ai-beta')).toHaveText(
+      'This is an early beta. If something doesn\u2019t work as expected, please tell us via Feedback.');
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/dialog-${vp.n}.png` });
+
+    await dialog.locator('#ai_feedback').click();
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('dialog#menu[open] #feedback_box')).toBeVisible();
+    await expect(page.locator('#fb_tab_backlog')).toBeFocused(); // into the panel as from :feedback, not back to #ai_btn
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog#menu')).toBeHidden();
+  });
+}
+
+test('help page GET /mcp: beta note with the ways to give feedback', async ({ request }) => {
+  const res = await request.get('/mcp');
+  expect(res.status()).toBe(200);
+  const html = await res.text();
+  expect(html).toContain('<span class="beta-badge">Beta</span>');
+  expect(html).toContain('This is an early beta.');
+  expect(html).toContain('<b>Feedback</b> button on the board');
+  expect(html).toContain('<code>feedback</code>');
+});
+
 test('MCP seats carry the AI mark; anonymous mode after the reveal: only the summary line', async ({ browser }) => {
   test.setTimeout(60_000);
   const page = await newPlayer(browser);
