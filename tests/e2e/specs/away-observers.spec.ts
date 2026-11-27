@@ -62,7 +62,7 @@ test('dao.php: away per player, connected observers only, delete.php spares obse
   expect(state.players.map((p: Player) => `${p.name}:${p.away}`)).toEqual(['Alice:false', 'Bob:false']);
   expect(state.observers.map((o: Observer) => o.name)).toEqual(['Olga', 'Oscar']);
   for (const o of state.observers) {
-    expect(Object.keys(o).sort()).toEqual(['mkey', 'name']);
+    expect(Object.keys(o).sort()).toEqual(['mkey', 'name', 'via_ai']); // B-151: via_ai
     expect(typeof o.mkey).toBe('string');
   }
   expect(JSON.stringify(state.observers)).not.toContain(olga);
@@ -114,7 +114,7 @@ test('dao.php: away per player, connected observers only, delete.php spares obse
   expect(state.players.map((p: Player) => p.name)).toEqual(['Alice']);
   expect(state.observers.map((o: Observer) => o.name)).toEqual(['Bob', 'Olga']);
   const bobObserver = state.observers.find((o: Observer) => o.name === 'Bob');
-  expect(Object.keys(bobObserver).sort()).toEqual(['mkey', 'name']);
+  expect(Object.keys(bobObserver).sort()).toEqual(['mkey', 'name', 'via_ai']); // B-151: via_ai
   expect(bobObserver.mkey).toBe(bobMkey);
   expect(JSON.stringify(state)).not.toContain(bob);
   // away again: left out like an observer

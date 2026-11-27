@@ -1026,30 +1026,67 @@ function touch_player($link, string $id, string $t): void {
 /* B-127: signature of the set of away persons (players, observers and, since B-154, removed persons; never the own
    one), '' for none.
    Only a hash of the public mkeys, never a player id (SID). getDao() and seen.php both use it, so the board loads
-   dao.php after a heartbeat only when the set changed. */
-function away_sig(array $mkeys): string {
-    if (count($mkeys) === 0) return '';
+   dao.php after a heartbeat only when the set changed.
+   B-151 mcp seen: $ai_mkeys = persons currently using the board through an AI assistant (MCP, own one included), so
+   the boards also reload when the AI symbol comes or goes. Without any, the value is the same as before. */
+function away_sig(array $mkeys, array $ai_mkeys = array()): string {
+    if (count($mkeys) === 0 && count($ai_mkeys) === 0) return '';
     $mkeys = array_map('intval', $mkeys);
     sort($mkeys, SORT_NUMERIC);
-    return sha1(implode(',', $mkeys));
+    if (count($ai_mkeys) === 0) return sha1(implode(',', $mkeys));
+    $ai_mkeys = array_map('intval', $ai_mkeys);
+    sort($ai_mkeys, SORT_NUMERIC);
+    return sha1(implode(',', $mkeys) . '|ai:' . implode(',', $ai_mkeys));
 }
 
-/* B-127: away_sig() of team $t from the view of player $id, same away definition as the player query in getDao() */
+/* B-151 mcp seen: SQL condition "the person used the board through MCP within AWAY_AFTER_SEC" (one ? = seconds) */
+const VIA_AI_SQL = "(p.mcp_seen_time is not null and unix_timestamp(p.mcp_seen_time) >= unix_timestamp() - ?)";
+
+/* B-127: away_sig() of team $t from the view of player $id, same away and via_ai definition as the player query in
+   getDao() */
 function load_away_sig($link, string $id, string $t): string {
     $sql = $link->prepare("SELECT p.mkey
+                  ,if(p.id <> ? and unix_timestamp(p.last_callback_time) < unix_timestamp() - ?, 1, 0) as away
+                  ,if(" . VIA_AI_SQL . ", 1, 0) as via_ai
               FROM pok_players_tbl p
-             WHERE p.team_id = ?
-               AND p.id <> ?
-               AND unix_timestamp(p.last_callback_time) < unix_timestamp() - ?");
+             WHERE p.team_id = ?");
     $away_after_sec = AWAY_AFTER_SEC;
-    $sql->bind_param('ssi', $t, $id, $away_after_sec);
+    $sql->bind_param('siis', $id, $away_after_sec, $away_after_sec, $t);
     $sql->execute();
     $mkeys = array();
+    $ai_mkeys = array();
     if ($result = $sql->get_result()) {
-        while ($row = $result->fetch_row()) $mkeys[] = $row[0];
+        while ($row = $result->fetch_row()) {
+            if ((int)$row[1] === 1) $mkeys[] = $row[0];
+            if ((int)$row[2] === 1) $ai_mkeys[] = $row[0];
+        }
         $result->close();
     }
-    return away_sig($mkeys);
+    return away_sig($mkeys, $ai_mkeys);
+}
+
+/*
+ * B-151 mcp seen: marks the person as using the board through an AI assistant (every MCP tool call with a seat, key
+ * or team_id + uid). At most every 10 s like touch_api_person(). Returns true when the person was not "via AI" before
+ * (first call or a pause longer than AWAY_AFTER_SEC): the caller notifies the team once then, so the boards show the
+ * symbol at once - at most one notification per person and window, never a loop (dao.php never notifies). Autocommit.
+ */
+function touch_mcp_person(mysqli $link, string $uid, string $t): bool
+{
+    $away_after_sec = AWAY_AFTER_SEC;
+    $sql = $link->prepare("update pok_players_tbl p set p.mcp_seen_time = current_timestamp
+                            where p.id = ? and p.team_id = ? and not " . VIA_AI_SQL);
+    $sql->bind_param('ssi', $uid, $t, $away_after_sec);
+    $sql->execute();
+    $fresh = $sql->affected_rows > 0;
+    $sql->close();
+    if ($fresh) return true;
+    $sql = $link->prepare("update pok_players_tbl set mcp_seen_time = current_timestamp
+                            where id = ? and team_id = ? and mcp_seen_time < current_timestamp - interval 10 second");
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $sql->close();
+    return false;
 }
 
 function getDao($t, $id) {
@@ -1079,6 +1116,9 @@ function getDao($t, $id) {
     $players=array();
     $observers = array(); // B-110: connected observers only (not away), {name, mkey}
     $away_mkeys = array(); // B-127: mkeys of the away persons for away_sig()
+    $ai_mkeys = array(); // B-151 mcp seen: mkeys of the persons using the board through an AI assistant, for away_sig()
+    $ai_count = 0; // B-151 mcp seen: players and shown observers via an AI assistant
+    $away_count = 0; // B-151: players away (never the own one)
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
     $show_tips = 1;
@@ -1225,11 +1265,12 @@ function getDao($t, $id) {
        switch of the session time zone cannot shift the comparison. Same query as before, no extra round trip. */
     $sql = $link->prepare("SELECT p.*, p.original_card_key
                   ,if(unix_timestamp(p.last_callback_time) < unix_timestamp() - ?, 1, 0) as away
+                  ,if(" . VIA_AI_SQL . ", 1, 0) as via_ai
               FROM pok_players_tbl p
              WHERE p.team_id = ?
              ORDER BY p.name");
     $away_after_sec = AWAY_AFTER_SEC;
-    $sql->bind_param('is', $away_after_sec, $t);
+    $sql->bind_param('iis', $away_after_sec, $away_after_sec, $t);
     $sql->execute();
     $objs = array();
     if ($result = $sql->get_result()) {
@@ -1243,6 +1284,9 @@ function getDao($t, $id) {
             /* B-127, see load_away_sig(). B-154: removed persons count too - they are in the observer list while
                connected, so their going away has to change the signature (the boards load dao.php then). */
             if ($obj->away) $away_mkeys[] = $obj->mkey;
+            // B-151 mcp seen: used the board through MCP within AWAY_AFTER_SEC (data protection: the team sees it)
+            $obj->via_ai = ((int)$obj->via_ai === 1);
+            if ($obj->via_ai) $ai_mkeys[] = $obj->mkey;
 
             if ($deck !== null && $obj->id === $deck_changed_by) $deck['changed_by'] = $obj->name; // B-98 V6
 
@@ -1272,6 +1316,8 @@ function getDao($t, $id) {
                 }
 
 
+                if ($obj->via_ai) $ai_count++;
+                if ($obj->away) $away_count++;
                 $objs[] = $obj;
             } elseif (($obj->player_type === 'OBSERVER' || $obj->player_type === 'REMOVED') && !$obj->away) {
                 /* B-110: observers without connection are simply left out (Andreas, 2026-11-01). The own observer
@@ -1279,10 +1325,12 @@ function getDao($t, $id) {
                    B-154: a removed player (REMOVED) is an observer for everybody else, without own marking, under
                    the same rule (only while his board is connected), so nobody sits at the table unseen. His own
                    board still knows from player_type (own row above) that he was removed and shows the overlay. */
+                if ($obj->via_ai) $ai_count++;
                 $observers[] = (object) array(
                     "name"=>$obj->name,
                     // mkey must stay a string in the JSON (compared with ===, see below)
-                    "mkey"=>(string)$obj->mkey);
+                    "mkey"=>(string)$obj->mkey,
+                    "via_ai"=>$obj->via_ai); // B-151 mcp seen (observers have no card: also in anonymous mode)
             }
         }
 
@@ -1368,6 +1416,8 @@ function getDao($t, $id) {
         ,"display_card_key"=>$display_card_key
         ,"original_card_key"=>$original_card_key // B-104: null = no stack
         ,"away"=>$obj->away // B-110: no dao.php load for AWAY_AFTER_SEC seconds (never the own card)
+        ,"via_ai"=>$obj->via_ai // B-151 mcp seen: uses the board through an AI assistant (MCP)
+        ,"own"=>($obj->id === $id) // internal, removed below
         ,"i"=>(int)null);
         $players[] = $player;
 
@@ -1381,7 +1431,17 @@ function getDao($t, $id) {
 
     for ($i=0;$i<count($players);$i++) {
         $players[$i]->i= $i;
-        if ($anonymous_mode == 1 && $all_players_ready) $players[$i]->name =  '******';
+        if ($anonymous_mode == 1 && $all_players_ready) {
+            $players[$i]->name =  '******';
+            /* B-151: anonymous mode after the reveal - away and via_ai of other players would link a card to a person
+               (the order of the cards is no longer the order of the names): only the team counts away_count and
+               ai_count show them. The own card keeps its flags (the person knows them anyway). */
+            if (!$players[$i]->own) {
+                $players[$i]->away = false;
+                $players[$i]->via_ai = false;
+            }
+        }
+        unset($players[$i]->own);
     }
     return array(  "name"=> $name,
         "mkey"=>$mkey,
@@ -1420,7 +1480,9 @@ function getDao($t, $id) {
         "ready_players_count"=>$ready_players_count,
         "players"=>$players,
         "observers"=>$observers, // B-110: connected observers, ordered by name
-        "away_sig"=>away_sig($away_mkeys) ); // B-127: same value as seen.php, '' = nobody away
+        "away_count"=>$away_count, // B-151: players away (never the own one), also in anonymous mode
+        "ai_count"=>$ai_count, // B-151 mcp seen: players and shown observers using the board through an AI assistant
+        "away_sig"=>away_sig($away_mkeys, $ai_mkeys) ); // B-127: same value as seen.php, '' = nobody away and no AI
 }
 
 /* B-57: allowed values for feedback types, roadmap status and reactions (UP = thumbs up, DOWN = thumbs down) */
