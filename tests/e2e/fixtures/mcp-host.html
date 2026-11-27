@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--
+  B-151 (MCP Apps): a minimal MCP Apps host for mcp-app.spec.ts, served by the test under the app's origin (page.route).
+  window.openView(args, theme) does what a chat does: reads ui://agile-poker/board, calls show_board, puts the view in
+  a sandboxed iframe and answers its bridge (ui/initialize, tools/call forwarded to /mcp, update-model-context,
+  size-changed). Not part of the app.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MCP host stub</title>
+<style>
+  body { margin: 0; padding: 12px; font: 14px sans-serif; background: #888; }
+  iframe { display: block; width: 420px; border: 1px solid #444; margin-bottom: 12px; background: transparent; }
+</style>
+</head>
+<body>
+<script>
+  let rpcId = 0;
+  window.views = [];
+  window.modelContext = [];
+  window.toolCalls = [];
+
+  async function mcp(method, params) {
+    const res = await fetch('/mcp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
+    });
+    return res.json();
+  }
+
+  window.openView = async function (args, theme = 'light', { emptyToolCalls = false } = {}) {
+    const read = await mcp('resources/read', { uri: 'ui://agile-poker/board' });
+    const html = read.result.contents[0].text;
+    const result = (await mcp('tools/call', { name: 'show_board', arguments: args })).result;
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    frame.srcdoc = html;
+    frame.style.height = '200px';
+    const index = window.views.length;
+    frame.dataset.view = String(index);
+    window.views.push({ frame, result });
+    window.addEventListener('message', async (event) => {
+      if (event.source !== frame.contentWindow) return;
+      const msg = event.data;
+      if (!msg || msg.jsonrpc !== '2.0') return;
+      const reply = (body) => frame.contentWindow.postMessage({ jsonrpc: '2.0', id: msg.id, ...body }, '*');
+      const send = (method, params) => frame.contentWindow.postMessage({ jsonrpc: '2.0', method, params }, '*');
+      switch (msg.method) {
+        case 'ui/initialize':
+          reply({ result: { protocolVersion: '2026-01-26', hostInfo: { name: 'e2e-host', version: '1' },
+                            hostCapabilities: { serverTools: {} },
+                            hostContext: { theme, displayMode: 'inline', platform: 'web' } } });
+          break;
+        case 'ui/notifications/initialized':
+          send('ui/notifications/tool-input', { arguments: args });
+          send('ui/notifications/tool-result', result);
+          break;
+        case 'tools/call': {
+          window.toolCalls.push(msg.params.name);
+          if (emptyToolCalls) { reply({ result: {} }); break; } // a broken host or server: no board in the answer
+          const answer = await mcp('tools/call', msg.params);
+          reply(answer.error ? { error: answer.error } : { result: answer.result });
+          break;
+        }
+        case 'ui/update-model-context':
+          window.modelContext.push(msg.params.content[0].text);
+          reply({ result: {} });
+          break;
+        case 'ui/notifications/size-changed':
+          frame.style.height = msg.params.height + 'px';
+          break;
+        default:
+          if (msg.id !== undefined) reply({ error: { code: -32601, message: 'Method not found' } });
+      }
+    });
+    document.body.appendChild(frame);
+    return index;
+  };
+</script>
+</body>
+</html>
