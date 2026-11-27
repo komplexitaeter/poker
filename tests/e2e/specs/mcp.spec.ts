@@ -178,6 +178,9 @@ test('join_team with only an API key takes over the browser seat; key in the hea
   expect(seat.text).not.toContain(created.key);
   const again = await ok(request, 'join_team', { api_key: created.key, invite: 'other-aaaaaaaaaaaaaaaa', name: 'X', role: 'observer' });
   expect(again.data.you).toMatchObject({ name: 'Alice', role: 'player', mkey: seat.data.you.mkey });
+  expect(again.text).toContain('No new seat was created'); // the agent wanted a new seat: say why not
+  expect(seat.text).not.toContain('No new seat was created');
+  expect(seat.text).toContain(`Invite: ${seat.data.team.invite_link}`); // a new seat needs only this link
 
   // the key as argument or header for the other tools; with a key, team_id/uid are ignored (no fallback)
   expect((await ok(request, 'get_board', { api_key: created.key })).data.you.name).toBe('Alice');
@@ -278,6 +281,7 @@ test('the text is a compact table block: hidden cards as "played", after the rev
   expect(voting.text).toMatch(/^  Bea +played$/m);
   expect(voting.text).toMatch(/^  You +–   pick: 0 .* 13 .*\?/m);
   expect(voting.text).toMatch(/^Observers: Kai$/m);
+  expect(voting.text.split('\n\n')[0].split('\n').at(-1)).toBe(`Invite: ${ann.team.invite_link}`); // last line of the block
   expect(voting.text).not.toContain('second line');
   for (const secret of [ann.you.uid, bea.uid, kai.uid]) expect(voting.text).not.toContain(secret);
   // Bea's card is hidden: the 2 is only in Ann's pick list

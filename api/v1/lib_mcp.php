@@ -39,6 +39,8 @@ Getting a seat
   invite link from the result so the user can share it with the team.
 - Keep team_id and uid (or api_key) from the result for the whole conversation and pass them on every call. Do not
   join again while you have a working seat: every join_team creates a new person at the table.
+- To add a new seat at the same table (e.g. "join again as Peter"), call join_team with the invite link from any
+  result ("Invite: ..." in the table block, team.invite_link) and without api_key.
 - Right after create_team or join_team, ASK the user: should you keep them posted about changes at the table, or
   only act when they ask? Without a yes, no wait_for_change loop. On a yes, call show_board once: where the chat can
   show apps, it shows a live board that keeps itself up to date and lets the user play cards by clicking - then do
@@ -415,7 +417,10 @@ function mcp_call_tool(string $name, array $args): array
             $out = ['structured' => $structured,
                     'text' => is_string($text) ? $text($structured) : v1_json($structured)];
         }
-        $out = mcp_with_version($out); // a result with a board carries its version (wait_for_change since)
+        // a result with a board carries its version (wait_for_change since); its state is kept for the seat
+        $seat = $out['actor'] ?? (isset($actor) ? $actor : (isset($key) && is_array($key) ? $key : null));
+        unset($out['actor']);
+        $out = mcp_with_version($out, $link, $seat);
         $link->close();
         $result = ['content' => [['type' => 'text', 'text' => $out['text']]], 'structuredContent' => $out['structured']];
         if (isset($out['meta'])) $result['_meta'] = $out['meta']; // MCP Apps: data for the view only (show_board symbols)
@@ -544,7 +549,15 @@ function mcp_join_team(mysqli $link, array $p, ?string $key): array
 {
     if ($key !== null) {
         $actor = mcp_actor($link, ['api_key' => $key]);
-        return mcp_seat_result($link, $actor, null, 'You took over the user\'s seat');
+        $out = mcp_seat_result($link, $actor, null, 'You took over the user\'s seat');
+        if (isset($p['invite']) || isset($p['name']) || isset($p['role'])) { // wanted a new seat, but the key wins
+            $out['text'] = 'No new seat was created: with an API key (argument api_key or the Authorization header of '
+                . 'this connection) join_team always takes over the user\'s seat; invite, name and role were ignored. '
+                . 'For a new seat call join_team with invite, name and role and WITHOUT api_key; if the key is set in '
+                . 'the connection itself, a new seat is only possible with the invite link in a browser or another '
+                . 'connection.' . "\n" . $out['text'];
+        }
+        return $out;
     }
     foreach (['invite', 'name', 'role'] as $name) {
         if (!isset($p[$name])) throw new ApiError(400, 'missing_param', $name, $name . ': required (or pass only api_key)');
@@ -586,7 +599,7 @@ function mcp_seat_result(mysqli $link, array $actor, ?string $uid, string $what)
         : 'For every further call pass api_key (the key the user gave you).';
     $lines[] = '';
     $lines[] = mcp_board_text($board);
-    return ['structured' => $structured, 'text' => implode("\n", $lines)];
+    return ['structured' => $structured, 'text' => implode("\n", $lines), 'actor' => $actor]; // actor: the seat for the version
 }
 
 /* ---------- text views ---------- */
@@ -689,16 +702,24 @@ function mcp_board_text(array $board): string
         if ($extra !== []) $line .= '   ' . implode(' ', $extra);
         $lines[] = $line;
     }
-    $observers = array_map(fn($o) => $o['mkey'] === $me ? 'You' : $name($o['name']), $board['observers']);
+    // B-154: a removed person is shown as observer to the others; the own removed seat gets a line of its own
+    $removed = $board['you']['role'] === 'removed';
+    $observers = [];
+    foreach ($board['observers'] as $o) {
+        if ($o['mkey'] === $me && $removed) continue;
+        $observers[] = $o['mkey'] === $me ? 'You' : $name($o['name']);
+    }
     if ($board['you']['role'] === 'observer' && !in_array('You', $observers, true)) array_unshift($observers, 'You');
     if ($observers !== []) $lines[] = 'Observers: ' . implode(', ', $observers);
-    if ($board['you']['role'] === 'removed') $lines[] = 'You were taken off the table.';
+    if ($removed) $lines[] = 'You (not at the table - others see you as observer; me set_role to come back)';
     if (isset($board['items'])) {
         $lines[] = 'Items: ' . $board['open_count'] . ' open, ' . $board['done_count'] . ' done';
         foreach ($board['items'] as $entry) {
             $lines[] = $one('- ' . $entry['key'] . ' ' . $entry['heading'], 90) . ($entry['active'] ? ' (active)' : '');
         }
     }
+    // the invite link is made for sharing; also what join_team needs for a new seat at this table
+    $lines[] = 'Invite: ' . $board['team']['invite_link'];
     return implode("\n", $lines);
 }
 

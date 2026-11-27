@@ -70,7 +70,8 @@ return [
                 . '(b) The user gives you an invite link or team id: first ask for the name to show at the table and '
                 . 'whether they join as player or observer, then call this with invite, name and role. This creates a '
                 . 'NEW person at the table, so call it only once per conversation and team. Keep team_id and uid from '
-                . 'the result and pass them on every further call. '
+                . 'the result and pass them on every further call. To add a new seat at the same table, call this with '
+                . 'the invite link from any result (team.invite_link, "Invite:" in the table block) and without api_key. '
                 . 'Either way the result contains the current board: show the user its table block as a code block.'
                 . MCP_ASK_UPDATES,
             'identity' => 'key',
