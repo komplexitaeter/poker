@@ -94,6 +94,8 @@ Safety
 - Never put the uid or api_key in text the user might share; the invite link is the only thing to share.
 
 If a call fails with a network error (e.g. while the server restarts), call it again.
+If a call fails with ai_not_allowed, the team switched AI assistants off for its board: tell the user in one line and
+stop calling tools for this board (no retries, no new join).
 
 This server is not versioned: tools, parameters and results may change at any time. Always use the tool list of the
 current session, never one remembered from an earlier conversation.
@@ -111,6 +113,10 @@ const MCP_IDENTITY_PARAMS = [
                       . 'team_id and uid.'],
 ];
 
+/* B-151 allow ai: the team switched "Allow AI assistants" off in the board settings (pok_teams_tbl.allow_ai = 0) */
+const MCP_AI_NOT_ALLOWED = 'This team does not allow AI assistants. Ask the team to switch on \'Allow AI assistants\' in '
+    . 'the board settings.';
+
 /* hints for the agent per error code (concept 2.2); other codes keep the message of the core function */
 const MCP_ERROR_HINTS = [
     'not_a_member' => 'This seat no longer exists. Ask the user whether to join again (join_team) - this creates a new seat.',
@@ -118,6 +124,7 @@ const MCP_ERROR_HINTS = [
         . 'with the invite link.',
     'unauthorized' => 'Pass team_id and uid from join_team or create_team, or the api_key the user gave you.',
     'team_not_found' => 'There is no board with this invite link or team id. Ask the user to check the link.',
+    'ai_not_allowed' => MCP_AI_NOT_ALLOWED,
 ];
 
 /* JSON-RPC error codes */
@@ -481,6 +488,7 @@ function mcp_actor(mysqli $link, array $args, bool $wait = false): array
     if ($key !== null) {
         $actor = api_key_lookup($link, $key);
         if ($actor === null) throw new ApiError(401, 'invalid_key');
+        mcp_require_ai_allowed($link, (string)$actor['team_id']);
         return mcp_touch_actor($link, $actor, $wait);
     }
     $uid = $args['uid'] ?? null;
@@ -491,8 +499,25 @@ function mcp_actor(mysqli $link, array $args, bool $wait = false): array
     }
     $role = v1_member_type($link, $t, $uid);
     if ($role === null) throw new ApiError(403, 'not_a_member');
+    mcp_require_ai_allowed($link, $t);
     return mcp_touch_actor($link, ['uid' => $uid, 'team_id' => $t, 'role' => $role, 'via' => 'mcp_seat', 'key_id' => null],
                            $wait);
+}
+
+/*
+ * B-151 allow ai (Andreas, data protection: the team can object): a team with "Allow AI assistants" off refuses every
+ * MCP call - before anything is read or touched (no AI symbol, no board). Checked after the identity, so a stranger
+ * learns nothing about a team (join_team: after team_not_found, which the invite link answers anyway). Only /mcp: the
+ * REST API with API keys (Jira and the like) stays open. An unknown team passes (the caller answers it).
+ */
+function mcp_require_ai_allowed(mysqli $link, string $t): void
+{
+    $sql = $link->prepare("select allow_ai from pok_teams_tbl where id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_row();
+    $sql->close();
+    if ($row !== null && (int)$row[0] === 0) throw new ApiError(403, 'ai_not_allowed');
 }
 
 /* the person of a tool call is present (B-110) and uses the board through MCP (B-151: the boards show the AI symbol at
@@ -577,6 +602,7 @@ function mcp_join_team(mysqli $link, array $p, ?string $key): array
         if (!isset($p[$name])) throw new ApiError(400, 'missing_param', $name, $name . ': required (or pass only api_key)');
     }
     $t = mcp_invite_team_id($p['invite']);
+    mcp_require_ai_allowed($link, $t); // B-151 allow ai: no new seat in a team that switched AI assistants off
     $joined = core_team_join($link, $t, $p['name'], $p['role'], null);
     $actor = ['uid' => $joined['uid'], 'team_id' => $t, 'role' => api_player_type($p['role']), 'via' => 'mcp_seat',
               'key_id' => null];
@@ -904,6 +930,8 @@ function mcp_help_page(): string
     $o[] = '<p>The names and texts at the table go to the provider of your AI assistant. An API key you give the '
         . 'assistant is stored in the chat history of your AI provider: delete it in the You menu when you no longer '
         . 'need it. <a href="https://komplexitaeter.de/datenschutz/#agile_poker">Privacy policy</a></p>';
+    $o[] = '<p>A team can switch AI assistants off for its board: <b>Board settings</b> &rsaquo; <b>Team</b> &rsaquo; '
+        . '<b>Allow AI assistants</b>.</p>';
     $o[] = '<p>The AI connector is not versioned: tools may change at any time. For stable integrations use the REST '
         . 'API <a href="/api/v1/">/api/v1</a>.</p>';
     $o[] = '</section>';

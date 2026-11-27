@@ -45,6 +45,7 @@ export interface myJsonType {
     show_tips: number; // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
     show_card_changes: number; // B-115: team setting, 1 = keep the first card when changed after the reveal (B-104)
     round_show_card_changes: number; // B-115: the running round's copy; 0 = original_card_key is always null
+    allow_ai: number; // B-151: team setting "Allow AI assistants", 1 = on (default), 0 = /mcp refused for the team
     needs_setup: boolean;
     needs_celebration: boolean;
     players_count: number;

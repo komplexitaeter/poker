@@ -7011,6 +7011,8 @@ body.api-doc {
     color: var(--muted);
 }
 .ai-dialog-note .i { width: 16px; height: 16px; color: var(--text); }
+/* B-151 allow ai: the team switched AI assistants off - no AI button, no AI hint on the join overlay */
+#ai_btn[hidden], #join_mcp_hint[hidden] { display: none; }
 .ai-dialog-foot { justify-content: space-between; align-items: center; }
 .ai-howto:is(:link, :visited) {
     font-size: var(--fs-s);

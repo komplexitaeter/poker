@@ -538,6 +538,7 @@ body {
     var HIDDEN_STOP_MS = 10 * 60 * 1000;   // stop waiting after the view was hidden this long
     var IDLE_STOP_MS = 2 * 60 * 60 * 1000; // stop waiting after 2 h without a change or a click
     var FATAL = ['not_a_member', 'invalid_key', 'unauthorized'];
+    var AI_OFF = 'ai_not_allowed';         // B-151: the team switched "Allow AI assistants" off - stop calmly
     var MIN_PAUSE_MS = 5000;               // pause between calls while there is no version
     var WAIT_ALERT_MS = 20000;             // only the own card missing this long: tell the chat
 
@@ -553,7 +554,7 @@ body {
     var looping = false;
     var lastActivity = Date.now();
     var hiddenSince = document.hidden ? Date.now() : null;
-    var pausedBy = null;      // 'hidden' | 'idle' | 'gone' | 'superseded' | 'teardown' | 'ended'
+    var pausedBy = null;      // 'hidden' | 'idle' | 'gone' | 'superseded' | 'teardown' | 'ended' | 'ai_off'
     var instance = Math.random().toString(36).slice(2) + Date.now().toString(36);
     var channel = null;
     var lastContext = '';
@@ -673,6 +674,7 @@ body {
     function onToolResult(result) {
         var sc = result && result.structuredContent;
         if (result && result.isError) {
+            if (sc && sc.error === AI_OFF) { stop('ai_off'); return; }
             showError(textOf(result) || 'The board could not be opened.');
             if (sc && FATAL.indexOf(sc.error) >= 0) stop('gone');
             return;
@@ -721,9 +723,16 @@ body {
             gone: 'This seat no longer exists.',
             superseded: 'Paused: a newer board is live.',
             teardown: 'Closed.',
-            ended: 'Session ended – the board is no longer live.'
+            ended: 'Session ended – the board is no longer live.',
+            ai_off: 'AI assistants are switched off for this board.'
         };
-        setConn('stopped', texts[reason] || 'Stopped.');
+        // B-151 allow ai: not an error - a calm grey line, the last board stays, no cards to click any more
+        setConn(reason === 'ai_off' ? 'paused' : 'stopped', texts[reason] || 'Stopped.');
+        if (reason === 'ai_off') {
+            setStatus(texts.ai_off);
+            showError('');
+            $('hand-wrap').hidden = true;
+        }
         $('resume').hidden = !(reason === 'idle' || reason === 'hidden' || reason === 'ended');
         $('end-session').hidden = true;
         if (reason === 'superseded') {
@@ -771,6 +780,7 @@ body {
             var r = await callTool('get_board', seat);
             var sc = r && r.structuredContent;
             if (r && r.isError) {
+                if (sc && sc.error === AI_OFF) { stop('ai_off'); return false; }
                 if (sc && FATAL.indexOf(sc.error) >= 0) stop('gone');
                 showError(textOf(r));
                 return false;
@@ -801,6 +811,7 @@ body {
                 if (gen !== loopGen) return;
                 var sc = (r && r.structuredContent) || {};
                 if (r && r.isError) {
+                    if (sc.error === AI_OFF) { stop('ai_off'); return; } // B-151: calm message, no retries
                     if (FATAL.indexOf(sc.error) >= 0) { showError(textOf(r)); stop('gone'); return; }
                     throw new Error(sc.error || 'error');
                 }

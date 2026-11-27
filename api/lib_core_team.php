@@ -165,7 +165,9 @@ function core_team_note_set(mysqli $link, array $actor, string $note): array
  * B-151 (MCP PR E) team_settings_patch: the team settings of the board's settings menu, shared by update_team.php,
  * update_results_order.php, update_show_avg.php and MCP board_settings. $fields, only the given ones change:
  * name (string, not empty), anonymous (bool), results_order ('NAME' | 'SEQUENCE'), show_avg (bool), show_tips (bool),
- * show_card_changes (bool). The caller checks the values.
+ * show_card_changes (bool), allow_ai (bool, B-151 "Allow AI assistants": only the board's endpoint update_team.php
+ * passes it - MCP board_settings has no such parameter, so an AI seat can neither switch it on nor off). The caller
+ * checks the values.
  * anonymous and show_card_changes belong to a round: while no player has a card down they apply at once, otherwise
  * from the next round (start_new_round() copies them). Switched off, show_card_changes also clears an original card
  * left from an "on" phase of the same round (B-115). One transaction, the team row locked first (then players, B-155).
@@ -211,6 +213,9 @@ function core_team_settings_patch(mysqli $link, array $actor, array $fields): bo
         }
         if (isset($fields['show_tips'])) {
             $update("update pok_teams_tbl t set t.show_tips = ? where t.id = ?", 'is', $fields['show_tips'] ? 1 : 0, $t);
+        }
+        if (isset($fields['allow_ai'])) {
+            $update("update pok_teams_tbl t set t.allow_ai = ? where t.id = ?", 'is', $fields['allow_ai'] ? 1 : 0, $t);
         }
         if (isset($fields['show_card_changes'])) {
             $on = $fields['show_card_changes'] ? 1 : 0;

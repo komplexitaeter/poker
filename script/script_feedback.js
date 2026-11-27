@@ -582,6 +582,14 @@ function changeShowCardChanges(show) {
     settingWrite('./api/update_team.php?t=' + encodeURIComponent(t)+'&show_card_changes='+(on ? '1' : '0'));
 }
 
+/* B-151: "Allow AI assistants" for the team (Andreas, data protection). Off: /mcp refuses every call of the team; the
+   boards hide the AI button and the join hint (updateAllowAi() in script.js) */
+function changeAllowAi(allow) {
+    const on = allow === '1';
+    measureEvent(on ? 'AI_ALLOW_ON' : 'AI_ALLOW_OFF');
+    settingWrite('./api/update_team.php?t=' + encodeURIComponent(t)+'&allow_ai='+(on ? '1' : '0'));
+}
+
 function onChangeTeamNameInput() {
     document.getElementById('cet_change_name').disabled = document.getElementById('cet_team_name').value
         === document.getElementById('team_name').innerText

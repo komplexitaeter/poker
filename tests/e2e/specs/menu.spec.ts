@@ -525,7 +525,7 @@ test('settings (Results, Team, You): a failed write shows the error toast only, 
   await hideToast();
   await tab(alice, 'Team').click();
   await alice.route('**/api/update_team.php*', route => route.abort('failed'));
-  await alice.locator('#cset_panel_team label', { hasText: 'Off' }).click();
+  await alice.locator('#cet_show_tips label', { hasText: 'Off' }).click();
   await expectErrorToast();
   await expect(alice.locator('input[name=cet_show_tips][value="1"]')).toBeChecked();
   await alice.unroute('**/api/update_team.php*');

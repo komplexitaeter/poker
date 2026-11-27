@@ -1208,3 +1208,29 @@ deallocate prepare b151_states_stmt;
 select column_name, column_type, character_set_name from information_schema.columns
  where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_states';
 /* end B-151 mcp states */
+
+/* B-151 allow ai: pok_teams_tbl.allow_ai = team setting "Allow AI assistants" (board settings, tab Team; Andreas,
+   data protection: the team can object). 1 = on (default), 0 = every /mcp call for the team is refused with
+   ai_not_allowed (api/v1/lib_mcp.php); the REST API (/api/v1, API keys) is not affected. Only the board (browser,
+   api/update_team.php) changes it, never MCP.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code (dao.php and /mcp read the column).
+   Run only this block: sed -n '/^\/\* B-151 allow ai:/,/^\/\* end B-151 allow ai/p' db_schema_pok_inc.sql */
+select column_name, column_type, is_nullable, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'allow_ai';
+
+set session lock_wait_timeout = 5;
+set @b151_allow_ai_sql = if((select count(1) from information_schema.columns
+                              where table_schema = database() and table_name = 'pok_teams_tbl'
+                                and column_name = 'allow_ai') = 0,
+  'alter table pok_teams_tbl
+     add column allow_ai tinyint not null default 1
+       comment ''B-151: team setting "Allow AI assistants", 0 = /mcp refused for the team'',
+     algorithm = instant',
+  'select ''already done'' as b151_allow_ai');
+prepare b151_allow_ai_stmt from @b151_allow_ai_sql;
+execute b151_allow_ai_stmt;
+deallocate prepare b151_allow_ai_stmt;
+
+select column_name, column_type, is_nullable, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'allow_ai';
+/* end B-151 allow ai */

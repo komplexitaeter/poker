@@ -2041,6 +2041,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateAnonymityConfig(myJson.anonymous_request_toggle, myJson.anonymous_mode);
     checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
     updateCardChangesConfig(myJson.show_card_changes, myJson.round_show_card_changes); // B-115
+    updateAllowAi(myJson.allow_ai); // B-151
 
     updateJediBtn();
 
@@ -2384,6 +2385,18 @@ function showMcpUrl() {
     if (field !== null) field.value = url;
 }
 document.addEventListener('DOMContentLoaded', showMcpUrl);
+
+/* B-151: team setting "Allow AI assistants" (dao allow_ai, 0 = off): the radio in the board settings, and while off no
+ * AI button in the header (#ai_btn, an open #ai_dialog closes) and no AI hint on the join overlay (#join_mcp_hint) */
+function updateAllowAi(allowAi) {
+    const on = allowAi !== 0;
+    checkRadio('cet_allow_ai', on ? '1' : '0');
+    ['ai_btn', 'join_mcp_hint'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el !== null) el.hidden = !on;
+    });
+    if (!on && typeof closeAiDialog === 'function') closeAiDialog();
+}
 
 function inviteTeam() {
     let url = window.location.href;
