@@ -549,6 +549,10 @@ body {
     var AI_OFF = 'ai_not_allowed';         // B-151: the team switched "Allow AI assistants" off - stop calmly
     var MIN_PAUSE_MS = 5000;               // pause between calls while there is no version
     var WAIT_ALERT_MS = 20000;             // only the own card missing this long: tell the chat
+    /* B-151: the version of this view's code, filled in by the server when it hands out the view (mcp_app_read());
+     * hosts cache a view by its URI, so a chat may run an older copy - results carry the server's current one
+     * (_meta.view_hash), a mismatch stops this copy ("outdated") before it can act on newer data */
+    var VIEW_HASH = '__POKER_VIEW_HASH__';
 
     var $ = function (id) { return document.getElementById(id); };
     var nextId = 1;
@@ -562,7 +566,7 @@ body {
     var looping = false;
     var lastActivity = Date.now();
     var hiddenSince = document.hidden ? Date.now() : null;
-    var pausedBy = null;      // 'hidden' | 'idle' | 'gone' | 'superseded' | 'teardown' | 'ended' | 'ai_off'
+    var pausedBy = null;      // 'hidden' | 'idle' | 'gone' | 'superseded' | 'teardown' | 'ended' | 'ai_off' | 'outdated'
     var instance = Math.random().toString(36).slice(2) + Date.now().toString(36);
     var channel = null;
     var lastContext = '';
@@ -683,6 +687,7 @@ body {
     }
 
     function onToolResult(result) {
+        if (outdated(result)) return;
         var sc = result && result.structuredContent;
         if (result && result.isError) {
             if (sc && sc.error === AI_OFF) { stop('ai_off'); return; }
@@ -704,6 +709,15 @@ body {
         if ((sc && sc.open === 'next_item') || meta.open === 'next_item') openLeave(); // show_board(open: next_item)
         announce();
         startLoop();
+    }
+
+    /* true (and stopped) when a result says the server hands out a newer view than this copy */
+    function outdated(result) {
+        var meta = result && result._meta;
+        var current = meta && typeof meta.view_hash === 'string' ? meta.view_hash : null;
+        if (current === null || /^__/.test(VIEW_HASH) || current === VIEW_HASH) return pausedBy === 'outdated';
+        if (pausedBy !== 'outdated') stop('outdated');
+        return true;
     }
 
     function textOf(result) {
@@ -735,8 +749,13 @@ body {
             superseded: 'Paused: a newer board is live.',
             teardown: 'Closed.',
             ended: 'Session ended – the board is no longer live.',
-            ai_off: 'AI assistants are switched off for this board.'
+            ai_off: 'AI assistants are switched off for this board.',
+            outdated: 'This board is outdated – ask for a new one.'
         };
+        clearTimeout(removedTimer); // a stopped view tells the chat nothing any more
+        removedTimer = null;
+        clearTimeout(waitTimer);
+        waitTimer = null;
         // B-151 allow ai: not an error - a calm grey line, the last board stays, no cards to click any more
         setConn(reason === 'ai_off' ? 'paused' : 'stopped', texts[reason] || 'Stopped.');
         if (reason === 'ai_off') {
@@ -746,9 +765,15 @@ body {
         }
         $('resume').hidden = !(reason === 'idle' || reason === 'hidden' || reason === 'ended');
         $('end-session').hidden = true;
+        if (reason === 'outdated') $('hand-wrap').hidden = true;
+        // B-151 end session: older views of the seat that are paused must not take over afterwards
+        if (reason === 'ended' && channel && seatKey()) channel.postMessage({ type: 'ended', seat: seatKey(), instance: instance });
         if (reason === 'superseded') {
             $('app').classList.add('superseded');
             $('superseded').hidden = false;
+        } else {
+            $('app').classList.remove('superseded'); // e.g. a paused view whose session was ended by the live one
+            $('superseded').hidden = true;
         }
     }
 
@@ -777,7 +802,8 @@ body {
         showError('');
         try {
             var r = await callTool('me', Object.assign({}, seat, { action: 'end_session' }));
-            if (r && r.isError) showError(textOf(r) || 'The session could not be ended.');
+            if (outdated(r)) { /* stopped */ }
+            else if (r && r.isError) showError(textOf(r) || 'The session could not be ended.');
             else stop('ended');
         } catch (e) {
             showError('The session could not be ended (no connection). Please try again.');
@@ -789,6 +815,7 @@ body {
     async function refresh() {
         try {
             var r = await callTool('get_board', seat);
+            if (outdated(r)) return false;
             var sc = r && r.structuredContent;
             if (r && r.isError) {
                 if (sc && sc.error === AI_OFF) { stop('ai_off'); return false; }
@@ -820,6 +847,7 @@ body {
                     r = await callTool('wait_for_change', args);
                 }
                 if (gen !== loopGen) return;
+                if (outdated(r)) return;
                 var sc = (r && r.structuredContent) || {};
                 if (r && r.isError) {
                     if (sc.error === AI_OFF) { stop('ai_off'); return; } // B-151: calm message, no retries
@@ -892,7 +920,7 @@ body {
 
     function announce() {
         if (!channel || !seatKey() || pausedBy === 'superseded' || pausedBy === 'gone' || pausedBy === 'teardown'
-            || pausedBy === 'ended') return;
+            || pausedBy === 'ended' || pausedBy === 'outdated') return;
         channel.postMessage({ type: 'hello', seat: seatKey(), shownAt: shownAt, instance: instance });
     }
 
@@ -912,13 +940,19 @@ body {
         channel = new BroadcastChannel('agile-poker-board');
         channel.onmessage = function (event) {
             var m = event.data;
-            if (!m || m.type !== 'hello' || m.instance === instance || !seatKey() || m.seat !== seatKey()) return;
+            if (!m || m.instance === instance || !seatKey() || m.seat !== seatKey()) return;
+            if (m.type === 'ended') { // another view of this seat ended the session: stop here too, no takeover later
+                if (pausedBy !== 'ended' && pausedBy !== 'gone' && pausedBy !== 'teardown' && pausedBy !== 'outdated') stop('ended');
+                return;
+            }
+            if (m.type !== 'hello') return;
             if (!Number.isFinite(m.shownAt) || typeof m.instance !== 'string') return;
             newerRank = Math.max(newerRank, m.shownAt);
             var newer = m.shownAt > shownAt || (m.shownAt === shownAt && m.instance > instance);
             if (newer) {
                 newerSeen = Date.now();
-                if (pausedBy !== 'superseded' && pausedBy !== 'gone' && pausedBy !== 'teardown' && pausedBy !== 'ended') {
+                if (pausedBy !== 'superseded' && pausedBy !== 'gone' && pausedBy !== 'teardown' && pausedBy !== 'ended'
+                    && pausedBy !== 'outdated') {
                     stop('superseded');
                 }
             } else if (pausedBy !== 'superseded') {
@@ -1590,7 +1624,7 @@ body {
     }
 
     async function play(card, selected) {
-        if (!seat || playing || pausedBy === 'gone' || pausedBy === 'superseded') return;
+        if (!seat || playing || pausedBy === 'gone' || pausedBy === 'superseded' || pausedBy === 'outdated') return;
         lastActivity = Date.now();
         if (pausedBy) resume();
         playing = true;
@@ -1599,6 +1633,7 @@ body {
         try {
             var args = Object.assign({}, seat, selected ? { action: 'withdraw' } : { action: 'play', card: card.key });
             var r = await callTool('play_card', args);
+            if (outdated(r)) r = null; // stopped: nothing more to show
             var sc = r && r.structuredContent;
             if (r && r.isError) {
                 showError(textOf(r) || 'The card could not be played.');
@@ -1705,7 +1740,7 @@ body {
     }
 
     async function leaveItem(mode, cardKey) {
-        if (!seat || !board || !board.active_item || leaving) return;
+        if (!seat || !board || !board.active_item || leaving || pausedBy === 'outdated') return;
         lastActivity = Date.now();
         if (pausedBy) resume();
         var args = Object.assign({}, seat, { action: 'next', key: board.active_item.key, mode: mode });
@@ -1715,6 +1750,7 @@ body {
         showError('');
         try {
             var r = await callTool('items', args);
+            if (outdated(r)) r = null; // stopped: nothing more to show
             var sc = r && r.structuredContent;
             if (r && r.isError) showError(textOf(r) || 'The item could not be left.');
             else {
@@ -1740,7 +1776,7 @@ body {
     var rejoining = false;
 
     async function rejoin(role) {
-        if (!seat || rejoining || pausedBy === 'gone' || pausedBy === 'superseded') return;
+        if (!seat || rejoining || pausedBy === 'gone' || pausedBy === 'superseded' || pausedBy === 'outdated') return;
         lastActivity = Date.now();
         if (pausedBy) resume();
         rejoining = true;
@@ -1748,6 +1784,7 @@ body {
         showError('');
         try {
             var r = await callTool('me', Object.assign({}, seat, { action: 'set_role', role: role }));
+            if (outdated(r)) r = null; // stopped: nothing more to show
             var sc = r && r.structuredContent;
             if (r && r.isError) showError(textOf(r) || 'You could not join again.');
             else {

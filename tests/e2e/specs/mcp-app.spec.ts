@@ -83,7 +83,9 @@ test('resources/list and resources/read deliver the view; show_board carries _me
   const { shown_at: _, ...rest } = shown.structuredContent;
   expect(rest).toEqual(board.structuredContent);
   expect(shown.content[0].text).toBe(board.content[0].text);
-  expect((board as any)._meta).toBeUndefined(); // the symbols only come with show_board
+  // the symbols only come with show_board; every result names the current view (an outdated copy stops)
+  expect((board as any)._meta).toEqual({ view_hash: versioned.slice(-8) });
+  expect(content.text).toContain(`var VIEW_HASH = '${versioned.slice(-8)}';`);
 });
 
 test('rich cards: card faces like the web, card keys on the table, the symbols of the deck, open=next_item', async ({ request }) => {
@@ -458,6 +460,83 @@ test('the view: leaving by oneself (me leave) or end_session tells the chat noth
   await expect(view.locator('#conn')).toHaveText('Session ended – the board is no longer live.', { timeout: 3_000 });
   await host.waitForTimeout(2_500);
   expect(await messages()).toEqual([]);
+});
+
+test('the view: the agent leaves, then ends the session seconds later (separate calls) - no message into the chat', async ({ request, browser }) => {
+  test.setTimeout(60_000);
+  const created = await tool(request, 'create_team', { name: 'Leave Then End', member_name: 'Andreas', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  await tool(request, 'join_team', { invite: seat.team_id, name: 'Bob', role: 'player' });
+  const messages = () => host.evaluate(() => (window as any).messages);
+
+  const host = await newPlayer(browser);
+  await openHost(host);
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  const view = host.frameLocator('iframe[data-view="0"]');
+  await expect(view.locator('#conn')).toHaveText('Live');
+  await expect.poll(() => host.evaluate(() => (window as any).toolCalls.includes('wait_for_change'))).toBe(true);
+
+  // like an LLM: each tool call a separate JSON-RPC request, seconds apart
+  await rpc(request, 'tools/call', { name: 'me', arguments: { ...seat, action: 'leave' } });
+  await expect(view.locator('#left-self')).toBeVisible({ timeout: 3_000 });
+  await host.waitForTimeout(4_000);
+  expect(await messages()).toEqual([]);
+  await rpc(request, 'tools/call', { name: 'me', arguments: { ...seat, action: 'end_session' } });
+  await expect(view.locator('#conn')).toHaveText('Session ended – the board is no longer live.', { timeout: 3_000 });
+  await host.waitForTimeout(3_000);
+  expect(await messages()).toEqual([]);
+  await expect(view.locator('#removed')).toBeHidden();
+});
+
+test('the view: a copy the host cached under an older URI stops as outdated and tells the chat nothing', async ({ request, browser }) => {
+  test.setTimeout(60_000);
+  const created = await tool(request, 'create_team', { name: 'Outdated', member_name: 'Andreas', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  await tool(request, 'join_team', { invite: seat.team_id, name: 'Bob', role: 'player' });
+  const current = (await rpc(request, 'resources/read', { uri: URI })).result.contents[0].text as string;
+  const hash = current.match(/var VIEW_HASH = '([0-9a-f]{8})';/)![1];
+  const cached = current.replace(`var VIEW_HASH = '${hash}';`, "var VIEW_HASH = '00000000';"); // an older build
+
+  const host = await newPlayer(browser);
+  await openHost(host);
+  await host.evaluate(([s, html]) => (window as any).openView(s, 'light', { html }), [seat, cached] as const);
+  const view = host.frameLocator('iframe[data-view="0"]');
+  await expect(view.locator('#conn')).toHaveText('This board is outdated – ask for a new one.');
+  await expect(view.locator('#hand-wrap')).toBeHidden();
+  await tool(request, 'me', { ...seat, action: 'leave' });
+  await tool(request, 'me', { ...seat, action: 'end_session' });
+  await host.waitForTimeout(2_500);
+  expect(await host.evaluate(() => (window as any).messages)).toEqual([]);
+  expect(await host.evaluate(() => (window as any).toolCalls)).toEqual([]); // no live loop at all
+
+  // a current view (show_board reconnects the seat) works as before
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  await expect(host.frameLocator('iframe[data-view="1"]').locator('#left-self')).toBeVisible();
+  await expect(host.frameLocator('iframe[data-view="1"]').locator('#conn')).toHaveText('Live');
+});
+
+test('the view: end_session stops the paused older views of the seat too - they do not take over later', async ({ request, browser }) => {
+  test.setTimeout(60_000);
+  const created = await tool(request, 'create_team', { name: 'Ended All', member_name: 'Andreas', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  const host = await newPlayer(browser);
+  await openHost(host);
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  const older = host.frameLocator('iframe[data-view="0"]');
+  await expect(older.locator('#conn')).toHaveText('Live');
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  const newer = host.frameLocator('iframe[data-view="1"]');
+  await expect(newer.locator('#conn')).toHaveText('Live');
+  await expect(older.locator('#superseded')).toBeVisible();
+
+  await tool(request, 'me', { ...seat, action: 'end_session' });
+  await expect(newer.locator('#conn')).toHaveText('Session ended – the board is no longer live.', { timeout: 3_000 });
+  await expect(older.locator('#conn')).toHaveText('Session ended – the board is no longer live.');
+  await expect(older.locator('#superseded')).toBeHidden(); // no longer paused by a newer view: no takeover
+  const calls = await host.evaluate(() => (window as any).toolCalls.length);
+  await host.waitForTimeout(1_500);
+  expect(await host.evaluate(() => (window as any).toolCalls.length)).toBe(calls);
+  expect(await host.evaluate(() => (window as any).messages)).toEqual([]);
 });
 
 test('the view: "End session" is like closing the tab - away at once, the view stops, "Resume" reconnects', async ({ request, browser }) => {

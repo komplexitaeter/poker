@@ -435,7 +435,8 @@ function mcp_call_tool(string $name, array $args): array
         $out = mcp_with_version($out, $link, $seat);
         $link->close();
         $result = ['content' => [['type' => 'text', 'text' => $out['text']]], 'structuredContent' => $out['structured']];
-        if (isset($out['meta'])) $result['_meta'] = $out['meta']; // MCP Apps: data for the view only (show_board symbols)
+        // MCP Apps: data for the view only (show_board symbols); view_hash lets an outdated copy of the view stop
+        $result['_meta'] = ($out['meta'] ?? []) + ['view_hash' => mcp_app_view_hash()];
         return $result;
     } catch (McpWait $wait) {
         $link->close();
