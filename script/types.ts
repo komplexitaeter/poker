@@ -4,7 +4,10 @@ export interface Player {
     display_card_key: string;
     original_card_key: string | null; // B-104: card of the reveal when changed afterwards; null otherwise and while covered
     player_type: string;
-    away: boolean; // B-110: no dao.php load for AWAY_AFTER_SEC (70 s, api/lib.php); never true for the own card
+    away: boolean; // B-110: no dao.php load for AWAY_AFTER_SEC (70 s, api/lib.php); never true for the own card.
+                   // B-151: false for other players in anonymous mode after the reveal (away_count counts them)
+    via_ai: boolean; // B-151: uses the board through an AI assistant (MCP call within AWAY_AFTER_SEC); false for other
+                     // players in anonymous mode after the reveal (ai_count counts them)
     i: number;
 }
 
@@ -13,6 +16,7 @@ export interface Player {
 export interface Observer {
     name: string;
     mkey: string;
+    via_ai: boolean; // B-151: uses the board through an AI assistant (also in anonymous mode: observers have no card)
 }
 
 export interface myJsonType {
@@ -47,7 +51,10 @@ export interface myJsonType {
     ready_players_count: number;
     players: Player[];
     observers: Observer[]; // B-110: connected observers, ordered by name
-    away_sig: string; // B-127: signature of the away persons (api/lib.php away_sig()), '' = nobody; as in api/seen.php
+    away_sig: string; // B-127: signature of the away persons (api/lib.php away_sig()), '' = nobody; as in api/seen.php.
+                      // B-151: also changes with the set of persons via AI
+    away_count: number; // B-151: players away (never the own one), also in anonymous mode
+    ai_count: number; // B-151: players and connected observers using the board through an AI assistant
     deck: Deck | null; // R3 (B-98): null without card_catalog.json on the server (fallback: cardset_flags)
     custom_sets: CustomSet[];          // B-98 S4: the team's own sets (not deleted), in their order
     custom_cards_played: CustomCard[]; // B-98 S4: custom cards on the table that are in no active set any more

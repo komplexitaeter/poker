@@ -1156,3 +1156,29 @@ select index_name, non_unique, column_name, seq_in_index from information_schema
  where table_schema = database() and table_name = 'pok_topic_items_tbl' and index_name = 'ux_topic_items_team_key'
  order by seq_in_index;
 /* end B-150 item keys */
+
+/* B-151 mcp seen: pok_players_tbl.mcp_seen_time = last MCP tool call of the person (AI assistant, api/v1/lib_mcp.php
+   mcp_actor() -> touch_mcp_person() in api/lib.php, at most every 10 s). getDao() shows via_ai while it is younger
+   than AWAY_AFTER_SEC (the board shows a small AI symbol, Andreas 2026-11-27). null = never via MCP.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code (dao.php reads the column). The
+   release code never reads or writes it.
+   Run only this block: sed -n '/^\/\* B-151 mcp seen:/,/^\/\* end B-151 mcp seen/p' db_schema_pok_inc.sql */
+select column_name, column_type, is_nullable from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_seen_time';
+
+set session lock_wait_timeout = 5;
+set @b151_seen_sql = if((select count(1) from information_schema.columns
+                          where table_schema = database() and table_name = 'pok_players_tbl'
+                            and column_name = 'mcp_seen_time') = 0,
+  'alter table pok_players_tbl
+     add column mcp_seen_time timestamp null default null
+       comment ''B-151: last MCP tool call of the person (AI symbol on the board)'',
+     algorithm = instant',
+  'select ''already done'' as b151_mcp_seen');
+prepare b151_seen_stmt from @b151_seen_sql;
+execute b151_seen_stmt;
+deallocate prepare b151_seen_stmt;
+
+select column_name, column_type, is_nullable from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_seen_time';
+/* end B-151 mcp seen */

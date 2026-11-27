@@ -54,7 +54,9 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         // through it; the own one stays (the agent finds its own row by it)
         $mkey = ($anonymous_revealed && $player->mkey !== (string)$dao['mkey']) ? null : $player->mkey;
         $entry = ['name' => $player->name, 'mkey' => $mkey, 'played' => $played, 'card' => $text($card),
-                  'away' => (bool)$player->away, 'card_key' => $card];
+                  'away' => (bool)$player->away, 'via_ai' => (bool)$player->via_ai, 'card_key' => $card];
+        // B-151: in anonymous mode after the reveal getDao() gives away/via_ai of others as false (team counts below);
+        // card_key says no more than card (rows sorted by card there, names hidden, no mkey)
         if ($player->original_card_key !== null) {
             $entry['card_before_change'] = $text($player->original_card_key);
             $entry['card_before_change_key'] = (string)$player->original_card_key;
@@ -93,7 +95,10 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         'note' => (string)$dao['topic'],
         'round' => $round,
         'players' => $out_players,
-        'observers' => array_map(fn($o) => ['name' => $o->name, 'mkey' => $o->mkey], $dao['observers']),
+        'observers' => array_map(fn($o) => ['name' => $o->name, 'mkey' => $o->mkey, 'via_ai' => (bool)$o->via_ai],
+                                 $dao['observers']),
+        'away_count' => (int)$dao['away_count'], // B-151: players away
+        'ai_count' => (int)$dao['ai_count'], // B-151 mcp seen: players and observers using the board through an AI assistant
         'active_item' => $active === null ? null : ['key' => $active['ext_id'], 'heading' => $active['heading'],
                                                     'description' => $active['description'],
                                                     'rounds' => $active['rounds_cnt']],
