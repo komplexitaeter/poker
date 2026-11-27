@@ -75,6 +75,31 @@ test('the AI button opens the dialog: connector URL, copy, Escape returns the fo
   await expect(dialog).toBeHidden();
   await expect(button).toBeFocused();
 
+  // a click into the box's padding keeps it open, a click beside it (backdrop) closes it
+  await button.click();
+  await expect(dialog).toBeVisible();
+  const box = (await dialog.boundingBox())!;
+  await page.mouse.click(box.x + 4, box.y + box.height / 2); // left padding: the dialog itself is the target
+  await expect(dialog).toBeVisible();
+  expect(box.x).toBeGreaterThan(10);
+  await page.mouse.click(5, box.y + box.height / 2); // the backdrop left of the box
+  await expect(dialog).toBeHidden();
+  await expect(button).toBeFocused();
+
+  // copying refused (no clipboard permission here): the board link shows in a prompt, the status says so
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('denied')) } });
+  });
+  page.once('dialog', d => d.dismiss());
+  await button.click();
+  await page.locator('#ai_board_copy').click();
+  await expect(page.locator('#ai_copy_status')).toHaveText('Copy the board link by hand.');
+  await page.locator('#ai_url_copy').click();
+  await expect(page.locator('#ai_copy_status')).toHaveText('Copy the selected URL by hand.');
+  await expect(page.locator('#ai_url')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
   // "Done" closes too; Invite stays one click (no menu)
   await button.click();
   await expect(dialog).toBeVisible();

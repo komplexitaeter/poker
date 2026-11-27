@@ -62,6 +62,7 @@ function copyMcpUrl() {
 function copyAiBoardLink() {
     const text = window.location.href;
     aiCopy(text, aiDialogEl('ai_board_copy'), 'Board link copied', () => {
+        aiDialogEl('ai_copy_status').textContent = 'Copy the board link by hand.';
         window.prompt('Copy the board link:', text);
     });
 }
@@ -74,8 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
     aiDialogEl('ai_dialog_done').addEventListener('click', closeAiDialog);
     aiDialogEl('ai_url_copy').addEventListener('click', copyMcpUrl);
     aiDialogEl('ai_board_copy').addEventListener('click', copyAiBoardLink);
-    // a click beside the box (on the backdrop: the target is the dialog itself)
-    dialog.addEventListener('click', e => { if (e.target === dialog) closeAiDialog(); });
+    // a click beside the box (on the backdrop: the dialog itself, outside its rectangle) closes it; a click into its
+    // padding or a drag out of the URL field (also the dialog as target) does not (as #leave_item, topics.js)
+    dialog.addEventListener('click', e => {
+        if (e.target !== dialog) return;
+        const r = dialog.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeAiDialog();
+    });
     // Escape closes natively (cancel); every way out returns the focus to the button
     dialog.addEventListener('close', () => { button.focus(); });
 });
