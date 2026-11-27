@@ -684,13 +684,15 @@ Kurz; „→“ = Tool-Aufruf des Agenten.
 
 ### 8.1 Was es liefert
 
-- `version` ist ein **opaker Token**: kompakte Zusammenfassung der sichtbaren Lage (Base64url eines kleinen JSON: je
-  Person mkey → Rolle/gespielt/away, aufgedeckt ja/nein, Karten nach dem Aufdecken, aktives Item + `topics_rev`,
-  `deck.rev`, Hash der Notiz, Timerstatus, Einstellungen), höchstens ~1 KB. Weil der Token den alten Stand trägt, kann
-  der Server **zustandslos** einen Diff bilden: `changes` = kurze englische Sätze („Ben played a card“, „Cards
-  revealed: 5 ×3, 8 ×1“, „Anna joined as observer“, „Cleo is away“, „New active item TIX-005 …“, „Note changed“,
-  „Timer started“). Ein manipulierter Token verfälscht nur den Diff, nie Daten (er enthält nichts, was der Agent
-  nicht ohnehin sieht – keine verdeckten Karten).
+- `version` ist ein **kurzer Token** (16 Hex-Zeichen, Hash der sichtbaren Lage: je Person mkey → Rolle/gespielt/away,
+  aufgedeckt ja/nein, Karten nach dem Aufdecken, aktives Item, Deck, Hash der Notiz, Timerstatus, Einstellungen).
+  Ursprünglich trug der Token den Stand selbst (Base64url eines deflate-JSON, ~260 Zeichen) – in claude.ai schrieb
+  das Modell ihn fehlerhaft ab (Andreas, 2026-11-27). Seitdem hält der Server die Stände der letzten 8 Versionen je
+  Sitz in `pok_players_tbl.mcp_states` (ASCII-JSON, wird mit der Person gelöscht; DDL in `db_schema_pok_inc.sql`,
+  Block „B-151 mcp states“) und bildet daraus den Diff: `changes` = kurze englische Sätze („Ben played a card“,
+  „Cards revealed: 5 ×3, 8 ×1“, „Anna joined as observer“, „Cleo is away“, „New active item TIX-005 …“, „Note
+  changed“, „Timer started“). Unbekanntes `since` → ganzes Board mit `changes: ["(full board)"]`, ohne Fehlerton.
+  Lange Tokens des alten Formats werden übergangsweise noch gelesen. Ohne die Spalte gibt es immer das ganze Board.
 - Jedes Tool-Ergebnis enthält `version`; der Agent übergibt die letzte als `since`. Nur PHP liest und vergleicht den
   Token; poker-msg sieht ihn nie.
 

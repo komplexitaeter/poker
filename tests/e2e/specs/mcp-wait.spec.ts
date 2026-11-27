@@ -1,3 +1,4 @@
+import { deflateRawSync } from 'zlib';
 import { test, expect, APIRequestContext } from '@playwright/test';
 import { readFileSync, existsSync } from 'fs';
 import { asUser, joinAsPlayer, newPlayer, pickCard } from './helpers';
@@ -56,7 +57,7 @@ test('tools/list: wait_for_change with since, timeout and the seat; results with
   expect((await init.json()).result.instructions).toContain('Stay at the table with wait_for_change');
 
   const { seat, data } = await mcpTeam(request, 'MCP Version');
-  expect(data.version).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+  expect(data.version).toMatch(/^[0-9a-f]{16}$/); // short: a model copies it without mistakes
   const board = await ok(request, 'get_board', seat);
   expect(board.data.version).toBe(data.version);                   // same view, same version
   expect(board.text).toContain(`version (pass it as since to wait_for_change): ${data.version}`);
@@ -146,8 +147,23 @@ test('since of no version of ours: the whole board at once', async ({ request })
   const [result, took] = await timed(ok(request, 'wait_for_change', { ...seat, since: 'abc' }));
   expect(took).toBeLessThan(1_500);
   expect(result.data.changed).toBe(true);
-  expect(result.data.changes).toEqual(['since was no version of this board: here is the whole board.']);
+  expect(result.data.changes).toEqual(['(full board)']); // neutral, no error tone
+  expect(result.text.split('\n')[0]).toBe('(full board)');
   expect(result.data.board.players.map((p: any) => p.name)).toEqual(['Anna']);
+  // a well-formed version that is not kept for this seat: the same
+  const other = await ok(request, 'wait_for_change', { ...seat, since: '0123456789abcdef' });
+  expect(other.data.changes).toEqual(['(full board)']);
+});
+
+test('transition: a long token of the former format is still read for the list of changes', async ({ request }) => {
+  const { seat, data } = await mcpTeam(request, 'MCP Wait Legacy');
+  const state = { v: 1, tn: 'x', y: [data.you.mkey, 'player', null], p: [], o: [], r: 0, i: null, c: [0, 0], d: null,
+                  n: '', t: ['paused', 'stopwatch', 0, 0, 'off', 0], s: {} };
+  const legacy = deflateRawSync(Buffer.from(JSON.stringify(state)), { level: 9 }).toString('base64url');
+  expect(legacy.length).toBeGreaterThan(16);
+  const result = await ok(request, 'wait_for_change', { ...seat, since: legacy });
+  expect(result.data.changes).toContain('You joined as player.');
+  expect(result.data.changes).not.toContain('(full board)');
 });
 
 test('poker-msg not reachable: busy with retry_after, at once', async ({ request }) => {

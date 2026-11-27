@@ -170,7 +170,10 @@ test('round remove_player and the role rules of play_card; me rename, set_role, 
   await expectTableCard(alice, 'Annie', 'prgrss1');
   const left = await ok(request, 'me', { ...seat, action: 'leave' });
   expect(left.data.you.role).toBe('removed');
-  expect(left.text).toContain('You were taken off the table.');
+  expect(left.text).toContain('You left the table: you no longer play, the others see you as observer.');
+  expect(left.text).toContain('You (not at the table - others see you as observer; me set_role to come back)');
+  expect(left.text).not.toMatch(/^Observers: .*You/m);
+  expect(left.text).not.toContain('browser seat'); // only with an API key
   await expect(tableCard(alice, 'Annie')).toHaveCount(0);
   // still a seat: renaming keeps it removed
   expect((await ok(request, 'me', { ...seat, action: 'rename', name: 'Anna' })).data.you)
@@ -197,6 +200,12 @@ test('me with an API key: api_keys, delete_my_data refused (browser_only), delet
   expect(refused.message).toContain('delete_key with key_id "current"');
   expect(refused.message).toContain('Delete my data');
   await expectTableCard(alice, 'Alice', 'prgrss1'); // nothing deleted
+
+  // leave with a key: the user's browser seat left the table too - say so; back with set_role
+  const leftKey = await ok(request, 'me', { ...key, action: 'leave' });
+  expect(leftKey.text).toContain('that seat left the table too');
+  await ok(request, 'me', { ...key, action: 'set_role', role: 'player' });
+  await expectTableCard(alice, 'Alice', 'prgrss1');
 
   await fails(request, 'me', { ...key, action: 'delete_key', key_id: '999999' }, 'key_not_found');
   await fails(request, 'me', { ...key, action: 'delete_key', key_id: 'all' }, 'invalid_param', 'key_id');

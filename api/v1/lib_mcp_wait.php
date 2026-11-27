@@ -2,11 +2,13 @@
 /*
  * B-151 PR C: wait_for_change and the version of the board (docs/mcp-concept.md, sections 5.3 and 8).
  *
- * version: an opaque token of what the agent sees on the board (people with role, played, card after the reveal and
- * away; reveal; active item; counts; deck; note; timer; settings; team name) - base64url of a deflated JSON, no UID, no
- * team id, nothing the agent does not see anyway. Every result with a board carries it (mcp_with_version()); the agent
- * passes the last one as since. Because the token holds the old state, the server builds the list of changes without
- * keeping anything. A forged token only spoils that list, never data.
+ * version: a short token (16 hex characters, a hash) of what the agent sees on the board (people with role, played,
+ * card after the reveal and away; reveal; active item; counts; deck; note; timer; settings; team name) - short, so a
+ * model copies it without mistakes (Andreas, 2026-11-27: a 260-character token came back altered). Every result with a
+ * board carries it (mcp_with_version()); the agent passes the last one as since. The states behind the last
+ * MCP_STATES_KEEP versions of a seat are kept in pok_players_tbl.mcp_states (deleted with the person), so
+ * wait_for_change can list the changes since one of them; an unknown since just gets the whole board ("(full board)").
+ * Until the old clients are gone, a long token of the former format (base64url of a deflated JSON) is still read.
  *
  * Waiting (concept 8.2/8.3): no PHP worker waits. Unchanged -> the answer is only the header
  * "X-Accel-Redirect: /_mcp_wait/<team-hash>/<checked>/<deadline>/<hop>"; nginx holds the request against poker-msg
@@ -24,7 +26,10 @@ const MCP_WAIT_HOPS = 3;           // wait rounds per request: 2 redirects each 
 const MCP_WAIT_RETRY_AFTER = 5;    // seconds, answer busy/down
 const MCP_WAIT_URI = '/_mcp_wait/';
 const MCP_VERSION_FORMAT = 1;
-const MCP_VERSION_MAX = 8192;      // characters of a version (since); a team of 60 people stays far below
+const MCP_VERSION_MAX = 8192;      // characters of a since: also the former long tokens (transition)
+const MCP_VERSION_LENGTH = 16;     // hex characters of a version (64 bits of sha256)
+const MCP_STATES_KEEP = 8;         // states of a seat kept for the list of changes (live board and agent share a seat)
+const MCP_FULL_BOARD = '(full board)';
 const MCP_VERSION_PATTERN = '^[A-Za-z0-9_-]+$';
 
 /* thrown by wait_for_change when nothing changed: mcp_dispatch() answers with the X-Accel-Redirect to poker-msg */
@@ -82,7 +87,11 @@ function mcp_wait_for_change(mysqli $link, array $p, array $actor): array
     $checked = (int)floor($now * 1000); // before the view: a write during the computation wakes the wait at once
     $board = core_board_get($link, $actor, false);
     $version = mcp_board_version($board);
-    if ($version !== $p['since']) return mcp_wait_result($board, $version, $p['since'], 'changed');
+    if ($version !== $p['since']) {
+        $old = mcp_since_state($link, $actor, $p['since']); // before storing: since may be the oldest state kept
+        mcp_store_state($link, $actor, $board);
+        return mcp_wait_result($board, $version, $old, 'changed');
+    }
 
     $hop = $phase['hop'] + 1;
     $deadline = match ($phase['phase']) {
@@ -92,7 +101,7 @@ function mcp_wait_for_change(mysqli $link, array $p, array $actor): array
     switch ($phase['phase']) {
         case 'busy':
         case 'down':
-            return mcp_wait_result($board, $version, $p['since'], 'busy');
+            return mcp_wait_result($board, $version, null, 'busy');
         case 'call':
         case 'pull':
             if ($hop <= MCP_WAIT_HOPS && $deadline - $now >= 1) {
@@ -100,7 +109,8 @@ function mcp_wait_for_change(mysqli $link, array $p, array $actor): array
                 throw new McpWait(mcp_wait_prefix() . $hash . '/' . $checked . '/' . $deadline . '/' . $hop);
             }
     }
-    return mcp_wait_result($board, $version, $p['since'], 'unchanged');
+    mcp_store_state($link, $actor, $board);
+    return mcp_wait_result($board, $version, null, 'unchanged');
 }
 
 /* location of the wait: /_mcp_wait/; a test setup may point a location of its own elsewhere (FastCGI parameter) */
@@ -110,8 +120,8 @@ function mcp_wait_prefix(): string
     return is_string($prefix) && preg_match('~^/_[a-z0-9_]+/$~D', $prefix) ? $prefix : MCP_WAIT_URI;
 }
 
-/* the final answer of wait_for_change: $how changed | unchanged | busy */
-function mcp_wait_result(array $board, string $version, string $since, string $how): array
+/* the final answer of wait_for_change: $how changed | unchanged | busy; $old = the state of since (null: unknown) */
+function mcp_wait_result(array $board, string $version, ?array $old, string $how): array
 {
     if ($how === 'busy') {
         return ['structured' => ['changed' => false, 'busy' => true, 'retry_after' => MCP_WAIT_RETRY_AFTER,
@@ -124,7 +134,7 @@ function mcp_wait_result(array $board, string $version, string $since, string $h
                 'text' => "Nothing changed at the table. Call wait_for_change again with the same since.\n"
                     . mcp_version_line($version)];
     }
-    $changes = mcp_board_changes(mcp_version_state($since), mcp_board_state($board), $board);
+    $changes = mcp_board_changes($old, mcp_board_state($board), $board);
     return ['structured' => ['changed' => true, 'version' => $version, 'changes' => $changes, 'board' => $board],
             'text' => mcp_changes_line($changes) . "\n\n" . mcp_board_text($board) . "\n\n" . mcp_version_line($version)];
 }
@@ -139,8 +149,9 @@ function mcp_changes_line(array $changes): string
 
 /* ---------- version ---------- */
 
-/* a result with a board (structured is a board, e.g. get_board, or has one under 'board') gets its version */
-function mcp_with_version(array $out): array
+/* a result with a board (structured is a board, e.g. get_board, or has one under 'board') gets its version; with the
+   seat ($actor) its state is kept for a later wait_for_change */
+function mcp_with_version(array $out, ?mysqli $link = null, ?array $actor = null): array
 {
     $structured = $out['structured'];
     if (!is_array($structured) || array_key_exists('version', $structured)) return $out;
@@ -148,6 +159,7 @@ function mcp_with_version(array $out): array
         : (isset($structured['round'], $structured['players'], $structured['you']) ? $structured : null);
     if ($board === null) return $out;
     $version = mcp_board_version($board);
+    if ($link !== null && $actor !== null) mcp_store_state($link, $actor, $board);
     $out['structured'] = $structured + ['version' => $version];
     $out['text'] .= "\n\n" . mcp_version_line($version);
     return $out;
@@ -195,13 +207,74 @@ function mcp_board_state(array $board): array
     ];
 }
 
-function mcp_board_version(array $board): string
+/* the state as stored (ASCII JSON: the column is ascii, names with emoji stay \u escapes) */
+function mcp_state_json(array $state): string
 {
-    $json = json_encode(mcp_board_state($board), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-    return rtrim(strtr(base64_encode((string)gzdeflate((string)$json, 9)), '+/', '-_'), '=');
+    return (string)json_encode($state, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 }
 
-/* the state in a version, null if it is none of ours (wrong format, other format version, damaged) */
+function mcp_board_version(array $board): string
+{
+    return substr(hash('sha256', mcp_state_json(mcp_board_state($board))), 0, MCP_VERSION_LENGTH);
+}
+
+/* the kept states of a seat: [[version, state], ...] newest first; [] without any or without the column */
+function mcp_load_states(mysqli $link, array $actor): array
+{
+    try {
+        $sql = $link->prepare('select mcp_states from pok_players_tbl where id = ? and team_id = ?');
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return []; // code deployed before the schema: no list of changes, the whole board
+    }
+    $uid = (string)$actor['uid'];
+    $t = (string)$actor['team_id'];
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    $sql->close();
+    $states = is_string($row['mcp_states'] ?? null) ? json_decode($row['mcp_states'], true, 16) : null;
+    return is_array($states) && array_is_list($states) ? $states : [];
+}
+
+/* keeps the state of this board for the seat (newest first, at most MCP_STATES_KEEP, each version once) */
+function mcp_store_state(mysqli $link, array $actor, array $board): void
+{
+    $state = mcp_board_state($board);
+    $version = substr(hash('sha256', mcp_state_json($state)), 0, MCP_VERSION_LENGTH);
+    $states = mcp_load_states($link, $actor);
+    if (($states[0][0] ?? null) === $version) return; // nothing new: no write
+    $states = array_values(array_filter($states, fn($entry): bool => is_array($entry) && ($entry[0] ?? null) !== $version));
+    array_unshift($states, [$version, $state]);
+    $json = mcp_state_json(array_slice($states, 0, MCP_STATES_KEEP));
+    $uid = (string)$actor['uid'];
+    $t = (string)$actor['team_id'];
+    try {
+        $sql = $link->prepare('update pok_players_tbl set mcp_states = ? where id = ? and team_id = ?');
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return;
+    }
+    $sql->bind_param('sss', $json, $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
+/* the state behind since: a kept version of the seat, or (transition) a long token of the former format; else null */
+function mcp_since_state(mysqli $link, array $actor, string $since): ?array
+{
+    if (strlen($since) !== MCP_VERSION_LENGTH) return mcp_version_state($since);
+    foreach (mcp_load_states($link, $actor) as $entry) {
+        if (is_array($entry) && ($entry[0] ?? null) === $since && is_array($entry[1] ?? null)) {
+            $state = $entry[1];
+            foreach (['p', 'o', 'y', 'c', 't', 's'] as $part) if (!is_array($state[$part] ?? null)) return null;
+            return $state;
+        }
+    }
+    return null;
+}
+
+/* transition: the state in a long token of the former format, null if it is none of ours (wrong format, damaged) */
 function mcp_version_state(string $version): ?array
 {
     if (strlen($version) > MCP_VERSION_MAX) return null;
@@ -223,7 +296,7 @@ function mcp_version_state(string $version): ?array
  */
 function mcp_board_changes(?array $old, array $new, array $board): array
 {
-    if ($old === null) return ['since was no version of this board: here is the whole board.'];
+    if ($old === null) return [MCP_FULL_BOARD];
     // the old state comes from the agent: only scalars count, anything else reads as empty (no warning)
     $str = fn(mixed $v): string => is_scalar($v) ? (string)$v : '';
     $q = fn(mixed $s): string => '"' . str_replace(["\r", "\n"], ' ', cut_text($str($s), 80)) . '"';

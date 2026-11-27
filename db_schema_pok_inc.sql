@@ -1182,3 +1182,29 @@ deallocate prepare b151_seen_stmt;
 select column_name, column_type, is_nullable from information_schema.columns
  where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_seen_time';
 /* end B-151 mcp seen */
+
+/* B-151 mcp states: pok_players_tbl.mcp_states = the board states behind the last MCP versions of a seat
+   (api/v1/lib_mcp_wait.php, JSON [[version, state], ...], at most 8; names and card texts as \u escapes, so ascii).
+   The MCP version is a short hash now; wait_for_change lists the changes since one of these states, an unknown version
+   gets the whole board. Deleted with the person (row of pok_players_tbl). Without the column: always the whole board.
+   Additive, instant, idempotent (run it again any time), before or after deploying the code.
+   Run only this block: sed -n '/^\/\* B-151 mcp states:/,/^\/\* end B-151 mcp states/p' db_schema_pok_inc.sql */
+select column_name, column_type, character_set_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_states';
+
+set session lock_wait_timeout = 5;
+set @b151_states_sql = if((select count(1) from information_schema.columns
+                            where table_schema = database() and table_name = 'pok_players_tbl'
+                              and column_name = 'mcp_states') = 0,
+  'alter table pok_players_tbl
+     add column mcp_states mediumtext character set ascii collate ascii_bin null default null
+       comment ''B-151: board states of the last MCP versions of the seat (wait_for_change)'',
+     algorithm = instant',
+  'select ''already done'' as b151_mcp_states');
+prepare b151_states_stmt from @b151_states_sql;
+execute b151_states_stmt;
+deallocate prepare b151_states_stmt;
+
+select column_name, column_type, character_set_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_states';
+/* end B-151 mcp states */

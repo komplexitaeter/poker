@@ -591,7 +591,9 @@ function v1_me_role_set(mysqli $link, array $actor, array $p): array
 function v1_me_leave(mysqli $link, array $actor, array $p): array
 {
     core_member_leave($link, $actor);
-    return v1_seat_answer($link, $actor, 'You left the table. You can come back with set_role (player or observer).');
+    return v1_seat_answer($link, $actor, 'You left the table: you no longer play, the others see you as observer. You '
+        . 'can come back with set_role (player or observer).' . ($actor['via'] === 'key'
+            ? ' The API key stands for the user\'s browser seat: that seat left the table too.' : ''));
 }
 
 /* DELETE /me/keys/{key_id}: one of the own keys by id, or "current" = the key of this call */
