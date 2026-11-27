@@ -207,7 +207,9 @@ test('get_board shows who played but hides the cards of others until every playe
   expect(voting.data.round).toEqual({ state: 'voting', waiting_for: ['Bob'], result: null });
   const aliceRow = voting.data.players.find((p: any) => p.name === 'Alice');
   expect(aliceRow).toMatchObject({ played: true, card: null, away: false });
-  expect(JSON.stringify({ players: voting.data.players, round: voting.data.round })).not.toMatch(/13|thrtn01/);
+  // without mkey: a sequential number, it may be 13 by chance
+  const noMkey = voting.data.players.map(({ mkey: _, ...p }: any) => p);
+  expect(JSON.stringify({ players: noMkey, round: voting.data.round })).not.toMatch(/13|thrtn01/);
   expect(voting.text).toContain('"Alice" played');
   expect(voting.text).toContain('Waiting for: "Bob"');
   expect(voting.text).not.toMatch(/"13"/);

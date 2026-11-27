@@ -30,7 +30,7 @@
     return res.json();
   }
 
-  window.openView = async function (args, theme = 'light') {
+  window.openView = async function (args, theme = 'light', { emptyToolCalls = false } = {}) {
     const read = await mcp('resources/read', { uri: 'ui://agile-poker/board' });
     const html = read.result.contents[0].text;
     const result = (await mcp('tools/call', { name: 'show_board', arguments: args })).result;
@@ -59,6 +59,7 @@
           break;
         case 'tools/call': {
           window.toolCalls.push(msg.params.name);
+          if (emptyToolCalls) { reply({ result: {} }); break; } // a broken host or server: no board in the answer
           const answer = await mcp('tools/call', msg.params);
           reply(answer.error ? { error: answer.error } : { result: answer.result });
           break;
