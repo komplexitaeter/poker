@@ -637,6 +637,15 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
 - `delete.php?mkey=` im anonymen Modus nach dem Aufdecken (gemerkte mkey verrät beim Entfernen die Karte); im MCP
   bereits ausgeschlossen.
 - Kontingent per WebSocket: ein Browser kann mit beliebigem `from` das Kontingent anderer verbrauchen (bekannt, B-139).
+- `getDao()`: gelöschte eigene Karten (Custom-Set) sind vor dem Aufdecken sichtbar.
+- `away_sig` baut die Zuordnung im anonymen Modus neu auf (prüfen, ob daraus Rückschlüsse möglich sind).
+- `mcp_states`: Größe der Spalte bei 8 Ständen je Platz beobachten.
+- `get_uid()`: Fallback auf die UID in der URL entfernen (→ B-152 BE-2, braucht Access-Log-Prüfung auf `?id=`).
+- `core_member_remove` ohne `db_transaction()`: die Self-left-Markierung kann bei parallelem `wait_for_change` verloren
+  gehen (nur Funktion, → B-155); `seat_states_store()` bei `json_encode` = false abbrechen.
+- Test mit sechs Agenten (Andreas, 2026-11-27): Ändert sich die Notiz kurz nach „New round“, spielen Agenten noch zur
+  alten Frage (alle haben dann korrigiert). Tool-Texte: nach neuer Runde auf Notiz-/Item-Änderung achten; für Fragen
+  besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
 ### B-155 Transaktionen und Sperren systematisch
 Status: refined (Andreas, 2026-11-26). Anlass: Deadlock in der CI (Rollout 8, #279): `insert … select max(sort_order)`
