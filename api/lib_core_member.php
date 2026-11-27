@@ -61,7 +61,7 @@ function core_card_set(mysqli $link, array $actor, ?string $card_key, bool $play
         if ($players_only && $me->player_type !== 'PLAYER') {
             throw new ApiError(403, 'role_not_allowed', null, $me->player_type === 'OBSERVER'
                 ? 'Observers cannot play cards. Switch to player first (me, action set_role) if the user wants to vote.'
-                : 'You were taken off the table. Ask the user whether to come back as player (me, action set_role).');
+                : 'You are no longer at the table. Ask the user whether to come back as player (me, action set_role).');
         }
 
         $original = $me->original_card_key;

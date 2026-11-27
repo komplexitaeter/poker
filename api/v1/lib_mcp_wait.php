@@ -325,7 +325,7 @@ function mcp_board_changes(?array $old, array $new, array $board): array
     };
     $before = $people($old);
     $after = $people($new);
-    $who = fn(string $mkey, array $p): string => $mkey === $me ? 'You' : $q($p['name']);
+    $who = fn(string $mkey, array $p): string => $mkey === $me ? 'You' : $q($p['name']); // array keys of numeric mkeys are ints: compare as strings
     $new_round = ($old['r'] && !$new['r']);
     if (!$new_round && !$old['r'] && !$new['r']) {
         $taken_back = 0;
@@ -342,10 +342,10 @@ function mcp_board_changes(?array $old, array $new, array $board): array
         }
         if ($was['name'] !== $p['name']) $out[] = $q($was['name']) . ' is now called ' . $q($p['name']) . '.';
         if ($was['role'] !== $p['role']) {
-            $out[] = $who($mkey, $p) . ($p['role'] === 'player' ? ' now play' . ($mkey === $me ? '' : 's') . ' (player).'
-                                                                : ' now watch' . ($mkey === $me ? '' : 'es') . ' (observer).');
+            $out[] = $who($mkey, $p) . ($p['role'] === 'player' ? ' now play' . ((string)$mkey === $me ? '' : 's') . ' (player).'
+                                                                : ' now watch' . ((string)$mkey === $me ? '' : 'es') . ' (observer).');
         }
-        if ($mkey !== $me && $p['role'] === 'player' && $was['role'] === 'player') {
+        if ((string)$mkey !== $me && $p['role'] === 'player' && $was['role'] === 'player') {
             if (!$was['played'] && $p['played']) $played[] = $q($p['name']);
             elseif ($was['played'] && !$p['played'] && !$new_round) $out[] = $q($p['name']) . ' took back their card.';
             elseif ($old['r'] && $new['r'] && $was['card'] !== null && $p['card'] !== $was['card']) {
@@ -357,7 +357,7 @@ function mcp_board_changes(?array $old, array $new, array $board): array
     if ($played !== []) $out[] = implode(', ', $played) . (count($played) === 1 ? ' played a card.' : ' played their cards.');
     foreach ($before as $mkey => $p) {
         if (!isset($after[$mkey])) {
-            $out[] = $mkey === $me ? 'You were taken off the table.' : $q($p['name']) . ' left the table.';
+            $out[] = (string)$mkey === $me ? 'You are no longer at the table.' : $q($p['name']) . ' left the table.';
         }
     }
     if ($anonymous && count($old['p']) !== count($new['p'])) $out[] = count($new['p']) . ' players at the table.';

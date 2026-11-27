@@ -411,6 +411,16 @@ body {
     border: 1px dashed var(--line-strong); border-radius: var(--radius-l); padding: var(--space-2);
     color: var(--muted); font-size: var(--fs-s); text-align: center;
 }
+/* own seat taken off the table: a banner at the top with the way back */
+.removed {
+    border: 1px solid var(--warn); border-left-width: 4px; border-radius: var(--radius-l);
+    background: color-mix(in srgb, var(--warn) 12%, var(--bg-2)); padding: 10px 12px;
+}
+.removed-t { margin: 0 0 8px; font-weight: 700; }
+.removed-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 700; }
+.btn.primary:hover { border-color: var(--text); }
+.btn:disabled { cursor: progress; opacity: 0.6; }
 
 /* wider chat columns: larger cards on the table and in the hand */
 @media (min-width: 560px) {
@@ -468,6 +478,13 @@ body {
 <div id="app" aria-live="polite">
     <div id="superseded" hidden>Live updates continue in a newer board.
         <button type="button" class="btn" id="takeover">Resume live updates</button></div>
+    <div class="removed" id="removed" hidden>
+        <p class="removed-t">You are no longer at the table.</p>
+        <div class="removed-acts">
+            <button type="button" class="btn primary" id="rejoin-player">Join again as player</button>
+            <button type="button" class="btn" id="rejoin-observer">Join as observer</button>
+        </div>
+    </div>
     <div class="head">
         <span class="team" id="team">Agile Poker</span>
         <span class="badge changed" id="changed" hidden>changed</span>
@@ -521,6 +538,7 @@ body {
     var IDLE_STOP_MS = 2 * 60 * 60 * 1000; // stop waiting after 2 h without a change or a click
     var FATAL = ['not_a_member', 'invalid_key', 'unauthorized'];
     var MIN_PAUSE_MS = 5000;               // pause between calls while there is no version
+    var WAIT_ALERT_MS = 20000;             // only the own card missing this long: tell the chat
 
     var $ = function (id) { return document.getElementById(id); };
     var nextId = 1;
@@ -539,6 +557,12 @@ body {
     var channel = null;
     var lastContext = '';
     var changedTimer = null;
+    var rendered = false;     // the first board of this view was shown (no chat message for that one)
+    var seenRole = null;      // the own role at the last board
+    var removedSent = false;  // "taken off the table" told the chat (again after coming back)
+    var waitSent = false;     // "waiting for my card" told the chat in this round
+    var waitTimer = null;
+    var messageOff = false;   // the host does not know ui/message
 
     /* ---------- bridge (JSON-RPC 2.0 over postMessage) ---------- */
 
@@ -1182,6 +1206,8 @@ body {
         ensureSymbols();
         if (changes && changes.length && before && v !== before) markChanged(changes);
         if (v !== before) modelContext();
+        checkAlerts(!rendered);
+        rendered = true;
         updateSeatHash();
         announce();
     }
@@ -1214,6 +1240,10 @@ body {
             setStatus('voting · ' + played + ' of ' + b.players.length + ' voted · waiting for: ' + b.round.waiting_for.join(', '));
         } else setStatus('voting · everybody has played');
         if (b.you.role === 'observer') setStatus($('status').textContent + ' · you watch as observer');
+        var removed = b.you.role === 'removed';
+        if (removed) setStatus($('status').textContent + ' · you are not at the table');
+        $('removed').hidden = !removed;
+        $('rejoin-player').disabled = $('rejoin-observer').disabled = rejoining;
 
         var note = firstLine(b.note, 140);
         $('note').textContent = note;
@@ -1280,7 +1310,9 @@ body {
         });
         list.hidden = !b.players.length;
 
-        var obs = b.observers.map(function (o) { return o.name + (o.mkey === b.you.mkey ? ' (you)' : ''); });
+        // B-154: a removed player is an observer for the others; the own row says so
+        var own = b.you.role === 'removed' ? ' (you, off the table)' : ' (you)';
+        var obs = b.observers.map(function (o) { return o.name + (o.mkey === b.you.mkey ? own : ''); });
         $('observers').textContent = obs.length ? 'observers: ' + obs.join(', ') : '';
         $('observers').hidden = !obs.length;
     }
@@ -1643,6 +1675,77 @@ body {
     $('leave').addEventListener('keydown', function (event) {
         if (event.key === 'Escape') { event.preventDefault(); closeLeave(true); }
     });
+
+    /* --- own seat taken off the table: back as player or observer (me, set_role) --- */
+
+    var rejoining = false;
+
+    async function rejoin(role) {
+        if (!seat || rejoining || pausedBy === 'gone' || pausedBy === 'superseded') return;
+        lastActivity = Date.now();
+        if (pausedBy) resume();
+        rejoining = true;
+        if (board) render();
+        showError('');
+        try {
+            var r = await callTool('me', Object.assign({}, seat, { action: 'set_role', role: role }));
+            var sc = r && r.structuredContent;
+            if (r && r.isError) showError(textOf(r) || 'You could not join again.');
+            else {
+                var b = boardOf(sc);
+                if (b) apply(b, sc.version || null, null);
+            }
+        } catch (e) {
+            showError('You could not join again (no connection). Please try again.');
+        }
+        rejoining = false;
+        if (board) render();
+    }
+
+    $('rejoin-player').addEventListener('click', function () { rejoin('player'); });
+    $('rejoin-observer').addEventListener('click', function () { rejoin('observer'); });
+
+    /* --- a few events go into the chat as a message (ui/message), so the agent reacts: once per event, only from the
+     * live view, never for the first board of a view, never with the uid or other people's texts --- */
+
+    function sendMessage(text) {
+        if (pausedBy || messageOff) return;
+        request('ui/message', { role: 'user', content: [{ type: 'text', text: text }] }, 15000).catch(function (e) {
+            if (/not found|not supported/i.test(e.message)) messageOff = true; // host without ui/message: silently
+        });
+    }
+
+    function onlyMeMissing() {
+        var b = board;
+        if (b.round.state !== 'voting' || b.you.role !== 'player' || (b.you.card !== null && b.you.card !== undefined)) return false;
+        var others = b.players.filter(function (p) { return p.mkey === null || p.mkey !== b.you.mkey; });
+        return others.length > 0 && others.length < b.players.length && others.every(function (p) { return p.played; });
+    }
+
+    function checkAlerts(first) {
+        var b = board;
+        var seated = b.you.role === 'player' || b.you.role === 'observer';
+        if (seated) removedSent = false;
+        else if (!first && !removedSent && (seenRole === 'player' || seenRole === 'observer')) {
+            removedSent = true;
+            sendMessage('I am no longer at the table.');
+        }
+        seenRole = b.you.role;
+
+        // a new round (revealed or nobody has played): the message may come again
+        if (b.round.state === 'revealed' || !b.players.some(function (p) { return p.played; })) waitSent = false;
+        if (!onlyMeMissing()) {
+            clearTimeout(waitTimer);
+            waitTimer = null;
+        } else if (!waitSent && !waitTimer) {
+            waitTimer = setTimeout(function () {
+                waitTimer = null;
+                if (!board || waitSent || !onlyMeMissing() || pausedBy) return;
+                waitSent = true;
+                sendMessage('Everyone is waiting for my card.');
+            }, WAIT_ALERT_MS);
+        }
+    }
 
     /* one short line for the model (no uid, no key) */
     function modelContext() {

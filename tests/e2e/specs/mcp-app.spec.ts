@@ -340,6 +340,108 @@ test('the view: symbol decks (T-shirt, emotions), the estimate in the chart, "Ne
   await shot(host, 1, 'emotions-dark-700-revealed.png');
 });
 
+test('the view: own seat taken off the table shows a banner with the way back and tells the chat once', async ({ request, browser }) => {
+  test.setTimeout(60_000);
+  const created = await tool(request, 'create_team', { name: 'Off Table', member_name: 'Peter', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  const bobYou = (await tool(request, 'join_team', { invite: seat.team_id, name: 'Bob', role: 'player' })).structuredContent.you;
+  const bob = { team_id: seat.team_id, uid: bobYou.uid as string };
+  const mkey = (await tool(request, 'get_board', seat)).structuredContent.you.mkey as string;
+  const removePeter = () => tool(request, 'round', { ...bob, action: 'remove_player', player: mkey });
+  const messages = () => host.evaluate(() => (window as any).messages);
+
+  const host = await newPlayer(browser);
+  await openHost(host);
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  const view = host.frameLocator('iframe[data-view="0"]');
+  await expect(view.locator('#conn')).toHaveText('Live');
+  await expect(view.locator('#removed')).toBeHidden();
+  await expect.poll(() => host.evaluate(() => (window as any).toolCalls.includes('wait_for_change'))).toBe(true);
+
+  // taken off the table (like the trash can in the browser): banner, no hand, one message into the chat
+  await removePeter();
+  await expect(view.locator('#removed')).toBeVisible({ timeout: 3_000 });
+  await expect(view.locator('#removed')).toContainText('You are no longer at the table.');
+  await expect(view.locator('#status')).toContainText('you are not at the table');
+  await expect(view.locator('#hand-wrap')).toBeHidden();
+  await expect(view.locator('#observers')).toContainText('Peter (you, off the table)'); // B-154: an observer for the others
+  await expect.poll(messages).toEqual([{ view: 0, role: 'user', text: 'I am no longer at the table.' }]);
+  await shot(host, 0, 'removed-light-420.png');
+
+  // "Join again as player": back at the table, the banner goes, no further message
+  await view.locator('#rejoin-player').click();
+  await expect(view.locator('#removed')).toBeHidden();
+  await expect(view.locator('#players li', { hasText: 'Peter (you)' })).toBeVisible();
+  await expect(view.locator('#hand-wrap')).toBeVisible();
+  expect(await host.evaluate(() => (window as any).toolCalls)).toContain('me');
+
+  // taken off again: a new event, a new message
+  await removePeter();
+  await expect(view.locator('#removed')).toBeVisible({ timeout: 3_000 });
+  await expect.poll(() => messages().then(m => m.length)).toBe(2);
+
+  // a newer view of the removed seat: banner at once, but no message for its first board; the older view pauses
+  await host.evaluate(s => (window as any).openView(s, 'dark', { width: 700 }), seat);
+  const newer = host.frameLocator('iframe[data-view="1"]');
+  await expect(newer.locator('#removed')).toBeVisible();
+  await expect(view.locator('#superseded')).toBeVisible();
+  await shot(host, 1, 'removed-dark-700.png');
+  await newer.locator('#rejoin-observer').click();
+  await expect(newer.locator('#removed')).toBeHidden();
+  await expect(newer.locator('#observers')).toContainText('Peter (you)');
+  await tool(request, 'me', { ...seat, action: 'set_role', role: 'player' }); // only players can be taken off
+  await expect(newer.locator('#players li', { hasText: 'Peter (you)' })).toBeVisible({ timeout: 3_000 });
+
+  // taken off once more: only the live (newer) view tells the chat, the paused one stays silent
+  await removePeter();
+  await expect(newer.locator('#removed')).toBeVisible({ timeout: 3_000 });
+  await expect.poll(() => messages().then(m => m.length)).toBe(3);
+  await host.waitForTimeout(1_000);
+  const all = await messages();
+  expect(all.length).toBe(3);
+  expect(all[2]).toEqual({ view: 1, role: 'user', text: 'I am no longer at the table.' });
+  expect(JSON.stringify(all)).not.toContain(seat.uid);
+});
+
+test('the view: tells the chat once per round when everybody but the user has played for 20 s', async ({ request, browser }) => {
+  test.setTimeout(60_000);
+  const created = await tool(request, 'create_team', { name: 'Waiting', member_name: 'Anna', role: 'player' });
+  const seat = { team_id: created.structuredContent.team.id as string, uid: created.structuredContent.you.uid as string };
+  const others: { team_id: string; uid: string }[] = [];
+  for (const name of ['Bob', 'Cleo']) {
+    others.push({ team_id: seat.team_id, uid: (await tool(request, 'join_team', { invite: seat.team_id, name, role: 'player' })).structuredContent.you.uid });
+  }
+  const host = await newPlayer(browser);
+  await host.clock.install();
+  await openHost(host);
+  await host.evaluate(s => (window as any).openView(s, 'light'), seat);
+  const view = host.frameLocator('iframe[data-view="0"]');
+  await expect(view.locator('#conn')).toHaveText('Live');
+  const messages = () => host.evaluate(() => (window as any).messages);
+
+  await tool(request, 'play_card', { ...others[0], action: 'play', card: '5' });
+  await tool(request, 'play_card', { ...others[1], action: 'play', card: '8' });
+  await expect(view.locator('#status')).toContainText('waiting for: Anna', { timeout: 3_000 });
+  await host.clock.fastForward(15_000);
+  expect(await messages()).toEqual([]);
+  await host.clock.fastForward(6_000);
+  await expect.poll(messages).toEqual([{ view: 0, role: 'user', text: 'Everyone is waiting for my card.' }]);
+  // at most once per round
+  await tool(request, 'play_card', { ...others[0], action: 'play', card: '3' });
+  await expect(view.locator('#changed')).toBeVisible({ timeout: 3_000 });
+  await host.clock.fastForward(25_000);
+  await host.waitForTimeout(500);
+  expect((await messages()).length).toBe(1);
+  // a new round: again
+  await tool(request, 'round', { ...seat, action: 'new_round' });
+  await expect(view.locator('#status')).toContainText('0 of 3 voted', { timeout: 3_000 });
+  await tool(request, 'play_card', { ...others[0], action: 'play', card: '5' });
+  await tool(request, 'play_card', { ...others[1], action: 'play', card: '8' });
+  await expect(view.locator('#status')).toContainText('2 of 3 voted', { timeout: 3_000 });
+  await host.clock.fastForward(21_000);
+  await expect.poll(() => messages().then(m => m.length)).toBe(2);
+});
+
 test('a paused older view goes on by itself when the newer view is gone (no heartbeat for 25 s)', { tag: '@slow' }, async ({ request, browser }) => {
   test.setTimeout(90_000);
   const created = await tool(request, 'create_team', { name: 'Two Views', member_name: 'Anna', role: 'player' });
