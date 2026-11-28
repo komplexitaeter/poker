@@ -412,6 +412,80 @@ function anon_card_handles(array $ids, string $t, int $round): array
     return $handles;
 }
 
+/* B-163: id of the running round if team $t is in anonymous mode with every player's card revealed (as getDao()),
+   else null. Callers that change seats hold the lock on the team row. */
+function anon_revealed_round(mysqli $link, string $t): ?int
+{
+    $sql = $link->prepare("select anonymous_mode from pok_teams_tbl where id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $team = $sql->get_result()->fetch_row();
+    $sql->close();
+    if ($team === null || (int)$team[0] !== 1) return null;
+    $sql = $link->prepare("select count(1), count(card_key) from pok_players_tbl where team_id = ? and player_type = 'PLAYER'");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    [$players, $cards] = $sql->get_result()->fetch_row();
+    $sql->close();
+    return ((int)$players > 0 && (int)$players === (int)$cards) ? current_round_id($link, $t) : null;
+}
+
+/*
+ * B-163: player $id of team $t is about to leave the PLAYER role (observer, leave, own trash can). In anonymous mode
+ * after the reveal his card stays on the table until the next round (pok_players_tbl.anon_kept_round = the round;
+ * getDao() shows it masked with the same handle, the distribution keeps it), else it would go away just when the
+ * person shows up among the observers. Returns true if kept (the caller must not clear card_key then); false outside
+ * that state, without a card, or without the column (code deployed before the schema: the card goes as before).
+ */
+function keep_anon_card(mysqli $link, string $t, string $id): bool
+{
+    $round = anon_revealed_round($link, $t);
+    if ($round === null) return false;
+    $sql = $link->prepare("select count(1) from pok_players_tbl
+                            where id = ? and team_id = ? and player_type = 'PLAYER' and card_key is not null");
+    $sql->bind_param('ss', $id, $t);
+    $sql->execute();
+    $has_card = (int)$sql->get_result()->fetch_row()[0] > 0;
+    $sql->close();
+    if (!$has_card) return false;
+    try {
+        $sql = $link->prepare("update pok_players_tbl set anon_kept_round = ? where id = ? and team_id = ?");
+        $sql->bind_param('iss', $round, $id, $t);
+        $sql->execute();
+        $sql->close();
+        return true;
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        error_log('poker: anonymous card not kept (column anon_kept_round missing): ' . $e->getMessage());
+        return false;
+    }
+}
+
+/* B-163: card keys that stay on the table in the anonymous round $round (default: the running one) although their
+   owner left the PLAYER role (keep_anon_card()). [] outside anonymous mode or without the column. */
+function anon_kept_cards(mysqli $link, string $t, ?int $round = null): array
+{
+    $sql = $link->prepare("select anonymous_mode from pok_teams_tbl where id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $team = $sql->get_result()->fetch_row();
+    $sql->close();
+    if ($team === null || (int)$team[0] !== 1) return array();
+    $round ??= current_round_id($link, $t);
+    try {
+        $sql = $link->prepare("select card_key from pok_players_tbl
+                                where team_id = ? and player_type <> 'PLAYER' and card_key is not null and anon_kept_round = ?");
+        $sql->bind_param('si', $t, $round);
+        $sql->execute();
+        $keys = array_map(fn($row) => (string)$row[0], $sql->get_result()->fetch_all());
+        $sql->close();
+        return $keys;
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return array();
+    }
+}
+
 /* card_key => position when all known cards are ordered by sort_order (ties: cards.json first, then file order) */
 function card_rank(): array
 {
@@ -915,6 +989,7 @@ function is_missing_schema_error(mysqli_sql_exception $e): bool
  */
 function start_new_round($link, string $t): void
 {
+    $round_before = current_round_id($link, $t); // B-163: the snapshot below starts the next round id
     $sql = $link->prepare( "delete from pok_players_tbl
                                    where team_id=?
                                     and last_callback_time < TIMESTAMPADD(MONTH, -2, CURRENT_TIMESTAMP);
@@ -982,7 +1057,7 @@ function start_new_round($link, string $t): void
        A missing table (code deployed before the schema) must not break "New round": the failed statement does not
        end the transaction, the round goes on without it. Anything else (e.g. a deadlock) is rethrown (B-52 S1b review). */
     try {
-        record_round_on_active_item($link, $t);
+        record_round_on_active_item($link, $t, $round_before);
         set_round_item($link, $t, null); // S1d: the next round belongs to the item that is active at its first card
     } catch (mysqli_sql_exception $e) {
         if (!is_missing_schema_error($e)) throw $e;
@@ -1295,6 +1370,7 @@ function getDao($t, $id) {
     $show_avg = 0;
     $players=array();
     $observers = array(); // B-110: connected observers only (not away), {name, mkey}
+    $kept_objs = array(); // B-163: rows of persons whose card stays on the table (anonymous mode after the reveal)
     $away_ids = array(); // B-127: ids of the away persons for away_sig() (only hashed, B-159)
     $ai_ids = array(); // B-151 mcp seen: ids of the persons using the board through an AI assistant, for away_sig()
     $ai_count = 0; // B-151 mcp seen: players and shown observers via an AI assistant
@@ -1502,7 +1578,10 @@ function getDao($t, $id) {
                 if ($obj->via_ai) $ai_count++;
                 if ($obj->away) $away_count++;
                 $objs[] = $obj;
-            } elseif (($obj->player_type === 'OBSERVER' || $obj->player_type === 'REMOVED') && !$obj->away) {
+            } elseif ($obj->card_key !== null && isset($obj->anon_kept_round)) {
+                $kept_objs[] = $obj; // B-163: a card that stays on the table after its owner left (checked below)
+            }
+            if (($obj->player_type === 'OBSERVER' || $obj->player_type === 'REMOVED') && !$obj->away) {
                 /* B-110: observers without connection are simply left out (Andreas, 2026-11-01). The own observer
                    row is included (like the own card in players); the board finds it by mkey. Never the id.
                    B-154: a removed player (REMOVED) is an observer for everybody else, without own marking, under
@@ -1519,6 +1598,20 @@ function getDao($t, $id) {
         }
 
         if ($voters_count<2) $needs_celebration = false;
+    }
+
+    /* B-163: anonymous mode after the reveal: cards of persons who left the PLAYER role in this round stay on the
+       table (keep_anon_card()), masked like the others, with the same handle; never as the own card (the own board
+       shows the person as observer, there is nothing to remove). */
+    $anon_revealed = $anonymous_mode == 1 && $all_players_ready && $players_count > 0;
+    $round_id = $anon_revealed ? current_round_id($link, $t) : 0;
+    foreach ($kept_objs as $obj) {
+        if ($anon_revealed && (int)$obj->anon_kept_round === $round_id) {
+            $obj->kept = true;
+            $obj->away = false;
+            $obj->via_ai = false;
+            $objs[] = $obj;
+        }
     }
 
     /* B-98 S4: custom cards on the table (also the original card of B-104) that are no active card of a set any more
@@ -1541,8 +1634,8 @@ function getDao($t, $id) {
 
     /* B-163: anonymous mode after the reveal: handles instead of mkeys for the cards (anon_card_handles()) */
     $card_handles = null;
-    if ($anonymous_mode == 1 && $all_players_ready && count($objs) > 0)
-        $card_handles = anon_card_handles(array_map(fn($obj) => (string)$obj->id, $objs), $t, current_round_id($link, $t));
+    if ($anon_revealed)
+        $card_handles = anon_card_handles(array_map(fn($obj) => (string)$obj->id, $objs), $t, $round_id);
 
 
     /* B-52 S1/S1b: the active topic item (with the cards of the running round while they are revealed), counts and
@@ -1608,7 +1701,8 @@ function getDao($t, $id) {
         // mkey must stay a string in the JSON: the frontend compares it with the DOM card id via ===
         // B-163: in anonymous mode after the reveal the card handle instead (the own card too, see card_mkey)
         $card_mkey = $card_handles === null ? (string)$obj->mkey : $card_handles[(string)$obj->id];
-        if ($obj->id === $id) $own_card_mkey = $card_mkey;
+        $own = $obj->id === $id && empty($obj->kept); // B-163: a kept card is no own card (its owner watches now)
+        if ($own) $own_card_mkey = $card_mkey;
         $player = (object) array(
             "name"=>$obj->name
         ,"mkey"=>$card_mkey
@@ -1616,7 +1710,7 @@ function getDao($t, $id) {
         ,"original_card_key"=>$original_card_key // B-104: null = no stack
         ,"away"=>$obj->away // B-110: no dao.php load for AWAY_AFTER_SEC seconds (never the own card)
         ,"via_ai"=>$obj->via_ai // B-151 mcp seen: uses the board through an AI assistant (MCP)
-        ,"own"=>($obj->id === $id) // internal, removed below
+        ,"own"=>$own // internal, removed below
         ,"i"=>(int)null);
         $players[] = $player;
 
@@ -1646,7 +1740,6 @@ function getDao($t, $id) {
        their own (ai_count counts them). Else a player who leaves the table or becomes an observer after the reveal
        would show up there by name while his card goes away. All foreign entries are identical, so their order tells
        nothing. The own row stays recognisable for oneself (name, mkey). Also removed persons (B-154). */
-    $anon_revealed = $anonymous_mode == 1 && $all_players_ready && $players_count > 0;
     foreach ($observers as $observer) {
         if ($anon_revealed && !$observer->own) {
             $observer->name = '******';
@@ -1655,6 +1748,8 @@ function getDao($t, $id) {
         }
         unset($observer->own);
     }
+    // B-163 (Sina): then the own observer row first, not in the order of the names
+    if ($anon_revealed) usort($observers, fn($a, $b) => ($b->mkey !== '') <=> ($a->mkey !== ''));
     return array(  "name"=> $name,
         "mkey"=>$mkey, // the own mkey: reactions (from), the own observer row, the own trash can (delete.php)
         "card_mkey"=>$own_card_mkey, // B-163: mkey of the own card in players (its handle in anonymous mode after the reveal), '' = no card

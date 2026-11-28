@@ -572,7 +572,7 @@ function decode_distribution(?string $json): ?array
  * The cards of the running round as card_key => count if it is revealed (every player has a card down), else null.
  * LATE_CARD_KEY is no vote and left out.
  */
-function revealed_distribution($link, string $t): ?array
+function revealed_distribution($link, string $t, ?int $kept_round = null): ?array
 {
     $sql = $link->prepare("select card_key, count(1) cnt from pok_players_tbl
                             where team_id = ? and player_type = 'PLAYER' group by card_key order by card_key");
@@ -586,6 +586,13 @@ function revealed_distribution($link, string $t): ?array
         $players++;
         if ($row['card_key'] !== LATE_CARD_KEY) $distribution[$row['card_key']] = (int)$row['cnt'];
     }
+    /* B-163: anonymous mode: cards that stayed on the table after their owner left count as before (keep_anon_card(),
+       $kept_round: the round, default the running one) */
+    if ($players > 0) {
+        $kept = array_filter(anon_kept_cards($link, $t, $kept_round), fn($key) => $key !== LATE_CARD_KEY);
+        foreach ($kept as $key) $distribution[$key] = ($distribution[$key] ?? 0) + 1;
+        if (count($kept) > 0) ksort($distribution, SORT_STRING);
+    }
     return ($players > 0 && count($distribution) > 0) ? $distribution : null;
 }
 
@@ -595,9 +602,9 @@ function revealed_distribution($link, string $t): ?array
  * next round proposes again). Caller holds the team row lock. Nothing without an active item or a revealed round,
  * and nothing if the round started before the item became active (S1d, round_topic_item()).
  */
-function record_round_on_active_item($link, string $t): void
+function record_round_on_active_item($link, string $t, ?int $kept_round = null): void
 {
-    $distribution = revealed_distribution($link, $t);
+    $distribution = revealed_distribution($link, $t, $kept_round); // B-163: $kept_round, see revealed_distribution()
     if ($distribution === null) return;
     $active = round_topic_item($link, $t);
     if ($active === null) return;

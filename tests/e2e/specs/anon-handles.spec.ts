@@ -69,9 +69,11 @@ test('dao.php: after an anonymous reveal no card carries a mkey, handles are sha
       expect([...mkeys.values()]).not.toContain(p.mkey);
     }
     // no foreign mkey of before anywhere in the answer (the own one stays at the top: reactions, own trash can)
+    // (compared field by field: a substring check could hit a card value or a handle by chance)
+    const shown = [...d.players.map((p: Player) => p.mkey), ...d.observers.map((o: { mkey: string }) => o.mkey)];
     for (const [name, mkey] of mkeys) {
       if (mkey === d.mkey) continue;
-      expect(JSON.stringify(d), name).not.toContain(`"${mkey}"`);
+      expect(shown, name).not.toContain(mkey);
     }
     // the own card is found by card_mkey, and only by it
     expect(handlesOf(d)).toContain(d.card_mkey);
@@ -188,7 +190,10 @@ test('board: after an anonymous reveal reactions land on the right card, the own
   // the thrower is Bob's card handle, not his mkey: no narrowing down by "nobody throws at the own card"
   for (const p of [alice, cleo]) {
     await expect.poll(() => got(p)).toEqual([`react:${bobHandle}:${aliceHandle}:party`]);
-    expect((await got(p)).join()).not.toContain(bobMkey);
+    const [, from, to] = (await got(p))[0].split(':'); // fields, not substrings (a handle may contain the mkey's digits)
+    expect(from).toBe(bobHandle);
+    expect(from).not.toBe(bobMkey);
+    expect(to).not.toBe(aliceMkey);
   }
 
   // Bob nudges the 8: it rings (is-nudged-me) only on Alice's board, the others just see it shake
@@ -243,31 +248,63 @@ test('observers after an anonymous reveal: masked like the players, a player tur
   const revealed = await dao(page, t, anna);
   expect(revealed.all_players_ready).toBe(true);
   expect(revealed.observers).toEqual([{ name: '******', mkey: '', via_ai: false }]);
-  expect(JSON.stringify(revealed)).not.toContain('Olga');
-  expect(JSON.stringify(revealed)).not.toContain(`"${olgaMkey}"`);
+  const names = (d: { players: Player[]; observers: { name: string }[] }) =>
+    [...d.players.map(p => p.name), ...d.observers.map(o => o.name)];
+  expect(names(revealed)).not.toContain('Olga');
+  expect(revealed.observers.map((o: { mkey: string }) => o.mkey)).not.toContain(olgaMkey);
   // the own observer row stays recognisable for oneself
   expect((await dao(page, t, olga)).observers).toEqual([{ name: 'Olga', mkey: olgaMkey, via_ai: false }]);
 
-  // Ben becomes an observer after the reveal: one card less, one more masked observer, no name anywhere
+  // Ben becomes an observer after the reveal: his card stays (same handle, same value) until the next round, one
+  // more masked observer, no name anywhere
+  const cardsOf = (d: { players: Player[] }) => d.players.map(p => `${p.mkey}:${p.display_card_key}`);
   expect((await page.request.post(`/api/name.php?${new URLSearchParams({ t, name: 'Ben', type: 'observer' })}`,
     asUser(ben))).ok()).toBeTruthy();
   const after = await dao(page, t, anna);
   expect(after.all_players_ready).toBe(true);
-  expect(after.players.map((p: Player) => p.display_card_key)).toEqual(['three01', 'eight01']);
+  expect(cardsOf(after)).toEqual(cardsOf(revealed));
+  expect(after.players.map((p: Player) => p.display_card_key)).toEqual(['three01', 'five001', 'eight01']);
   expect(after.observers).toEqual([{ name: '******', mkey: '', via_ai: false }, { name: '******', mkey: '', via_ai: false }]);
-  expect(JSON.stringify(after)).not.toContain('Ben');
+  expect(names(after)).not.toContain('Ben');
+  // Ben's own board: his card is no own card any more (he watches), his observer row comes first (Sina)
+  const forBen = await dao(page, t, ben);
+  expect(forBen.card_mkey).toBe('');
+  expect(cardsOf(forBen)).toEqual(cardsOf(revealed));
+  expect(forBen.observers[0]).toEqual({ name: 'Ben', mkey: expect.stringMatching(/^[0-9]+$/), via_ai: false });
 
-  // REST/MCP board: masked observers without mkey
+  // Cleo leaves the table by herself: her card stays as well
+  expect((await page.request.post(`/api/name.php?${new URLSearchParams({ t, name: '' })}`, asUser(cleo))).ok()).toBeTruthy();
+  expect(sql(`select player_type from pok_players_tbl where team_id = '${t}' and id = '${safe(cleo)}'`)).toBe('REMOVED');
+  expect(cardsOf(await dao(page, t, anna))).toEqual(cardsOf(revealed));
+
+  // REST/MCP board: the same three cards, the result unchanged, masked observers without mkey
   const v1 = await page.request.get('/api/v1/board', { headers: { 'X-Poker-User': anna, 'X-Poker-Team': t } });
   expect(v1.status(), await v1.text()).toBe(200);
-  expect((await v1.json()).observers).toEqual([{ name: '******', mkey: null, via_ai: false },
-                                               { name: '******', mkey: null, via_ai: false }]);
+  const board = await v1.json();
+  expect(board.players.map((p: { card_key: string }) => p.card_key)).toEqual(['three01', 'five001', 'eight01']);
+  expect(board.round.result.distribution.map((v: { card_key: string; count: number }) => [v.card_key, v.count]))
+    .toEqual([['three01', 1], ['five001', 1], ['eight01', 1]]);
+  for (const o of board.observers) expect(o).toEqual({ name: '******', mkey: null, via_ai: false });
+
+  // Ben plays again: his card is his own again, with the same handle
+  expect((await page.request.post(`/api/name.php?${new URLSearchParams({ t, name: 'Ben', type: 'player' })}`,
+    asUser(ben))).ok()).toBeTruthy();
+  const back = await dao(page, t, ben);
+  expect(cardsOf(back)).toEqual(cardsOf(revealed));
+  expect(back.card_mkey).toBe(forBen.players.find((p: Player) => p.display_card_key === 'five001').mkey);
 
   // the web board (as Anna): two masked observer rows, no smiley on them
   await page.evaluate(id => localStorage.setItem('SID', id), anna);
   await page.goto(url);
   await expect(page.locator('#cbox .c.is-me')).toHaveAttribute('data-card', 'three01');
-  await expect(page.locator('#observers .obs')).toHaveCount(2);
+  await expect(page.locator('#cbox .c')).toHaveCount(3);
+  await expect(page.locator('#observers .obs')).toHaveCount(2); // Olga and Cleo (removed, still connected)
   await expect(page.locator('#observers .obs .obs-name')).toHaveText(['******', '******']);
   await expect(page.locator('#observers .obs .react')).toHaveCount(0);
+
+  // the next round: the card left behind by Cleo goes, as all cards
+  await newRound(page, t, anna);
+  const fresh = await dao(page, t, anna);
+  expect(fresh.players.map((p: Player) => p.name).sort()).toEqual(['Anna', 'Ben']);
+  expect(fresh.all_players_ready).toBe(false);
 });
