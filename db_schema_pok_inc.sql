@@ -1234,3 +1234,56 @@ deallocate prepare b151_allow_ai_stmt;
 select column_name, column_type, is_nullable, column_default from information_schema.columns
  where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'allow_ai';
 /* end B-151 allow ai */
+
+/* B-13 trends: the tab "Trends" in stats.php (replaces the Grafana dashboard) reads the three statistics tables over
+   ranges of up to all data, always with a range on creation_date (where creation_date >= ...). Per-minute rows since
+   2023 (about 1.5-2 million each). Live export (db_schema_pok.sql) already has an index on creation_date for
+   pok_active_use_stats_tbl (unique) and pok_daily_teams_stats (unique creation_date, id); pok_active_user_stats has
+   none. Each ALTER below runs only if the table has no index starting with creation_date (idempotent, run again any
+   time). stats.php works without the indexes (full scan, slower); the event jobs keep running.
+   Online DDL (in place, no lock): inserts of the event jobs continue. Evening or weekend, not between 23:50 and 0:10
+   (nightly job). The lock wait timeout makes an ALTER give up after 5 s instead of queueing behind a long query: just
+   run it again. Run only this block: sed -n '/^\/\* B-13 trends:/,/^\/\* end B-13 trends/p' db_schema_pok_inc.sql */
+
+/* 1. check (read only): size and existing indexes */
+select table_name, table_rows, round((data_length + index_length) / 1048576) as mb from information_schema.tables
+ where table_schema = database()
+   and table_name in ('pok_active_user_stats', 'pok_active_use_stats_tbl', 'pok_daily_teams_stats');
+select table_name, index_name, seq_in_index, column_name from information_schema.statistics
+ where table_schema = database()
+   and table_name in ('pok_active_user_stats', 'pok_active_use_stats_tbl', 'pok_daily_teams_stats')
+ order by table_name, index_name, seq_in_index;
+
+/* 2. change */
+set session lock_wait_timeout = 5;
+
+set @b13_sql = if((select count(1) from information_schema.statistics
+                    where table_schema = database() and table_name = 'pok_active_user_stats'
+                      and column_name = 'creation_date' and seq_in_index = 1) = 0,
+  'alter table pok_active_user_stats add index creation_date (creation_date), algorithm = inplace, lock = none',
+  'select ''already done'' as b13_active_user_stats');
+prepare b13_stmt from @b13_sql;
+execute b13_stmt;
+deallocate prepare b13_stmt;
+
+set @b13_sql = if((select count(1) from information_schema.statistics
+                    where table_schema = database() and table_name = 'pok_active_use_stats_tbl'
+                      and column_name = 'creation_date' and seq_in_index = 1) = 0,
+  'alter table pok_active_use_stats_tbl add index creation_date (creation_date), algorithm = inplace, lock = none',
+  'select ''already done'' as b13_active_use_stats');
+prepare b13_stmt from @b13_sql;
+execute b13_stmt;
+deallocate prepare b13_stmt;
+
+set @b13_sql = if((select count(1) from information_schema.statistics
+                    where table_schema = database() and table_name = 'pok_daily_teams_stats'
+                      and column_name = 'creation_date' and seq_in_index = 1) = 0,
+  'alter table pok_daily_teams_stats add index creation_date (creation_date, id), algorithm = inplace, lock = none',
+  'select ''already done'' as b13_daily_teams_stats');
+prepare b13_stmt from @b13_sql;
+execute b13_stmt;
+deallocate prepare b13_stmt;
+
+/* 3. check: explain uses the index (key creation_date, type range) */
+explain select max(last_day) from pok_active_user_stats where creation_date >= now() - interval 28 day;
+/* end B-13 trends */

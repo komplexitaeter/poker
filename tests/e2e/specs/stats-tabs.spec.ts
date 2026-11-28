@@ -38,7 +38,7 @@ test('live tab shows a table with a finished round by name, no tab contains the 
   await admin.reload();
   await expect(row.locator('td').last()).toHaveText('revealed');
 
-  for (const tab of ['live', 'usage', 'ideas', 'tech']) {
+  for (const tab of ['live', 'usage', 'trends', 'ideas', 'tech']) {
     const res = await admin.request.get(`./stats.php?tab=${tab}`);
     expect(res.ok()).toBeTruthy();
     const html = await res.text();
