@@ -27,7 +27,8 @@ FROM pok_players_tbl;
 END;;
 
 -- Old artifact, never ran on live (DISABLED, last_executed NULL). Never enable it: pok_active_use_stats_tbl is filled
--- by something outside this repo (to be documented), enabling this event would double the rows.
+-- every minute by the cron script tools/stats/measure_active_use.sh (live: crontab of ubuntu, poker-msg connections
+-- and teams from its info log); enabling this event would double the rows with a different measure.
 -- B-87: READ COMMITTED as above (same pattern: INSERT ... SELECT on pok_players_tbl).
 DROP EVENT IF EXISTS `pok_active_use_evt`;;
 CREATE DEFINER=`root`@`%` EVENT `pok_active_use_evt`

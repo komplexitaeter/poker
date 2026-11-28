@@ -1704,7 +1704,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 <?php
     $periods = $periods_of($data['active_use']);
     if (!$periods) { ?>
-        <p class="muted no-data">No data (pok_active_use_stats_tbl gets a row every minute on live, filled by something outside this repo - not the disabled event pok_active_use_evt; test and staging databases may have no data).</p>
+        <p class="muted no-data">No data (pok_active_use_stats_tbl is filled every minute by the cron script tools/stats/measure_active_use.sh on live, not by the disabled event pok_active_use_evt; test and staging databases have no data).</p>
 <?php } else {
         $series = array(
             array('class' => 's0', 'name' => 'players', 'values' => array_column($data['active_use'], 'active_players', 'period')),
@@ -1713,7 +1713,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         echo trend_legend($series);
         echo trend_lines('trend_active_use', 'Active players and teams, highest value per ' . $per, $periods, $series, $gran, $current, false);
     } ?>
-        <p class="note">Players and teams active within 15 minutes, taken every minute (pok_active_use_stats_tbl); highest value per <?= h($per) ?>.</p>
+        <p class="note">WebSocket connections (players) and teams connected to poker-msg, read from its info log every minute by a cron script (tools/stats/measure_active_use.sh, pok_active_use_stats_tbl); highest value per <?= h($per) ?>.
+            Since B-24 (2026-10-16) poker-msg closes dead connections, so the values dropped then - not less usage.</p>
 
         <h3>Peak usage</h3>
 <?php
