@@ -130,6 +130,11 @@ April 2026 eingestellt – nicht mehr verwenden.
   Schemaänderungen werden von Hand eingespielt.
 - Bei jedem Rollout nach `master` trägt Kai das Datum als Meilenstein in `MILESTONES` in `stats.php` ein (gelbe Linie in
   den Nutzungsdiagrammen), am besten gleich im PR `release` → `master`.
+- Versionshinweise (B-164): Bei jedem Rollout mit sichtbaren Änderungen entwirft Kai im PR `release` → `master` einen
+  Eintrag oben in `release_notes.json` (Nummer `YYYY.Rollout`, Datum, Stichpunkte mit Nutzen und „Find it in“, optional
+  Screenshots hell/dunkel unter `src/notes/` mit **neuen** Dateinamen je Release), setzt `NOTES_LATEST` in
+  `script/whats_new.js` und erhöht `?v=` von `whats_new.js` und `release_notes.json`. Andreas gibt die Texte mit dem
+  Merge frei. Interne Releases bekommen keinen Eintrag (Nummer zählt trotzdem).
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - `poker-msg` (supervisor, `/etc/supervisor/conf.d/poker-msg.conf`): explizit `/usr/bin/php8.4`, `ulimit -n 20000`,
   Info-Log `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`. Braucht die Erweiterung `ev` (sonst
