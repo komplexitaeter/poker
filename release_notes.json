@@ -53,9 +53,10 @@
      "text": "The board now loads card sets and symbols in parallel in the background and appears in one go, fully drawn – no more half-built board, no browser freeze on slow connections."}
   ]},
   {"number": "2026.5", "date": "2026-11-16", "items": [
-    {"title": "Each emoji once a day",
-     "text": "To keep things calm, everyone can throw each emoji once a day. The emoji bar shows which ones you can still throw today.",
-     "where": "click or tap a card on the table"}
+    {"title": "Less emoji spam",
+     "text": "Fish raining down all session? Now everyone can throw each emoji once a day, so meetings stay focused. The emoji bar shows which ones you have left.",
+     "where": "hover over a card on the table and click the smiley (on a phone or tablet: tap the card, then the smiley)",
+     "asked": true}
   ]},
   {"number": "2026.4", "date": "2026-11-16", "items": [
     {"title": "A list of items to estimate",
