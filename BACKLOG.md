@@ -639,6 +639,11 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
 - Kontingent per WebSocket: ein Browser kann mit beliebigem `from` das Kontingent anderer verbrauchen (bekannt, B-139).
 - Flaky: `mcp-app.spec.ts` „leaving by oneself … Join again“ (Zeile ~428) schlug lokal einmal fehl (Ben, 2026-11-28), Ursache offen.
 - `pok_api_users_day_tbl` wächst unbegrenzt: Aufbewahrungsfrist mit B-109 festlegen.
+- `away_sig`: HMAC mit Geheimnis aus `config.php` statt sha1 über UIDs (alte UIDs vor B-152 haben nur ca. 41 Bit).
+- poker-msg: Log-Hash der Team-ID ohne Salt (alte, aus Namen gebildete IDs bestätigbar; Logs nur root); `messageForLog()`
+  loggt Nachrichten ohne `:` bis 40 Zeichen im Klartext – besser nur die Länge.
+- Nach `end_session` kann eine Person bis zu 70 s als verbunden erscheinen (Präsenz-Update in `getDao()` beim letzten Lesen
+  des Wartens); kosmetisch.
 - `getDao()`: gelöschte eigene Karten (Custom-Set) sind vor dem Aufdecken sichtbar.
 - `away_sig` baut die Zuordnung im anonymen Modus neu auf (prüfen, ob daraus Rückschlüsse möglich sind).
 - `mcp_states`: Größe der Spalte bei 8 Ständen je Platz beobachten.
@@ -648,6 +653,15 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
 - Test mit sechs Agenten (Andreas, 2026-11-27): Ändert sich die Notiz kurz nach „New round“, spielen Agenten noch zur
   alten Frage (alle haben dann korrigiert). Tool-Texte: nach neuer Runde auf Notiz-/Item-Änderung achten; für Fragen
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
+
+### B-163 Anonymer Modus: mkey verrät die Karte
+Status: neu (Ben/Sina, 2026-11-28), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
+Aufdecken weiter die echte `mkey` je Karte (nur der Name wird `******`); vor dem Aufdecken ist mkey → Name sichtbar.
+Wer sich das merkt (DevTools reichen), ordnet jede Karte einer Person zu. REST/MCP setzen fremde mkeys schon auf `null`
+(`lib_core_board.php`). Vorschlag (Aufwand S–M, Ben + Fred): fremde Karten bekommen bei anonym + aufgedeckt einen
+numerischen Handle je Runde (gleich für alle Betrachter, kollisionsfrei zu echten mkeys, poker-msg `parseReact` nimmt nur
+Ziffern) – oder Würfe auf fremde Karten in diesem Zustand wie im MCP sperren. Frontend: Karten-`id`, `isMe`,
+`reactHolder()`, `syncReactButton`, Aufdeck-Animation prüfen.
 
 ### B-162 Täglicher CVE-Check (Agent)
 Status: neu (Andreas, 2026-11-28). Ubuntu-Sicherheitsupdates laufen schon per `unattended-upgrades`. Offen:
