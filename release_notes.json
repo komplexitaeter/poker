@@ -77,8 +77,8 @@
      "where": "the arrows at the top of the sidebar"}
   ]},
   {"number": "2026.3", "date": "2026-11-06", "items": [
-    {"title": "Cards with a title and a description",
-     "text": "Card sets such as \"Delegation Poker\" and \"Consent decision\" show a title and a short explanation on every card, so everyone knows what it means.",
+    {"title": "Rich cards – with title, description and layout options",
+     "text": "Cards can now carry a title, a short description and a symbol, in different layouts. Card sets such as \"Delegation Poker\" and \"Consent decision\" use them – and so can your own card sets.",
      "where": "Board settings → Deck → Change",
      "image": {"name": "r3-rich", "w": 1200, "h": 765, "alt": "Delegation Poker cards on the table, each with a number, a title like \"Consult\" and a short explanation"}},
     {"title": "Create your own card sets",
