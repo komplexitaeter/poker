@@ -661,7 +661,8 @@ Einträgen. Quelle: eigene Nutzertexte je Rollout (nicht die `MILESTONES` aus `s
 nächste Web-Sprechstunde in den Tagen davor. Noch genau zu überlegen.
 
 ### B-165 Feedback-Menü verständlicher
-Status: neu (Andreas, 2026-11-28; Feedback Lars). Menüpunkt „Feedback“, Begriff „Roadmap“, die 👍/👎 und das Einreichen
+Status: in Umsetzung – Variante C aus Delias Mockup (eine Seite: oben „Tell the makers“, darunter Tabelle mit Filter
+Open | Done), Menüpunkt bleibt `:feedback` (Andreas, 2026-11-28). Feedback Lars: Menüpunkt „Feedback“, Begriff „Roadmap“, die 👍/👎 und das Einreichen
 waren unklar. Ideen: Begriffe („Ideas & Bugs“, „Wishlist“), Liste als Tabelle (Idee | 👍 | 👎 | Status, eigene Stimme
 markiert), Melden und Abstimmen klar trennen. Vorsicht: dort kommt gerade so viel Feedback wie nie – Ablauf nicht
 umbauen, erst Begriffe/Darstellung; Delia kann klickbare Entwürfe bauen. Noch genau zu überlegen.
