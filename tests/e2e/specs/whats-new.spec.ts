@@ -152,7 +152,7 @@ test('phones: the notes open from the menu and nothing runs out of the screen', 
   await expect(fay.locator('#menu')).toBeVisible();
 });
 
-test('items people asked for carry the "From your feedback" chip, the others do not', async ({ browser }) => {
+test('items people asked for carry the "Requested by users" chip, the others do not', async ({ browser }) => {
   const gil = await newPlayer(browser, { viewport: { width: 1280, height: 900 } });
   const url = await createTeam(gil, 'Notes Asked');
   await joinAsPlayer(gil, url, 'Gil');
@@ -167,7 +167,10 @@ test('items people asked for carry the "From your feedback" chip, the others do 
   const list = gil.locator('#wn_list');
   await expect(list.locator('.wn-asked')).toHaveCount(items.filter((i: any) => i.asked === true).length);
   const withChip = list.locator('.wn-item').filter({ has: gil.locator('.wn-item-t', { hasText: asked.title }) });
-  await expect(withChip.locator('.wn-asked')).toHaveText('From your feedback');
+  await expect(withChip.locator('.wn-asked')).toHaveText('Requested by users');
+  await expect(withChip.locator('.wn-asked')).toHaveAttribute('title', 'This came from user feedback');
+  // the intro explains the chip with the chip itself
+  await expect(gil.locator('.wn-lead')).toContainText('Items marked Requested by users come from your feedback.');
   await expect(withChip.locator('.wn-asked svg')).toHaveAttribute('aria-hidden', 'true');
   const without = list.locator('.wn-item').filter({ has: gil.locator('.wn-item-t', { hasText: plain.title }) });
   await expect(without.locator('.wn-asked')).toHaveCount(0);
