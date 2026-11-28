@@ -778,6 +778,20 @@ Adresse beschränken und auf Leserechte prüfen. MySQL lauscht bewusst auf `0.0.
 Erweitert (Andreas, 2026-11-16): Brauchen wir Grafana überhaupt? Die 3–4 Charts dort ließen sich in `stats.php`
 integrieren (Daten liegen in den `_stats`-Tabellen). Dann könnte MySQL ganz auf `127.0.0.1` und der Firewall-Teil
 entfiele. Erst die Charts sichten, dann entscheiden.
+**Gesichtet (Kai, 2026-11-28, Dashboard-Export von Andreas):** vier Panels, alle Zeitreihen, Standard „letzte 7 Tage“,
+Zeitraum frei wählbar (Historie seit 2022):
+1. *Daily Teams* – je Tag `EXPLORING`/`RECURRING` gestapelt (`pok_daily_teams_stats`). In `stats.php` fehlt das.
+2. *New Rounds* – `NEW_ROUND` je Werktag (`pok_roundstats_tbl`). `stats.php` hat „Rounds per day“, aber nur 28 Tage.
+3. *Active Use* – `active_players`/`active_teams` im Verlauf, 4 Wochen (`pok_active_use_stats_tbl`). Fehlt (heute nur
+   „Active clients today“).
+4. *Peak Usage* – je Tag Maximum von `last_day/hour/half_hour/ten_minutes/minute`, log. Achse (`pok_active_user_stats`).
+   Fehlt (heute nur der Tagesverlauf von heute).
+Lücke gegenüber `stats.php` ist also vor allem der **lange Zeitraum** (Wochen bis Jahre, Monatsansicht), nicht die
+Daten. Vorschlag: neuer Tab „Trends“ in `stats.php` mit den vier Charts, Zeitraum 4 Wochen / 6 Monate / alles (bei
+langen Zeiträumen je Woche zusammengefasst), Meilenstein-Linien wie in den bestehenden Charts. Danach: `grafana_usr`
+löschen, MySQL auf `127.0.0.1` (Rücksprache CLAUDE.md), Firewall-Regeln für 3306 entfernen.
+**Server (Andreas, 2026-11-28):** SSH nur mit Schlüssel, fail2ban (`sshd`) aktiv. Übergangsweise ufw mit
+Grafana-Cloud-IPs für 3306 (einmaliger Abgleich, kein Cron), 33060 zu.
 
 ### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
 Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). **Teams (Andreas, 2026-11-26):** ein nächtlicher Job löscht Teams nach
