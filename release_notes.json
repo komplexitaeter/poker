@@ -72,8 +72,8 @@
      "where": "You → Play a sound when someone nudges you"}
   ]},
   {"number": "2026.3.1", "date": "2026-11-09", "items": [
-    {"title": "Fold the sidebar away",
-     "text": "On a computer you can fold the sidebar into a narrow strip or drag it wider, and the board remembers your choice.",
+    {"title": "Collapse or resize the sidebar",
+     "text": "On a computer you can collapse the sidebar to a narrow strip for more room at the table, or drag it wider. The board remembers your choice.",
      "where": "the arrows at the top of the sidebar"}
   ]},
   {"number": "2026.3", "date": "2026-11-06", "items": [
