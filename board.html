@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.79" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.80" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -59,7 +59,7 @@
     <script async data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.52" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.53" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.29" type="text/javascript"></script>
@@ -71,7 +71,8 @@
     <script defer src="script/connection.js?v=2" type="text/javascript"></script>
     <script defer src="script/api_keys.js?v=1" type="text/javascript"></script>
     <script defer src="script/ai_dialog.js?v=3" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.49" type="text/javascript"></script>
+    <script defer src="script/whats_new.js?v=1" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.50" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
          waiting for images or analytics (window load) -->
@@ -120,6 +121,8 @@
     <symbol id="i-skip" viewBox="0 0 24 24"><path d="M6 6l7 6-7 6M17 6v12"/></symbol>
     <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4h11l-2.5 4.5L17 13H6"/></symbol>
     <!-- B-151 (MCP PR G): the AI assistant – a small robot head (same shape as --icon-bot in style.css) -->
+    <!-- B-164: "What's new" (a four-pointed sparkle) -->
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3c.6 4.6 3.4 7.4 8 8-4.6.6-7.4 3.4-8 8-.6-4.6-3.4-7.4-8-8 4.6-.6 7.4-3.4 8-8z"/><path d="M19 3v3M17.5 4.5h3"/></symbol>
     <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4.5" y="8" width="15" height="11.5" rx="3.5"/><path d="M12 8V5M9.5 13v1.5M14.5 13v1.5M2.5 12.5v3M21.5 12.5v3"/><circle cx="12" cy="3.6" r="1.3"/></symbol>
 </svg>
 
@@ -617,6 +620,9 @@
                  Open | Done; renderFeedbackList() in script_feedback.js). Rows are clones of #fb_item_tpl, filled via
                  textContent only. -->
             <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
+                <!-- B-164: on top the release notes ("What's new in 2026.13", the number by whats_new.js); opens #whats_new.
+                     .is-new: a release this browser has not opened yet (the same red dot as on the menu) -->
+                <button type="button" id="wn_open" class="wn-open" aria-haspopup="dialog" aria-controls="whats_new"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg><span class="wn-open-t">What's new in <span id="wn_open_n"></span></span><span class="wn-open-dot"><span class="sr-only">(new)</span></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button>
                 <!-- B-57: the feedback goes to us, not to the team on the board -->
                 <div id="feedback_form" class="fb-ask" role="group" aria-labelledby="fb_ask_title">
                     <h3 id="fb_ask_title" class="fb-h" tabindex="-1">Tell the makers</h3>
@@ -661,6 +667,21 @@
                 </template>
             </section>
 
+        </div>
+    </dialog>
+
+    <!-- B-164: "What's new" – all release notes, newest on top (whats_new.js fills #wn_list from release_notes.json when
+         it opens). Full screen and see-through like the app's other overlays; a modal dialog: the focus stays inside,
+         Escape and "Close" close it, the focus goes back to #wn_open. -->
+    <dialog id="whats_new" class="whats-new" aria-labelledby="wn_title">
+        <div class="wn-wrap">
+            <div class="wn-head">
+                <h2 id="wn_title"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg>What's new</h2>
+                <button type="button" id="wn_close" class="btn-box wn-close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg><span class="lbl">Close</span></button>
+            </div>
+            <p class="wn-lead">What we changed in Agile Poker, newest first.</p>
+            <div id="wn_list" class="wn-list"></div>
+            <p class="wn-foot">Missing something? Tell us in <b>Feedback</b>.</p>
         </div>
     </dialog>
 
