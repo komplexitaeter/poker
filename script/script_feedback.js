@@ -129,8 +129,8 @@ function openMenu(sec, opener = null, focusField = true) {
 
     if (focusField) {
         let field = gMenuSections[sec].focus;
-        // B-165: on phones the keyboard would cover the sheet (and the list below the field): the heading instead
-        if (sec === 'feedback' && gPhoneQuery.matches) field = 'fb_ask_title';
+        // B-165: on phones and touch tablets the keyboard would cover the panel (and the list): the heading instead
+        if (sec === 'feedback' && (gPhoneQuery.matches || window.matchMedia('(pointer: coarse)').matches)) field = 'fb_ask_title';
         if (field) {
             let element = sec === 'topic' ? topicMenuFocus() : document.getElementById(field); // B-52 S1
             if (element === null) element = section.querySelector('button, input, [tabindex]') || section; // R3 F5: deck not loaded yet
@@ -400,6 +400,12 @@ function bugContext() {
     });
 }
 
+/* B-165: a disabled button drops the focus (to the body, or the dialog of the phone sheet); nobody moved it elsewhere */
+function feedbackFocusLost() {
+    let active = document.activeElement;
+    return active === null || active === document.body || active === getMenu();
+}
+
 function feedback_submit() {
     let txt = document.getElementById('feedback_txt');
     let fb_text = txt.value.trim();
@@ -426,6 +432,8 @@ function feedback_submit() {
     }
     apiFetch(url, options).then(response => response.ok, () => false).then(ok => {
         sendBtn.disabled = false;
+        // disabled while waiting drops the focus: back on the button (B-165, the panel stays open)
+        if (getMenu().open && feedbackFocusLost()) focusQuietly(sendBtn);
         if (ok) {
             txt.value = '';
             setFeedbackType('OTHER');
@@ -560,7 +568,7 @@ function reactOnBacklogItem(btn) {
         .catch(() => { buttons.forEach(b => { b.disabled = false; }); })
         .finally(() => {
             // disabled while waiting drops the focus: back on the button (keyboard users vote on)
-            if (hadFocus && tr.isConnected && (document.activeElement === null || document.activeElement === document.body)) focusQuietly(btn);
+            if (hadFocus && tr.isConnected && feedbackFocusLost()) focusQuietly(btn);
         });
 }
 

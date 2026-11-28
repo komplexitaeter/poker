@@ -147,6 +147,7 @@ test('send from the top field: type chips and bug context (no team id, no name),
   // B-165: the panel stays open and confirms inline; the draft is cleared, the type back to "Other"
   await expect(sent).toHaveText('Thanks – sent! We read every message.');
   await expect(sent).toHaveAttribute('role', 'status');
+  await expect(sendBtn).toBeFocused();   // disabled while waiting, the focus comes back
   await expect(page.locator('dialog#menu[open] #feedback_box')).toBeVisible();
   await expect(page.locator('#toast')).not.toHaveClass(/toast-on/);
   await expect(txt).toHaveValue('');
@@ -208,6 +209,7 @@ test('send feedback fails (500, network): error toast with icon, text and menu s
   await expect(txt).toHaveValue(text);
   await expect(page.locator('input[name=fb_type][value=FEATURE]')).toBeChecked();
   await expect(sendBtn).toBeEnabled();
+  await expect(sendBtn).toBeFocused();
   await expect(page.locator('#fb_sent')).toBeHidden();
 
   // network failure: the same
@@ -299,6 +301,20 @@ test('vote in the table: titles as text, status label, set / change / take back,
   await expect(nope.locator('.fb-count')).toHaveText('0');
   await expect(item).not.toHaveClass(/\bmine\b/);
 
+  // keyboard: Tab onto the button, Enter votes and takes back; the focus stays on the button
+  await want.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(want).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(want).toHaveAttribute('aria-pressed', 'true');
+  await expect(want).toBeEnabled();
+  await expect(want).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(want).toHaveAttribute('aria-pressed', 'false');
+  await expect(want).toBeEnabled();
+  await expect(want).toBeFocused();
+
   // reopened later: loaded again, the state from the server
   await page.keyboard.press('Escape');
   await openFeedback(page);
@@ -354,6 +370,16 @@ test('list while loading: no "Nothing here yet." flash; a pull update leaves the
   await expect(page.locator('#feedback_box [data-filter=done]')).toHaveAttribute('aria-pressed', 'true');
   await expect(row(page, /^New look$/)).toHaveCount(1);
   await expect(page.locator('#feedback_txt')).toHaveValue('half a thought');
+});
+
+test('touch tablet (800px and up): opening focuses the heading, not the text field (no keyboard over the list)', async ({ browser }) => {
+  const page = await newPlayer(browser, { viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+  await boardWithPlayer(page, 'Tablet');
+  expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches && !matchMedia('(max-width: 799.98px)').matches)).toBe(true);
+  await page.locator('#feedback_btn').click();
+  await expect(page.locator('dialog#menu[open] #feedback_box')).toBeVisible();
+  await expect(page.locator('#fb_ask_title')).toBeFocused();
+  await expect(page.locator('#feedback_txt')).not.toBeFocused();
 });
 
 for (const vp of [
