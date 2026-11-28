@@ -627,7 +627,7 @@ function fmt_num(float $v): string {
 function trend_minute_max($link, string $table, array $columns, string $gran, string $db_offset, string $tz_offset, string $start_db): array {
     $max = implode(', ', array_map(fn($c) => 'max(' . $c . ') as ' . $c, $columns));
     try {
-        return array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(30000) */ " . trend_period_sql($gran, 'x.d') . " as period, " . $max . "
+        return array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(15000) */ " . trend_period_sql($gran, 'x.d') . " as period, " . $max . "
               from (select date(convert_tz(creation_date, ?, ?)) as d, " . implode(', ', $columns) . "
                       from " . $table . "
                      where creation_date >= ?) as x
