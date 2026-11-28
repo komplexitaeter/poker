@@ -134,7 +134,12 @@ April 2026 eingestellt – nicht mehr verwenden.
   Eintrag oben in `release_notes.json` (Nummer `YYYY.Rollout`, Datum, Stichpunkte mit Nutzen und „Find it in“, optional
   Screenshots hell/dunkel unter `src/notes/` mit **neuen** Dateinamen je Release), setzt `NOTES_LATEST` in
   `script/whats_new.js` und erhöht `?v=` von `whats_new.js` und `release_notes.json`. Andreas gibt die Texte mit dem
-  Merge frei. Interne Releases bekommen keinen Eintrag (Nummer zählt trotzdem).
+  Merge frei. Releases ohne sichtbare Änderung bekommen nur „Small fixes and improvements.“ (keine Nummernlücken).
+  **Jeder PR mit für Nutzer sichtbarer Änderung bringt seinen Versionshinweis-Entwurf selbst mit** (Abschnitt
+  „Release note“ im PR-Text: Titel, ein Satz Nutzen, „Find it in“, ggf. `asked` bei Nutzerwunsch); Rita (`reader`) liest
+  ihn im Review mit. Kai sammelt die Entwürfe beim Rollout nur ein. Regeln für die Texte: was ist neu, wofür ist es
+  gut, wo finde ich es – keine Anleitung, keine Warnungen, keine Bugfix-Details; Begriffe wie in der Oberfläche;
+  agile Fachbegriffe (Timebox, Item …) sind erwünscht, interner Jargon nicht.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - `poker-msg` (supervisor, `/etc/supervisor/conf.d/poker-msg.conf`): explizit `/usr/bin/php8.4`, `ulimit -n 20000`,
   Info-Log `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`. Braucht die Erweiterung `ev` (sonst
