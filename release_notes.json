@@ -4,13 +4,13 @@
      "text": "These release notes tell you what changed with each update. You can open them any time from the Feedback menu.",
      "where": "Feedback → What's new",
      "asked": true},
-    {"title": "Feedback on one page",
-     "text": "Send us ideas and vote on ideas from other teams – all in the Feedback menu.",
+    {"title": "Feedback menu reorganised",
+     "text": "The Feedback menu is now one page: write to us at the top, see the ideas of other teams below and vote on them.",
      "where": "Feedback",
      "asked": true,
      "image": {"name": "r13-feedback", "w": 760, "h": 1000, "alt": "The Feedback menu: a box to write to us, below it a list of ideas with votes"}},
-    {"title": "Anonymous voting",
-     "text": "Hide the names on revealed cards for everyone. Nobody can tell who played which card. Emojis still work.",
+    {"title": "Anonymous voting, hardened",
+     "text": "Anonymous mode hides the names on revealed cards for everyone. We have now also closed the technical gaps behind the scenes: not even a look into the browser's developer tools shows who played which card. Emojis still work.",
      "where": "Board settings → Results → Names on revealed cards → Anonymous"}
   ]},
   {"number": "2026.12", "date": "2026-11-28", "items": [
@@ -20,8 +20,8 @@
     {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.10", "date": "2026-11-28", "items": [
-    {"title": "Join with an AI assistant (beta)",
-     "text": "Add Agile Poker to Claude or ChatGPT and give it the invite link. It joins under the name you choose, plays the card you name and tells you what happens. Your assistant sees the board like you do. This is a beta – we would love to hear how it works for you: just send us feedback.",
+    {"title": "AI connector: join with your AI assistant (beta)",
+     "text": "Add Agile Poker as a connector (MCP) in Claude or ChatGPT and give your assistant the invite link. It joins under the name you choose, plays the card you name and tells you what happens. Your assistant sees the board like you do. This is a beta – we would love to hear how it works for you: just send us feedback.",
      "where": "the robot button next to \"Invite\"",
      "image": {"name": "r10-ai", "w": 880, "h": 974, "alt": "The window \"Play via your AI assistant\" with the link to copy and three short steps"}},
     {"title": "See who plays through an AI",

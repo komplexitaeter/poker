@@ -7368,13 +7368,17 @@ body.api-doc {
 .wn-item:last-child { border-bottom: 0; }
 .wn-item-t { margin: 0 0 4px; font-size: var(--fs-m); line-height: 1.4; }
 .wn-item-x { margin: 0; font-size: var(--fs-s); line-height: 1.55; }
-/* "From your feedback": a small chip below the title for items people asked for (whats_new.js). Accent outline on a
- * light tint of it, like .beta-badge but in the colour of links and focus; text plus a speech bubble, never icon only */
+/* title and chip on one line: the chip sits at the right edge; if the line is too narrow (phones, long titles) it
+ * wraps below the title and stays right-aligned (margin-left: auto) */
+.wn-item-h { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-2); row-gap: 2px; margin: 0 0 4px; }
+.wn-item-h .wn-item-t { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+/* "Requested by users": a small chip next to the title for items people asked for (whats_new.js), explained once in
+ * .wn-lead. Accent outline on a light tint of it, like .beta-badge but in the colour of links and focus; text plus a
+ * speech bubble, never icon only */
 .wn-asked {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    margin: 0 0 6px;
     padding: 1px 8px 1px 6px;
     border: 1px solid var(--accent);
     border-radius: 999px;
@@ -7382,12 +7386,18 @@ body.api-doc {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
     color: var(--accent);
     font-size: var(--fs-xs);
+    font-weight: normal;
     line-height: 1.6;
     letter-spacing: 0.02em;
+    white-space: nowrap;
+    vertical-align: baseline;
 }
+.wn-item-h .wn-asked { margin-left: auto; }
+.wn-lead .wn-asked { margin: 0 2px; line-height: 1.4; vertical-align: middle; }
 .wn-asked .i { width: 12px; height: 12px; }
 /* a line without a text ("Minor fixes and improvements"): only the title, quieter */
 .wn-item-x:empty { display: none; }
+.wn-item:has(.wn-item-x:empty) .wn-item-h { margin: 0; }
 .wn-item:has(.wn-item-x:empty) .wn-item-t { margin: 0; font-size: var(--fs-s); font-weight: normal; color: var(--muted); }
 .wn-where { margin: 6px 0 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
 .wn-where-l { color: var(--topic-color); }
