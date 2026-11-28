@@ -8,7 +8,7 @@
      "where": "Feedback",
      "image": {"name": "r13-feedback", "w": 760, "h": 1000, "alt": "The Feedback menu: a box to write to us, below it a list of ideas with votes"}},
     {"title": "Anonymous voting",
-     "text": "Hide the names on revealed cards: nobody can tell who played which card, and you can still throw emojis.",
+     "text": "Hide the names on revealed cards for everyone. Nobody can tell who played which card. Emojis still work.",
      "where": "Board settings → Results → Names on revealed cards → Anonymous"}
   ]},
   {"number": "2026.12", "date": "2026-11-28", "items": [
@@ -19,7 +19,7 @@
   ]},
   {"number": "2026.10", "date": "2026-11-28", "items": [
     {"title": "Join with an AI assistant (beta)",
-     "text": "Add Agile Poker to Claude or ChatGPT and give it the invite link. It joins under the name you choose, plays the card you name and tells you what happens. It sees only what you would see. This is a beta: please tell us in Feedback how it works for you.",
+     "text": "Add Agile Poker to Claude or ChatGPT and give it the invite link. It joins under the name you choose, plays the card you name and tells you what happens. Your assistant sees the board like you do. This is a beta: please tell us in Feedback how it works for you.",
      "where": "the robot button next to \"Invite\"",
      "image": {"name": "r10-ai", "w": 880, "h": 974, "alt": "The window \"Play via your AI assistant\" with the link to copy and three short steps"}},
     {"title": "See who plays through an AI",
@@ -31,11 +31,11 @@
   ]},
   {"number": "2026.9", "date": "2026-11-26", "items": [
     {"title": "Connect Jira and other tools",
-     "text": "Jira Automation or your own tools can add items to your list. Whoever sets this up needs a key, which you create here – keep it secret like a password.",
+     "text": "Jira Automation or your own tools can add items to your list of items to estimate. Whoever sets this up needs a key, which you create here – keep it secret like a password. Help for the setup is behind \"API docs\" next to it.",
      "where": "You → API keys",
      "image": {"name": "r9-apikeys", "w": 760, "h": 388, "alt": "The section \"API keys\" in the You menu with a field for the name of the key and the button \"Create key\""}},
     {"title": "Your settings in one place",
-     "text": "Name, role and colour mode are now in one place. \"Delete my data\" removes your name, settings, votes, feedback and keys from all your boards.",
+     "text": "Name, role and colour mode are now in one place. \"Delete my data\" removes your name, settings, votes, feedback and keys from all your boards. This cannot be undone.",
      "where": "You"}
   ]},
   {"number": "2026.8", "date": "2026-11-26", "items": [
@@ -52,7 +52,7 @@
   ]},
   {"number": "2026.5", "date": "2026-11-16", "items": [
     {"title": "Each emoji once a day",
-     "text": "To keep things calm, everyone can throw each emoji once a day. The emoji bar shows how many you have left.",
+     "text": "To keep things calm, everyone can throw each emoji once a day. The emoji bar shows which ones you can still throw today.",
      "where": "click or tap a card on the table"}
   ]},
   {"number": "2026.4", "date": "2026-11-16", "items": [
@@ -78,11 +78,11 @@
   ]},
   {"number": "2026.3", "date": "2026-11-06", "items": [
     {"title": "Cards with a title and a description",
-     "text": "Decks such as \"Delegation Poker\" and \"Consent decision\" show a title and a short explanation on every card, so everyone knows what it means.",
+     "text": "Card sets such as \"Delegation Poker\" and \"Consent decision\" show a title and a short explanation on every card, so everyone knows what it means.",
      "where": "Board settings → Deck → Change",
      "image": {"name": "r3-rich", "w": 1200, "h": 765, "alt": "Delegation Poker cards on the table, each with a number, a title like \"Consult\" and a short explanation"}},
     {"title": "Create your own card sets",
-     "text": "Make a deck with your own values, colours and texts. It belongs to your team's board: everyone there can use and change it.",
+     "text": "Make a card set with your own values, colours and texts. It belongs to your team's board: everyone there can use and change it.",
      "where": "Board settings → Deck → Change → New set",
      "image": {"name": "r3-own", "w": 1100, "h": 1020, "alt": "The editor for your own card set: the set name, the list of cards, and the card M with the title \"Medium\", a short description and a colour"}},
     {"title": "Throw emojis and nudge",
@@ -102,7 +102,7 @@
      "image": {"name": "r2-result", "w": 760, "h": 558, "alt": "The result in the sidebar: a bar for each card value with the number of votes, a marker for the average and a line for the median"}},
     {"title": "Countdown timer",
      "text": "Set a time limit, for example 5 or 10 minutes, and everyone sees the same countdown.",
-     "where": "Timer → On → Mode: Timer, then pick the minutes",
+     "where": "Timer → On → Mode: Timer (not Stopwatch), then pick the minutes",
      "image": {"name": "r2-countdown", "w": 776, "h": 290, "alt": "The countdown at the bottom right with 4 minutes 51 seconds left, above the buttons for a new round and the next item"}},
     {"title": "Timer starts with each round",
      "text": "The timer can start again by itself with every new round.",
