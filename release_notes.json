@@ -35,7 +35,7 @@
      "where": "You → API keys",
      "image": {"name": "r9-apikeys", "w": 760, "h": 388, "alt": "The section \"API keys\" in the You menu with a field for the name of the key and the button \"Create key\""}},
     {"title": "Your settings in one place",
-     "text": "Name, role and colour mode are now in one place. \"Delete my data\" removes your name, settings, votes, feedback and keys from all your boards. This cannot be undone.",
+     "text": "Your name, your role, the colour mode and \"Delete my data\" are now together in one menu.",
      "where": "You"}
   ]},
   {"number": "2026.8", "date": "2026-11-26", "items": [
