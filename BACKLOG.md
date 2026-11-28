@@ -662,6 +662,10 @@ Wer sich das merkt (DevTools reichen), ordnet jede Karte einer Person zu. REST/M
 numerischen Handle je Runde (gleich für alle Betrachter, kollisionsfrei zu echten mkeys, poker-msg `parseReact` nimmt nur
 Ziffern) – oder Würfe auf fremde Karten in diesem Zustand wie im MCP sperren. Frontend: Karten-`id`, `isMe`,
 `reactHolder()`, `syncReactButton`, Aufdeck-Animation prüfen.
+Umgesetzt in #325 (Handles je Runde; im anonymen Modus blenden die Karten beim Aufdecken ein statt sich umzudrehen –
+Andreas: so gewollt). Bewusst offen: Wer nach dem Aufdecken selbst zu Beobachter wechselt oder geht, macht seine Karte
+zuordenbar (verschwindet, Name erscheint bei den Beobachtern) – nur umsetzen, falls es jemanden stört. poker-msg vertraut
+dem `from` des Clients (Kontingent umgehbar, Werfen im Namen anderer) – bekannt, B-139.
 
 ### B-162 Täglicher CVE-Check (Agent)
 Status: neu (Andreas, 2026-11-28). Ubuntu-Sicherheitsupdates laufen schon per `unattended-upgrades`. Offen:
