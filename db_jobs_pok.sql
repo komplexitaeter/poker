@@ -26,8 +26,10 @@ SELECT CURRENT_TIMESTAMP creation_date
 FROM pok_players_tbl;
 END;;
 
--- DISABLED on Live (never executed): would fill pok_active_use_stats_tbl, which therefore stays empty.
--- B-87: READ COMMITTED as above, in case it is ever enabled (same pattern: INSERT ... SELECT on pok_players_tbl).
+-- Old artifact, never ran on live (DISABLED, last_executed NULL). Never enable it: pok_active_use_stats_tbl is filled
+-- every minute by the cron script tools/stats/measure_active_use.sh (live: crontab of ubuntu, poker-msg connections
+-- and teams from its info log); enabling this event would double the rows with a different measure.
+-- B-87: READ COMMITTED as above (same pattern: INSERT ... SELECT on pok_players_tbl).
 DROP EVENT IF EXISTS `pok_active_use_evt`;;
 CREATE DEFINER=`root`@`%` EVENT `pok_active_use_evt`
 ON SCHEDULE EVERY 1 MINUTE STARTS '2023-01-16 11:15:03'
