@@ -1071,18 +1071,22 @@ function load_away_sig($link, string $id, string $t): string {
  * (first call or a pause longer than AWAY_AFTER_SEC): the caller notifies the team once then, so the boards show the
  * symbol at once - at most one notification per person and window, never a loop (dao.php never notifies). Autocommit.
  */
-function touch_mcp_person(mysqli $link, string $uid, string $t): bool
+function touch_mcp_person(mysqli $link, string $uid, string $t, bool $keep_ended = false): bool
 {
+    // $keep_ended (wait_for_change): never clear the mark of end_mcp_session() - checked in the same statement, so an
+    // end_session between the check of mcp_session_ended() and this touch is not undone (B-159)
+    $not_ended = $keep_ended ? " and (mcp_seen_time is null or mcp_seen_time >= '1980-01-01')" : '';
     $away_after_sec = AWAY_AFTER_SEC;
     $sql = $link->prepare("update pok_players_tbl p set p.mcp_seen_time = current_timestamp
-                            where p.id = ? and p.team_id = ? and not " . VIA_AI_SQL);
+                            where p.id = ? and p.team_id = ? and not " . VIA_AI_SQL . $not_ended);
     $sql->bind_param('ssi', $uid, $t, $away_after_sec);
     $sql->execute();
     $fresh = $sql->affected_rows > 0;
     $sql->close();
     if ($fresh) return true;
     $sql = $link->prepare("update pok_players_tbl set mcp_seen_time = current_timestamp
-                            where id = ? and team_id = ? and mcp_seen_time < current_timestamp - interval 10 second");
+                            where id = ? and team_id = ? and mcp_seen_time < current_timestamp - interval 10 second"
+                          . $not_ended);
     $sql->bind_param('ss', $uid, $t);
     $sql->execute();
     $sql->close();
