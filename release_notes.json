@@ -76,7 +76,7 @@
   ]},
   {"number": "2026.3.1", "date": "2026-11-09", "items": [
     {"title": "Collapse or resize the sidebar",
-     "text": "On a computer you can collapse the sidebar to a narrow strip for more room at the table, or drag it wider. The board remembers your choice.", "asked": true,
+     "text": "Collapse the sidebar to get more space for the cards, or make it wider. Your setting is saved.", "asked": true,
      "where": "the arrows at the top of the sidebar"}
   ]},
   {"number": "2026.3", "date": "2026-11-06", "items": [
