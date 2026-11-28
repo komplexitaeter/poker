@@ -41,7 +41,7 @@
      "where": "You"}
   ]},
   {"number": "2026.8", "date": "2026-11-26", "items": [
-    {"title": "Nobody watches unseen",
+    {"title": "Removed players are shown as observers",
      "text": "Someone who was taken off the table but still has the board open now shows up with the observers, so you always see who is watching.",
      "where": "the observers above the table"}
   ]},
