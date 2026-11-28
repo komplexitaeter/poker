@@ -96,8 +96,8 @@
      "where": "the letters below your cards"}
   ]},
   {"number": "2026.2", "date": "2026-11-01", "items": [
-    {"title": "The result at a glance",
-     "text": "After the reveal, a bar chart in the sidebar shows how many people chose each card, so differences stand out at once.",
+    {"title": "Results as a bar chart",
+     "text": "After the reveal, a bar chart in the sidebar shows how many people chose each card, so you see differences right away.",
      "where": "the sidebar on the right (phones: above your cards)",
      "image": {"name": "r2-result", "w": 760, "h": 558, "alt": "The result in the sidebar: a bar for each card value with the number of votes, a marker for the average and a line for the median"}},
     {"title": "Countdown timer",
