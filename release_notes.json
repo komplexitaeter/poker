@@ -82,7 +82,7 @@
      "where": "Board settings → Deck → Change",
      "image": {"name": "r3-rich", "w": 1200, "h": 765, "alt": "Delegation Poker cards on the table, each with a number, a title like \"Consult\" and a short explanation"}},
     {"title": "Create your own card sets",
-     "text": "Make a card set with your own values, colours and texts. It belongs to your team's board: everyone there can use and change it.",
+     "text": "Make a card set with your own values, colours and texts. It is saved with your team's board, so the whole team can use it and edit it.",
      "where": "Board settings → Deck → Change → New set",
      "image": {"name": "r3-own", "w": 1100, "h": 1020, "alt": "The editor for your own card set: the set name, the list of cards, and the card M with the title \"Medium\", a short description and a colour"}},
     {"title": "Throw emojis and nudge",
