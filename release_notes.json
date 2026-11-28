@@ -9,8 +9,8 @@
      "where": "Feedback",
      "asked": true,
      "image": {"name": "r13-feedback", "w": 760, "h": 1000, "alt": "The Feedback menu: a box to write to us, below it a list of ideas with votes"}},
-    {"title": "Anonymous voting",
-     "text": "Hide the names on revealed cards for everyone. Nobody can tell who played which card. Emojis still work.",
+    {"title": "Anonymous voting, hardened",
+     "text": "Anonymous mode hides the names on revealed cards for everyone. We have now also closed the technical gaps behind the scenes: not even a look into the browser's developer tools shows who played which card. Emojis still work.",
      "where": "Board settings → Results → Names on revealed cards → Anonymous"}
   ]},
   {"number": "2026.12", "date": "2026-11-28", "items": [
