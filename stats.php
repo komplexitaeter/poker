@@ -713,21 +713,132 @@ function fmt_num(float $v): string {
     return number_format(round($v), 0, '.', ' ');
 }
 
+/* B-13 trends cache: metric names in pok_trend_daily_tbl per column of the per-minute tables ('<prefix>_n' = number of
+   rows of the day, also 0: marks a completed day as computed, so days without data are not computed again) */
+const TREND_CACHE_METRICS = array(
+    'pok_active_use_stats_tbl' => array('prefix' => 'use', 'columns' => array('active_players' => 'use_players', 'active_teams' => 'use_teams')),
+    'pok_active_user_stats' => array('prefix' => 'peak', 'columns' => array('last_day' => 'peak_day', 'last_hour' => 'peak_hour',
+        'last_half_hour' => 'peak_30m', 'last_ten_minutes' => 'peak_10m', 'last_minute' => 'peak_1m')),
+);
+
+/* "+HH:MM" -> seconds */
+function offset_seconds(string $offset): int {
+    $sign = $offset[0] === '-' ? -1 : 1;
+    return $sign * ((int)substr($offset, 1, 2) * 3600 + (int)substr($offset, 4, 2) * 60);
+}
+
+/* start of the viewer's day $day (Y-m-d, offset $tz_offset) as DB time (offset $db_offset) */
+function day_start_db(string $day, string $tz_offset, string $db_offset): string {
+    return (new DateTime($day . ' 00:00:00', new DateTimeZone($tz_offset)))->setTimezone(new DateTimeZone($db_offset))->format('Y-m-d H:i:s');
+}
+
 /*
- * select for a per-minute stats table (creation_date = datetime in DB time): rows period => max of each column,
- * since $start_db (DB time). The day is taken in the viewer's offset. [] if the table does not exist (staging).
+ * Highest value of each column per viewer day from a per-minute stats table (creation_date = datetime in DB time):
+ * day => array(column => max, '_n' => rows), for the days $from <= day < $to (Y-m-d, viewer's offset). One grouped
+ * query, range on the index creation_date; the day is shifted by the constant difference of the two offsets (cheaper
+ * than convert_tz per row).
  */
-function trend_minute_max($link, string $table, array $columns, string $gran, string $db_offset, string $tz_offset, string $start_db): array {
+function minute_days($link, string $table, array $columns, string $db_offset, string $tz_offset, string $from, string $to): array {
+    $shift = offset_seconds($tz_offset) - offset_seconds($db_offset);
     $max = implode(', ', array_map(fn($c) => 'max(' . $c . ') as ' . $c, $columns));
+    $rows = rows($link, "select /*+ MAX_EXECUTION_TIME(60000) */ date(creation_date + interval ? second) as d, count(1) as _n, " . $max . "
+          from " . $table . "
+         where creation_date >= ? and creation_date < ?
+         group by d", 'iss', array($shift, day_start_db($from, $tz_offset, $db_offset), day_start_db($to, $tz_offset, $db_offset)));
+    return array_column($rows, null, 'd');
+}
+
+/*
+ * select for a per-minute stats table: rows period => max of each column, from the viewer's day $start to $today (Y-m-d,
+ * the viewer's offset). B-13 trends cache: completed days (before today) come from pok_trend_daily_tbl (key: viewer's
+ * offset, day, metric); missing completed days are computed once in one query over the missing span and stored; today
+ * is always computed live. Weeks and months = max of the days. Without the cache table (1146) everything is computed
+ * live; cache write errors are ignored. [] if the stats table does not exist (staging).
+ */
+function trend_minute_max($link, string $table, array $columns, string $gran, string $db_offset, string $tz_offset, string $start, string $today): array {
+    $metrics = TREND_CACHE_METRICS[$table]['columns'];
+    $marker = TREND_CACHE_METRICS[$table]['prefix'] . '_n';
+    $tomorrow = date('Y-m-d', strtotime($today . ' +1 day'));
     try {
-        return array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(15000) */ " . trend_period_sql($gran, 'x.d') . " as period, " . $max . "
-              from (select date(convert_tz(creation_date, ?, ?)) as d, " . implode(', ', $columns) . "
-                      from " . $table . "
-                     where creation_date >= ?) as x
-             group by period", 'sss', array($db_offset, $tz_offset, $start_db)), null, 'period');
+        $first = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */ min(creation_date) as first from " . $table)[0]['first'];
+        if ($first === null) return array();
+        $first_day = (new DateTime($first, new DateTimeZone($db_offset)))->setTimezone(new DateTimeZone($tz_offset))->format('Y-m-d');
+        $from = max($start, $first_day);
+        if ($from > $today) return array();
+
+        $days = array();     // day => column => value
+        $cached = false;
+        if ($from < $today) {
+            try {
+                $names = array_merge(array_values($metrics), array($marker));
+                $in = implode(',', array_fill(0, count($names), '?'));
+                $done = array();
+                foreach (rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */ day, metric, val from pok_trend_daily_tbl
+                                       where tz = ? and day >= ? and day < ? and metric in ($in)",
+                               'sss' . str_repeat('s', count($names)), array_merge(array($tz_offset, $from, $today), $names)) as $r) {
+                    if ($r['metric'] === $marker) { $done[$r['day']] = true; continue; }
+                    $days[$r['day']][array_search($r['metric'], $metrics, true)] = (int)$r['val'];
+                }
+                $cached = true;
+                // completed days without the marker: compute the span from the first to the last of them once
+                $missing = array();
+                for ($d = $from; $d < $today; $d = date('Y-m-d', strtotime($d . ' +1 day'))) if (!isset($done[$d])) $missing[] = $d;
+                if ($missing) {
+                    $computed = minute_days($link, $table, array_keys($metrics), $db_offset, $tz_offset, $missing[0],
+                                            date('Y-m-d', strtotime(end($missing) . ' +1 day')));
+                    $values = array();
+                    foreach ($missing as $d) {
+                        $row = $computed[$d] ?? null;
+                        $values[] = array($tz_offset, $d, $marker, (int)($row['_n'] ?? 0));
+                        if ($row === null) continue;
+                        foreach ($metrics as $column => $metric) {
+                            $days[$d][$column] = (int)$row[$column];
+                            $values[] = array($tz_offset, $d, $metric, max(0, (int)$row[$column]));
+                        }
+                    }
+                    trend_cache_store($link, $values);
+                }
+            } catch (mysqli_sql_exception $e) {
+                if ($e->getCode() !== 1146) throw $e; // 1146: no cache table (DDL B-13 trends cache not applied)
+                $cached = false;
+            }
+        }
+        if (!$cached) $days = array();
+        $live = minute_days($link, $table, array_keys($metrics), $db_offset, $tz_offset, $cached ? $today : $from, $tomorrow);
+        foreach ($live as $d => $row) foreach ($metrics as $column => $_) $days[$d][$column] = (int)$row[$column];
+
+        // periods: max of the days
+        $out = array();
+        foreach ($days as $d => $values) {
+            $p = trend_align($d, $gran);
+            foreach ($values as $column => $v) {
+                if (!isset($out[$p][$column]) || $v > $out[$p][$column]) $out[$p][$column] = $v;
+            }
+        }
+        foreach ($out as $p => $values) $out[$p]['period'] = $p;
+        return $out;
     } catch (mysqli_sql_exception $e) {
         if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist
         return array();
+    }
+}
+
+/* writes cache rows (tz, day, metric, val) in chunks; insert ignore (a parallel load may have written them); errors
+   are ignored - the page has its values anyway */
+function trend_cache_store($link, array $values): void {
+    try {
+        foreach (array_chunk($values, 500) as $chunk) {
+            $sql = "insert ignore into pok_trend_daily_tbl (tz, day, metric, val) values "
+                . implode(',', array_fill(0, count($chunk), '(?,?,?,?)'));
+            $flat = array();
+            foreach ($chunk as $v) array_push($flat, ...$v);
+            $stmt = $link->prepare($sql);
+            $stmt->bind_param(str_repeat('sssi', count($chunk)), ...$flat);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $ignored) {
+        // cache only
     }
 }
 
@@ -948,10 +1059,10 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
 
         // per-minute snapshots: highest value per period
         $data['active_use'] = trend_minute_max($link, 'pok_active_use_stats_tbl', array('active_players', 'active_teams'),
-            $trend_gran, $db_offset, $time_zone_offset, $start_db);
+            $trend_gran, $db_offset, $time_zone_offset, $start, $data['today']);
         $data['peaks'] = trend_minute_max($link, 'pok_active_user_stats',
             array('last_day', 'last_hour', 'last_half_hour', 'last_ten_minutes', 'last_minute'),
-            $trend_gran, $db_offset, $time_zone_offset, $start_db);
+            $trend_gran, $db_offset, $time_zone_offset, $start, $data['today']);
 
         // B-160: distinct persons per period using MCP or the API with a key (hashes, pok_api_users_day_tbl; a DATE of
         // the DB clock like pok_daily_teams_stats), range on the primary key (day, ...)

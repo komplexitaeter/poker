@@ -1333,3 +1333,28 @@ create table if not exists pok_api_users_day_tbl (
 select table_name, create_time from information_schema.tables
  where table_schema = database() and table_name in ('pok_api_usage_stats_tbl', 'pok_api_users_day_tbl');
 /* end B-160 usage */
+
+/* B-13 trends cache: highest values per viewer day of the per-minute tables pok_active_use_stats_tbl and
+   pok_active_user_stats for the tab Trends of stats.php (range "All" read ~2 M rows per table with convert_tz per row,
+   10-15 s on live). Key: tz = UTC offset of the viewer as stats.php uses it ('+01:00'; summer and winter time are two
+   sets), day = the viewer's day, metric (use_players, use_teams, peak_day ... peak_1m, and use_n / peak_n = rows of the
+   day, 0 = computed without data). Only completed days are stored (never today); stats.php fills missing days itself
+   on the first load. Safe to empty at any time (truncate pok_trend_daily_tbl): the next load computes again.
+   Additive (a new table), online, idempotent, before or after deploying the code (without the table stats.php
+   computes everything live as before).
+   Run only this block: sed -n '/^\/\* B-13 trends cache:/,/^\/\* end B-13 trends cache/p' db_schema_pok_inc.sql */
+select table_name, create_time from information_schema.tables
+ where table_schema = database() and table_name = 'pok_trend_daily_tbl';
+
+create table if not exists pok_trend_daily_tbl (
+  tz varchar(8) character set ascii collate ascii_bin not null comment 'UTC offset of the viewer, e.g. +01:00',
+  day date not null comment 'day in that offset',
+  metric varchar(24) character set ascii collate ascii_bin not null,
+  val int unsigned not null,
+  primary key (tz, day, metric)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-13: daily cache of the trends charts (stats.php), completed days only';
+
+select table_name, create_time from information_schema.tables
+ where table_schema = database() and table_name = 'pok_trend_daily_tbl';
+/* end B-13 trends cache */
