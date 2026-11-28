@@ -12,10 +12,10 @@
      "where": "Board settings → Results → Names on revealed cards → Anonymous"}
   ]},
   {"number": "2026.12", "date": "2026-11-28", "items": [
-    {"title": "Minor fixes – nothing new to learn", "text": ""}
+    {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.11", "date": "2026-11-28", "items": [
-    {"title": "Minor fixes – nothing new to learn", "text": ""}
+    {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.10", "date": "2026-11-28", "items": [
     {"title": "Join with an AI assistant (beta)",
@@ -27,7 +27,7 @@
      "where": "Board settings → Team → Allow AI assistants → Off"}
   ]},
   {"number": "2026.9.1", "date": "2026-11-26", "items": [
-    {"title": "Minor fixes – nothing new to learn", "text": ""}
+    {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.9", "date": "2026-11-26", "items": [
     {"title": "Connect Jira and other tools",
@@ -44,7 +44,7 @@
      "where": "the message you see when this happens"}
   ]},
   {"number": "2026.7", "date": "2026-11-25", "items": [
-    {"title": "Minor fixes – nothing new to learn", "text": ""}
+    {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.6", "date": "2026-11-18", "items": [
     {"title": "Opens faster",
