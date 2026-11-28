@@ -151,3 +151,31 @@ test('phones: the notes open from the menu and nothing runs out of the screen', 
   await expect(dialog).toBeHidden();
   await expect(fay.locator('#menu')).toBeVisible();
 });
+
+test('items people asked for carry the "From your feedback" chip, the others do not', async ({ browser }) => {
+  const gil = await newPlayer(browser, { viewport: { width: 1280, height: 900 } });
+  const url = await createTeam(gil, 'Notes Asked');
+  await joinAsPlayer(gil, url, 'Gil');
+  const response = await gil.request.get('/release_notes.json');
+  const items = (await response.json()).releases.flatMap((r: any) => r.items);
+  const asked = items.find((i: any) => i.asked === true);
+  const plain = items.find((i: any) => i.asked !== true && i.text !== '');
+  expect(asked && plain).toBeTruthy();
+
+  await openFeedback(gil);
+  await gil.locator('#wn_open').click();
+  const list = gil.locator('#wn_list');
+  await expect(list.locator('.wn-asked')).toHaveCount(items.filter((i: any) => i.asked === true).length);
+  const withChip = list.locator('.wn-item').filter({ has: gil.locator('.wn-item-t', { hasText: asked.title }) });
+  await expect(withChip.locator('.wn-asked')).toHaveText('From your feedback');
+  await expect(withChip.locator('.wn-asked svg')).toHaveAttribute('aria-hidden', 'true');
+  const without = list.locator('.wn-item').filter({ has: gil.locator('.wn-item-t', { hasText: plain.title }) });
+  await expect(without.locator('.wn-asked')).toHaveCount(0);
+
+  // desktop light, for the review: the first item with the chip
+  if (process.env.NOTES_BADGE_SHOT) {
+    await gil.evaluate(() => { if (!document.documentElement.classList.contains('pk-light')) (window as any).switchColorMode(); });
+    await withChip.scrollIntoViewIfNeeded();
+    await withChip.screenshot({ path: process.env.NOTES_BADGE_SHOT });
+  }
+});

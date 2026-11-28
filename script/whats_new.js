@@ -12,7 +12,7 @@
  * Texts come from our own file, but are still set via textContent only. */
 
 const NOTES_LATEST = '2026.13'; // the first release in release_notes.json (an E2E test checks they match)
-const NOTES_URL = './release_notes.json?v=22';
+const NOTES_URL = './release_notes.json?v=26';
 const NOTES_SEEN_KEY = 'NOTES_SEEN'; // literal in ensureUid() (script.js) too
 const NOTES_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -92,6 +92,20 @@ function notesEl(tag, cls, text) {
     return node;
 }
 
+/* a chip for items people asked for: a speech bubble (#i-chat, as the feedback menu) plus a text, never the icon alone */
+function notesAskedBadge() {
+    const chip = notesEl('p', 'wn-asked');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'i');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#i-chat');
+    svg.appendChild(use);
+    chip.appendChild(svg);
+    chip.appendChild(notesEl('span', '', 'From your feedback'));
+    return chip;
+}
+
 function renderNotes(data) {
     const list = document.getElementById('wn_list');
     list.textContent = '';
@@ -107,6 +121,7 @@ function renderNotes(data) {
         (Array.isArray(rel.items) ? rel.items : []).forEach(item => {
             const li = notesEl('li', 'wn-item');
             li.appendChild(notesEl('h4', 'wn-item-t', String(item.title ?? '')));
+            if (item.asked === true) li.appendChild(notesAskedBadge());
             li.appendChild(notesEl('p', 'wn-item-x', String(item.text ?? '')));
             if (item.where) {
                 const where = notesEl('p', 'wn-where');
