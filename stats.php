@@ -56,7 +56,7 @@ const MILESTONES = array(
     '2026-11-18' => 'Async start, colour mode kept locally',
     '2026-11-25' => 'script.js split, topic panel fix',
     '2026-11-26' => 'UID from the server, only in a header; removed players as observers; public API v1 (keys, items)',
-    '2026-11-28' => 'AI connector (MCP)',
+    '2026-11-28' => 'AI connector (MCP); trends and API/MCP usage in the stats',
 );
 /* milestone lines on/off per viewer (localStorage, stats.php only) */
 const MS_STORAGE_KEY = 'stats_milestones';
