@@ -127,7 +127,8 @@ test('play_card and round new_round: play, change, reveal with two players, with
   expect(voting.data.players.find((p: any) => p.name === 'Alice')).toMatchObject({ played: true, card: null });
   expect(voting.data.players.map((p: any) => p.card)).toEqual([null, null]);
   expect(voting.text).toMatch(/^  Alice +played$/m);
-  expect(voting.text.split('\n').filter((l: string) => !l.includes('pick:')).join('\n')).not.toContain('20');
+  // the version token is random hex and may contain "20" by chance
+  expect(voting.text.split('\n').filter((l: string) => !l.includes('pick:') && !l.startsWith('version')).join('\n')).not.toContain('20');
 });
 
 test('round remove_player and the role rules of play_card; me rename, set_role, leave', async ({ request, browser }) => {
