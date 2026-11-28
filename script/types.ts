@@ -1,6 +1,6 @@
 export interface Player {
     name: string;
-    mkey: string;
+    mkey: string; // B-163: in anonymous mode after the reveal a card handle per round (10 digits, never a real mkey)
     display_card_key: string;
     original_card_key: string | null; // B-104: card of the reveal when changed afterwards; null otherwise and while covered
     player_type: string;
@@ -22,6 +22,7 @@ export interface Observer {
 export interface myJsonType {
     name: string;
     mkey: string;
+    card_mkey: string; // B-163: mkey of the own card in players (its handle in anonymous mode after the reveal), '' = no card
     id: string;
     color_mode: string;
     hide_teaser: number; // B-57: 1 = feedback panel opened once (no red dot on the feedback menu)

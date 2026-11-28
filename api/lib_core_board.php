@@ -51,8 +51,10 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         $card = ($revealed && $played && $key !== BOARD_HIDDEN_CARD_KEY) ? $key : null;
         if ($card !== null && $card !== LATE_CARD_KEY) $distribution[$card] = ($distribution[$card] ?? 0) + 1;
         // anonymous mode after the reveal: no mkey of others, else name (before) and card (after) could be matched
-        // through it; the own one stays (the agent finds its own row by it)
-        $mkey = ($anonymous_revealed && $player->mkey !== (string)$dao['mkey']) ? null : $player->mkey;
+        // through it; the own one stays (the agent finds its own row by it). B-163: getDao() gives card handles then,
+        // the own card is the one with card_mkey and gets the real mkey back (API unchanged)
+        $mkey = !$anonymous_revealed ? $player->mkey
+            : ($player->mkey === (string)$dao['card_mkey'] ? (string)$dao['mkey'] : null);
         $entry = ['name' => $player->name, 'mkey' => $mkey, 'played' => $played, 'card' => $text($card),
                   'away' => (bool)$player->away, 'via_ai' => (bool)$player->via_ai, 'card_key' => $card];
         // B-151: in anonymous mode after the reveal getDao() gives away/via_ai of others as false (team counts below);

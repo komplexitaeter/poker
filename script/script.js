@@ -1535,7 +1535,16 @@ function holderOf(el) {
 }
 
 function holderMkey(holder) {
-    return holder.classList.contains('obs') ? holder.dataset.mkey : holder.id;
+    if (holder.classList.contains('obs')) return holder.dataset.mkey;
+    // B-163: the own card may carry its anonymous handle as id; delete.php (own trash can) needs the real mkey
+    if (holder.classList.contains('is-me') && gLastJson !== null) return String(gLastJson.mkey);
+    return holder.id;
+}
+
+/* B-163: the id of the own card on the table (dao.php card_mkey: in anonymous mode after the reveal every card has a
+ * handle per round instead of the mkey, the own one too); an older dao.php without it: the own mkey */
+function ownCardMkey(myJson) {
+    return String(myJson.card_mkey ?? myJson.mkey);
 }
 
 function holderName(holder) {
@@ -2019,7 +2028,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     // B-99 D8: the own card's name tag is styled like the name tag in the header
     // B-110: every other card gets the nudge (.nudge) and the smiley (.react) to throw a reaction
     document.querySelectorAll('#cbox .c').forEach(card => {
-        const isMe = card.id === myJson.mkey;
+        const isMe = card.id === ownCardMkey(myJson); // B-163
         if (card.classList.contains('is-me') !== isMe) card.classList.toggle('is-me', isMe);
         const name = card.querySelector('.card_player_name').textContent;
         const del = card.querySelector('.delete');

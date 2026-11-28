@@ -655,7 +655,7 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
 ### B-163 Anonymer Modus: mkey verrät die Karte
-Status: neu (Ben/Sina, 2026-11-28), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
+Status: in Review (Ben, 2026-11-28, Branch `feature/B-163-anon-handles`: Handles je Runde, Würfe bleiben möglich), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
 Aufdecken weiter die echte `mkey` je Karte (nur der Name wird `******`); vor dem Aufdecken ist mkey → Name sichtbar.
 Wer sich das merkt (DevTools reichen), ordnet jede Karte einer Person zu. REST/MCP setzen fremde mkeys schon auf `null`
 (`lib_core_board.php`). Vorschlag (Aufwand S–M, Ben + Fred): fremde Karten bekommen bei anonym + aufgedeckt einen

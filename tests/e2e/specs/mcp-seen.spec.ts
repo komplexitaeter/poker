@@ -132,7 +132,7 @@ test('anonymous mode after the reveal: no via_ai or away per other player, only 
   expect(d.all_players_ready).toBe(true);
   for (const p of d.players) {
     expect(p.name).toBe('******');
-    if (p.mkey !== d.mkey) expect([p.away, p.via_ai]).toEqual([false, false]);
+    if (p.mkey !== d.card_mkey) expect([p.away, p.via_ai]).toEqual([false, false]);
   }
   expect(d.ai_count).toBe(2);
   expect(d.away_count).toBe(1);

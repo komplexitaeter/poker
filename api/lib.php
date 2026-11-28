@@ -350,8 +350,11 @@ function normalize_results_order($results_order) {
  * keep their order (by name). B-98 S4: custom cards ($custom_rank, custom_card_rank()) come first, by their position
  * in the set (not by value). Players with a card key unknown to all of them are never dropped: they come last, in their
  * incoming order.
+ * B-163: $ties_by_mkey - players with the same card are ordered by their mkey (in anonymous mode after the reveal the
+ * random card handle, anon_card_handles()), not by name: else the position within a group of equal cards (and with it
+ * the original card of B-104 or the reactions on it) would follow the alphabet of the names.
  */
-function sort_players_by_sequence(array $players, array $custom_rank = array()): array
+function sort_players_by_sequence(array $players, array $custom_rank = array(), bool $ties_by_mkey = false): array
 {
     $rank = card_rank();
     $order = function ($key) use ($rank, $custom_rank): array {
@@ -359,10 +362,54 @@ function sort_players_by_sequence(array $players, array $custom_rank = array()):
         if (isset($rank[$key])) return [1, $rank[$key]];
         return [2, 0];
     };
-    usort($players, function ($a, $b) use ($order) {
-        return $order((string)$a->display_card_key) <=> $order((string)$b->display_card_key);
+    usort($players, function ($a, $b) use ($order, $ties_by_mkey) {
+        return $order((string)$a->display_card_key) <=> $order((string)$b->display_card_key)
+            ?: ($ties_by_mkey ? strcmp((string)$a->mkey, (string)$b->mkey) : 0);
     });
     return $players;
+}
+
+/* B-163: card handles in anonymous mode after the reveal. Above the largest possible mkey (pok_players_tbl.mkey is a
+   signed int, at most 2147483647), so a handle never equals a real mkey; at most 10 digits (poker-msg parseReact). */
+const ANON_HANDLE_BASE = 3000000000;
+const ANON_HANDLE_SPAN = 1000000000;
+
+/*
+ * B-163: id of the running round of team $t for anon_card_handles(): the newest round snapshot (start_new_round()
+ * writes one for every new or restarted round, also via update_deck.php), 0 before the first one. Read only.
+ */
+function current_round_id(mysqli $link, string $t): int
+{
+    $sql = $link->prepare("select ifnull(max(id), 0) as round_id from pok_roundstats_tbl where team_id = ?");
+    $sql->bind_param('s', $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    return is_array($row) ? (int)$row['round_id'] : 0;
+}
+
+/*
+ * B-163: in anonymous mode after the reveal every card gets a handle instead of the mkey (getDao()), so nobody can
+ * link a revealed card to the person seen with that mkey before the reveal (DevTools reach). Player id (UID) =>
+ * handle (string of digits). The same for every viewer and stable within a round (late joiners, changed cards and
+ * reloads keep it), new in every round, independent of mkey, name and order of joining: a hash of team, round and
+ * UID. The UID is the secret of the person (80 bit, B-152), so nobody can compute the handle of somebody else; the
+ * hash keeps 30 bits of it, nothing that leads back to the UID. Collisions (practically never) move on to the next
+ * free value, in the order of the full hashes, so all viewers get the same result.
+ */
+function anon_card_handles(array $ids, string $t, int $round): array
+{
+    $hashes = array();
+    foreach ($ids as $id) $hashes[(string)$id] = hash('sha256', "B-163\n" . $t . "\n" . $round . "\n" . $id, true);
+    uasort($hashes, 'strcmp');
+    $taken = array();
+    $handles = array();
+    foreach ($hashes as $id => $hash) {
+        $value = unpack('N', $hash)[1] % ANON_HANDLE_SPAN;
+        while (isset($taken[$value])) $value = ($value + 1) % ANON_HANDLE_SPAN;
+        $taken[$value] = true;
+        $handles[(string)$id] = (string)(ANON_HANDLE_BASE + $value);
+    }
+    return $handles;
 }
 
 /* card_key => position when all known cards are ordered by sort_order (ties: cards.json first, then file order) */
@@ -1226,6 +1273,7 @@ function getDao($t, $id) {
     $one_ore_more_player_ready = false;
     $name = '';
     $mkey = '';
+    $own_card_mkey = ''; // B-163
     $timer_time = null;
     $timer_status = null;
     $timer_visibility = 0;
@@ -1484,7 +1532,16 @@ function getDao($t, $id) {
         foreach (($all_players_ready ? array($obj->card_key, $obj->original_card_key)
                                      : ($obj->id === $id ? array($obj->card_key) : array())) as $key)
             if (is_string($key) && str_starts_with($key, CUSTOM_DECK_PREFIX) && !isset($active_custom[$key])) $missing[] = $key;
-    if (count($missing) > 0) $custom_played = array_values(load_custom_cards_by_key($link, $t, $missing, card_catalog()));
+    if (count($missing) > 0) {
+        $custom_played = load_custom_cards_by_key($link, $t, $missing, card_catalog());
+        ksort($custom_played, SORT_STRING); // B-163: by card key, never in the order of the players (by name)
+        $custom_played = array_values($custom_played);
+    }
+
+    /* B-163: anonymous mode after the reveal: handles instead of mkeys for the cards (anon_card_handles()) */
+    $card_handles = null;
+    if ($anonymous_mode == 1 && $all_players_ready && count($objs) > 0)
+        $card_handles = anon_card_handles(array_map(fn($obj) => (string)$obj->id, $objs), $t, current_round_id($link, $t));
 
 
     /* B-52 S1/S1b: the active topic item (with the cards of the running round while they are revealed), counts and
@@ -1547,10 +1604,13 @@ function getDao($t, $id) {
             $original_card_key = $obj->original_card_key;
         }
 
+        // mkey must stay a string in the JSON: the frontend compares it with the DOM card id via ===
+        // B-163: in anonymous mode after the reveal the card handle instead (the own card too, see card_mkey)
+        $card_mkey = $card_handles === null ? (string)$obj->mkey : $card_handles[(string)$obj->id];
+        if ($obj->id === $id) $own_card_mkey = $card_mkey;
         $player = (object) array(
             "name"=>$obj->name
-        // mkey must stay a string in the JSON: the frontend compares it with the DOM card id via ===
-        ,"mkey"=>(string)$obj->mkey
+        ,"mkey"=>$card_mkey
         ,"display_card_key"=>$display_card_key
         ,"original_card_key"=>$original_card_key // B-104: null = no stack
         ,"away"=>$obj->away // B-110: no dao.php load for AWAY_AFTER_SEC seconds (never the own card)
@@ -1564,7 +1624,7 @@ function getDao($t, $id) {
     if ($all_players_ready and ($results_order === 'SEQUENCE' or $anonymous_mode == 1 )) {
         $custom_cards = $custom_played;
         foreach ($custom_sets as $set) $custom_cards = array_merge($custom_cards, $set['cards']);
-        $players = sort_players_by_sequence($players, custom_card_rank($custom_cards));
+        $players = sort_players_by_sequence($players, custom_card_rank($custom_cards), $card_handles !== null);
     }
 
     for ($i=0;$i<count($players);$i++) {
@@ -1582,7 +1642,8 @@ function getDao($t, $id) {
         unset($players[$i]->own);
     }
     return array(  "name"=> $name,
-        "mkey"=>$mkey,
+        "mkey"=>$mkey, // the own mkey: reactions (from), the own observer row, the own trash can (delete.php)
+        "card_mkey"=>$own_card_mkey, // B-163: mkey of the own card in players (its handle in anonymous mode after the reveal), '' = no card
         "id"=>$id,
         "color_mode"=>(String)$color_mode,
         "hide_teaser"=>(Int)$hide_teaser, // B-57: 1 = feedback panel seen (no red dot)
