@@ -64,7 +64,7 @@ function ensureUid() {
             if (stored !== null) return stored;
             try {
                 localStorage.setItem(UID_STORE_KEY, fresh);
-                localStorage.setItem('NOTES_SEEN', ''); // B-164: a new person, no "What's new" dot (whats_new.js)
+                if (localStorage.getItem('NOTES_SEEN') === null) localStorage.setItem('NOTES_SEEN', ''); // B-164: a new person, no "What's new" dot (whats_new.js)
             } catch (e) { /* this page only */ }
             return fresh;
         })

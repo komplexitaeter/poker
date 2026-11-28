@@ -32,10 +32,7 @@
   {"number": "2026.8", "date": "2026-11-26", "items": [
     {"title": "Taken off the table? Still watching",
      "text": "Whoever was removed from the table now simply watches as an observer and can join again with one click.",
-     "where": "the observer line below the table"},
-    {"title": "Board links that are hard to guess",
-     "text": "New boards get a link with a random part, so only the people you invite find your table.",
-     "where": "Invite"}
+     "where": "the observer line below the table"}
   ]},
   {"number": "2026.6", "date": "2026-11-18", "items": [
     {"title": "A faster start",

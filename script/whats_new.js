@@ -12,7 +12,7 @@
  * Texts come from our own file, but are still set via textContent only. */
 
 const NOTES_LATEST = '2026.13'; // the first release in release_notes.json (an E2E test checks they match)
-const NOTES_URL = './release_notes.json?v=1';
+const NOTES_URL = './release_notes.json?v=2';
 const NOTES_SEEN_KEY = 'NOTES_SEEN'; // literal in ensureUid() (script.js) too
 const NOTES_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -85,7 +85,7 @@ function syncNotesImages() {
     });
 }
 
-function el(tag, cls, text) {
+function notesEl(tag, cls, text) {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
     if (text !== undefined) node.textContent = text;
@@ -97,21 +97,21 @@ function renderNotes(data) {
     list.textContent = '';
     const releases = data !== null && typeof data === 'object' && Array.isArray(data.releases) ? data.releases : [];
     releases.forEach(rel => {
-        const sec = el('section', 'wn-rel');
-        const h = el('h3', 'wn-rel-h');
-        h.appendChild(el('span', 'wn-rel-n', String(rel.number)));
+        const sec = notesEl('section', 'wn-rel');
+        const h = notesEl('h3', 'wn-rel-h');
+        h.appendChild(notesEl('span', 'wn-rel-n', String(rel.number)));
         const date = formatNotesDate(rel.date);
-        if (date !== '') h.appendChild(el('span', 'wn-rel-d', ' · ' + date));
+        if (date !== '') h.appendChild(notesEl('span', 'wn-rel-d', ' · ' + date));
         sec.appendChild(h);
-        const ul = el('ul', 'wn-items');
+        const ul = notesEl('ul', 'wn-items');
         (Array.isArray(rel.items) ? rel.items : []).forEach(item => {
-            const li = el('li', 'wn-item');
-            li.appendChild(el('h4', 'wn-item-t', String(item.title ?? '')));
-            li.appendChild(el('p', 'wn-item-x', String(item.text ?? '')));
+            const li = notesEl('li', 'wn-item');
+            li.appendChild(notesEl('h4', 'wn-item-t', String(item.title ?? '')));
+            li.appendChild(notesEl('p', 'wn-item-x', String(item.text ?? '')));
             if (item.where) {
-                const where = el('p', 'wn-where');
-                where.appendChild(el('span', 'wn-where-l', 'Find it in: '));
-                where.appendChild(el('span', '', String(item.where)));
+                const where = notesEl('p', 'wn-where');
+                where.appendChild(notesEl('span', 'wn-where-l', 'Find it in: '));
+                where.appendChild(notesEl('span', '', String(item.where)));
                 li.appendChild(where);
             }
             const image = item.image;
@@ -134,7 +134,7 @@ function renderNotes(data) {
         sec.appendChild(ul);
         list.appendChild(sec);
     });
-    if (releases.length === 0) list.appendChild(el('p', 'hint', 'No notes yet.'));
+    if (releases.length === 0) list.appendChild(notesEl('p', 'hint', 'No notes yet.'));
     syncNotesImages();
 }
 
@@ -149,7 +149,7 @@ function loadNotes() {
                 console.log('release_notes.json failed', error);
                 gNotesLoad = null; // try again on the next open
                 list.textContent = '';
-                list.appendChild(el('p', 'hint', 'The notes could not be loaded. Please try again later.'));
+                list.appendChild(notesEl('p', 'hint', 'The notes could not be loaded. Please try again later.'));
             })
             .finally(() => list.removeAttribute('aria-busy'));
     }
