@@ -30,8 +30,8 @@
     {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.9", "date": "2026-11-26", "items": [
-    {"title": "Connect Jira and other tools",
-     "text": "Jira Automation or your own tools can add items to your list of items to estimate. Whoever sets this up needs a key, which you create here – keep it secret like a password. Help for the setup is behind \"API docs\" next to it.",
+    {"title": "Open API: connect Jira and other tools",
+     "text": "Agile Poker now has a public, documented API. Use it to bring items from Jira (for example with Jira Automation) or from your own tools straight into your list of items to estimate. Create a key for it here and keep it secret like a password; the \"API docs\" link next to it shows how it works.",
      "where": "You → API keys",
      "image": {"name": "r9-apikeys", "w": 760, "h": 388, "alt": "The section \"API keys\" in the You menu with a field for the name of the key and the button \"Create key\""}},
     {"title": "Your settings in one place",
