@@ -56,7 +56,7 @@ const MILESTONES = array(
     '2026-11-18' => 'Async start, colour mode kept locally',
     '2026-11-25' => 'script.js split, topic panel fix',
     '2026-11-26' => 'UID from the server, only in a header; removed players as observers; public API v1 (keys, items)',
-    '2026-11-28' => 'AI connector (MCP); trends and API/MCP usage in the stats',
+    '2026-11-28' => 'AI connector (MCP); trends and API/MCP usage in the stats; release notes, new feedback menu',
 );
 /* milestone lines on/off per viewer (localStorage, stats.php only) */
 const MS_STORAGE_KEY = 'stats_milestones';
@@ -395,19 +395,20 @@ function hm(?string $datetime): string {
     return $datetime === null ? '' : substr($datetime, 11, 5);
 }
 
-/* milestone labels of a day (Y-m-d) or of the $days days starting there, '' if none; with the date for longer periods */
-function milestone(string $day, int $days = 1): string {
-    $labels = array();
-    foreach (MILESTONES as $date => $label) {
-        if ($date >= $day && $date < date('Y-m-d', strtotime($day . ' +' . $days . ' day'))) $labels[] = $label . ($days > 1 ? ' (' . $date . ')' : '');
-    }
-    return implode(', ', $labels);
+/* milestones (date => label, MILESTONES) of a day (Y-m-d) or of the $days days starting there, empty if none */
+function milestone(string $day, int $days = 1): array {
+    $end = date('Y-m-d', strtotime($day . ' +' . $days . ' day'));
+    return array_filter(MILESTONES, fn($date) => $date >= $day && $date < $end, ARRAY_FILTER_USE_KEY);
 }
 
-/* tooltip suffix of a milestone label ('' if none): " · Milestone: AI connector (MCP)", several: "Milestones: a, b" */
-function milestone_tip(string $label): string {
-    if ($label === '') return '';
-    return ' · Milestone' . (count(array_filter(array_keys(MILESTONES), fn($d) => str_contains($label, '(' . $d . ')'))) > 1 ? 's' : '') . ': ' . $label;
+/* tooltip lines of milestone() ('' if none), one line per milestone (real line breaks, the tooltips show them):
+   a day: "\nMilestone: AI connector (MCP)"; longer periods with the date first: "\nMilestones:\n· 2026-11-01 Rollout 2\n· …" */
+function milestone_tip(array $ms, int $days = 1): string {
+    if (!$ms) return '';
+    if ($days === 1) return "\nMilestone: " . implode(', ', $ms);
+    $tip = "\nMilestone" . (count($ms) > 1 ? 's' : '') . ':';
+    foreach ($ms as $date => $label) $tip .= "\n· " . $date . ' ' . $label;
+    return $tip;
 }
 
 /* the switch "Milestones" (tabs with charts): hidden without JS (the lines then simply stay visible); the inline script in
@@ -522,8 +523,13 @@ function trend_y_axis(array $labels): string {
 }
 
 /* milestone labels (MILESTONES) within the period starting at $p */
-function trend_milestone(string $p, string $gran): string {
+function trend_milestone(string $p, string $gran): array {
     return milestone($p, trend_days($p, $gran));
+}
+
+/* tooltip lines of trend_milestone() */
+function trend_milestone_tip(string $p, string $gran): string {
+    return milestone_tip(trend_milestone($p, $gran), trend_days($p, $gran));
 }
 
 /*
@@ -544,13 +550,13 @@ function trend_bars(string $id, string $label, array $periods, array $series, st
         if ($gran === 'day' && (int)date('N', strtotime($p)) >= 6) $classes[] = 'weekend';
         if (isset($ticks[$i])) $classes[] = 'tick';
         $ms = trend_milestone($p, $gran);
-        if ($ms !== '') $classes[] = 'milestone';
+        if ($ms) $classes[] = 'milestone';
         if ($p === $current) $classes[] = 'current';
         $parts = array();
         foreach ($series as $s) $parts[] = $s['name'] . ' ' . fmt_num((float)($s['values'][$p] ?? 0));
         $title = trend_period_text($p, $gran, $current) . ': ' . (count($series) > 1 ? fmt_num($totals[$p]) . ' (' . implode(', ', $parts) . ')' : $parts[0])
-            . milestone_tip($ms);
-        $html .= '<span class="' . implode(' ', $classes) . '" data-period="' . h($p) . '" data-value="' . h(fmt_num($totals[$p])) . '" title="' . h($title) . '">'
+            . trend_milestone_tip($p, $gran);
+        $html .= '<span class="' . implode(' ', $classes) . '" data-period="' . h($p) . '" data-value="' . h(fmt_num($totals[$p])) . '" data-tip="' . h($title) . '">'
             . '<span class="col" style="height: ' . bar_width($totals[$p], $max) . '%">';
         foreach (array_reverse($series) as $s) {   // first series at the bottom
             $html .= '<span class="seg ' . h($s['class']) . '" style="height: ' . bar_width((float)($s['values'][$p] ?? 0), $totals[$p]) . '%"></span>';
@@ -592,7 +598,7 @@ function trend_lines(string $id, string $label, array $periods, array $series, s
     }
     foreach ($ticks as $i => $_) $svg .= '<line class="grid" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"/>';
     foreach ($periods as $i => $p) {
-        if (trend_milestone($p, $gran) !== '') $svg .= '<line class="ms" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"/>';
+        if (trend_milestone($p, $gran)) $svg .= '<line class="ms" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"/>';
     }
     // one polyline per run of periods with a value
     foreach ($series as $s) {
@@ -618,15 +624,13 @@ function trend_lines(string $id, string $label, array $periods, array $series, s
     foreach ($periods as $i => $p) {
         $parts = array();
         foreach ($series as $s) $parts[] = $s['name'] . ' ' . (isset($s['values'][$p]) ? fmt_num((float)$s['values'][$p]) : '-');
-        $ms = trend_milestone($p, $gran);
         $svg .= '<rect class="hov" x="' . $i . '" y="0" width="1" height="100" data-period="' . h($p) . '"><title>'
-            . h(trend_period_text($p, $gran, $current) . ': ' . implode(', ', $parts) . milestone_tip($ms)) . '</title></rect>';
+            . h(trend_period_text($p, $gran, $current) . ': ' . implode(', ', $parts) . trend_milestone_tip($p, $gran)) . '</title></rect>';
     }
     // milestone lines: a wide transparent hit area on top of the hover columns, its own tooltip
     foreach ($periods as $i => $p) {
-        $ms = trend_milestone($p, $gran);
-        if ($ms !== '') $svg .= '<line class="ms-hit" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"><title>'
-            . h(trend_period_text($p, $gran, $current) . milestone_tip($ms)) . '</title></line>';
+        if (trend_milestone($p, $gran)) $svg .= '<line class="ms-hit" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"><title>'
+            . h(trend_period_text($p, $gran, $current) . trend_milestone_tip($p, $gran)) . '</title></line>';
     }
     $svg .= '</svg>';
     return '<div class="chart-box trend-box">' . trend_y_axis($y_labels) . '<div class="trend-plot">' . $svg . '</div>'
@@ -634,13 +638,15 @@ function trend_lines(string $id, string $label, array $periods, array $series, s
 }
 
 /*
- * Tooltip of the SVG charts: the native <title> of a point column or milestone line opens at the mouse and may be cut
- * off at the edge of the screen (or never show on touch). On first hover/tap its text moves to data-tip (the <title> goes,
- * so the native tooltip does not show twice) and #chart_tip shows it, kept inside the viewport: centred above the
- * pointer, shifted at the left and right edge, below the pointer if there is no room above. Touch: a tap shows it, a tap
- * elsewhere or scrolling hides it. Without JS the native tooltips stay.
+ * Tooltip of the charts, shown at once (native tooltips come late, may be cut off at the edge of the screen and never
+ * show on touch). CSS-bar charts (.chart) carry their text in data-tip (no title: no second, native tooltip; the chart
+ * itself has role="img" and an aria-label). SVG charts: on first hover/tap the text of the <title> of a point column or
+ * milestone line moves to data-tip (the <title> goes, without JS it stays as native tooltip). #chart_tip shows it
+ * (textContent, line breaks via white-space: pre-line), kept inside the viewport: centred above the pointer, shifted at
+ * the left and right edge, below the pointer if there is no room above. Touch: a tap shows it, a tap elsewhere or
+ * scrolling hides it.
  */
-function trend_tip_script(): string {
+function chart_tip_script(): string {
     return <<<'JS'
 <script>
 (function () {
@@ -649,7 +655,7 @@ function trend_tip_script(): string {
     var current = null, touch = false, shownAt = 0;
     function target(el) {
         while (el && el.nodeType === 1 && !(el.matches && el.matches('svg.trend-svg'))) {
-            if (el.matches && el.matches('.trend-svg .hov, .trend-svg .ms-hit')) return el;
+            if (el.matches && el.matches('.trend-svg .hov, .trend-svg .ms-hit, .chart [data-tip]')) return el;
             el = el.parentNode;
         }
         return null;
@@ -1180,7 +1186,7 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
                       ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = 'DONE' and v.reaction = 'DOWN') as done_down_cnt
                   from pok_roadmap_tbl r
               ) x
-             order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED')
+             order by field(x.status, 'IN_PROGRESS', 'PLANNED', 'DONE')
                      ,case when x.status = 'DONE' then x.done_up_cnt - x.done_down_cnt else x.want_up_cnt - x.want_down_cnt end desc
                      ,x.sort_order, x.id desc");
 
@@ -1427,10 +1433,10 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         html.no-ms .trend-svg .ms, html.no-ms .trend-svg .ms-hit { display: none; }
         .trend-svg .line { fill: none; stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
         .trend-svg .hov { fill: transparent; }
-        /* tooltip of the SVG charts (trend_tip_script()): fixed, kept inside the viewport */
+        /* tooltip of the charts (chart_tip_script()): fixed, kept inside the viewport */
         .chart-tip { position: fixed; z-index: 20; left: 0; top: 0; max-width: min(28rem, calc(100vw - 16px)); padding: 0.35em 0.6em;
                      background: var(--bg-4); color: var(--text); border: 1px solid var(--line-strong); border-radius: var(--radius-m, 4px);
-                     font-size: var(--fs-xs); line-height: 1.35; pointer-events: none; white-space: normal; overflow-wrap: anywhere; }
+                     font-size: var(--fs-xs); line-height: 1.35; pointer-events: none; white-space: pre-line; overflow-wrap: anywhere; }
         .chart-tip[hidden] { display: none; }
         .trend-svg .hov:hover { fill: var(--row-hover); }
         .trend-svg .s0, .legend .sw.s0 { stroke: var(--accent); background: var(--accent); }
@@ -1591,7 +1597,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         $weekday = (int)date('N', strtotime($day));
         if ($weekday === 1) $classes[] = 'monday';
         if ($weekday >= 6) $classes[] = 'weekend';
-        if ($label !== '') $classes[] = 'milestone';
+        if ($label) $classes[] = 'milestone';
         if ($i === 0) $classes[] = 'today';
         // value label above the column for today and the (first) peak day
         $show_value = $i === 0 || (!$peak_shown && $max_rounds > 0 && $r['rounds'] == $max_rounds);
@@ -1600,7 +1606,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             . ($r['avg_players'] === null ? '' : ', ' . number_format((float)$r['avg_players'], 1, '.', '') . ' players per round')
             . milestone_tip($label);
 ?>
-            <span class="<?= h(implode(' ', $classes)) ?>" data-day="<?= h($day) ?>" data-rounds="<?= h($r['rounds']) ?>" title="<?= h($title) ?>"><span class="col" style="height: <?= bar_width($r['rounds'], $max_rounds) ?>%"><?php if ($r['rounds'] > 0) { ?><span class="col-val<?= $show_value ? '' : ' minor' ?>"><?= h($r['rounds']) ?></span><?php } ?></span></span>
+            <span class="<?= h(implode(' ', $classes)) ?>" data-day="<?= h($day) ?>" data-rounds="<?= h($r['rounds']) ?>" data-tip="<?= h($title) ?>"><span class="col" style="height: <?= bar_width($r['rounds'], $max_rounds) ?>%"><?php if ($r['rounds'] > 0) { ?><span class="col-val<?= $show_value ? '' : ' minor' ?>"><?= h($r['rounds']) ?></span><?php } ?></span></span>
 <?php } ?>
         </div>
         <div class="chart-x days" aria-hidden="true"><?php for ($i = LIVE_DAYS - 1; $i >= 0; $i--) {
@@ -1660,9 +1666,9 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             if ($slot > $now_slot) { ?>
             <span class="col future"></span>
 <?php       } else if ($value === null) { ?>
-            <span class="col empty" title="<?= $label ?>: no data"></span>
+            <span class="col empty" data-tip="<?= $label ?>: no data"></span>
 <?php       } else { ?>
-            <span class="col" style="height: <?= bar_width($value, $max) ?>%" title="<?= $label ?>: <?= h($value) ?>"></span>
+            <span class="col" style="height: <?= bar_width($value, $max) ?>%" data-tip="<?= $label ?>: <?= h($value) ?>"></span>
 <?php       }
         } ?>
         </div>
@@ -1697,8 +1703,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         $new = $w['users'] - $w['returning_users'];
         $label = milestone($w['week_start'], 7);
 ?>
-            <tr<?= $label !== '' ? ' class="milestone"' : '' ?>>
-                <td class="nowrap"<?= $label !== '' ? ' title="' . h($w['week_start'] . milestone_tip($label)) . '"' : '' ?>><?= h($w['week_start']) ?> <span class="muted">W<?= h(date('W', strtotime($w['week_start']))) ?></span><?= $w['week_start'] === $this_week ? ' <span class="muted">(so far)</span>' : '' ?></td>
+            <tr<?= $label ? ' class="milestone"' : '' ?>>
+                <td class="nowrap"<?= $label ? ' title="' . h($w['week_start'] . milestone_tip($label, 7)) . '"' : '' ?>><?= h($w['week_start']) ?> <span class="muted">W<?= h(date('W', strtotime($w['week_start']))) ?></span><?= $w['week_start'] === $this_week ? ' <span class="muted">(so far)</span>' : '' ?></td>
                 <td class="num"><?= h($data['week_teams'][$w['week_start']] ?? 0) ?></td>
                 <td class="num"><?= h($w['users']) ?></td>
                 <td class="num"><?= h($w['returning_users']) ?></td>
@@ -1758,11 +1764,11 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         $label = milestone($day);
         $classes = array();
         if ((int)date('N', strtotime($day)) >= 6) $classes[] = 'weekend';
-        if ($label !== '') $classes[] = 'milestone';
+        if ($label) $classes[] = 'milestone';
         if ($i === 0) $classes[] = 'current';
 ?>
             <tr<?= $classes ? ' class="' . h(implode(' ', $classes)) . '"' : '' ?>>
-                <td class="nowrap"<?= $label !== '' ? ' title="' . h($day . milestone_tip($label)) . '"' : '' ?>><?= h(date('D Y-m-d', strtotime($day))) ?></td>
+                <td class="nowrap"<?= $label ? ' title="' . h($day . milestone_tip($label)) . '"' : '' ?>><?= h(date('D Y-m-d', strtotime($day))) ?></td>
                 <td class="num"><?= h($data['round_days'][$day]['rounds'] ?? 0) ?></td>
                 <td class="num"><?= h($data['round_days'][$day]['teams'] ?? 0) ?></td>
 <?php   foreach (EVENTS as $code => $_) { ?>
@@ -1881,8 +1887,6 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     } ?>
         <p class="note">Distinct persons per <?= h($per) ?> with at least one successful call (pok_api_users_day_tbl, only hashes): MCP = tool calls of an AI assistant, API = /api/v1 with an API key (without the browser mode of the board). Days of the DB clock. Details: tab AI &amp; API.</p>
     </section>
-    <div class="chart-tip" id="chart_tip" role="tooltip" hidden></div>
-    <?= trend_tip_script() ?>
 
 <?php } else if ($tab === 'ai') {
     $people = $data['ai_people'] ?? array();
@@ -2042,7 +2046,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         </div>
 
         <h2 id="roadmap">Public list</h2>
-        <p class="note">Written by us, shown in the app (visible entries only, sorted by status DONE, IN_PROGRESS, PLANNED, then thumbs up minus thumbs down of the current phase, then order, then newest first).</p>
+        <p class="note">Written by us, shown in the app (visible entries only, sorted by status IN_PROGRESS, PLANNED, DONE, then thumbs up minus thumbs down of the current phase, then order, then newest first).</p>
 <?php foreach ($data['roadmap'] as $obj) {
         echo roadmap_form((object)$obj, $csrf, $fb_filter) . "\n";
 } ?>
@@ -2082,6 +2086,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         </div>
     </section>
 <?php } ?>
+    <div class="chart-tip" id="chart_tip" role="tooltip" hidden></div>
+    <?= chart_tip_script() ?>
 </main>
 </body>
 </html>

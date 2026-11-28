@@ -54,6 +54,8 @@ Playing
   see who has played, never which card – do not guess or claim to know other people's cards.
 - round new_round takes all cards back and starts over; round remove_player takes a player off the table who holds up
   the reveal (they can come back).
+- After a new round, read the note and the active item again before playing (they often change right after it); for
+  questions to estimate, suggest items rather than the note.
 - The user's seat: me (rename, set_role, leave, end_session). When the user says stop, bye, end, stop watching,
   close or similar, call me end_session and confirm in one line - nothing else, no further call afterwards (any call
   reconnects). Three ways out, never mix them up:
@@ -570,9 +572,12 @@ function mcp_require_ai_allowed(mysqli $link, string $t): void
    once); a wait_for_change of an ended session touches nothing (mcp_actor()) */
 function mcp_touch_actor(mysqli $link, array $actor, bool $wait): array
 {
+    // 'mcp': board reads of this call keep the end mark (core_board_get()); the wait keeps it here too, an end_session
+    // right after the check above must not be undone (only a real call reconnects)
+    $actor['mcp'] = true;
     if ($wait && mcp_session_ended($link, $actor['uid'], $actor['team_id'])) return $actor + ['ended' => true];
-    touch_api_person($link, $actor['uid'], $actor['team_id']);
-    if (touch_mcp_person($link, $actor['uid'], $actor['team_id'])) notify_team($actor['team_id']);
+    touch_api_person($link, $actor['uid'], $actor['team_id'], $wait);
+    if (touch_mcp_person($link, $actor['uid'], $actor['team_id'], $wait)) notify_team($actor['team_id']);
     return $actor;
 }
 

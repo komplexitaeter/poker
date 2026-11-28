@@ -85,8 +85,10 @@ test('anonymous mode: the choice is disabled, shows "Card value", a hint is show
   // Alice 8, Bob 3: arranged by card value although "Player name" is stored
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveAttribute('data-card', 'three01');
-  await expect(firstCard(alice)).toHaveAttribute('id', bobId);
+  // B-163: revealed anonymous cards carry handles, not the mkeys: Bob's 3 first, by its card
+  await expect(firstCard(alice)).toHaveAttribute('data-card', 'three01');
+  await expect(alice.locator('#cbox .c.is-me')).toHaveAttribute('data-card', 'eight01');
+  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveCount(0);
   await expect(alice.locator('#order_by_div')).toHaveCount(0);
 });
 

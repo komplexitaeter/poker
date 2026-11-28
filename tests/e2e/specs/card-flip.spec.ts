@@ -78,11 +78,13 @@ test('anonymous mode: revealing the cards does not glide (B-41)', async ({ brows
   const bobId = await cardId(alice, 'Bob');
   await expect(alice.locator('#cbox .c').first()).not.toHaveAttribute('id', bobId);
 
-  // anonymous results are sorted by value: Bob (3) moves in front of Alice (8)
+  // anonymous results are sorted by value: Bob's 3 comes in front of Alice's 8. B-163: the revealed cards carry
+  // handles instead of the mkeys (new cards, faded in), so Bob's card id from before is gone
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveAttribute('data-card', 'three01');
-  await expect(alice.locator('#cbox .c').first()).toHaveAttribute('id', bobId);
+  await expect(alice.locator('#cbox .c').first()).toHaveAttribute('data-card', 'three01');
+  await expect(alice.locator('#cbox .c.is-me')).toHaveAttribute('data-card', 'eight01');
+  await expect(alice.locator(`#cbox .c[id="${bobId}"]`)).toHaveCount(0);
   await alice.waitForTimeout(300);
 
   expect((await recorded(alice)).filter(r => r.id === 'flip')).toEqual([]);

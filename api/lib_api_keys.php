@@ -94,12 +94,14 @@ function api_key_insert_locked(mysqli $link, string $uid, string $t, string $nam
 
 /*
  * Presence of a key call (concept 5.4: active through calls = present, B-110): like touch_player(), but at most every
- * 10 s, so a script calling in a loop writes little (far below AWAY_AFTER_SEC = 70). Autocommit.
+ * 10 s, so a script calling in a loop writes little (far below AWAY_AFTER_SEC = 70). $keep_ended as touch_player().
+ * Autocommit.
  */
-function touch_api_person(mysqli $link, string $uid, string $t): void
+function touch_api_person(mysqli $link, string $uid, string $t, bool $keep_ended = false): void
 {
     $sql = $link->prepare("update pok_players_tbl set last_callback_time = current_timestamp
-                            where id = ? and team_id = ? and last_callback_time < current_timestamp - interval 10 second");
+                            where id = ? and team_id = ? and last_callback_time < current_timestamp - interval 10 second"
+                          . ($keep_ended ? MCP_NOT_ENDED_SQL : ''));
     $sql->bind_param('ss', $uid, $t);
     $sql->execute();
     $sql->close();

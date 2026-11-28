@@ -5,8 +5,9 @@ import { newPlayer, createTeam, userRequest } from './helpers';
 
 /**
  * B-127 (API level): api/seen.php is the light heartbeat of the board. It marks the own board as connected (like
- * dao.php, B-110) and returns only {away_sig}: sha1 over the sorted mkeys of the away persons (players and observers,
+ * dao.php, B-110) and returns only {away_sig}: sha1 over the sorted ids of the away persons (players and observers,
  * since B-154 also removed persons, never the own one), '' when nobody is away. dao.php delivers the same away_sig. Never player ids.
+ * B-159: a hash of the secret ids, not of the public mkeys (those could be tried out, also in anonymous mode).
  * last_callback_time is moved back per SQL, so the test does not wait.
  */
 
@@ -39,9 +40,14 @@ function mkeyOf(t: string, id: string): number {
   return Number(sql(`select mkey from pok_players_tbl where team_id = '${t}' and id = '${id}'`));
 }
 
-/** expected signature: sha1 over the numerically sorted mkeys joined by ',' ('' for none) */
-function sig(mkeys: number[]): string {
-  if (mkeys.length === 0) return '';
+/** expected signature: sha1 over 'away:' + the sorted ids joined by ',' + '|ai:' (no AI here; '' for none) */
+function sig(ids: string[]): string {
+  if (ids.length === 0) return '';
+  return createHash('sha1').update('away:' + [...ids].sort().join(',') + '|ai:').digest('hex');
+}
+
+/** the B-127 signature over mkeys, which any board could compute itself (B-159: must no longer match) */
+function mkeySig(mkeys: number[]): string {
   return createHash('sha1').update([...mkeys].sort((a, b) => a - b).join(',')).digest('hex');
 }
 
@@ -78,24 +84,25 @@ test('seen.php: marks the board connected and returns the same away_sig as dao.p
   lastLoadAgo(t, olga, 75);
   res = await get(page, 'seen.php', t, alice);
   const body = await res.text();
-  expect(JSON.parse(body)).toEqual({ away_sig: sig([bobMkey, olgaMkey]) });
+  expect(JSON.parse(body)).toEqual({ away_sig: sig([bob, olga]) });
+  expect(JSON.parse(body).away_sig).not.toBe(mkeySig([bobMkey, olgaMkey]));
   for (const id of [alice, bob, olga]) expect(body).not.toContain(id);
-  expect((await (await get(page, 'dao.php', t, alice)).json()).away_sig).toBe(sig([bobMkey, olgaMkey]));
+  expect((await (await get(page, 'dao.php', t, alice)).json()).away_sig).toBe(sig([bob, olga]));
 
   // seen.php sets last_callback_time like dao.php, and the own person is never in the set
   lastLoadAgo(t, alice, 300);
-  expect(await (await get(page, 'seen.php', t, bob)).json()).toEqual({ away_sig: sig([mkeyOf(t, alice), olgaMkey]) });
-  expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([olgaMkey]) });
+  expect(await (await get(page, 'seen.php', t, bob)).json()).toEqual({ away_sig: sig([alice, olga]) });
+  expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([olga]) });
   expect(lastLoadSecondsAgo(t, alice)).toBeLessThan(5);
 
   // B-154: a removed player counts like an observer (he is in the observer list while connected)
   lastLoadAgo(t, bob, 120);
   expect((await post(page, 'delete.php', { t, mkey: String(bobMkey) })).ok()).toBeTruthy();
-  expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([bobMkey, olgaMkey]) });
-  expect((await (await get(page, 'dao.php', t, alice)).json()).away_sig).toBe(sig([bobMkey, olgaMkey]));
+  expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([bob, olga]) });
+  expect((await (await get(page, 'dao.php', t, alice)).json()).away_sig).toBe(sig([bob, olga]));
   // his board connects again: no longer away
   await get(page, 'seen.php', t, bob);
-  expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([olgaMkey]) });
+  expect(await (await get(page, 'seen.php', t, alice)).json()).toEqual({ away_sig: sig([olga]) });
 
   // too short id: empty answer like dao.php; unknown team: no error, empty signature, nothing changed
   expect(await (await get(page, 'seen.php', t, 'SHORT')).text()).toBe('');

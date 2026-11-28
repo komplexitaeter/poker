@@ -130,6 +130,16 @@ April 2026 eingestellt – nicht mehr verwenden.
   Schemaänderungen werden von Hand eingespielt.
 - Bei jedem Rollout nach `master` trägt Kai das Datum als Meilenstein in `MILESTONES` in `stats.php` ein (gelbe Linie in
   den Nutzungsdiagrammen), am besten gleich im PR `release` → `master`.
+- Versionshinweise (B-164): Bei jedem Rollout mit sichtbaren Änderungen entwirft Kai im PR `release` → `master` einen
+  Eintrag oben in `release_notes.json` (Nummer `YYYY.Rollout`, Datum, Stichpunkte mit Nutzen und „Find it in“, optional
+  Screenshots hell/dunkel unter `src/notes/` mit **neuen** Dateinamen je Release), setzt `NOTES_LATEST` in
+  `script/whats_new.js` und erhöht `?v=` von `whats_new.js` und `release_notes.json`. Andreas gibt die Texte mit dem
+  Merge frei. Releases ohne sichtbare Änderung bekommen nur „Small fixes and improvements.“ (keine Nummernlücken).
+  **Jeder PR mit für Nutzer sichtbarer Änderung bringt seinen Versionshinweis-Entwurf selbst mit** (Abschnitt
+  „Release note“ im PR-Text: Titel, ein Satz Nutzen, „Find it in“, ggf. `asked` bei Nutzerwunsch); Rita (`reader`) liest
+  ihn im Review mit. Kai sammelt die Entwürfe beim Rollout nur ein. Regeln für die Texte: was ist neu, wofür ist es
+  gut, wo finde ich es – keine Anleitung, keine Warnungen, keine Bugfix-Details; Begriffe wie in der Oberfläche;
+  agile Fachbegriffe (Timebox, Item …) sind erwünscht, interner Jargon nicht.
 - Admin-Zugriff DB: `sudo mysql --defaults-file=/etc/mysql/debian.cnf`.
 - `poker-msg` (supervisor, `/etc/supervisor/conf.d/poker-msg.conf`): explizit `/usr/bin/php8.4`, `ulimit -n 20000`,
   Info-Log `stdout_logfile_maxbytes = 50MB`, `stdout_logfile_backups = 5`. Braucht die Erweiterung `ev` (sonst
@@ -139,7 +149,8 @@ April 2026 eingestellt – nicht mehr verwenden.
 - `poker-msg` pingt alle Verbindungen alle 30 s (WebSocket-Ping, `POKER_MSG_KEEPALIVE`) und schließt Verbindungen
   ohne Antwort (B-24). nginx `location /poker-msg`: `proxy_read_timeout 120s` auf beiden Servern.
 - Live (seit 2026-11-28, B-13): MySQL lauscht nur auf `127.0.0.1` (3306/33060), `grafana_usr` gelöscht. Firewall
-  `ufw`: eingehend nur 22, 80, 443. SSH nur mit Schlüssel, fail2ban (Jail `sshd`). Staging: siehe Incident-Bericht
+  `ufw`: eingehend nur 22, 80, 443. SSH nur mit Schlüssel, fail2ban (Jail `sshd`). Beide Server: `unattended-upgrades`
+  inkl. ondrej-PPA (PHP; `/etc/apt/apt.conf.d/51unattended-upgrades-ondrej`). Staging: siehe Incident-Bericht
   vom 2026-11-28 (fail2ban mit `sshd`, `nginx-limit-req`, `nginx-probe` auf den gemeinsamen nginx-Logs).
 
 Last (Stand Oktober 2026): an Werktagen 100–125 aktive Teams mit im Schnitt 5,5–6 Teilnehmern. Spitzen etwa
@@ -241,6 +252,7 @@ geben einen Branch zurück; sie mergen nie selbst.
 | `design` | **Delia (DES)** | Look & Feel, Design-System/Tokens, CSS (`style/style.css`), visuelle HTML-Struktur, Responsive/Mobile, Barrierefreiheit – gestaltet **und** setzt selbst um |
 | `security-reviewer` | **Sina (SEC)** | prüft vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung, GET-Schreibzugriffe |
 | `e2e-tester` | **Tessa (E2E)** | startet die App lokal, führt E2E-Tests aus oder erweitert sie |
+| `reader` | **Rita (UX)** | liest Oberflächentexte (Release Notes, Menüs, Hinweise, Fehlermeldungen, MCP-Texte) aus Nutzersicht, ohne Code zu kennen, und markiert Unklares und internen Jargon – vor jedem Livegang neuer Texte |
 
 Abgrenzung **Delia ↔ Fred**: Delia besitzt die visuelle Ebene (Look & Feel, CSS, Design-relevantes Markup,
 Responsive). Fred besitzt JS-Verhalten und API-Anbindung. Braucht eine Gestaltung neues JS-Verhalten (z. B. ein

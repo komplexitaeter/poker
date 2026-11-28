@@ -639,6 +639,11 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
 - Kontingent per WebSocket: ein Browser kann mit beliebigem `from` das Kontingent anderer verbrauchen (bekannt, B-139).
 - Flaky: `mcp-app.spec.ts` „leaving by oneself … Join again“ (Zeile ~428) schlug lokal einmal fehl (Ben, 2026-11-28), Ursache offen.
 - `pok_api_users_day_tbl` wächst unbegrenzt: Aufbewahrungsfrist mit B-109 festlegen.
+- `away_sig`: HMAC mit Geheimnis aus `config.php` statt sha1 über UIDs (alte UIDs vor B-152 haben nur ca. 41 Bit).
+- poker-msg: Log-Hash der Team-ID ohne Salt (alte, aus Namen gebildete IDs bestätigbar; Logs nur root); `messageForLog()`
+  loggt Nachrichten ohne `:` bis 40 Zeichen im Klartext – besser nur die Länge.
+- Nach `end_session` kann eine Person bis zu 70 s als verbunden erscheinen (Präsenz-Update in `getDao()` beim letzten Lesen
+  des Wartens); kosmetisch.
 - `getDao()`: gelöschte eigene Karten (Custom-Set) sind vor dem Aufdecken sichtbar.
 - `away_sig` baut die Zuordnung im anonymen Modus neu auf (prüfen, ob daraus Rückschlüsse möglich sind).
 - `mcp_states`: Größe der Spalte bei 8 Ständen je Platz beobachten.
@@ -648,6 +653,61 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
 - Test mit sechs Agenten (Andreas, 2026-11-27): Ändert sich die Notiz kurz nach „New round“, spielen Agenten noch zur
   alten Frage (alle haben dann korrigiert). Tool-Texte: nach neuer Runde auf Notiz-/Item-Änderung achten; für Fragen
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
+
+### B-164 „Was ist neu“ (Release Notes im Board)
+Status: in Umsetzung (Andreas, 2026-11-28). Entschieden: Versionshinweise wie bei Tesla – je Release Nummer
+`YYYY.Rollout` (2026.1 = R1) und Datum, kurze Stichpunkte mit Nutzen und „Find it in“, teils Screenshots (hell und
+dunkel, nach Farbmodus des Nutzers); Einstieg oben im `:feedback`-Panel, Vollbild-Overlay halbtransparent; roter Punkt
+am `:feedback`-Menü bei neuer Version nur für Wiederkehrer (Erstbesucher bekommen den Stand still als gelesen); Inhalt als
+Datei im Repo, Kai entwirft die Notes je Rollout im Master-PR, Andreas gibt sie mit dem Merge frei. Ursprünglich: Nach einem Rollout einmal je Person ein
+dezenter Hinweis (Punkt am Menü), dahinter 3–5 Zeilen „Neu seit …“ in Alltagssprache mit Nutzen; Seite mit allen
+Einträgen. Quelle: eigene Nutzertexte je Rollout (nicht die `MILESTONES` aus `stats.php`). Optional: Hinweis auf die
+nächste Web-Sprechstunde in den Tagen davor. Noch genau zu überlegen.
+
+### B-165 Feedback-Menü verständlicher
+Status: in Umsetzung – Variante C aus Delias Mockup (eine Seite: oben „Tell the makers“, darunter Tabelle mit Filter
+Open | Done), Menüpunkt bleibt `:feedback` (Andreas, 2026-11-28). Feedback Lars: Menüpunkt „Feedback“, Begriff „Roadmap“, die 👍/👎 und das Einreichen
+waren unklar. Ideen: Begriffe („Ideas & Bugs“, „Wishlist“), Liste als Tabelle (Idee | 👍 | 👎 | Status, eigene Stimme
+markiert), Melden und Abstimmen klar trennen. Vorsicht: dort kommt gerade so viel Feedback wie nie – Ablauf nicht
+umbauen, erst Begriffe/Darstellung; Delia kann klickbare Entwürfe bauen. Noch genau zu überlegen.
+
+### B-166 Mülleimer ohne Rückfrage
+Status: neu (Andreas, 2026-11-28; Feedback Lars). Die Rückfrage beim Entfernen (B-110: „Rückfrage immer“) stört: Wer
+entfernt wird, kann sofort wieder beitreten. Vorschlag: ohne Rückfrage entfernen, optional kurz „Rückgängig“ als Toast.
+Im anonymen Modus nach dem Aufdecken bleibt der Mülleimer auf fremden Karten weg (B-159/B-163).
+
+### B-167 Oberflächentexte ohne internen Jargon
+Status: neu (Andreas, 2026-11-28). In Menüs, Hinweisen, Dialogen, Fehlermeldungen und MCP-Texten hat sich interne
+Sprache eingeschlichen. Alle Texte einmal von Rita (`reader`, liest nur die Texte, kennt keinen Code) aus Nutzersicht
+prüfen lassen, Funde gesammelt umsetzen (Delia/Fred). Danach Regel: neue Texte vor dem Livegang durch Rita.
+
+### B-163 Anonymer Modus: mkey verrät die Karte
+Status: in Review (Ben, 2026-11-28, Branch `feature/B-163-anon-handles`: Handles je Runde, Würfe bleiben möglich), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
+Aufdecken weiter die echte `mkey` je Karte (nur der Name wird `******`); vor dem Aufdecken ist mkey → Name sichtbar.
+Wer sich das merkt (DevTools reichen), ordnet jede Karte einer Person zu. REST/MCP setzen fremde mkeys schon auf `null`
+(`lib_core_board.php`). Vorschlag (Aufwand S–M, Ben + Fred): fremde Karten bekommen bei anonym + aufgedeckt einen
+numerischen Handle je Runde (gleich für alle Betrachter, kollisionsfrei zu echten mkeys, poker-msg `parseReact` nimmt nur
+Ziffern) – oder Würfe auf fremde Karten in diesem Zustand wie im MCP sperren. Frontend: Karten-`id`, `isMe`,
+`reactHolder()`, `syncReactButton`, Aufdeck-Animation prüfen.
+Umgesetzt in #325 (Handles je Runde; im anonymen Modus blenden die Karten beim Aufdecken ein statt sich umzudrehen –
+Andreas: so gewollt). Bewusst offen: Wer nach dem Aufdecken selbst zu Beobachter wechselt oder geht, macht seine Karte
+zuordenbar (verschwindet, Name erscheint bei den Beobachtern) – nur umsetzen, falls es jemanden stört. poker-msg vertraut
+dem `from` des Clients (Kontingent umgehbar, Werfen im Namen anderer) – bekannt, B-139.
+Nachtrag (Sina, 2026-11-28, optional): Wer nach dem anonymen Aufdecken Beobachter wurde, kann seine liegengebliebene
+Karte über `setc.php` noch ändern, ohne „See changed“-Kennzeichnung (`core_card_play` lässt Nicht-Spieler zu). Fix: für
+Nicht-`PLAYER` mit `anon_kept_round` = laufende Runde ablehnen.
+
+### B-162 Täglicher CVE-Check (Agent)
+Status: neu (Andreas, 2026-11-28). Ubuntu-Sicherheitsupdates laufen schon per `unattended-upgrades`. Offen:
+1. Dependabot-Alerts in `poker` und `poker-msg` einschalten (Composer, npm der Tests).
+2. Auf beiden Servern ein täglicher Cron-Job, der eine Versionsliste (nginx, php8.4-* aus dem ondrej-PPA, mysql-server,
+   openssh, openssl, Kernel/Reboot nötig, ausstehende Updates, poker-msg-Stand, CDN-Bibliotheken aus `board.html`) in ein
+   privates Repo pusht (Deploy-Key nur für dieses Repo).
+3. Geplante Aufgabe in Claude Code (täglich, neue Sitzung): Listen gegen Ubuntu USN, PHP-Releases, OSV/NVD, GitHub
+   Advisories prüfen; nur bei Handlungsbedarf benachrichtigen, mit Dringlichkeit und fertigen Befehlen. Netzwerk der
+   Cloud-Umgebung muss die Quellen erlauben. Kein Server-Zugang für den Agenten.
+Erledigt (Andreas, 2026-11-28): `unattended-upgrades` auf beiden Servern auch für das ondrej-PPA
+(`/etc/apt/apt.conf.d/51unattended-upgrades-ondrej`, Origin `LP-PPA-ondrej-php`).
 
 ### B-161 CI schneller
 Status: neu (Andreas, 2026-11-28). Ein PR-Lauf dauert 6–7 min (je Shard ca. 3,5 min Tests plus Einrichtung).

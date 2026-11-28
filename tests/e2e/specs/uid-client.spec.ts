@@ -82,7 +82,7 @@ test('first visit: the UID comes from uid.php, travels only in the header, never
   }
   const roadmap = alice.waitForResponse(r => r.url().includes('/api/get_roadmap.php'));
   await alice.locator('#feedback_btn').click();
-  await expect(alice.locator('#fb_panel_backlog')).toBeVisible();
+  await expect(alice.locator('#feedback_form')).toBeVisible();
   expect((await roadmap).ok()).toBeTruthy();
   await alice.locator('#menu_close').click();
   const colour = alice.waitForResponse(r => r.url().includes('/api/update_user.php') && r.url().includes('color_mode='));

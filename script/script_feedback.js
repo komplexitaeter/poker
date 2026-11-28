@@ -15,7 +15,7 @@ const gMenuSections = {
     cset:          {btn: 'cset_btn',          event: 'OPEN_SETUP_BOX',         focus: 'deck_change'}, // R3 F5: "Card set ... change"
     timer:         {btn: 'timer_btn',         event: 'OPEN_TIMER_BOX',         focus: 'tmr_visibility'}, // B-67: the checked radio
     user_settings: {btn: 'user_settings_btn', event: 'OPEN_USER_SETTINGS_BOX', focus: 'cet_usr_name'},
-    feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'fb_tab_backlog'} // opens on the backlog tab
+    feedback:      {btn: 'feedback_btn',      event: 'OPEN_FEEDBACK_BOX',      focus: 'feedback_txt'} // B-165: phones: the heading (openMenu)
 };
 const gPhoneQuery = window.matchMedia('(max-width: 799.98px)');
 let gMenuOpener = null; // gets the focus back when the menu closes
@@ -58,7 +58,7 @@ function prepareMenuSection(sec) {
         document.getElementById('cet_change_name').disabled = true;
     }
     if (sec === 'timer') updateTimerConfig(true); // B-67: fresh from the last server state
-    if (sec === 'feedback') showMenuTab(document.getElementById('feedback_box'), 'backlog'); // B-57: backlog first
+    if (sec === 'feedback') prepareFeedbackPanel(); // B-165: list loaded anew, filter Open
     if (sec === 'user_settings') {
         document.getElementById('cet_usr_name').value = gUserName;
         document.getElementById('cet_change_user').disabled = true;
@@ -72,7 +72,7 @@ function prepareMenuSection(sec) {
     }
 }
 
-/* Tabs in a menu section (board settings: Deck | Results | Team; B-57 feedback: New issue | Roadmap).
+/* Tabs in a menu section (board settings: Deck | Results | Team; topics: Note | Items | Done).
  * The tab buttons carry role="tab" and data-tab, the panels role="tabpanel" and data-tab as well; the
  * selected tab has aria-selected="true" and is the only one in the tab order, the other panels are
  * hidden. box: the section element; focusTab: move the focus to the tab. */
@@ -87,7 +87,6 @@ function showMenuTab(box, name, focusTab = false) {
     });
     box.querySelectorAll('[role="tabpanel"]').forEach(p => { p.hidden = p.getAttribute('data-tab') !== name; });
     if (focusTab) tab.focus();
-    if (box.id === 'feedback_box' && name === 'backlog') loadFeedbackBacklog(); // B-57
     if (box.id === 'topic_box') onTopicTab(name); // B-52 S1c: Note | Items | Done (topics.js; loads Done lazily)
 }
 
@@ -130,6 +129,8 @@ function openMenu(sec, opener = null, focusField = true) {
 
     if (focusField) {
         let field = gMenuSections[sec].focus;
+        // B-165: on phones and touch tablets the keyboard would cover the panel (and the list): the heading instead
+        if (sec === 'feedback' && (gPhoneQuery.matches || window.matchMedia('(pointer: coarse)').matches)) field = 'fb_ask_title';
         if (field) {
             let element = sec === 'topic' ? topicMenuFocus() : document.getElementById(field); // B-52 S1
             if (element === null) element = section.querySelector('button, input, [tabindex]') || section; // R3 F5: deck not loaded yet
@@ -155,7 +156,9 @@ function openMenu(sec, opener = null, focusField = true) {
 /* B-57: a red dot on the feedback menu (header button, phone menu button and index entry) until the user has
  * opened the feedback panel once. Stored per user on the server: pok_user_tbl.hide_teaser = 1 means "seen"
  * (the column of the former teaser, reused). Board only; the start page has no user profile (gFeedbackDot
- * stays null). true: dot shown, false: seen - a pull update (updateDom) never brings the dot back. */
+ * stays null). true: dot shown, false: seen - a pull update (updateDom) never brings the dot back.
+ * B-164: the same dot also stands for an unseen "What's new" (gNotesDot, whats_new.js); opening the feedback panel
+ * does not clear that one, only opening the notes does. */
 let gFeedbackDot = null;
 
 function updateFeedbackDot(seen) {
@@ -165,7 +168,8 @@ function updateFeedbackDot(seen) {
 }
 
 function renderFeedbackDot() {
-    let on = gFeedbackDot === true;
+    // B-164: also while a release the browser has not opened yet is out (gNotesDot, whats_new.js)
+    let on = gFeedbackDot === true || (typeof gNotesDot !== 'undefined' && gNotesDot === true);
     document.body.classList.toggle('fb-new', on);
     let labels = {feedback_btn: 'Feedback', menu_btn: 'Menu'};
     for (let id in labels) {
@@ -174,7 +178,7 @@ function renderFeedbackDot() {
     }
     let entry = document.querySelector('#menu_index [data-open="feedback"]');
     if (entry !== null) {
-        if (on) entry.setAttribute('aria-label', 'Feedback \u2013 new: Tell us what to improve');
+        if (on) entry.setAttribute('aria-label', 'Feedback \u2013 new: Report bugs, vote on ideas');
         else entry.removeAttribute('aria-label');
     }
 }
@@ -309,7 +313,7 @@ function initMenu() {
         }
     });
 
-    // tabs in menu sections (board settings, feedback): click, arrow keys, Home and End
+    // tabs in menu sections (board settings, topics): click, arrow keys, Home and End
     // (focus follows the selection). All sections (B-89: no ':has()', it throws in older browsers);
     // the handlers do nothing outside a tab.
     menu.querySelectorAll('section.menu_sec').forEach(box => {
@@ -366,8 +370,9 @@ function pushJediBtn(showAvg) {
     settingWrite(url);
 }
 
-/* B-57: "Send feedback" tab. The type (Bug | Feature | Other) sets the placeholder of the text; with a bug the
- * technical context (no team id, no names) goes along. An empty text is not sent. */
+/* B-57, B-165: "Tell the makers" on top of the feedback panel. The type (chips Bug | Idea | Other, values BUG |
+ * FEATURE | OTHER, Other preset) sets the placeholder of the text; with a bug the technical context (no team id, no
+ * names) goes along. An empty text is not sent. */
 function feedbackType() {
     let radio = document.querySelector('input[name="fb_type"]:checked');
     return radio === null ? 'OTHER' : radio.value;
@@ -398,6 +403,12 @@ function bugContext() {
     });
 }
 
+/* B-165: a disabled button drops the focus (to the body, or the dialog of the phone sheet); nobody moved it elsewhere */
+function feedbackFocusLost() {
+    let active = document.activeElement;
+    return active === null || active === document.body || active === getMenu();
+}
+
 function feedback_submit() {
     let txt = document.getElementById('feedback_txt');
     let fb_text = txt.value.trim();
@@ -412,8 +423,11 @@ function feedback_submit() {
         + '&type=' + encodeURIComponent(type)
         + '&text=' + encodeURIComponent(fb_text);
     if (type === 'BUG') url += '&context=' + encodeURIComponent(bugContext());
-    // R3 (Andreas): wait for the answer; on success thank and close, on failure keep text and menu and say so
+    // R3 (Andreas): wait for the answer; on failure keep text and menu and say so.
+    // B-165: on success the panel stays open and confirms inline, the draft is cleared.
     let sendBtn = document.getElementById('feedback_send');
+    let sent = document.getElementById('fb_sent');
+    sent.textContent = '';
     sendBtn.disabled = true;
     let options = { method: 'POST' };
     if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
@@ -421,82 +435,144 @@ function feedback_submit() {
     }
     apiFetch(url, options).then(response => response.ok, () => false).then(ok => {
         sendBtn.disabled = false;
+        // disabled while waiting drops the focus: back on the button (B-165, the panel stays open)
+        if (getMenu().open && feedbackFocusLost()) focusQuietly(sendBtn);
         if (ok) {
-            closeMenu();
             txt.value = '';
             setFeedbackType('OTHER');
-            showToast('Thanks – we read every message.');
+            sent.textContent = 'Thanks \u2013 sent! We read every message.';
         } else {
             showToast('Not sent \u2013 please try again', DECK_TOAST_MS, 'error');
         }
     });
 }
 
-/* B-57: "Roadmap" tab (id backlog) - our public list (api/get_roadmap.php) with status and reactions (api/vote_roadmap.php).
- * Loaded each time the tab is shown; entries are clones of #fb_item_tpl, filled via textContent only.
- * Pull updates of the board do not touch it. R3 review V10: the start page has no feedback menu any more. */
+/* B-57, B-165: "What others asked for" - our public list (api/get_roadmap.php, open entries first) as a table with
+ * the reactions as words: open entries "Want it" | "Don't need", done ones "Like it" | "Don't" (api/vote_roadmap.php,
+ * the same reaction again takes it back). Filter Open | Done on the client. Loaded each time the panel opens; rows are
+ * clones of #fb_item_tpl, filled via textContent only. Pull updates of the board do not touch it. R3 review V10: the
+ * start page has no feedback menu any more. */
 const gFbStatusText = {PLANNED: 'planned', IN_PROGRESS: 'in progress', DONE: 'done'};
+const gFbView = {
+    open: {heads: ['Idea', 'Want it', "Don't need"], words: {UP: 'Want it', DOWN: "Don't need"},
+           hint: 'Tap what you want. Tap again to take it back.'},
+    done: {heads: ['Built', 'Like it', "Don't"], words: {UP: 'Like it', DOWN: "Don't like it"},
+           hint: 'Already built. Tell us if you like it. Tap again to take it back.'}
+};
 let gFbBacklogRequest = 0; // only the latest load fills the list
+let gFbItems = null; // the entries of the last load, null until the first one is there
+let gFbFilter = 'open';
 
-function fillBacklogItem(li, item) {
-    li.dataset.item = item.id;
-    li.querySelector('.fb-title').textContent = item.title;
-    li.querySelector('.fb-desc').textContent = item.description || '';
-    let status = li.querySelector('.fb-status');
+function feedbackFilterOf(item) {
+    return item.status === 'DONE' ? 'done' : 'open';
+}
+
+function fillBacklogItem(tr, item) {
+    let words = gFbView[feedbackFilterOf(item)].words;
+    let mine = item.my_reaction === 'UP' || item.my_reaction === 'DOWN';
+    tr.dataset.item = item.id;
+    tr.classList.toggle('mine', mine);
+    tr.querySelector('.fb-title').textContent = item.title;
+    tr.querySelector('.fb-desc').textContent = item.description || '';
+    let status = tr.querySelector('.fb-status');
     status.dataset.status = item.status;
-    status.textContent = gFbStatusText[item.status] || '';
-    li.querySelectorAll('.fb-react-btn').forEach(btn => {
+    status.textContent = item.status === 'DONE' ? '' : (gFbStatusText[item.status] || ''); // the filter says "done"
+    tr.querySelectorAll('.fb-react-btn').forEach(btn => {
         let reaction = btn.dataset.reaction;
-        btn.setAttribute('aria-pressed', item.my_reaction === reaction ? 'true' : 'false');
-        btn.querySelector('.fb-count').textContent = (item.reactions && item.reactions[reaction]) || 0;
+        let count = (item.reactions && item.reactions[reaction]) || 0;
+        let pressed = item.my_reaction === reaction;
+        btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        btn.setAttribute('aria-label', words[reaction] + ', ' + count + (pressed ? ', your vote' : ''));
+        btn.querySelector('.fb-count').textContent = count;
         btn.disabled = false;
     });
 }
 
-function loadFeedbackBacklog() {
-    let list = document.getElementById('fb_backlog');
-    let empty = document.getElementById('fb_backlog_empty');
+/* the rows of the chosen filter, the counts in the filter, the column heads */
+function renderFeedbackList() {
+    let rows = document.getElementById('fb_backlog');
     let tpl = document.getElementById('fb_item_tpl');
-    if (list === null || tpl === null) return;
+    if (rows === null || tpl === null) return;
+    let all = gFbItems || [];
+    let items = all.filter(item => feedbackFilterOf(item) === gFbFilter);
+    rows.replaceChildren(...items.map(item => {
+        let tr = tpl.content.firstElementChild.cloneNode(true);
+        fillBacklogItem(tr, item);
+        return tr;
+    }));
+    let view = gFbView[gFbFilter];
+    ['fb_th_title', 'fb_th_up', 'fb_th_down'].forEach((id, i) => { document.getElementById(id).textContent = view.heads[i]; });
+    document.getElementById('fb_list_hint').textContent = view.hint;
+    document.querySelectorAll('#feedback_box [data-filter]').forEach(btn => {
+        btn.setAttribute('aria-pressed', btn.dataset.filter === gFbFilter ? 'true' : 'false');
+    });
+    let openCount = all.filter(item => feedbackFilterOf(item) === 'open').length;
+    document.getElementById('fb_n_open').textContent = gFbItems === null ? '' : openCount;
+    document.getElementById('fb_n_done').textContent = gFbItems === null ? '' : all.length - openCount;
+    // no "Nothing here yet." before the first load is done
+    document.getElementById('fb_backlog_empty').hidden = gFbItems === null || items.length > 0;
+}
+
+function setFeedbackFilter(filter) {
+    gFbFilter = filter === 'done' ? 'done' : 'open';
+    renderFeedbackList();
+}
+
+/* on opening the panel: no old confirmation, filter Open, the list loaded anew (the draft stays) */
+function prepareFeedbackPanel() {
+    let sent = document.getElementById('fb_sent');
+    if (sent !== null) sent.textContent = '';
+    setFeedbackFilter('open');
+    loadFeedbackBacklog();
+}
+
+function loadFeedbackBacklog() {
+    let rows = document.getElementById('fb_backlog');
+    if (rows === null) return;
     let request = ++gFbBacklogRequest;
-    // no "Nothing here yet." while loading; the entries of the last load stay until the new ones are there
-    if (empty !== null && list.children.length === 0) empty.hidden = true;
-    list.setAttribute('aria-busy', 'true');
+    // the entries of the last load stay until the new ones are there
+    rows.setAttribute('aria-busy', 'true');
 
     apiFetch('./api/get_roadmap.php')
         .then(response => response.ok ? response.json() : Promise.reject(response.status))
         .then(json => {
             if (request !== gFbBacklogRequest) return;
-            list.replaceChildren(...json.items.map(item => {
-                let li = tpl.content.firstElementChild.cloneNode(true);
-                fillBacklogItem(li, item);
-                return li;
-            }));
+            gFbItems = json.items;
         })
         .catch(() => {})
         .finally(() => {
             if (request !== gFbBacklogRequest) return;
-            list.removeAttribute('aria-busy');
-            if (empty !== null) empty.hidden = false; // CSS hides it while the list has entries
+            if (gFbItems === null) gFbItems = []; // failed: say so ("Nothing here yet.") instead of loading forever
+            rows.removeAttribute('aria-busy');
+            renderFeedbackList();
         });
 }
 
-/* a click on a reaction: set it, or remove it when it is the own one already (NONE) */
+/* a click on a reaction: set it, or remove it when it is the own one already (NONE); the row stays where it is */
 function reactOnBacklogItem(btn) {
-    let li = btn.closest('li.fb-item');
-    if (li === null) return;
+    let tr = btn.closest('tr.fb-item');
+    if (tr === null) return;
     let reaction = btn.getAttribute('aria-pressed') === 'true' ? 'NONE' : btn.dataset.reaction;
-    let buttons = li.querySelectorAll('.fb-react-btn');
+    let buttons = tr.querySelectorAll('.fb-react-btn');
+    let hadFocus = document.activeElement === btn;
     buttons.forEach(b => { b.disabled = true; });
 
-    apiFetch('./api/vote_roadmap.php?item=' + encodeURIComponent(li.dataset.item)
+    apiFetch('./api/vote_roadmap.php?item=' + encodeURIComponent(tr.dataset.item)
         + '&reaction=' + encodeURIComponent(reaction), { method: 'POST' })
         .then(response => {
             if (response.ok) return response.json();
             return Promise.reject(response.status);
         })
-        .then(item => fillBacklogItem(li, item))
-        .catch(() => { buttons.forEach(b => { b.disabled = false; }); });
+        .then(item => {
+            let i = gFbItems === null ? -1 : gFbItems.findIndex(old => old.id === item.id);
+            if (i >= 0) gFbItems[i] = item;
+            fillBacklogItem(tr, item);
+        })
+        .catch(() => { buttons.forEach(b => { b.disabled = false; }); })
+        .finally(() => {
+            // disabled while waiting drops the focus: back on the button (keyboard users vote on)
+            if (hadFocus && tr.isConnected && feedbackFocusLost()) focusQuietly(btn);
+        });
 }
 
 function initFeedbackPanel() {
@@ -505,15 +581,19 @@ function initFeedbackPanel() {
         types.addEventListener('change', () => setFeedbackType(feedbackType()));
         setFeedbackType(feedbackType());
     }
-    let list = document.getElementById('fb_backlog');
-    if (list !== null) {
-        list.addEventListener('click', function (event) {
+    let txt = document.getElementById('feedback_txt');
+    if (txt !== null) {
+        txt.addEventListener('input', () => { document.getElementById('fb_sent').textContent = ''; });
+    }
+    let box = document.getElementById('feedback_box');
+    if (box !== null) {
+        box.addEventListener('click', function (event) {
             let btn = event.target.closest('.fb-react-btn');
             if (btn !== null && !btn.disabled) reactOnBacklogItem(btn);
+            let filter = event.target.closest('[data-filter]');
+            if (filter !== null) setFeedbackFilter(filter.dataset.filter);
         });
     }
-    let empty = document.getElementById('fb_backlog_empty');
-    if (empty !== null) empty.hidden = true; // until the first load
 }
 
 document.addEventListener('DOMContentLoaded', initFeedbackPanel);

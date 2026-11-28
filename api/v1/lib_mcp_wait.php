@@ -82,16 +82,17 @@ function mcp_send_wait(McpWait $wait): void
  */
 function mcp_wait_for_change(mysqli $link, array $p, array $actor): array
 {
+    $phase = mcp_wait_phase();
+    $now = microtime(true);
+    $checked = (int)floor($now * 1000); // before the view: a write during the computation wakes the wait at once
     // B-151 end session: the seat's session was ended (me end_session, like a closed tab) - stop, read nothing (a
-    // board read would mark the seat as connected again)
-    if (!empty($actor['ended'])) {
+    // board read would mark the seat as connected again). Checked again after $checked (B-159): an end_session
+    // between the check in mcp_actor() and $checked would otherwise wake nobody - its pull is older than $checked.
+    if (!empty($actor['ended']) || mcp_session_ended($link, $actor['uid'], $actor['team_id'])) {
         return ['structured' => ['changed' => false, 'ended' => true, 'version' => $p['since']],
                 'text' => 'Session ended (like a closed browser tab). Stop calling wait_for_change. Any other call of '
                     . 'this seat (e.g. show_board or get_board) reconnects it.'];
     }
-    $phase = mcp_wait_phase();
-    $now = microtime(true);
-    $checked = (int)floor($now * 1000); // before the view: a write during the computation wakes the wait at once
     $board = core_board_get($link, $actor, false);
     $version = mcp_board_version($board);
     if ($version !== $p['since']) {
@@ -305,6 +306,7 @@ function mcp_board_changes(?array $old, array $new, array $board): array
         }
         foreach ($state['o'] as $o) {
             if (!is_array($o) || !array_is_list($o) || count($o) < 2 || !is_scalar($o[0])) continue;
+            if ($anonymous && (string)$o[0] !== $me) continue; // B-163: observers are masked then, like the players
             $list[(string)$o[0]] = ['name' => $str($o[1]), 'role' => 'observer', 'played' => false, 'card' => null,
                                     'away' => false];
         }

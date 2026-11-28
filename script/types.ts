@@ -1,6 +1,6 @@
 export interface Player {
     name: string;
-    mkey: string;
+    mkey: string; // B-163: in anonymous mode after the reveal a card handle per round (10 digits, never a real mkey)
     display_card_key: string;
     original_card_key: string | null; // B-104: card of the reveal when changed afterwards; null otherwise and while covered
     player_type: string;
@@ -14,14 +14,15 @@ export interface Player {
 /* B-110: a connected observer (observers without connection are not delivered); the own observer row is included.
    B-154: also connected removed players (REMOVED), without own marking */
 export interface Observer {
-    name: string;
-    mkey: string;
+    name: string; // B-163: '******' for the others in anonymous mode after the reveal
+    mkey: string; // B-163: '' for the others in anonymous mode after the reveal (the own row keeps it)
     via_ai: boolean; // B-151: uses the board through an AI assistant (also in anonymous mode: observers have no card)
 }
 
 export interface myJsonType {
     name: string;
     mkey: string;
+    card_mkey: string; // B-163: mkey of the own card in players (its handle in anonymous mode after the reveal), '' = no card
     id: string;
     color_mode: string;
     hide_teaser: number; // B-57: 1 = feedback panel opened once (no red dot on the feedback menu)

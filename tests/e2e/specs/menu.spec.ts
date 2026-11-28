@@ -80,7 +80,7 @@ test('large screen: the side panel opens and closes by click and Escape, the foc
 
   // the close button
   await alice.locator('#feedback_btn').click();
-  await expect(alice.locator('#fb_tab_backlog')).toBeFocused();   // B-57: opens on the backlog tab
+  await expect(alice.locator('#feedback_txt')).toBeFocused();   // B-165: right into the text field
   await alice.locator('#menu_close').click();
   await expect(menu(alice)).not.toHaveAttribute('open');
   await expect(alice.locator('#feedback_btn')).toBeFocused();
@@ -96,14 +96,13 @@ test('a click on the header button of the open section closes it without a focus
 
   // real click (Chromium focuses the button on mousedown)
   await fbBtn.click();
-  await expect(alice.locator('#fb_tab_backlog')).toBeFocused();
+  await expect(alice.locator('#feedback_txt')).toBeFocused();
   await fbBtn.click();
   await expect(menu(alice)).not.toHaveAttribute('open');
   expect(await ring()).toBe(false);
 
   // like Safari: a click does not move the focus, it is still in the text field of the panel (typed into)
   await fbBtn.click();
-  await alice.locator('#fb_tab_send').click();
   await alice.locator('#feedback_txt').click();
   await expect(alice.locator('#feedback_txt')).toBeFocused();
   await alice.keyboard.type('half a thought');
@@ -113,9 +112,9 @@ test('a click on the header button of the open section closes it without a focus
 
   // keyboard: Enter on the button closes it, the focus goes back with a visible ring
   await fbBtn.click();
-  await expect(alice.locator('#fb_tab_backlog')).toBeFocused();
+  await expect(alice.locator('#feedback_txt')).toBeFocused();
   await alice.keyboard.press('Shift+Tab');
-  await expect(alice.locator('#fb_tab_backlog')).not.toBeFocused();
+  await expect(alice.locator('#feedback_txt')).not.toBeFocused();
   await fbBtn.focus();
   await alice.keyboard.press('Enter');
   await expect(menu(alice)).not.toHaveAttribute('open');
@@ -405,7 +404,7 @@ test('Invite and the QR overlay work as before, also with the panel open (B-51)'
 });
 
 // R3 review V10: the start page has no feedback menu any more; the same panel on the board
-test('feedback from the board panel: text sent URL-encoded, panel closes (B-51, B-54)', async ({ browser }) => {
+test('feedback from the board panel: text sent URL-encoded, panel stays open and confirms (B-51, B-54, B-165)', async ({ browser }) => {
   const page = await newPlayer(browser);
   const url = await createTeam(page, 'Menu Feedback');
   await joinAsPlayer(page, url, 'Alice');
@@ -413,21 +412,22 @@ test('feedback from the board panel: text sent URL-encoded, panel closes (B-51, 
 
   await fbBtn.click();
   await expect(page.locator('dialog#menu[open]')).toBeVisible();
-  await expect(page.locator('#fb_tab_backlog')).toBeFocused();   // B-57: opens on the backlog tab
+  await expect(page.locator('#feedback_txt')).toBeFocused();   // B-165: one page, the text field first
   await expect(page.locator('.feedback_star')).toHaveCount(0);
-  await page.locator('#fb_tab_send').click();
 
   const text = 'a & b=c #1 + 100% ?x';
   await page.locator('#feedback_txt').fill(text);
   const [request] = await Promise.all([
     page.waitForRequest(r => r.url().includes('/api/feedback.php')),
-    page.getByRole('button', { name: 'Send feedback' }).click(),
+    page.locator('#feedback_send').click(),
   ]);
   expect(new URL(request.url()).searchParams.get('text')).toBe(text);
   expect(new URL(request.url()).searchParams.get('stars')).toBe('0');
-  await expect(page.locator('dialog#menu')).not.toHaveAttribute('open');
-  await expect(fbBtn).toBeFocused();
+  await expect(page.locator('#fb_sent')).toHaveText('Thanks – sent! We read every message.');
+  await expect(page.locator('dialog#menu[open]')).toBeVisible();
   await expect(page.locator('#feedback_txt')).toHaveValue('');
+  await page.locator('#menu_close').click();
+  await expect(fbBtn).toBeFocused();
 
   // Escape closes it as well
   await fbBtn.click();

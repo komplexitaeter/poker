@@ -115,26 +115,53 @@ function core_round_new(mysqli $link, array $actor): void
  * B-110: only players; an observer, a removed person or an unknown mkey -> 404 player_not_found, nothing notified.
  * B-152: every registered person may remove others (also a removed one). B-151 self leave: the own mkey counts as
  * leaving by oneself (mark set), anybody else's clears the mark of that seat.
+ * B-159: anonymous mode after the reveal: only the own seat (others -> 404 player_not_found, like MCP board_player()),
+ * else a mkey remembered from before the reveal would tell its card when it disappears. One transaction, team row
+ * locked first (B-155), so the self-left mark cannot get lost against a parallel wait_for_change (seat_states_store()).
  */
 function core_member_remove(mysqli $link, array $actor, int $mkey): void
 {
     $t = (string)$actor['team_id'];
-    $sql = $link->prepare("update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
-                            where team_id = ? and mkey = ? and player_type = 'PLAYER'");
-    $sql->bind_param('si', $t, $mkey);
-    $sql->execute();
-    $removed = $sql->affected_rows > 0;
-    $sql->close();
-    if (!$removed) throw new ApiError(404, 'player_not_found');
-    // B-151 self leave: removing the own seat (trash can on the own card, remove_player with the own mkey) is a leave
-    $sql = $link->prepare("select id from pok_players_tbl where team_id = ? and mkey = ?");
-    $sql->bind_param('si', $t, $mkey);
-    $sql->execute();
-    $id = (string)($sql->get_result()->fetch_row()[0] ?? '');
-    $sql->close();
     $uid = (string)$actor['uid'];
-    seat_mark_self_left($link, $id, $t, $uid !== '' && $id === $uid);
-    notify_team($t);
+    db_transaction($link, function () use ($link, $t, $uid, $mkey): void {
+        $sql = $link->prepare("select anonymous_mode from pok_teams_tbl where id = ? for update");
+        $sql->bind_param('s', $t);
+        $sql->execute();
+        $team = $sql->get_result()->fetch_row();
+        $sql->close();
+        if ($team === null) throw new ApiError(404, 'player_not_found'); // team deleted in between
+
+        $sql = $link->prepare("select id from pok_players_tbl where team_id = ? and mkey = ? and player_type = 'PLAYER' for update");
+        $sql->bind_param('si', $t, $mkey);
+        $sql->execute();
+        $row = $sql->get_result()->fetch_row();
+        $sql->close();
+        if ($row === null) throw new ApiError(404, 'player_not_found');
+        $id = (string)$row[0];
+        $self = $uid !== '' && $id === $uid;
+
+        if ((int)$team[0] === 1 && !$self) {
+            // revealed = every player has a card (as getDao()); read under the lock on the team row
+            $sql = $link->prepare("select count(1), count(card_key) from pok_players_tbl where team_id = ? and player_type = 'PLAYER'");
+            $sql->bind_param('s', $t);
+            $sql->execute();
+            [$players, $cards] = $sql->get_result()->fetch_row();
+            $sql->close();
+            if ((int)$players > 0 && (int)$players === (int)$cards) throw new ApiError(404, 'player_not_found');
+        }
+
+        // B-163: anonymous mode after the reveal (only the own seat gets here then): the card stays until the next round
+        $sql = $link->prepare(keep_anon_card($link, $t, $id)
+            ? "update pok_players_tbl set player_type = 'REMOVED' where team_id = ? and mkey = ? and player_type = 'PLAYER'"
+            : "update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
+                where team_id = ? and mkey = ? and player_type = 'PLAYER'");
+        $sql->bind_param('si', $t, $mkey);
+        $sql->execute();
+        $sql->close();
+        // B-151 self leave: removing the own seat (trash can on the own card, remove_player with the own mkey) is a leave
+        seat_mark_self_left($link, $id, $t, $self);
+    });
+    notify_team($t); // after the commit, never on error
 }
 
 /*
@@ -173,6 +200,8 @@ function core_member_update(mysqli $link, array $actor, ?string $name, ?string $
                                         where id = ? and team_id = ?");
                 $sql->bind_param('ssisss', $name, $player_type, $all_players_ready, $late_card, $id, $t);
             } else {
+                // B-163: a player becoming an observer in anonymous mode after the reveal: his card stays on the table
+                if ($me['player_type'] === 'PLAYER') keep_anon_card($link, $t, $id);
                 $sql = $link->prepare("update pok_players_tbl set name = ?, player_type = ? where id = ? and team_id = ?");
                 $sql->bind_param('ssss', $name, $player_type, $id, $t);
             }
@@ -198,8 +227,11 @@ function core_member_leave(mysqli $link, array $actor): void
     $id = (string)$actor['uid'];
     db_transaction($link, function () use ($link, $t, $id): void {
         member_lock($link, $t, $id);
-        $sql = $link->prepare("update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
-                                where id = ? and team_id = ?");
+        // B-163: anonymous mode after the reveal: the card stays on the table until the next round
+        $sql = $link->prepare(keep_anon_card($link, $t, $id)
+            ? "update pok_players_tbl set player_type = 'REMOVED' where id = ? and team_id = ?"
+            : "update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
+                where id = ? and team_id = ?");
         $sql->bind_param('ss', $id, $t);
         $sql->execute();
         $sql->close();

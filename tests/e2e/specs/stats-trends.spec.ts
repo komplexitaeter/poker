@@ -106,11 +106,22 @@ test('milestones: no list under the charts, label in the tooltips, switch hides 
   await expect(page.locator('.milestone-label, .trend-ms')).toHaveCount(0);
   await expect(main).not.toContainText('Rollout 1 (2026-10-28)', { useInnerText: true });
 
-  // tooltips: bar column of the week and the wide hit area of the SVG line name the milestone
+  // tooltips: bar column of the week and the wide hit area of the SVG line name the milestones, one line each, date first
+  const msLines = /\nMilestones?:(\n· 20\d\d-\d\d-\d\d \S[^\n]*)+$/;
   const msBar = page.locator('#trend_rounds .day.milestone').first();
-  await expect(msBar).toHaveAttribute('title', /· Milestones?: .*\(20\d\d-\d\d-\d\d\)/);
+  await expect(msBar).toHaveAttribute('data-tip', msLines);
+  await expect(msBar).not.toHaveAttribute('title', /./);
   const hit = page.locator('#trend_peaks line.ms-hit title').first();
-  await expect(hit).toHaveText(/Milestones?: .*\(20\d\d-\d\d-\d\d\)/);
+  expect(await hit.textContent()).toMatch(msLines);
+  // the custom tooltip shows the bar text at once, with real line breaks
+  const tip = page.locator('#chart_tip');
+  await msBar.hover();
+  await expect(tip).toBeVisible();
+  expect(await tip.evaluate(e => getComputedStyle(e).whiteSpace)).toBe('pre-line');
+  expect(await tip.textContent()).toMatch(msLines);
+  expect((await tip.boundingBox())!.height).toBeGreaterThan(30); // more than one line
+  await page.mouse.move(5, 5);
+  await expect(tip).toBeHidden();
   // a vertical SVG line has no width, so Playwright's visibility does not apply: the computed display
   const shown = (loc: import('@playwright/test').Locator) => loc.evaluate(e => getComputedStyle(e).display !== 'none');
   const line = page.locator('#trend_peaks line.ms').first();
