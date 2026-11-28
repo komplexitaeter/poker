@@ -49,7 +49,7 @@
     {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.6", "date": "2026-11-18", "items": [
-    {"title": "The board loads faster",
+    {"title": "Faster page load",
      "text": "The board now loads card sets and symbols in parallel in the background and appears in one go, fully drawn – no more half-built board, no browser freeze on slow connections."}
   ]},
   {"number": "2026.5", "date": "2026-11-16", "items": [
