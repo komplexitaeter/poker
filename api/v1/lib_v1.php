@@ -14,6 +14,9 @@ require_once __DIR__ . '/../lib_api_keys.php';
 require_once __DIR__ . '/../lib_core_team.php';
 require_once __DIR__ . '/../lib_core_keys.php';
 require_once __DIR__ . '/../lib_core_items.php';
+require_once __DIR__ . '/../lib_core_board.php';
+require_once __DIR__ . '/../lib_core_member.php';
+require_once __DIR__ . '/lib_v1_tools.php'; // B-151 PR F2: card sets, timer, feedback
 
 const V1_PREFIX = '/api/v1';
 /* info.version of openapi.json: 1.0.0 + date of the last change of routes.php (maintained by hand) */
@@ -27,6 +30,7 @@ const V1_ERRORS = [
     'invalid_json' => [400, 'The body is not a JSON object.'],
     'missing_param' => [400, 'A required parameter is missing.'],
     'invalid_param' => [400, 'A parameter has the wrong type, length, format or value (lists and objects are never allowed).'],
+    'invalid_card' => [400, 'The card is not in the card set of the team.'],
     'unknown_param' => [400, 'A field in the query or the body is not a parameter of the operation.'],
     'unauthorized' => [401, 'Neither an API key nor user and team were sent.'],
     'invalid_key' => [401, 'The API key has a wrong format, is unknown or was deleted.'],
@@ -37,8 +41,15 @@ const V1_ERRORS = [
     'team_not_found' => [404, 'There is no team with this id.'],
     'item_not_found' => [404, 'The team has no item with this key.'],
     'key_not_found' => [404, 'You have no API key with this id.'],
+    'set_not_found' => [404, 'The team has no custom set with this id.'],
+    'entry_not_found' => [404, 'There is no roadmap entry with this id.'],
+    'player_not_found' => [404, 'There is no player with this mkey or name at the table.'],
     'method_not_allowed' => [405, 'The path exists, the method does not (see the Allow header).'],
     'item_closed' => [409, 'The item is done: reopen it first.'],
+    'item_not_open' => [409, 'The item is done: only open items can be moved.'],
+    'item_not_active' => [409, 'The item is not the active one (any more).'],
+    'no_active_item' => [409, 'There is no open item.'],
+    'no_single_result' => [409, 'The card set has no single result per item (perspectives).'],
     'limit_reached' => [409, 'A limit is reached (open items, items, API keys).'],
     'key_taken' => [409, 'The item key is already used in the team.'],
     'conflict' => [409, 'A simultaneous change got in the way; trying again helps.'],
@@ -355,9 +366,26 @@ function v1_member_type(mysqli $link, string $t, string $uid): ?string
  */
 function v1_read_body(): array
 {
+    $raw = v1_read_raw_body();
+    if ($raw === '') return [];
+    try {
+        $data = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+    } catch (JsonException $e) {
+        throw new ApiError(400, 'invalid_json', null, 'The body is not valid JSON (UTF-8).');
+    }
+    if (!is_array($data) || !str_starts_with(ltrim($raw, " \t\r\n"), '{')) {
+        throw new ApiError(400, 'invalid_json', null, 'The body must be a JSON object.');
+    }
+    return $data;
+}
+
+/* the body as sent ('' without one), after the checks of Content-Type (415) and size (413) of v1_read_body(); also
+   used by the MCP endpoint (B-151), which decodes JSON-RPC itself */
+function v1_read_raw_body(): string
+{
     $length = (string)($_SERVER['CONTENT_LENGTH'] ?? '');
     $chunked = isset($_SERVER['HTTP_TRANSFER_ENCODING']);
-    if (($length === '' || $length === '0') && !$chunked) return [];
+    if (($length === '' || $length === '0') && !$chunked) return '';
 
     $type = (string)($_SERVER['CONTENT_TYPE'] ?? '');
     if (!preg_match('~^application/json[ \t]*(;[ \t]*charset="?utf-8"?[ \t]*)?$~Di', $type)) {
@@ -369,16 +397,7 @@ function v1_read_body(): array
     $raw = file_get_contents('php://input', false, null, 0, V1_BODY_MAX + 1);
     if ($raw === false) $raw = '';
     if (strlen($raw) > V1_BODY_MAX) throw new ApiError(413, 'too_large', null, 'The body must not be larger than 64 KB.');
-    if ($raw === '') return [];
-    try {
-        $data = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
-    } catch (JsonException $e) {
-        throw new ApiError(400, 'invalid_json', null, 'The body is not valid JSON (UTF-8).');
-    }
-    if (!is_array($data) || !str_starts_with(ltrim($raw, " \t\r\n"), '{')) {
-        throw new ApiError(400, 'invalid_json', null, 'The body must be a JSON object.');
-    }
-    return $data;
+    return $raw;
 }
 
 /*
@@ -433,6 +452,9 @@ function v1_check_value(string $name, array $def, mixed $value, bool $typed): mi
         throw $fail('must not be null');
     }
     $type = $def['type'];
+    // B-151: an id that is text because of a word like "current" (me_key_delete) also takes a JSON number (agents
+    // send ids as numbers); it is checked as its decimal text
+    if ($typed && is_int($value) && $type === 'string' && ($def['accept_integer'] ?? false)) $value = (string)$value;
     if (!$typed && is_string($value) && $type !== 'string') {
         if ($type === 'integer' && preg_match('/^\d{1,6}$/D', $value)) $value = (int)$value;
         elseif ($type === 'boolean' && ($value === 'true' || $value === 'false')) $value = $value === 'true';
@@ -455,6 +477,15 @@ function v1_check_value(string $name, array $def, mixed $value, bool $typed): mi
         if (isset($def['maximum']) && $value > $def['maximum']) throw $fail('at most ' . $def['maximum']);
     } elseif ($type === 'boolean') {
         if (!is_bool($value)) throw $fail('must be true or false');
+    } elseif ($type === 'array') {
+        // B-151: a list of objects (card_sets set_cards) only in a JSON body or as MCP argument; the objects are
+        // checked by the core function
+        if (!$typed || !is_array($value) || !array_is_list($value)) throw $fail('must be a list');
+        if (isset($def['max_items']) && count($value) > $def['max_items']) throw $fail('at most ' . $def['max_items'] . ' entries');
+        foreach ($value as $i => $entry) {
+            if (!is_array($entry) || ($entry !== [] && array_is_list($entry))) throw $fail('entry ' . $i . ' must be an object');
+        }
+        return $value;
     }
     if (isset($def['enum']) && !in_array($value, $def['enum'], true)) throw $fail('one of ' . implode(', ', $def['enum']));
     return $value;
@@ -494,6 +525,115 @@ function v1_key_delete_current(mysqli $link, array $actor, array $p): ?array
     return null;
 }
 
+/* GET /board (B-151, MCP get_board) */
+function v1_board_get(mysqli $link, array $actor, array $p): array
+{
+    return core_board_get($link, $actor, $p['include_items']);
+}
+
+/*
+ * B-151 (MCP PR D): own seat and round, public: false for now. Every write answers with what it did (message), the
+ * actor ('you') and the board as the actor sees it afterwards, so the agent needs no extra read.
+ */
+function v1_seat_answer(mysqli $link, array $actor, string $message): array
+{
+    $board = core_board_get($link, $actor, false);
+    return ['message' => $message, 'you' => $board['you'], 'board' => $board];
+}
+
+/* PUT /me/card: the card as shown on the board ("5", "XL", "?") or its key */
+function v1_card_play(mysqli $link, array $actor, array $p): array
+{
+    $key = board_card_key(core_board_get($link, $actor, false), $p['card']);
+    core_card_set($link, $actor, $key);
+    $answer = v1_seat_answer($link, $actor, '');
+    $answer['message'] = 'You played "' . $answer['you']['card'] . '".';
+    return $answer;
+}
+
+/* DELETE /me/card */
+function v1_card_withdraw(mysqli $link, array $actor, array $p): array
+{
+    core_card_set($link, $actor, null);
+    return v1_seat_answer($link, $actor, 'You took your card back.');
+}
+
+/* POST /round: new round for the whole team */
+function v1_round_new(mysqli $link, array $actor, array $p): array
+{
+    core_round_new($link, $actor);
+    return v1_seat_answer($link, $actor, 'New round: all cards are taken back.');
+}
+
+/* POST /members/{player}/remove: player = mkey or exact name of a player on the board */
+function v1_member_remove(mysqli $link, array $actor, array $p): array
+{
+    [$mkey, $name] = board_player(core_board_get($link, $actor, false), $p['player']);
+    core_member_remove($link, $actor, $mkey);
+    return v1_seat_answer($link, $actor, ($name === null ? 'The player' : '"' . $name . '"') . ' was taken off the table.');
+}
+
+/* PUT /me/name */
+function v1_me_rename(mysqli $link, array $actor, array $p): array
+{
+    core_member_update($link, $actor, $p['name'], null);
+    return v1_seat_answer($link, $actor, 'Your name at the table is now "' . $p['name'] . '".');
+}
+
+/* PUT /me/role: player or observer (also coming back after being removed) */
+function v1_me_role_set(mysqli $link, array $actor, array $p): array
+{
+    core_member_update($link, $actor, null, api_player_type($p['role']));
+    return v1_seat_answer($link, $actor, 'You are now ' . ($p['role'] === 'player' ? 'a player.' : 'an observer.'));
+}
+
+/* POST /me/leave: get up from this table (REMOVED), the seat stays */
+function v1_me_leave(mysqli $link, array $actor, array $p): array
+{
+    core_member_leave($link, $actor);
+    return v1_seat_answer($link, $actor, 'You left the table: you no longer play, the others see you as observer. You '
+        . 'can come back with set_role (player or observer).' . ($actor['via'] === 'key'
+            ? ' The API key stands for the user\'s browser seat: that seat left the table too.' : ''));
+}
+
+/* POST /me/end-session (B-151): like closing the browser tab; the board of the answer is read before (getDao() would
+   mark the seat as connected again) */
+function v1_me_end_session(mysqli $link, array $actor, array $p): array
+{
+    $answer = v1_seat_answer($link, $actor, '');
+    $answer['message'] = 'Session ended, like closing the browser tab: you are no longer connected ('
+        . ($answer['you']['role'] === 'player' ? 'the others see you as away' : 'you drop out of the observers') . ') and '
+        . 'the live board stops. Your seat, role and card stay; nothing was deleted. Do NOT call any tool now (no '
+        . 'show_board, no wait_for_change): any further call of this seat reconnects it. Tell the user in one line.';
+    core_member_end_session($link, $actor);
+    $answer['ended'] = true;
+    return $answer;
+}
+
+/* DELETE /me/keys/{key_id}: one of the own keys by id, or "current" = the key of this call */
+function v1_me_key_delete(mysqli $link, array $actor, array $p): array
+{
+    if ($p['key_id'] === 'current') {
+        if ($actor['via'] !== 'key') {
+            throw new ApiError(400, 'invalid_param', 'key_id', 'key_id: "current" only works when you act with an '
+                . 'api_key; pass the id from api_keys.');
+        }
+        core_key_delete_current($link, $actor);
+        return ['message' => 'The API key you were using is deleted: your access ends now. To come back the user '
+            . 'needs a new key or the invite link.'];
+    }
+    core_key_delete($link, $actor, (int)$p['key_id']);
+    return ['message' => 'API key ' . $p['key_id'] . ' is deleted.'] + core_key_list($link, $actor);
+}
+
+/* DELETE /me: "Delete my data" - not with an API key (403 browser_only, core_user_delete()) */
+function v1_me_delete(mysqli $link, array $actor, array $p): array
+{
+    $teams = core_user_delete($link, $actor);
+    return ['message' => 'All data of the user is deleted (' . $teams . ' team' . ($teams === 1 ? '' : 's')
+        . '). This seat is gone; to take part again, join the board anew.'];
+}
+
 function v1_item_list(mysqli $link, array $actor, array $p): array
 {
     return core_item_list($link, $actor, $p['status'], $p['limit'], $p['offset']);
@@ -523,6 +663,227 @@ function v1_item_delete(mysqli $link, array $actor, array $p): ?array
     return null;
 }
 
+/* ---------- B-151 (MCP PR E): items and team settings, public: false for now (docs/mcp-concept.md 5.3) ---------- */
+
+const V1_MATURITY = ['new' => 0, 'rough' => 1, 'shaping' => 2, 'ready' => 3, 'none' => null];
+
+/*
+ * Answer of an item or settings write: what was done (message), the item (if it still exists) and the board as the
+ * actor sees it afterwards, so the agent needs no extra read.
+ */
+function v1_board_answer(mysqli $link, array $actor, string $message, ?array $item = null): array
+{
+    $answer = ['message' => $message];
+    if ($item !== null) $answer['item'] = $item;
+    $answer['board'] = core_board_get($link, $actor, false);
+    return $answer;
+}
+
+/* the Item (API) of id $id after a write (one consistent read) */
+function v1_item_by_id(mysqli $link, array $actor, int $id): ?array
+{
+    return item_api_by_id($link, (string)$actor['team_id'], $id);
+}
+
+/* "TIX-004" or, for an old item without key, its heading in quotes */
+function v1_item_name(?array $item): string
+{
+    if ($item === null) return 'The item';
+    return ($item['key'] !== '' ? 'Item ' . $item['key'] : 'Item') . ' "' . v1_one_line($item['heading']) . '"';
+}
+
+/* where an open item is now, and which item is active */
+function v1_item_place(?array $item, array $board): string
+{
+    if ($item === null || $item['position'] === null) return '';
+    return $item['position'] === 1 ? ' It is the active item now.' : ' It is at position ' . $item['position'] . '.';
+}
+
+function v1_active_text(array $board): string
+{
+    $active = $board['active_item'];
+    if ($active === null) return ' No open item left.';
+    return ' Active now: ' . ($active['key'] !== null && $active['key'] !== '' ? $active['key'] . ' ' : '')
+        . '"' . v1_one_line($active['heading']) . '".';
+}
+
+/* a text written by somebody else on one line in a message (a line break must not start a line of its own) */
+function v1_one_line(string $text): string
+{
+    return str_replace(["\r\n", "\r", "\n"], ' ', $text);
+}
+
+/*
+ * The card key of a result as the agent names it (items next, set_result): a key or the value as shown - among the
+ * votes of the item (also cards without a value), the revealed round on the board and the cards of the deck. Only
+ * what the board shows (revealed votes), never a hidden card. Unknown -> 400 invalid_card listing the candidates; the
+ * core function checks the key again under the lock (result_card_allowed()).
+ */
+function v1_result_card_key(array $board, ?array $item, string $card): string
+{
+    $cards = [];
+    foreach ($item['result']['votes'] ?? [] as $vote) $cards[] = ['key' => $vote['card_key'], 'value' => $vote['value']];
+    if ($board['round']['state'] === 'revealed' && $item !== null && $item['active']) {
+        foreach ($board['round']['result']['distribution'] as $vote) {
+            $cards[] = ['key' => $vote['card_key'], 'value' => $vote['card']];
+        }
+    }
+    foreach ($board['deck']['cards'] ?? [] as $c) $cards[] = ['key' => $c['key'], 'value' => $c['value']];
+    foreach ($cards as $c) if ($c['key'] === $card) return $c['key'];
+    foreach ($cards as $c) if ((string)$c['value'] === $card) return $c['key'];
+    foreach ($cards as $c) if (mb_strtolower((string)$c['value']) === mb_strtolower($card)) return $c['key'];
+    $values = array_values(array_unique(array_map(fn($c) => '"' . $c['value'] . '"', $cards)));
+    throw new ApiError(400, 'invalid_card', 'card', 'card: neither a played card of this item nor a card of the card '
+        . 'set. Played or in the set: ' . implode(', ', $values));
+}
+
+/* the Item (API) by key, null if it does not exist */
+function v1_item_or_null(mysqli $link, array $actor, string $key): ?array
+{
+    try {
+        return core_item_get($link, $actor, $key);
+    } catch (ApiError $e) {
+        if ($e->error === 'item_not_found') return null;
+        throw $e;
+    }
+}
+
+/* POST /board/items */
+function v1_item_create(mysqli $link, array $actor, array $p): array
+{
+    $fields = ['heading' => $p['heading'], 'description' => $p['description'] ?? null, 'key' => $p['key'] ?? null];
+    if (array_key_exists('maturity', $p)) $fields['maturity'] = V1_MATURITY[$p['maturity']];
+    if (isset($p['position'])) $fields['index'] = $p['position'] - 1;
+    $result = core_item_create($link, $actor, $fields);
+    $item = v1_item_by_id($link, $actor, $result['item_id']);
+    $board = core_board_get($link, $actor, false);
+    return ['message' => v1_item_name($item) . ' added.' . v1_item_place($item, $board), 'item' => $item,
+            'board' => $board];
+}
+
+/* PATCH /board/items/{key}: only the given fields change */
+function v1_item_patch(mysqli $link, array $actor, array $p): array
+{
+    $fields = array_intersect_key($p, ['heading' => 1, 'description' => 1]);
+    if (array_key_exists('new_key', $p)) $fields['key'] = $p['new_key'];
+    if (array_key_exists('maturity', $p)) $fields['maturity'] = V1_MATURITY[$p['maturity']];
+    if ($fields === []) {
+        throw new ApiError(400, 'missing_param', 'heading', 'edit: pass at least one of heading, description, '
+            . 'new_key, maturity');
+    }
+    $result = core_item_patch($link, $actor, $p['key'], $fields);
+    return v1_board_answer($link, $actor, v1_item_name($item = v1_item_by_id($link, $actor, $result['item_id']))
+        . ' changed.', $item);
+}
+
+/* PUT /board/items/{key}/position */
+function v1_item_move(mysqli $link, array $actor, array $p): array
+{
+    $result = core_item_move($link, $actor, $p['key'], $p['position'] - 1);
+    $item = v1_item_by_id($link, $actor, $result['item_id']);
+    $board = core_board_get($link, $actor, false);
+    return ['message' => v1_item_name($item) . ' moved.' . v1_item_place($item, $board), 'item' => $item,
+            'board' => $board];
+}
+
+/* POST /board/items/active/leave: "Next item" with mode close | close_empty | later */
+function v1_item_leave(mysqli $link, array $actor, array $p): array
+{
+    $card = null;
+    if (isset($p['card']) && $p['card'] !== '') {
+        $board = core_board_get($link, $actor, false);
+        $key = $p['key'] ?? $board['active_item']['key'] ?? null;
+        $card = v1_result_card_key($board, $key === null ? null : v1_item_or_null($link, $actor, $key), $p['card']);
+    }
+    $result = core_item_next($link, $actor, $p['key'] ?? null, $p['mode'], $card);
+    $item = v1_item_by_id($link, $actor, $result['item_id']);
+    $board = core_board_get($link, $actor, false);
+    $value = $item['result']['value'] ?? null;
+    $message = match ($p['mode']) {
+        'later' => v1_item_name($item) . ' comes back later (end of the open list).',
+        'close_empty' => v1_item_name($item) . ' is done without a value.',
+        default => v1_item_name($item) . ' is done' . ($value === null ? ' without a single value.' : ' with "' . $value . '".'),
+    };
+    return ['message' => $message . ' New round.' . v1_active_text($board), 'item' => $item, 'board' => $board];
+}
+
+/* PUT /board/items/{key}/result: card value or key, missing or "" = automatic */
+function v1_item_result_set(mysqli $link, array $actor, array $p): array
+{
+    $card = null;
+    if (isset($p['card']) && $p['card'] !== '') {
+        $card = v1_result_card_key(core_board_get($link, $actor, false), v1_item_or_null($link, $actor, $p['key']),
+                                   $p['card']);
+    }
+    $result = core_item_result_set($link, $actor, $p['key'], $card);
+    $item = v1_item_by_id($link, $actor, $result['item_id']);
+    $value = $item['result']['value'] ?? null;
+    $message = 'Result of ' . v1_item_name($item) . ': ' . ($card !== null ? '"' . $value . '" (chosen).'
+        : ($value === null ? 'automatic (no value yet).' : 'automatic ("' . $value . '").'));
+    return v1_board_answer($link, $actor, $message, $item);
+}
+
+/* MCP items reopen (route item_reopen): the item, a message and the board */
+function v1_mcp_item_reopen(mysqli $link, array $actor, array $p): array
+{
+    $result = core_item_reopen($link, $actor, $p['key'], 'end', true);
+    $message = v1_item_name($result['item']) . ($result['reopened'] ? ' is open again.' : ' is open already.');
+    $board = core_board_get($link, $actor, false);
+    return ['message' => $message . v1_item_place($result['item'], $board), 'item' => $result['item'],
+            'board' => $board];
+}
+
+/* MCP items delete (route item_delete): a message and the board */
+function v1_mcp_item_delete(mysqli $link, array $actor, array $p): array
+{
+    $item = core_item_get($link, $actor, $p['key']);
+    core_item_delete($link, $actor, $p['key']);
+    return v1_board_answer($link, $actor, v1_item_name($item) . ' deleted.');
+}
+
+/* PUT /board/team-name */
+function v1_team_rename(mysqli $link, array $actor, array $p): array
+{
+    core_team_settings_patch($link, $actor, ['name' => $p['name']]);
+    return v1_board_answer($link, $actor, 'The team is now called "' . $p['name'] . '".');
+}
+
+/* MCP board_settings set_note (route team_note_set): a message and the board */
+function v1_mcp_team_note_set(mysqli $link, array $actor, array $p): array
+{
+    core_team_note_set($link, $actor, $p['note']);
+    return v1_board_answer($link, $actor, $p['note'] === '' ? 'The note is cleared.' : 'The note is set.');
+}
+
+/* PATCH /board/settings: the given settings */
+function v1_team_patch(mysqli $link, array $actor, array $p): array
+{
+    $fields = [];
+    if (isset($p['anonymous'])) $fields['anonymous'] = $p['anonymous'];
+    if (isset($p['results_order'])) $fields['results_order'] = $p['results_order'] === 'card' ? 'SEQUENCE' : 'NAME';
+    if (isset($p['show_average'])) $fields['show_avg'] = $p['show_average'];
+    if (isset($p['show_tips'])) $fields['show_tips'] = $p['show_tips'];
+    if (isset($p['show_card_changes'])) $fields['show_card_changes'] = $p['show_card_changes'];
+    if ($fields === []) {
+        throw new ApiError(400, 'missing_param', 'anonymous', 'set: pass at least one of anonymous, results_order, '
+            . 'show_average, show_tips, show_card_changes');
+    }
+    core_team_settings_patch($link, $actor, $fields);
+    $board = core_board_get($link, $actor, false);
+    $onoff = fn(bool $on): string => $on ? 'on' : 'off';
+    $parts = [];
+    if (isset($p['anonymous'])) {
+        $parts[] = 'anonymous results ' . $onoff($p['anonymous'])
+            . ($board['settings']['anonymous'] !== $p['anonymous'] ? ' (from the next round: cards are down)' : '');
+    }
+    if (isset($p['results_order'])) $parts[] = 'results ordered by ' . $p['results_order'];
+    if (isset($p['show_average'])) $parts[] = 'average ' . $onoff($p['show_average']);
+    if (isset($p['show_tips'])) $parts[] = 'tips ' . $onoff($p['show_tips']);
+    if (isset($p['show_card_changes'])) $parts[] = '"See changed cards" ' . $onoff($p['show_card_changes']);
+    return ['message' => 'Settings: ' . implode(', ', $parts) . '. Everybody at the table sees it now.',
+            'board' => $board];
+}
+
 /* ---------- openapi.json (concept section 10) ---------- */
 
 /* a schema of '$schemas' as OpenAPI: string -> $ref ('Item[]' -> array of $ref), objects closed (additionalProperties false) */
@@ -543,9 +904,10 @@ function v1_schema(mixed $schema): array
 /* schema of one parameter (JSON Schema names) */
 function v1_param_schema(array $def): array
 {
-    $schema = ['type' => $def['type']];
+    $schema = ['type' => $def['type']]; // accept_integer stays "string" here: type arrays trouble some clients
     $map = ['max_length' => 'maxLength', 'min_length' => 'minLength', 'pattern' => 'pattern', 'enum' => 'enum',
-            'minimum' => 'minimum', 'maximum' => 'maximum', 'default' => 'default', 'nullable' => 'nullable'];
+            'minimum' => 'minimum', 'maximum' => 'maximum', 'default' => 'default', 'nullable' => 'nullable',
+            'max_items' => 'maxItems', 'items' => 'items']; // items: a JSON Schema of the entries (type array, B-151)
     foreach ($map as $from => $to) {
         if (array_key_exists($from, $def)) $schema[$to] = $def[$from];
     }
@@ -834,6 +1196,8 @@ function v1_doc_page(array $routes): string
     $o[] = '<p>Bodies are JSON (<code>Content-Type: application/json</code>, at most 64 KB). Unknown fields are refused.</p>';
     $o[] = '<p>Try it interactively: import <a href="' . v1_h($spec) . '">openapi.json</a> (OpenAPI 3.0) into Postman '
         . 'or the Swagger Editor.</p>';
+    $o[] = '<p>Want to join a board from a chat with Claude, ChatGPT &amp; co.? Use the '
+        . '<a href="/mcp">AI connector</a> instead (not versioned).</p>';
     $o[] = '</section>';
     $o[] = '</div>';
 

@@ -495,7 +495,9 @@ auch wenn jemand anders inzwischen anlegt); Prüfung im Browser nach `ITEM_KEY_P
 der Vorschlag kommt nur vom Server). Export-Spalte „ID“ heißt jetzt „Key“. E2E in `topic-items-ui.spec.ts`.
 
 ### B-151 MCP: die komplette App für KI-Clients (Schritt B)
-Status: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
+Status: umgesetzt auf `release` (2026-11-26/27, PRs A–G: #293, #295–#299, poker-msg#14, #15), Konzept
+`docs/mcp-concept.md` (gilt vor dem Text unten: kein Schlüssel nötig, Invite-Link = Zugang, Warten über poker-msg per
+`X-Accel-Redirect`). Live erst nach Rollout von poker-msg und den nginx-Blöcken. Nacharbeiten: B-159. Bisher: neu, Richtung entschieden (Andreas, 2026-11-26). Nach B-150. Eine KI bzw. ein „freier Agent“ kann vollständig
 mitmachen: Team anlegen/ändern, Board-Setup, Sets wählen und eigene Sets verwalten, Karten legen, Runden- und
 Item-Steuerung, Items samt Ergebnissen, Timer, Feedback, Reaktionen.
 Grundsätze (Andreas):
@@ -621,6 +623,29 @@ Texte mit Markdown außerhalb der Teilmenge sehen danach etwas anders aus (kaum 
 Status: refined (Andreas, 2026-11-24). Die Vendor-Datei (65 KB) lädt heute bei jedem Board-Start, gebraucht wird sie
 nur für den QR-Code im Invite. Erst beim Öffnen von Invite nachladen (Skript-Tag dynamisch einfügen, einmalig;
 währenddessen ruhiger Platzhalter, bei Fehler Hinweis statt QR-Code). Kein Nachbau der QR-Kodierung.
+
+### B-159 MCP: Hinweise aus den Reviews (nicht priorisiert)
+Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blockierend; zur Entscheidung durch Andreas
+(„keine Limits auf Verdacht“ beachten):
+- Nudge-Ratenlimit: alle anonymen MCP-Nudges eines Teams teilen sich ein Limit (poker-msg, Schlüssel `<hash>:0`);
+  Alternative: Limit je echter mkey, ausgeliefert weiter mit `from = 0`.
+- Obergrenze gleichzeitig wartender `wait_for_change` je Team (heute nur global 2000 in poker-msg).
+- Feedback (`feedback.php`, MCP `feedback send`): kein Ratenlimit; Roadmap-Stimmen: neue UID = neue Stimme.
+- Reaktionen im anonymen Modus: Agent kann nach dem Aufdecken keine Karte anvisieren (strenger als das Web);
+  ggf. Positions-Handle je Runde statt mkey.
+- poker-msg loggt die Team-ID im Klartext (`New notification: pull for team …`); besser Hash oder Präfix.
+- `delete.php?mkey=` im anonymen Modus nach dem Aufdecken (gemerkte mkey verrät beim Entfernen die Karte); im MCP
+  bereits ausgeschlossen.
+- Kontingent per WebSocket: ein Browser kann mit beliebigem `from` das Kontingent anderer verbrauchen (bekannt, B-139).
+- `getDao()`: gelöschte eigene Karten (Custom-Set) sind vor dem Aufdecken sichtbar.
+- `away_sig` baut die Zuordnung im anonymen Modus neu auf (prüfen, ob daraus Rückschlüsse möglich sind).
+- `mcp_states`: Größe der Spalte bei 8 Ständen je Platz beobachten.
+- `get_uid()`: Fallback auf die UID in der URL entfernen (→ B-152 BE-2, braucht Access-Log-Prüfung auf `?id=`).
+- `core_member_remove` ohne `db_transaction()`: die Self-left-Markierung kann bei parallelem `wait_for_change` verloren
+  gehen (nur Funktion, → B-155); `seat_states_store()` bei `json_encode` = false abbrechen.
+- Test mit sechs Agenten (Andreas, 2026-11-27): Ändert sich die Notiz kurz nach „New round“, spielen Agenten noch zur
+  alten Frage (alle haben dann korrigiert). Tool-Texte: nach neuer Runde auf Notiz-/Item-Änderung achten; für Fragen
+  besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
 ### B-155 Transaktionen und Sperren systematisch
 Status: refined (Andreas, 2026-11-26). Anlass: Deadlock in der CI (Rollout 8, #279): `insert … select max(sort_order)`
@@ -753,6 +778,20 @@ Adresse beschränken und auf Leserechte prüfen. MySQL lauscht bewusst auf `0.0.
 Erweitert (Andreas, 2026-11-16): Brauchen wir Grafana überhaupt? Die 3–4 Charts dort ließen sich in `stats.php`
 integrieren (Daten liegen in den `_stats`-Tabellen). Dann könnte MySQL ganz auf `127.0.0.1` und der Firewall-Teil
 entfiele. Erst die Charts sichten, dann entscheiden.
+**Gesichtet (Kai, 2026-11-28, Dashboard-Export von Andreas):** vier Panels, alle Zeitreihen, Standard „letzte 7 Tage“,
+Zeitraum frei wählbar (Historie seit 2022):
+1. *Daily Teams* – je Tag `EXPLORING`/`RECURRING` gestapelt (`pok_daily_teams_stats`). In `stats.php` fehlt das.
+2. *New Rounds* – `NEW_ROUND` je Werktag (`pok_roundstats_tbl`). `stats.php` hat „Rounds per day“, aber nur 28 Tage.
+3. *Active Use* – `active_players`/`active_teams` im Verlauf, 4 Wochen (`pok_active_use_stats_tbl`). Fehlt (heute nur
+   „Active clients today“).
+4. *Peak Usage* – je Tag Maximum von `last_day/hour/half_hour/ten_minutes/minute`, log. Achse (`pok_active_user_stats`).
+   Fehlt (heute nur der Tagesverlauf von heute).
+Lücke gegenüber `stats.php` ist also vor allem der **lange Zeitraum** (Wochen bis Jahre, Monatsansicht), nicht die
+Daten. Vorschlag: neuer Tab „Trends“ in `stats.php` mit den vier Charts, Zeitraum 4 Wochen / 6 Monate / alles (bei
+langen Zeiträumen je Woche zusammengefasst), Meilenstein-Linien wie in den bestehenden Charts. Danach: `grafana_usr`
+löschen, MySQL auf `127.0.0.1` (Rücksprache CLAUDE.md), Firewall-Regeln für 3306 entfernen.
+**Server (Andreas, 2026-11-28):** SSH nur mit Schlüssel, fail2ban (`sshd`) aktiv. Übergangsweise ufw mit
+Grafana-Cloud-IPs für 3306 (einmaliger Abgleich, kein Cron), 33060 zu.
 
 ### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
 Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). **Teams (Andreas, 2026-11-26):** ein nächtlicher Job löscht Teams nach

@@ -1026,30 +1026,191 @@ function touch_player($link, string $id, string $t): void {
 /* B-127: signature of the set of away persons (players, observers and, since B-154, removed persons; never the own
    one), '' for none.
    Only a hash of the public mkeys, never a player id (SID). getDao() and seen.php both use it, so the board loads
-   dao.php after a heartbeat only when the set changed. */
-function away_sig(array $mkeys): string {
-    if (count($mkeys) === 0) return '';
+   dao.php after a heartbeat only when the set changed.
+   B-151 mcp seen: $ai_mkeys = persons currently using the board through an AI assistant (MCP, own one included), so
+   the boards also reload when the AI symbol comes or goes. Without any, the value is the same as before. */
+function away_sig(array $mkeys, array $ai_mkeys = array()): string {
+    if (count($mkeys) === 0 && count($ai_mkeys) === 0) return '';
     $mkeys = array_map('intval', $mkeys);
     sort($mkeys, SORT_NUMERIC);
-    return sha1(implode(',', $mkeys));
+    if (count($ai_mkeys) === 0) return sha1(implode(',', $mkeys));
+    $ai_mkeys = array_map('intval', $ai_mkeys);
+    sort($ai_mkeys, SORT_NUMERIC);
+    return sha1(implode(',', $mkeys) . '|ai:' . implode(',', $ai_mkeys));
 }
 
-/* B-127: away_sig() of team $t from the view of player $id, same away definition as the player query in getDao() */
+/* B-151 mcp seen: SQL condition "the person used the board through MCP within AWAY_AFTER_SEC" (one ? = seconds) */
+const VIA_AI_SQL = "(p.mcp_seen_time is not null and unix_timestamp(p.mcp_seen_time) >= unix_timestamp() - ?)";
+
+/* B-127: away_sig() of team $t from the view of player $id, same away and via_ai definition as the player query in
+   getDao() */
 function load_away_sig($link, string $id, string $t): string {
     $sql = $link->prepare("SELECT p.mkey
+                  ,if(p.id <> ? and unix_timestamp(p.last_callback_time) < unix_timestamp() - ?, 1, 0) as away
+                  ,if(" . VIA_AI_SQL . ", 1, 0) as via_ai
               FROM pok_players_tbl p
-             WHERE p.team_id = ?
-               AND p.id <> ?
-               AND unix_timestamp(p.last_callback_time) < unix_timestamp() - ?");
+             WHERE p.team_id = ?");
     $away_after_sec = AWAY_AFTER_SEC;
-    $sql->bind_param('ssi', $t, $id, $away_after_sec);
+    $sql->bind_param('siis', $id, $away_after_sec, $away_after_sec, $t);
     $sql->execute();
     $mkeys = array();
+    $ai_mkeys = array();
     if ($result = $sql->get_result()) {
-        while ($row = $result->fetch_row()) $mkeys[] = $row[0];
+        while ($row = $result->fetch_row()) {
+            if ((int)$row[1] === 1) $mkeys[] = $row[0];
+            if ((int)$row[2] === 1) $ai_mkeys[] = $row[0];
+        }
         $result->close();
     }
-    return away_sig($mkeys);
+    return away_sig($mkeys, $ai_mkeys);
+}
+
+/*
+ * B-151 mcp seen: marks the person as using the board through an AI assistant (every MCP tool call with a seat, key
+ * or team_id + uid). At most every 10 s like touch_api_person(). Returns true when the person was not "via AI" before
+ * (first call or a pause longer than AWAY_AFTER_SEC): the caller notifies the team once then, so the boards show the
+ * symbol at once - at most one notification per person and window, never a loop (dao.php never notifies). Autocommit.
+ */
+function touch_mcp_person(mysqli $link, string $uid, string $t): bool
+{
+    $away_after_sec = AWAY_AFTER_SEC;
+    $sql = $link->prepare("update pok_players_tbl p set p.mcp_seen_time = current_timestamp
+                            where p.id = ? and p.team_id = ? and not " . VIA_AI_SQL);
+    $sql->bind_param('ssi', $uid, $t, $away_after_sec);
+    $sql->execute();
+    $fresh = $sql->affected_rows > 0;
+    $sql->close();
+    if ($fresh) return true;
+    $sql = $link->prepare("update pok_players_tbl set mcp_seen_time = current_timestamp
+                            where id = ? and team_id = ? and mcp_seen_time < current_timestamp - interval 10 second");
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $sql->close();
+    return false;
+}
+
+/*
+ * B-151 end session: the MCP equivalent of closing the browser tab. The seat counts as not connected at once (a
+ * player shows as away, an observer or removed person drops out of the observer list, the AI symbol goes) and its
+ * live views stop: mcp_seen_time gets MCP_ENDED_TIME, a value no real call can have, which wait_for_change reads as
+ * "ended" (mcp_session_ended()). Nothing is deleted. The next MCP call of the seat other than wait_for_change
+ * (touch_mcp_person(), "not via AI" -> now) clears it again, like opening the link again. No DDL: existing columns.
+ * Call it after the last board read of the request (getDao() marks the own seat as connected). Autocommit.
+ */
+const MCP_ENDED_TIME = '1971-01-02 00:00:00';
+
+function end_mcp_session(mysqli $link, string $uid, string $t): void
+{
+    $gone = AWAY_AFTER_SEC + 1;
+    $ended = MCP_ENDED_TIME;
+    $sql = $link->prepare("update pok_players_tbl
+                              set last_callback_time = least(last_callback_time, current_timestamp - interval ? second)
+                                 ,mcp_seen_time = ?
+                            where id = ? and team_id = ?");
+    $sql->bind_param('isss', $gone, $ended, $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
+/*
+ * B-151 self leave: pok_players_tbl.mcp_states (no DDL) also remembers whether the seat's last removal from the table
+ * was its own leave (me leave via MCP/REST, the empty name of name.php, the trash can on the own card) or done by
+ * someone else, so the live board and the list of changes can tell "You left the table." from "You are no longer at
+ * the table.". Format: the plain list of kept states [[version, state], ...] (api/v1/lib_mcp_wait.php) or, while the
+ * mark is set, {"s": [...], "self_left_at": <unix time>}. A missing column, row or garbage reads as no states, no mark.
+ */
+function seat_states_read(mysqli $link, string $uid, string $t, bool $lock = false): array
+{
+    $empty = ['s' => [], 'self_left_at' => null];
+    try {
+        $sql = $link->prepare('select mcp_states from pok_players_tbl where id = ? and team_id = ?'
+                              . ($lock ? ' for update' : ''));
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return $empty; // code deployed before the schema
+    }
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $row = $sql->get_result()->fetch_assoc();
+    $sql->close();
+    $data = is_string($row['mcp_states'] ?? null) ? json_decode($row['mcp_states'], true, 16) : null;
+    if (!is_array($data)) return $empty;
+    if (array_is_list($data)) return ['s' => $data, 'self_left_at' => null];
+    $states = $data['s'] ?? null;
+    $left = $data['self_left_at'] ?? null;
+    return ['s' => is_array($states) && array_is_list($states) ? $states : [],
+            'self_left_at' => is_int($left) ? $left : null];
+}
+
+/* writes states and mark (ASCII JSON: names with emoji stay \u escapes, the column is ascii) */
+function seat_states_write(mysqli $link, string $uid, string $t, array $data): void
+{
+    $value = $data['self_left_at'] === null ? $data['s'] : ['s' => $data['s'], 'self_left_at' => $data['self_left_at']];
+    $json = (string)json_encode($value, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    try {
+        $sql = $link->prepare('update pok_players_tbl set mcp_states = ? where id = ? and team_id = ?');
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return;
+    }
+    $sql->bind_param('sss', $json, $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
+/*
+ * writes only the kept states and leaves the mark as it is in the row right now: the mark is read by the update itself
+ * (under the row lock), never from an earlier read - a store of states that read the row before a leave committed
+ * cannot wipe the mark of that leave (B-151 self leave, review Sina). Plain string assembly, no JSON functions on the
+ * states: MySQL would write \u escapes back as UTF-8, the column is ascii.
+ */
+function seat_states_store(mysqli $link, string $uid, string $t, array $states): void
+{
+    $json = (string)json_encode($states, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    try {
+        $sql = $link->prepare("update pok_players_tbl
+                                  set mcp_states = case
+                                        when json_valid(mcp_states)
+                                         and json_type(json_extract(mcp_states, '$.self_left_at')) in ('INTEGER', 'UNSIGNED INTEGER')
+                                        then concat('{\"s\":', ?, ',\"self_left_at\":', json_extract(mcp_states, '$.self_left_at'), '}')
+                                        else ? end
+                                where id = ? and team_id = ?");
+    } catch (mysqli_sql_exception $e) {
+        if (!is_missing_schema_error($e)) throw $e;
+        return;
+    }
+    $sql->bind_param('ssss', $json, $json, $uid, $t);
+    $sql->execute();
+    $sql->close();
+}
+
+/* sets ($self) or clears the mark "left the table by itself"; writes only on a change. Reads the row with a lock
+   (core_member_leave(): inside its transaction, the row is locked already), so states stored meanwhile stay */
+function seat_mark_self_left(mysqli $link, string $uid, string $t, bool $self): void
+{
+    if ($uid === '') return;
+    $data = seat_states_read($link, $uid, $t, true);
+    if (($data['self_left_at'] !== null) === $self) return;
+    $data['self_left_at'] = $self ? time() : null;
+    seat_states_write($link, $uid, $t, $data);
+}
+
+/* true if the seat's last removal from the table was its own leave (only meaningful while it is REMOVED) */
+function seat_left_by_self(mysqli $link, string $uid, string $t): bool
+{
+    return $uid !== '' && seat_states_read($link, $uid, $t)['self_left_at'] !== null;
+}
+
+/* B-151 end session: true while the seat's session is ended (end_mcp_session(), no MCP call since) */
+function mcp_session_ended(mysqli $link, string $uid, string $t): bool
+{
+    $sql = $link->prepare("select 1 from pok_players_tbl
+                            where id = ? and team_id = ? and mcp_seen_time is not null and mcp_seen_time < '1980-01-01'");
+    $sql->bind_param('ss', $uid, $t);
+    $sql->execute();
+    $ended = $sql->get_result()->fetch_row() !== null;
+    $sql->close();
+    return $ended;
 }
 
 function getDao($t, $id) {
@@ -1079,11 +1240,15 @@ function getDao($t, $id) {
     $players=array();
     $observers = array(); // B-110: connected observers only (not away), {name, mkey}
     $away_mkeys = array(); // B-127: mkeys of the away persons for away_sig()
+    $ai_mkeys = array(); // B-151 mcp seen: mkeys of the persons using the board through an AI assistant, for away_sig()
+    $ai_count = 0; // B-151 mcp seen: players and shown observers via an AI assistant
+    $away_count = 0; // B-151: players away (never the own one)
     $anonymous_mode = 0;
     $anonymous_request_toggle = 0;
     $show_tips = 1;
     $show_card_changes = 1; // B-115: team setting
     $round_show_card_changes = 1; // B-115: setting of the running round (original cards stored and shown)
+    $allow_ai = 1; // B-151: team setting "Allow AI assistants", 0 = /mcp refused for the team
     $needs_setup = false;
     $needs_celebration = true;
     $players_count = 0;
@@ -1117,6 +1282,7 @@ function getDao($t, $id) {
                   ,t.show_tips
                   ,t.show_card_changes
                   ,t.round_show_card_changes
+                  ,t.allow_ai
                   ,t.needs_setup
                   ,t.deck_id
                   ,t.deck_cards
@@ -1146,6 +1312,7 @@ function getDao($t, $id) {
         $show_tips = (int)$obj->show_tips;
         $show_card_changes = (int)$obj->show_card_changes;
         $round_show_card_changes = (int)$obj->round_show_card_changes;
+        $allow_ai = (int)$obj->allow_ai;
         $needs_setup = (bool)$obj->needs_setup;
         $deck_changed_by = $obj->deck_changed_by; // B-98 V6: player id, the name comes from the players below
 
@@ -1225,11 +1392,12 @@ function getDao($t, $id) {
        switch of the session time zone cannot shift the comparison. Same query as before, no extra round trip. */
     $sql = $link->prepare("SELECT p.*, p.original_card_key
                   ,if(unix_timestamp(p.last_callback_time) < unix_timestamp() - ?, 1, 0) as away
+                  ,if(" . VIA_AI_SQL . ", 1, 0) as via_ai
               FROM pok_players_tbl p
              WHERE p.team_id = ?
              ORDER BY p.name");
     $away_after_sec = AWAY_AFTER_SEC;
-    $sql->bind_param('is', $away_after_sec, $t);
+    $sql->bind_param('iis', $away_after_sec, $away_after_sec, $t);
     $sql->execute();
     $objs = array();
     if ($result = $sql->get_result()) {
@@ -1243,6 +1411,9 @@ function getDao($t, $id) {
             /* B-127, see load_away_sig(). B-154: removed persons count too - they are in the observer list while
                connected, so their going away has to change the signature (the boards load dao.php then). */
             if ($obj->away) $away_mkeys[] = $obj->mkey;
+            // B-151 mcp seen: used the board through MCP within AWAY_AFTER_SEC (data protection: the team sees it)
+            $obj->via_ai = ((int)$obj->via_ai === 1);
+            if ($obj->via_ai) $ai_mkeys[] = $obj->mkey;
 
             if ($deck !== null && $obj->id === $deck_changed_by) $deck['changed_by'] = $obj->name; // B-98 V6
 
@@ -1272,6 +1443,8 @@ function getDao($t, $id) {
                 }
 
 
+                if ($obj->via_ai) $ai_count++;
+                if ($obj->away) $away_count++;
                 $objs[] = $obj;
             } elseif (($obj->player_type === 'OBSERVER' || $obj->player_type === 'REMOVED') && !$obj->away) {
                 /* B-110: observers without connection are simply left out (Andreas, 2026-11-01). The own observer
@@ -1279,10 +1452,12 @@ function getDao($t, $id) {
                    B-154: a removed player (REMOVED) is an observer for everybody else, without own marking, under
                    the same rule (only while his board is connected), so nobody sits at the table unseen. His own
                    board still knows from player_type (own row above) that he was removed and shows the overlay. */
+                if ($obj->via_ai) $ai_count++;
                 $observers[] = (object) array(
                     "name"=>$obj->name,
                     // mkey must stay a string in the JSON (compared with ===, see below)
-                    "mkey"=>(string)$obj->mkey);
+                    "mkey"=>(string)$obj->mkey,
+                    "via_ai"=>$obj->via_ai); // B-151 mcp seen (observers have no card: also in anonymous mode)
             }
         }
 
@@ -1368,6 +1543,8 @@ function getDao($t, $id) {
         ,"display_card_key"=>$display_card_key
         ,"original_card_key"=>$original_card_key // B-104: null = no stack
         ,"away"=>$obj->away // B-110: no dao.php load for AWAY_AFTER_SEC seconds (never the own card)
+        ,"via_ai"=>$obj->via_ai // B-151 mcp seen: uses the board through an AI assistant (MCP)
+        ,"own"=>($obj->id === $id) // internal, removed below
         ,"i"=>(int)null);
         $players[] = $player;
 
@@ -1381,7 +1558,17 @@ function getDao($t, $id) {
 
     for ($i=0;$i<count($players);$i++) {
         $players[$i]->i= $i;
-        if ($anonymous_mode == 1 && $all_players_ready) $players[$i]->name =  '******';
+        if ($anonymous_mode == 1 && $all_players_ready) {
+            $players[$i]->name =  '******';
+            /* B-151: anonymous mode after the reveal - away and via_ai of other players would link a card to a person
+               (the order of the cards is no longer the order of the names): only the team counts away_count and
+               ai_count show them. The own card keeps its flags (the person knows them anyway). */
+            if (!$players[$i]->own) {
+                $players[$i]->away = false;
+                $players[$i]->via_ai = false;
+            }
+        }
+        unset($players[$i]->own);
     }
     return array(  "name"=> $name,
         "mkey"=>$mkey,
@@ -1410,6 +1597,7 @@ function getDao($t, $id) {
         "show_tips"=>$show_tips, // B-96: 1 = show the tips in #round_tip, 0 = hidden for the whole team
         "show_card_changes"=>$show_card_changes, // B-115: team setting "See changed cards", 1 = on (default)
         "round_show_card_changes"=>$round_show_card_changes, // B-115: the setting of the running round, 0 = no stacks
+        "allow_ai"=>$allow_ai, // B-151: team setting "Allow AI assistants", 1 = on (default), 0 = /mcp refused
         "needs_setup"=>$needs_setup,
         "selected_card_key"=>$card_key,
         "player_type"=>$player_type,
@@ -1420,7 +1608,9 @@ function getDao($t, $id) {
         "ready_players_count"=>$ready_players_count,
         "players"=>$players,
         "observers"=>$observers, // B-110: connected observers, ordered by name
-        "away_sig"=>away_sig($away_mkeys) ); // B-127: same value as seen.php, '' = nobody away
+        "away_count"=>$away_count, // B-151: players away (never the own one), also in anonymous mode
+        "ai_count"=>$ai_count, // B-151 mcp seen: players and shown observers using the board through an AI assistant
+        "away_sig"=>away_sig($away_mkeys, $ai_mkeys) ); // B-127: same value as seen.php, '' = nobody away and no AI
 }
 
 /* B-57: allowed values for feedback types, roadmap status and reactions (UP = thumbs up, DOWN = thumbs down) */
@@ -1487,7 +1677,12 @@ function get_roadmap_items($link, string $user_id, ?int $item_id = null): array 
     return $items;
 }
 
-function add_team($link, $t, $topic=null, $preset_mapping=null): string
+/*
+ * A new team (B-156 id from the name). The deck comes from $preset_mapping (cards.json preset, index.php?tool=...) or,
+ * B-151, from $variant_id (a variant id of card_catalog.json, e.g. 'tshirt', checked by the caller; MCP create_team), else
+ * the default deck; the control cards are the catalog defaults in every case. Returns the team id ('' on failure).
+ */
+function add_team($link, $t, $topic=null, $preset_mapping=null, ?string $variant_id=null): string
 {
     $id_val = '';
     $preset_index = 0;
@@ -1534,7 +1729,9 @@ function add_team($link, $t, $topic=null, $preset_mapping=null): string
     if ($catalog['default_deck'] !== null) {
         $default_controls = array_intersect(array_column($catalog['controls'], 'card_key'),
                                             (array)($catalog['default_controls'] ?? array()));
-        $deck = deck_from_cardset_flags($cardset_flags, $catalog);
+        $deck = $variant_id !== null && isset(catalog_variants($catalog)[$variant_id])
+            ? array('deck_id' => $variant_id, 'deck_cards' => null) // B-151: all cards of the chosen variant
+            : deck_from_cardset_flags($cardset_flags, $catalog);
         $deck = resolve_deck($deck['deck_id'], $deck['deck_cards'], implode(',', $default_controls), 0, $catalog);
         $deck_id = $deck['id'];
         $variant_cards = catalog_variants($catalog)[$deck_id]['variant']['cards'];

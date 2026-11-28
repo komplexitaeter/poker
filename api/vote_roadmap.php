@@ -8,6 +8,7 @@
  */
 require '../config.php';
 require './lib.php';
+require './lib_core_feedback.php';
 require_post();
 set_header('json');
 
@@ -21,34 +22,13 @@ if ($id === '' || !is_int($item) || !in_array($reaction, array_merge(ROADMAP_REA
 }
 
 $link = db_init();
-
-// only users who joined a board (player or observer), so not every random id can vote
-// (update_user.php creates a pok_user_tbl row for any id, so that table is no proof)
-$sql = $link->prepare("select count(1) cnt from pok_players_tbl where id = ?");
-$sql->bind_param('s', $id);
-$sql->execute();
-if ($sql->get_result()->fetch_object()->cnt < 1) {
-    http_response_code(403);
+// B-151: core_roadmap_vote() (lib_core_feedback.php), shared with MCP feedback vote
+try {
+    $entry = core_roadmap_vote($link, $id, $item, $reaction);
+} catch (ApiError $e) {
+    http_response_code($e->status === 403 ? 403 : 404);
     exit;
 }
-
-$items = get_roadmap_items($link, $id, $item);
-if (count($items) !== 1) {
-    http_response_code(404);
-    exit;
-}
-$phase = roadmap_phase($items[0]['status']);
-
-// creation_date is set explicitly: "on update current_timestamp" alone would keep it when the reaction stays the same,
-// and then an older row of the other phase could still be the latest one. Microseconds (timestamp(6), see
-// db_schema_pok_inc.sql): with whole seconds, votes of a user in two phases within one second were a tie.
-$sql = $link->prepare("insert into pok_roadmap_votes_tbl (item_id, user_id, phase, reaction, creation_date)
-                       values (?, ?, ?, ?, current_timestamp(6)) as new
-                       on duplicate key update reaction = new.reaction, creation_date = new.creation_date");
-$sql->bind_param('isss', $item, $id, $phase, $reaction);
-$sql->execute();
-
-$items = get_roadmap_items($link, $id, $item);
 $link->close();
 
-echo json_encode($items[0], JSON_UNESCAPED_UNICODE);
+echo json_encode($entry, JSON_UNESCAPED_UNICODE);

@@ -21,8 +21,11 @@ MCP-Server ist eine dünne Schicht über denselben Kernfunktionen wie Web und RE
    Einladungslink (Team-ID) ist der Zugang, genau wie im Web.
 2. **Ohne Schlüssel:** Der Agent tritt per Einladungslink mit Name und Rolle (Player/Observer) bei; der Server erzeugt
    die UID (wie `api/uid.php`), das Tool gibt sie zurück, der Agent behält sie im Gespräch und gibt sie bei jedem
-   weiteren Aufruf mit (wie `localStorage`). Neuer Chat = neuer Browser (neuer Sitz). Agenten werden für andere
-   **nicht** gekennzeichnet (kein 🤖), sie sind normale Teilnehmende.
+   weiteren Aufruf mit (wie `localStorage`). Neuer Chat = neuer Browser (neuer Sitz). Sitze, die per MCP genutzt
+   werden, bekommen im Board ein kleines 🤖 (Andreas, 2026-11-27, ändert die frühere Entscheidung „keine
+   Kennzeichnung“; Grund Datenschutz: die anderen sollen wissen, dass ihre Namen und Texte an eine KI gehen).
+   Backend: `pok_players_tbl.mcp_seen_time`, `via_ai`/`ai_count` in `dao.php`, im anonymen Modus nach dem Aufdecken
+   nur als Team-Zähler (ebenso `away`/`away_count`).
 3. **Optional mit Schlüssel:** Die Person erzeugt im You-Menü einen API-Schlüssel und gibt ihn dem Agenten → der Agent
    handelt als dieser Browser-Sitz („übernimm meinen Platz“). Tools akzeptieren entweder UID (+ Team) oder Schlüssel.
    Löschen des Schlüssels beendet das. Der Schlüssel landet im Chatverlauf beim KI-Anbieter – akzeptiert
@@ -87,6 +90,18 @@ Jeder Tool-Aufruf (außer `create_team` und `join_team` ohne Schlüssel) trägt 
 
 Team unbekannt und „nicht Mitglied“ geben dieselbe Antwort (kein Orakel, wie v1). Nur `join_team` meldet
 `team_not_found` (wie `team_join` in v1).
+
+**Team erlaubt keine KI-Assistenten** (`ai_not_allowed`, Andreas, Datenschutz: das Team kann widersprechen):
+Teameinstellung „Allow AI assistants“ (`pok_teams_tbl.allow_ai`, Standard an; Board settings → Team). Aus → **jeder**
+`/mcp`-Aufruf für das Team wird abgelehnt: „This team does not allow AI assistants. Ask the team to switch on 'Allow AI
+assistants' in the board settings.“ Geprüft in `mcp_actor()` (Sitz und `api_key`) nach der Identität und vor jedem
+Lesen/`touch` (kein KI-Symbol, kein Board) sowie in `join_team` mit Einladung nach `team_not_found`, bevor ein Sitz
+entsteht. Laufende `wait_for_change` wachen durch das `notify_team()` des Umschaltens auf, prüfen die Identität erneut
+und bekommen den Fehler; das Live-Board im Chat zeigt ruhig „AI assistants are switched off for this board.“ und
+fragt nicht weiter. Die REST-API (`/api/v1`, API-Schlüssel für Jira u. Ä.) bleibt erlaubt. **Ändern nur im Browser**
+(`api/update_team.php?allow_ai=0|1`): `board_settings` hat kein Feld dafür, ein KI-Sitz kann es weder an- noch
+ausschalten (einfachste Lösung; aus wäre ohnehin der letzte Aufruf). Ist es aus, blendet das Board den KI-Knopf
+(`#ai_btn`) und den MCP-Hinweis im Beitrittsdialog (`#join_mcp_hint`) aus.
 
 ### 2.3 Neu beitreten, Wiederkommen
 
@@ -153,8 +168,8 @@ Wo wir darauf hinweisen (Vorschlag, Gestaltung Delia/Fred):
 
 ```text
 You are connected to Agile Poker (planning poker for distributed teams). You act as the user's own browser: you sit
-at a team's table as the user, nobody sees that an AI is involved, and you can do exactly what the user could do on
-the web board – nothing more.
+at a team's table as the user (the board shows the team a small AI symbol at the user's seat), and you can do exactly
+what the user could do on the web board – nothing more.
 
 Getting a seat
 - If the user gives you an invite link (https://poker.komplexitaeter.de/?t=...) or team id, ask for the name to show
@@ -174,7 +189,16 @@ Playing
 - Cards are revealed automatically when every player has a card down. Before that you only see who has played, never
   which card – do not guess or claim to know other people's cards.
 - Stay at the table with wait_for_change: call it again right after it returns, as long as the user wants to take
-  part. Tell the user what changed in one or two short lines (who played, revealed result, new item, timer, note).
+  part.
+
+Showing the table
+- Live board: once the user wants to be kept posted and show_board shows a live board, keep it at the BOTTOM of the
+  conversation: at the end of every reply in which something changed at the table or the user acted, call
+  show_board again (older boards stop by themselves). Never more than one show_board per reply. Next to it write at
+  most one short line, or nothing – the board shows the change.
+- Without a live board: every result with a board has a compact table block in its text (team and round state, note,
+  item, timer, one row per player, observers). After each change show exactly this block as a code block, with at
+  most one short line of your own and no narration. Do not add cards or names that are not in the block.
 - Ask before actions that affect everybody and cannot be undone: deleting items or custom sets, removing people,
   "delete my data", changing the card set while cards are down (starts a new round).
 
@@ -274,13 +298,32 @@ Ergebnis (`structuredContent`, Auszug):
 waiting_for: [names], result: {distribution: [{card, count}], range, suggestion, average|null}}, players: [{name,
 mkey, played: bool, card|null, away}], observers: [{name, mkey}], active_item: {key, heading, description, rounds}|null,
 open_count, done_count, timer: {status, mode, seconds, visible, timebox}, deck: {id, name, cards: [{key, value,
-heading}], controls: [...]}, settings: {...}}`. Text-Inhalt: eine kompakte Tischansicht, z. B.
+heading}], controls: [...]}, settings: {...}}`. Text-Inhalt (Stufe 1, 2026-11-27): ein fester, kompakter
+Tisch-Block für Menschen, in **jedem** Ergebnis mit Board (`get_board`, `wait_for_change`, `join_team`,
+`create_team`, alle schreibenden Tools); der Agent zeigt ihn als Codeblock statt eigener Sätze. `structuredContent`
+bleibt unverändert (Agenten lesen das JSON). Vor und nach dem Aufdecken:
 
 ```text
-Team XYZ · Item TIX-004 "Login with SSO" (round 2) · ⏱ 03:12
-Players: Anna ✔ · Ben … · You (Andreas) 5 · Cleo ✔ (away)
-Waiting for: Ben
+MCP Test · voting · waiting for Carl, you
+Note: Mach das so
+Item: TIX-334 – Wie bauen wir das ein?
+  Bea      played
+  Carl     –   (away)
+  You      –   pick: 0 ½ 1 2 3 5 8 13 20 40 100 ∞ ☕ ?
+Observers: Kai
+
+MCP Test · revealed · 2 ×1, 3 ×1, 5 ×1 → suggestion 3
+Item: TIX-334 – Wie bauen wir das ein?
+  Bea      2
+  You      3
+  Carl     5   (was 8)
 ```
+
+Regeln (`mcp_board_text()`): verdeckte Karten nur als `played`/`–`; Anonym-Modus nach dem Aufdecken wie
+`core_board_get()` (`******`), eigener Sitz als `You`; Notiz nur erste Zeile, Texte anderer einzeilig und gekürzt (ca.
+80 Zeichen), Anführungszeichen nur bei Namen mit Trennzeichen; Timer-Zeile nur, wenn sichtbar und gelaufen; die eigene
+Karte vor dem Aufdecken mit `(hidden from others)`, die Kartenauswahl (`pick:`) nur, solange man noch keine gelegt hat;
+mit `include_items` zusätzlich die offenen Items. Danach (Leerzeile) die `version`-Zeile.
 
 Kern: `getDao($t, $uid)` – **genau** die Sicht des Boards (verdeckte Karten sind dort schon Platzhalter, Anonym-Modus
 schon `******`) – plus Projektion `mcp_board_view()`; nie eigene SQL auf `pok_players_tbl.card_key`. Quelle: neue
@@ -302,7 +345,9 @@ Route `board_get` (`GET /board`, `public: false`).
 | `timeout` | integer 1–25, Default 25 | `Maximum seconds to wait.` |
 
 Ergebnis: `{changed: bool, version, changes: ["Ben played a card", "Cards revealed", "New item: TIX-005 …", …],
-board}` bzw. `{busy: true, retry_after: 5}`. Das Warten selbst übernimmt poker-msg, PHP prüft und rechnet (Abschnitt 8).
+board}` bzw. `{busy: true, retry_after: 5}`. Text-Inhalt: höchstens eine kurze Zeile „was sich geändert hat“
+(die Liste `changes` zusammengefasst, gekürzt), darunter der Tisch-Block wie bei `get_board`; die vollständige Liste
+steht nur im JSON. Das Warten selbst übernimmt poker-msg, PHP prüft und rechnet (Abschnitt 8).
 Quelle: `mcp_tools.php`.
 
 ---
@@ -341,7 +386,9 @@ Kern: `core_card_set()` (aus `setc.php`: B-102/B-103/B-104/B-115-Regeln) – Zuo
 | `player` | string | `For remove_player: mkey (preferred) or exact name from get_board.` |
 
 Kern: `start_new_round()` (✓, aus `newround.php` als `core_round_new()`), `core_member_remove()` (aus `delete.php`).
-Quelle: Routen `round_new` (`POST /round`), `member_remove` (`POST /members/{mkey}/remove`), `public: false`.
+Quelle: Routen `round_new` (`POST /round`), `member_remove` (`POST /members/{player}/remove`, `player` = mkey oder
+Name, aufgelöst im Handler über `board_player()`), `public: false`. Kerne `core_round_new()`, `core_member_remove()`
+(`api/lib_core_member.php`, PR D).
 
 ---
 
@@ -436,6 +483,8 @@ ist eine Liste von Objekten – ein eigener Parametertyp `type: array` mit `item
 | `show_tips` | boolean | `set` |
 | `show_card_changes` | boolean | `set` |
 
+„Allow AI assistants“ (`allow_ai`) gibt es hier bewusst nicht: nur der Browser schaltet es (Abschnitt 2.2).
+
 Kern: `core_team_note_set()` (✓), neu `core_team_settings_patch()` (aus `update_team.php`, `update_results_order.php`,
 `update_show_avg.php`). Quelle: Routen `team_note_set` (✓, `mcp` ergänzen), `team_patch` (`PATCH /team`, `public:
 false`).
@@ -481,19 +530,15 @@ false`).
 #### `me`
 
 > The user's own seat: rename (max 15 characters), set_role (player or observer; coming back after being removed works
-> the same way), leave (get up from this table: you disappear from the board, your seat stays and can come back with
-> set_role), api_keys (list the user's API keys for this team; delete_key removes one, key_id "current" removes the key
-> you are using right now and ends your access – creating keys is only possible in the browser), delete_my_data
-> (deletes this person and everything they wrote in ALL teams, irreversible – only on the user's explicit request,
-> confirm first).
-> delete_my_data is NOT possible when you act with an api_key: the key stands for the user's browser seat, and
-> deleting it would wipe the user's identity in all their teams, including their browser. Explain that to the user and
-> offer instead: leave (get up from this table) and delete_key with key_id "current" (ends your access). To delete all
-> their data, the user uses "Delete my data" in the You menu of the board in the browser.
+> the same way), end_session (End session, like closing the tab: use it when the user says stop, bye, end, stop
+> watching or close – you are no longer connected, a player shows as away, an observer drops out of the list, live
+> boards stop; nothing is deleted and the next call of this seat reconnects; call no further tool afterwards and answer
+> in one line), leave (stop playing but stay as observer …), api_keys (…), delete_my_data (erase everything … – ONLY
+> when the user explicitly asks to delete their data, never for "stop"; confirm first). (Wortlaut: `api/v1/mcp_tools.php`.)
 
 | Parameter | Typ | Beschreibung |
 |---|---|---|
-| `action` | enum `rename`/`set_role`/`leave`/`api_keys`/`delete_key`/`delete_my_data`, Pflicht | |
+| `action` | enum `rename`/`set_role`/`leave`/`end_session`/`api_keys`/`delete_key`/`delete_my_data`, Pflicht | |
 | `name` | string 1–15 | `rename` |
 | `role` | enum `player`/`observer` | `set_role` |
 | `key_id` | integer or `current` | `delete_key: id from api_keys, or "current" for the key you are using.` |
@@ -501,8 +546,21 @@ false`).
 Kern: neu `core_member_update()` (aus `name.php`: Name, Rolle, leer = `REMOVED`, B-102), `core_key_list/delete/
 delete_current` (✓), neu `core_user_delete()` (aus `delete_user.php`). `delete_my_data` mit Actor `via = key` →
 `403 browser_only` mit dem Hinweis aus der Beschreibung (Entscheidung 8; geprüft in der Kernfunktion, nicht nur im
-Tool-Text). Quelle: Routen `me_patch` (`PATCH /me`), `me_leave` (`POST
-/me/leave`), `me_delete` (`DELETE /me`), `key_list`, `key_delete` (✓, `mcp` ergänzen), `public: false` für die neuen.
+Tool-Text). Quelle (umgesetzt in PR D, alle neuen `public: false`): `me_rename` (`PUT /me/name`), `me_role_set`
+(`PUT /me/role`) – zwei Routen statt `me_patch`, weil eine Route genau eine Aktion trägt –, `me_leave` (`POST
+/me/leave`), `key_list` (✓, `mcp` ergänzt), `me_key_delete` (`DELETE /me/keys/{key_id}`, `key_id` als Text: Zahl oder
+`current`; statt `mcp` an `key_delete`, das nur Zahlen kennt), `me_delete` (`DELETE /me`). Kerne
+`core_member_update()`, `core_member_leave()`, `core_user_delete()` in `api/lib_core_member.php`.
+
+**`end_session`** (Andreas' Test, 2026-11-27: es gab im Dialog kein natürliches „einfach aufhören“): das MCP-Gegenstück
+zum Schließen des Browser-Tabs. Route `me_end_session` (`POST /me/end-session`, `public: false`), Kern
+`core_member_end_session()` → `end_mcp_session()` (`api/lib.php`): `last_callback_time` sofort älter als
+`AWAY_AFTER_SEC` (Spieler „away“, Beobachter/`REMOVED` fallen aus der Beobachterliste, B-154) und `mcp_seen_time =
+MCP_ENDED_TIME` (1971-01-02, kein echter Aufruf hat diesen Wert; KI-Symbol weg) – kein DDL. Solange die Marke steht,
+antwortet `wait_for_change` sofort `{ended: true}` und fasst die Präsenz nicht an (`mcp_actor(..., wait: true)`); jeder
+andere Tool-Aufruf des Platzes setzt `mcp_seen_time` wieder (`touch_mcp_person()`) = Tab wieder geöffnet. Nichts wird
+gelöscht; Platz, Rolle, Karte und Schlüssel bleiben. Die Live-Ansicht hat dafür „End session“ im Fuß und nach dem Ende
+„Resume“ (`get_board`).
 
 ---
 
@@ -628,10 +686,10 @@ Kurz; „→“ = Tool-Aufruf des Agenten.
   irgendwann `public` werden, ist eine spätere, eigene Entscheidung.
 - Neue Routen (alle `public: false`): `board_get`, `card_play`, `card_withdraw`, `round_new`, `member_remove`,
   `item_create`, `item_patch`, `item_leave`, `item_result_set`, `deck_get`, `deck_set`, `controls_set`, `set_create`,
-  `set_save`, `set_delete`, `team_patch`, `timer_patch`, `reaction_throw`, `me_patch`, `me_leave`, `me_delete`,
-  `feedback_send`, `roadmap_list`, `roadmap_vote`. Bestehende bekommen das `mcp`-Feld (`team_note_set`, `item_*`,
-  `key_list`, `key_delete`); `team_create`, `team_join`, `team_get`, `item_upsert`, `key_create`,
-  `key_delete_current` bleiben `mcp: false`.
+  `set_save`, `set_delete`, `team_patch`, `timer_patch`, `reaction_throw`, `me_rename`, `me_role_set`, `me_leave`,
+  `me_key_delete`, `me_delete`, `feedback_send`, `roadmap_list`, `roadmap_vote`. Bestehende bekommen das `mcp`-Feld
+  (`team_note_set`, `item_*`, `key_list`); `team_create`, `team_join`, `team_get`, `item_upsert`, `key_create`,
+  `key_delete`, `key_delete_current` bleiben `mcp: false`.
 - **Nachbartabelle** `api/v1/mcp_tools.php` (gleiches Format für `params`, `description`, `handler`, ohne
   `method`/`path`) nur für das, was es als REST-Operation nicht gibt: `create_team` und `join_team` mit Sitz statt
   Schlüssel sowie `wait_for_change`. Zusätzlich dort je grobem Tool die Tool-Beschreibung aus Abschnitt 5 (die
@@ -649,13 +707,15 @@ Kurz; „→“ = Tool-Aufruf des Agenten.
 
 ### 8.1 Was es liefert
 
-- `version` ist ein **opaker Token**: kompakte Zusammenfassung der sichtbaren Lage (Base64url eines kleinen JSON: je
-  Person mkey → Rolle/gespielt/away, aufgedeckt ja/nein, Karten nach dem Aufdecken, aktives Item + `topics_rev`,
-  `deck.rev`, Hash der Notiz, Timerstatus, Einstellungen), höchstens ~1 KB. Weil der Token den alten Stand trägt, kann
-  der Server **zustandslos** einen Diff bilden: `changes` = kurze englische Sätze („Ben played a card“, „Cards
-  revealed: 5 ×3, 8 ×1“, „Anna joined as observer“, „Cleo is away“, „New active item TIX-005 …“, „Note changed“,
-  „Timer started“). Ein manipulierter Token verfälscht nur den Diff, nie Daten (er enthält nichts, was der Agent
-  nicht ohnehin sieht – keine verdeckten Karten).
+- `version` ist ein **kurzer Token** (16 Hex-Zeichen, Hash der sichtbaren Lage: je Person mkey → Rolle/gespielt/away,
+  aufgedeckt ja/nein, Karten nach dem Aufdecken, aktives Item, Deck, Hash der Notiz, Timerstatus, Einstellungen).
+  Ursprünglich trug der Token den Stand selbst (Base64url eines deflate-JSON, ~260 Zeichen) – in claude.ai schrieb
+  das Modell ihn fehlerhaft ab (Andreas, 2026-11-27). Seitdem hält der Server die Stände der letzten 8 Versionen je
+  Sitz in `pok_players_tbl.mcp_states` (ASCII-JSON, wird mit der Person gelöscht; DDL in `db_schema_pok_inc.sql`,
+  Block „B-151 mcp states“) und bildet daraus den Diff: `changes` = kurze englische Sätze („Ben played a card“,
+  „Cards revealed: 5 ×3, 8 ×1“, „Anna joined as observer“, „Cleo is away“, „New active item TIX-005 …“, „Note
+  changed“, „Timer started“). Unbekanntes `since` → ganzes Board mit `changes: ["(full board)"]`, ohne Fehlerton.
+  Lange Tokens des alten Formats werden übergangsweise noch gelesen. Ohne die Spalte gibt es immer das ganze Board.
 - Jedes Tool-Ergebnis enthält `version`; der Agent übergibt die letzte als `since`. Nur PHP liest und vergleicht den
   Token; poker-msg sieht ihn nie.
 
@@ -791,7 +851,26 @@ location @mcp_wait_failed {
     fastcgi_pass unix:/run/php/php8.4-fpm.sock;
 }
 
-# B-151: poker-msg hands the request back to PHP for the result
+# B-151 (PR F2): react – PHP hands the throw to poker-msg via X-Accel-Redirect (answer at once)
+location ^~ /_mcp_react/ {
+    internal;
+    proxy_pass http://127.0.0.1:8445;
+    proxy_http_version 1.1;
+    proxy_pass_request_body off;
+    proxy_pass_request_headers off;
+    proxy_set_header Content-Length "";
+    proxy_read_timeout 5s;
+    error_page 502 504 = @mcp_react_failed;
+}
+
+location @mcp_react_failed {
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/api/v1/index.php;
+    fastcgi_param POKER_MCP_PHASE react_down;
+    fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+}
+
+# B-151: poker-msg hands the request back to PHP for the result (wait_for_change and react)
 location ^~ /_mcp_result/ {
     internal;
     include fastcgi_params;
@@ -830,6 +909,11 @@ UDP-Umweg und ohne dass PHP auf poker-msg wartet:
    Erfolg an alle Boards des Teams (Zuordnung Hash → abonnierte Team-ID) und antwortet
    `X-Accel-Redirect: /_mcp_result/react?r=ok|rate|quota&used=<codes>` (heute schon geworfene Codes des Werfers).
 3. PHP baut daraus `{sent, reason, left_today}`.
+
+Umsetzung (PR F2): `react` ist ein eigenes Tool in `mcp_tools.php` (wie `wait_for_change`), keine Route
+`reaction_throw` – der Weg über `X-Accel-Redirect` gehört zu `/mcp` und hätte als REST-Route keinen Rückweg. Ein
+anonymer Nudge geht wie im Browser mit `from = 0`. poker-msg nicht erreichbar → `@mcp_react_failed`
+(`POKER_MCP_PHASE react_down`) → Fehler `busy`.
 
 Mit Schlüssel teilen sich Browser und Agent das Kontingent (gleiche mkey), mit eigenem Sitz hat der Agent ein eigenes
 – wie ein zweiter Browser.
@@ -904,3 +988,226 @@ Offen:
    PHP zu schicken und nur Wartende per `X-Accel-Redirect` an poker-msg abzugeben, statt alle MCP-Aufrufe durch
    poker-msg zu leiten. Ziel deiner Entscheidung (kein wartender FPM-Worker, tausende Wartende) bleibt gleich;
    poker-msg wird kleiner, und MCP fällt bei einem poker-msg-Ausfall nicht ganz aus. Einverstanden?
+
+## 13. Live-Board im Chat (MCP Apps)
+
+Stand 2026-11-27, Ben (BE), Recherche. Noch kein Code. Ziel: Im Chat erscheint ein kleines, sich selbst
+aktualisierendes Board (Karten, Mitspielende, Aufdecken), möglichst nah am Web-Board; Karte legen per Klick.
+
+**Quellenlage:** Gelesen wurden die Spezifikation im offiziellen Repo `modelcontextprotocol/ext-apps` (Stand
+`main` 2026-11-25, Paket 2.1.0; stabile Fassung `specification/2026-01-26/apps.mdx`, Entwurf
+`specification/draft/apps.mdx`) und die Entwickler-Doku von Anthropic (claude.com/docs, Stand heute). Nicht
+erreichbar aus der Arbeitsumgebung waren modelcontextprotocol.io, developers.openai.com und help.openai.com; Aussagen
+zu ChatGPT stammen deshalb nur aus Suchergebnis-Auszügen und sind **nicht selbst geprüft** (markiert mit „ungeprüft“).
+
+### 13.1 Stand der Erweiterung (Server-Seite)
+
+- MCP Apps ist eine offizielle, optionale MCP-Erweiterung (SEP-1865, Kennung `io.modelcontextprotocol/ui`), stabile
+  Fassung **2026-01-26**, daneben ein Entwurf mit Erweiterungen (u. a. Tools, die die Ansicht selbst anbietet).
+- **UI-Ressource:** normale MCP-Ressource mit URI `ui://…`, `mimeType` **`text/html;profile=mcp-app`**, Inhalt als
+  vollständiges HTML5-Dokument in `text` (oder base64 in `blob`). Geliefert per **`resources/read`**; `resources/list`
+  darf UI-Ressourcen weglassen (Hosts finden sie über das Tool). Metadaten in `_meta.ui` am Inhalt von
+  `resources/read` (bevorzugt) oder am Listeneintrag: `csp` (`connectDomains`, `resourceDomains`, `frameDomains`,
+  `baseUriDomains`), `permissions` (Kamera usw.), `domain` (feste Sandbox-Herkunft), `prefersBorder`.
+- **Verknüpfung:** am Tool in `tools/list` `_meta.ui.resourceUri = "ui://…"`; optional `_meta.ui.visibility`
+  (`["model","app"]` Standard; `["app"]` = nur von der Ansicht aufrufbar, für das Modell unsichtbar). Der alte flache
+  Schlüssel `_meta["ui/resourceUri"]` ist veraltet, das SDK schreibt ihn aber noch zusätzlich.
+- **Aushandlung:** Nur der **Client** meldet die Erweiterung in `initialize`
+  (`capabilities.extensions["io.modelcontextprotocol/ui"].mimeTypes`). Server „SHOULD“ danach entscheiden, ob sie
+  `_meta.ui` ausliefern. Für uns (zustandslos, `tools/list` kommt ohne Client-Fähigkeiten): `_meta.ui` **immer**
+  mitschicken – laut Spezifikation verhält sich das Tool bei Hosts ohne Apps einfach wie ein normales Tool. Eine
+  eigene Server-Fähigkeit für die Erweiterung sieht die Spezifikation nicht vor; wir müssen aber `resources/read`
+  beantworten und sollten `capabilities.resources` melden (heute „keine Resources“, Abschnitt 4).
+- **Fallback ist Pflicht:** Tools mit UI „MUST“ weiter ein sinnvolles `content` liefern – bei uns die kompakte
+  Textansicht, die es schon gibt.
+
+Quellen: [Spezifikation 2026-01-26](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx),
+[Entwurf](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/draft/apps.mdx),
+[SEP-1865](https://modelcontextprotocol.io/seps/1865-mcp-apps-interactive-user-interfaces-for-mcp),
+[Claude: Quickstart MCP App](https://claude.com/docs/connectors/building/mcp-apps/quickstart.md).
+
+### 13.2 Was die eingebettete Seite kann
+
+- **Brücke:** JSON-RPC 2.0 über `postMessage` mit dem Host; die Ansicht ist ein MCP-Client, der Host leitet weiter.
+  Handshake `ui/initialize` → `ui/notifications/initialized`. Ein SDK ist **nicht nötig** (die Spezifikation zeigt
+  eine Brücke in ~30 Zeilen); das offizielle `App` aus `@modelcontextprotocol/ext-apps` beantwortet zusätzlich `ping`
+  und `ui/resource-teardown` (Claude Web schickt beides nicht, iOS Teardown nur beim Verlassen des Gesprächs).
+- **Daten vom Host:** `ui/notifications/tool-input` (die **Argumente** des Tool-Aufrufs, der die Ansicht geöffnet hat)
+  und `ui/notifications/tool-result` (`content`, `structuredContent`, `_meta` des Ergebnisses).
+- **Server-Tools aufrufen:** `tools/call` an den Host (SDK: `app.callServerTool`), nur am eigenen Server; Tools mit
+  `visibility` ohne `"app"` lehnt der Host ab. „This pattern enables interactive, self-updating views“ – also genau
+  unser Fall (Schleife über `wait_for_change`, Klick → `play_card`). Auch `resources/read` geht über den Host.
+- **Zum Modell:** `ui/message` (Nachricht in den Chat, löst eine Antwort aus, Host darf nachfragen) und
+  `ui/update-model-context` (stiller Kontext für die nächste Runde; jede Meldung ersetzt die vorige).
+- **Darstellung:** `hostContext` liefert `theme` (`light`/`dark`), `styles.variables` (Farb-, Schrift-, Radius-Tokens
+  des Hosts), `containerDimensions`, `displayMode` (`inline`/`fullscreen`/`pip`), `locale`, `platform`,
+  `safeAreaInsets`; Änderungen per `ui/notifications/host-context-changed`. Höhe meldet die Ansicht per
+  `ui/notifications/size-changed`. `ui/request-display-mode` für Vollbild/Seitenleiste, `ui/open-link` für Links.
+- **Sandbox/CSP:** iframe mit `allow-scripts allow-same-origin`, eigene Herkunft (bei Claude
+  `{hash}.claudemcpcontent.com`). Ohne `csp`-Angabe gilt: `default-src 'none'; script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; connect-src 'none'` → **Inline-Skript
+  und -CSS gehen, externe Skripte/Fonts/Bilder und `fetch`/WebSocket nur für deklarierte Domains**, keine verschachtelten
+  iframes, `object-src 'none'`. Hosts dürfen strenger sein, nie lockerer.
+- **Laufzeit:** Kein festes Zeitlimit für eine Ansicht dokumentiert. Claude lässt jede Ansicht **im Gespräch
+  weiterlaufen** („No host API unmounts earlier instances“) – mehrere Aufrufe = mehrere lebende Kopien; beim Wieder-
+  öffnen eines Gesprächs werden Ansichten erst beim Hineinscrollen geladen und starten **neu aus dem HTML** (Zustand
+  muss vom Server kommen). Ein Tool-Aufruf aus der Ansicht hat im SDK ein Request-Timeout (MCP-SDK-Standard 60 s, nicht
+  in der Claude-Doku genannt – **ungeprüft**, ob Claudes Backend eine kürzere Grenze hat); unser `wait_for_change`
+  endet nach höchstens 25 s und liegt damit darunter. Hintergrund-Tabs/gesperrte Handys drosseln oder pausieren die
+  Schleife (Browser-Verhalten, nicht spezifisch dokumentiert).
+- **Größen:** Für Tool-Ergebnisse nennt Claude ~150.000 Zeichen (darüber kommt die Ansicht nicht an die Daten); für die
+  HTML-Ressource fand ich **keine** dokumentierte Grenze. Inline-Karten: Höhe passt sich dem Inhalt an, kein inneres
+  Scrollen, mobil gekappt; Design-Richtlinie „höchstens 2 Aktionen, 4–5 Datenpunkte“ für Inline-Karten – ein Board ist
+  eher ein Fall für Seitenleiste/Vollbild („boards … that the user and Claude work on together“).
+
+Quellen: [Spezifikation, Abschnitte Transport, Data Passing, Host Context, CSP](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx),
+[Claude: Supersede older widget instances](https://claude.com/docs/connectors/building/mcp-apps/instance-supersession.md),
+[Claude: Troubleshoot](https://claude.com/docs/connectors/building/mcp-apps/troubleshooting.md),
+[Claude: Design guidelines](https://claude.com/docs/connectors/building/mcp-apps/design-guidelines.md).
+
+### 13.3 Welche Clients es heute können
+
+| Client | MCP Apps | Auth | Bestätigung von UI-Tool-Aufrufen |
+|---|---|---|---|
+| claude.ai (Web), Claude Desktop | ja; Seitenleiste/Vollbild je nach Organisation | Custom Connector per URL; ohne Auth möglich (unser Staging-Connector läuft so; die Doku warnt nur, dass dann jeder die Tools aufrufen kann) | Vor dem ersten Anzeigen ggf. „Allow once / Always allow“. **`app.callServerTool` auf den eigenen Server: kein Bestätigungsdialog** (Claude-Doku). |
+| Claude iOS/Android | ja, im WKWebView/WebView; Seitenleiste u. Ä. „not on mobile yet“ | Custom Connectors am Handy: **ungeprüft** (Support-Artikel nennt nur Verzeichnis-Connectoren) | wie oben |
+| Claude Code (Terminal) | **nein**, nur Text; Modell bekommt bei vorhandenem `structuredContent` dieses JSON statt des Texts | — | — |
+| ChatGPT | ja, setzt den MCP-Apps-Standard um (seit Feb. 2026), `window.openai` nur als Zusatz | Developer Mode: OAuth, „No Authentication“ oder gemischt; Plus/Pro/Business/Enterprise, nur Web (**ungeprüft**, nur Suchauszüge) | Schreibaktionen „may“ eine Bestätigung auslösen (**ungeprüft**, ob auch für Aufrufe aus der Ansicht) |
+| VS Code (Copilot), Goose, weitere (Cursor, Postman, MCPJam …) | laut MCP-Blog bzw. Drittquellen ja, teils experimentell | je Client | **ungeprüft** |
+
+Spezifikation: Der Host „MAY … subject them to further user approval“ – jeder Client darf UI-Aufrufe bestätigen lassen.
+
+Quellen: [Claude: Get started with MCP Apps](https://claude.com/docs/connectors/building/mcp-apps/getting-started.md),
+[Claude: App tools (Approval)](https://claude.com/docs/connectors/building/mcp-apps/app-tools.md),
+[Claude Support: Interactive connectors](https://support.claude.com/en/articles/13454812-use-interactive-connectors-in-claude),
+[MCP-Blog 2026-01-26](https://blog.modelcontextprotocol.io/posts/2026-01-26-mcp-apps/),
+[OpenAI: MCP Apps in ChatGPT](https://developers.openai.com/apps-sdk/mcp-apps-in-chatgpt) und
+[OpenAI: Developer mode](https://developers.openai.com/api/docs/guides/developer-mode) (beide nicht abrufbar, nur Suchauszug).
+
+### 13.4 Sicherheit: Wie kommt der Sitz in die Ansicht?
+
+- **Ohne zusätzlichen Kanal:** Öffnet das Modell die Ansicht mit einem Tool, das `team_id` + `uid` (bzw. `api_key`)
+  als Argumente trägt, bekommt die Ansicht genau diese Argumente per `ui/notifications/tool-input`. Bei
+  `join_team`/`create_team` steht die neue UID ohnehin im Ergebnis. Die Ansicht sieht also **nichts, was nicht schon im
+  Chatverlauf steht** (Argumente und Ergebnisse liegen dort; die Spezifikation empfiehlt `_meta` des Ergebnisses für
+  „nicht für das Modell“ – das hilft uns nicht, weil das Modell die UID für seine eigenen Aufrufe ohnehin kennt).
+- **Wer sieht was:** Die Tool-Aufrufe der Ansicht gehen über das Backend des Anbieters zu uns (bei Claude aus
+  Anthropic-IP-Bereichen, nicht vom Gerät). Ob sie im Verlauf oder für das Modell sichtbar werden, ist nicht
+  dokumentiert (**offen**); was das Modell erfahren soll, schicken wir bewusst per `ui/update-model-context`
+  (ohne UID).
+- **Risiken:**
+  1. **XSS in der Ansicht:** Namen, Notiz, Item-Texte sind fremde Eingaben. Wie im Web nur `textContent`, kein
+     `innerHTML`; dazu CSP ohne `connectDomains` → selbst ein Fehler könnte nichts nach außen schicken außer über die
+     Host-Brücke (und dort nur an unsere Tools).
+  2. **Mehrere lebende Kopien** (jede `show_board`-Antwort ist ein eigenes iframe): jede würde eine eigene
+     Warteschleife fahren. Gegenmittel: das von Anthropic beschriebene „Supersession“-Muster (Server gibt `seq`/Zeit
+     mit, `BroadcastChannel` innerhalb derselben Sandbox-Herkunft, ältere Kopie schaltet sich grau und stoppt).
+  3. **Kein `localStorage` für die UID:** Die Herkunft ist ohne `ui.domain` pro Gespräch+Connector; mit festem
+     `ui.domain` teilen sich alle Gespräche einen Speicher. Wir brauchen weder `ui.domain` noch Speicher.
+  4. **Sitz bleibt „anwesend“,** solange irgendeine Kopie offen ist und wartet (wie ein offener Browser-Tab) – gewollt.
+  5. **Origin-Prüfung `/mcp`** (Abschnitt 9) bleibt gültig: Aufrufe kommen vom Backend des Hosts, nicht aus dem
+     iframe. Sollte ein Host sie doch aus dem Browser mit `Origin: …claudemcpcontent.com` schicken, würden sie mit 403
+     scheitern (**prüfen**).
+  6. **`api_key`** würde genauso in die Ansicht gelangen; akzeptiert wie im Chat (Entscheidung 3).
+
+### 13.5 Vorschlag für uns (Minimal-Design)
+
+**Server (Ben, PR „Apps-1“):**
+
+- Neue Ressource **`ui://agile-poker/board`** (eine einzige), `text/html;profile=mcp-app`, statisches HTML aus einer
+  Datei (z. B. `api/v1/mcp_app/board.html`, beim Ausliefern unverändert), `_meta.ui`: `prefersBorder: true`, **kein**
+  `csp` (Standard reicht: alles inline, keine Netzwerkzugriffe), kein `domain`. `initialize` meldet
+  `capabilities.resources: {}`; `resources/list` liefert die eine Ressource, `resources/read` sie selbst,
+  `resources/templates/list` leer.
+- **`_meta.ui.resourceUri` nur an einem neuen Tool `show_board`** (Sitz-Identität, nur lesend, Ergebnis = Board wie
+  `get_board` plus `seq`/`created_at` für die Supersession). Begründung: Hätten `get_board` oder gar `wait_for_change`
+  das `_meta`, entstünde bei jedem Aufruf des Modells ein neues iframe. `join_team`/`create_team` bekommen es
+  **nicht** (sonst Board auch dort, wo der Nutzer es nicht will; Modell soll nach dem Beitritt einmal `show_board`
+  aufrufen, Hinweis in `instructions`). Für Clients ohne Apps liefert `show_board` dieselbe kompakte Textansicht wie
+  `get_board`.
+- Die Ansicht ruft vorhandene Tools: `get_board` (Start/Neuladen), `wait_for_change` (Schleife), `play_card` (Klick).
+  Keine neuen App-only-Tools nötig. Keine Änderung an poker-msg: Die Wartenden der Ansichten sind ganz normale
+  `wait_for_change`-Aufrufe über X-Accel-Redirect (Abschnitt 8).
+
+**Ansicht (Fred, Gestaltung Delia, PR „Apps-2“):**
+
+- Eine HTML-Datei, **alles inline**: eigene schlanke Brücke (~60 Zeilen, ohne SDK und ohne CDN; das SDK-Bundle wäre
+  zusätzlicher Code von außen) oder – falls Fred lieber will – `app-with-deps.js` der festen Version eingebettet.
+- Ablauf: `ui/initialize` → Theme/Variablen übernehmen → Sitz aus `tool-input`, Board aus `tool-result` zeichnen →
+  Schleife `wait_for_change(since=version)`; bei `busy` `retry_after` warten; bei Fehler/Netz kurze Pause, dann
+  `get_board`. Klick auf eigene Karte → `play_card`, danach Ergebnis zeichnen (Version übernehmen). Nach Änderungen
+  `ui/update-model-context` mit einer Zeile Text („You played 5. Waiting for Ben, Cleo.“ / „Revealed: …“), damit das
+  Modell auf Nachfrage Bescheid weiß, ohne selbst zu warten.
+- Inhalt: Teamname, aktives Item, Spielerliste mit „hat gelegt“ bzw. Karte nach dem Aufdecken, Verteilung, eigene
+  Hand (Karten des Sets, große Tap-Flächen ≥ 44 px). Kein Timer-Ticken, keine Einstellungen, keine Reaktionen in
+  Schritt 1 (geht alles im Chat). Inline kompakt; Knopf „Vollbild“ (`ui/request-display-mode`), wo der Host es
+  anbietet – dort die größere Board-Ansicht.
+- **Theme:** `hostContext.theme` setzt `light`/`dark`; Farben aus unseren Tokens, Hintergründe/Text wo sinnvoll aus den
+  Host-Variablen (`--color-background-primary` usw.), damit es im Chat nicht wie ein Fremdkörper wirkt. Schrift: unser
+  `--font` ist ohnehin ein System-Monospace-Stapel, also keine Webfonts nötig.
+- **Wiederverwendung CSS/Symbole:** `style/style.css` (242 KB) ist zu groß und zu board-spezifisch → eigenes kleines
+  Stylesheet (Ziel < 15 KB) mit denselben Tokens plus `style/cards.css` (11 KB). Die Kartensymbole: `src/cards.svg`
+  (161 KB, 60 Symbole, gzip 29 KB) **inline** in die Ressource (externes `<use href>` geht cross-origin nicht, und
+  `resourceDomains` würde nur Bilder, nicht Symbole liefern). Gesamt etwa 200 KB unkomprimiert – keine dokumentierte
+  Grenze, aber zu prüfen; Alternative: Sprite als zweite Ressource `ui://agile-poker/cards.svg` per `resources/read`
+  aus der Ansicht nachladen. Beim Ausliefern Versionsnummer in der Ressource, damit Host-Caches sauber wechseln
+  (Hosts „MAY prefetch and cache“).
+- **Supersession:** wie 13.4 Punkt 2; ältere Kopien zeigen „Superseded – see the newest board below“ und stoppen
+  die Schleife.
+
+**Ohne Apps (Fallback):** unverändert – `show_board` antwortet wie `get_board` mit Text + `structuredContent`; das
+Modell bleibt wie bisher mit `wait_for_change` am Tisch.
+
+**Tests (Tessa):** Server-Teil wie bisher per Playwright `request` (`resources/read`, `_meta` im `tools/list`). Die
+Ansicht in einer kleinen Test-Hostseite (iframe + `postMessage`-Stub, der `tools/call` an `/mcp` weiterreicht) –
+deckt Zeichnen, Warte-Schleife und Karte legen ab, ohne echten KI-Client. Zusätzlich einmal manuell in claude.ai
+(Staging-Connector) und, wenn möglich, ChatGPT.
+
+**Aufwand (grob):** Apps-1 Server 0,5–1 Tag; Apps-2 Ansicht 2–3 Tage (Fred + Delia); Tests 1 Tag; manueller Test in
+Clients 0,5 Tag. Zusammen etwa **4–5 Personentage**, in zwei einzeln deploybaren PRs (Apps-1 ist ohne Apps-2 harmlos,
+wenn `show_board` erst mit Apps-2 das `_meta` bekommt).
+
+### 13.6 Risiken und Unbekanntes
+
+- **Halten die Hosts Dauer-Schleifen aus?** Nicht dokumentiert, ob Claude/ChatGPT Tool-Aufrufe aus Ansichten drosseln,
+  Laufzeiten begrenzen oder lange Aufrufe (25 s) abbrechen. Erstes Ziel des Prototyps. Plan B: kürzeres `timeout`
+  (z. B. 10 s); Plan C: WebSocket der Ansicht direkt an poker-msg (`connectDomains: ["wss://poker.komplexitaeter.de"]`,
+  `subscribe:<team>` wie das Web-Board, bei `pull` dann `get_board`) – braucht Herkunftsprüfung in poker-msg und gilt
+  nicht bei Hosts, die `connectDomains` nicht erlauben.
+- **Sichtbarkeit der UI-Aufrufe** im Verlauf/für das Modell und ob Nutzer pro Tool „Needs approval“ einstellen können,
+  das dann auch Klicks in der Ansicht bestätigen lässt (Claude-Doku sagt nur: kein Dialog für `callServerTool`).
+- **Modell und Ansicht warten doppelt:** Das Modell weiß nicht, ob die Ansicht angezeigt wird, und ruft womöglich
+  weiter `wait_for_change`. Doppelte Anwesenheit ist harmlos, kostet aber Aufrufe; Text in `show_board`:
+  „If the user sees the live board, you do not need to call wait_for_change.“ (Wirksamkeit offen.)
+- **Mobile:** Custom Connectors auf dem Handy und Höhen-Kappung inline – ungeprüft.
+- **ChatGPT-Details** (Plan, Auth ohne OAuth, Bestätigungen, CSP-Abweichungen) nur aus Suchauszügen.
+- **Größe der Ressource** (~200 KB mit Sprite) – keine Grenze gefunden, muss im Test passen.
+- **Spezifikation bewegt sich:** stabile Fassung 2026-01-26, Entwurf mit Änderungen; das veraltete flache `_meta`
+  verschwindet „before GA“. Wir liefern nur `_meta.ui.resourceUri` (plus ggf. den alten Schlüssel, solange Hosts ihn
+  brauchen – prüfen).
+
+### 13.7 Offene Fragen an Andreas
+
+1. **Umfang Schritt 1:** nur Board ansehen + eigene Karte legen (Vorschlag), oder auch Neue Runde/Nächstes Item als
+   Knöpfe? (Design-Richtlinie: inline höchstens 2 Aktionen.)
+2. **Neues Tool `show_board`** statt `_meta` an `get_board`/`join_team` – einverstanden?
+3. **Wer probiert zuerst?** Vorschlag: kleiner Prototyp (Apps-1 + nackte Ansicht ohne Gestaltung) auf Staging, um 13.6
+   Punkt 1 (Dauer-Schleife im Host) in claude.ai und ChatGPT zu prüfen, bevor Delia gestaltet.
+4. **ChatGPT-Test:** Hat jemand im Team einen Plan mit Developer Mode, um den Staging-Connector dort einzurichten?
+5. **Netzwerkzugriff für Recherche:** modelcontextprotocol.io, developers.openai.com und help.openai.com waren aus
+   der Agenten-Umgebung gesperrt; für eine Nachprüfung der ChatGPT-Angaben bitte freischalten oder selbst prüfen.
+
+### 13.8 Reiche Ansicht (Stand 2026-11-27, Ben)
+
+Feedback Andreas nach dem Test in claude.ai: Live-Board bleibt unten im Gespräch (`show_board` am Ende jeder Antwort
+mit Änderung, höchstens einmal pro Antwort, ältere Kopien stoppen per Supersession), daneben höchstens eine kurze
+Zeile; Rückfragen (z. B. vor `items next`) in einer Zeile, nur Werte aus dem Set bzw. gespielte. Mit Live-Board öffnet
+`show_board(open="next_item")` den Dialog „How do you want to leave this item?“ der Ansicht (`open` im Ergebnis).
+
+Daten für Karten wie im Web (nur ergänzt, `core_board_get()`): jede Karte in `deck.cards`/`deck.controls`/
+`deck.other_cards` hat zusätzlich `text`, `description`, `symbol`, `color`, `numeric_value`, `has_value`, `infinite`,
+`range`, `style`, `control` (aufgelöst wie `cardLook()` in `script/cards.js`); `deck.style`; `players[].card_key`,
+`card_before_change_key`, `you.card_key`. Skala des Ergebnis-Diagramms = `deck.cards` + `deck.controls` (wie
+`gDeck.cards` im Web). Symbole: `_meta.symbols` (verstecktes `<svg>` nur mit den Symbolen des Decks und der
+Status-Karten) und `_meta.symbol_ids` im Ergebnis von `show_board` (nicht im `structuredContent`, also nicht beim
+Modell); über 60 KB (nur große eigene Sets mit allen Steuerkarten) statt `symbols` nur `_meta.symbols_resource` = `ui://agile-poker/symbols`; dort und bei späterem Deck-Wechsel `resources/read` (ganzes `src/cards.svg`).

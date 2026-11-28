@@ -1204,8 +1204,9 @@ function fitCardsToTable() {
     // #cbox: margin-top, 4px padding on top, 2px below the gap under the last row, 1px to spare
     // B-110: minus the observers row below the cards (with its margins)
     // B-52 S1c: minus the team's note above the cards
+    // B-151: minus the summary line below the cards (anonymous mode after the reveal)
     const height = table.clientHeight - parseFloat(getComputedStyle(cbox).marginTop) - 7 - observersHeight()
-        - boardNoteHeight();
+        - boardNoteHeight() - tableSummaryHeight();
 
     const n = cbox.children.length;
     let fit = min;
@@ -1269,10 +1270,11 @@ function updateCards(cardsDiv, players) {
         setTableCardOriginal(card, player.original_card_key, true);
 
         const nameSpan = card.getElementsByClassName('card_player_name')[0];
-        if (nameSpan.textContent !== player.name) {
-            nameSpan.textContent = player.name;
-            nameSpan.title = player.name; // the full name when it ends with an ellipsis
-        }
+        if (nameSpan.textContent !== player.name) nameSpan.textContent = player.name;
+        // B-151: the AI mark in front of the name (style.css .c.via-ai), the reason in the tooltip
+        const viaAi = viaAiCard(player);
+        if (card.classList.contains('via-ai') !== viaAi) card.classList.toggle('via-ai', viaAi);
+        setAttrIfChanged(nameSpan, 'title', nameTitle(player.name, viaAi));
         // B-110: no connection for a while (dao.php "away"); attributes only when they change (quiet re-render)
         const away = player.away === true;
         if (card.classList.contains('is-away') !== away) card.classList.toggle('is-away', away);
@@ -1379,6 +1381,12 @@ const DELETE_ICON_PATHS = [
     { d: 'M9.6 6.8c-.1-1.6.4-2.4 2.3-2.4 2 0 2.5.8 2.5 2.4', cls: 'ink', w: 1.7, lid: true },
 ];
 
+/* the tooltip of a name on the table: the full name (when it ends with an ellipsis); B-151: via an AI assistant
+ * (dao.php via_ai) it says so. Set as an attribute only (no HTML). */
+function nameTitle(name, viaAi = false) {
+    return viaAi ? name + ' \u2013 joined via an AI assistant' : name;
+}
+
 function deleteLabel(name, away = false, isMe = false) {
     if (isMe) return 'Remove yourself from the table'; // B-110: the own card (.is-me)
     return 'Remove ' + name + ' from the table' + (away ? ' (no connection)' : ''); // B-110: away
@@ -1455,6 +1463,11 @@ function updateObservers(observers, myMkey) {
         const span = li.querySelector('.obs-name');
         const name = String(o.name);
         if (span.textContent !== name) span.textContent = name; // no title: the name is right there (B-110)
+        // B-151: the AI mark after the eye (style.css .obs.via-ai); then a title tells what it means
+        const viaAi = o.via_ai === true;
+        if (li.classList.contains('via-ai') !== viaAi) li.classList.toggle('via-ai', viaAi);
+        if (viaAi) setAttrIfChanged(span, 'title', nameTitle(name, true));
+        else if (span.hasAttribute('title')) span.removeAttribute('title');
         const isMe = mkey === myMkey;
         if (li.classList.contains('is-me') !== isMe) li.classList.toggle('is-me', isMe);
         syncReactButton(li, !isMe, name);
@@ -1463,6 +1476,41 @@ function updateObservers(observers, myMkey) {
     });
     existing.forEach(li => li.remove());
     if (box.hidden !== (observers.length === 0)) box.hidden = observers.length === 0;
+}
+
+/* B-151: anonymous mode after the reveal: the cards show neither the AI mark nor "away" (dao.php sets both false for
+ * the other players); one line below the cards (#table_summary) gives the team counts ai_count (players and observers)
+ * and away_count. A part with 0 drops out, the line with both 0. Numbers via textContent. The own card keeps its
+ * flags in dao.php; the board hides its mark too (viaAiCard()), so no card carries one. */
+let gAnonRevealed = false; // set by updateTableSummary() before the cards are updated
+
+function updateTableSummary(myJson) {
+    const box = document.getElementById('table_summary');
+    if (box === null) return;
+    const anonRevealed = myJson.anonymous_mode === 1 && myJson.all_players_ready === true && myJson.players_count > 0;
+    gAnonRevealed = anonRevealed;
+    const ai = anonRevealed ? Number(myJson.ai_count) || 0 : 0;
+    const away = anonRevealed ? Number(myJson.away_count) || 0 : 0;
+    const part = (cls, n) => {
+        const el = box.querySelector('.' + cls);
+        const num = el.querySelector('.' + cls + '-n');
+        if (num.textContent !== String(n)) num.textContent = String(n);
+        if (el.hidden !== (n === 0)) el.hidden = n === 0;
+    };
+    part('ts-ai', ai);
+    part('ts-away', away);
+    if (box.hidden !== (ai + away === 0)) box.hidden = ai + away === 0;
+}
+
+function viaAiCard(player) {
+    return player.via_ai === true && !gAnonRevealed;
+}
+
+function tableSummaryHeight() {
+    const box = document.getElementById('table_summary');
+    if (box === null || box.hidden) return 0;
+    const style = getComputedStyle(box);
+    return box.offsetHeight + parseFloat(style.marginTop) + parseFloat(style.marginBottom);
 }
 
 /* the height the observers row takes from the table, with its margins (0 when hidden) */
@@ -1784,8 +1832,9 @@ function createCardDiv(player, playersCount, isOnLoad) {
     let cardSpan = document.createElement('span');
     cardSpan.classList.add('card_player_name');
     cardSpan.textContent = player.name;
-    cardSpan.title = player.name; // the full name when it ends with an ellipsis
+    cardSpan.title = nameTitle(player.name, viaAiCard(player));
     newCard.appendChild(cardSpan);
+    newCard.classList.toggle('via-ai', viaAiCard(player)); // B-151: the AI mark (style.css)
 
     // B-99 D16: a real button (focusable, named), a sketched trash can inside
     let cardDeleteBtn = document.createElement('button');
@@ -1960,6 +2009,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     // B-34: on load too, so the page shows complete at once (on load: no fade-in, no glide)
     // B-110: the observers first, their row takes room from the cards (fitCardsToTable)
     updateObservers(Array.isArray(myJson.observers) ? myJson.observers : [], myJson.mkey);
+    updateTableSummary(myJson); // B-151: before the cards as well (its line takes room from them)
     if (updatePlayersCards(myJson.players, isOnLoad, myJson.anonymous_mode === 1)) {
         /* returns true when new cards have been added */
         setColor();
@@ -1991,6 +2041,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     updateAnonymityConfig(myJson.anonymous_request_toggle, myJson.anonymous_mode);
     checkRadio('cet_show_tips', myJson.show_tips === 0 ? '0' : '1'); // B-96
     updateCardChangesConfig(myJson.show_card_changes, myJson.round_show_card_changes); // B-115
+    updateAllowAi(myJson.allow_ai); // B-151
 
     updateJediBtn();
 
@@ -2324,6 +2375,28 @@ function updateInviteLabel() {
 }
 document.addEventListener('DOMContentLoaded', updateInviteLabel);
 gTouchQuery.addEventListener('change', updateInviteLabel);
+
+/* B-151 (MCP PR G): the AI connector URL in the hints (.mcp-url) and in #ai_dialog (#ai_url, ai_dialog.js) comes
+ * from the current origin (live, staging, local) */
+function showMcpUrl() {
+    const url = window.location.origin + '/mcp';
+    document.querySelectorAll('.mcp-url').forEach(el => { el.textContent = url; });
+    const field = document.getElementById('ai_url');
+    if (field !== null) field.value = url;
+}
+document.addEventListener('DOMContentLoaded', showMcpUrl);
+
+/* B-151: team setting "Allow AI assistants" (dao allow_ai, 0 = off): the radio in the board settings, and while off no
+ * AI button in the header (#ai_btn, an open #ai_dialog closes) and no AI hint on the join overlay (#join_mcp_hint) */
+function updateAllowAi(allowAi) {
+    const on = allowAi !== 0;
+    checkRadio('cet_allow_ai', on ? '1' : '0');
+    ['ai_btn', 'join_mcp_hint'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el !== null) el.hidden = !on;
+    });
+    if (!on && typeof closeAiDialog === 'function') closeAiDialog();
+}
 
 function inviteTeam() {
     let url = window.location.href;

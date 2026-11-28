@@ -1156,3 +1156,81 @@ select index_name, non_unique, column_name, seq_in_index from information_schema
  where table_schema = database() and table_name = 'pok_topic_items_tbl' and index_name = 'ux_topic_items_team_key'
  order by seq_in_index;
 /* end B-150 item keys */
+
+/* B-151 mcp seen: pok_players_tbl.mcp_seen_time = last MCP tool call of the person (AI assistant, api/v1/lib_mcp.php
+   mcp_actor() -> touch_mcp_person() in api/lib.php, at most every 10 s). getDao() shows via_ai while it is younger
+   than AWAY_AFTER_SEC (the board shows a small AI symbol, Andreas 2026-11-27). null = never via MCP.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code (dao.php reads the column). The
+   release code never reads or writes it.
+   Run only this block: sed -n '/^\/\* B-151 mcp seen:/,/^\/\* end B-151 mcp seen/p' db_schema_pok_inc.sql */
+select column_name, column_type, is_nullable from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_seen_time';
+
+set session lock_wait_timeout = 5;
+set @b151_seen_sql = if((select count(1) from information_schema.columns
+                          where table_schema = database() and table_name = 'pok_players_tbl'
+                            and column_name = 'mcp_seen_time') = 0,
+  'alter table pok_players_tbl
+     add column mcp_seen_time timestamp null default null
+       comment ''B-151: last MCP tool call of the person (AI symbol on the board)'',
+     algorithm = instant',
+  'select ''already done'' as b151_mcp_seen');
+prepare b151_seen_stmt from @b151_seen_sql;
+execute b151_seen_stmt;
+deallocate prepare b151_seen_stmt;
+
+select column_name, column_type, is_nullable from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_seen_time';
+/* end B-151 mcp seen */
+
+/* B-151 mcp states: pok_players_tbl.mcp_states = the board states behind the last MCP versions of a seat
+   (api/v1/lib_mcp_wait.php, JSON [[version, state], ...], at most 8; names and card texts as \u escapes, so ascii).
+   The MCP version is a short hash now; wait_for_change lists the changes since one of these states, an unknown version
+   gets the whole board. Deleted with the person (row of pok_players_tbl). Without the column: always the whole board.
+   Additive, instant, idempotent (run it again any time), before or after deploying the code.
+   Run only this block: sed -n '/^\/\* B-151 mcp states:/,/^\/\* end B-151 mcp states/p' db_schema_pok_inc.sql */
+select column_name, column_type, character_set_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_states';
+
+set session lock_wait_timeout = 5;
+set @b151_states_sql = if((select count(1) from information_schema.columns
+                            where table_schema = database() and table_name = 'pok_players_tbl'
+                              and column_name = 'mcp_states') = 0,
+  'alter table pok_players_tbl
+     add column mcp_states mediumtext character set ascii collate ascii_bin null default null
+       comment ''B-151: board states of the last MCP versions of the seat (wait_for_change)'',
+     algorithm = instant',
+  'select ''already done'' as b151_mcp_states');
+prepare b151_states_stmt from @b151_states_sql;
+execute b151_states_stmt;
+deallocate prepare b151_states_stmt;
+
+select column_name, column_type, character_set_name from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'mcp_states';
+/* end B-151 mcp states */
+
+/* B-151 allow ai: pok_teams_tbl.allow_ai = team setting "Allow AI assistants" (board settings, tab Team; Andreas,
+   data protection: the team can object). 1 = on (default), 0 = every /mcp call for the team is refused with
+   ai_not_allowed (api/v1/lib_mcp.php); the REST API (/api/v1, API keys) is not affected. Only the board (browser,
+   api/update_team.php) changes it, never MCP.
+   Additive, instant, idempotent (run it again any time), BEFORE deploying the code (dao.php and /mcp read the column).
+   Run only this block: sed -n '/^\/\* B-151 allow ai:/,/^\/\* end B-151 allow ai/p' db_schema_pok_inc.sql */
+select column_name, column_type, is_nullable, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'allow_ai';
+
+set session lock_wait_timeout = 5;
+set @b151_allow_ai_sql = if((select count(1) from information_schema.columns
+                              where table_schema = database() and table_name = 'pok_teams_tbl'
+                                and column_name = 'allow_ai') = 0,
+  'alter table pok_teams_tbl
+     add column allow_ai tinyint not null default 1
+       comment ''B-151: team setting "Allow AI assistants", 0 = /mcp refused for the team'',
+     algorithm = instant',
+  'select ''already done'' as b151_allow_ai');
+prepare b151_allow_ai_stmt from @b151_allow_ai_sql;
+execute b151_allow_ai_stmt;
+deallocate prepare b151_allow_ai_stmt;
+
+select column_name, column_type, is_nullable, column_default from information_schema.columns
+ where table_schema = database() and table_name = 'pok_teams_tbl' and column_name = 'allow_ai';
+/* end B-151 allow ai */

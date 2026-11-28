@@ -1,6 +1,7 @@
 <?php
 require '../config.php';
 require './lib.php';
+require './lib_core_team.php';
 require_post();
 
 $t = substr(filter_input(INPUT_GET, "t", FILTER_SANITIZE_URL	) ?? '', 0,80);
@@ -13,79 +14,26 @@ $show_tips = ($show_tips_param === '0' || $show_tips_param === '1') ? (int)$show
 $show_card_changes_param = $_GET['show_card_changes'] ?? null;
 $show_card_changes = ($show_card_changes_param === '0' || $show_card_changes_param === '1')
     ? (int)$show_card_changes_param : null;
+// B-151: team setting "Allow AI assistants", exactly "0" or "1"; anything else is ignored. Only here (the board), never
+// through MCP: switched off, /mcp refuses every call of the team (ai_not_allowed); the notify wakes waiting views
+$allow_ai_param = $_GET['allow_ai'] ?? null;
+$allow_ai = ($allow_ai_param === '0' || $allow_ai_param === '1') ? (int)$allow_ai_param : null;
 
 $link = db_init();
 require_team($t, $link);
-if (strlen($name)>0) {
-    $sql = $link->prepare( "update pok_teams_tbl t
-                                     set t.name=?
-                                   where t.id=?");
-    $sql->bind_param('ss', $name, $t);
-    $sql->execute();
-}
 
+/* B-151: the logic is core_team_settings_patch() (lib_core_team.php), shared with MCP board_settings: one transaction,
+   team row locked first; anonymous mode and "See changed cards" (B-115) apply at once while no card is down, else
+   with the next round. All boards of the team reload if something changed (B-81). Answer as before: 200 empty,
+   unknown team 403. */
+$fields = array();
+if (strlen($name) > 0) $fields['name'] = $name;
 if ($anonymous_request_toggle != null and $anonymous_request_toggle >= 0 and $anonymous_request_toggle <= 1) {
-    $sql = $link->prepare( "update pok_teams_tbl t
-                                     set t.anonymous_request_toggle=?
-                                        ,t.anonymous_mode = if(
-                                            (select count(1)
-                                              from pok_players_tbl p2
-                                             where p2.team_id = t.id
-                                               and card_key is not null
-                                               and p2.player_type = 'PLAYER') = 0
-                                            ,t.anonymous_request_toggle, t.anonymous_mode
-                                        )
-                                   where t.id=?");
-    $sql->bind_param('is', $anonymous_request_toggle, $t);
-    $sql->execute();
+    $fields['anonymous'] = (int)$anonymous_request_toggle === 1;
 }
+if ($show_tips !== null) $fields['show_tips'] = $show_tips === 1;
+if ($show_card_changes !== null) $fields['show_card_changes'] = $show_card_changes === 1;
+if ($allow_ai !== null) $fields['allow_ai'] = $allow_ai === 1;
 
-if ($show_tips !== null) {
-    $sql = $link->prepare("update pok_teams_tbl t
-                              set t.show_tips=?
-                            where t.id=?");
-    $sql->bind_param('is', $show_tips, $t);
-    $sql->execute();
-}
-
-/* B-115: takes effect with the next round (start_new_round() copies it into round_show_card_changes), so nobody sees
-   an original card by switching it on afterwards. While no card is down the round has not started: at once, as the
-   anonymous mode above. Notify only if something changed. Switched off at once, an original card left from an "on"
-   phase of the same round (cards taken back after a change) is cleared, so it neither shows up again nor goes into
-   the round snapshot. Same lock order as setc.php: team row first, then players. */
-$card_changes_changed = false;
-if ($show_card_changes !== null) {
-    $link->begin_transaction();
-    $sql = $link->prepare("update pok_teams_tbl t
-                              set t.show_card_changes=?
-                                 ,t.round_show_card_changes = if(
-                                     (select count(1)
-                                        from pok_players_tbl p2
-                                       where p2.team_id = t.id
-                                         and p2.card_key is not null
-                                         and p2.player_type = 'PLAYER') = 0
-                                     ,?, t.round_show_card_changes
-                                 )
-                            where t.id=?");
-    $sql->bind_param('iis', $show_card_changes, $show_card_changes, $t);
-    $sql->execute();
-    $card_changes_changed = $sql->affected_rows > 0;
-    $sql = $link->prepare("update pok_players_tbl p
-                             join pok_teams_tbl t on t.id = p.team_id
-                              set p.original_card_key = null
-                            where p.team_id = ?
-                              and t.round_show_card_changes = 0
-                              and p.original_card_key is not null");
-    $sql->bind_param('s', $t);
-    $sql->execute();
-    $link->commit();
-}
-
+topic_core_call(fn(): array => array(core_team_settings_patch($link, ['team_id' => $t], $fields)));
 $link->close();
-
-// B-115: a request with only show_card_changes and no change does not reload the boards
-if ($show_card_changes !== null && !$card_changes_changed && strlen($name) === 0
-    && $anonymous_request_toggle === null && $show_tips === null) exit;
-
-// B-81: all boards of the team reload (only reached after the team check and a successful write)
-notify_team($t);
