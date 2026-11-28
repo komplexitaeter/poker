@@ -572,8 +572,11 @@ function mcp_require_ai_allowed(mysqli $link, string $t): void
    once); a wait_for_change of an ended session touches nothing (mcp_actor()) */
 function mcp_touch_actor(mysqli $link, array $actor, bool $wait): array
 {
+    // 'mcp': board reads of this call keep the end mark (core_board_get()); the wait keeps it here too, an end_session
+    // right after the check above must not be undone (only a real call reconnects)
+    $actor['mcp'] = true;
     if ($wait && mcp_session_ended($link, $actor['uid'], $actor['team_id'])) return $actor + ['ended' => true];
-    touch_api_person($link, $actor['uid'], $actor['team_id']);
+    touch_api_person($link, $actor['uid'], $actor['team_id'], $wait);
     if (touch_mcp_person($link, $actor['uid'], $actor['team_id'], $wait)) notify_team($actor['team_id']);
     return $actor;
 }

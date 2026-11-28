@@ -21,7 +21,9 @@ const BOARD_LATE_CARD_TEXT = 'joined in';
 function core_board_get(mysqli $link, array $actor, bool $include_items = false, ?string &$card_mkey = null): array
 {
     $t = (string)$actor['team_id'];
-    $dao = getDao($t, (string)$actor['uid']);
+    // B-151 end session: an MCP read never makes a seat with the end mark present again (a wait_for_change still
+    // reading while end_session runs); only a real MCP call clears the mark (mcp_touch_actor())
+    $dao = getDao($t, (string)$actor['uid'], !empty($actor['mcp']));
     // B-163: id of the own card on the web boards (its handle in anonymous mode after the reveal, '' = no card); only
     // for the caller (MCP react sends it as the thrower), not part of the board
     $card_mkey = (string)$dao['card_mkey'];

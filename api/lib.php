@@ -1135,12 +1135,17 @@ function new_team_id(mysqli $link, string $name): string {
 const AWAY_AFTER_SEC = 70;
 
 /* B-110, B-127: marks the board of player $id in team $t as connected (dao.php and seen.php). The bound team_id limits
-   the effect to that team, an unknown team or id changes nothing. */
-function touch_player($link, string $id, string $t): void {
+   the effect to that team, an unknown team or id changes nothing. B-151 end session: $keep_ended (board reads of MCP
+   calls) never refreshes a seat with the end mark of end_mcp_session() - checked in the same statement, so a
+   wait_for_change still reading while end_session runs does not make the seat present again; only a real MCP call
+   (touch_mcp_person()) clears the mark. */
+const MCP_NOT_ENDED_SQL = " and (mcp_seen_time is null or mcp_seen_time >= '1980-01-01')";
+
+function touch_player($link, string $id, string $t, bool $keep_ended = false): void {
     $sql = $link->prepare("UPDATE pok_players_tbl
                SET last_callback_time = current_timestamp
              WHERE id = ?
-               AND team_id = ?");
+               AND team_id = ?" . ($keep_ended ? MCP_NOT_ENDED_SQL : ''));
     $sql->bind_param('ss', $id, $t);
     $sql->execute();
 }
@@ -1199,7 +1204,7 @@ function touch_mcp_person(mysqli $link, string $uid, string $t, bool $keep_ended
 {
     // $keep_ended (wait_for_change): never clear the mark of end_mcp_session() - checked in the same statement, so an
     // end_session between the check of mcp_session_ended() and this touch is not undone (B-159)
-    $not_ended = $keep_ended ? " and (mcp_seen_time is null or mcp_seen_time >= '1980-01-01')" : '';
+    $not_ended = $keep_ended ? MCP_NOT_ENDED_SQL : '';
     $away_after_sec = AWAY_AFTER_SEC;
     $sql = $link->prepare("update pok_players_tbl p set p.mcp_seen_time = current_timestamp
                             where p.id = ? and p.team_id = ? and not " . VIA_AI_SQL . $not_ended);
@@ -1343,7 +1348,8 @@ function mcp_session_ended(mysqli $link, string $uid, string $t): bool
     return $ended;
 }
 
-function getDao($t, $id) {
+/* $keep_ended: the caller is MCP (touch_player()) */
+function getDao($t, $id, bool $keep_ended = false) {
     $all_players_ready = true;
     $one_ore_more_player_ready = false;
     $name = '';
@@ -1392,7 +1398,7 @@ function getDao($t, $id) {
     $link = db_init();
 
     /* set last callback of current player */
-    touch_player($link, $id, $t);
+    touch_player($link, $id, $t, $keep_ended);
 
     $sql = $link->prepare("SELECT t.cardset_flags
                   ,t.name
