@@ -666,6 +666,9 @@ Umgesetzt in #325 (Handles je Runde; im anonymen Modus blenden die Karten beim A
 Andreas: so gewollt). Bewusst offen: Wer nach dem Aufdecken selbst zu Beobachter wechselt oder geht, macht seine Karte
 zuordenbar (verschwindet, Name erscheint bei den Beobachtern) – nur umsetzen, falls es jemanden stört. poker-msg vertraut
 dem `from` des Clients (Kontingent umgehbar, Werfen im Namen anderer) – bekannt, B-139.
+Nachtrag (Sina, 2026-11-28, optional): Wer nach dem anonymen Aufdecken Beobachter wurde, kann seine liegengebliebene
+Karte über `setc.php` noch ändern, ohne „See changed“-Kennzeichnung (`core_card_play` lässt Nicht-Spieler zu). Fix: für
+Nicht-`PLAYER` mit `anon_kept_round` = laufende Runde ablehnen.
 
 ### B-162 Täglicher CVE-Check (Agent)
 Status: neu (Andreas, 2026-11-28). Ubuntu-Sicherheitsupdates laufen schon per `unattended-upgrades`. Offen:
