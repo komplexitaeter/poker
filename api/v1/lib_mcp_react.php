@@ -4,8 +4,9 @@
  * web board, through poker-msg with exactly its limits (format, 3/s and 10/min per thrower, each emoji once per UTC
  * day and thrower; the nudge only the rate limit). No PHP worker waits and PHP keeps no counters:
  *   1. call: PHP checks the seat and the recipient and answers only
- *      "X-Accel-Redirect: /_mcp_react/<team-hash>/<from-mkey>/<to-mkey>/<code>" (from = the actor's mkey, never taken
- *      from the agent; 0 for the anonymous nudge, like the board);
+ *      "X-Accel-Redirect: /_mcp_react/<team-hash>/<from-mkey>/<to-mkey>/<code>" (from = the actor's mkey - B-163: its
+ *      card handle in anonymous mode after the reveal -, never taken from the agent; 0 for the anonymous nudge, like
+ *      the board);
  *   2. nginx proxies it to poker-msg (127.0.0.1:8445), which checks, distributes to the boards of the team and answers
  *      "X-Accel-Redirect: /_mcp_result/react?r=ok|rate|quota&used=<codes thrown today>";
  *   3. nginx sends the ORIGINAL request to index.php again (phase react): identity checked again, the result built from
@@ -51,7 +52,7 @@ function mcp_react_target(array $board, string $to): ?array
 function mcp_react(mysqli $link, array $p, array $actor): array
 {
     $phase = mcp_wait_phase()['phase'];
-    $board = core_board_get($link, $actor, false);
+    $board = core_board_get($link, $actor, false, $card_mkey);
     $you = $board['you'];
     $code = $p['emoji'];
     if ($phase === 'react') { // thrown already: the recipient only for the text (they may have left meanwhile)
@@ -77,7 +78,9 @@ function mcp_react(mysqli $link, array $p, array $actor): array
     if ($target['mkey'] === (string)$you['mkey']) {
         throw new ApiError(400, 'invalid_param', 'to', 'to: not yourself - pick someone else at the table.');
     }
-    $from = $code === MCP_REACT_NUDGE ? '0' : (string)$you['mkey'];
+    /* B-163: like the web board, the thrower is the own card (its handle in anonymous mode after the reveal, so the
+       mkey of the thrower does not tell by exclusion which card is whose); without a card the own mkey */
+    $from = $code === MCP_REACT_NUDGE ? '0' : ($card_mkey !== '' ? $card_mkey : (string)$you['mkey']);
     if (!preg_match('/^[0-9]{1,10}$/D', $from) || !preg_match('/^[0-9]{1,10}$/D', $target['mkey'])) {
         throw new ApiError(500, 'internal', null, 'Unexpected error on the server.');
     }

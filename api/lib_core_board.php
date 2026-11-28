@@ -18,10 +18,13 @@ const BOARD_LATE_CARD_TEXT = 'joined in';
  * $include_items also the open items (like GET /items). getDao() marks the actor as present (like a board loading
  * dao.php). Reads only, never notifies.
  */
-function core_board_get(mysqli $link, array $actor, bool $include_items = false): array
+function core_board_get(mysqli $link, array $actor, bool $include_items = false, ?string &$card_mkey = null): array
 {
     $t = (string)$actor['team_id'];
     $dao = getDao($t, (string)$actor['uid']);
+    // B-163: id of the own card on the web boards (its handle in anonymous mode after the reveal, '' = no card); only
+    // for the caller (MCP react sends it as the thrower), not part of the board
+    $card_mkey = (string)$dao['card_mkey'];
     if ($dao['team_name'] === null || $dao['player_type'] === null) throw new ApiError(403, 'not_a_member'); // gone meanwhile
 
     $catalog = card_catalog();
@@ -51,8 +54,10 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         $card = ($revealed && $played && $key !== BOARD_HIDDEN_CARD_KEY) ? $key : null;
         if ($card !== null && $card !== LATE_CARD_KEY) $distribution[$card] = ($distribution[$card] ?? 0) + 1;
         // anonymous mode after the reveal: no mkey of others, else name (before) and card (after) could be matched
-        // through it; the own one stays (the agent finds its own row by it)
-        $mkey = ($anonymous_revealed && $player->mkey !== (string)$dao['mkey']) ? null : $player->mkey;
+        // through it; the own one stays (the agent finds its own row by it). B-163: getDao() gives card handles then,
+        // the own card is the one with card_mkey and gets the real mkey back (API unchanged)
+        $mkey = !$anonymous_revealed ? $player->mkey
+            : ($player->mkey === (string)$dao['card_mkey'] ? (string)$dao['mkey'] : null);
         $entry = ['name' => $player->name, 'mkey' => $mkey, 'played' => $played, 'card' => $text($card),
                   'away' => (bool)$player->away, 'via_ai' => (bool)$player->via_ai, 'card_key' => $card];
         // B-151: in anonymous mode after the reveal getDao() gives away/via_ai of others as false (team counts below);
@@ -98,7 +103,9 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         'note' => (string)$dao['topic'],
         'round' => $round,
         'players' => $out_players,
-        'observers' => array_map(fn($o) => ['name' => $o->name, 'mkey' => $o->mkey, 'via_ai' => (bool)$o->via_ai],
+        // B-163: in anonymous mode after the reveal the others as '******' without mkey (null, like the players)
+        'observers' => array_map(fn($o) => ['name' => $o->name, 'mkey' => $o->mkey === '' ? null : $o->mkey,
+                                             'via_ai' => (bool)$o->via_ai],
                                  $dao['observers']),
         'away_count' => (int)$dao['away_count'], // B-151: players away
         'ai_count' => (int)$dao['ai_count'], // B-151 mcp seen: players and observers using the board through an AI assistant

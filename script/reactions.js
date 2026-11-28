@@ -101,7 +101,10 @@ function openReactBar(btn) {
  * Not sent without an open connection (the reaction is lost) or above the limit of poker-msg (B-131, reactionAllowed).
  * A nudge is anonymous: from is always 0, also in the message. */
 function sendReaction(toMkey, code) {
-    const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : String(gLastJson.mkey ?? ''));
+    /* B-163: the thrower is the own card (in anonymous mode after the reveal its handle: the real mkey would tell by
+     * exclusion - nobody throws at the own card - which handle is whose); without a card (observer) the own mkey */
+    const own = gLastJson === null ? '' : String(gLastJson.card_mkey ?? '');
+    const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : (own !== '' ? own : String(gLastJson.mkey ?? '')));
     if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
     const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
     if (!REACT_MSG.test(msg)) return;
@@ -229,7 +232,14 @@ function reactionAllowed() {
     return false;
 }
 
-/* the card (#cbox .c) or the observer (#observers .obs) of a mkey, null when not on the board */
+/* B-163: true when a reaction target is the own card or the own observer row (the own card may carry its anonymous
+ * handle, see ownCardMkey() in script.js) */
+function isOwnTarget(to) {
+    return gLastJson !== null && (String(gLastJson.mkey) === to || ownCardMkey(gLastJson) === to);
+}
+
+/* the card (#cbox .c) or the observer (#observers .obs) of a mkey, null when not on the board.
+ * B-163: in anonymous mode after the reveal the cards carry handles (dao.php), reactions aim at those */
 function reactHolder(mkey) {
     const card = document.getElementById(mkey);
     if (card !== null && card.matches('#cbox .c')) return card;
@@ -280,7 +290,7 @@ function flightAnchor(holder) {
 
 function onReaction(from, to, code) {
     // B-133: a nudge for me also rings and, in a hidden tab, flashes the title (the shake is dropped there)
-    if (code === REACT_NUDGE && gLastJson !== null && String(gLastJson.mkey) === to) alertNudge();
+    if (code === REACT_NUDGE && isOwnTarget(to)) alertNudge();
     if (document.visibilityState !== 'visible') return;
     if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
     const target = reactHolder(to);
@@ -340,7 +350,7 @@ function dropReactions() {
 
 /* a nudge: the target shakes on every board, harder on the board of the nudged one */
 function nudgeTarget(target, to) {
-    const isMe = gLastJson !== null && String(gLastJson.mkey) === to;
+    const isMe = isOwnTarget(to);
     restartClass(target, 'is-nudged', 700);
     if (isMe) restartClass(target, 'is-nudged-me', 1100);
 }

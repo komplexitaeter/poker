@@ -1360,3 +1360,29 @@ create table if not exists pok_trend_daily_tbl (
 select table_name, create_time from information_schema.tables
  where table_schema = database() and table_name = 'pok_trend_daily_tbl';
 /* end B-13 trends cache */
+
+/* B-163 anon kept cards: pok_players_tbl.anon_kept_round = id of the round (max pok_roundstats_tbl.id of the team,
+   current_round_id() in api/lib.php) in which the card of this person stays on the table although the person left the
+   PLAYER role (observer, leave, own trash can) in anonymous mode after the reveal; getDao() shows such a card masked
+   until the next round (start_new_round() clears all cards). null = never. Without the column the card goes away as
+   before (the code checks for the missing column). Additive, instant, idempotent, before or after deploying the code.
+   Run only this block: sed -n '/^\/\* B-163 anon kept cards:/,/^\/\* end B-163 anon kept cards/p' db_schema_pok_inc.sql */
+select column_name, column_type from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'anon_kept_round';
+
+set session lock_wait_timeout = 5;
+set @b163_sql = if((select count(1) from information_schema.columns
+                     where table_schema = database() and table_name = 'pok_players_tbl'
+                       and column_name = 'anon_kept_round') = 0,
+  'alter table pok_players_tbl
+     add column anon_kept_round int null default null
+       comment ''B-163: round in which the card stays on the table after its owner left (anonymous mode)'',
+     algorithm = instant',
+  'select ''already done'' as b163_anon_kept_round');
+prepare b163_stmt from @b163_sql;
+execute b163_stmt;
+deallocate prepare b163_stmt;
+
+select column_name, column_type from information_schema.columns
+ where table_schema = database() and table_name = 'pok_players_tbl' and column_name = 'anon_kept_round';
+/* end B-163 anon kept cards */

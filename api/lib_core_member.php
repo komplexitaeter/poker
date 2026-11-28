@@ -150,8 +150,11 @@ function core_member_remove(mysqli $link, array $actor, int $mkey): void
             if ((int)$players > 0 && (int)$players === (int)$cards) throw new ApiError(404, 'player_not_found');
         }
 
-        $sql = $link->prepare("update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
-                                where team_id = ? and mkey = ? and player_type = 'PLAYER'");
+        // B-163: anonymous mode after the reveal (only the own seat gets here then): the card stays until the next round
+        $sql = $link->prepare(keep_anon_card($link, $t, $id)
+            ? "update pok_players_tbl set player_type = 'REMOVED' where team_id = ? and mkey = ? and player_type = 'PLAYER'"
+            : "update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
+                where team_id = ? and mkey = ? and player_type = 'PLAYER'");
         $sql->bind_param('si', $t, $mkey);
         $sql->execute();
         $sql->close();
@@ -197,6 +200,8 @@ function core_member_update(mysqli $link, array $actor, ?string $name, ?string $
                                         where id = ? and team_id = ?");
                 $sql->bind_param('ssisss', $name, $player_type, $all_players_ready, $late_card, $id, $t);
             } else {
+                // B-163: a player becoming an observer in anonymous mode after the reveal: his card stays on the table
+                if ($me['player_type'] === 'PLAYER') keep_anon_card($link, $t, $id);
                 $sql = $link->prepare("update pok_players_tbl set name = ?, player_type = ? where id = ? and team_id = ?");
                 $sql->bind_param('ssss', $name, $player_type, $id, $t);
             }
@@ -222,8 +227,11 @@ function core_member_leave(mysqli $link, array $actor): void
     $id = (string)$actor['uid'];
     db_transaction($link, function () use ($link, $t, $id): void {
         member_lock($link, $t, $id);
-        $sql = $link->prepare("update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
-                                where id = ? and team_id = ?");
+        // B-163: anonymous mode after the reveal: the card stays on the table until the next round
+        $sql = $link->prepare(keep_anon_card($link, $t, $id)
+            ? "update pok_players_tbl set player_type = 'REMOVED' where id = ? and team_id = ?"
+            : "update pok_players_tbl set player_type = 'REMOVED', card_key = null, original_card_key = null
+                where id = ? and team_id = ?");
         $sql->bind_param('ss', $id, $t);
         $sql->execute();
         $sql->close();

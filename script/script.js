@@ -1446,20 +1446,25 @@ function updateObservers(observers, myMkey) {
     const box = document.getElementById('observers');
     if (box === null) return;
     const list = box.querySelector('.obs-list');
-    const existing = new Map(Array.from(list.children).map(li => [li.dataset.mkey, li]));
+    const existing = new Map(Array.from(list.children).map(li => [li.dataset.okey, li]));
     let next = list.firstElementChild;
+    let masked = 0;
     observers.forEach(o => {
-        const mkey = String(o.mkey);
-        let li = existing.get(mkey);
+        /* B-163: in anonymous mode after the reveal the other observers come as '******' without mkey: kept apart by
+         * their position only (all of them look the same), no smiley or nudge (nothing to aim at) */
+        const mkey = o.mkey === null || o.mkey === undefined ? '' : String(o.mkey);
+        const okey = mkey !== '' ? mkey : 'masked-' + masked++;
+        let li = existing.get(okey);
         if (li === undefined) {
             li = document.createElement('li');
             li.className = 'obs';
+            li.dataset.okey = okey;
             li.dataset.mkey = mkey;
             const span = document.createElement('span');
             span.className = 'obs-name';
             li.appendChild(span);
         }
-        existing.delete(mkey);
+        existing.delete(okey);
         const span = li.querySelector('.obs-name');
         const name = String(o.name);
         if (span.textContent !== name) span.textContent = name; // no title: the name is right there (B-110)
@@ -1470,7 +1475,7 @@ function updateObservers(observers, myMkey) {
         else if (span.hasAttribute('title')) span.removeAttribute('title');
         const isMe = mkey === myMkey;
         if (li.classList.contains('is-me') !== isMe) li.classList.toggle('is-me', isMe);
-        syncReactButton(li, !isMe, name);
+        syncReactButton(li, !isMe && mkey !== '', name);
         if (li !== next) list.insertBefore(li, next);
         else next = li.nextElementSibling;
     });
@@ -1535,7 +1540,16 @@ function holderOf(el) {
 }
 
 function holderMkey(holder) {
-    return holder.classList.contains('obs') ? holder.dataset.mkey : holder.id;
+    if (holder.classList.contains('obs')) return holder.dataset.mkey;
+    // B-163: the own card may carry its anonymous handle as id; delete.php (own trash can) needs the real mkey
+    if (holder.classList.contains('is-me') && gLastJson !== null) return String(gLastJson.mkey);
+    return holder.id;
+}
+
+/* B-163: the id of the own card on the table (dao.php card_mkey: in anonymous mode after the reveal every card has a
+ * handle per round instead of the mkey, the own one too); an older dao.php without it: the own mkey */
+function ownCardMkey(myJson) {
+    return String(myJson.card_mkey ?? myJson.mkey);
 }
 
 function holderName(holder) {
@@ -2019,7 +2033,7 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
     // B-99 D8: the own card's name tag is styled like the name tag in the header
     // B-110: every other card gets the nudge (.nudge) and the smiley (.react) to throw a reaction
     document.querySelectorAll('#cbox .c').forEach(card => {
-        const isMe = card.id === myJson.mkey;
+        const isMe = card.id === ownCardMkey(myJson); // B-163
         if (card.classList.contains('is-me') !== isMe) card.classList.toggle('is-me', isMe);
         const name = card.querySelector('.card_player_name').textContent;
         const del = card.querySelector('.delete');

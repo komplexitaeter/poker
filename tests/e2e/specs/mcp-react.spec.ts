@@ -115,3 +115,25 @@ test('react: poker-msg not reachable -> busy, the internal locations are closed'
     expect((await request.get(path)).status()).toBe(404);
   }
 });
+
+test('react in anonymous mode after the reveal: nobody can be targeted, players and observers are masked (B-163)', async ({ browser, request }) => {
+  const { alice, seat } = await tableWithAgent(browser, request, 'MCP React Anon');
+  const t = seat.team_id;
+  await ok(request, 'join_team', { invite: t, name: 'Olga', role: 'observer' });
+  const anon = await request.post(`/api/update_team.php?${new URLSearchParams({ t, anonymous_request_toggle: '1' })}`,
+    { headers: { 'X-Poker-User': seat.uid } });
+  expect(anon.ok()).toBeTruthy();
+  // the anonymous mode starts with the next round
+  expect((await request.post(`/api/newround.php?${new URLSearchParams({ t })}`, { headers: { 'X-Poker-User': seat.uid } })).ok()).toBeTruthy();
+  await ok(request, 'play_card', { ...seat, action: 'play', card: '5' });
+  await alice.locator('#ctl .ctl[data-card="eight01"]').click();
+  await expect(alice.locator('#round_status')).toHaveText('revealed');
+
+  const board = (await ok(request, 'get_board', seat)).data;
+  expect(board.observers).toEqual([{ name: '******', mkey: null, via_ai: false }]);
+  expect(board.players.filter((p: any) => p.mkey !== null)).toHaveLength(1); // only the own one
+  const received = await recordReceived(alice);
+  for (const to of ['Olga', 'Alice']) await fails(request, 'react', { ...seat, to, emoji: 'heart' }, 'player_not_found', 'to');
+  await alice.waitForTimeout(300);
+  expect(await received()).toEqual([]);
+});
