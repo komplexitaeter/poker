@@ -67,7 +67,7 @@
      "text": "See the final estimate and all votes for every item you have finished. Export them as CSV or copy them to your clipboard.",
      "where": "Topic → Done",
      "image": {"name": "r4-done", "w": 760, "h": 598, "alt": "The Topic menu with the tab Done: two finished items with their agreed values, and the buttons Copy and Download CSV"}},
-    {"title": "The median",
+    {"title": "Show the median",
      "text": "After the reveal, a dashed line in the result chart marks the median – helpful when one card is far off.", "asked": true,
      "where": "Board settings → Results → Average and median → Show"},
     {"title": "Hear a nudge",
