@@ -247,6 +247,7 @@ geben einen Branch zurück; sie mergen nie selbst.
 | `design` | **Delia (DES)** | Look & Feel, Design-System/Tokens, CSS (`style/style.css`), visuelle HTML-Struktur, Responsive/Mobile, Barrierefreiheit – gestaltet **und** setzt selbst um |
 | `security-reviewer` | **Sina (SEC)** | prüft vor dem Merge auf SQL-Injection, XSS, fehlende Team-Prüfung, GET-Schreibzugriffe |
 | `e2e-tester` | **Tessa (E2E)** | startet die App lokal, führt E2E-Tests aus oder erweitert sie |
+| `reader` | **Rita (UX)** | liest Oberflächentexte (Release Notes, Menüs, Hinweise, Fehlermeldungen, MCP-Texte) aus Nutzersicht, ohne Code zu kennen, und markiert Unklares und internen Jargon – vor jedem Livegang neuer Texte |
 
 Abgrenzung **Delia ↔ Fred**: Delia besitzt die visuelle Ebene (Look & Feel, CSS, Design-relevantes Markup,
 Responsive). Fred besitzt JS-Verhalten und API-Anbindung. Braucht eine Gestaltung neues JS-Verhalten (z. B. ein

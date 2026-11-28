@@ -676,6 +676,11 @@ Status: neu (Andreas, 2026-11-28; Feedback Lars). Die Rückfrage beim Entfernen 
 entfernt wird, kann sofort wieder beitreten. Vorschlag: ohne Rückfrage entfernen, optional kurz „Rückgängig“ als Toast.
 Im anonymen Modus nach dem Aufdecken bleibt der Mülleimer auf fremden Karten weg (B-159/B-163).
 
+### B-167 Oberflächentexte ohne internen Jargon
+Status: neu (Andreas, 2026-11-28). In Menüs, Hinweisen, Dialogen, Fehlermeldungen und MCP-Texten hat sich interne
+Sprache eingeschlichen. Alle Texte einmal von Rita (`reader`, liest nur die Texte, kennt keinen Code) aus Nutzersicht
+prüfen lassen, Funde gesammelt umsetzen (Delia/Fred). Danach Regel: neue Texte vor dem Livegang durch Rita.
+
 ### B-163 Anonymer Modus: mkey verrät die Karte
 Status: in Review (Ben, 2026-11-28, Branch `feature/B-163-anon-handles`: Handles je Runde, Würfe bleiben möglich), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
 Aufdecken weiter die echte `mkey` je Karte (nur der Name wird `******`); vor dem Aufdecken ist mkey → Name sichtbar.
