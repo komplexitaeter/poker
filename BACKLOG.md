@@ -654,6 +654,23 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
   alten Frage (alle haben dann korrigiert). Tool-Texte: nach neuer Runde auf Notiz-/Item-Änderung achten; für Fragen
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
+### B-164 „Was ist neu“ (Release Notes im Board)
+Status: neu (Andreas, 2026-11-28; Feedback Lars: viele Funktionen unbekannt). Nach einem Rollout einmal je Person ein
+dezenter Hinweis (Punkt am Menü), dahinter 3–5 Zeilen „Neu seit …“ in Alltagssprache mit Nutzen; Seite mit allen
+Einträgen. Quelle: eigene Nutzertexte je Rollout (nicht die `MILESTONES` aus `stats.php`). Optional: Hinweis auf die
+nächste Web-Sprechstunde in den Tagen davor. Noch genau zu überlegen.
+
+### B-165 Feedback-Menü verständlicher
+Status: neu (Andreas, 2026-11-28; Feedback Lars). Menüpunkt „Feedback“, Begriff „Roadmap“, die 👍/👎 und das Einreichen
+waren unklar. Ideen: Begriffe („Ideas & Bugs“, „Wishlist“), Liste als Tabelle (Idee | 👍 | 👎 | Status, eigene Stimme
+markiert), Melden und Abstimmen klar trennen. Vorsicht: dort kommt gerade so viel Feedback wie nie – Ablauf nicht
+umbauen, erst Begriffe/Darstellung; Delia kann klickbare Entwürfe bauen. Noch genau zu überlegen.
+
+### B-166 Mülleimer ohne Rückfrage
+Status: neu (Andreas, 2026-11-28; Feedback Lars). Die Rückfrage beim Entfernen (B-110: „Rückfrage immer“) stört: Wer
+entfernt wird, kann sofort wieder beitreten. Vorschlag: ohne Rückfrage entfernen, optional kurz „Rückgängig“ als Toast.
+Im anonymen Modus nach dem Aufdecken bleibt der Mülleimer auf fremden Karten weg (B-159/B-163).
+
 ### B-163 Anonymer Modus: mkey verrät die Karte
 Status: in Review (Ben, 2026-11-28, Branch `feature/B-163-anon-handles`: Handles je Runde, Würfe bleiben möglich), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
 Aufdecken weiter die echte `mkey` je Karte (nur der Name wird `******`); vor dem Aufdecken ist mkey → Name sichtbar.
