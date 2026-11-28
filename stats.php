@@ -6,7 +6,8 @@
  * only and runs no query. Moderation actions are POSTs to this page with a valid cookie and a session
  * form token (CSRF protection), followed by a redirect back (POST/redirect/GET).
  *
- * Tabs (B-64, ?tab=): live (default, reloads every 30 s), usage, ideas (moderation), tech.
+ * Tabs (B-64, ?tab=): live (default, reloads every 30 s), usage, trends (B-13: long ranges, replaces Grafana),
+ * ideas (moderation), tech.
  * Only the queries of the shown tab run. Every query has a time range on an indexed column and a
  * MAX_EXECUTION_TIME hint. Never output a team id: it is the access key of a board.
  *
@@ -18,13 +19,32 @@
 require './config.php';
 require './api/lib.php';
 
-const STATS_TABS = array('live' => 'Live', 'usage' => 'Usage', 'ideas' => 'Ideas & Bugs', 'tech' => 'Tech');
+const STATS_TABS = array('live' => 'Live', 'usage' => 'Usage', 'trends' => 'Trends', 'ideas' => 'Ideas & Bugs', 'tech' => 'Tech');
 const ACTIVE_ROUND_MINUTES = 60; // a table counts as active if it started a new round within this many minutes;
                                  // its clients count if their board loaded data within the same time
 const LIVE_RELOAD_SEC = 30;
 const USAGE_WEEKS = 9;           // weekly users: current week + 8 full weeks
 const USAGE_DAYS = 28;           // daily feature usage
 const LIVE_DAYS = 28;            // rounds per day in the live tab (today + 27 days)
+/* trends tab (B-13): ?range= (start relative to today, null = all data; default granularity if ?gran= is missing)
+   and ?gran= (one bar/point per day, ISO week starting Monday or calendar month) */
+const TREND_RANGES = array(
+    '1w'  => array('label' => '1 week',   'start' => '-6 day',            'gran' => 'day'),
+    '4w'  => array('label' => '4 weeks',  'start' => '-27 day',           'gran' => 'day'),
+    '6m'  => array('label' => '6 months', 'start' => '-6 month +1 day',   'gran' => 'week'),
+    '1y'  => array('label' => '1 year',   'start' => '-1 year +1 day',    'gran' => 'week'),
+    '2y'  => array('label' => '2 years',  'start' => '-2 year +1 day',    'gran' => 'month'),
+    'all' => array('label' => 'All',      'start' => null,                'gran' => 'month'),
+);
+const TREND_DEFAULT_RANGE = '4w';
+const TREND_GRANS = array('day' => 'Days', 'week' => 'Weeks', 'month' => 'Months');
+/* period start of a DATE expression {d} per granularity (constant SQL, the expression is a constant as well) */
+const TREND_PERIOD_SQL = array(
+    'day'   => '{d}',
+    'week'  => '{d} - interval weekday({d}) day',
+    'month' => '{d} - interval (dayofmonth({d}) - 1) day',
+);
+const TREND_ALL_START = '2000-01-01';   // "All": lower bound of the range (keeps the where clause on the index)
 /* dates worth marking in the usage charts (live deploys); add a line with every rollout to master */
 const MILESTONES = array(
     '2026-10-28' => 'Rollout 1',
@@ -187,8 +207,15 @@ if (!is_string($tab) || !array_key_exists($tab, STATS_TABS)) $tab = 'live';
 $fb_filter = filter_input(INPUT_GET, 'fb');
 if (!in_array($fb_filter, array('open', 'done', 'all'), true)) $fb_filter = 'open';
 
+$trend_range = filter_input(INPUT_GET, 'range');
+if (!is_string($trend_range) || !array_key_exists($trend_range, TREND_RANGES)) $trend_range = TREND_DEFAULT_RANGE;
+$trend_gran_param = filter_input(INPUT_GET, 'gran');   // explicit choice wins over the default of the range
+if (!is_string($trend_gran_param) || !array_key_exists($trend_gran_param, TREND_GRANS)) $trend_gran_param = null;
+$trend_gran = $trend_gran_param ?? TREND_RANGES[$trend_range]['gran'];
+
 /* this page with the current tab, target of the login form and of the redirect after login/logout */
-$self = 'stats.php?tab=' . $tab . ($tab === 'ideas' ? '&fb=' . $fb_filter : '');
+$self = 'stats.php?tab=' . $tab . ($tab === 'ideas' ? '&fb=' . $fb_filter : '')
+    . ($tab === 'trends' ? '&range=' . $trend_range . ($trend_gran_param !== null ? '&gran=' . $trend_gran_param : '') : '');
 
 /* ---------- login (B-63) ---------- */
 $entries = auth_entries();
@@ -389,6 +416,228 @@ function rounds_per_day($link, string $start): array {
          group by day", 's', array($start)), null, 'day');
 }
 
+/* ---------- trends tab (B-13) ---------- */
+
+/* SQL of the period start for a DATE expression (both constants, never request values) */
+function trend_period_sql(string $gran, string $date_expr): string {
+    return str_replace('{d}', $date_expr, TREND_PERIOD_SQL[$gran]);
+}
+
+/* start (Y-m-d) of the period containing $day */
+function trend_align(string $day, string $gran): string {
+    if ($gran === 'week') return date('Y-m-d', strtotime($day . ' -' . ((int)date('N', strtotime($day)) - 1) . ' day'));
+    if ($gran === 'month') return substr($day, 0, 8) . '01';
+    return $day;
+}
+
+/* all period starts from the period of $first to the period of $today */
+function trend_periods(string $first, string $today, string $gran): array {
+    $step = array('day' => '+1 day', 'week' => '+1 week', 'month' => '+1 month')[$gran];
+    $periods = array();
+    $last = trend_align($today, $gran);
+    for ($p = trend_align($first, $gran); $p <= $last; $p = date('Y-m-d', strtotime($p . ' ' . $step))) $periods[] = $p;
+    return $periods;
+}
+
+/* number of days of the period starting at $p */
+function trend_days(string $p, string $gran): int {
+    return $gran === 'day' ? 1 : ($gran === 'week' ? 7 : (int)date('t', strtotime($p)));
+}
+
+/* tooltip text of a period: "Mon 2026-11-23", "W48 2026-11-23 - 2026-11-29", "2026-11"; "(so far)" for the current one */
+function trend_period_text(string $p, string $gran, string $current): string {
+    $ts = strtotime($p);
+    $text = $gran === 'day' ? date('D Y-m-d', $ts)
+        : ($gran === 'week' ? 'W' . date('W', $ts) . ' ' . $p . ' - ' . date('Y-m-d', strtotime($p . ' +6 day')) : date('Y-m', $ts));
+    return $text . ($p === $current ? ' (so far)' : '');
+}
+
+/* x axis ticks as index => label: Mondays, month or year starts, depending on the number of periods; at most 8 */
+function trend_ticks(array $periods, string $gran): array {
+    $n = count($periods);
+    $ticks = array();
+    foreach ($periods as $i => $p) {
+        $prev = $i > 0 ? $periods[$i - 1] : null;
+        $new_month = $prev === null || substr($prev, 0, 7) !== substr($p, 0, 7);
+        $new_year = $prev === null || substr($prev, 0, 4) !== substr($p, 0, 4);
+        if ($gran === 'day' && $n <= 35) {
+            if ((int)date('N', strtotime($p)) === 1) $ticks[$i] = date('m-d', strtotime($p));
+        } else if (($gran === 'day' && $n <= 400) || ($gran === 'week' && $n <= 60)) {
+            if ($new_month && $i > 0) $ticks[$i] = substr($p, 0, 7);
+        } else if ($gran === 'month' && $n <= 13) {
+            $ticks[$i] = substr($p, 0, 7);
+        } else if ($gran === 'month' && $n <= 40) {
+            if (in_array(substr($p, 5, 2), array('01', '04', '07', '10'), true)) $ticks[$i] = substr($p, 0, 7);
+        } else if ($new_year && $i > 0) {
+            $ticks[$i] = substr($p, 0, 4);
+        }
+    }
+    while (count($ticks) > 8) {
+        $keys = array_keys($ticks);
+        $ticks = array_intersect_key($ticks, array_flip(array_filter($keys, fn($k) => array_search($k, $keys, true) % 2 === 0)));
+    }
+    return $ticks;
+}
+
+/* x axis below a chart: tick labels at the start of their period (left edge in % of the width) */
+function trend_x_axis(array $periods, array $ticks): string {
+    $n = count($periods);
+    $html = '<div class="trend-x" aria-hidden="true">';
+    $k = 0;
+    foreach ($ticks as $i => $label) {
+        $left = 100 * $i / $n;
+        $classes = trim(($left > 88 ? 'end' : '') . (count($ticks) > 4 && $k++ % 2 === 1 ? ' odd' : ''));
+        $html .= '<span' . ($classes !== '' ? ' class="' . $classes . '"' : '') . ' style="left: ' . number_format($left, 2, '.', '') . '%">' . h($label) . '</span>';
+    }
+    return $html . '</div>';
+}
+
+/* y axis labels: value => position from the bottom in % */
+function trend_y_axis(array $labels): string {
+    $html = '<div class="trend-y" aria-hidden="true">';
+    foreach ($labels as $label => $bottom) {
+        $html .= '<span style="bottom: ' . number_format($bottom, 2, '.', '') . '%">' . h($label) . '</span>';
+    }
+    return $html . '</div>';
+}
+
+/* milestone labels (MILESTONES) within the period starting at $p */
+function trend_milestone(string $p, string $gran): string {
+    return milestone($p, trend_days($p, $gran));
+}
+
+/*
+ * Bar chart with CSS bars like "Rounds per day" (one .day per period, stacked .seg from the bottom).
+ * $series: list of array('class' => css class, 'name' => legend text, 'values' => period => number).
+ */
+function trend_bars(string $id, string $label, array $periods, array $series, string $gran, string $current): string {
+    $totals = array();
+    foreach ($periods as $p) $totals[$p] = array_sum(array_map(fn($s) => (float)($s['values'][$p] ?? 0), $series));
+    $max = $totals ? max($totals) : 0;
+    $n = count($periods);
+    $ticks = trend_ticks($periods, $gran);
+    $density = $n > 200 ? ' dense' : ($n > 60 ? ' tight' : '');
+    $html = '<div class="chart-box trend-box">' . trend_y_axis(array(fmt_num($max) => 100, '0' => 0))
+        . '<div class="chart trend-bars' . $density . '" id="' . h($id) . '" role="img" aria-label="' . h($label . ', peak ' . fmt_num($max)) . '">';
+    foreach ($periods as $i => $p) {
+        $classes = array('day');
+        if ($gran === 'day' && (int)date('N', strtotime($p)) >= 6) $classes[] = 'weekend';
+        if (isset($ticks[$i])) $classes[] = 'tick';
+        $ms = trend_milestone($p, $gran);
+        if ($ms !== '') $classes[] = 'milestone';
+        if ($p === $current) $classes[] = 'current';
+        $parts = array();
+        foreach ($series as $s) $parts[] = $s['name'] . ' ' . fmt_num((float)($s['values'][$p] ?? 0));
+        $title = trend_period_text($p, $gran, $current) . ': ' . (count($series) > 1 ? fmt_num($totals[$p]) . ' (' . implode(', ', $parts) . ')' : $parts[0])
+            . ($ms !== '' ? ' - ' . $ms : '');
+        $html .= '<span class="' . implode(' ', $classes) . '" data-period="' . h($p) . '" data-value="' . h(fmt_num($totals[$p])) . '" title="' . h($title) . '">'
+            . '<span class="col" style="height: ' . bar_width($totals[$p], $max) . '%">';
+        foreach (array_reverse($series) as $s) {   // first series at the bottom
+            $html .= '<span class="seg ' . h($s['class']) . '" style="height: ' . bar_width((float)($s['values'][$p] ?? 0), $totals[$p]) . '%"></span>';
+        }
+        $html .= '</span></span>';
+    }
+    return $html . '</div>' . trend_x_axis($periods, $ticks) . '</div>';
+}
+
+/*
+ * Line chart as inline SVG (x: one unit per period, y: 0..100 from the top, stretched to the box), optionally with a
+ * logarithmic y axis (values below 1 drawn as 1). Periods without a value interrupt the line. Every period has a
+ * transparent column with all values as tooltip. $series as in trend_bars(), values may be missing (= no data).
+ */
+function trend_lines(string $id, string $label, array $periods, array $series, string $gran, string $current, bool $log): string {
+    $n = count($periods);
+    $max = 0;
+    foreach ($series as $s) foreach ($s['values'] as $v) $max = max($max, (float)$v);
+    if ($log) {
+        $top = max(1, (int)ceil(log10(max($max, 1)) - 1e-9));
+        $y = fn(float $v) => 100 - 100 * log10(max($v, 1)) / $top;
+        $y_labels = array();
+        for ($e = $top; $e >= 0; $e--) $y_labels[fmt_num(10 ** $e)] = 100 * $e / $top;
+    } else {
+        $top = max($max, 1);
+        $y = fn(float $v) => 100 - 100 * $v / $top;
+        $y_labels = array(fmt_num($max) => 100, '0' => 0);
+    }
+    $f = fn(float $x) => number_format($x, 2, '.', '');
+    $ticks = trend_ticks($periods, $gran);
+    $svg = '<svg class="trend-svg" id="' . h($id) . '" viewBox="0 0 ' . $n . ' 100" preserveAspectRatio="none" role="img" aria-label="'
+        . h($label . ', peak ' . fmt_num($max)) . '">';
+    // background: weekends (day view, if the bars are still wide enough), decades of the log axis, ticks, milestones
+    foreach ($periods as $i => $p) {
+        if ($gran === 'day' && $n <= 200 && (int)date('N', strtotime($p)) >= 6) $svg .= '<rect class="wk" x="' . $i . '" y="0" width="1" height="100"/>';
+    }
+    if ($log) {
+        for ($e = 1; $e < $top; $e++) $svg .= '<line class="grid" x1="0" x2="' . $n . '" y1="' . $f(100 - 100 * $e / $top) . '" y2="' . $f(100 - 100 * $e / $top) . '"/>';
+    }
+    foreach ($ticks as $i => $_) $svg .= '<line class="grid" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"/>';
+    foreach ($periods as $i => $p) {
+        $ms = trend_milestone($p, $gran);
+        if ($ms !== '') $svg .= '<line class="ms" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"><title>' . h($ms) . '</title></line>';
+    }
+    // one polyline per run of periods with a value
+    foreach ($series as $s) {
+        $runs = array();
+        $run = array();
+        foreach ($periods as $i => $p) {
+            if (!isset($s['values'][$p])) {
+                if ($run) $runs[] = $run;
+                $run = array();
+                continue;
+            }
+            $run[] = array($i, $y((float)$s['values'][$p]));
+        }
+        if ($run) $runs[] = $run;
+        foreach ($runs as $r) {
+            // a single point: short horizontal stroke over its period, else from period centre to period centre
+            $points = count($r) === 1 ? array(array($r[0][0] + 0.15, $r[0][1]), array($r[0][0] + 0.85, $r[0][1]))
+                : array_map(fn($pt) => array($pt[0] + 0.5, $pt[1]), $r);
+            $svg .= '<polyline class="line ' . h($s['class']) . '" points="'
+                . implode(' ', array_map(fn($pt) => $f($pt[0]) . ',' . $f($pt[1]), $points)) . '"/>';
+        }
+    }
+    foreach ($periods as $i => $p) {
+        $parts = array();
+        foreach ($series as $s) $parts[] = $s['name'] . ' ' . (isset($s['values'][$p]) ? fmt_num((float)$s['values'][$p]) : '-');
+        $ms = trend_milestone($p, $gran);
+        $svg .= '<rect class="hov" x="' . $i . '" y="0" width="1" height="100" data-period="' . h($p) . '"><title>'
+            . h(trend_period_text($p, $gran, $current) . ': ' . implode(', ', $parts) . ($ms !== '' ? ' - ' . $ms : '')) . '</title></rect>';
+    }
+    $svg .= '</svg>';
+    return '<div class="chart-box trend-box">' . trend_y_axis($y_labels) . '<div class="trend-plot">' . $svg . '</div>'
+        . trend_x_axis($periods, $ticks) . '</div>';
+}
+
+/* legend line: css class => text */
+function trend_legend(array $series): string {
+    $html = '<p class="legend note">';
+    foreach ($series as $s) $html .= '<span><span class="sw ' . h($s['class']) . '"></span>' . h($s['name']) . '</span> ';
+    return $html . '</p>';
+}
+
+/* integer with thin space as thousands separator (values of the stats tables are counts) */
+function fmt_num(float $v): string {
+    return number_format(round($v), 0, '.', ' ');
+}
+
+/*
+ * select for a per-minute stats table (creation_date = datetime in DB time): rows period => max of each column,
+ * since $start_db (DB time). The day is taken in the viewer's offset. [] if the table does not exist (staging).
+ */
+function trend_minute_max($link, string $table, array $columns, string $gran, string $db_offset, string $tz_offset, string $start_db): array {
+    $max = implode(', ', array_map(fn($c) => 'max(' . $c . ') as ' . $c, $columns));
+    try {
+        return array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(15000) */ " . trend_period_sql($gran, 'x.d') . " as period, " . $max . "
+              from (select date(convert_tz(creation_date, ?, ?)) as d, " . implode(', ', $columns) . "
+                      from " . $table . "
+                     where creation_date >= ?) as x
+             group by period", 'sss', array($db_offset, $tz_offset, $start_db)), null, 'period');
+    } catch (mysqli_sql_exception $e) {
+        if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist
+        return array();
+    }
+}
+
 /* release information: asset versions from board.html, git branch/commit and last pull (if .git is readable) */
 function release_info(): array {
     $info = array();
@@ -568,6 +817,48 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
              where creation_date >= ? and event_code in ($in)
              group by day, event_code", $types, $params);
         $data['round_days'] = rounds_per_day($link, $data['day_start']);
+
+    } else if ($tab === 'trends') {
+        // range start in the viewer's time zone (DB clock in the session offset), aligned to the start of its period;
+        // "All": every period from the first one with data (per chart)
+        $data['today'] = rows($link, "select curdate() as today")[0]['today'];
+        $data['current'] = trend_align($data['today'], $trend_gran);
+        $start_rel = TREND_RANGES[$trend_range]['start'];
+        $data['start'] = $start_rel === null ? null : trend_align(date('Y-m-d', strtotime($data['today'] . ' ' . $start_rel)), $trend_gran);
+        $start = $data['start'] ?? TREND_ALL_START;
+        // per-minute tables hold DB time ($db_offset): the start converted in PHP keeps the range on the column indexable
+        $start_db = (new DateTime($start . ' 00:00:00', new DateTimeZone($time_zone_offset)))->setTimezone(new DateTimeZone($db_offset))->format('Y-m-d H:i:s');
+
+        // teams per period (pok_daily_teams_stats: nightly job, one row per team (id) and day, a DATE of the DB clock):
+        // distinct teams, recurring if RECURRING on at least one day of the period. Index (creation_date, id).
+        try {
+            $data['teams'] = array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(20000) */
+                       " . trend_period_sql($trend_gran, 'creation_date') . " as period
+                      ,count(distinct id) as teams
+                      ,count(distinct case when team_type = 'RECURRING' then id end) as recurring
+                  from pok_daily_teams_stats
+                 where creation_date >= ?
+                 group by period", 's', array($start)), null, 'period');
+        } catch (mysqli_sql_exception $e) {
+            if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist (staging)
+            $data['teams'] = array();
+        }
+
+        // new rounds per period: range on the index (type_code, creation_date); timestamp column, so date() is the
+        // viewer's day
+        $data['rounds'] = array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(20000) */
+                   " . trend_period_sql($trend_gran, 'date(creation_date)') . " as period
+                  ,count(1) as rounds
+              from pok_roundstats_tbl
+             where type_code = 'NEW_ROUND' and creation_date >= ?
+             group by period", 's', array($start)), null, 'period');
+
+        // per-minute snapshots: highest value per period
+        $data['active_use'] = trend_minute_max($link, 'pok_active_use_stats_tbl', array('active_players', 'active_teams'),
+            $trend_gran, $db_offset, $time_zone_offset, $start_db);
+        $data['peaks'] = trend_minute_max($link, 'pok_active_user_stats',
+            array('last_day', 'last_hour', 'last_half_hour', 'last_ten_minutes', 'last_minute'),
+            $trend_gran, $db_offset, $time_zone_offset, $start_db);
 
     } else if ($tab === 'ideas') {
         $where = array('open' => 'where done_date is null', 'done' => 'where done_date is not null', 'all' => '')[$fb_filter];
@@ -800,6 +1091,46 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .chart-x.days > span { flex: 1 1 0; min-width: 0; width: auto; justify-content: flex-start; overflow: visible; }
         .chart-x.days > span:last-child { justify-content: flex-end; }
 
+        /* trends (B-13): CSS bars like "Rounds per day" (stacked .seg) and inline SVG lines; y labels and x ticks
+           positioned in % of the plot, thin bars without gaps for long ranges */
+        .trend-box { margin-bottom: 0.4rem; }
+        .trend-y { position: relative; height: 10rem; min-width: 3.2em; color: var(--muted); font-size: var(--fs-xs); line-height: 1; }
+        .trend-y > span { position: absolute; right: 0; transform: translateY(50%); white-space: nowrap; }
+        .chart.trend-bars { gap: 2px; background: none; }
+        .chart.trend-bars.tight { gap: 1px; }
+        .chart.trend-bars.dense { gap: 0; }
+        .trend-bars .day { position: relative; flex: 1 1 0; min-width: 0; display: flex; align-items: flex-end; height: 100%; }
+        .trend-bars .col { display: flex; flex-direction: column; width: 100%; min-width: 0; background: none; border-radius: 1px 1px 0 0; overflow: hidden; }
+        .trend-bars .seg { display: block; width: 100%; flex: none; }
+        .trend-bars .seg.rec, .trend-bars .seg.rounds, .legend .sw.rec { background: var(--accent); }
+        .trend-bars .seg.exp, .legend .sw.exp { background: var(--link); }
+        .trend-bars .day.weekend .col { opacity: 0.45; }
+        .trend-bars .day.tick { box-shadow: -1px 0 0 var(--line); }
+        .trend-bars .day.milestone { box-shadow: -2px 0 0 var(--warn); }
+        .trend-bars .day:hover .col { opacity: 1; outline: 1px solid var(--text); }
+        .trend-bars .day.current .col { opacity: 0.7; }
+        .trend-plot { position: relative; height: 10rem; border-top: 1px dashed var(--line); border-bottom: 1px solid var(--line-strong); }
+        .trend-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+        .trend-svg .wk { fill: var(--bg-4); opacity: 0.6; }
+        .trend-svg .grid { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+        .trend-svg .ms { stroke: var(--warn); stroke-width: 2; vector-effect: non-scaling-stroke; }
+        .trend-svg .line { fill: none; stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+        .trend-svg .hov { fill: transparent; }
+        .trend-svg .hov:hover { fill: var(--row-hover); }
+        .trend-svg .s0, .legend .sw.s0 { stroke: var(--accent); background: var(--accent); }
+        .trend-svg .s1, .legend .sw.s1 { stroke: var(--link); background: var(--link); }
+        .trend-svg .s2, .legend .sw.s2 { stroke: var(--ok); background: var(--ok); }
+        .trend-svg .s3, .legend .sw.s3 { stroke: var(--warn); background: var(--warn); }
+        .trend-svg .s4, .legend .sw.s4 { stroke: var(--danger); background: var(--danger); }
+        .legend .sw { display: inline-block; width: 0.8em; height: 0.8em; margin-right: 0.4em; vertical-align: -0.05em; border-radius: 1px; }
+        .legend { flex-wrap: wrap; }
+        .trend-x { grid-column: 2; position: relative; height: 1.4em; margin-top: 0.3em; color: var(--muted); font-size: var(--fs-xs); }
+        .trend-x > span { position: absolute; top: 0; padding-left: 0.2em; white-space: nowrap; border-left: 1px solid var(--line-strong); }
+        .trend-x > span.end { transform: translateX(-100%); padding: 0 0.2em 0 0; border-left: 0; border-right: 1px solid var(--line-strong); }
+        .trend-controls { margin: 0 0 0.75rem; }
+        .trend-ms .milestone-label { white-space: normal; }
+        .trend-controls .seg-ctrl { flex-wrap: wrap; }
+
         /* Ideas & Bugs moderation (B-57) */
         .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em 1em; }
         .filters .seg-ctrl { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius-m); overflow: hidden; }
@@ -866,6 +1197,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
                label (the bar is highlighted) */
             .chart-x.days .wd { display: none; }
             .chart-x.days > span:last-child { visibility: hidden; }
+            .trend-x > span.odd { visibility: hidden; }   /* narrow: every second tick label */
             .rm { grid-template-columns: 5em 1fr 1fr;
                   grid-template-areas: "order type status" "title title title" "desc desc desc" "visible visible save" "votes votes votes"; }
             dl.facts { grid-template-columns: 1fr; gap: 0 0; }
@@ -1042,7 +1374,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         <h2 id="weeks_h">New vs. returning user ids per week</h2>
         <p class="note">User ids (one per browser) that were at a table when a round was started (pok_roundstat_details_tbl).
             Returning = the user id was first seen (pok_user_tbl: joined a board or stored a setting) before that week; new = first seen in that week.
-            Grafana already shows teams, rounds and active use per day.</p>
+            Teams, rounds and active use over longer ranges: tab Trends.</p>
         <p class="legend note"><span><span class="ret"></span>returning</span> <span><span class="new"></span>new</span></p>
         <div class="table-wrap">
         <table class="weeks">
@@ -1130,6 +1462,93 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             </tbody>
         </table>
         </div>
+    </section>
+
+<?php } else if ($tab === 'trends') {
+    $gran = $trend_gran;
+    $current = $data['current'];
+    /* periods of a chart: the selected range, for "All" from the first period with data of this chart; [] = no data */
+    $periods_of = function (array $rows) use ($data, $gran) {
+        if (!$rows) return array();
+        return trend_periods($data['start'] ?? min(array_keys($rows)), $data['today'], $gran);
+    };
+    $per = array('day' => 'day', 'week' => 'week', 'month' => 'month')[$gran];
+    $range_link = fn(string $r) => 'stats.php?tab=trends&range=' . $r . ($trend_gran_param !== null ? '&gran=' . $trend_gran_param : '');
+    $gran_link = fn(string $g) => 'stats.php?tab=trends&range=' . $trend_range . '&gran=' . $g;
+    $no_data = '<p class="muted no-data">No data.</p>';
+?>
+    <section class="trends" aria-labelledby="trends_h">
+        <h2 id="trends_h">Trends</h2>
+        <p class="filters trend-controls">
+            <span class="muted">range</span>
+            <span class="seg-ctrl" id="trend_range"><?php foreach (TREND_RANGES as $key => $r) { ?><a href="<?= h($range_link($key)) ?>"<?= $key === $trend_range ? ' class="active" aria-current="true"' : '' ?>><?= h($r['label']) ?></a><?php } ?></span>
+            <span class="muted">per</span>
+            <span class="seg-ctrl" id="trend_gran"><?php foreach (TREND_GRANS as $key => $label) { ?><a href="<?= h($gran_link($key)) ?>"<?= $key === $gran ? ' class="active" aria-current="true"' : '' ?>><?= h($label) ?></a><?php } ?></span>
+        </p>
+        <p class="note">Since <?= h($data['start'] ?? 'the first data') ?>, one bar/point per <?= h(array('day' => 'day', 'week' => 'ISO week (from Monday)', 'month' => 'calendar month')[$gran]) ?>; the current <?= h($per) ?> is counted so far.
+            Times in <?= h($time_zone) ?>. Yellow lines: rollouts (hover for the name). Hover a bar or point for its values.</p>
+<?php
+    $ms = array();
+    foreach (MILESTONES as $date => $label) if ($date >= ($data['start'] ?? '0000') && $date <= $data['today']) $ms[] = $label . ' (' . $date . ')';
+    if ($ms) { ?>
+        <p class="note trend-ms"><span class="milestone-label"><?= h(implode(', ', $ms)) ?></span></p>
+<?php } ?>
+
+        <h3>Daily teams</h3>
+<?php
+    $periods = $periods_of($data['teams']);
+    if (!$periods) { echo $no_data; } else {
+        $recurring = array_map(fn($r) => (int)$r['recurring'], $data['teams']);
+        $exploring = array_map(fn($r) => (int)$r['teams'] - (int)$r['recurring'], $data['teams']);
+        $series = array(
+            array('class' => 'rec', 'name' => 'recurring', 'values' => $recurring),
+            array('class' => 'exp', 'name' => 'exploring', 'values' => $exploring),
+        );
+        echo trend_legend($series);
+        echo trend_bars('trend_teams', 'Teams per ' . $per, $periods, $series, $gran, $current);
+    } ?>
+        <p class="note">Teams with an active player that day (pok_daily_teams_stats, nightly job; recurring = more than 2 active players that day, exploring = at most 2 and created that day).
+            <?= $gran === 'day' ? 'Per day: the teams of that day.' : 'Per ' . h($per) . ': distinct teams in the ' . h($per) . ' (not the sum of the days); a team counts as recurring if it was recurring on at least one day.' ?>
+            Days of the DB clock.</p>
+
+        <h3>New rounds</h3>
+<?php
+    $periods = $periods_of($data['rounds']);
+    if (!$periods) { echo $no_data; } else {
+        echo trend_bars('trend_rounds', 'New rounds per ' . $per, $periods,
+            array(array('class' => 'rounds', 'name' => 'rounds', 'values' => array_map(fn($r) => (int)$r['rounds'], $data['rounds']))), $gran, $current);
+    } ?>
+        <p class="note">New rounds (pok_roundstats_tbl, NEW_ROUND), sum per <?= h($per) ?>, weekends included<?= $gran === 'day' ? ' (dimmed)' : '' ?>.</p>
+
+        <h3>Active use</h3>
+<?php
+    $periods = $periods_of($data['active_use']);
+    if (!$periods) { ?>
+        <p class="muted no-data">No data (pok_active_use_stats_tbl is filled by the event job pok_active_use_evt, see db_jobs_pok.sql; it is disabled on live).</p>
+<?php } else {
+        $series = array(
+            array('class' => 's0', 'name' => 'players', 'values' => array_column($data['active_use'], 'active_players', 'period')),
+            array('class' => 's1', 'name' => 'teams', 'values' => array_column($data['active_use'], 'active_teams', 'period')),
+        );
+        echo trend_legend($series);
+        echo trend_lines('trend_active_use', 'Active players and teams, highest value per ' . $per, $periods, $series, $gran, $current, false);
+    } ?>
+        <p class="note">Players and teams active within 15 minutes, taken every minute (pok_active_use_stats_tbl); highest value per <?= h($per) ?>.</p>
+
+        <h3>Peak usage</h3>
+<?php
+    $periods = $periods_of($data['peaks']);
+    if (!$periods) { ?>
+        <p class="muted no-data">No data (pok_active_user_stats is filled by the event job pok_active_users_evt, see db_jobs_pok.sql).</p>
+<?php } else {
+        $series = array();
+        foreach (array('last_day' => 'day', 'last_hour' => 'hour', 'last_half_hour' => '30 min', 'last_ten_minutes' => '10 min', 'last_minute' => '1 min') as $col => $name) {
+            $series[] = array('class' => 's' . count($series), 'name' => $name, 'values' => array_column($data['peaks'], $col, 'period'));
+        }
+        echo trend_legend($series);
+        echo trend_lines('trend_peaks', 'Clients active within a day, hour, 30, 10 and 1 minutes, highest value per ' . $per . ', logarithmic', $periods, $series, $gran, $current, true);
+    } ?>
+        <p class="note">Clients active within the last day / hour / 30 / 10 / 1 minutes, taken every minute (pok_active_user_stats); highest value per <?= h($per) ?>. Logarithmic axis.</p>
     </section>
 
 <?php } else if ($tab === 'ideas') { ?>
