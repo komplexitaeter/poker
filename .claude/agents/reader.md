@@ -22,6 +22,8 @@ Report in German, short, as a list:
 - **Vorschlag:** for each problem a plainer wording in the app's language (English UI), short.
 
 Rules:
+- Terms from everyday agile practice are fine and should stay (timebox, sprint, item, backlog, refinement, story points,
+  Delegation Poker, consent). Only flag them when a newcomer could not understand the sentence even with them.
 - Judge only what is written; do not assume knowledge from elsewhere. If a sentence only makes sense to someone who
   knows how the app works inside, it fails.
 - Be strict but fair: praise nothing, just list problems; say "passt" for texts without problems.
