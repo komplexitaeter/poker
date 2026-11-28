@@ -83,9 +83,12 @@ Export ohne Daten). Schemaänderungen kommen zuerst in `db_schema_pok_inc.sql` u
 Fachliche Tabellen: `pok_teams_tbl`, `pok_players_tbl`, `pok_user_tbl`, `pok_roundstats_tbl`,
 `pok_roundstat_details_tbl`, `pok_promotions_tbl`, `pok_feedback_tbl`, `pok_survey*_tbl`, `pok_analytics_events_tbl`.
 
-Statistik-Tabellen für Grafana (Endung `_stats`, `_stats_tbl`): `pok_active_user_stats`, `pok_active_use_stats_tbl`,
-`pok_daily_teams_stats`. Sie werden von einem MySQL-Event-Job befüllt, nicht vom App-Code (Definition in `db_jobs_pok.sql`, B-08; Team-Typ: `RECURRING` bei mehr als 2 aktiven Spielern am Tag, sonst `EXPLORING`). Werden sie geändert
-und Grafana hakt, wird das Dashboard angepasst – kein Grund, Schemaänderungen zu blockieren.
+Statistik-Tabellen (Endung `_stats`, `_stats_tbl`, angezeigt im Tab „Trends“ von `stats.php`, B-13; Grafana ist
+seit 2026-11-28 abgelöst): `pok_active_user_stats` und `pok_daily_teams_stats` füllen MySQL-Event-Jobs (Definition in
+`db_jobs_pok.sql`, B-08; Team-Typ: `RECURRING` bei mehr als 2 aktiven Spielern am Tag, sonst `EXPLORING`),
+`pok_active_use_stats_tbl` ein Cron-Skript des Users `ubuntu` auf Live (WebSocket-Verbindungen aus dem poker-msg-Log,
+Kopie in `tools/stats/measure_active_use.sh`). Nicht vom App-Code. Nutzung von API/MCP: `pok_api_usage_stats_tbl`,
+`pok_api_users_day_tbl` (B-160, vom App-Code, nur Hashes).
 
 **Neue vs. wiederkehrende Teams:** Ein Team kann seinen Link (Team-ID) dauerhaft wiederverwenden, manche Teams
 erzeugen sich aber für jede Session einen neuen (oft mit ähnlichem, nicht garantiert gleichem Namen). Die Team-ID
@@ -135,8 +138,9 @@ April 2026 eingestellt – nicht mehr verwenden.
   `React\EventLoop\Factory::create()` muss `ExtEvLoop` liefern.
 - `poker-msg` pingt alle Verbindungen alle 30 s (WebSocket-Ping, `POKER_MSG_KEEPALIVE`) und schließt Verbindungen
   ohne Antwort (B-24). nginx `location /poker-msg`: `proxy_read_timeout 120s` auf beiden Servern.
-- MySQL lauscht auf `0.0.0.0:3306` – bewusst, weil eine **externe Grafana-Instanz** (`grafana_usr`) darauf zugreift.
-  Nicht ohne Rücksprache auf 127.0.0.1 umstellen.
+- Live (seit 2026-11-28, B-13): MySQL lauscht nur auf `127.0.0.1` (3306/33060), `grafana_usr` gelöscht. Firewall
+  `ufw`: eingehend nur 22, 80, 443. SSH nur mit Schlüssel, fail2ban (Jail `sshd`). Staging: siehe Incident-Bericht
+  vom 2026-11-28 (fail2ban mit `sshd`, `nginx-limit-req`, `nginx-probe` auf den gemeinsamen nginx-Logs).
 
 Last (Stand Oktober 2026): an Werktagen 100–125 aktive Teams mit im Schnitt 5,5–6 Teilnehmern. Spitzen etwa
 1.000 aktive Clients pro Tag und etwa 100–120 gleichzeitig aktive Clients pro Minute; am Wochenende fast nichts.
