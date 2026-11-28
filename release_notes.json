@@ -71,7 +71,7 @@
      "text": "After the reveal, a dashed line in the result chart marks the median. Unlike the average, a single outlier does not pull it away.", "asked": true,
      "where": "Board settings → Results → Average and median → Show"},
     {"title": "Nudge sound",
-     "text": "When someone nudges you, you now hear a short sound – even if the board is open in another tab.", "asked": true,
+     "text": "When someone nudges you, you now hear a short sound – even if the board is open in another tab. You can switch the sound off.", "asked": true,
      "where": "You → Play a sound when someone nudges you"}
   ]},
   {"number": "2026.3.1", "date": "2026-11-09", "items": [
