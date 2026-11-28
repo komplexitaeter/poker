@@ -655,7 +655,11 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
 ### B-164 „Was ist neu“ (Release Notes im Board)
-Status: neu (Andreas, 2026-11-28; Feedback Lars: viele Funktionen unbekannt). Nach einem Rollout einmal je Person ein
+Status: in Umsetzung (Andreas, 2026-11-28). Entschieden: Versionshinweise wie bei Tesla – je Release Nummer
+`YYYY.Rollout` (2026.1 = R1) und Datum, kurze Stichpunkte mit Nutzen und „Find it in“, teils Screenshots (hell und
+dunkel, nach Farbmodus des Nutzers); Einstieg oben im `:feedback`-Panel, Vollbild-Overlay halbtransparent; roter Punkt
+am `:feedback`-Menü bei neuer Version nur für Wiederkehrer (Erstbesucher bekommen den Stand still als gelesen); Inhalt als
+Datei im Repo, Kai entwirft die Notes je Rollout im Master-PR, Andreas gibt sie mit dem Merge frei. Ursprünglich: Nach einem Rollout einmal je Person ein
 dezenter Hinweis (Punkt am Menü), dahinter 3–5 Zeilen „Neu seit …“ in Alltagssprache mit Nutzen; Seite mit allen
 Einträgen. Quelle: eigene Nutzertexte je Rollout (nicht die `MILESTONES` aus `stats.php`). Optional: Hinweis auf die
 nächste Web-Sprechstunde in den Tagen davor. Noch genau zu überlegen.
