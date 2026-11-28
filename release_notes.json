@@ -1,11 +1,13 @@
 {"releases": [
   {"number": "2026.13", "date": "2026-11-28", "draft": true, "items": [
-    {"title": "See what's new",
-     "text": "Read what changed with each update, right here in the Feedback menu.",
-     "where": "Feedback → What's new"},
+    {"title": "Release notes: see what's new",
+     "text": "These release notes tell you what changed with each update – right here in the Feedback menu.",
+     "where": "Feedback → What's new",
+     "asked": true},
     {"title": "Feedback on one page",
      "text": "Send us ideas and vote on ideas from other teams – all in the Feedback menu.",
      "where": "Feedback",
+     "asked": true,
      "image": {"name": "r13-feedback", "w": 760, "h": 1000, "alt": "The Feedback menu: a box to write to us, below it a list of ideas with votes"}},
     {"title": "Anonymous voting",
      "text": "Hide the names on revealed cards for everyone. Nobody can tell who played which card. Emojis still work.",
