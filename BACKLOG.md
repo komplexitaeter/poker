@@ -625,7 +625,7 @@ nur für den QR-Code im Invite. Erst beim Öffnen von Invite nachladen (Skript-T
 währenddessen ruhiger Platzhalter, bei Fehler Hinweis statt QR-Code). Kein Nachbau der QR-Kodierung.
 
 ### B-159 MCP: Hinweise aus den Reviews (nicht priorisiert)
-Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blockierend; zur Entscheidung durch Andreas
+Status: teilweise live R13 (2026-11-28, #323, poker-msg #17), Rest offen (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blockierend; zur Entscheidung durch Andreas
 („keine Limits auf Verdacht“ beachten):
 - Nudge-Ratenlimit: alle anonymen MCP-Nudges eines Teams teilen sich ein Limit (poker-msg, Schlüssel `<hash>:0`);
   Alternative: Limit je echter mkey, ausgeliefert weiter mit `from = 0`.
@@ -655,7 +655,7 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
 ### B-164 „Was ist neu“ (Release Notes im Board)
-Status: in Umsetzung (Andreas, 2026-11-28). Entschieden: Versionshinweise wie bei Tesla – je Release Nummer
+Status: live R13 (2026-11-28), #327, #328, #330, #331 und Textcommits auf `release`; erste Ausgabe 2026.13. Entschieden: Versionshinweise wie bei Tesla – je Release Nummer
 `YYYY.Rollout` (2026.1 = R1) und Datum, kurze Stichpunkte mit Nutzen und „Find it in“, teils Screenshots (hell und
 dunkel, nach Farbmodus des Nutzers); Einstieg oben im `:feedback`-Panel, Vollbild-Overlay halbtransparent; roter Punkt
 am `:feedback`-Menü bei neuer Version nur für Wiederkehrer (Erstbesucher bekommen den Stand still als gelesen); Inhalt als
@@ -665,7 +665,7 @@ Einträgen. Quelle: eigene Nutzertexte je Rollout (nicht die `MILESTONES` aus `s
 nächste Web-Sprechstunde in den Tagen davor. Noch genau zu überlegen.
 
 ### B-165 Feedback-Menü verständlicher
-Status: in Umsetzung – Variante C aus Delias Mockup (eine Seite: oben „Tell the makers“, darunter Tabelle mit Filter
+Status: live R13 (2026-11-28), #326 – Variante C aus Delias Mockup (eine Seite: oben „Tell the makers“, darunter Tabelle mit Filter
 Open | Done), Menüpunkt bleibt `:feedback` (Andreas, 2026-11-28). Feedback Lars: Menüpunkt „Feedback“, Begriff „Roadmap“, die 👍/👎 und das Einreichen
 waren unklar. Ideen: Begriffe („Ideas & Bugs“, „Wishlist“), Liste als Tabelle (Idee | 👍 | 👎 | Status, eigene Stimme
 markiert), Melden und Abstimmen klar trennen. Vorsicht: dort kommt gerade so viel Feedback wie nie – Ablauf nicht
@@ -682,7 +682,7 @@ Sprache eingeschlichen. Alle Texte einmal von Rita (`reader`, liest nur die Text
 prüfen lassen, Funde gesammelt umsetzen (Delia/Fred). Danach Regel: neue Texte vor dem Livegang durch Rita.
 
 ### B-163 Anonymer Modus: mkey verrät die Karte
-Status: in Review (Ben, 2026-11-28, Branch `feature/B-163-anon-handles`: Handles je Runde, Würfe bleiben möglich), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
+Status: live R13 (2026-11-28), #325 (Handles je Runde, Würfe bleiben möglich; DDL `anon_kept_round`), wichtiger als die Reste in B-159. `getDao()` liefert im anonymen Modus nach dem
 Aufdecken weiter die echte `mkey` je Karte (nur der Name wird `******`); vor dem Aufdecken ist mkey → Name sichtbar.
 Wer sich das merkt (DevTools reichen), ordnet jede Karte einer Person zu. REST/MCP setzen fremde mkeys schon auf `null`
 (`lib_core_board.php`). Vorschlag (Aufwand S–M, Ben + Fred): fremde Karten bekommen bei anonym + aufgedeckt einen
