@@ -647,6 +647,20 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
   alten Frage (alle haben dann korrigiert). Tool-Texte: nach neuer Runde auf Notiz-/Item-Änderung achten; für Fragen
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
+### B-161 CI schneller
+Status: neu (Andreas, 2026-11-28). Ein PR-Lauf dauert 6–7 min (je Shard ca. 3,5 min Tests plus Einrichtung).
+1. Mehr Shards (z. B. 6 statt 3) in `.github/workflows/e2e.yml`; Sammel-Check `e2e (PHP 8.4)` bleibt.
+2. Einrichtung beschleunigen: Composer-Abhängigkeiten von poker-msg und Playwright-Browser cachen, ggf. MySQL schneller
+   bereitstellen. Ziel: PR-Lauf unter 4 min. Verworfen vorerst: nur betroffene Specs je PR (Pflegeaufwand, Risiko).
+
+### B-160 Statistik: Nutzung der Public API und des MCP
+Status: in Umsetzung (Andreas, 2026-11-28). In `stats.php` sehen, ob und wie REST-API (B-150) und MCP (B-151) genutzt
+werden. Bisher gibt es nur `pok_api_keys_tbl.last_used_date` und `pok_players_tbl.mcp_seen_time` (ohne Historie).
+Umfang: Zähler je Tag × Kanal (`rest`/`mcp`) × Operation bzw. Tool; je Tag und Kanal die verschiedenen Personen und
+Teams nur als Hash (keine UID, keine Team-ID, keine Inhalte). Neuer Tab „AI & API“ (Kennzahlen heute/7/28 Tage,
+aktive und neue Schlüssel, Teams mit „Allow AI assistants“ aus, meistgenutzte Tools/Operationen) und ein Verlauf im
+Tab „Trends“. Historie beginnt mit dem Rollout.
+
 ### B-155 Transaktionen und Sperren systematisch
 Status: refined (Andreas, 2026-11-26). Anlass: Deadlock in der CI (Rollout 8, #279): `insert … select max(sort_order)`
 setzte unter REPEATABLE READ eine Lücken-Sperre auf `ix_custom_sets_team`; zwei neue Teams in derselben Lücke

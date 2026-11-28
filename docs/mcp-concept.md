@@ -91,6 +91,10 @@ Jeder Tool-Aufruf (außer `create_team` und `join_team` ohne Schlüssel) trägt 
 Team unbekannt und „nicht Mitglied“ geben dieselbe Antwort (kein Orakel, wie v1). Nur `join_team` meldet
 `team_not_found` (wie `team_join` in v1).
 
+**Nutzungszählung** (B-160): Jeder `tools/call` wird je Tag, Tool[:action] und Status (`ok` bzw. Fehlercode) gezählt
+(`usage_record()`, `wait_for_change`/`react` nur einmal je Aufruf; unbekannte Tools zählen nicht, es wird nie eine
+DB-Verbindung nur zum Zählen geöffnet), Sitz und Team erfolgreicher Aufrufe nur als Hash (HMAC mit `STATS_COOKIE_SECRET`) – nie UID, Team-ID, Schlüssel oder Argumente (`stats.php`, Tab „AI & API“).
+
 **Team erlaubt keine KI-Assistenten** (`ai_not_allowed`, Andreas, Datenschutz: das Team kann widersprechen):
 Teameinstellung „Allow AI assistants“ (`pok_teams_tbl.allow_ai`, Standard an; Board settings → Team). Aus → **jeder**
 `/mcp`-Aufruf für das Team wird abgelehnt: „This team does not allow AI assistants. Ask the team to switch on 'Allow AI
