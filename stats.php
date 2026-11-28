@@ -633,6 +633,74 @@ function trend_lines(string $id, string $label, array $periods, array $series, s
         . trend_x_axis($periods, $ticks) . '</div>';
 }
 
+/*
+ * Tooltip of the SVG charts: the native <title> of a point column or milestone line opens at the mouse and may be cut
+ * off at the edge of the screen (or never show on touch). On first hover/tap its text moves to data-tip (the <title> goes,
+ * so the native tooltip does not show twice) and #chart_tip shows it, kept inside the viewport: centred above the
+ * pointer, shifted at the left and right edge, below the pointer if there is no room above. Touch: a tap shows it, a tap
+ * elsewhere or scrolling hides it. Without JS the native tooltips stay.
+ */
+function trend_tip_script(): string {
+    return <<<'JS'
+<script>
+(function () {
+    var tip = document.getElementById('chart_tip');
+    if (!tip) return;
+    var current = null, touch = false, shownAt = 0;
+    function target(el) {
+        while (el && el.nodeType === 1 && !(el.matches && el.matches('svg.trend-svg'))) {
+            if (el.matches && el.matches('.trend-svg .hov, .trend-svg .ms-hit')) return el;
+            el = el.parentNode;
+        }
+        return null;
+    }
+    function text(el) {
+        if (el.dataset.tip === undefined) {
+            var t = el.querySelector('title');
+            el.dataset.tip = t ? t.textContent : '';
+            if (t) t.remove();
+        }
+        return el.dataset.tip;
+    }
+    function place(x, y) {
+        var m = 8, w = tip.offsetWidth, h = tip.offsetHeight;
+        var vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+        var left = Math.min(Math.max(m, x - w / 2), Math.max(m, vw - w - m));
+        var top = y - h - 12;
+        if (top < m) top = Math.min(y + 16, Math.max(m, vh - h - m));
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+    }
+    function show(el, e) {
+        var s = text(el);
+        if (!s) { hide(); return; }
+        current = el;
+        tip.textContent = s;
+        tip.hidden = false;
+        shownAt = window.scrollY;
+        place(e.clientX, e.clientY);
+    }
+    function hide() { current = null; tip.hidden = true; }
+    document.addEventListener('pointerover', function (e) {
+        touch = e.pointerType === 'touch';
+        var el = target(e.target);
+        if (el) show(el, e); else if (!touch) hide();
+    });
+    document.addEventListener('pointermove', function (e) {
+        if (current && !touch && target(e.target) === current) place(e.clientX, e.clientY);
+    });
+    document.addEventListener('pointerout', function (e) {
+        if (!touch && current && !target(e.relatedTarget)) hide();
+    });
+    document.addEventListener('pointerdown', function (e) { if (!target(e.target)) hide(); });
+    // only a real scroll since the tooltip opened hides it (a scroll event may arrive late, after the scroll ended)
+    window.addEventListener('scroll', function () { if (window.scrollY !== shownAt) hide(); }, { passive: true });
+    window.addEventListener('resize', hide);
+})();
+</script>
+JS;
+}
+
 /* legend line: css class => text */
 function trend_legend(array $series): string {
     $html = '<p class="legend note">';
@@ -645,21 +713,147 @@ function fmt_num(float $v): string {
     return number_format(round($v), 0, '.', ' ');
 }
 
+/* B-13 trends cache: metric names in pok_trend_daily_tbl per column of the per-minute tables ('<prefix>_n' = number of
+   rows of the day, also 0: marks a completed day as computed, so days without data are not computed again) */
+const TREND_CACHE_CHUNK_DAYS = 366;      // missing days are computed and stored in chunks of about a year,
+const TREND_CACHE_BUDGET_SEC = 25;       // newest first, until this time is used up (nginx gives up after 60 s)
+const TREND_CACHE_METRICS = array(
+    'pok_active_use_stats_tbl' => array('prefix' => 'use', 'columns' => array('active_players' => 'use_players', 'active_teams' => 'use_teams')),
+    'pok_active_user_stats' => array('prefix' => 'peak', 'columns' => array('last_day' => 'peak_day', 'last_hour' => 'peak_hour',
+        'last_half_hour' => 'peak_30m', 'last_ten_minutes' => 'peak_10m', 'last_minute' => 'peak_1m')),
+);
+
+/* "+HH:MM" -> seconds */
+function offset_seconds(string $offset): int {
+    $sign = $offset[0] === '-' ? -1 : 1;
+    return $sign * ((int)substr($offset, 1, 2) * 3600 + (int)substr($offset, 4, 2) * 60);
+}
+
+/* start of the viewer's day $day (Y-m-d, offset $tz_offset) as DB time (offset $db_offset) */
+function day_start_db(string $day, string $tz_offset, string $db_offset): string {
+    return (new DateTime($day . ' 00:00:00', new DateTimeZone($tz_offset)))->setTimezone(new DateTimeZone($db_offset))->format('Y-m-d H:i:s');
+}
+
 /*
- * select for a per-minute stats table (creation_date = datetime in DB time): rows period => max of each column,
- * since $start_db (DB time). The day is taken in the viewer's offset. [] if the table does not exist (staging).
+ * Highest value of each column per viewer day from a per-minute stats table (creation_date = datetime in DB time):
+ * day => array(column => max, '_n' => rows), for the days $from <= day < $to (Y-m-d, viewer's offset). One grouped
+ * query, range on the index creation_date; the day is shifted by the constant difference of the two offsets (cheaper
+ * than convert_tz per row).
  */
-function trend_minute_max($link, string $table, array $columns, string $gran, string $db_offset, string $tz_offset, string $start_db): array {
+function minute_days($link, string $table, array $columns, string $db_offset, string $tz_offset, string $from, string $to): array {
+    $shift = offset_seconds($tz_offset) - offset_seconds($db_offset);
     $max = implode(', ', array_map(fn($c) => 'max(' . $c . ') as ' . $c, $columns));
+    $rows = rows($link, "select /*+ MAX_EXECUTION_TIME(30000) */ date(creation_date + interval ? second) as d, count(1) as _n, " . $max . "
+          from " . $table . "
+         where creation_date >= ? and creation_date < ?
+         group by d", 'iss', array($shift, day_start_db($from, $tz_offset, $db_offset), day_start_db($to, $tz_offset, $db_offset)));
+    return array_column($rows, null, 'd');
+}
+
+/*
+ * select for a per-minute stats table: rows period => max of each column, from the viewer's day $start to $today (Y-m-d,
+ * the viewer's offset). B-13 trends cache: completed days (before today) come from pok_trend_daily_tbl (key: viewer's
+ * offset, day, metric); missing completed days are computed once in one query over the missing span and stored; today
+ * is always computed live. Weeks and months = max of the days. Without the cache table (1146) everything is computed
+ * live; cache write errors are ignored. [] if the stats table does not exist (staging).
+ */
+function trend_minute_max($link, string $table, array $columns, string $gran, string $db_offset, string $tz_offset, string $start, string $today, bool &$partial = false): array {
+    $metrics = TREND_CACHE_METRICS[$table]['columns'];
+    $marker = TREND_CACHE_METRICS[$table]['prefix'] . '_n';
+    $tomorrow = date('Y-m-d', strtotime($today . ' +1 day'));
     try {
-        return array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(15000) */ " . trend_period_sql($gran, 'x.d') . " as period, " . $max . "
-              from (select date(convert_tz(creation_date, ?, ?)) as d, " . implode(', ', $columns) . "
-                      from " . $table . "
-                     where creation_date >= ?) as x
-             group by period", 'sss', array($db_offset, $tz_offset, $start_db)), null, 'period');
+        $first = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */ min(creation_date) as first from " . $table)[0]['first'];
+        if ($first === null) return array();
+        $first_day = (new DateTime($first, new DateTimeZone($db_offset)))->setTimezone(new DateTimeZone($tz_offset))->format('Y-m-d');
+        $from = max($start, $first_day);
+        if ($from > $today) return array();
+
+        $days = array();     // day => column => value
+        $cached = false;
+        if ($from < $today) {
+            try {
+                $names = array_merge(array_values($metrics), array($marker));
+                $in = implode(',', array_fill(0, count($names), '?'));
+                $done = array();
+                foreach (rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */ day, metric, val from pok_trend_daily_tbl
+                                       where tz = ? and day >= ? and day < ? and metric in ($in)",
+                               'sss' . str_repeat('s', count($names)), array_merge(array($tz_offset, $from, $today), $names)) as $r) {
+                    if ($r['metric'] === $marker) { $done[$r['day']] = true; continue; }
+                    $days[$r['day']][array_search($r['metric'], $metrics, true)] = (int)$r['val'];
+                }
+                $cached = true;
+                // completed days without the marker: computed in chunks of a year, newest first, each chunk stored right
+                // away (marker rows last, so a half-written day is never marked done); when the time budget is used up or
+                // a chunk times out, the rest stays missing on this load ($partial) and the next load goes on there
+                $missing = array();
+                for ($d = $from; $d < $today; $d = date('Y-m-d', strtotime($d . ' +1 day'))) if (!isset($done[$d])) $missing[] = $d;
+                $began = microtime(true);
+                foreach (array_reverse(array_chunk($missing, TREND_CACHE_CHUNK_DAYS)) as $chunk) {
+                    if (microtime(true) - $began > TREND_CACHE_BUDGET_SEC) { $partial = true; break; }
+                    try {
+                        $computed = minute_days($link, $table, array_keys($metrics), $db_offset, $tz_offset, $chunk[0],
+                                                date('Y-m-d', strtotime(end($chunk) . ' +1 day')));
+                    } catch (mysqli_sql_exception $e) {
+                        if ($e->getCode() !== 3024) throw $e; // 3024: MAX_EXECUTION_TIME of the chunk exceeded
+                        $partial = true;
+                        break;
+                    }
+                    $values = array();
+                    $markers = array();
+                    foreach ($chunk as $d) {
+                        $row = $computed[$d] ?? null;
+                        $markers[] = array($tz_offset, $d, $marker, (int)($row['_n'] ?? 0));
+                        if ($row === null) continue;
+                        foreach ($metrics as $column => $metric) {
+                            $days[$d][$column] = (int)$row[$column];
+                            $values[] = array($tz_offset, $d, $metric, max(0, (int)$row[$column]));
+                        }
+                    }
+                    trend_cache_store($link, array_merge($values, $markers));
+                }
+            } catch (mysqli_sql_exception $e) {
+                // 1146: no cache table (DDL B-13 trends cache not applied), 1142: no privilege on it
+                if (!in_array($e->getCode(), array(1142, 1146), true)) throw $e;
+                $cached = false;
+            }
+        }
+        if (!$cached) $days = array();
+        $live = minute_days($link, $table, array_keys($metrics), $db_offset, $tz_offset, $cached ? $today : $from, $tomorrow);
+        foreach ($live as $d => $row) foreach ($metrics as $column => $_) $days[$d][$column] = (int)$row[$column];
+
+        // periods: max of the days
+        $out = array();
+        foreach ($days as $d => $values) {
+            $p = trend_align($d, $gran);
+            foreach ($values as $column => $v) {
+                if (!isset($out[$p][$column]) || $v > $out[$p][$column]) $out[$p][$column] = $v;
+            }
+        }
+        foreach ($out as $p => $values) $out[$p]['period'] = $p;
+        return $out;
     } catch (mysqli_sql_exception $e) {
         if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist
         return array();
+    }
+}
+
+/* writes cache rows (tz, day, metric, val) in statements of 500 rows, in the given order (marker rows last: a failed
+   statement stops the rest, so a day without all its values is never marked done); insert ignore (a parallel load may
+   have written them); errors are ignored - the page has its values anyway */
+function trend_cache_store($link, array $values): void {
+    try {
+        foreach (array_chunk($values, 500) as $chunk) {
+            $sql = "insert ignore into pok_trend_daily_tbl (tz, day, metric, val) values "
+                . implode(',', array_fill(0, count($chunk), '(?,?,?,?)'));
+            $flat = array();
+            foreach ($chunk as $v) array_push($flat, ...$v);
+            $stmt = $link->prepare($sql);
+            $stmt->bind_param(str_repeat('sssi', count($chunk)), ...$flat);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $ignored) {
+        // cache only
     }
 }
 
@@ -851,8 +1045,6 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
         $start_rel = TREND_RANGES[$trend_range]['start'];
         $data['start'] = $start_rel === null ? null : trend_align(date('Y-m-d', strtotime($data['today'] . ' ' . $start_rel)), $trend_gran);
         $start = $data['start'] ?? TREND_ALL_START;
-        // per-minute tables hold DB time ($db_offset): the start converted in PHP keeps the range on the column indexable
-        $start_db = (new DateTime($start . ' 00:00:00', new DateTimeZone($time_zone_offset)))->setTimezone(new DateTimeZone($db_offset))->format('Y-m-d H:i:s');
 
         // teams per period (pok_daily_teams_stats: nightly job, one row per team (id) and day, a DATE of the DB clock):
         // distinct teams, recurring if RECURRING on at least one day of the period. Index (creation_date, id).
@@ -879,11 +1071,12 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
              group by period", 's', array($start)), null, 'period');
 
         // per-minute snapshots: highest value per period
+        $data['cache_partial'] = false;
         $data['active_use'] = trend_minute_max($link, 'pok_active_use_stats_tbl', array('active_players', 'active_teams'),
-            $trend_gran, $db_offset, $time_zone_offset, $start_db);
+            $trend_gran, $db_offset, $time_zone_offset, $start, $data['today'], $data['cache_partial']);
         $data['peaks'] = trend_minute_max($link, 'pok_active_user_stats',
             array('last_day', 'last_hour', 'last_half_hour', 'last_ten_minutes', 'last_minute'),
-            $trend_gran, $db_offset, $time_zone_offset, $start_db);
+            $trend_gran, $db_offset, $time_zone_offset, $start, $data['today'], $data['cache_partial']);
 
         // B-160: distinct persons per period using MCP or the API with a key (hashes, pok_api_users_day_tbl; a DATE of
         // the DB clock like pok_daily_teams_stats), range on the primary key (day, ...)
@@ -1234,6 +1427,11 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         html.no-ms .trend-svg .ms, html.no-ms .trend-svg .ms-hit { display: none; }
         .trend-svg .line { fill: none; stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
         .trend-svg .hov { fill: transparent; }
+        /* tooltip of the SVG charts (trend_tip_script()): fixed, kept inside the viewport */
+        .chart-tip { position: fixed; z-index: 20; left: 0; top: 0; max-width: min(28rem, calc(100vw - 16px)); padding: 0.35em 0.6em;
+                     background: var(--bg-4); color: var(--text); border: 1px solid var(--line-strong); border-radius: var(--radius-m, 4px);
+                     font-size: var(--fs-xs); line-height: 1.35; pointer-events: none; white-space: normal; overflow-wrap: anywhere; }
+        .chart-tip[hidden] { display: none; }
         .trend-svg .hov:hover { fill: var(--row-hover); }
         .trend-svg .s0, .legend .sw.s0 { stroke: var(--accent); background: var(--accent); }
         .trend-svg .s1, .legend .sw.s1 { stroke: var(--link); background: var(--link); }
@@ -1630,10 +1828,13 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         <p class="note">New rounds (pok_roundstats_tbl, NEW_ROUND), sum per <?= h($per) ?>, weekends included<?= $gran === 'day' ? ' (dimmed)' : '' ?>.</p>
 
         <h3>Active use</h3>
+<?php if ($data['cache_partial']) { ?>
+        <p class="note" id="trend_cache_partial">Older days of "Active use" and "Peak usage" are still being computed (daily cache) - reload to see them.</p>
+<?php } ?>
 <?php
     $periods = $periods_of($data['active_use']);
     if (!$periods) { ?>
-        <p class="muted no-data">No data (pok_active_use_stats_tbl is filled by the event job pok_active_use_evt, see db_jobs_pok.sql; it is disabled on live).</p>
+        <p class="muted no-data">No data (pok_active_use_stats_tbl is filled every minute by the cron script tools/stats/measure_active_use.sh on live, not by the disabled event pok_active_use_evt; test and staging databases have no data).</p>
 <?php } else {
         $series = array(
             array('class' => 's0', 'name' => 'players', 'values' => array_column($data['active_use'], 'active_players', 'period')),
@@ -1642,7 +1843,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         echo trend_legend($series);
         echo trend_lines('trend_active_use', 'Active players and teams, highest value per ' . $per, $periods, $series, $gran, $current, false);
     } ?>
-        <p class="note">Players and teams active within 15 minutes, taken every minute (pok_active_use_stats_tbl); highest value per <?= h($per) ?>.</p>
+        <p class="note">WebSocket connections (players) and teams connected to poker-msg, read from its info log every minute by a cron script (tools/stats/measure_active_use.sh, pok_active_use_stats_tbl); highest value per <?= h($per) ?>.
+            Since B-24 (2026-10-16) poker-msg closes dead connections, so the values dropped then - not less usage.</p>
 
         <h3>Peak usage</h3>
 <?php
@@ -1657,7 +1859,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         echo trend_legend($series);
         echo trend_lines('trend_peaks', 'Clients active within a day, hour, 30, 10 and 1 minutes, highest value per ' . $per . ', logarithmic', $periods, $series, $gran, $current, true);
     } ?>
-        <p class="note">Clients active within the last day / hour / 30 / 10 / 1 minutes, taken every minute (pok_active_user_stats); highest value per <?= h($per) ?>. Logarithmic axis.</p>
+        <p class="note">Clients active within the last day / hour / 30 / 10 / 1 minutes, taken every minute (pok_active_user_stats); highest value per <?= h($per) ?>. Logarithmic axis.
+            Since the board heartbeat (B-110/B-127: every open board calls seen.php about every 30 s) "1 min" counts open boards rather than active people, so it rises from November 2026 - not more usage.</p>
 
         <h3>AI &amp; API</h3>
 <?php
@@ -1678,6 +1881,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     } ?>
         <p class="note">Distinct persons per <?= h($per) ?> with at least one successful call (pok_api_users_day_tbl, only hashes): MCP = tool calls of an AI assistant, API = /api/v1 with an API key (without the browser mode of the board). Days of the DB clock. Details: tab AI &amp; API.</p>
     </section>
+    <div class="chart-tip" id="chart_tip" role="tooltip" hidden></div>
+    <?= trend_tip_script() ?>
 
 <?php } else if ($tab === 'ai') {
     $people = $data['ai_people'] ?? array();

@@ -603,7 +603,8 @@ test('the view: tells the chat once per round when everybody but the user has pl
 
   await tool(request, 'play_card', { ...others[0], action: 'play', card: '5' });
   await tool(request, 'play_card', { ...others[1], action: 'play', card: '8' });
-  await expect(view.locator('#status')).toContainText('waiting for: Anna', { timeout: 3_000 });
+  // the exact end: "waiting for: Anna, Cleo" (Cleo's card not seen yet) must not count - the 20 s start with Cleo's card
+  await expect(view.locator('#status')).toHaveText(/2 of 3 voted · waiting for: Anna$/, { timeout: 3_000 });
   await host.clock.fastForward(15_000);
   expect(await messages()).toEqual([]);
   await host.clock.fastForward(6_000);

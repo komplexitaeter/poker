@@ -637,6 +637,8 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
 - `delete.php?mkey=` im anonymen Modus nach dem Aufdecken (gemerkte mkey verrät beim Entfernen die Karte); im MCP
   bereits ausgeschlossen.
 - Kontingent per WebSocket: ein Browser kann mit beliebigem `from` das Kontingent anderer verbrauchen (bekannt, B-139).
+- Flaky: `mcp-app.spec.ts` „leaving by oneself … Join again“ (Zeile ~428) schlug lokal einmal fehl (Ben, 2026-11-28), Ursache offen.
+- `pok_api_users_day_tbl` wächst unbegrenzt: Aufbewahrungsfrist mit B-109 festlegen.
 - `getDao()`: gelöschte eigene Karten (Custom-Set) sind vor dem Aufdecken sichtbar.
 - `away_sig` baut die Zuordnung im anonymen Modus neu auf (prüfen, ob daraus Rückschlüsse möglich sind).
 - `mcp_states`: Größe der Spalte bei 8 Ständen je Platz beobachten.
@@ -787,7 +789,7 @@ mehr `push`: `push` in poker-msg entfernen oder über dieselbe Drosselung wie `o
 `api/delete_user.php` – fehlendes `$sql->close()` beim Feedback-DELETE.
 
 ### B-13 MySQL-Zugriff von außen einschränken – oder Grafana ablösen
-Status: neu. Port 33060 schließen, Port 3306 per Firewall nur für die Grafana-Instanz öffnen, `grafana_usr` auf deren
+Status: erledigt bis auf Aufräumen (2026-11-28). Port 33060 schließen, Port 3306 per Firewall nur für die Grafana-Instanz öffnen, `grafana_usr` auf deren
 Adresse beschränken und auf Leserechte prüfen. MySQL lauscht bewusst auf `0.0.0.0` (CLAUDE.md) – nur mit Rücksprache.
 Erweitert (Andreas, 2026-11-16): Brauchen wir Grafana überhaupt? Die 3–4 Charts dort ließen sich in `stats.php`
 integrieren (Daten liegen in den `_stats`-Tabellen). Dann könnte MySQL ganz auf `127.0.0.1` und der Firewall-Teil
@@ -804,8 +806,9 @@ Lücke gegenüber `stats.php` ist also vor allem der **lange Zeitraum** (Wochen 
 Daten. Vorschlag: neuer Tab „Trends“ in `stats.php` mit den vier Charts, Zeitraum 4 Wochen / 6 Monate / alles (bei
 langen Zeiträumen je Woche zusammengefasst), Meilenstein-Linien wie in den bestehenden Charts. Danach: `grafana_usr`
 löschen, MySQL auf `127.0.0.1` (Rücksprache CLAUDE.md), Firewall-Regeln für 3306 entfernen.
-**Server (Andreas, 2026-11-28):** SSH nur mit Schlüssel, fail2ban (`sshd`) aktiv. Übergangsweise ufw mit
-Grafana-Cloud-IPs für 3306 (einmaliger Abgleich, kein Cron), 33060 zu.
+**Erledigt (Andreas, 2026-11-28):** Tab „Trends“ live (#316, #319), SSH nur mit Schlüssel, fail2ban (`sshd`), ufw
+(eingehend 22/80/443), `grafana_usr` gelöscht, MySQL auf `127.0.0.1`. Offen: Grafana-Cloud-Dashboard abschalten;
+Event `pok_active_use_evt` (Definer `root@%`, nie gelaufen) löschen.
 
 ### B-109 Löschfrist für User-IDs und Namen (Speicherbegrenzung)
 Status: neu. Hinweis Sina, Gedanken Andreas (2026-11-01). **Teams (Andreas, 2026-11-26):** ein nächtlicher Job löscht Teams nach

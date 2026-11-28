@@ -137,3 +137,60 @@ test('milestones: no list under the charts, label in the tooltips, switch hides 
   expect(await shown(page.locator('#trend_peaks line.ms').first())).toBe(true);
   expect(await page.locator('#trend_rounds .day.milestone').first().evaluate(e => getComputedStyle(e).boxShadow)).not.toBe('none');
 });
+
+test('SVG chart tooltip stays inside the viewport, legend of "Active use", note on the heartbeat', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await gotoStats(page, '/stats.php?tab=trends&range=4w');
+  const tip = page.locator('#chart_tip');
+  await expect(tip).toBeHidden();
+  const plot = page.locator('.trend-plot:has(#trend_peaks)');
+  await plot.scrollIntoViewIfNeeded();
+  const box = (await plot.boundingBox())!;
+  // first and last period: centred over the pointer the text would run over the left / right edge
+  for (const x of [box.x + 2, box.x + box.width - 2]) {
+    await page.mouse.move(x, box.y + box.height / 2);
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText(/20\d\d-\d\d-\d\d/); // a period or a milestone line at the edge
+    const t = (await tip.boundingBox())!;
+    expect(t.x).toBeGreaterThanOrEqual(0);
+    expect(t.x + t.width).toBeLessThanOrEqual(390);
+    expect(t.y).toBeGreaterThanOrEqual(0);
+  }
+  // the native <title> is gone after the first hover (no double tooltip)
+  expect(await page.locator('#trend_peaks [data-tip]').count()).toBeGreaterThanOrEqual(2);
+  await expect(page.locator('#trend_peaks [data-tip] > title')).toHaveCount(0);
+  await page.mouse.move(5, 5);
+  await expect(tip).toBeHidden();
+
+  const legend = page.locator('h3:has-text("Active use") + p.legend');
+  await expect(legend).toContainText('players');
+  await expect(legend).toContainText('teams');
+  await expect(page.locator('p.note', { hasText: 'counts open boards rather than active people' })).toContainText('pok_active_user_stats');
+  await expect(page.locator('main')).not.toContainText('disabled on live');
+});
+
+test('trends cache: the first load fills completed days, the next reads them, today stays live', async ({ page }) => {
+  mysql('delete from pok_trend_daily_tbl');
+  await gotoStats(page, '/stats.php?tab=trends&range=4w');
+  const titles = () => page.locator('#trend_peaks rect.hov title').allTextContents();
+  const first = await titles();
+  // completed days stored (with the row marker), never today or later in the viewer's offset
+  expect(Number(mysql("select count(1) from pok_trend_daily_tbl where metric = 'peak_n'"))).toBeGreaterThanOrEqual(1); // from the first day with data
+  expect(mysql(`select count(1) from pok_trend_daily_tbl
+                 where day >= date(convert_tz(utc_timestamp(), '+00:00', tz))`)).toBe('0');
+
+  // second load: the same values, now from the cache
+  await page.reload();
+  expect(await titles()).toEqual(first);
+  const [tz, day] = mysql(`select tz, day from pok_trend_daily_tbl where metric = 'peak_1m'
+                            order by day desc limit 1`).split('\t');
+  mysql(`update pok_trend_daily_tbl set val = 4242 where tz = '${tz}' and day = '${day}' and metric = 'peak_1m'`);
+  await page.reload();
+  expect((await titles()).find(t => t.includes(day))).toContain('1 min 4 242');
+
+  // today is computed on every load
+  mysql(`insert into pok_active_user_stats values (now() + interval 13 second, 900, 800, 700, 600, 777)`);
+  await page.reload();
+  expect((await titles()).find(t => t.includes('(so far)'))).toContain('1 min 777');
+  mysql('delete from pok_trend_daily_tbl');
+});
