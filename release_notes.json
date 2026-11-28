@@ -20,8 +20,8 @@
     {"title": "Small fixes and improvements.", "text": ""}
   ]},
   {"number": "2026.10", "date": "2026-11-28", "items": [
-    {"title": "Join with an AI assistant (beta)",
-     "text": "Add Agile Poker to Claude or ChatGPT and give it the invite link. It joins under the name you choose, plays the card you name and tells you what happens. Your assistant sees the board like you do. This is a beta – we would love to hear how it works for you: just send us feedback.",
+    {"title": "AI connector: join with your AI assistant (beta)",
+     "text": "Add Agile Poker as a connector (MCP) in Claude or ChatGPT and give your assistant the invite link. It joins under the name you choose, plays the card you name and tells you what happens. Your assistant sees the board like you do. This is a beta – we would love to hear how it works for you: just send us feedback.",
      "where": "the robot button next to \"Invite\"",
      "image": {"name": "r10-ai", "w": 880, "h": 974, "alt": "The window \"Play via your AI assistant\" with the link to copy and three short steps"}},
     {"title": "See who plays through an AI",
