@@ -91,8 +91,8 @@
     {"title": "Observers on the board, away status on the cards",
      "text": "Observers are now shown on the board, below the cards. And a player's card shows when that person is away or has lost the connection.",
      "where": "the table"},
-    {"title": "Play cards with the keyboard",
-     "text": "On a computer, press the letter shown below a card (Q, W, E …) to play it without the mouse.",
+    {"title": "Keyboard shortcuts for your cards",
+     "text": "On a computer, each card has its own key (Q, W, E …). Press it to pick that card – no mouse needed.",
      "where": "the letters below your cards"}
   ]},
   {"number": "2026.2", "date": "2026-11-01", "items": [
