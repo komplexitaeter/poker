@@ -200,11 +200,16 @@ function v1_dispatch(): void
         $result = $route['handler']($link, $actor, $params);
         if ($result instanceof V1Answer) v1_send($result->status, $result->body);
         else v1_send($result === null ? 204 : v1_success_status($route), $result);
+        // B-160: after the answer, outside the core transaction; op = the operation id of routes.php (a constant)
+        usage_record($link, ($actor['via'] ?? null) === 'browser' ? 'web' : 'rest', $op_id, $actor['uid'] ?? null,
+                     $actor['team_id'] ?? null);
     } catch (ApiError $e) {
         v1_rollback($link);
         v1_send_error($e);
+        v1_usage_failure($link, $op_id, $e);
     } catch (mysqli_sql_exception $e) {
         v1_rollback($link);
+        v1_usage_failure($link, $op_id, $e); // before the answer is fine: it never throws, the answer stays the same
         if ($e->getCode() === 1062) {
             // duplicate key despite the locks (concept 8.1): a simultaneous write got in the way, trying again helps
             v1_send_error(new ApiError(409, 'conflict'));
@@ -216,10 +221,29 @@ function v1_dispatch(): void
         v1_send_error($busy ? new ApiError(503, 'busy') : new ApiError(500, 'internal'));
     } catch (Throwable $e) {
         v1_rollback($link);
+        v1_usage_failure($link, $op_id, $e);
         $busy = $e instanceof mysqli_sql_exception && is_retryable_db_error($e);
         error_log('poker api v1 ' . $op_id . ': ' . get_class($e) . ' (' . $e->getCode() . '): ' . $e->getMessage()
             . ' at ' . $e->getFile() . ':' . $e->getLine());
         v1_send_error($busy ? new ApiError(503, 'busy') : new ApiError(500, 'internal'));
+    }
+}
+
+/*
+ * B-160: counts a failed call (pok_api_usage_stats_tbl only, no person): op = the matched operation id, else
+ * '(unknown)' (never the path of the request); channel by the auth headers sent (key -> rest, X-Poker-User -> web).
+ * Only with the connection of the call: failures before it was opened (unknown path, wrong method, database down) are
+ * not counted - never a connection just for counting. Never throws.
+ */
+function v1_usage_failure(?mysqli $link, string $op_id, Throwable $e): void
+{
+    if ($link === null) return;
+    try {
+        $op = $op_id === '-' ? '(unknown)' : $op_id;
+        $channel = v1_bearer_key() === null && isset($_SERVER['HTTP_X_POKER_USER']) ? 'web' : 'rest';
+        usage_record($link, $channel, $op, null, null, usage_status($e));
+    } catch (Throwable $ignored) {
+        // statistics only
     }
 }
 

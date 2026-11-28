@@ -98,3 +98,42 @@ test('trends tab: range and granularity links, charts with seeded data', async (
     }
   }
 });
+
+test('milestones: no list under the charts, label in the tooltips, switch hides the lines (remembered)', async ({ page }) => {
+  // one year per week: the rollouts of MILESTONES (from 2026-10-28) are inside for a year
+  await gotoStats(page, '/stats.php?tab=trends&range=1y&gran=week');
+  const main = page.locator('main');
+  await expect(page.locator('.milestone-label, .trend-ms')).toHaveCount(0);
+  await expect(main).not.toContainText('Rollout 1 (2026-10-28)', { useInnerText: true });
+
+  // tooltips: bar column of the week and the wide hit area of the SVG line name the milestone
+  const msBar = page.locator('#trend_rounds .day.milestone').first();
+  await expect(msBar).toHaveAttribute('title', /· Milestones?: .*\(20\d\d-\d\d-\d\d\)/);
+  const hit = page.locator('#trend_peaks line.ms-hit title').first();
+  await expect(hit).toHaveText(/Milestones?: .*\(20\d\d-\d\d-\d\d\)/);
+  // a vertical SVG line has no width, so Playwright's visibility does not apply: the computed display
+  const shown = (loc: import('@playwright/test').Locator) => loc.evaluate(e => getComputedStyle(e).display !== 'none');
+  const line = page.locator('#trend_peaks line.ms').first();
+  expect(await shown(line)).toBe(true);
+
+  // the switch: off hides the lines on the page, stays off after a reload and on other tabs
+  const toggle = page.locator('#ms_toggle');
+  await expect(toggle).toBeChecked();
+  await toggle.uncheck();
+  await expect(page.locator('html')).toHaveClass(/(^|\s)no-ms(\s|$)/);
+  expect(await shown(line)).toBe(false);
+  expect(await shown(page.locator('#trend_peaks line.ms-hit').first())).toBe(false);
+  expect(await msBar.evaluate(e => getComputedStyle(e).boxShadow)).toBe('none');
+  await page.reload();
+  await expect(page.locator('html')).toHaveClass(/(^|\s)no-ms(\s|$)/);
+  await expect(page.locator('#ms_toggle')).not.toBeChecked();
+  expect(await shown(page.locator('#trend_peaks line.ms').first())).toBe(false);
+  await gotoStats(page, '/stats.php?tab=usage');
+  await expect(page.locator('#ms_toggle')).not.toBeChecked();
+  await expect(page.locator('.milestone-label')).toHaveCount(0);
+  await page.locator('#ms_toggle').check();
+  await expect(page.locator('html')).not.toHaveClass(/(^|\s)no-ms(\s|$)/);
+  await gotoStats(page, '/stats.php?tab=trends&range=1y&gran=week');
+  expect(await shown(page.locator('#trend_peaks line.ms').first())).toBe(true);
+  expect(await page.locator('#trend_rounds .day.milestone').first().evaluate(e => getComputedStyle(e).boxShadow)).not.toBe('none');
+});
