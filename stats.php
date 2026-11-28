@@ -58,6 +58,8 @@ const MILESTONES = array(
     '2026-11-26' => 'UID from the server, only in a header; removed players as observers; public API v1 (keys, items)',
     '2026-11-28' => 'AI connector (MCP)',
 );
+/* milestone lines on/off per viewer (localStorage, stats.php only) */
+const MS_STORAGE_KEY = 'stats_milestones';
 /* login (B-63): htpasswd file of nginx, the only place of the credentials (maintained with htpasswd -B -C 12);
    STATS_COOKIE_SECRET (config.php) is part of the cookie signature key */
 define('AUTH_FILE', defined('STATS_HTPASSWD') ? STATS_HTPASSWD : '/etc/nginx/poker-stats.htpasswd');
@@ -393,13 +395,30 @@ function hm(?string $datetime): string {
     return $datetime === null ? '' : substr($datetime, 11, 5);
 }
 
-/* milestone label of a day (Y-m-d) or of the week starting at a Monday (Y-m-d), '' if none */
+/* milestone labels of a day (Y-m-d) or of the $days days starting there, '' if none; with the date for longer periods */
 function milestone(string $day, int $days = 1): string {
     $labels = array();
     foreach (MILESTONES as $date => $label) {
-        if ($date >= $day && $date < date('Y-m-d', strtotime($day . ' +' . $days . ' day'))) $labels[] = $label . ' (' . $date . ')';
+        if ($date >= $day && $date < date('Y-m-d', strtotime($day . ' +' . $days . ' day'))) $labels[] = $label . ($days > 1 ? ' (' . $date . ')' : '');
     }
     return implode(', ', $labels);
+}
+
+/* tooltip suffix of a milestone label ('' if none): " · Milestone: AI connector (MCP)", several: "Milestones: a, b" */
+function milestone_tip(string $label): string {
+    if ($label === '') return '';
+    return ' · Milestone' . (count(array_filter(array_keys(MILESTONES), fn($d) => str_contains($label, '(' . $d . ')'))) > 1 ? 's' : '') . ': ' . $label;
+}
+
+/* the switch "Milestones" (tabs with charts): hidden without JS (the lines then simply stay visible); the inline script in
+   <head> sets html.no-ms early from localStorage, this one wires the checkbox */
+function milestone_toggle(): string {
+    return '<label class="ms-toggle" id="ms_toggle_wrap" hidden><input type="checkbox" id="ms_toggle" checked> Milestones</label>'
+        . '<script>(function () { var root = document.documentElement, box = document.getElementById(\'ms_toggle\');'
+        . ' box.checked = !root.classList.contains(\'no-ms\'); document.getElementById(\'ms_toggle_wrap\').hidden = false;'
+        . ' box.addEventListener(\'change\', function () { root.classList.toggle(\'no-ms\', !box.checked);'
+        . ' try { localStorage.setItem(\'' . MS_STORAGE_KEY . '\', box.checked ? \'on\' : \'off\'); } catch (e) { /* private mode: not remembered */ } });'
+        . ' })();</script>';
 }
 
 /*
@@ -530,7 +549,7 @@ function trend_bars(string $id, string $label, array $periods, array $series, st
         $parts = array();
         foreach ($series as $s) $parts[] = $s['name'] . ' ' . fmt_num((float)($s['values'][$p] ?? 0));
         $title = trend_period_text($p, $gran, $current) . ': ' . (count($series) > 1 ? fmt_num($totals[$p]) . ' (' . implode(', ', $parts) . ')' : $parts[0])
-            . ($ms !== '' ? ' - ' . $ms : '');
+            . milestone_tip($ms);
         $html .= '<span class="' . implode(' ', $classes) . '" data-period="' . h($p) . '" data-value="' . h(fmt_num($totals[$p])) . '" title="' . h($title) . '">'
             . '<span class="col" style="height: ' . bar_width($totals[$p], $max) . '%">';
         foreach (array_reverse($series) as $s) {   // first series at the bottom
@@ -573,8 +592,7 @@ function trend_lines(string $id, string $label, array $periods, array $series, s
     }
     foreach ($ticks as $i => $_) $svg .= '<line class="grid" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"/>';
     foreach ($periods as $i => $p) {
-        $ms = trend_milestone($p, $gran);
-        if ($ms !== '') $svg .= '<line class="ms" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"><title>' . h($ms) . '</title></line>';
+        if (trend_milestone($p, $gran) !== '') $svg .= '<line class="ms" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"/>';
     }
     // one polyline per run of periods with a value
     foreach ($series as $s) {
@@ -602,7 +620,13 @@ function trend_lines(string $id, string $label, array $periods, array $series, s
         foreach ($series as $s) $parts[] = $s['name'] . ' ' . (isset($s['values'][$p]) ? fmt_num((float)$s['values'][$p]) : '-');
         $ms = trend_milestone($p, $gran);
         $svg .= '<rect class="hov" x="' . $i . '" y="0" width="1" height="100" data-period="' . h($p) . '"><title>'
-            . h(trend_period_text($p, $gran, $current) . ': ' . implode(', ', $parts) . ($ms !== '' ? ' - ' . $ms : '')) . '</title></rect>';
+            . h(trend_period_text($p, $gran, $current) . ': ' . implode(', ', $parts) . milestone_tip($ms)) . '</title></rect>';
+    }
+    // milestone lines: a wide transparent hit area on top of the hover columns, its own tooltip
+    foreach ($periods as $i => $p) {
+        $ms = trend_milestone($p, $gran);
+        if ($ms !== '') $svg .= '<line class="ms-hit" x1="' . $i . '" x2="' . $i . '" y1="0" y2="100"><title>'
+            . h(trend_period_text($p, $gran, $current) . milestone_tip($ms)) . '</title></line>';
     }
     $svg .= '</svg>';
     return '<div class="chart-box trend-box">' . trend_y_axis($y_labels) . '<div class="trend-plot">' . $svg . '</div>'
@@ -1016,6 +1040,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
                 if (read() === tz && <?= $auth_user !== null ? 'true' : 'false' ?>) location.reload();
             } catch (e) { /* no Intl or no cookies: times stay in UTC */ }
         })();
+        /* milestone lines switched off by this viewer (switch "Milestones"): before the first paint */
+        try { if (localStorage.getItem('<?= MS_STORAGE_KEY ?>') === 'off') document.documentElement.classList.add('no-ms'); } catch (e) { /* no storage */ }
     </script>
     <title><?= $auth_user === null ? 'Login' : h(STATS_TABS[$tab]) ?> - Agile Poker stats</title>
     <style>
@@ -1110,10 +1136,12 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         tbody tr:hover td { background: var(--row-hover); }
         td.num, th.num { text-align: right; white-space: nowrap; }
         .nowrap { white-space: nowrap; }
-        tr.milestone td { background: var(--warn-bg); }
-        tr.milestone td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
-        .milestone-label { display: inline-block; margin-top: 0.15em; color: var(--warn); font-size: var(--fs-xs); white-space: nowrap; }
-        .milestone-label::before { content: "\25B8 "; }
+        html:not(.no-ms) tr.milestone td { background: var(--warn-bg); }
+        html:not(.no-ms) tr.milestone td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+        .ms-toggle { display: inline-flex; align-items: center; gap: 0.35em; color: var(--muted); font-size: var(--fs-s); cursor: pointer; }
+        .ms-toggle[hidden] { display: none; }
+        .ms-toggle input { accent-color: var(--warn); margin: 0; }
+        p.ms-bar { margin: 0 0 0.75rem; }
         tr.weekend td { color: var(--muted); opacity: 0.7; }
         tr.current td:first-child { color: var(--accent); }
         .chip { display: inline-block; padding: 0 0.5em; border: 1px solid var(--line-strong); border-radius: var(--radius-s);
@@ -1167,7 +1195,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .chart .day { position: relative; flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; }
         .chart .day.weekend .col { background: var(--line-strong); }
         .chart .day.today .col { background: var(--link); }
-        .chart .day.milestone { box-shadow: -2px 0 0 var(--warn); }
+        html:not(.no-ms) .chart .day.milestone { box-shadow: -2px 0 0 var(--warn); }
         .chart .day:hover .col { background: var(--link); }
         .chart .col-val { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); padding-bottom: 0.15em;
                           color: var(--text); font-size: var(--fs-xs); line-height: 1; white-space: nowrap; }
@@ -1194,7 +1222,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .trend-bars .seg.exp, .legend .sw.exp { background: var(--link); }
         .trend-bars .day.weekend .col { opacity: 0.45; }
         .trend-bars .day.tick { box-shadow: -1px 0 0 var(--line); }
-        .trend-bars .day.milestone { box-shadow: -2px 0 0 var(--warn); }
+        html:not(.no-ms) .trend-bars .day.milestone { box-shadow: -2px 0 0 var(--warn); }
         .trend-bars .day:hover .col { opacity: 1; outline: 1px solid var(--text); }
         .trend-bars .day.current .col { opacity: 0.7; }
         .trend-plot { position: relative; height: 10rem; border-top: 1px dashed var(--line); border-bottom: 1px solid var(--line-strong); }
@@ -1202,6 +1230,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .trend-svg .wk { fill: var(--bg-4); opacity: 0.6; }
         .trend-svg .grid { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
         .trend-svg .ms { stroke: var(--warn); stroke-width: 2; vector-effect: non-scaling-stroke; }
+        .trend-svg .ms-hit { stroke: transparent; stroke-width: 12; vector-effect: non-scaling-stroke; pointer-events: stroke; }
+        html.no-ms .trend-svg .ms, html.no-ms .trend-svg .ms-hit { display: none; }
         .trend-svg .line { fill: none; stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
         .trend-svg .hov { fill: transparent; }
         .trend-svg .hov:hover { fill: var(--row-hover); }
@@ -1216,7 +1246,6 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         .trend-x > span { position: absolute; top: 0; padding-left: 0.2em; white-space: nowrap; border-left: 1px solid var(--line-strong); }
         .trend-x > span.end { transform: translateX(-100%); padding: 0 0.2em 0 0; border-left: 0; border-right: 1px solid var(--line-strong); }
         .trend-controls { margin: 0 0 0.75rem; }
-        .trend-ms .milestone-label { white-space: normal; }
         .trend-controls .seg-ctrl { flex-wrap: wrap; }
 
         /* Ideas & Bugs moderation (B-57) */
@@ -1329,6 +1358,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 <?php } else if ($error !== null) { ?>
     <p class="error">Query failed: <?= h($error) ?></p>
 <?php } else if ($tab === 'live') {
+    echo '<p class="ms-bar">' . milestone_toggle() . '</p>';
     $tables = $data['tables'];
     $clients = array_sum(array_column($tables, 'clients'));
     $players = array_sum(array_column($tables, 'players'));
@@ -1370,7 +1400,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         if ($i !== 0 && $show_value) $peak_shown = true;
         $title = date('D Y-m-d', strtotime($day)) . ($i === 0 ? ' (so far)' : '') . ': ' . $r['rounds'] . ' rounds, ' . $r['teams'] . ' teams'
             . ($r['avg_players'] === null ? '' : ', ' . number_format((float)$r['avg_players'], 1, '.', '') . ' players per round')
-            . ($label !== '' ? ' - ' . $label : '');
+            . milestone_tip($label);
 ?>
             <span class="<?= h(implode(' ', $classes)) ?>" data-day="<?= h($day) ?>" data-rounds="<?= h($r['rounds']) ?>" title="<?= h($title) ?>"><span class="col" style="height: <?= bar_width($r['rounds'], $max_rounds) ?>%"><?php if ($r['rounds'] > 0) { ?><span class="col-val<?= $show_value ? '' : ' minor' ?>"><?= h($r['rounds']) ?></span><?php } ?></span></span>
 <?php } ?>
@@ -1379,10 +1409,6 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
             $day = date('Y-m-d', strtotime($data['now']['today'] . ' -' . $i . ' day'));
             ?><span><?= $i === 0 ? 'today' : ((int)date('N', strtotime($day)) === 1 ? '<span class="wd">Mon </span>' . h(date('m-d', strtotime($day))) : '') ?></span><?php } ?></div>
         </div>
-<?php $labels = array_filter(array_map(fn($i) => milestone(date('Y-m-d', strtotime($data['now']['today'] . ' -' . $i . ' day'))), range(0, LIVE_DAYS - 1)));
-    if ($labels) { ?>
-        <p class="note"><span class="milestone-label"><?= h(implode(', ', $labels)) ?></span></p>
-<?php } ?>
 
         <h2>Active tables</h2>
 <?php if (count($tables) === 0) { ?>
@@ -1448,6 +1474,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     </section>
 
 <?php } else if ($tab === 'usage') {
+    echo '<p class="ms-bar">' . milestone_toggle() . '</p>';
     // one row per week, also for weeks without rounds
     $by_week = array_column($data['weeks'], null, 'week_start');
     $weeks = array();
@@ -1473,8 +1500,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         $label = milestone($w['week_start'], 7);
 ?>
             <tr<?= $label !== '' ? ' class="milestone"' : '' ?>>
-                <td class="nowrap"><?= h($w['week_start']) ?> <span class="muted">W<?= h(date('W', strtotime($w['week_start']))) ?></span><?= $w['week_start'] === $this_week ? ' <span class="muted">(so far)</span>' : '' ?><?php
-                    if ($label !== '') { ?><br><span class="milestone-label"><?= h($label) ?></span><?php } ?></td>
+                <td class="nowrap"<?= $label !== '' ? ' title="' . h($w['week_start'] . milestone_tip($label)) . '"' : '' ?>><?= h($w['week_start']) ?> <span class="muted">W<?= h(date('W', strtotime($w['week_start']))) ?></span><?= $w['week_start'] === $this_week ? ' <span class="muted">(so far)</span>' : '' ?></td>
                 <td class="num"><?= h($data['week_teams'][$w['week_start']] ?? 0) ?></td>
                 <td class="num"><?= h($w['users']) ?></td>
                 <td class="num"><?= h($w['returning_users']) ?></td>
@@ -1538,7 +1564,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         if ($i === 0) $classes[] = 'current';
 ?>
             <tr<?= $classes ? ' class="' . h(implode(' ', $classes)) . '"' : '' ?>>
-                <td class="nowrap"><?= h(date('D Y-m-d', strtotime($day))) ?><?php if ($label !== '') { ?><br><span class="milestone-label"><?= h($label) ?></span><?php } ?></td>
+                <td class="nowrap"<?= $label !== '' ? ' title="' . h($day . milestone_tip($label)) . '"' : '' ?>><?= h(date('D Y-m-d', strtotime($day))) ?></td>
                 <td class="num"><?= h($data['round_days'][$day]['rounds'] ?? 0) ?></td>
                 <td class="num"><?= h($data['round_days'][$day]['teams'] ?? 0) ?></td>
 <?php   foreach (EVENTS as $code => $_) { ?>
@@ -1568,19 +1594,14 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     <section class="trends" aria-labelledby="trends_h">
         <h2 id="trends_h">Trends</h2>
         <p class="filters trend-controls">
+            <?= milestone_toggle() ?>
             <span class="muted">range</span>
             <span class="seg-ctrl" id="trend_range"><?php foreach (TREND_RANGES as $key => $r) { ?><a href="<?= h($range_link($key)) ?>"<?= $key === $trend_range ? ' class="active" aria-current="true"' : '' ?>><?= h($r['label']) ?></a><?php } ?></span>
             <span class="muted">per</span>
             <span class="seg-ctrl" id="trend_gran"><?php foreach (TREND_GRANS as $key => $label) { ?><a href="<?= h($gran_link($key)) ?>"<?= $key === $gran ? ' class="active" aria-current="true"' : '' ?>><?= h($label) ?></a><?php } ?></span>
         </p>
         <p class="note">Since <?= h($data['start'] ?? 'the first data') ?>, one bar/point per <?= h(array('day' => 'day', 'week' => 'ISO week (from Monday)', 'month' => 'calendar month')[$gran]) ?>; the current <?= h($per) ?> is counted so far.
-            Times in <?= h($time_zone) ?>. Yellow lines: rollouts (hover for the name). Hover a bar or point for its values.</p>
-<?php
-    $ms = array();
-    foreach (MILESTONES as $date => $label) if ($date >= ($data['start'] ?? '0000') && $date <= $data['today']) $ms[] = $label . ' (' . $date . ')';
-    if ($ms) { ?>
-        <p class="note trend-ms"><span class="milestone-label"><?= h(implode(', ', $ms)) ?></span></p>
-<?php } ?>
+            Times in <?= h($time_zone) ?>. Yellow lines: rollouts (hover for the name, switch them off with Milestones). Hover a bar or point for its values.</p>
 
         <h3>Daily teams</h3>
 <?php
