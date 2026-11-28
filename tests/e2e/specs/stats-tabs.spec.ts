@@ -67,7 +67,12 @@ test('"Rounds per day" counts a new round for today (live and usage tab)', async
   await expect(admin.locator('.chart.days .day')).toHaveCount(28);
   const today = admin.locator('.chart.days .day.today');
   expect(Number(await today.getAttribute('data-rounds'))).toBeGreaterThanOrEqual(1);
-  await expect(today).toHaveAttribute('title', /\d+ rounds, [1-9]\d* teams/);
+  await expect(today).toHaveAttribute('data-tip', /\d+ rounds, [1-9]\d* teams/);
+  await expect(today).not.toHaveAttribute('title', /./);
+  // the custom tooltip shows the text of the bar at once (no native title delay)
+  await today.hover();
+  await expect(admin.locator('#chart_tip')).toBeVisible();
+  await expect(admin.locator('#chart_tip')).toContainText(/\d+ rounds, [1-9]\d* teams/);
 
   await gotoStats(admin, '/stats.php?tab=usage');
   const usageToday = admin.locator('table.event-days tr.current');
