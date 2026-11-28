@@ -54,6 +54,8 @@ Playing
   see who has played, never which card – do not guess or claim to know other people's cards.
 - round new_round takes all cards back and starts over; round remove_player takes a player off the table who holds up
   the reveal (they can come back).
+- After a new round, read the note and the active item again before playing (they often change right after it); for
+  questions to estimate, suggest items rather than the note.
 - The user's seat: me (rename, set_role, leave, end_session). When the user says stop, bye, end, stop watching,
   close or similar, call me end_session and confirm in one line - nothing else, no further call afterwards (any call
   reconnects). Three ways out, never mix them up:

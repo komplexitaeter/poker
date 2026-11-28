@@ -175,7 +175,8 @@ return [
                 . 'card key from get_board. You can change your card until everybody has played; after the reveal a '
                 . 'change is still possible and is shown as changed if the team uses "See changed cards". Control '
                 . 'cards (☕ break, ? question, ! ...) are part of the deck if the team switched them on. Cards of '
-                . 'others stay hidden until every player has played. The result shows the board afterwards.',
+                . 'others stay hidden until every player has played. After a new round, check the note and the active '
+                . 'item again first (they often change right after it). The result shows the board afterwards.',
             'text' => 'mcp_seat_text',
             'annotations' => ['title' => 'Play a card', 'readOnlyHint' => false, 'destructiveHint' => false,
                               'idempotentHint' => true, 'openWorldHint' => false],
