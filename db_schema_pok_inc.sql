@@ -1339,7 +1339,9 @@ select table_name, create_time from information_schema.tables
    10-15 s on live). Key: tz = UTC offset of the viewer as stats.php uses it ('+01:00'; summer and winter time are two
    sets), day = the viewer's day, metric (use_players, use_teams, peak_day ... peak_1m, and use_n / peak_n = rows of the
    day, 0 = computed without data). Only completed days are stored (never today); stats.php fills missing days itself
-   on the first load. Safe to empty at any time (truncate pok_trend_daily_tbl): the next load computes again.
+   on the first load (in chunks of a year, newest first, about 25 s per load at most). Safe to empty at any time
+   (truncate pok_trend_daily_tbl): the next load computes again. The key holds only the viewer's offset, not the DB's:
+   should the DB clock's offset ever change (servers run in UTC), empty the table once.
    Additive (a new table), online, idempotent, before or after deploying the code (without the table stats.php
    computes everything live as before).
    Run only this block: sed -n '/^\/\* B-13 trends cache:/,/^\/\* end B-13 trends cache/p' db_schema_pok_inc.sql */
