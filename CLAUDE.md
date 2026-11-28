@@ -139,7 +139,8 @@ April 2026 eingestellt – nicht mehr verwenden.
 - `poker-msg` pingt alle Verbindungen alle 30 s (WebSocket-Ping, `POKER_MSG_KEEPALIVE`) und schließt Verbindungen
   ohne Antwort (B-24). nginx `location /poker-msg`: `proxy_read_timeout 120s` auf beiden Servern.
 - Live (seit 2026-11-28, B-13): MySQL lauscht nur auf `127.0.0.1` (3306/33060), `grafana_usr` gelöscht. Firewall
-  `ufw`: eingehend nur 22, 80, 443. SSH nur mit Schlüssel, fail2ban (Jail `sshd`). Staging: siehe Incident-Bericht
+  `ufw`: eingehend nur 22, 80, 443. SSH nur mit Schlüssel, fail2ban (Jail `sshd`). Beide Server: `unattended-upgrades`
+  inkl. ondrej-PPA (PHP; `/etc/apt/apt.conf.d/51unattended-upgrades-ondrej`). Staging: siehe Incident-Bericht
   vom 2026-11-28 (fail2ban mit `sshd`, `nginx-limit-req`, `nginx-probe` auf den gemeinsamen nginx-Logs).
 
 Last (Stand Oktober 2026): an Werktagen 100–125 aktive Teams mit im Schnitt 5,5–6 Teilnehmern. Spitzen etwa

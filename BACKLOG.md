@@ -672,7 +672,8 @@ Status: neu (Andreas, 2026-11-28). Ubuntu-Sicherheitsupdates laufen schon per `u
 3. Geplante Aufgabe in Claude Code (täglich, neue Sitzung): Listen gegen Ubuntu USN, PHP-Releases, OSV/NVD, GitHub
    Advisories prüfen; nur bei Handlungsbedarf benachrichtigen, mit Dringlichkeit und fertigen Befehlen. Netzwerk der
    Cloud-Umgebung muss die Quellen erlauben. Kein Server-Zugang für den Agenten.
-Zu prüfen: Deckt `unattended-upgrades` auch das ondrej-PPA ab (`Allowed-Origins`)?
+Erledigt (Andreas, 2026-11-28): `unattended-upgrades` auf beiden Servern auch für das ondrej-PPA
+(`/etc/apt/apt.conf.d/51unattended-upgrades-ondrej`, Origin `LP-PPA-ondrej-php`).
 
 ### B-161 CI schneller
 Status: neu (Andreas, 2026-11-28). Ein PR-Lauf dauert 6–7 min (je Shard ca. 3,5 min Tests plus Einrichtung).
