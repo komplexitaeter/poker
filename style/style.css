@@ -1359,7 +1359,7 @@ fieldset:disabled .seg input:checked + span {
     color: var(--muted);
 }
 
-/* Tabs in a menu section (board settings: Deck | Results | Team; feedback: New issue | Backlog;
+/* Tabs in a menu section (board settings: Deck | Results | Team; topics: Note | Items | Done;
  * role=tab, aria-selected) above the content of the
  * chosen tab. Same frame as the segment switch so it belongs to the family, but calmer: the chosen
  * tab is a raised surface with an accent line, not the inverted fill of a chosen value. That keeps
@@ -1426,69 +1426,206 @@ fieldset:disabled .seg input:checked + span {
 
 .m-tabpanel[hidden] { display: none; }
 
-/* ---------- Feedback (B-57): New issue | Backlog ---------- */
+/* ---------- Feedback (B-57, B-165): one page - "Tell the makers" on top, the public list below ---------- */
+
+/* the write box: the first thing in the panel, framed in the accent so it reads as "this goes to us" */
+.fb-ask {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+}
+
+.fb-h {
+    margin: 0 0 var(--space-2);
+    font-size: var(--fs-m);
+    line-height: 1.4;
+}
+
+.fb-h:focus { outline: none; } /* focused on phones only as a starting point (tabindex -1), not a control */
+
+/* the confirmation after sending (inline, the panel stays open); empty = not shown */
+.fb-sent {
+    margin: 0 0 var(--space-2);
+    color: var(--ok);
+    font-size: var(--fs-s);
+}
+
+.fb-sent:empty { display: none; }
+
+.fb-sent::before { content: "> "; color: var(--muted); }
+
+/* chips: the type (radios, like .seg: the input lies invisibly over its label) and the list filter (buttons) */
+.fb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.fb-chip { position: relative; display: flex; }
+
+.fb-chip input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.fb-chip span,
+.fb-chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 30px;
+    padding: 2px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--muted);
+    font: var(--fs-xs) var(--font);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.fb-chip input:hover + span,
+.fb-chip-btn:hover { color: var(--text); border-color: var(--text); }
+
+/* chosen: inverted fill, like a checked .seg value */
+.fb-chip input:checked + span,
+.fb-chip-btn[aria-pressed="true"] {
+    border-color: var(--text);
+    background: var(--text);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+.fb-chip input:focus-visible + span,
+.fb-chip-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.fb-chip input.no-ring:focus-visible + span { outline: none; }
+
+.fb-n { font-variant-numeric: tabular-nums; font-weight: normal; }
+
+.fb-n:empty { display: none; }
 
 /* the note about technical details only while "Bug" is chosen */
 .fb-bug-only { display: none; }
 
 #feedback_box:has(input[name="fb_type"][value="BUG"]:checked) .fb-bug-only { display: block; }
 
-.fb-intro { margin: 0 0 var(--space-3); }
-
-/* Backlog: one tile per entry, quieter than a card on the table. Status as a small badge,
- * reactions as two counters below. Filled by script (clones of #fb_item_tpl, textContent). */
-.fb-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.fb-item {
-    padding: var(--space-2) var(--space-3) var(--space-3);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-l);
-    background: var(--bg-3);
-}
-
-.fb-item-head {
-    display: flex;
-    align-items: baseline;
+/* "Your team won't see this." left, Send right; the note wraps, the button keeps its place */
+.fb-send-row {
     justify-content: space-between;
-    gap: var(--space-2);
+    align-items: flex-end;
+    margin-top: var(--space-2);
 }
+
+.fb-send-row .hint { flex: 1; min-width: 0; margin: 0; }
+
+.fb-send-row .btn-box { flex: none; }
+
+/* the list */
+.fb-list-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px var(--space-2);
+    margin: 0 0 4px;
+}
+
+.fb-list-head .fb-h { margin: 0; }
+
+.fb-filter { display: flex; gap: 4px; }
+
+.fb-list-hint { margin: 0 0 6px; }
+
+/* the table: title (with status label and description) | two vote columns, the words in the heads */
+.fb-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: var(--fs-s);
+}
+
+.fb-table .fb-c-vote { width: 64px; }
+
+.fb-table th {
+    padding: 4px 4px 6px;
+    border-bottom: 1px solid var(--line-strong);
+    color: var(--muted);
+    font-size: var(--fs-xs);
+    font-weight: normal;
+    line-height: 1.25;
+    text-align: center;
+    vertical-align: bottom;
+}
+
+.fb-table td {
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+    vertical-align: top;
+}
+
+.fb-table th:first-child,
+.fb-table td:first-child {
+    padding-left: var(--space-2);
+    text-align: left;
+}
+
+.fb-table td:first-child { overflow-wrap: anywhere; }
 
 .fb-title {
-    min-width: 0;
-    margin: 0;
-    font-size: var(--fs-m);
+    color: var(--text);
+    font-weight: bold;
     line-height: 1.4;
-    overflow-wrap: anywhere;
 }
 
 .fb-desc {
-    margin: 4px 0 0;
+    display: block;
+    margin-top: 2px;
     color: var(--muted);
-    font-size: var(--fs-s);
+    font-size: var(--fs-xs);
     line-height: 1.45;
-    overflow-wrap: anywhere;
     text-wrap: pretty;
 }
 
 .fb-desc:empty { display: none; }
 
-/* status badge: data-status="PLANNED" | "IN_PROGRESS" | "DONE", text set by script */
+/* own vote: an accent line at the row and a quiet "your vote" after the title (the button says it to screen readers) */
+.fb-item.mine td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+.fb-item.mine .fb-title::after {
+    content: " \00b7  your vote";
+    color: var(--accent);
+    font-size: var(--fs-xs);
+    font-weight: normal;
+}
+
+/* status label at the title: data-status="PLANNED" | "IN_PROGRESS" (done entries: none, the filter says it) */
 .fb-status {
-    flex: none;
-    padding: 1px 6px;
+    display: inline-block;
+    padding: 0 5px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-s);
     color: var(--muted);
     font-size: var(--fs-xs);
+    font-weight: normal;
     line-height: 1.5;
     white-space: nowrap;
+    vertical-align: 1px;
 }
 
 .fb-status:empty { display: none; }
@@ -1498,24 +1635,14 @@ fieldset:disabled .seg input:checked + span {
     color: var(--accent);
 }
 
-.fb-status[data-status="DONE"] {
-    border-color: var(--ok);
-    color: var(--ok);
-}
-
-.fb-react {
-    display: flex;
-    gap: var(--space-2);
-    margin-top: var(--space-2);
-}
-
 .fb-react-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    min-width: 56px;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
     min-height: 32px;
-    padding: 2px 10px;
+    padding: 2px 4px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-m);
     background: var(--bg);
@@ -1542,14 +1669,14 @@ fieldset:disabled .seg input:checked + span {
 
 .fb-react-btn:disabled { cursor: wait; opacity: 0.6; }
 
-.fb-emoji { font-size: var(--fs-l); line-height: 1; }
+.fb-emoji { font-size: var(--fs-m); line-height: 1; }
 
 .fb-count { font-variant-numeric: tabular-nums; }
 
-/* empty state: only while the list has no entry */
+/* empty state (hidden by script while loading and while the filter has entries) */
 .fb-empty {
-    margin: 0;
-    padding: var(--space-4) var(--space-3);
+    margin: var(--space-2) 0 0;
+    padding: var(--space-3);
     border: 1px dashed var(--line-strong);
     border-radius: var(--radius-l);
     color: var(--muted);
@@ -1557,7 +1684,7 @@ fieldset:disabled .seg input:checked + span {
     text-align: center;
 }
 
-.fb-list:has(> li) ~ .fb-empty { display: none; }
+.fb-empty[hidden] { display: none; }
 
 /* text for screen readers only (e.g. the meaning of a reaction emoji) */
 .sr-only {
@@ -4923,8 +5050,11 @@ body.light-theme .dkc.sty-badge { background: var(--tint); box-shadow: none; }
     /* card set thumbnails in the board settings */
     .cs_c { min-width: 44px; }
 
-    /* B-57: reactions in the feedback backlog */
-    .fb-react-btn { min-height: var(--tap); min-width: var(--tap); }
+    /* B-57, B-165: reactions and chips in the feedback panel */
+    .fb-react-btn { min-height: var(--tap); }
+
+    .fb-chip span,
+    .fb-chip-btn { min-height: var(--tap); }
 
     .privacy_link a {
         display: inline-block;

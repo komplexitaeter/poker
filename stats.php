@@ -1186,7 +1186,7 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
                       ,(select count(1) from pok_roadmap_votes_tbl v where v.item_id = r.id and v.phase = 'DONE' and v.reaction = 'DOWN') as done_down_cnt
                   from pok_roadmap_tbl r
               ) x
-             order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED')
+             order by field(x.status, 'IN_PROGRESS', 'PLANNED', 'DONE')
                      ,case when x.status = 'DONE' then x.done_up_cnt - x.done_down_cnt else x.want_up_cnt - x.want_down_cnt end desc
                      ,x.sort_order, x.id desc");
 
@@ -2046,7 +2046,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         </div>
 
         <h2 id="roadmap">Public list</h2>
-        <p class="note">Written by us, shown in the app (visible entries only, sorted by status DONE, IN_PROGRESS, PLANNED, then thumbs up minus thumbs down of the current phase, then order, then newest first).</p>
+        <p class="note">Written by us, shown in the app (visible entries only, sorted by status IN_PROGRESS, PLANNED, DONE, then thumbs up minus thumbs down of the current phase, then order, then newest first).</p>
 <?php foreach ($data['roadmap'] as $obj) {
         echo roadmap_form((object)$obj, $csrf, $fb_filter) . "\n";
 } ?>
