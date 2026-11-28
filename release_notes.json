@@ -77,6 +77,10 @@
      "where": "the arrows at the top of the sidebar"}
   ]},
   {"number": "2026.3", "date": "2026-11-06", "items": [
+    {"title": "See changed cards",
+     "text": "If someone changes their card after the reveal, their first card stays visible underneath – so the team can still talk about the original estimate.",
+     "where": "Board settings → Results → Changed cards → Show",
+     "asked": true},
     {"title": "Rich cards – with title, description and layout options",
      "text": "Cards can now carry a title, a short description and a symbol, in different layouts. Card sets such as \"Delegation Poker\" and \"Consent decision\" use them – and so can your own card sets.",
      "where": "Board settings → Deck → Change",
