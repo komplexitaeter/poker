@@ -1,5 +1,5 @@
 {"releases": [
-  {"number": "2026.13", "date": "2026-11-28", "draft": true, "items": [
+  {"number": "2026.13", "date": "2026-11-28", "items": [
     {"title": "Release notes: see what's new",
      "text": "Find out what has changed with each update. You can open these notes any time from the Feedback menu.",
      "where": "Feedback → What's new",
