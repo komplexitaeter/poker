@@ -168,3 +168,29 @@ test('SVG chart tooltip stays inside the viewport, legend of "Active use", note 
   await expect(page.locator('p.note', { hasText: 'counts open boards rather than active people' })).toContainText('pok_active_user_stats');
   await expect(page.locator('main')).not.toContainText('disabled on live');
 });
+
+test('trends cache: the first load fills completed days, the next reads them, today stays live', async ({ page }) => {
+  mysql('delete from pok_trend_daily_tbl');
+  await gotoStats(page, '/stats.php?tab=trends&range=4w');
+  const titles = () => page.locator('#trend_peaks rect.hov title').allTextContents();
+  const first = await titles();
+  // completed days stored (with the row marker), never today or later in the viewer's offset
+  expect(Number(mysql("select count(1) from pok_trend_daily_tbl where metric = 'peak_n'"))).toBeGreaterThanOrEqual(1); // from the first day with data
+  expect(mysql(`select count(1) from pok_trend_daily_tbl
+                 where day >= date(convert_tz(utc_timestamp(), '+00:00', tz))`)).toBe('0');
+
+  // second load: the same values, now from the cache
+  await page.reload();
+  expect(await titles()).toEqual(first);
+  const [tz, day] = mysql(`select tz, day from pok_trend_daily_tbl where metric = 'peak_1m'
+                            order by day desc limit 1`).split('\t');
+  mysql(`update pok_trend_daily_tbl set val = 4242 where tz = '${tz}' and day = '${day}' and metric = 'peak_1m'`);
+  await page.reload();
+  expect((await titles()).find(t => t.includes(day))).toContain('1 min 4 242');
+
+  // today is computed on every load
+  mysql(`insert into pok_active_user_stats values (now() + interval 13 second, 900, 800, 700, 600, 777)`);
+  await page.reload();
+  expect((await titles()).find(t => t.includes('(so far)'))).toContain('1 min 777');
+  mysql('delete from pok_trend_daily_tbl');
+});
