@@ -137,3 +137,34 @@ test('milestones: no list under the charts, label in the tooltips, switch hides 
   expect(await shown(page.locator('#trend_peaks line.ms').first())).toBe(true);
   expect(await page.locator('#trend_rounds .day.milestone').first().evaluate(e => getComputedStyle(e).boxShadow)).not.toBe('none');
 });
+
+test('SVG chart tooltip stays inside the viewport, legend of "Active use", note on the heartbeat', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await gotoStats(page, '/stats.php?tab=trends&range=4w');
+  const tip = page.locator('#chart_tip');
+  await expect(tip).toBeHidden();
+  const plot = page.locator('.trend-plot:has(#trend_peaks)');
+  await plot.scrollIntoViewIfNeeded();
+  const box = (await plot.boundingBox())!;
+  // first and last period: centred over the pointer the text would run over the left / right edge
+  for (const x of [box.x + 2, box.x + box.width - 2]) {
+    await page.mouse.move(x, box.y + box.height / 2);
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText(/20\d\d-\d\d-\d\d/); // a period or a milestone line at the edge
+    const t = (await tip.boundingBox())!;
+    expect(t.x).toBeGreaterThanOrEqual(0);
+    expect(t.x + t.width).toBeLessThanOrEqual(390);
+    expect(t.y).toBeGreaterThanOrEqual(0);
+  }
+  // the native <title> is gone after the first hover (no double tooltip)
+  expect(await page.locator('#trend_peaks [data-tip]').count()).toBeGreaterThanOrEqual(2);
+  await expect(page.locator('#trend_peaks [data-tip] > title')).toHaveCount(0);
+  await page.mouse.move(5, 5);
+  await expect(tip).toBeHidden();
+
+  const legend = page.locator('h3:has-text("Active use") + p.legend');
+  await expect(legend).toContainText('players');
+  await expect(legend).toContainText('teams');
+  await expect(page.locator('p.note', { hasText: 'counts open boards rather than active people' })).toContainText('pok_active_user_stats');
+  await expect(page.locator('main')).not.toContainText('disabled on live');
+});

@@ -633,6 +633,72 @@ function trend_lines(string $id, string $label, array $periods, array $series, s
         . trend_x_axis($periods, $ticks) . '</div>';
 }
 
+/*
+ * Tooltip of the SVG charts: the native <title> of a point column or milestone line opens at the mouse and may be cut
+ * off at the edge of the screen (or never show on touch). On first hover/tap its text moves to data-tip (the <title> goes,
+ * so the native tooltip does not show twice) and #chart_tip shows it, kept inside the viewport: centred above the
+ * pointer, shifted at the left and right edge, below the pointer if there is no room above. Touch: a tap shows it, a tap
+ * elsewhere or scrolling hides it. Without JS the native tooltips stay.
+ */
+function trend_tip_script(): string {
+    return <<<'JS'
+<script>
+(function () {
+    var tip = document.getElementById('chart_tip');
+    if (!tip) return;
+    var current = null, touch = false;
+    function target(el) {
+        while (el && el.nodeType === 1 && !(el.matches && el.matches('svg.trend-svg'))) {
+            if (el.matches && el.matches('.trend-svg .hov, .trend-svg .ms-hit')) return el;
+            el = el.parentNode;
+        }
+        return null;
+    }
+    function text(el) {
+        if (el.dataset.tip === undefined) {
+            var t = el.querySelector('title');
+            el.dataset.tip = t ? t.textContent : '';
+            if (t) t.remove();
+        }
+        return el.dataset.tip;
+    }
+    function place(x, y) {
+        var m = 8, w = tip.offsetWidth, h = tip.offsetHeight;
+        var vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+        var left = Math.min(Math.max(m, x - w / 2), Math.max(m, vw - w - m));
+        var top = y - h - 12;
+        if (top < m) top = Math.min(y + 16, Math.max(m, vh - h - m));
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+    }
+    function show(el, e) {
+        var s = text(el);
+        if (!s) { hide(); return; }
+        current = el;
+        tip.textContent = s;
+        tip.hidden = false;
+        place(e.clientX, e.clientY);
+    }
+    function hide() { current = null; tip.hidden = true; }
+    document.addEventListener('pointerover', function (e) {
+        touch = e.pointerType === 'touch';
+        var el = target(e.target);
+        if (el) show(el, e); else if (!touch) hide();
+    });
+    document.addEventListener('pointermove', function (e) {
+        if (current && !touch && target(e.target) === current) place(e.clientX, e.clientY);
+    });
+    document.addEventListener('pointerout', function (e) {
+        if (!touch && current && !target(e.relatedTarget)) hide();
+    });
+    document.addEventListener('pointerdown', function (e) { if (!target(e.target)) hide(); });
+    window.addEventListener('scroll', hide, { passive: true });
+    window.addEventListener('resize', hide);
+})();
+</script>
+JS;
+}
+
 /* legend line: css class => text */
 function trend_legend(array $series): string {
     $html = '<p class="legend note">';
@@ -1234,6 +1300,11 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         html.no-ms .trend-svg .ms, html.no-ms .trend-svg .ms-hit { display: none; }
         .trend-svg .line { fill: none; stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
         .trend-svg .hov { fill: transparent; }
+        /* tooltip of the SVG charts (trend_tip_script()): fixed, kept inside the viewport */
+        .chart-tip { position: fixed; z-index: 20; left: 0; top: 0; max-width: min(28rem, calc(100vw - 16px)); padding: 0.35em 0.6em;
+                     background: var(--bg-4); color: var(--text); border: 1px solid var(--line-strong); border-radius: var(--radius-m, 4px);
+                     font-size: var(--fs-xs); line-height: 1.35; pointer-events: none; white-space: normal; overflow-wrap: anywhere; }
+        .chart-tip[hidden] { display: none; }
         .trend-svg .hov:hover { fill: var(--row-hover); }
         .trend-svg .s0, .legend .sw.s0 { stroke: var(--accent); background: var(--accent); }
         .trend-svg .s1, .legend .sw.s1 { stroke: var(--link); background: var(--link); }
@@ -1633,7 +1704,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 <?php
     $periods = $periods_of($data['active_use']);
     if (!$periods) { ?>
-        <p class="muted no-data">No data (pok_active_use_stats_tbl is filled by the event job pok_active_use_evt, see db_jobs_pok.sql; it is disabled on live).</p>
+        <p class="muted no-data">No data (pok_active_use_stats_tbl is filled every minute by the event job pok_active_use_evt, see db_jobs_pok.sql; it runs on live, test and staging databases may have no data).</p>
 <?php } else {
         $series = array(
             array('class' => 's0', 'name' => 'players', 'values' => array_column($data['active_use'], 'active_players', 'period')),
@@ -1657,7 +1728,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         echo trend_legend($series);
         echo trend_lines('trend_peaks', 'Clients active within a day, hour, 30, 10 and 1 minutes, highest value per ' . $per . ', logarithmic', $periods, $series, $gran, $current, true);
     } ?>
-        <p class="note">Clients active within the last day / hour / 30 / 10 / 1 minutes, taken every minute (pok_active_user_stats); highest value per <?= h($per) ?>. Logarithmic axis.</p>
+        <p class="note">Clients active within the last day / hour / 30 / 10 / 1 minutes, taken every minute (pok_active_user_stats); highest value per <?= h($per) ?>. Logarithmic axis.
+            Since the board heartbeat (B-110/B-127: every open board calls seen.php about every 30 s) "1 min" counts open boards rather than active people, so it rises from November 2026 - not more usage.</p>
 
         <h3>AI &amp; API</h3>
 <?php
@@ -1678,6 +1750,8 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
     } ?>
         <p class="note">Distinct persons per <?= h($per) ?> with at least one successful call (pok_api_users_day_tbl, only hashes): MCP = tool calls of an AI assistant, API = /api/v1 with an API key (without the browser mode of the board). Days of the DB clock. Details: tab AI &amp; API.</p>
     </section>
+    <div class="chart-tip" id="chart_tip" role="tooltip" hidden></div>
+    <?= trend_tip_script() ?>
 
 <?php } else if ($tab === 'ai') {
     $people = $data['ai_people'] ?? array();

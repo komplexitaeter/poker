@@ -26,12 +26,14 @@ SELECT CURRENT_TIMESTAMP creation_date
 FROM pok_players_tbl;
 END;;
 
--- DISABLED on Live (never executed): would fill pok_active_use_stats_tbl, which therefore stays empty.
--- B-87: READ COMMITTED as above, in case it is ever enabled (same pattern: INSERT ... SELECT on pok_players_tbl).
+-- Every minute: players and teams active within 15 minutes into pok_active_use_stats_tbl (stats.php, Trends "Active
+-- use"). Runs on Live (2026-11: about 1.34 M rows up to the current minute), so ENABLE like there; before this file
+-- said DISABLE. Check on a server: select event_name, status from information_schema.events where event_schema = database();
+-- B-87: READ COMMITTED as above (same pattern: INSERT ... SELECT on pok_players_tbl).
 DROP EVENT IF EXISTS `pok_active_use_evt`;;
 CREATE DEFINER=`root`@`%` EVENT `pok_active_use_evt`
 ON SCHEDULE EVERY 1 MINUTE STARTS '2023-01-16 11:15:03'
-ON COMPLETION NOT PRESERVE DISABLE
+ON COMPLETION NOT PRESERVE ENABLE
 DO BEGIN
 set session transaction_isolation = 'READ-COMMITTED';
 insert into pok_active_use_stats_tbl
