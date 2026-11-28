@@ -7266,14 +7266,21 @@ body.api-doc {
 }
 .wn-open > .i:first-child { color: var(--topic-color); }
 .wn-open .i-next { margin-left: auto; color: var(--muted); }
+.wn-open { position: relative; }
 .wn-open-dot { display: none; }
+/* an unseen release: a red frame and a badge on the top right corner of the box, hard to miss */
+.wn-open.is-new { border-color: var(--danger); }
 .wn-open.is-new .wn-open-dot {
-    display: inline-block;
-    flex: none;
-    width: 8px;
-    height: 8px;
+    display: block;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: var(--danger);
+    box-shadow: 0 0 0 3px var(--bg-2);
+    pointer-events: none;
 }
 @media (hover: hover) {
     .wn-open:hover { border-color: var(--accent); }
