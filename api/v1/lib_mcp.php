@@ -252,9 +252,11 @@ function mcp_handle(string|int $id, string $method, array $params): array
             $name = $params['name'] ?? null;
             $args = $params['arguments'] ?? [];
             if (!is_string($name) || !isset(mcp_tool_index()[$name])) {
+                mcp_usage_failure(null, '(unknown)', new ApiError(400, 'unknown_tool')); // B-160: never the name sent
                 return mcp_error_message($id, MCP_INVALID_PARAMS, 'Unknown tool. Call tools/list for the current tools.');
             }
             if (!is_array($args) || ($args !== [] && array_is_list($args))) {
+                mcp_usage_failure(null, $name, new ApiError(400, 'invalid_arguments'));
                 return mcp_error_message($id, MCP_INVALID_PARAMS, 'arguments must be an object.');
             }
             return mcp_result_message($id, mcp_call_tool($name, $args));
@@ -400,6 +402,7 @@ function mcp_call_tool(string $name, array $args): array
 {
     $entry = mcp_tool_index()[$name];
     $link = null;
+    $usage_op = mcp_usage_op($name, $entry, $args['action'] ?? null); // B-160
     try {
         $link = db_init();
         if ($entry['kind'] === 'own') {
@@ -433,25 +436,71 @@ function mcp_call_tool(string $name, array $args): array
         $seat = $out['actor'] ?? (isset($actor) ? $actor : (isset($key) && is_array($key) ? $key : null));
         unset($out['actor']);
         $out = mcp_with_version($out, $link, $seat);
+        mcp_usage_record($link, $usage_op, $seat);
         $link->close();
         $result = ['content' => [['type' => 'text', 'text' => $out['text']]], 'structuredContent' => $out['structured']];
         // MCP Apps: data for the view only (show_board symbols); view_hash lets an outdated copy of the view stop
         $result['_meta'] = ($out['meta'] ?? []) + ['view_hash' => mcp_app_view_hash()];
         return $result;
     } catch (McpWait $wait) {
+        mcp_usage_record($link, $usage_op, isset($key) && is_array($key) ? $key : null); // wait_for_change, react
         $link->close();
         throw $wait;
     } catch (ApiError $e) {
         v1_rollback($link);
+        mcp_usage_failure($link, $usage_op, $e);
         return mcp_tool_error($e);
     } catch (Throwable $e) {
         v1_rollback($link);
+        mcp_usage_failure($link, $usage_op, $e);
         if ($e instanceof mysqli_sql_exception && $e->getCode() === 1062) return mcp_tool_error(new ApiError(409, 'conflict'));
         $busy = $e instanceof mysqli_sql_exception && is_retryable_db_error($e);
         error_log('poker mcp ' . $name . ': ' . get_class($e) . ' (' . $e->getCode() . '): ' . $e->getMessage()
             . ' at ' . $e->getFile() . ':' . $e->getLine());
         return mcp_tool_error($busy ? new ApiError(503, 'busy', null, 'The team is busy; call again in a second.')
                                     : new ApiError(500, 'internal', null, 'Unexpected error on the server.'));
+    }
+}
+
+/*
+ * B-160: the operation of a tool call for the usage stats: the tool name, plus ':' and the action if the tool has an
+ * action parameter and the value is one of its enum values (route tools with several actions, timer) - so op is always
+ * one of a fixed set, never free input.
+ */
+function mcp_usage_op(string $name, array $entry, mixed $action): string
+{
+    if (!is_string($action)) return $name;
+    if ($entry['kind'] === 'own') {
+        $actions = $entry['tool']['params']['action']['enum'] ?? [];
+    } elseif (array_keys($entry['routes']) !== ['']) {
+        $actions = array_keys($entry['routes']);
+    } else {
+        $actions = v1_operations(v1_routes())[$entry['routes']['']]['params']['action']['enum'] ?? [];
+    }
+    return in_array($action, $actions, true) ? $name . ':' . $action : $name;
+}
+
+/* B-160: counts a successful tool call once per logical call - not in the phases after poker-msg (wait_for_change,
+   react come back to PHP a second time); $seat = actor of the call (create_team, join_team: the new seat) */
+function mcp_usage_record(mysqli $link, string $op, ?array $seat): void
+{
+    if (mcp_wait_internal()) return;
+    usage_record($link, 'mcp', $op, isset($seat['uid']) ? (string)$seat['uid'] : null,
+                 isset($seat['team_id']) ? (string)$seat['team_id'] : null);
+}
+
+/* B-160: counts a failed tool call (no person) once - not in the phases after poker-msg; $link null or closed: a
+   connection of its own. Never throws. */
+function mcp_usage_failure(?mysqli $link, string $op, Throwable $e): void
+{
+    try {
+        if (mcp_wait_internal()) return;
+        $own = $link === null;
+        if ($own) $link = db_init();
+        usage_record($link, 'mcp', $op, null, null, usage_status($e));
+        if ($own) $link->close();
+    } catch (Throwable $ignored) {
+        // statistics only
     }
 }
 

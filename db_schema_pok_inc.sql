@@ -1295,3 +1295,41 @@ select table_name, index_name, seq_in_index, column_name from information_schema
  where table_schema = database() and column_name = 'creation_date' and seq_in_index = 1
    and table_name in ('pok_active_user_stats', 'pok_active_use_stats_tbl', 'pok_daily_teams_stats');
 /* end B-13 trends */
+
+/* B-160 usage: daily usage of the public API /api/v1 and the MCP server /mcp (api/lib.php usage_record(), written once
+   per successful call; read by stats.php, tab "AI & API" and the chart "AI & API" in the tab "Trends").
+   pok_api_usage_stats_tbl: calls per day, channel (rest = API key or no auth, web = browser mode X-Poker-User,
+   mcp = tools/call), operation (operation id of api/v1/routes.php or MCP tool[:action], '(unknown)' if none matched)
+   and status ('ok' or the error code of a failed call, e.g. invalid_param, unauthorized; 'error' = unexpected).
+   pok_api_users_day_tbl: which persons and teams successfully used a channel on a day - only as hashes (first 16 hex of
+   sha256('usage:' + value)), never the UID (the person's secret, B-152) or the team id; no names, no contents.
+   day = date of the DB clock (like pok_daily_teams_stats). Grows by a few hundred rows a day at most.
+   Additive (two new tables, nothing else is touched), online, idempotent (run it again any time), before or after
+   deploying the code: without the tables the code counts nothing and stats.php shows "No data yet".
+   Run only this block: sed -n '/^\/\* B-160 usage:/,/^\/\* end B-160 usage/p' db_schema_pok_inc.sql */
+select table_name, create_time from information_schema.tables
+ where table_schema = database() and table_name in ('pok_api_usage_stats_tbl', 'pok_api_users_day_tbl');
+
+create table if not exists pok_api_usage_stats_tbl (
+  day date not null comment 'date of the DB clock',
+  channel varchar(4) character set ascii collate ascii_bin not null comment 'rest | web | mcp',
+  op varchar(40) character set ascii collate ascii_bin not null
+    comment 'operation id (routes.php) or MCP tool[:action], (unknown) if none matched',
+  status varchar(24) character set ascii collate ascii_bin not null comment 'ok or the error code of a failed call',
+  calls int unsigned not null default 0,
+  primary key (day, channel, op, status)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-160: calls of the public API and the MCP server per day, channel and operation';
+
+create table if not exists pok_api_users_day_tbl (
+  day date not null comment 'date of the DB clock',
+  channel varchar(4) character set ascii collate ascii_bin not null comment 'rest | web | mcp',
+  user_hash char(16) character set ascii collate ascii_bin not null comment 'sha256 prefix of the UID, not reversible',
+  team_hash char(16) character set ascii collate ascii_bin not null comment 'sha256 prefix of the team id',
+  primary key (day, channel, user_hash, team_hash)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_0900_ai_ci
+  comment 'B-160: persons and teams per day and channel, as hashes only';
+
+select table_name, create_time from information_schema.tables
+ where table_schema = database() and table_name in ('pok_api_usage_stats_tbl', 'pok_api_users_day_tbl');
+/* end B-160 usage */

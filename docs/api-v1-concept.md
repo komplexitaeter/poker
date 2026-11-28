@@ -466,6 +466,9 @@ Board-Aufrufe dafür: `POST/GET/DELETE /api/v1/keys…` mit `X-Poker-User` + `X-
 - Nie `$_SERVER`, Header oder Request-Body loggen (auch nicht im 500er-Pfad; dort nur Exception-Klasse, Meldung,
   Datei/Zeile und die Operations-ID).
 - nginx: `log_format` schreibt keine Header mit (prüfen wie bei B-152); Schlüssel stehen nie in der URL.
+- Nutzungszählung (B-160): `usage_record()` zählt jeden Aufruf je Tag, Kanal, Operations-ID und Status (`ok` bzw.
+  Fehlercode) in `pok_api_usage_stats_tbl`; Person und Team erfolgreicher Aufrufe nur als Hash
+  (`pok_api_users_day_tbl`, sha256-Präfix), nie UID, Team-ID, Schlüssel, Pfad oder Inhalte (`stats.php`, Tab „AI & API“).
 
 ## 6. Fehlermodell
 

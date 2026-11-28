@@ -19,13 +19,14 @@
 require './config.php';
 require './api/lib.php';
 
-const STATS_TABS = array('live' => 'Live', 'usage' => 'Usage', 'trends' => 'Trends', 'ideas' => 'Ideas & Bugs', 'tech' => 'Tech');
+const STATS_TABS = array('live' => 'Live', 'usage' => 'Usage', 'trends' => 'Trends', 'ai' => 'AI & API', 'ideas' => 'Ideas & Bugs', 'tech' => 'Tech');
 const ACTIVE_ROUND_MINUTES = 60; // a table counts as active if it started a new round within this many minutes;
                                  // its clients count if their board loaded data within the same time
 const LIVE_RELOAD_SEC = 30;
 const USAGE_WEEKS = 9;           // weekly users: current week + 8 full weeks
 const USAGE_DAYS = 28;           // daily feature usage
 const LIVE_DAYS = 28;            // rounds per day in the live tab (today + 27 days)
+const AI_DAYS = 28;              // B-160: tab "AI & API" (today, 7 and 28 days)
 /* trends tab (B-13): ?range= (start relative to today, null = all data; default granularity if ?gran= is missing)
    and ?gran= (one bar/point per day, ISO week starting Monday or calendar month) */
 const TREND_RANGES = array(
@@ -860,6 +861,93 @@ if ($auth_user !== null) try {   // not logged in: login form only, no query
             array('last_day', 'last_hour', 'last_half_hour', 'last_ten_minutes', 'last_minute'),
             $trend_gran, $db_offset, $time_zone_offset, $start_db);
 
+        // B-160: distinct persons per period using MCP or the API with a key (hashes, pok_api_users_day_tbl; a DATE of
+        // the DB clock like pok_daily_teams_stats), range on the primary key (day, ...)
+        try {
+            $data['ai'] = array();
+            foreach (rows($link, "select /*+ MAX_EXECUTION_TIME(10000) */
+                       " . trend_period_sql($trend_gran, 'day') . " as period
+                      ,channel
+                      ,count(distinct user_hash) as persons
+                  from pok_api_users_day_tbl
+                 where day >= ? and channel in ('mcp', 'rest')
+                 group by period, channel", 's', array($start)) as $r) {
+                $data['ai'][$r['period']][$r['channel']] = (int)$r['persons'];
+            }
+        } catch (mysqli_sql_exception $e) {
+            if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist (DDL B-160 not applied)
+            $data['ai'] = array();
+        }
+
+    } else if ($tab === 'ai') {
+        // B-160: the day columns hold dates of the DB clock (usage_record(): curdate() of the app connection), so the
+        // ranges start from the DB's today, not the viewer's; ranges on the first column of the primary keys
+        $data['today'] = (new DateTime('now', new DateTimeZone($db_offset)))->format('Y-m-d');
+        $d7 = date('Y-m-d', strtotime($data['today'] . ' -6 day'));
+        $d28 = date('Y-m-d', strtotime($data['today'] . ' -' . (AI_DAYS - 1) . ' day'));
+        $data['ai_missing'] = false;
+        try {
+            $data['ai_people'] = array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
+                       channel
+                      ,count(distinct case when day >= ? then user_hash end) as persons_1
+                      ,count(distinct case when day >= ? then user_hash end) as persons_7
+                      ,count(distinct user_hash) as persons_28
+                      ,count(distinct case when day >= ? then team_hash end) as teams_1
+                      ,count(distinct case when day >= ? then team_hash end) as teams_7
+                      ,count(distinct team_hash) as teams_28
+                  from pok_api_users_day_tbl
+                 where day >= ?
+                 group by channel", 'sssss', array($data['today'], $d7, $data['today'], $d7, $d28)), null, 'channel');
+            $data['ai_calls'] = array_column(rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
+                       channel
+                      ,sum(case when status = 'ok' and day >= ? then calls else 0 end) as calls_1
+                      ,sum(case when status = 'ok' and day >= ? then calls else 0 end) as calls_7
+                      ,sum(case when status = 'ok' then calls else 0 end) as calls_28
+                      ,sum(case when status <> 'ok' and day >= ? then calls else 0 end) as errors_1
+                      ,sum(case when status <> 'ok' and day >= ? then calls else 0 end) as errors_7
+                      ,sum(case when status <> 'ok' then calls else 0 end) as errors_28
+                  from pok_api_usage_stats_tbl
+                 where day >= ?
+                 group by channel", 'sssss', array($data['today'], $d7, $data['today'], $d7, $d28)), null, 'channel');
+            $data['ai_ops'] = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
+                       channel, op, sum(calls) as calls
+                  from pok_api_usage_stats_tbl
+                 where day >= ? and status = 'ok'
+                 group by channel, op
+                 order by calls desc, op", 's', array($d28));
+            $data['ai_errors'] = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
+                       channel, op, status, sum(calls) as calls
+                  from pok_api_usage_stats_tbl
+                 where day >= ? and status <> 'ok'
+                 group by channel, op, status
+                 order by calls desc, channel, op, status
+                 limit 50", 's', array($d28));
+        } catch (mysqli_sql_exception $e) {
+            if ($e->getCode() !== 1146) throw $e; // 1146: table does not exist (DDL B-160 not applied)
+            $data['ai_missing'] = true;
+        }
+        // seats used through MCP right now: same window as the AI symbol on the board (VIA_AI_SQL, AWAY_AFTER_SEC);
+        // the ended marker of end_session (before 1980) is older anyway. No index on mcp_seen_time: a scan of the
+        // players table, bounded by the execution time.
+        // keys and teams: small scans as well; no names or hints of keys
+        try {
+            $data['ai_now'] = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
+                       count(1) as seats, count(distinct team_id) as teams
+                  from pok_players_tbl
+                 where mcp_seen_time >= current_timestamp - interval ? second", 'i', array(AWAY_AFTER_SEC))[0];
+            $data['ai_keys'] = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
+                       count(1) as total
+                      ,ifnull(sum(last_used_date >= current_timestamp - interval 7 day), 0) as used_7
+                      ,ifnull(sum(creation_date >= current_timestamp - interval 7 day), 0) as new_7
+                      ,ifnull(sum(creation_date >= current_timestamp - interval " . AI_DAYS . " day), 0) as new_28
+                  from pok_api_keys_tbl")[0];
+            $data['ai_off'] = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */ count(1) as cnt
+                                             from pok_teams_tbl where allow_ai = 0")[0]['cnt'];
+        } catch (mysqli_sql_exception $e) {
+            if (!in_array($e->getCode(), array(1054, 1146), true)) throw $e; // DDL of B-150/B-151 missing (staging)
+            $data['ai_now'] = null;
+        }
+
     } else if ($tab === 'ideas') {
         $where = array('open' => 'where done_date is null', 'done' => 'where done_date is not null', 'all' => '')[$fb_filter];
         $data['feedback'] = rows($link, "select /*+ MAX_EXECUTION_TIME(5000) */
@@ -1549,6 +1637,147 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         echo trend_lines('trend_peaks', 'Clients active within a day, hour, 30, 10 and 1 minutes, highest value per ' . $per . ', logarithmic', $periods, $series, $gran, $current, true);
     } ?>
         <p class="note">Clients active within the last day / hour / 30 / 10 / 1 minutes, taken every minute (pok_active_user_stats); highest value per <?= h($per) ?>. Logarithmic axis.</p>
+
+        <h3>AI &amp; API</h3>
+<?php
+    $periods = $periods_of($data['ai']);
+    if (!$periods) { ?>
+        <p class="muted no-data">No data yet (counted since the rollout of B-160; without its DDL nothing is counted).</p>
+<?php } else {
+        // a line from the first period with data on (no line before the counting started), missing periods = 0
+        $first = min(array_keys($data['ai']));
+        $series = array();
+        foreach (array('mcp' => 'MCP persons', 'rest' => 'API persons') as $channel => $name) {
+            $values = array();
+            foreach ($periods as $p) if ($p >= $first) $values[$p] = $data['ai'][$p][$channel] ?? 0;
+            $series[] = array('class' => 's' . count($series), 'name' => $name, 'values' => $values);
+        }
+        echo trend_legend($series);
+        echo trend_lines('trend_ai', 'Distinct persons using MCP and the API per ' . $per, $periods, $series, $gran, $current, false);
+    } ?>
+        <p class="note">Distinct persons per <?= h($per) ?> with at least one successful call (pok_api_users_day_tbl, only hashes): MCP = tool calls of an AI assistant, API = /api/v1 with an API key (without the browser mode of the board). Days of the DB clock. Details: tab AI &amp; API.</p>
+    </section>
+
+<?php } else if ($tab === 'ai') {
+    $people = $data['ai_people'] ?? array();
+    $calls = $data['ai_calls'] ?? array();
+    $metric_rows = array(
+        array('mcp', 'persons', 'MCP persons', 'seats (UIDs or keys) that made an MCP tool call'),
+        array('mcp', 'teams', 'MCP teams', 'teams of these seats'),
+        array('mcp', 'calls', 'MCP calls', 'successful tool calls (wait_for_change once per call)'),
+        array('mcp', 'errors', 'MCP failed calls', 'tool calls answered with an error (incl. unknown tools)'),
+        array('rest', 'persons', 'API persons', 'persons calling /api/v1 with an API key'),
+        array('rest', 'teams', 'API teams', 'teams of these persons'),
+        array('rest', 'calls', 'API calls', 'successful calls with a key, plus team create/join without auth'),
+        array('rest', 'errors', 'API failed calls', 'calls answered with an error, incl. unknown paths and wrong or missing auth'),
+        array('web', 'persons', 'browser-mode persons', '/api/v1 with X-Poker-User (the board\'s key dialog, scripts with a UID)'),
+        array('web', 'calls', 'browser-mode calls', ''),
+        array('web', 'errors', 'browser-mode failed calls', ''),
+    );
+    $ops = array('mcp' => array(), 'rest' => array());
+    foreach ($data['ai_ops'] ?? array() as $r) $ops[$r['channel'] === 'mcp' ? 'mcp' : 'rest'][] = $r;
+?>
+    <section class="ai" aria-labelledby="ai_h">
+        <h2 id="ai_h">AI assistants (MCP) and public API</h2>
+        <p class="note">Counted per call since B-160 (pok_api_usage_stats_tbl, pok_api_users_day_tbl). Persons and teams are stored only as hashes, never their ids.
+            Days of the DB clock (today = <?= h($data['today']) ?>).</p>
+<?php if ($data['ai_now'] !== null) { ?>
+        <h3>Right now</h3>
+        <dl class="kpis">
+            <div class="kpi"><dt>MCP seats active</dt><dd id="ai_now_seats"><?= h($data['ai_now']['seats']) ?> <small>tool call within <?= AWAY_AFTER_SEC ?> s (AI symbol on the board)</small></dd></div>
+            <div class="kpi"><dt>teams with MCP seats</dt><dd id="ai_now_teams"><?= h($data['ai_now']['teams']) ?></dd></div>
+        </dl>
+<?php } ?>
+
+        <h3>Persons, teams and calls</h3>
+<?php if ($data['ai_missing']) { ?>
+        <p class="muted no-data">No data yet (DDL B-160 not applied).</p>
+<?php } else { ?>
+        <div class="table-wrap">
+        <table class="ai-usage">
+            <thead><tr><th>metric</th><th class="num">today</th><th class="num">7 days</th><th class="num"><?= AI_DAYS ?> days</th></tr></thead>
+            <tbody>
+<?php foreach ($metric_rows as $m) {
+        [$channel, $metric, $label, $hint] = $m;
+        $src = in_array($metric, array('calls', 'errors'), true) ? ($calls[$channel] ?? array()) : ($people[$channel] ?? array());
+?>
+            <tr>
+                <td<?= $hint !== '' ? ' title="' . h($hint) . '"' : '' ?>><?= h($label) ?></td>
+<?php   foreach (array('1', '7', '28') as $range) { ?>
+                <td class="num" id="ai_<?= h($channel . '_' . $metric . '_' . $range) ?>"><?= h(fmt_num((float)($src[$metric . '_' . $range] ?? 0))) ?></td>
+<?php   } ?>
+            </tr>
+<?php } ?>
+            </tbody>
+        </table>
+        </div>
+        <p class="note">Persons and teams: distinct per range (not the sum of the days). Browser mode: /api/v1 with the board's headers, including the board's own API key dialog.</p>
+<?php } ?>
+
+<?php if ($data['ai_now'] !== null) { ?>
+        <h3>API keys and settings</h3>
+        <dl class="kpis">
+            <div class="kpi"><dt>API keys</dt><dd id="ai_keys_total"><?= h($data['ai_keys']['total']) ?></dd></div>
+            <div class="kpi"><dt>keys used in 7 days</dt><dd id="ai_keys_used_7"><?= h($data['ai_keys']['used_7']) ?></dd></div>
+            <div class="kpi"><dt>keys created</dt><dd id="ai_keys_new"><?= h($data['ai_keys']['new_7']) ?> <small>in 7 days, <?= h($data['ai_keys']['new_28']) ?> in <?= AI_DAYS ?> days</small></dd></div>
+            <div class="kpi"><dt>teams with AI off</dt><dd id="ai_teams_off"><?= h($data['ai_off']) ?> <small>"Allow AI assistants" switched off</small></dd></div>
+        </dl>
+        <p class="note">pok_api_keys_tbl (last use is updated at most once an hour) and pok_teams_tbl.allow_ai.</p>
+<?php } else { ?>
+        <p class="muted no-data">No data on keys and seats (DDL of B-150/B-151 not applied).</p>
+<?php } ?>
+
+<?php if (!$data['ai_missing']) {
+    foreach (array('mcp' => array('Top MCP tools', 'tool[:action]', 'ai_ops_mcp'), 'rest' => array('Top API operations', 'operation id', 'ai_ops_rest')) as $channel => $t) {
+        $max = $ops[$channel] ? max(array_map(fn($r) => (int)$r['calls'], $ops[$channel])) : 0;
+?>
+        <h3><?= h($t[0]) ?>, last <?= AI_DAYS ?> days</h3>
+<?php   if (!$ops[$channel]) { ?>
+        <p class="muted no-data">No calls.</p>
+<?php   } else { ?>
+        <div class="table-wrap">
+        <table class="ai-ops" id="<?= h($t[2]) ?>">
+            <thead><tr><th><?= h($t[1]) ?></th><?php if ($channel === 'rest') { ?><th>via</th><?php } ?><th class="num">calls</th><th class="bar-cell"><span class="bar-scale"><span>0</span><span><?= h($max) ?></span></span></th></tr></thead>
+            <tbody>
+<?php       foreach ($ops[$channel] as $r) { ?>
+            <tr>
+                <td class="op"><?= h($r['op']) ?></td>
+<?php           if ($channel === 'rest') { ?>
+                <td><?= h($r['channel'] === 'web' ? 'browser' : 'key or none') ?></td>
+<?php           } ?>
+                <td class="num"><?= h($r['calls']) ?></td>
+                <td class="bar-cell"><span class="bar-line"><span class="bar"><span class="seg" style="width: <?= bar_width($r['calls'], $max) ?>%"></span></span><span class="bar-val"><?= h($r['calls']) ?></span></span></td>
+            </tr>
+<?php       } ?>
+            </tbody>
+        </table>
+        </div>
+<?php   }
+    }
+    $errors = $data['ai_errors'] ?? array();
+?>
+        <h3>Top errors, last <?= AI_DAYS ?> days</h3>
+<?php if (!$errors) { ?>
+        <p class="muted no-data">No failed calls.</p>
+<?php } else { ?>
+        <div class="table-wrap">
+        <table class="ai-errors" id="ai_errors">
+            <thead><tr><th>channel</th><th>operation / tool</th><th>error code</th><th class="num">calls</th></tr></thead>
+            <tbody>
+<?php   foreach ($errors as $r) { ?>
+            <tr>
+                <td><?= h(array('mcp' => 'MCP', 'rest' => 'API (key)', 'web' => 'API (browser)')[$r['channel']] ?? $r['channel']) ?></td>
+                <td class="op"><?= h($r['op']) ?></td>
+                <td class="op"><?= h($r['status']) ?></td>
+                <td class="num"><?= h($r['calls']) ?></td>
+            </tr>
+<?php   } ?>
+            </tbody>
+        </table>
+        </div>
+<?php } ?>
+        <p class="note">Error code = the code of the answer (error of /api/v1, structuredContent.error of a tool result); error = unexpected server error, busy = the database stayed locked, unknown_tool / (unknown) = no tool or operation matched (the name sent is never stored).</p>
+<?php } ?>
     </section>
 
 <?php } else if ($tab === 'ideas') { ?>

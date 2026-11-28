@@ -1763,3 +1763,60 @@ function add_team($link, $t, $topic=null, $preset_mapping=null, ?string $variant
 
     return $id_val;
 }
+/* ---------- B-160 usage of the public API and the MCP server (stats.php, tab "AI & API") ---------- */
+
+/* channels of pok_api_usage_stats_tbl / pok_api_users_day_tbl: rest = /api/v1 with an API key or without auth
+   (team_create, team_join), web = /api/v1 in browser mode (X-Poker-User + X-Poker-Team, e.g. the board's key dialog),
+   mcp = tools/call of /mcp */
+const USAGE_CHANNELS = ['rest', 'web', 'mcp'];
+const USAGE_OP_MAX = 40;
+
+/* a person or team as a short hash (first 16 hex of sha256): the stats count distinct values, never store the UID
+   (the person's secret, B-152) or the team id */
+function usage_hash(string $value): string
+{
+    return substr(hash('sha256', 'usage:' . $value), 0, 16);
+}
+
+/*
+ * B-160: counts one call: the counter per day, channel, operation (op = operation id of routes.php or MCP
+ * tool[:action], '(unknown)' if none matched - a constant, never request input) and status ('ok' or the error code of
+ * a failed call, 'error' for an unexpected one); for a successful call with a person also the hashes of person and team
+ * for the day. Day of the DB clock (curdate() of the app connection, like the other stats tables). Never breaks or
+ * slows the call: runs after it in autocommit, two cheap statements on primary keys, every error is ignored (1146
+ * before the DDL of B-160, 1205/1213 on a busy counter row - one call less counted is fine).
+ */
+function usage_record(mysqli $link, string $channel, string $op, ?string $uid, ?string $team_id,
+                      string $status = 'ok'): void
+{
+    if (!in_array($channel, USAGE_CHANNELS, true) || $op === '' || strlen($op) > USAGE_OP_MAX
+        || !preg_match('/^[a-z_]{1,24}$/D', $status)) return;
+    try {
+        $sql = $link->prepare("insert into pok_api_usage_stats_tbl (day, channel, op, status, calls)
+                               values (curdate(), ?, ?, ?, 1)
+                                   on duplicate key update calls = calls + 1");
+        $sql->bind_param('sss', $channel, $op, $status);
+        $sql->execute();
+        $sql->close();
+        if ($status !== 'ok' || $uid === null || $uid === '' || $team_id === null || $team_id === '') return;
+        $user_hash = usage_hash($uid);
+        $team_hash = usage_hash($team_id);
+        $sql = $link->prepare("insert ignore into pok_api_users_day_tbl (day, channel, user_hash, team_hash)
+                               values (curdate(), ?, ?, ?)");
+        $sql->bind_param('sss', $channel, $user_hash, $team_hash);
+        $sql->execute();
+        $sql->close();
+    } catch (Throwable $ignored) {
+        // statistics only: the call itself is answered anyway
+    }
+}
+
+/* B-160: status of a failed call for the usage stats: the ApiError code, else conflict (1062), busy (1205/1213) or
+   error (anything unexpected) - the same mapping as the answers of v1 and MCP */
+function usage_status(Throwable $e): string
+{
+    if ($e instanceof ApiError) return $e->error;
+    if ($e instanceof mysqli_sql_exception && $e->getCode() === 1062) return 'conflict';
+    if ($e instanceof mysqli_sql_exception && is_retryable_db_error($e)) return 'busy';
+    return 'error';
+}
