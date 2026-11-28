@@ -2475,8 +2475,8 @@ function confirmInvite(text, label = 'Copied') {
 }
 
 /* Short message that pops up from the bottom edge for a moment (style.css, .toast).
- * R3 review V1: the result of an own click shows at that control (Invite button), else a toast (sent feedback, the
- * deck and the timer menu: R3 review, Andreas). Plain text only (textContent). Calling it again replaces the
+ * R3 review V1: the result of an own click shows at that control (Invite button; B-165: sent feedback inline in the
+ * panel), else a toast (failed writes, the deck and the timer menu: R3 review, Andreas). Plain text only (textContent). Calling it again replaces the
  * text and restarts the timer; ms: how long it stays (the deck menu: a little longer). */
 let gToastTimer = null;
 /* kind 'error' (R3, Andreas): refusals and failed writes show "!" instead of the ">" prompt (style.css .toast-error) */

@@ -197,7 +197,7 @@ test('votes per phase: the count continues when an entry is set to DONE, stats.p
   await expect(statsRow(page, title).locator('.votes')).toHaveText('wanted: 👍 1 👎 1 · after done: 👍 1 👎 1');
 });
 
-test('public list is sorted by status, then thumbs up minus down, then order', async ({ browser }) => {
+test('public list is sorted by status (open first), then thumbs up minus down, then order', async ({ browser }) => {
   const page = await newPlayer(browser);
   const sid = await boardUser(page);
   const other = await newPlayer(browser);
@@ -222,8 +222,8 @@ test('public list is sorted by status, then thumbs up minus down, then order', a
   expect(pc).toBeLessThan(pb);
   expect(pb).toBeLessThan(pa);
 
-  // status first: DONE, IN_PROGRESS, PLANNED over the whole list
-  const rank = { DONE: 0, IN_PROGRESS: 1, PLANNED: 2 } as Record<string, number>;
+  // status first: B-165 open entries first - IN_PROGRESS, PLANNED, then DONE over the whole list
+  const rank = { IN_PROGRESS: 0, PLANNED: 1, DONE: 2 } as Record<string, number>;
   const ranks = (await roadmap(page, sid)).map(i => rank[i.status]);
   expect(ranks).toEqual([...ranks].sort((x, y) => x - y));
   // and within a status by (UP - DOWN) descending

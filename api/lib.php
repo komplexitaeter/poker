@@ -1816,7 +1816,7 @@ function roadmap_phase_sql(string $status_column): string {
  * Visible entries of the public list (B-57) with the count per reaction and the reaction of $user_id (null if none).
  * Per user only the latest row over all phases counts (creation_date is set on every write, in microseconds, so
  * consecutive votes never tie; for old whole-second rows on equal timestamps the row of the current phase wins). A latest row with reaction NONE (removed)
- * counts nothing. Sorted by status (DONE, IN_PROGRESS, PLANNED), then by (UP - DOWN) descending, then sort_order,
+ * counts nothing. Sorted by status (B-165: open first - IN_PROGRESS, PLANNED, then DONE), then by (UP - DOWN) descending, then sort_order,
  * then newest first.
  * $item_id limits the result to that entry (empty array if it is not visible).
  */
@@ -1839,7 +1839,7 @@ function get_roadmap_items($link, string $user_id, ?int $item_id = null): array 
                                   and (? is null or r.id = ?)
                                 group by r.id
                            ) x
-                           order by field(x.status, 'DONE', 'IN_PROGRESS', 'PLANNED'), x.up_cnt - x.down_cnt desc, x.sort_order, x.id desc");
+                           order by field(x.status, 'IN_PROGRESS', 'PLANNED', 'DONE'), x.up_cnt - x.down_cnt desc, x.sort_order, x.id desc");
     $sql->bind_param('sii', $user_id, $item_id, $item_id);
     $sql->execute();
     $items = array();

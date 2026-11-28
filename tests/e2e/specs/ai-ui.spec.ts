@@ -127,7 +127,8 @@ for (const vp of [{ n: 'desktop', width: 1280, height: 800, mobile: false }, { n
     await dialog.locator('#ai_feedback').click();
     await expect(dialog).toBeHidden();
     await expect(page.locator('dialog#menu[open] #feedback_box')).toBeVisible();
-    await expect(page.locator('#fb_tab_backlog')).toBeFocused(); // into the panel as from :feedback, not back to #ai_btn
+    // into the panel as from :feedback, not back to #ai_btn (B-165: phones the heading, no keyboard popping up)
+    await expect(page.locator(vp.mobile ? '#fb_ask_title' : '#feedback_txt')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.locator('dialog#menu')).toBeHidden();
   });

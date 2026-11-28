@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="src/favicon-32.png" sizes="32x32">
     <link rel="apple-touch-icon" href="src/apple-touch-icon.png">
     <link rel="stylesheet" href="style/cards.css?v=7" media="screen" />
-    <link rel="stylesheet" href="style/style.css?v=2.78" media="screen" />
+    <link rel="stylesheet" href="style/style.css?v=2.79" media="screen" />
     <!-- B-141: the page background in the color mode kept on this device (else the system's) before the first frame;
          setColor() in script.js keeps html.pk-light in step with the mode (colors: --bg of style.css) -->
     <script>
@@ -59,7 +59,7 @@
     <script async data-domain="poker.komplexitaeter.de" src="https://plausible.io/js/script.js"></script>
     <script defer src="src/vendor/qr-code-styling-1.5.0.js"></script>
     <script defer src="src/vendor/remarkable-1.7.4.min.js"></script>
-    <script defer src="script/script_feedback.js?v=1.50" type="text/javascript"></script>
+    <script defer src="script/script_feedback.js?v=1.52" type="text/javascript"></script>
     <script defer src="script/cards.js?v=1.17" type="text/javascript"></script>
     <script defer src="script/deck.js?v=1.7" type="text/javascript"></script>
     <script defer src="script/script_deck.js?v=1.29" type="text/javascript"></script>
@@ -71,7 +71,7 @@
     <script defer src="script/connection.js?v=2" type="text/javascript"></script>
     <script defer src="script/api_keys.js?v=1" type="text/javascript"></script>
     <script defer src="script/ai_dialog.js?v=3" type="text/javascript"></script>
-    <script defer src="script/script.js?v=3.48" type="text/javascript"></script>
+    <script defer src="script/script.js?v=3.49" type="text/javascript"></script>
     <script defer src="src/vendor/js-confetti-0.13.1.browser.js"></script>
     <!-- B-34: the board starts when the document is parsed and all deferred scripts above have run, without
          waiting for images or analytics (window load) -->
@@ -380,7 +380,7 @@
                     <li><button type="button" data-open="timer"><svg class="i" aria-hidden="true"><use href="#i-watch"/></svg><span><b>Timer</b><small>Stopwatch or timebox for everyone</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="cset"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg><span><b>Board settings</b><small>Deck, results, team name</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                     <li><button type="button" data-open="user_settings"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><span><b>You</b><small>Name, role, appearance</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
-                    <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Tell us what to improve</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
+                    <li><button type="button" data-open="feedback"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span><b>Feedback</b><small>Report bugs, vote on ideas</small></span><svg class="i i-next" aria-hidden="true"><use href="#i-next"/></svg></button></li>
                 </ul>
                 <p class="m-links">
                     <a href="https://komplexitaeter.de/datenschutz/#agile_poker" target="_blank">Privacy policy</a>
@@ -612,55 +612,53 @@
                 </p>
             </section>
 
-            <!-- B-57: feedback in two tabs (same pattern as board settings, showMenuTab() in script_feedback.js):
-                 "New issue" (type Bug | Feature | Other + text) and "Backlog" (our public list with
-                 status and reactions, the tab shown first). Backlog entries are clones of #fb_item_tpl, filled via textContent only. -->
+            <!-- B-165: feedback on one page (no tabs): on top "Tell the makers" (text, optional type, send; an inline
+                 confirmation instead of closing), below "What others asked for" (our public list as a table, filter
+                 Open | Done; renderFeedbackList() in script_feedback.js). Rows are clones of #fb_item_tpl, filled via
+                 textContent only. -->
             <section id="feedback_box" class="menu_sec" data-sec="feedback" data-title="Feedback" hidden>
                 <!-- B-57: the feedback goes to us, not to the team on the board -->
-                <p class="hint fb-intro">For the makers of this app – tell us what to fix or build next. Your team won't see this.</p>
-                <div class="m-tabs" role="tablist" aria-label="Feedback">
-                    <button type="button" role="tab" id="fb_tab_send" data-tab="send" aria-selected="false" aria-controls="fb_panel_send" tabindex="-1">New issue</button>
-                    <button type="button" role="tab" id="fb_tab_backlog" data-tab="backlog" aria-selected="true" aria-controls="fb_panel_backlog">Roadmap</button>
-                </div>
-                <div class="m-tabpanel" role="tabpanel" id="fb_panel_send" data-tab="send" aria-labelledby="fb_tab_send" hidden>
-                    <div id="feedback_form" class="fb-form">
-                        <fieldset class="f" id="fb_type">
-                            <legend class="lab">What is it about?</legend>
-                            <div class="seg">
-                                <label><input type="radio" name="fb_type" value="BUG" data-placeholder="What happened? What did you expect?"/><span>Bug</span></label>
-                                <label><input type="radio" name="fb_type" value="FEATURE" data-placeholder="What would help your team?"/><span>Feature</span></label>
-                                <label><input type="radio" name="fb_type" value="OTHER" data-placeholder="Anything you want to tell the Komplexitäter team?" checked/><span>Other</span></label>
-                            </div>
-                        </fieldset>
-                        <div class="f">
-                            <label class="lab" for="feedback_txt">Your message</label>
-                            <textarea maxlength="1800" rows="7" id="feedback_txt" class="field" placeholder="Anything you want to tell the Komplexitäter team?" aria-describedby="fb_hint fb_bug_hint"></textarea>
-                            <p id="fb_hint" class="hint">We read every message. Add your email address if you'd like us to get back to you.</p>
-                            <p id="fb_bug_hint" class="hint fb-bug-only">With a bug we also send technical details (browser, window size, app version) to help us fix it.</p>
-                        </div>
-                        <div class="row end">
-                            <button type="button" id="feedback_send" class="btn-box primary" onclick="feedback_submit();">Send feedback</button>
-                        </div>
+                <div id="feedback_form" class="fb-ask" role="group" aria-labelledby="fb_ask_title">
+                    <h3 id="fb_ask_title" class="fb-h" tabindex="-1">Tell the makers</h3>
+                    <p id="fb_sent" class="fb-sent" role="status"></p>
+                    <textarea maxlength="1800" rows="3" id="feedback_txt" class="field" placeholder="Anything you want to tell the Komplexit&auml;ter team?" aria-label="Your message to the makers" aria-describedby="fb_hint fb_bug_hint"></textarea>
+                    <!-- type as chips (a radio group, Other preset = "no type"): sets the placeholder; with Bug the context goes along -->
+                    <fieldset id="fb_type" class="fb-chips">
+                        <legend class="sr-only">Type (optional)</legend>
+                        <label class="fb-chip"><input type="radio" name="fb_type" value="BUG" data-placeholder="What happened? What did you expect?"/><span>Bug</span></label>
+                        <label class="fb-chip"><input type="radio" name="fb_type" value="FEATURE" data-placeholder="What would help your team?"/><span>Idea</span></label>
+                        <label class="fb-chip"><input type="radio" name="fb_type" value="OTHER" data-placeholder="Anything you want to tell the Komplexit&auml;ter team?" checked/><span>Other</span></label>
+                    </fieldset>
+                    <p id="fb_bug_hint" class="hint fb-bug-only">With a bug we also send technical details (browser, window size, app version) to help us fix it.</p>
+                    <div class="row fb-send-row">
+                        <p id="fb_hint" class="hint">Your team won't see this. Add your email address if you'd like an answer.</p>
+                        <button type="button" id="feedback_send" class="btn-box primary" onclick="feedback_submit();">Send</button>
                     </div>
                 </div>
-                <div class="m-tabpanel" role="tabpanel" id="fb_panel_backlog" data-tab="backlog" aria-labelledby="fb_tab_backlog">
-                    <p class="hint fb-intro">What we are working on. Vote for what matters to you.</p>
-                    <ul id="fb_backlog" class="fb-list"></ul>
-                    <p id="fb_backlog_empty" class="fb-empty">Nothing here yet.</p>
-                    <template id="fb_item_tpl">
-                        <li class="fb-item">
-                            <div class="fb-item-head">
-                                <h3 class="fb-title"></h3>
-                                <span class="fb-status"></span>
-                            </div>
-                            <p class="fb-desc"></p>
-                            <div class="fb-react" role="group" aria-label="Reactions">
-                                <button type="button" class="fb-react-btn" data-reaction="UP" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">👍</span><span class="sr-only">Thumbs up, </span><span class="fb-count">0</span></button>
-                                <button type="button" class="fb-react-btn" data-reaction="DOWN" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">👎</span><span class="sr-only">Thumbs down, </span><span class="fb-count">0</span></button>
-                            </div>
-                        </li>
-                    </template>
+
+                <div class="fb-list-head">
+                    <h3 id="fb_list_title" class="fb-h">What others asked for</h3>
+                    <div class="fb-filter" role="group" aria-label="Show">
+                        <button type="button" class="fb-chip-btn" data-filter="open" aria-pressed="true">Open <span class="fb-n" id="fb_n_open"></span></button>
+                        <button type="button" class="fb-chip-btn" data-filter="done" aria-pressed="false">Done <span class="fb-n" id="fb_n_done"></span></button>
+                    </div>
                 </div>
+                <p id="fb_list_hint" class="hint fb-list-hint">Tap what you want. Tap again to take it back.</p>
+                <table class="fb-table" aria-labelledby="fb_list_title">
+                    <colgroup><col/><col class="fb-c-vote"/><col class="fb-c-vote"/></colgroup>
+                    <thead>
+                        <tr><th scope="col" id="fb_th_title">Idea</th><th scope="col" id="fb_th_up">Want it</th><th scope="col" id="fb_th_down">Don't need</th></tr>
+                    </thead>
+                    <tbody id="fb_backlog"></tbody>
+                </table>
+                <p id="fb_backlog_empty" class="fb-empty" hidden>Nothing here yet.</p>
+                <template id="fb_item_tpl">
+                    <tr class="fb-item">
+                        <td class="fb-main"><span class="fb-title"></span> <span class="fb-status"></span><span class="fb-desc"></span></td>
+                        <td><button type="button" class="fb-react-btn" data-reaction="UP" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">👍</span><span class="fb-count" aria-hidden="true">0</span></button></td>
+                        <td><button type="button" class="fb-react-btn" data-reaction="DOWN" aria-pressed="false"><span class="fb-emoji" aria-hidden="true">👎</span><span class="fb-count" aria-hidden="true">0</span></button></td>
+                    </tr>
+                </template>
             </section>
 
         </div>
