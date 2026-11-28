@@ -646,7 +646,7 @@ function trend_tip_script(): string {
 (function () {
     var tip = document.getElementById('chart_tip');
     if (!tip) return;
-    var current = null, touch = false;
+    var current = null, touch = false, shownAt = 0;
     function target(el) {
         while (el && el.nodeType === 1 && !(el.matches && el.matches('svg.trend-svg'))) {
             if (el.matches && el.matches('.trend-svg .hov, .trend-svg .ms-hit')) return el;
@@ -677,6 +677,7 @@ function trend_tip_script(): string {
         current = el;
         tip.textContent = s;
         tip.hidden = false;
+        shownAt = window.scrollY;
         place(e.clientX, e.clientY);
     }
     function hide() { current = null; tip.hidden = true; }
@@ -692,7 +693,8 @@ function trend_tip_script(): string {
         if (!touch && current && !target(e.relatedTarget)) hide();
     });
     document.addEventListener('pointerdown', function (e) { if (!target(e.target)) hide(); });
-    window.addEventListener('scroll', hide, { passive: true });
+    // only a real scroll since the tooltip opened hides it (a scroll event may arrive late, after the scroll ended)
+    window.addEventListener('scroll', function () { if (window.scrollY !== shownAt) hide(); }, { passive: true });
     window.addEventListener('resize', hide);
 })();
 </script>
