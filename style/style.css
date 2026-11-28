@@ -7242,3 +7242,146 @@ body.api-doc {
 .api-doc .api-doc-beta { margin: var(--space-3) 0 0; font-size: var(--fs-s); }
 .ai-beta .ti-link { padding: 0 1px; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .ai-dialog h2 .beta-badge { margin-left: 0; }
+
+/* ---------- What's new (B-164) ----------
+ * #wn_open: the line on top of the feedback panel (.is-new: the red dot of the menu, an unseen release).
+ * #whats_new: a full-screen modal dialog over the board, see-through and blurred like the other overlays; one
+ * readable column (newest release on top), the head with "Close" stays at the top while it scrolls.
+ * Screenshots (.wn-img) follow the colour mode (whats_new.js), framed like a menu box. */
+.wn-open {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--tap);
+    margin: 0 0 var(--space-3);
+    padding: 8px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: none;
+    color: var(--text);
+    font: var(--fs-s) var(--font);
+    text-align: left;
+    cursor: pointer;
+}
+.wn-open > .i:first-child { color: var(--topic-color); }
+.wn-open .i-next { margin-left: auto; color: var(--muted); }
+.wn-open-dot { display: none; }
+.wn-open.is-new .wn-open-dot {
+    display: inline-block;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+}
+@media (hover: hover) {
+    .wn-open:hover { border-color: var(--accent); }
+    .wn-open:hover .i-next { color: var(--accent); }
+}
+.wn-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.whats-new {
+    position: fixed;
+    inset: 0;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--bg); /* fallback without color-mix */
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    color: var(--text);
+    text-align: left;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.whats-new[open] { animation: wn-in 0.18s ease-out; }
+/* the board behind only blurred (the dialog itself is the tint). Literal: Safari < 17.4 has no custom properties here */
+.whats-new::backdrop {
+    background: rgba(0, 0, 0, 0.15);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+}
+@keyframes wn-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+    .whats-new[open] { animation: none; }
+}
+
+.wn-wrap {
+    box-sizing: border-box;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 calc(var(--space-3) + env(safe-area-inset-right)) calc(var(--space-4) + env(safe-area-inset-bottom))
+        calc(var(--space-3) + env(safe-area-inset-left));
+}
+
+.wn-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: calc(12px + env(safe-area-inset-top)) 0 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg); /* opaque: the notes scroll away underneath */
+}
+.wn-head h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: var(--fs-l);
+}
+.wn-head h2 .i { color: var(--topic-color); }
+.wn-close {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--tap);
+    margin: 0;
+}
+.wn-close .i { width: 16px; height: 16px; }
+.wn-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wn-lead { margin: var(--space-3) 0 0; font-size: var(--fs-s); color: var(--muted); }
+
+.wn-list[aria-busy="true"]::before { content: "Loading \2026"; display: block; margin-top: var(--space-4); color: var(--muted); font-size: var(--fs-s); }
+
+.wn-rel { margin-top: var(--space-4); }
+.wn-rel-h {
+    margin: 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line-strong);
+    font-size: var(--fs-l);
+}
+.wn-rel-n { color: var(--accent); }
+.wn-rel-d { font-weight: normal; color: var(--muted); }
+
+.wn-items { margin: 0; padding: 0; list-style: none; }
+.wn-item { padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.wn-item:last-child { border-bottom: 0; }
+.wn-item-t { margin: 0 0 4px; font-size: var(--fs-m); line-height: 1.4; }
+.wn-item-x { margin: 0; font-size: var(--fs-s); line-height: 1.55; }
+.wn-where { margin: 6px 0 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
+.wn-where-l { color: var(--topic-color); }
+/* a screenshot, set apart from the real UI around it: a padded frame on the box colour, slightly tilted shadow */
+.wn-img {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 560px; /* whats_new.js: half the file width (taken at 2x) */
+    height: auto;
+    margin-top: var(--space-2);
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--bg-3);
+    box-shadow: 0 4px 14px -6px var(--shadow-color);
+}
+.wn-foot { margin: var(--space-4) 0 0; font-size: var(--fs-s); color: var(--muted); }

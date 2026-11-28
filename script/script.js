@@ -62,7 +62,10 @@ function ensureUid() {
             if (!UID_PATTERN.test(fresh)) throw new Error('no uid');
             const stored = readStoredUid(); // another tab was faster: its UID wins
             if (stored !== null) return stored;
-            try { localStorage.setItem(UID_STORE_KEY, fresh); } catch (e) { /* this page only */ }
+            try {
+                localStorage.setItem(UID_STORE_KEY, fresh);
+                if (localStorage.getItem('NOTES_SEEN') === null) localStorage.setItem('NOTES_SEEN', ''); // B-164: a new person, no "What's new" dot (whats_new.js)
+            } catch (e) { /* this page only */ }
             return fresh;
         })
         .catch(error => {

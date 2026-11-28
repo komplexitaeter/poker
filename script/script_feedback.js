@@ -156,7 +156,9 @@ function openMenu(sec, opener = null, focusField = true) {
 /* B-57: a red dot on the feedback menu (header button, phone menu button and index entry) until the user has
  * opened the feedback panel once. Stored per user on the server: pok_user_tbl.hide_teaser = 1 means "seen"
  * (the column of the former teaser, reused). Board only; the start page has no user profile (gFeedbackDot
- * stays null). true: dot shown, false: seen - a pull update (updateDom) never brings the dot back. */
+ * stays null). true: dot shown, false: seen - a pull update (updateDom) never brings the dot back.
+ * B-164: the same dot also stands for an unseen "What's new" (gNotesDot, whats_new.js); opening the feedback panel
+ * does not clear that one, only opening the notes does. */
 let gFeedbackDot = null;
 
 function updateFeedbackDot(seen) {
@@ -166,7 +168,8 @@ function updateFeedbackDot(seen) {
 }
 
 function renderFeedbackDot() {
-    let on = gFeedbackDot === true;
+    // B-164: also while a release the browser has not opened yet is out (gNotesDot, whats_new.js)
+    let on = gFeedbackDot === true || (typeof gNotesDot !== 'undefined' && gNotesDot === true);
     document.body.classList.toggle('fb-new', on);
     let labels = {feedback_btn: 'Feedback', menu_btn: 'Menu'};
     for (let id in labels) {
