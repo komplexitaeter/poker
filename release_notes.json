@@ -64,7 +64,7 @@
      "where": "Topic → Items",
      "image": {"name": "r4-items", "w": 760, "h": 798, "alt": "The Topic menu with the tab Items: a list of four items, the first one is being estimated"}},
     {"title": "Estimation history",
-     "text": "Finished items keep their result and how the team voted, and you can copy the results or download them as a file for Excel.",
+     "text": "See the final estimate and all votes for every item you have finished. Export them as CSV or copy them to your clipboard.",
      "where": "Topic → Done",
      "image": {"name": "r4-done", "w": 760, "h": 598, "alt": "The Topic menu with the tab Done: two finished items with their agreed values, and the buttons Copy and Download CSV"}},
     {"title": "The median",
