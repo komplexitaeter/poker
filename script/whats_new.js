@@ -92,8 +92,7 @@ function notesEl(tag, cls, text) {
     return node;
 }
 
-/* a chip for items people asked for: a speech bubble (#i-chat, as the feedback menu) plus a text, never the icon alone;
- * the same chip is written once into the intro of board.html (.wn-lead) to explain it */
+/* a chip for items people asked for: a speech bubble (#i-chat, as the feedback menu) plus a text, never the icon alone */
 function notesAskedBadge() {
     const chip = notesEl('span', 'wn-asked');
     chip.title = 'This came from user feedback';

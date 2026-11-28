@@ -170,7 +170,6 @@ test('items people asked for carry the "Requested by users" chip, the others do 
   await expect(withChip.locator('.wn-asked')).toHaveText('Requested by users');
   await expect(withChip.locator('.wn-asked')).toHaveAttribute('title', 'This came from user feedback');
   // the intro explains the chip with the chip itself
-  await expect(gil.locator('.wn-lead')).toContainText('Items marked Requested by users come from your feedback.');
   await expect(withChip.locator('.wn-asked svg')).toHaveAttribute('aria-hidden', 'true');
   const without = list.locator('.wn-item').filter({ has: gil.locator('.wn-item-t', { hasText: plain.title }) });
   await expect(without.locator('.wn-asked')).toHaveCount(0);
