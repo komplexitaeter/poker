@@ -101,7 +101,10 @@ function openReactBar(btn) {
  * Not sent without an open connection (the reaction is lost) or above the limit of poker-msg (B-131, reactionAllowed).
  * A nudge is anonymous: from is always 0, also in the message. */
 function sendReaction(toMkey, code) {
-    const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : String(gLastJson.mkey ?? ''));
+    /* B-163: the thrower is the own card (in anonymous mode after the reveal its handle: the real mkey would tell by
+     * exclusion - nobody throws at the own card - which handle is whose); without a card (observer) the own mkey */
+    const own = gLastJson === null ? '' : String(gLastJson.card_mkey ?? '');
+    const from = code === REACT_NUDGE ? '0' : (gLastJson === null ? '' : (own !== '' ? own : String(gLastJson.mkey ?? '')));
     if (code !== REACT_NUDGE && !Object.hasOwn(REACT_EMOJI, code)) return;
     const msg = 'react:' + from + ':' + String(toMkey) + ':' + code;
     if (!REACT_MSG.test(msg)) return;

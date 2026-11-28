@@ -1446,20 +1446,25 @@ function updateObservers(observers, myMkey) {
     const box = document.getElementById('observers');
     if (box === null) return;
     const list = box.querySelector('.obs-list');
-    const existing = new Map(Array.from(list.children).map(li => [li.dataset.mkey, li]));
+    const existing = new Map(Array.from(list.children).map(li => [li.dataset.okey, li]));
     let next = list.firstElementChild;
+    let masked = 0;
     observers.forEach(o => {
-        const mkey = String(o.mkey);
-        let li = existing.get(mkey);
+        /* B-163: in anonymous mode after the reveal the other observers come as '******' without mkey: kept apart by
+         * their position only (all of them look the same), no smiley or nudge (nothing to aim at) */
+        const mkey = o.mkey === null || o.mkey === undefined ? '' : String(o.mkey);
+        const okey = mkey !== '' ? mkey : 'masked-' + masked++;
+        let li = existing.get(okey);
         if (li === undefined) {
             li = document.createElement('li');
             li.className = 'obs';
+            li.dataset.okey = okey;
             li.dataset.mkey = mkey;
             const span = document.createElement('span');
             span.className = 'obs-name';
             li.appendChild(span);
         }
-        existing.delete(mkey);
+        existing.delete(okey);
         const span = li.querySelector('.obs-name');
         const name = String(o.name);
         if (span.textContent !== name) span.textContent = name; // no title: the name is right there (B-110)
@@ -1470,7 +1475,7 @@ function updateObservers(observers, myMkey) {
         else if (span.hasAttribute('title')) span.removeAttribute('title');
         const isMe = mkey === myMkey;
         if (li.classList.contains('is-me') !== isMe) li.classList.toggle('is-me', isMe);
-        syncReactButton(li, !isMe, name);
+        syncReactButton(li, !isMe && mkey !== '', name);
         if (li !== next) list.insertBefore(li, next);
         else next = li.nextElementSibling;
     });

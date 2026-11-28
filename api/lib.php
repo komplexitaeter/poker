@@ -1513,7 +1513,8 @@ function getDao($t, $id) {
                     "name"=>$obj->name,
                     // mkey must stay a string in the JSON (compared with ===, see below)
                     "mkey"=>(string)$obj->mkey,
-                    "via_ai"=>$obj->via_ai); // B-151 mcp seen (observers have no card: also in anonymous mode)
+                    "via_ai"=>$obj->via_ai, // B-151 mcp seen (observers have no card: also in anonymous mode)
+                    "own"=>($obj->id === $id)); // internal, removed below (B-163)
             }
         }
 
@@ -1641,6 +1642,19 @@ function getDao($t, $id) {
         }
         unset($players[$i]->own);
     }
+    /* B-163 (Andreas): anonymous mode after the reveal - observers like the players: '******', no mkey, no via_ai of
+       their own (ai_count counts them). Else a player who leaves the table or becomes an observer after the reveal
+       would show up there by name while his card goes away. All foreign entries are identical, so their order tells
+       nothing. The own row stays recognisable for oneself (name, mkey). Also removed persons (B-154). */
+    $anon_revealed = $anonymous_mode == 1 && $all_players_ready && $players_count > 0;
+    foreach ($observers as $observer) {
+        if ($anon_revealed && !$observer->own) {
+            $observer->name = '******';
+            $observer->mkey = '';
+            $observer->via_ai = false;
+        }
+        unset($observer->own);
+    }
     return array(  "name"=> $name,
         "mkey"=>$mkey, // the own mkey: reactions (from), the own observer row, the own trash can (delete.php)
         "card_mkey"=>$own_card_mkey, // B-163: mkey of the own card in players (its handle in anonymous mode after the reveal), '' = no card
@@ -1679,7 +1693,7 @@ function getDao($t, $id) {
         "players_count"=>$players_count,
         "ready_players_count"=>$ready_players_count,
         "players"=>$players,
-        "observers"=>$observers, // B-110: connected observers, ordered by name
+        "observers"=>$observers, // B-110: connected observers, ordered by name (B-163: masked, mkey '', in anonymous mode after the reveal)
         "away_count"=>$away_count, // B-151: players away (never the own one), also in anonymous mode
         "ai_count"=>$ai_count, // B-151 mcp seen: players and shown observers using the board through an AI assistant
         "away_sig"=>away_sig($away_ids, $ai_ids) ); // B-127: same value as seen.php, '' = nobody away and no AI

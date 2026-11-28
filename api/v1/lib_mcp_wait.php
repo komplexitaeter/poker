@@ -306,6 +306,7 @@ function mcp_board_changes(?array $old, array $new, array $board): array
         }
         foreach ($state['o'] as $o) {
             if (!is_array($o) || !array_is_list($o) || count($o) < 2 || !is_scalar($o[0])) continue;
+            if ($anonymous && (string)$o[0] !== $me) continue; // B-163: observers are masked then, like the players
             $list[(string)$o[0]] = ['name' => $str($o[1]), 'role' => 'observer', 'played' => false, 'card' => null,
                                     'away' => false];
         }

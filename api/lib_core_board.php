@@ -18,10 +18,13 @@ const BOARD_LATE_CARD_TEXT = 'joined in';
  * $include_items also the open items (like GET /items). getDao() marks the actor as present (like a board loading
  * dao.php). Reads only, never notifies.
  */
-function core_board_get(mysqli $link, array $actor, bool $include_items = false): array
+function core_board_get(mysqli $link, array $actor, bool $include_items = false, ?string &$card_mkey = null): array
 {
     $t = (string)$actor['team_id'];
     $dao = getDao($t, (string)$actor['uid']);
+    // B-163: id of the own card on the web boards (its handle in anonymous mode after the reveal, '' = no card); only
+    // for the caller (MCP react sends it as the thrower), not part of the board
+    $card_mkey = (string)$dao['card_mkey'];
     if ($dao['team_name'] === null || $dao['player_type'] === null) throw new ApiError(403, 'not_a_member'); // gone meanwhile
 
     $catalog = card_catalog();
@@ -100,7 +103,9 @@ function core_board_get(mysqli $link, array $actor, bool $include_items = false)
         'note' => (string)$dao['topic'],
         'round' => $round,
         'players' => $out_players,
-        'observers' => array_map(fn($o) => ['name' => $o->name, 'mkey' => $o->mkey, 'via_ai' => (bool)$o->via_ai],
+        // B-163: in anonymous mode after the reveal the others as '******' without mkey (null, like the players)
+        'observers' => array_map(fn($o) => ['name' => $o->name, 'mkey' => $o->mkey === '' ? null : $o->mkey,
+                                             'via_ai' => (bool)$o->via_ai],
                                  $dao['observers']),
         'away_count' => (int)$dao['away_count'], // B-151: players away
         'ai_count' => (int)$dao['ai_count'], // B-151 mcp seen: players and observers using the board through an AI assistant

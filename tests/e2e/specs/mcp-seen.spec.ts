@@ -126,7 +126,7 @@ test('anonymous mode after the reveal: no via_ai or away per other player, only 
   expect(d.ai_count).toBe(2);
   expect(d.away_count).toBe(1);
 
-  // revealed: names '******', away and via_ai false for all others, the counts stay; observers keep via_ai
+  // revealed: names '******', away and via_ai false for all others, the counts stay; B-163: observers masked the same way
   sql(`update pok_players_tbl set card_key = 'five001' where team_id = '${safe(t)}' and player_type = 'PLAYER'`);
   d = await dao(request, t, anna.uid);
   expect(d.all_players_ready).toBe(true);
@@ -136,7 +136,7 @@ test('anonymous mode after the reveal: no via_ai or away per other player, only 
   }
   expect(d.ai_count).toBe(2);
   expect(d.away_count).toBe(1);
-  expect(d.observers).toEqual([expect.objectContaining({ name: 'Mo', via_ai: true })]);
+  expect(d.observers).toEqual([{ name: '******', mkey: '', via_ai: false }]);
 
   // the MCP board of Bob: his own row keeps via_ai, the others are false; the counts tell
   const board = await mcp(request, 'get_board', { team_id: t, uid: bob.uid });
@@ -146,5 +146,5 @@ test('anonymous mode after the reveal: no via_ai or away per other player, only 
   expect(others.map((p: any) => [p.away, p.via_ai])).toEqual([[false, false], [false, false]]);
   expect(board.ai_count).toBe(2);
   expect(board.away_count).toBe(1);
-  expect(board.observers).toEqual([expect.objectContaining({ name: 'Mo', via_ai: true })]);
+  expect(board.observers).toEqual([{ name: '******', mkey: null, via_ai: false }]);
 });

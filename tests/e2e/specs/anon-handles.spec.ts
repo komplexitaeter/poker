@@ -6,7 +6,8 @@ import { newPlayer, createTeam, joinAsPlayer, addPlayersViaApi, asUser, pickCard
  * B-163: anonymous mode after the reveal. dao.php gives every card a handle per round instead of the mkey (10 digits,
  * above every real mkey, the same for all viewers, new in every round), so a mkey seen with a name before the reveal
  * leads to no card. The own board finds its card by card_mkey. Players with the same card are ordered by handle, not
- * by name. Reactions aim at the handles and still land on the right card; the own trash can still works.
+ * by name. Reactions aim at the handles and still land on the right card, a thrower with a card is sent as its handle
+ * too (else "nobody throws at the own card" narrows the handles down); the own trash can still works.
  */
 
 // same credentials as the test config written by tests/e2e/setup.sh
@@ -119,19 +120,28 @@ test('board: after an anonymous reveal reactions land on the right card, the own
   await joinAsPlayer(alice, url, 'Alice');
   const bob = await newPlayer(browser);
   await joinAsPlayer(bob, url, 'Bob');
+  const cleo = await newPlayer(browser);
+  await joinAsPlayer(cleo, url, 'Cleo');
   sql(`update pok_teams_tbl set anonymous_mode = 1, anonymous_request_toggle = 1 where id = '${t}'`);
   const aliceId = await getSid(alice);
   const aliceMkey = sql(`select mkey from pok_players_tbl where team_id = '${t}' and id = '${safe(aliceId)}'`);
 
+  const bobId = await getSid(bob);
+  const bobMkey = sql(`select mkey from pok_players_tbl where team_id = '${t}' and id = '${safe(bobId)}'`);
+
   await bob.reload();
   await alice.reload();
+  await cleo.reload();
   await pickCard(alice, 'eight01');
   await pickCard(bob, 'three01');
-  for (const p of [alice, bob]) {
+  await pickCard(cleo, 'one0001');
+  for (const p of [alice, bob, cleo]) {
     await expect(p.locator('#cbox .c[data-card="three01"]')).toHaveCount(1);
     await expect(p.locator('#cbox .c[data-card="eight01"]')).toHaveCount(1);
   }
   const aliceHandle = (await dao(alice, t, aliceId)).card_mkey as string;
+  const bobHandle = (await dao(bob, t, bobId)).card_mkey as string;
+  expect(bobHandle).not.toBe(bobMkey);
   expect(aliceHandle).not.toBe(aliceMkey);
 
   // the cards carry the handles: Alice's own card on both boards, never her mkey
@@ -143,7 +153,8 @@ test('board: after an anonymous reveal reactions land on the right card, the own
   // own card: trash can, no smiley; the other card: smiley, no trash can (B-159)
   await expect(alice.locator('#cbox .c.is-me .react')).toHaveCount(0);
   await expect(alice.locator('#cbox .c.is-me .delete')).not.toHaveCSS('display', 'none');
-  await expect(alice.locator('#cbox .c:not(.is-me) .delete')).toBeHidden();
+  await expect(alice.locator('#cbox .c:not(.is-me) .delete')).toHaveCount(2);
+  for (const del of await alice.locator('#cbox .c:not(.is-me) .delete').all()) await expect(del).toBeHidden();
 
   // Bob throws at the 8 (Alice's card): it lands there on both boards, Alice's board knows it is hers
   const landed = (p: Page) => p.evaluate(() => {
@@ -155,6 +166,17 @@ test('board: after an anonymous reveal reactions land on the right card, the own
   });
   await landed(alice);
   await landed(bob);
+  // what poker-msg forwards to the others (raw WebSocket frames)
+  const received = (p: Page) => p.evaluate(() => {
+    const w = window as unknown as { gotReact: string[] };
+    w.gotReact = [];
+    (0, eval)('gConn').addEventListener('message', (e: MessageEvent) => {
+      if (String(e.data).startsWith('react:')) w.gotReact.push(String(e.data));
+    });
+  });
+  const got = (p: Page) => p.evaluate(() => (window as unknown as { gotReact: string[] }).gotReact.slice());
+  await received(alice);
+  await received(cleo);
   const target = bob.locator('#cbox .c[data-card="eight01"]');
   await target.hover();
   await target.locator('.react').click();
@@ -163,6 +185,35 @@ test('board: after an anonymous reveal reactions land on the right card, the own
     await expect.poll(() => p.evaluate(() => (window as unknown as { landedOn: string[] }).landedOn))
       .toEqual([aliceHandle]);
   }
+  // the thrower is Bob's card handle, not his mkey: no narrowing down by "nobody throws at the own card"
+  for (const p of [alice, cleo]) {
+    await expect.poll(() => got(p)).toEqual([`react:${bobHandle}:${aliceHandle}:party`]);
+    expect((await got(p)).join()).not.toContain(bobMkey);
+  }
+
+  // Bob nudges the 8: it rings (is-nudged-me) only on Alice's board, the others just see it shake
+  const nudged = (p: Page) => p.evaluate(() => {
+    const w = window as unknown as { nudgedMe: number; nudged: number };
+    w.nudgedMe = 0; w.nudged = 0;
+    new MutationObserver(list => list.forEach(m => {
+      const el = m.target as Element;
+      const before = m.oldValue ?? '';
+      if (el.classList.contains('is-nudged-me') && !before.includes('is-nudged-me')) w.nudgedMe++;
+      if (el.classList.contains('is-nudged') && !/\bis-nudged\b/.test(before)) w.nudged++;
+    })).observe(document.getElementById('cbox') as HTMLElement,
+      { subtree: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+  });
+  const counts = (p: Page) => p.evaluate(() => {
+    const w = window as unknown as { nudgedMe: number; nudged: number };
+    return [w.nudged > 0, w.nudgedMe > 0];
+  });
+  for (const p of [alice, bob, cleo]) await nudged(p);
+  await bob.waitForTimeout(1100); // poker-msg rate limit (B-131)
+  await target.hover();
+  await target.locator('.nudge').click();
+  await expect.poll(() => counts(alice)).toEqual([true, true]);
+  await expect.poll(() => counts(cleo)).toEqual([true, false]);
+  await expect.poll(() => counts(bob)).toEqual([true, false]);
 
   // Alice's own trash can removes her seat (delete.php gets the real mkey, not the handle)
   const own = alice.locator('#cbox .c.is-me');
@@ -171,4 +222,52 @@ test('board: after an anonymous reveal reactions land on the right card, the own
   await alice.locator('#rm_confirm .rm-ok').click();
   await expect.poll(() => sql(`select player_type from pok_players_tbl where team_id = '${t}' and id = '${safe(aliceId)}'`))
     .toBe('REMOVED');
+});
+
+test('observers after an anonymous reveal: masked like the players, a player turning observer is not identifiable', async ({ browser }) => {
+  const page = await newPlayer(browser);
+  const url = await createTeam(page, 'B163 Observers');
+  const t = teamIdOf(url);
+  const [anna, ben, cleo, olga] = await addPlayersViaApi(page, url, ['Anna', 'Ben', 'Cleo', 'Olga']);
+  expect((await page.request.post(`/api/name.php?${new URLSearchParams({ t, name: 'Olga', type: 'observer' })}`,
+    asUser(olga))).ok()).toBeTruthy();
+  sql(`update pok_teams_tbl set anonymous_mode = 1, anonymous_request_toggle = 1 where id = '${t}'`);
+  const olgaMkey = sql(`select mkey from pok_players_tbl where team_id = '${t}' and id = '${safe(olga)}'`);
+
+  // before the reveal: observers by name, as always
+  expect((await dao(page, t, anna)).observers).toEqual([{ name: 'Olga', mkey: olgaMkey, via_ai: false }]);
+
+  await setc(page, t, anna, 'three01');
+  await setc(page, t, ben, 'five001');
+  await setc(page, t, cleo, 'eight01');
+  const revealed = await dao(page, t, anna);
+  expect(revealed.all_players_ready).toBe(true);
+  expect(revealed.observers).toEqual([{ name: '******', mkey: '', via_ai: false }]);
+  expect(JSON.stringify(revealed)).not.toContain('Olga');
+  expect(JSON.stringify(revealed)).not.toContain(`"${olgaMkey}"`);
+  // the own observer row stays recognisable for oneself
+  expect((await dao(page, t, olga)).observers).toEqual([{ name: 'Olga', mkey: olgaMkey, via_ai: false }]);
+
+  // Ben becomes an observer after the reveal: one card less, one more masked observer, no name anywhere
+  expect((await page.request.post(`/api/name.php?${new URLSearchParams({ t, name: 'Ben', type: 'observer' })}`,
+    asUser(ben))).ok()).toBeTruthy();
+  const after = await dao(page, t, anna);
+  expect(after.all_players_ready).toBe(true);
+  expect(after.players.map((p: Player) => p.display_card_key)).toEqual(['three01', 'eight01']);
+  expect(after.observers).toEqual([{ name: '******', mkey: '', via_ai: false }, { name: '******', mkey: '', via_ai: false }]);
+  expect(JSON.stringify(after)).not.toContain('Ben');
+
+  // REST/MCP board: masked observers without mkey
+  const v1 = await page.request.get('/api/v1/board', { headers: { 'X-Poker-User': anna, 'X-Poker-Team': t } });
+  expect(v1.status(), await v1.text()).toBe(200);
+  expect((await v1.json()).observers).toEqual([{ name: '******', mkey: null, via_ai: false },
+                                               { name: '******', mkey: null, via_ai: false }]);
+
+  // the web board (as Anna): two masked observer rows, no smiley on them
+  await page.evaluate(id => localStorage.setItem('SID', id), anna);
+  await page.goto(url);
+  await expect(page.locator('#cbox .c.is-me')).toHaveAttribute('data-card', 'three01');
+  await expect(page.locator('#observers .obs')).toHaveCount(2);
+  await expect(page.locator('#observers .obs .obs-name')).toHaveText(['******', '******']);
+  await expect(page.locator('#observers .obs .react')).toHaveCount(0);
 });

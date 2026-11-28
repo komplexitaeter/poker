@@ -191,7 +191,9 @@ test('MCP seats carry the AI mark; anonymous mode after the reveal: only the sum
   await expect(page.locator('#cbox .c.via-ai')).toHaveCount(0);
   await expect(page.locator('#cbox .c.is-away')).toHaveCount(0);
   await expect(page.locator('#cbox .card_player_name[title*="AI assistant"]')).toHaveCount(0);
-  await expect(mo).toHaveClass(/(^|\s)via-ai(\s|$)/); // observers have no card: the mark stays
+  // B-163: observers are masked like the players (a player turning observer would else show up by name)
+  await expect(page.locator('#observers .obs .obs-name')).toHaveText(['******']);
+  await expect(page.locator('#observers .obs.via-ai')).toHaveCount(0);
 
   // Eve is back: her part drops out
   sql(`update pok_players_tbl set last_callback_time = current_timestamp where team_id = '${t}' and id = '${safe(eve)}'`);

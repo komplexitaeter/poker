@@ -14,8 +14,8 @@ export interface Player {
 /* B-110: a connected observer (observers without connection are not delivered); the own observer row is included.
    B-154: also connected removed players (REMOVED), without own marking */
 export interface Observer {
-    name: string;
-    mkey: string;
+    name: string; // B-163: '******' for the others in anonymous mode after the reveal
+    mkey: string; // B-163: '' for the others in anonymous mode after the reveal (the own row keeps it)
     via_ai: boolean; // B-151: uses the board through an AI assistant (also in anonymous mode: observers have no card)
 }
 
