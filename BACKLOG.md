@@ -649,6 +649,17 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
   alten Frage (alle haben dann korrigiert). Tool-Texte: nach neuer Runde auf Notiz-/Item-Änderung achten; für Fragen
   besser Items. Mehrere Agenten mit gleichem Modell schätzen fast identisch – kein Ersatz für unabhängige Meinungen.
 
+### B-162 Täglicher CVE-Check (Agent)
+Status: neu (Andreas, 2026-11-28). Ubuntu-Sicherheitsupdates laufen schon per `unattended-upgrades`. Offen:
+1. Dependabot-Alerts in `poker` und `poker-msg` einschalten (Composer, npm der Tests).
+2. Auf beiden Servern ein täglicher Cron-Job, der eine Versionsliste (nginx, php8.4-* aus dem ondrej-PPA, mysql-server,
+   openssh, openssl, Kernel/Reboot nötig, ausstehende Updates, poker-msg-Stand, CDN-Bibliotheken aus `board.html`) in ein
+   privates Repo pusht (Deploy-Key nur für dieses Repo).
+3. Geplante Aufgabe in Claude Code (täglich, neue Sitzung): Listen gegen Ubuntu USN, PHP-Releases, OSV/NVD, GitHub
+   Advisories prüfen; nur bei Handlungsbedarf benachrichtigen, mit Dringlichkeit und fertigen Befehlen. Netzwerk der
+   Cloud-Umgebung muss die Quellen erlauben. Kein Server-Zugang für den Agenten.
+Zu prüfen: Deckt `unattended-upgrades` auch das ondrej-PPA ab (`Allowed-Origins`)?
+
 ### B-161 CI schneller
 Status: neu (Andreas, 2026-11-28). Ein PR-Lauf dauert 6–7 min (je Shard ca. 3,5 min Tests plus Einrichtung).
 1. Mehr Shards (z. B. 6 statt 3) in `.github/workflows/e2e.yml`; Sammel-Check `e2e (PHP 8.4)` bleibt.

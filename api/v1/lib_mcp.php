@@ -574,7 +574,7 @@ function mcp_touch_actor(mysqli $link, array $actor, bool $wait): array
 {
     if ($wait && mcp_session_ended($link, $actor['uid'], $actor['team_id'])) return $actor + ['ended' => true];
     touch_api_person($link, $actor['uid'], $actor['team_id']);
-    if (touch_mcp_person($link, $actor['uid'], $actor['team_id'])) notify_team($actor['team_id']);
+    if (touch_mcp_person($link, $actor['uid'], $actor['team_id'], $wait)) notify_team($actor['team_id']);
     return $actor;
 }
 
