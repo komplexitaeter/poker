@@ -1,16 +1,16 @@
 {"releases": [
   {"number": "2026.13", "date": "2026-11-28", "draft": true, "items": [
     {"title": "Release notes: see what's new",
-     "text": "These release notes tell you what changed with each update. You can open them any time from the Feedback menu.",
+     "text": "Find out what has changed with each update. You can open these notes any time from the Feedback menu.",
      "where": "Feedback → What's new",
      "asked": true},
     {"title": "Feedback menu reorganised",
-     "text": "The Feedback menu is now one page: write to us at the top, see the ideas of other teams below and vote on them.",
+     "text": "The Feedback menu is now a single page: write to us at the top, and browse and vote on ideas from other teams below.",
      "where": "Feedback",
      "asked": true,
      "image": {"name": "r13-feedback", "w": 760, "h": 1000, "alt": "The Feedback menu: a box to write to us, below it a list of ideas with votes"}},
     {"title": "Anonymous voting, hardened",
-     "text": "Anonymous mode hides the names on revealed cards for everyone. We have now also closed the technical gaps behind the scenes. Emojis still work.",
+     "text": "In anonymous mode, nobody can see whose card is whose after the reveal. We have now also closed the technical gaps behind the scenes. Emojis still work.",
      "where": "Board settings → Results → Names on revealed cards → Anonymous"}
   ]},
   {"number": "2026.12", "date": "2026-11-28", "items": [
@@ -21,11 +21,11 @@
   ]},
   {"number": "2026.10", "date": "2026-11-28", "items": [
     {"title": "AI connector: join with your AI assistant (beta)",
-     "text": "Add Agile Poker as a connector (MCP) in Claude or ChatGPT and give your assistant the invite link. It joins under the name you choose, plays the card you name and tells you what happens. Your assistant sees the board like you do. This is a beta – we would love to hear how it works for you: just send us feedback.",
+     "text": "Add Agile Poker as a connector (MCP) in Claude or ChatGPT and give your assistant the invite link. It takes a seat under the name you choose, plays the cards you tell it to and keeps you posted. It sees the same board you do. This is a beta, so please send us feedback and let us know how it works for you.",
      "where": "the robot button next to \"Invite\"",
      "image": {"name": "r10-ai", "w": 880, "h": 974, "alt": "The window \"Play via your AI assistant\" with the link to copy and three short steps"}},
-    {"title": "See who plays through an AI",
-     "text": "A small robot next to a name shows who plays through an AI assistant. If your team does not want this, switch AI assistants off for the whole board.",
+    {"title": "See who is playing through an AI",
+     "text": "A small robot next to a name shows who is playing through an AI assistant. If your team would rather not have this, turn AI assistants off for the whole board.",
      "where": "Board settings → Team → Allow AI assistants → Off"}
   ]},
   {"number": "2026.9.1", "date": "2026-11-26", "items": [
@@ -33,16 +33,16 @@
   ]},
   {"number": "2026.9", "date": "2026-11-26", "items": [
     {"title": "Open API: connect Jira and other tools",
-     "text": "Agile Poker now has a public, documented API. Use it to bring items from Jira (for example with Jira Automation) or from your own tools straight into your list of items to estimate. Create a key for it here and keep it secret like a password; the \"API docs\" link next to it shows how it works.", "asked": true,
+     "text": "Agile Poker now has a public, documented API. Use it to send items from Jira (for example with Jira Automation) or from your own tools straight to your list of items to estimate. Create a key in the You menu and treat it like a password; the \"API docs\" link next to it explains how it all works.", "asked": true,
      "where": "You → API keys",
      "image": {"name": "r9-apikeys", "w": 760, "h": 388, "alt": "The section \"API keys\" in the You menu with a field for the name of the key and the button \"Create key\""}},
     {"title": "Your settings in one place",
-     "text": "Your name, your role, the colour mode and \"Delete my data\" are now together in one menu.",
+     "text": "Your name, your role, light or dark mode and \"Delete my data\" are now all in one menu.",
      "where": "You"}
   ]},
   {"number": "2026.8", "date": "2026-11-26", "items": [
-    {"title": "Removed players are shown as observers",
-     "text": "Someone who was taken off the table but still has the board open now shows up with the observers, so you always see who is watching.",
+    {"title": "Removed players now appear as observers",
+     "text": "If you take someone off the table while they still have the board open, they now appear among the observers – so you always know who is watching.",
      "where": "the observers above the table"}
   ]},
   {"number": "2026.7", "date": "2026-11-25", "items": [
@@ -50,7 +50,7 @@
   ]},
   {"number": "2026.6", "date": "2026-11-18", "items": [
     {"title": "Faster page load",
-     "text": "The board now loads card sets and symbols in parallel in the background and appears in one go, fully drawn – no more half-built board, no browser freeze on slow connections."}
+     "text": "Card sets and symbols now load in parallel in the background, and the board appears in one go, fully drawn – no more half-built board and no frozen browser on slow connections."}
   ]},
   {"number": "2026.5", "date": "2026-11-16", "items": [
     {"title": "Less emoji spam",
@@ -60,7 +60,7 @@
   ]},
   {"number": "2026.4", "date": "2026-11-16", "items": [
     {"title": "A list of items to estimate",
-     "text": "Put your backlog items in a list and estimate them one after the other, without typing a new topic each time.", "asked": true,
+     "text": "Add your backlog items to a list and estimate them one after another – no need to type a new topic each time.", "asked": true,
      "where": "Topic → Items",
      "image": {"name": "r4-items", "w": 760, "h": 798, "alt": "The Topic menu with the tab Items: a list of four items, the first one is being estimated"}},
     {"title": "Estimation history",
@@ -68,10 +68,10 @@
      "where": "Topic → Done",
      "image": {"name": "r4-done", "w": 760, "h": 598, "alt": "The Topic menu with the tab Done: two finished items with their agreed values, and the buttons Copy and Download CSV"}},
     {"title": "Show the median",
-     "text": "After the reveal, a dashed line in the result chart marks the median. Unlike the average, a single outlier does not pull it away.", "asked": true,
+     "text": "After the reveal, a dashed line in the result chart marks the median. Unlike the average, it is not skewed by a single outlier.", "asked": true,
      "where": "Board settings → Results → Average and median → Show"},
     {"title": "Nudge sound",
-     "text": "When someone nudges you, you now hear a short sound – even if the board is open in another tab. You can switch the sound off.", "asked": true,
+     "text": "When someone nudges you, you now hear a short sound – even when the board is in a background tab. You can turn the sound off.", "asked": true,
      "where": "You → Play a sound when someone nudges you"}
   ]},
   {"number": "2026.3.1", "date": "2026-11-09", "items": [
@@ -96,15 +96,15 @@
      "text": "Throw emojis at your teammates' cards – or give someone a nudge.", "asked": true,
      "where": "hover over a card on the table and click the smiley (on a phone or tablet: tap the card, then the smiley)"},
     {"title": "Observers on the board, away status on the cards",
-     "text": "Observers are now shown on the board, below the cards. And a player's card shows when that person is away or has lost the connection.",
+     "text": "Observers now appear on the board, below the cards. Cards also show when a player is away or has lost their connection.",
      "where": "the table"},
     {"title": "Keyboard shortcuts for your cards",
-     "text": "On a computer, each card has its own key (Q, W, E …). Press it to pick that card – no mouse needed.",
+     "text": "Each of your cards has its own key (Q, W, E …), so you can play a card without touching the mouse.",
      "where": "the letters below your cards"}
   ]},
   {"number": "2026.2", "date": "2026-11-01", "items": [
     {"title": "Results moved to the sidebar",
-     "text": "The bar chart with the result of a round now sits in the sidebar, next to the topic – which leaves more room for the cards on the table.",
+     "text": "The bar chart with the result of a round is now in the sidebar, next to the topic, leaving more room for the cards on the table.",
      "where": "the sidebar on the right (phones: above your cards)",
      "image": {"name": "r2-result", "w": 760, "h": 558, "alt": "The result in the sidebar: a bar for each card value with the number of votes, a marker for the average and a line for the median"}},
     {"title": "Timebox with countdown",
@@ -115,16 +115,16 @@
      "text": "Click \"New round\" and the timer starts again automatically.",
      "where": "Timer → Auto-start → New round"},
     {"title": "Swipe through your cards",
-     "text": "On phones and tablets, swipe through your cards and tap the one in the middle to play it.",
+     "text": "On phones and tablets, swipe through your cards and tap the middle one to play it.",
      "where": "your cards at the bottom"}
   ]},
   {"number": "2026.1", "date": "2026-10-28", "items": [
     {"title": "A fresh new look",
-     "text": "A calmer board with clear places for the topic, the table and your cards, in light and in dark mode.",
+     "text": "A calmer, tidier board with a clear place for the topic, the table and your cards – in light and dark mode.",
      "where": "the whole board",
      "image": {"name": "r1-board", "w": 1400, "h": 831, "alt": "The whole board: the menu at the top, the table with cards, the sidebar and your cards at the bottom"}},
     {"title": "Works on phones and tablets",
-     "text": "The board fits every screen, menus open from the bottom on a phone, and all buttons are big enough for your thumb.", "asked": true,
+     "text": "The board adapts to any screen size, menus slide up from the bottom on phones, and every button is easy to tap.", "asked": true,
      "where": "open the board link on your phone",
      "image": {"name": "r1-phone", "w": 720, "h": 1403, "alt": "The board on a phone: the table with cards, and your cards to swipe through at the bottom"}},
     {"title": "Send us feedback",
