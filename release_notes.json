@@ -80,7 +80,7 @@
      "where": "the arrows at the top of the sidebar"}
   ]},
   {"number": "2026.3", "date": "2026-11-06", "items": [
-    {"title": "Show changed cards",
+    {"title": "Card changes after the reveal stay visible",
      "text": "If someone changes their card after the reveal, their first card stays visible underneath – so the team can still talk about the original estimate.",
      "where": "Board settings → Results → Changed cards → Show",
      "asked": true},
