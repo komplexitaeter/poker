@@ -92,8 +92,8 @@ Team unbekannt und „nicht Mitglied“ geben dieselbe Antwort (kein Orakel, wie
 `team_not_found` (wie `team_join` in v1).
 
 **Nutzungszählung** (B-160): Jeder `tools/call` wird je Tag, Tool[:action] und Status (`ok` bzw. Fehlercode) gezählt
-(`usage_record()`, `wait_for_change`/`react` nur einmal je Aufruf, unbekannte Tools als `(unknown)`), Sitz und Team
-erfolgreicher Aufrufe nur als Hash – nie UID, Team-ID, Schlüssel oder Argumente (`stats.php`, Tab „AI & API“).
+(`usage_record()`, `wait_for_change`/`react` nur einmal je Aufruf; unbekannte Tools zählen nicht, es wird nie eine
+DB-Verbindung nur zum Zählen geöffnet), Sitz und Team erfolgreicher Aufrufe nur als Hash (HMAC mit `STATS_COOKIE_SECRET`) – nie UID, Team-ID, Schlüssel oder Argumente (`stats.php`, Tab „AI & API“).
 
 **Team erlaubt keine KI-Assistenten** (`ai_not_allowed`, Andreas, Datenschutz: das Team kann widersprechen):
 Teameinstellung „Allow AI assistants“ (`pok_teams_tbl.allow_ai`, Standard an; Board settings → Team). Aus → **jeder**

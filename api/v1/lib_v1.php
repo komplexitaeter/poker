@@ -232,17 +232,16 @@ function v1_dispatch(): void
 /*
  * B-160: counts a failed call (pok_api_usage_stats_tbl only, no person): op = the matched operation id, else
  * '(unknown)' (never the path of the request); channel by the auth headers sent (key -> rest, X-Poker-User -> web).
- * Failures before the database was opened (unknown path, wrong method) open a connection of their own. Never throws.
+ * Only with the connection of the call: failures before it was opened (unknown path, wrong method, database down) are
+ * not counted - never a connection just for counting. Never throws.
  */
 function v1_usage_failure(?mysqli $link, string $op_id, Throwable $e): void
 {
+    if ($link === null) return;
     try {
         $op = $op_id === '-' ? '(unknown)' : $op_id;
         $channel = v1_bearer_key() === null && isset($_SERVER['HTTP_X_POKER_USER']) ? 'web' : 'rest';
-        $own = $link === null;
-        if ($own) $link = db_init();
         usage_record($link, $channel, $op, null, null, usage_status($e));
-        if ($own) $link->close();
     } catch (Throwable $ignored) {
         // statistics only
     }

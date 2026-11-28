@@ -1,6 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
 import { execFileSync } from 'child_process';
-import { createHash } from 'crypto';
 import { bearer, gotoStats, v1Join } from './helpers';
 
 /**
@@ -15,7 +14,6 @@ const SHOT = process.env.B160_SCREENSHOT;
 const mysql = (statement: string) => execFileSync('mysql', ['-h127.0.0.1', '-upok_e2e', '-ppok_e2e', 'pok_e2e',
   '-N', '-B', '-e', statement], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
-const usageHash = (value: string) => createHash('sha256').update('usage:' + value).digest('hex').slice(0, 16);
 
 let rpcId = 0;
 async function toolCall(request: APIRequestContext, name: string, args: Record<string, unknown>) {
@@ -30,7 +28,7 @@ const num = async (page: import('@playwright/test').Page, id: string) =>
 test('usage of REST and MCP is counted (hashes only, failures separately) and shown in the stats', async ({ request, page }) => {
   const run = Date.now().toString(36);
 
-  // MCP: a new board (counted with the new seat), the board, a failing tool call and an unknown tool
+  // MCP: a new board (counted with the new seat), the board, a failing tool call and an unknown tool (not counted)
   const created = await toolCall(request, 'create_team', { name: `Usage ${run}`, member_name: 'Ada', role: 'player' });
   expect(created.result.isError, JSON.stringify(created)).toBeFalsy();
   const { team, you } = created.result.structuredContent;
@@ -55,15 +53,17 @@ test('usage of REST and MCP is counted (hashes only, failures separately) and sh
   expect(count("channel = 'mcp' and op = 'create_team' and status = 'ok'")).toBeGreaterThanOrEqual(1);
   expect(count("channel = 'mcp' and op = 'get_board' and status = 'ok'")).toBeGreaterThanOrEqual(1);
   expect(count("channel = 'mcp' and op = 'play_card:play' and status <> 'ok'")).toBeGreaterThanOrEqual(1);
-  expect(count("channel = 'mcp' and op = '(unknown)' and status = 'unknown_tool'")).toBeGreaterThanOrEqual(1);
   expect(count(`op like '%${run}%'`)).toBe(0);
   expect(count("channel = 'rest' and op = 'team_join' and status = 'ok'")).toBeGreaterThanOrEqual(1);
   expect(count("channel = 'rest' and op = 'board_get' and status = 'ok'")).toBeGreaterThanOrEqual(1);
   expect(count("channel = 'rest' and op = 'board_get' and status = 'unknown_param'")).toBeGreaterThanOrEqual(1);
-  expect(mysql(`select count(1) from pok_api_users_day_tbl where day = curdate() and channel = 'mcp'
-                  and user_hash = '${usageHash(seat.uid)}' and team_hash = '${usageHash(seat.team_id)}'`)).toBe('1');
-  expect(mysql(`select count(1) from pok_api_users_day_tbl where day = curdate() and channel = 'rest'
-                  and team_hash = '${usageHash(seat.team_id)}'`)).toBe('1');
+  // hashes (HMAC with the server's secret, value not known here): 16 hex, the same team hash for the MCP seat and the
+  // REST key person of this team (both in the same team)
+  expect(mysql(`select count(1) from pok_api_users_day_tbl where day = curdate()
+                 and not regexp_like(concat(user_hash, team_hash), '^[0-9a-f]{32}$', 'c')`)).toBe('0');
+  expect(Number(mysql(`select count(1) from pok_api_users_day_tbl m join pok_api_users_day_tbl r
+                         on r.day = m.day and r.team_hash = m.team_hash and r.channel = 'rest'
+                       where m.day = curdate() and m.channel = 'mcp'`))).toBeGreaterThanOrEqual(1);
   expect(mysql(`select count(1) from pok_api_users_day_tbl
                  where user_hash in ('${seat.uid}', '${seat.team_id}') or team_hash = '${seat.team_id}'`)).toBe('0');
 
@@ -74,7 +74,7 @@ test('usage of REST and MCP is counted (hashes only, failures separately) and sh
   expect(await num(page, 'ai_mcp_teams_28')).toBeGreaterThanOrEqual(1);
   expect(await num(page, 'ai_rest_persons_7')).toBeGreaterThanOrEqual(1);
   expect(await num(page, 'ai_mcp_calls_1')).toBeGreaterThanOrEqual(2);
-  expect(await num(page, 'ai_mcp_errors_1')).toBeGreaterThanOrEqual(2);
+  expect(await num(page, 'ai_mcp_errors_1')).toBeGreaterThanOrEqual(1);
   expect(await num(page, 'ai_rest_errors_28')).toBeGreaterThanOrEqual(1);
   expect(await num(page, 'ai_now_seats')).toBeGreaterThanOrEqual(1);
   expect(await num(page, 'ai_keys_total')).toBeGreaterThanOrEqual(1);
@@ -86,7 +86,8 @@ test('usage of REST and MCP is counted (hashes only, failures separately) and sh
     .filter({ has: page.locator('td.op', { hasText: new RegExp(`^${op.replace(/[()]/g, '\\$&')}$`) }) })
     .filter({ has: page.locator('td.op', { hasText: new RegExp(`^${code}$`) }) });
   await expect(errorRow('API (key)', 'board_get', 'unknown_param')).toHaveCount(1);
-  await expect(errorRow('MCP', '(unknown)', 'unknown_tool')).toHaveCount(1);
+  await expect(errorRow('MCP', 'play_card:play', 'invalid_card')).toHaveCount(1);
+  await expect(page.locator('#ai_errors')).not.toContainText('unknown_tool');
   await expect(page.locator('main')).not.toContainText(seat.uid);
   if (SHOT) await page.screenshot({ path: SHOT, fullPage: true });
 

@@ -252,11 +252,9 @@ function mcp_handle(string|int $id, string $method, array $params): array
             $name = $params['name'] ?? null;
             $args = $params['arguments'] ?? [];
             if (!is_string($name) || !isset(mcp_tool_index()[$name])) {
-                mcp_usage_failure(null, '(unknown)', new ApiError(400, 'unknown_tool')); // B-160: never the name sent
                 return mcp_error_message($id, MCP_INVALID_PARAMS, 'Unknown tool. Call tools/list for the current tools.');
             }
             if (!is_array($args) || ($args !== [] && array_is_list($args))) {
-                mcp_usage_failure(null, $name, new ApiError(400, 'invalid_arguments'));
                 return mcp_error_message($id, MCP_INVALID_PARAMS, 'arguments must be an object.');
             }
             return mcp_result_message($id, mcp_call_tool($name, $args));
@@ -489,16 +487,14 @@ function mcp_usage_record(mysqli $link, string $op, ?array $seat): void
                  isset($seat['team_id']) ? (string)$seat['team_id'] : null);
 }
 
-/* B-160: counts a failed tool call (no person) once - not in the phases after poker-msg; $link null or closed: a
-   connection of its own. Never throws. */
+/* B-160: counts a failed tool call (no person) once - not in the phases after poker-msg; only with the connection of
+   the call (database down, unknown tools and malformed requests before it: not counted). Never throws. */
 function mcp_usage_failure(?mysqli $link, string $op, Throwable $e): void
 {
+    if ($link === null) return;
     try {
         if (mcp_wait_internal()) return;
-        $own = $link === null;
-        if ($own) $link = db_init();
         usage_record($link, 'mcp', $op, null, null, usage_status($e));
-        if ($own) $link->close();
     } catch (Throwable $ignored) {
         // statistics only
     }

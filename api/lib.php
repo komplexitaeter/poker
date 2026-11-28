@@ -1771,10 +1771,15 @@ function add_team($link, $t, $topic=null, $preset_mapping=null, ?string $variant
 const USAGE_CHANNELS = ['rest', 'web', 'mcp'];
 const USAGE_OP_MAX = 40;
 
-/* a person or team as a short hash (first 16 hex of sha256): the stats count distinct values, never store the UID
-   (the person's secret, B-152) or the team id */
+/* a person or team as a short hash (first 16 hex of an HMAC-SHA256 with STATS_COOKIE_SECRET of config.php, else of
+   sha256 with a fixed prefix): the stats count distinct values, never store the UID (the person's secret, B-152) or the
+   team id; with the secret the hashes cannot be checked against guessed team ids. Rotating the secret changes the
+   hashes (only distinct counts across the day of the change shift). */
 function usage_hash(string $value): string
 {
+    if (defined('STATS_COOKIE_SECRET') && (string)STATS_COOKIE_SECRET !== '') {
+        return substr(hash_hmac('sha256', $value, (string)STATS_COOKIE_SECRET), 0, 16);
+    }
     return substr(hash('sha256', 'usage:' . $value), 0, 16);
 }
 

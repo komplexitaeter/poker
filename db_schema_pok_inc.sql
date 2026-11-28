@@ -1302,7 +1302,7 @@ select table_name, index_name, seq_in_index, column_name from information_schema
    mcp = tools/call), operation (operation id of api/v1/routes.php or MCP tool[:action], '(unknown)' if none matched)
    and status ('ok' or the error code of a failed call, e.g. invalid_param, unauthorized; 'error' = unexpected).
    pok_api_users_day_tbl: which persons and teams successfully used a channel on a day - only as hashes (first 16 hex of
-   sha256('usage:' + value)), never the UID (the person's secret, B-152) or the team id; no names, no contents.
+   HMAC-SHA256 with STATS_COOKIE_SECRET of config.php; rotating it changes the hashes), never the UID (the person's secret, B-152) or the team id; no names, no contents.
    day = date of the DB clock (like pok_daily_teams_stats). Grows by a few hundred rows a day at most.
    Additive (two new tables, nothing else is touched), online, idempotent (run it again any time), before or after
    deploying the code: without the tables the code counts nothing and stats.php shows "No data yet".

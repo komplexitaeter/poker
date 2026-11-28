@@ -1686,11 +1686,11 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         array('mcp', 'persons', 'MCP persons', 'seats (UIDs or keys) that made an MCP tool call'),
         array('mcp', 'teams', 'MCP teams', 'teams of these seats'),
         array('mcp', 'calls', 'MCP calls', 'successful tool calls (wait_for_change once per call)'),
-        array('mcp', 'errors', 'MCP failed calls', 'tool calls answered with an error (incl. unknown tools)'),
+        array('mcp', 'errors', 'MCP failed calls', 'tool calls of a known tool answered with an error'),
         array('rest', 'persons', 'API persons', 'persons calling /api/v1 with an API key'),
         array('rest', 'teams', 'API teams', 'teams of these persons'),
         array('rest', 'calls', 'API calls', 'successful calls with a key, plus team create/join without auth'),
-        array('rest', 'errors', 'API failed calls', 'calls answered with an error, incl. unknown paths and wrong or missing auth'),
+        array('rest', 'errors', 'API failed calls', 'calls of a known operation answered with an error, incl. wrong or missing auth'),
         array('web', 'persons', 'browser-mode persons', '/api/v1 with X-Poker-User (the board\'s key dialog, scripts with a UID)'),
         array('web', 'calls', 'browser-mode calls', ''),
         array('web', 'errors', 'browser-mode failed calls', ''),
@@ -1797,7 +1797,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
         </table>
         </div>
 <?php } ?>
-        <p class="note">Error code = the code of the answer (error of /api/v1, structuredContent.error of a tool result); error = unexpected server error, busy = the database stayed locked, unknown_tool / (unknown) = no tool or operation matched (the name sent is never stored).</p>
+        <p class="note">Error code = the code of the answer (error of /api/v1, structuredContent.error of a tool result); error = unexpected server error, busy = the database stayed locked, (unknown) = no operation matched after the database was opened (the path sent is never stored). Not counted: unknown paths and tools, malformed requests and calls while the database is down.</p>
 <?php } ?>
     </section>
 
