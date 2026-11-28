@@ -2022,8 +2022,16 @@ function updateDom(myJson, isOnLoad, timerFresh = true) {
         const isMe = card.id === myJson.mkey;
         if (card.classList.contains('is-me') !== isMe) card.classList.toggle('is-me', isMe);
         const name = card.querySelector('.card_player_name').textContent;
-        setAttrIfChanged(card.querySelector('.delete'), 'aria-label', deleteLabel(name, card.classList.contains('is-away'), isMe));
-        syncReactButton(card, !isMe, name, card.querySelector('.delete'));
+        const del = card.querySelector('.delete');
+        setAttrIfChanged(del, 'aria-label', deleteLabel(name, card.classList.contains('is-away'), isMe));
+        /* B-159: anonymous mode after the reveal: no trash can on other cards (delete.php refuses it, like MCP;
+           removing a remembered mkey would tell its card). Inline style: .c .delete sets display. */
+        const hideDel = gAnonRevealed && !isMe;
+        if ((del.style.display === 'none') !== hideDel) {
+            if (hideDel && gPop !== null && gPop.opener === del) closePopover(false);
+            del.style.display = hideDel ? 'none' : '';
+        }
+        syncReactButton(card, !isMe, name, del);
     });
     afterTableUpdate(); // B-110: popovers, tap hint
 
