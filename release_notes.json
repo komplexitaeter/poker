@@ -39,9 +39,9 @@
      "where": "You"}
   ]},
   {"number": "2026.8", "date": "2026-11-26", "items": [
-    {"title": "Taken off the table? Join again in one click",
-     "text": "If a teammate takes you off the table, for example because you were away, you can join again as a player or keep watching as an observer.",
-     "where": "the message you see when this happens"}
+    {"title": "Nobody watches unseen",
+     "text": "Someone who was taken off the table but still has the board open now shows up with the observers, so you always see who is watching.",
+     "where": "the observers above the table"}
   ]},
   {"number": "2026.7", "date": "2026-11-25", "items": [
     {"title": "Small fixes and improvements.", "text": ""}
