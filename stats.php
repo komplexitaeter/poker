@@ -1704,7 +1704,7 @@ $cards_conf = $tab === 'live' ? json_decode((string)file_get_contents(__DIR__ . 
 <?php
     $periods = $periods_of($data['active_use']);
     if (!$periods) { ?>
-        <p class="muted no-data">No data (pok_active_use_stats_tbl is filled every minute by the event job pok_active_use_evt, see db_jobs_pok.sql; it runs on live, test and staging databases may have no data).</p>
+        <p class="muted no-data">No data (pok_active_use_stats_tbl gets a row every minute on live, filled by something outside this repo - not the disabled event pok_active_use_evt; test and staging databases may have no data).</p>
 <?php } else {
         $series = array(
             array('class' => 's0', 'name' => 'players', 'values' => array_column($data['active_use'], 'active_players', 'period')),
