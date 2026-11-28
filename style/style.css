@@ -7368,6 +7368,9 @@ body.api-doc {
 .wn-item:last-child { border-bottom: 0; }
 .wn-item-t { margin: 0 0 4px; font-size: var(--fs-m); line-height: 1.4; }
 .wn-item-x { margin: 0; font-size: var(--fs-s); line-height: 1.55; }
+/* a line without a text ("Minor fixes and improvements"): only the title, quieter */
+.wn-item-x:empty { display: none; }
+.wn-item:has(.wn-item-x:empty) .wn-item-t { margin: 0; font-size: var(--fs-s); font-weight: normal; color: var(--muted); }
 .wn-where { margin: 6px 0 0; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); }
 .wn-where-l { color: var(--topic-color); }
 /* a screenshot, set apart from the real UI around it: a padded frame on the box colour, slightly tilted shadow */

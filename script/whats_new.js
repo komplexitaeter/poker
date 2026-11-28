@@ -12,7 +12,7 @@
  * Texts come from our own file, but are still set via textContent only. */
 
 const NOTES_LATEST = '2026.13'; // the first release in release_notes.json (an E2E test checks they match)
-const NOTES_URL = './release_notes.json?v=2';
+const NOTES_URL = './release_notes.json?v=3';
 const NOTES_SEEN_KEY = 'NOTES_SEEN'; // literal in ensureUid() (script.js) too
 const NOTES_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -165,6 +165,7 @@ function openNotes(opener = null) {
     const close = document.getElementById('wn_close');
     if (typeof focusQuietly === 'function') focusQuietly(close); else close.focus();
     loadNotes();
+    syncNotesImages(); // the colour mode may have changed while the dialog was closed (the list is built once)
     storeNotesSeen();
     if (gNotesDot) {
         gNotesDot = false;

@@ -1,121 +1,127 @@
 {"releases": [
   {"number": "2026.13", "date": "2026-11-28", "draft": true, "items": [
-    {"title": "What's new, right on the board",
-     "text": "This list. After an update a small red dot on Feedback tells you that something changed, so you never miss a new feature.",
+    {"title": "See what's new",
+     "text": "Read what changed with each update, right here in the Feedback menu.",
      "where": "Feedback → What's new"},
     {"title": "Feedback on one page",
-     "text": "Write to us at the top, see what others asked for below. Tap \"Want it\" or \"Don't need\" to vote, tap again to take it back.",
+     "text": "Send us ideas and vote on ideas from other teams – all in the Feedback menu.",
      "where": "Feedback",
-     "image": {"name": "r13-feedback", "w": 760, "h": 1000, "alt": "The feedback panel: a box to write to the makers, below it a table of ideas with votes"}},
-    {"title": "Anonymous means anonymous",
-     "text": "In anonymous mode nobody can tell who played which card, not even with the browser's developer tools. Cards stay on the table until the next round, and you can still throw emojis at them.",
-     "where": "Board settings → Results → Names on revealed cards"}
+     "image": {"name": "r13-feedback", "w": 760, "h": 1000, "alt": "The Feedback menu: a box to write to us, below it a list of ideas with votes"}},
+    {"title": "Anonymous voting",
+     "text": "Hide the names on revealed cards for everyone. Nobody can tell who played which card. Emojis still work.",
+     "where": "Board settings → Results → Names on revealed cards → Anonymous"}
+  ]},
+  {"number": "2026.12", "date": "2026-11-28", "items": [
+    {"title": "Minor fixes – nothing new to learn", "text": ""}
+  ]},
+  {"number": "2026.11", "date": "2026-11-28", "items": [
+    {"title": "Minor fixes – nothing new to learn", "text": ""}
   ]},
   {"number": "2026.10", "date": "2026-11-28", "items": [
-    {"title": "Play via your AI assistant (beta)",
-     "text": "Your assistant (Claude, ChatGPT …) can take your seat: it sees the board, plays the card you name and tells you what happens at the table.",
+    {"title": "Join with an AI assistant (beta)",
+     "text": "Add Agile Poker to Claude or ChatGPT and give it the invite link. It joins under the name you choose, plays the card you name and tells you what happens. Your assistant sees the board like you do. This is a beta: please tell us in Feedback how it works for you.",
      "where": "the robot button next to \"Invite\"",
-     "image": {"name": "r10-ai", "w": 880, "h": 974, "alt": "The dialog \"Play via your AI assistant\" with the connector URL and three short steps"}},
-    {"title": "You see who plays via AI",
-     "text": "A small robot next to a name shows that an AI assistant sits there for that person. Your team can switch AI assistants off.",
-     "where": "Board settings → Team → Allow AI assistants"}
+     "image": {"name": "r10-ai", "w": 880, "h": 974, "alt": "The window \"Play via your AI assistant\" with the link to copy and three short steps"}},
+    {"title": "See who plays through an AI",
+     "text": "A small robot next to a name shows who plays through an AI assistant. If your team does not want this, switch AI assistants off for the whole board.",
+     "where": "Board settings → Team → Allow AI assistants → Off"}
+  ]},
+  {"number": "2026.9.1", "date": "2026-11-26", "items": [
+    {"title": "Minor fixes – nothing new to learn", "text": ""}
   ]},
   {"number": "2026.9", "date": "2026-11-26", "items": [
-    {"title": "Connect your tools",
-     "text": "With an API key, Jira or your own scripts can set the note and fill the item list for you – no more copy and paste before the session.",
+    {"title": "Connect Jira and other tools",
+     "text": "Jira Automation or your own tools can add items to your list of items to estimate. Whoever sets this up needs a key, which you create here – keep it secret like a password. Help for the setup is behind \"API docs\" next to it.",
      "where": "You → API keys",
-     "image": {"name": "r9-apikeys", "w": 760, "h": 388, "alt": "The section \"API keys\" in the You menu with a field for the key's name and the button \"Create key\""}},
-    {"title": "A tidier You menu",
-     "text": "Name, role, appearance and your data in one calm place. \"Delete my data\" removes everything about you in one go.",
+     "image": {"name": "r9-apikeys", "w": 760, "h": 388, "alt": "The section \"API keys\" in the You menu with a field for the name of the key and the button \"Create key\""}},
+    {"title": "Your settings in one place",
+     "text": "Name, role and colour mode are now in one place. \"Delete my data\" removes your name, settings, votes, feedback and keys from all your boards. This cannot be undone.",
      "where": "You"}
   ]},
   {"number": "2026.8", "date": "2026-11-26", "items": [
-    {"title": "Taken off the table? Still watching",
-     "text": "Whoever was removed from the table now simply watches as an observer and can join again with one click.",
-     "where": "the observer line below the table"}
+    {"title": "Taken off the table? Join again in one click",
+     "text": "If a teammate takes you off the table, for example because you were away, you can join again as a player or keep watching as an observer.",
+     "where": "the message you see when this happens"}
+  ]},
+  {"number": "2026.7", "date": "2026-11-25", "items": [
+    {"title": "Minor fixes – nothing new to learn", "text": ""}
   ]},
   {"number": "2026.6", "date": "2026-11-18", "items": [
-    {"title": "A faster start",
-     "text": "The board shows up sooner, especially on slow connections.",
-     "where": "every time you open a board"},
-    {"title": "Light stays light",
-     "text": "The board opens straight in your colour mode – no dark flash before the light page appears.",
-     "where": "You → Appearance, or the moon/sun button"}
+    {"title": "Opens faster",
+     "text": "The board appears sooner when you open it, especially on a slow connection."}
   ]},
   {"number": "2026.5", "date": "2026-11-16", "items": [
-    {"title": "Every emoji once a day",
-     "text": "Each emoji can be thrown once per day and person – the bar shows what you have left. So you think twice where it lands, and fish storms are over. Nudging is not counted.",
-     "where": "tap a card on the table",
-     "image": {"name": "r5-emoji", "w": 744, "h": 600, "alt": "The emoji bar above a card on the table, with the number of throws left below each emoji"}}
+    {"title": "Each emoji once a day",
+     "text": "To keep things calm, everyone can throw each emoji once a day. The emoji bar shows which ones you can still throw today.",
+     "where": "click or tap a card on the table"}
   ]},
   {"number": "2026.4", "date": "2026-11-16", "items": [
     {"title": "A list of items to estimate",
-     "text": "Put your backlog items in a list, estimate one after the other and close each with its value. When you are done, copy the results or download them as CSV.",
+     "text": "Put your backlog items in a list and estimate them one after the other, without typing a new topic each time.",
      "where": "Topic → Items",
-     "image": {"name": "r4-items", "w": 760, "h": 798, "alt": "The topic panel with the tab Items: a list of items, the first one active"}},
-    {"title": "The median next to the average",
-     "text": "After the reveal a line marks the median as well – handy when one card is far off.",
-     "where": "Board settings → Results → Average and median"},
-    {"title": "The timer starts by itself",
-     "text": "Let the timer start with every new round or with every new item.",
-     "where": "Timer → Auto-start"},
-    {"title": "You hear a nudge",
-     "text": "A soft sound and a hint in the browser tab when someone nudges you, so you notice it even in another tab.",
+     "image": {"name": "r4-items", "w": 760, "h": 798, "alt": "The Topic menu with the tab Items: a list of four items, the first one is being estimated"}},
+    {"title": "Look back at your estimates",
+     "text": "Finished items keep their result and how the team voted, and you can copy the results or download them as a file for Excel.",
+     "where": "Topic → Done",
+     "image": {"name": "r4-done", "w": 760, "h": 598, "alt": "The Topic menu with the tab Done: two finished items with their agreed values, and the buttons Copy and Download CSV"}},
+    {"title": "The median",
+     "text": "After the reveal, a dashed line in the result chart marks the median – helpful when one card is far off.",
+     "where": "Board settings → Results → Average and median → Show"},
+    {"title": "Hear a nudge",
+     "text": "A nudge is a friendly reminder for someone who has not picked a card yet. Now you hear a soft sound, even in another tab. It is on unless you switch it off.",
      "where": "You → Play a sound when someone nudges you"}
   ]},
   {"number": "2026.3.1", "date": "2026-11-09", "items": [
     {"title": "Fold the sidebar away",
-     "text": "On a computer you can collapse the column on the right to a narrow strip or drag it wider. The board remembers your choice for voting and for results.",
-     "where": "the arrows at the top of the sidebar",
-     "image": {"name": "r31-rail", "w": 960, "h": 705, "alt": "The board with the sidebar collapsed to a narrow strip on the right edge"}}
+     "text": "On a computer you can fold the sidebar into a narrow strip or drag it wider, and the board remembers your choice.",
+     "where": "the arrows at the top of the sidebar"}
   ]},
   {"number": "2026.3", "date": "2026-11-06", "items": [
-    {"title": "New cards",
-     "text": "Crisp cards in a hand-drawn style on every screen, with the name right above each card.",
-     "where": "the table",
-     "image": {"name": "r3-table", "w": 1200, "h": 672, "alt": "Revealed cards on the table with the names above them"}},
-    {"title": "A deck for every question",
-     "text": "Pick from groups of decks: estimates (Fibonacci, T-shirt sizes …), traffic lights, team assessment, mood and more – or make your own set with your own values.",
-     "where": "Board settings → Deck",
-     "image": {"name": "r3-decks", "w": 760, "h": 1060, "alt": "The deck settings with groups of card decks"}},
-    {"title": "Throw, nudge, remove",
-     "text": "Tap a card on the table to throw an emoji at it, nudge someone who is still thinking, or take someone off the table who has left.",
-     "where": "tap a card on the table"},
-    {"title": "See changed cards",
-     "text": "If someone changes their card after the reveal, the first card stays visible underneath.",
-     "where": "Board settings → Results → Changed cards"}
+    {"title": "Cards with a title and a description",
+     "text": "Card sets such as \"Delegation Poker\" and \"Consent decision\" show a title and a short explanation on every card, so everyone knows what it means.",
+     "where": "Board settings → Deck → Change",
+     "image": {"name": "r3-rich", "w": 1200, "h": 765, "alt": "Delegation Poker cards on the table, each with a number, a title like \"Consult\" and a short explanation"}},
+    {"title": "Create your own card sets",
+     "text": "Make a card set with your own values, colours and texts. It belongs to your team's board: everyone there can use and change it.",
+     "where": "Board settings → Deck → Change → New set",
+     "image": {"name": "r3-own", "w": 1100, "h": 1020, "alt": "The editor for your own card set: the set name, the list of cards, and the card M with the title \"Medium\", a short description and a colour"}},
+    {"title": "Throw emojis and nudge",
+     "text": "Click or tap a card on the table to throw an emoji at it, or to nudge someone who has not picked a card yet.",
+     "where": "click or tap a card on the table"},
+    {"title": "See who is there",
+     "text": "Observers are listed below the cards, and a player's card shows when that person is away or has lost the connection.",
+     "where": "the table"},
+    {"title": "Play cards with the keyboard",
+     "text": "On a computer, press the letter shown below a card (Q, W, E …) to play it without the mouse.",
+     "where": "the letters below your cards"}
   ]},
   {"number": "2026.2", "date": "2026-11-01", "items": [
-    {"title": "Timer with a timebox",
-     "text": "Choose 3, 5 or 10 minutes (or your own) and everybody sees the same countdown – or simply run a stopwatch.",
-     "where": "Timer",
-     "image": {"name": "r2-timer", "w": 760, "h": 774, "alt": "The timer panel with mode, timebox and auto-start"}},
-    {"title": "New round where your hand is",
-     "text": "The button for a new round sits at the bottom right, next to the timer.",
-     "where": "bottom right (phones: above your cards)"},
-    {"title": "Tips for your round",
-     "text": "Short tips next to the table explain the deck in play. Know it all already? Switch them off for the team.",
-     "where": "Board settings → Team → Tips"},
+    {"title": "The result at a glance",
+     "text": "After the reveal, a bar chart in the sidebar shows how many people chose each card, so differences stand out at once.",
+     "where": "the sidebar on the right (phones: above your cards)",
+     "image": {"name": "r2-result", "w": 760, "h": 558, "alt": "The result in the sidebar: a bar for each card value with the number of votes, a marker for the average and a line for the median"}},
+    {"title": "Countdown timer",
+     "text": "Set a time limit, for example 5 or 10 minutes, and everyone sees the same countdown.",
+     "where": "Timer → On → Mode: Timer (not Stopwatch), then pick the minutes",
+     "image": {"name": "r2-countdown", "w": 776, "h": 290, "alt": "The countdown at the bottom right with 4 minutes 51 seconds left, above the buttons for a new round and the next item"}},
+    {"title": "Timer starts with each round",
+     "text": "The timer can start again by itself with every new round.",
+     "where": "Timer → Auto-start → New round"},
     {"title": "Swipe through your cards",
-     "text": "On phones and tablets your cards are a carousel: swipe and tap the one in the middle.",
-     "where": "your cards at the bottom"},
-    {"title": "Back in sync after a break",
-     "text": "If your laptop slept or the network dropped, the board reconnects on its own and tells you while it does.",
-     "where": "automatic"}
+     "text": "On phones and tablets, swipe through your cards and tap the one in the middle to play it.",
+     "where": "your cards at the bottom"}
   ]},
   {"number": "2026.1", "date": "2026-10-28", "items": [
-    {"title": "A fresh look, the same game",
-     "text": "A calmer board with clear places for the topic, the table and your cards. Everything works as before, it just reads easier – in light and in dark.",
+    {"title": "A fresh new look",
+     "text": "A calmer board with clear places for the topic, the table and your cards, in light and in dark mode.",
      "where": "the whole board",
-     "image": {"name": "r1-board", "w": 1400, "h": 831, "alt": "The whole board: header, the table with cards, the sidebar and the deck at the bottom"}},
-    {"title": "Menus that keep the table in view",
-     "text": "Settings open as a panel next to the table on a computer and as a sheet from the bottom on a phone.",
-     "where": "the menu at the top"},
-    {"title": "Cards that fit your screen",
-     "text": "Cards grow and shrink with your window, so a big team fits on a laptop and on a phone.",
-     "where": "the table"},
-    {"title": "Ideas & bugs",
-     "text": "Tell us what you need and vote on what others asked for, right from the board.",
+     "image": {"name": "r1-board", "w": 1400, "h": 831, "alt": "The whole board: the menu at the top, the table with cards, the sidebar and your cards at the bottom"}},
+    {"title": "Works on phones and tablets",
+     "text": "The board fits every screen, menus open from the bottom on a phone, and all buttons are big enough for your thumb.",
+     "where": "open the board link on your phone",
+     "image": {"name": "r1-phone", "w": 720, "h": 1403, "alt": "The board on a phone: the table with cards, and your cards to swipe through at the bottom"}},
+    {"title": "Send us feedback",
+     "text": "Report a problem or suggest an idea right from the board, and vote on what others have asked for.",
      "where": "Feedback"}
   ]}
 ]}
