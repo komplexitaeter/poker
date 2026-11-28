@@ -637,6 +637,8 @@ Status: neu (Kai, 2026-11-27). Aus Sinas Reviews der MCP-PRs, alles nicht blocki
 - `delete.php?mkey=` im anonymen Modus nach dem Aufdecken (gemerkte mkey verrät beim Entfernen die Karte); im MCP
   bereits ausgeschlossen.
 - Kontingent per WebSocket: ein Browser kann mit beliebigem `from` das Kontingent anderer verbrauchen (bekannt, B-139).
+- Flaky: `mcp-app.spec.ts` „leaving by oneself … Join again“ (Zeile ~428) schlug lokal einmal fehl (Ben, 2026-11-28), Ursache offen.
+- `pok_api_users_day_tbl` wächst unbegrenzt: Aufbewahrungsfrist mit B-109 festlegen.
 - `getDao()`: gelöschte eigene Karten (Custom-Set) sind vor dem Aufdecken sichtbar.
 - `away_sig` baut die Zuordnung im anonymen Modus neu auf (prüfen, ob daraus Rückschlüsse möglich sind).
 - `mcp_states`: Größe der Spalte bei 8 Ständen je Platz beobachten.
