@@ -1,7 +1,7 @@
 {"releases": [
   {"number": "2026.13", "date": "2026-11-28", "draft": true, "items": [
     {"title": "Release notes: see what's new",
-     "text": "These release notes tell you what changed with each update – right here in the Feedback menu.",
+     "text": "These release notes tell you what changed with each update. You can open them any time from the Feedback menu.",
      "where": "Feedback → What's new",
      "asked": true},
     {"title": "Feedback on one page",

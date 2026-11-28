@@ -12,7 +12,7 @@
  * Texts come from our own file, but are still set via textContent only. */
 
 const NOTES_LATEST = '2026.13'; // the first release in release_notes.json (an E2E test checks they match)
-const NOTES_URL = './release_notes.json?v=25';
+const NOTES_URL = './release_notes.json?v=26';
 const NOTES_SEEN_KEY = 'NOTES_SEEN'; // literal in ensureUid() (script.js) too
 const NOTES_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
