@@ -68,7 +68,7 @@
      "where": "Topic → Done",
      "image": {"name": "r4-done", "w": 760, "h": 598, "alt": "The Topic menu with the tab Done: two finished items with their agreed values, and the buttons Copy and Download CSV"}},
     {"title": "Show the median",
-     "text": "After the reveal, a dashed line in the result chart marks the median – helpful when one card is far off.", "asked": true,
+     "text": "After the reveal, a dashed line in the result chart marks the median. Unlike the average, a single outlier does not pull it away.", "asked": true,
      "where": "Board settings → Results → Average and median → Show"},
     {"title": "Hear a nudge",
      "text": "A nudge is a friendly reminder for someone who has not picked a card yet. Now you hear a soft sound, even in another tab. It is on unless you switch it off.", "asked": true,
